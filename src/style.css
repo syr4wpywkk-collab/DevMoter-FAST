@@ -1261,6 +1261,10 @@ body.codex-mode #app {
 .cx-sidebar-foot {
   flex: 0 0 auto;
   padding-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   border-top: 1px solid #242424;
 }
 
@@ -3233,4 +3237,58 @@ body.opencode-mode #app {
 
 .cx-github-search {
   width: 100%;
+}
+
+
+/* Compact language setting shared by both coding-agent sidebars. */
+.pocket-language-setting {
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #2d2d2d;
+  border-radius: 9px;
+  background: rgba(255,255,255,.035);
+  color: #a9a9af;
+  font-size: .64rem;
+}
+
+.pocket-language-setting > span {
+  flex: 0 0 auto;
+  color: #85858d;
+  font-size: .76rem;
+}
+
+.pocket-language-setting select {
+  min-width: 0;
+  max-width: 108px;
+  padding: 0 2px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pocket-language-setting option {
+  background: #fff;
+  color: #111;
+}
+
+.ocx-sidebar-foot {
+  flex-wrap: wrap;
+}
+
+.ocx-language-setting {
+  border-color: var(--oc-line-soft);
+  border-radius: 6px;
+  background: var(--oc-panel);
+  color: var(--oc-muted);
+}
+
+.ocx-language-setting > span {
+  color: var(--oc-dim);
 }
