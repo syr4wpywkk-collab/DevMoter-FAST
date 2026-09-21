@@ -1,4 +1,5 @@
 import { isExecutionActive, openCodeIdleOutcomeToExecutionState, type ExecutionState } from "./execution-state";
+import { speechRecognitionLanguage } from "./i18n";
 
 type Json = Record<string, any>;
 
@@ -158,6 +159,14 @@ export function mountOpenCodeRemote(
         </div>
 
         <div class="ocx-sidebar-foot">
+          <label class="pocket-language-setting ocx-language-setting" title="Language">
+            <span aria-hidden="true">◎</span>
+            <select data-language-select aria-label="Language">
+              <option value="en">English</option>
+              <option value="ja">日本語</option>
+              <option value="zh-CN">简体中文</option>
+            </select>
+          </label>
           <button id="ocxRefresh" type="button" class="ocx-refresh">↻ Refresh</button>
           <span id="ocxSideStatus" class="ocx-side-status offline"><i></i> Offline</span>
         </div>
@@ -2184,7 +2193,7 @@ export function mountOpenCodeRemote(
       return;
     }
     const recognition = new Recognition();
-    recognition.lang = "ja-JP";
+    recognition.lang = speechRecognitionLanguage();
     recognition.interimResults = true;
     voice.classList.add("listening");
     recognition.onresult = (event: any) => {
