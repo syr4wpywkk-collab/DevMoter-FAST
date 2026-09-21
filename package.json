@@ -1,0 +1,20 @@
+{
+  "name": "devmoter-fast",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:web": "vite",
+    "dev:server": "node server.mjs",
+    "build": "tsc --noEmit && vite build",
+    "start": "node server.mjs",
+    "test": "node --test test/**/*.test.mjs",
+    "test:coverage": "c8 --reporter=text --reporter=lcov npm test"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5",
+    "c8": "^10.1.3"
+  },
+  "license": "MIT"
+}
