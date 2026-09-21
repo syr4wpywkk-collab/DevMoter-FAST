@@ -1,6 +1,7 @@
 import "./style.css";
 import { mountOpenCodeRemote } from "./opencode";
 import { mountCodexRemote } from "./codex";
+import { startI18n } from "./i18n";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
@@ -32,6 +33,8 @@ const openCodeRemote = mountOpenCodeRemote(openCodeMount, { onCodex: () => setBa
 const codexRemote = mountCodexRemote(codexMount, {
   onOpenCode: () => setBackend("opencode")
 });
+
+startI18n();
 
 let healthCheckInFlight = false;
 async function checkHealth() {
