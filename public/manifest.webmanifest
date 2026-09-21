@@ -1,0 +1,9 @@
+{
+  "name": "DevMoter FAST",
+  "short_name": "DevMoter",
+  "description": "Mobile-first remote control for local coding agents",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#111111"
+}
