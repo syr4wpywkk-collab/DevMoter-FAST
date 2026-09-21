@@ -12,6 +12,15 @@ It currently brings together **OpenCode** and **OpenAI Codex CLI / app-server** 
 > [!WARNING]
 > DevMoter is designed for a **private-host / private-network** setup. It does not yet provide a complete independent user-authentication layer. Do not expose the DevMoter server, OpenCode port, or agent backends directly to the public internet.
 
+## Start here
+
+- ⚡ **Fast install:** [fastinstall.MD](./fastinstall.MD)
+- 🔐 **Security policy & vulnerability reporting:** [SECURITY.md](./SECURITY.md)
+- 📜 **Third-party licenses and interoperability notices:** [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)
+
+> [!CAUTION]
+> **Alpha security notice:** security review is ongoing. DevMoter FAST has known security limitations and should only be used on a trusted/private network. If you discover a security issue, do not publish exploit details or secrets in a public Issue; follow [SECURITY.md](./SECURITY.md).
+
 ## Why DevMoter?
 
 Coding agents are excellent on a desktop, but checking a long-running task from a phone is still awkward.
