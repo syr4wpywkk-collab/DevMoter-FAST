@@ -60,6 +60,21 @@ gh auth status
 
 Your local coding-agent CLIs should already be authenticated/configured as required by their upstream tools.
 
+### Upstream accounts and terms
+
+DevMoter FAST does **not** provide, resell, share, or bundle accounts, subscriptions, API keys, login tokens, or other credentials for upstream services.
+
+Each user must:
+
+- use their own eligible account for each upstream service;
+- authenticate through the upstream tool's supported login or authentication flow;
+- comply with the applicable upstream terms, age requirements, usage policies, and account rules;
+- avoid sharing account credentials or using another person's account through DevMoter.
+
+DevMoter FAST is only a local interoperability layer. Availability of a backend in the UI does not grant a license or entitlement to use that upstream service.
+
+Product and company names such as OpenAI, Codex, OpenCode, GitHub, and Tailscale are used only to describe compatibility or interoperability. Their trademarks and branding remain the property of their respective owners. DevMoter FAST is not affiliated with, sponsored by, or endorsed by those providers.
+
 Tailscale is optional, but recommended for private phone access.
 
 ### 1. Clone
