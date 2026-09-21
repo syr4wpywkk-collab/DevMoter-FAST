@@ -44,6 +44,7 @@ The goal is simple: **leave the coding machine running, carry the control surfac
 | Projects | register/create projects, choose working directory, browse/read/write Markdown safely |
 | GitHub projects | browse repositories through the host `gh` session, clone/open repositories into DevMoter-managed paths, branch/fetch safety checks |
 | PWA | mobile-first UI, installable web app behavior, backend switching, online/offline health state |
+| Languages | English, 日本語, 简体中文 with browser detection and a sidebar language switcher |
 | Tests | Node test suite, coverage reporting, build checks, GitHub Actions CI |
 
 DevMoter is still **alpha software**. Expect protocol changes, rough edges, and version-sensitive behavior.
