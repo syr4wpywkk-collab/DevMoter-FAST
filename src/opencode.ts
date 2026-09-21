@@ -359,6 +359,8 @@ export function mountOpenCodeRemote(
   let reconnectTimer: number | null = null;
   let reconnectAttempts = 0;
   let refreshTimer: number | null = null;
+  let liveFallbackTimer: number | null = null;
+  let lastLiveEventAt = 0;
   let toastTimer: number | null = null;
   let pendingPermission: PendingPermission | null = null;
   let pendingQuestion: PendingQuestion | null = null;
@@ -366,6 +368,7 @@ export function mountOpenCodeRemote(
   let contextExecutionState: ExecutionState | null = null;
   const liveText = new Map<string, HTMLElement>();
   const liveReasoning = new Map<string, HTMLElement>();
+  const livePartKinds = new Map<string, "text" | "reasoning">();
   let directory = "";
   let selectedAgent =
     localStorage.getItem("opencode-pocket-opencode-agent") || "build";
@@ -446,6 +449,9 @@ export function mountOpenCodeRemote(
     send.setAttribute("aria-label", active ? "Stop" : "Send");
     send.disabled = !online || next === "reconnecting";
     setActivity(executionLabel(next), next);
+
+    if (active) startLiveFallback();
+    else stopLiveFallback();
   }
 
   function setControlsEnabled(value: boolean) {
@@ -736,7 +742,20 @@ export function mountOpenCodeRemote(
   }
 
   function streamKey(data: Json) {
-    return `${String(data?.assistantMessageID || "assistant")}:${String(data?.ordinal ?? 0)}`;
+    const part = data?.part ?? data;
+    const messageID =
+      part?.assistantMessageID ??
+      part?.messageID ??
+      data?.assistantMessageID ??
+      data?.messageID ??
+      "assistant";
+    const partID =
+      part?.id ??
+      part?.partID ??
+      data?.partID ??
+      data?.ordinal ??
+      0;
+    return `${String(messageID)}:${String(partID)}`;
   }
 
   function ensureLiveText(data: Json) {
@@ -785,6 +804,7 @@ export function mountOpenCodeRemote(
   function clearLiveStreams() {
     liveText.clear();
     liveReasoning.clear();
+    livePartKinds.clear();
   }
 
   function renderMessage(message: Json) {
@@ -1671,6 +1691,40 @@ export function mountOpenCodeRemote(
     }, delay);
   }
 
+  function stopLiveFallback() {
+    if (liveFallbackTimer !== null) {
+      window.clearTimeout(liveFallbackTimer);
+      liveFallbackTimer = null;
+    }
+  }
+
+  function startLiveFallback() {
+    if (liveFallbackTimer !== null) return;
+
+    const tick = async () => {
+      liveFallbackTimer = null;
+      if (!online || !activeSession || !isExecutionActive(executionState)) return;
+
+      // OpenCode has had SSE regressions where the model keeps running but
+      // message events do not reach remote clients. Reconcile from persisted
+      // context only when the live stream has been quiet long enough.
+      if (Date.now() - lastLiveEventAt > 650) {
+        try {
+          await loadContext();
+          await recoverExecutionState();
+        } catch {
+          // Keep the live request running; the next tick can retry.
+        }
+      }
+
+      if (online && activeSession && isExecutionActive(executionState)) {
+        liveFallbackTimer = window.setTimeout(() => void tick(), 700);
+      }
+    };
+
+    liveFallbackTimer = window.setTimeout(() => void tick(), 700);
+  }
+
   function handleEvent(payload: Json) {
     const type = String(payload?.type || "");
     const props = payload?.data ?? payload?.properties ?? payload;
@@ -1687,6 +1741,116 @@ export function mountOpenCodeRemote(
       sessionID !== activeSession.id
     ) {
       if (type.startsWith("session.")) void loadSessions();
+      return;
+    }
+
+    // Current OpenCode v1 SSE schema. Keep the older projected
+    // session.* event handlers below for compatibility with newer/v2 builds.
+    if (type === "message.part.updated") {
+      const part = props?.part;
+      if (!part) return;
+
+      const key = streamKey({
+        messageID: part.messageID,
+        partID: part.id
+      });
+
+      if (part.type === "text") {
+        livePartKinds.set(key, "text");
+        const staleReasoning = liveReasoning.get(key);
+        if (staleReasoning) {
+          staleReasoning.closest("details")?.remove();
+          liveReasoning.delete(key);
+        }
+        const body = ensureLiveText({
+          messageID: part.messageID,
+          partID: part.id
+        });
+        if (typeof part.text === "string") body.textContent = part.text;
+        else if (typeof props?.delta === "string") body.textContent += props.delta;
+        transcript.scrollTop = transcript.scrollHeight;
+        lastLiveEventAt = Date.now();
+        setExecutionState("running");
+        return;
+      }
+
+      if (part.type === "reasoning") {
+        livePartKinds.set(key, "reasoning");
+        const staleText = liveText.get(key);
+        if (staleText) {
+          staleText.closest(".ocx-message-row")?.remove();
+          liveText.delete(key);
+        }
+        const body = ensureLiveReasoning({
+          messageID: part.messageID,
+          partID: part.id
+        });
+        if (typeof part.text === "string") body.textContent = part.text;
+        else if (typeof props?.delta === "string") body.textContent += props.delta;
+        transcript.scrollTop = transcript.scrollHeight;
+        lastLiveEventAt = Date.now();
+        setExecutionState("running");
+        return;
+      }
+
+      if (part.type === "tool") {
+        lastLiveEventAt = Date.now();
+        scheduleRefresh(180);
+        return;
+      }
+    }
+
+    if (type === "message.part.delta") {
+      const key = streamKey({
+        messageID: props?.messageID,
+        partID: props?.partID
+      });
+      const kind = livePartKinds.get(key);
+      const data = {
+        messageID: props?.messageID,
+        partID: props?.partID
+      };
+      const body =
+        kind === "reasoning"
+          ? ensureLiveReasoning(data)
+          : ensureLiveText(data);
+      body.textContent += String(props?.delta || "");
+      transcript.scrollTop = transcript.scrollHeight;
+      lastLiveEventAt = Date.now();
+      setExecutionState("running");
+      return;
+    }
+
+    if (type === "session.status") {
+      const status = String(props?.status?.type || "");
+      lastLiveEventAt = Date.now();
+
+      if (status === "busy" || status === "retry") {
+        setExecutionState("running");
+      } else if (status === "idle") {
+        setExecutionState("completed");
+        scheduleRefresh(60);
+      }
+      return;
+    }
+
+    if (type === "session.idle") {
+      lastLiveEventAt = Date.now();
+      setExecutionState("completed");
+      scheduleRefresh(60);
+      return;
+    }
+
+    if (type === "session.error") {
+      lastLiveEventAt = Date.now();
+      setExecutionState("failed");
+      scheduleRefresh(60);
+      return;
+    }
+
+    if (type === "session.updated") {
+      lastLiveEventAt = Date.now();
+      void loadSessions();
       return;
     }
 
@@ -1868,6 +2032,7 @@ export function mountOpenCodeRemote(
 
     eventSource.onopen = () => {
       reconnectAttempts = 0;
+      lastLiveEventAt = Date.now();
       if (reconnectTimer !== null) {
         window.clearTimeout(reconnectTimer);
         reconnectTimer = null;
@@ -1882,6 +2047,7 @@ export function mountOpenCodeRemote(
 
     eventSource.onmessage = event => {
       try {
+        lastLiveEventAt = Date.now();
         handleEvent(JSON.parse(event.data));
       } catch {
         // Ignore malformed event frames.
@@ -1896,6 +2062,7 @@ export function mountOpenCodeRemote(
   }
 
   function disconnectEvents() {
+    stopLiveFallback();
     if (reconnectTimer !== null) {
       window.clearTimeout(reconnectTimer);
       reconnectTimer = null;
