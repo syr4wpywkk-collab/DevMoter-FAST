@@ -1,4 +1,5 @@
 import { codexThreadStatusToExecutionState, codexTurnStatusToExecutionState, isExecutionActive, type ExecutionState } from "./execution-state";
+import { speechRecognitionLanguage } from "./i18n";
 
 type Json = Record<string, any>;
 
@@ -117,6 +118,14 @@ export function mountCodexRemote(
         </div>
 
         <div class="cx-sidebar-foot">
+          <label class="pocket-language-setting" title="Language">
+            <span aria-hidden="true">◎</span>
+            <select data-language-select aria-label="Language">
+              <option value="en">English</option>
+              <option value="ja">日本語</option>
+              <option value="zh-CN">简体中文</option>
+            </select>
+          </label>
           <span id="cxSideStatus" class="cx-online-pill offline"><i></i> Offline</span>
         </div>
       </aside>
@@ -2230,7 +2239,7 @@ export function mountCodexRemote(
       return;
     }
     const recognition = new SpeechRecognition();
-    recognition.lang = "ja-JP";
+    recognition.lang = speechRecognitionLanguage();
     recognition.interimResults = true;
     voice.classList.add("listening");
     recognition.onresult = (event: any) => {
