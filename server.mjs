@@ -22,6 +22,11 @@ const HOME_DIR = process.env.HOME || process.cwd();
 const UPLOAD_DIR = process.env.POCKET_UPLOAD_DIR || join(HOME_DIR, ".local", "state", "opencode-pocket", "uploads");
 const PROJECT_CONFIG_DIR = join(HOME_DIR, ".config", "opencode-pocket");
 const PROJECTS_FILE = join(PROJECT_CONFIG_DIR, "projects.json");
+const PROJECT_FILE_LIMIT = 1024 * 1024;
+const PROJECT_SCAN_LIMIT = 200;
+const OPERATION_TTL_MS = 10 * 60 * 1000;
+const OPERATION_MAX_ENTRIES = 1000;
+const seenOperations = new Map();
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
