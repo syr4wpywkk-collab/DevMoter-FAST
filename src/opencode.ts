@@ -1640,14 +1640,18 @@ export function mountOpenCodeRemote(
       return;
     }
 
+    const request = pendingQuestion;
+    questionSubmit.disabled = true;
+    questionReject.disabled = true;
+
     try {
       await api(
-        `/session/${encodeURIComponent(pendingQuestion.sessionID)}/question/${encodeURIComponent(pendingQuestion.id)}/reply`,
+        `/session/${encodeURIComponent(request.sessionID)}/question/${encodeURIComponent(request.id)}/reply`,
         {
           method: "POST",
           headers: {
             "x-pocket-operation-id":
-              `opencode-question-${pendingQuestion.id}-reply`
+              `opencode-question-${request.id}-reply`
           },
           body: JSON.stringify({ answers })
         }
@@ -1657,22 +1661,37 @@ export function mountOpenCodeRemote(
       setExecutionState("running");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Question reply failed");
+    } finally {
+      questionSubmit.disabled = false;
+      questionReject.disabled = false;
     }
   }
 
   async function rejectQuestion() {
     if (!pendingQuestion) return;
 
+    const request = pendingQuestion;
+    questionSubmit.disabled = true;
+    questionReject.disabled = true;
+
     try {
       await api(
-        `/session/${encodeURIComponent(pendingQuestion.sessionID)}/question/${encodeURIComponent(pendingQuestion.id)}/reject`,
-        { method: "POST" }
+        `/session/${encodeURIComponent(request.sessionID)}/question/${encodeURIComponent(request.id)}/reject`,
+        {
+          method: "POST",
+          headers: {
+            "x-pocket-operation-id": `opencode-question-${request.id}-reject`
+          }
+        }
       );
       pendingQuestion = null;
       renderQuestion();
       setExecutionState("running");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Could not dismiss question");
+    } finally {
+      questionSubmit.disabled = false;
+      questionReject.disabled = false;
     }
   }
 
