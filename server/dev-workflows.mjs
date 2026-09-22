@@ -522,9 +522,12 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     };
   }
 
-  async function verify(projectId) {
+  async function verify(projectId, options = {}) {
     const settings = await readSettings();
     const project = await getProject(projectId);
+    const deadline = Number.isFinite(Number(options.deadline))
+      ? Number(options.deadline)
+      : Number.POSITIVE_INFINITY;
     if (!settings.verification.commands.length) {
       return {
         configured: false,
@@ -535,12 +538,18 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     }
 
     const results = [];
+    let timedOut = false;
     for (const command of settings.verification.commands) {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
+        timedOut = true;
+        break;
+      }
       const startedAt = Date.now();
       try {
         const result = await run(command.command, command.args, {
           cwd: project.path,
-          timeoutMs: command.timeoutMs
+          timeoutMs: Math.max(1, Math.min(command.timeoutMs, remainingMs))
         });
         const stdout = clip(result.stdout, 96000);
         const stderr = clip(result.stderr, 48000);
@@ -572,8 +581,10 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     }
     return {
       configured: true,
-      ok: results.length === settings.verification.commands.length && results.every(item => item.ok),
-      commands: results
+      ok: !timedOut && results.length === settings.verification.commands.length && results.every(item => item.ok),
+      timedOut,
+      commands: results,
+      ...(timedOut ? { error: "Verification deadline exceeded before all configured commands completed." } : {})
     };
   }
 
@@ -663,10 +674,29 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
         headRefName: info.branch,
         baseRefName: "HEAD"
       };
-      diff = (await run("git", ["diff", "--no-ext-diff", "--unified=3", "HEAD"], {
+      const tracked = (await run("git", ["diff", "--no-ext-diff", "--unified=3", "HEAD"], {
         cwd: project.path,
         timeoutMs: 30000
       })).stdout;
+      const untrackedRaw = (await run("git", ["ls-files", "--others", "--exclude-standard", "-z"], {
+        cwd: project.path,
+        timeoutMs: 30000
+      })).stdout;
+      const untracked = untrackedRaw.split("\0").filter(Boolean).slice(0, 50);
+      const untrackedDiffs = [];
+      for (const relativePath of untracked) {
+        try {
+          const added = await run("git", ["diff", "--no-index", "--unified=3", "--", "/dev/null", relativePath], {
+            cwd: project.path,
+            timeoutMs: 10000
+          });
+          if (added.stdout) untrackedDiffs.push(added.stdout);
+        } catch (error) {
+          if (error?.stdout) untrackedDiffs.push(String(error.stdout));
+        }
+        if (Buffer.byteLength([tracked, ...untrackedDiffs].join("\n"), "utf8") >= settings.review.maxDiffBytes) break;
+      }
+      diff = [tracked, ...untrackedDiffs].filter(Boolean).join("\n");
     }
 
     const boundedDiff = clip(diff, settings.review.maxDiffBytes);
@@ -720,6 +750,9 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
       readOnly: true,
       deadlineMs: Math.min(180000, settings.verification.repair.deadlineMs)
     });
+    if (agent.status !== "completed") {
+      throw new Error("Reviewer turn ended with status " + (agent.status || "unknown"));
+    }
     const findings = parseFindings(
       agent.text,
       diffAnchors(boundedDiff.text),
@@ -792,12 +825,13 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
             ? "success"
             : "unknown";
       const logs = [];
-      if (input.includeLogs && state === "failure" && meta.headRefName) {
+      if (input.includeLogs && state === "failure" && meta.headRefOid) {
         const runs = safeJson((await run("gh", [
-          "run", "list", "--branch", String(meta.headRefName), "--limit", "12",
+          "run", "list", "--commit", String(meta.headRefOid), "--limit", "12",
           "--json", "databaseId,name,workflowName,status,conclusion,url,headSha"
         ], { cwd: project.path, timeoutMs: 30000 })).stdout, []);
         for (const item of Array.isArray(runs) ? runs : []) {
+          if (String(item?.headSha || "") !== String(meta.headRefOid)) continue;
           if (!/failure|cancel|timed_out|action_required/i.test(String(item?.conclusion || ""))) continue;
           try {
             const log = await run("gh", ["run", "view", String(item.databaseId), "--log-failed"], {
@@ -851,7 +885,7 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     const policy = settings.verification.repair;
     const deadline = Date.now() + policy.deadlineMs;
     const attempts = [];
-    let result = await verify(project.id);
+    let result = await verify(project.id, { deadline });
     if (result.ok || !result.configured) {
       return { ok: result.ok, repaired: false, attempts, verification: result };
     }
@@ -883,12 +917,14 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
         "",
         failure
       ].join("\n");
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) break;
       const agent = await agentTurn({
         prompt,
         cwd: project.path,
         model: policy.model,
         readOnly: false,
-        deadlineMs: Math.max(10000, deadline - Date.now())
+        deadlineMs: remainingMs
       });
       attempts.push({
         turn,
@@ -896,7 +932,8 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
         status: agent.status,
         summary: clip(agent.text, 12000).text
       });
-      result = await verify(project.id);
+      if (Date.now() >= deadline) break;
+      result = await verify(project.id, { deadline });
       if (result.ok) return { ok: true, repaired: true, attempts, verification: result };
     }
     return {
@@ -1084,7 +1121,18 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
       return options.masked === false ? settings : maskSecrets(settings);
     },
     async updateSettings(value) {
-      return maskSecrets(await writeSettings(value));
+      const current = await readSettings();
+      const next = normalizeDevWorkflowSettings(deepMerge(current, value));
+      for (const server of next.mcp.servers) {
+        const existing = current.mcp.servers.find(item => item.id === server.id);
+        if (!existing || !plain(server.env) || !plain(existing.env)) continue;
+        for (const [key, envValue] of Object.entries(server.env)) {
+          if (envValue === "••••••••" && key in existing.env) {
+            server.env[key] = existing.env[key];
+          }
+        }
+      }
+      return maskSecrets(await writeSettings(next));
     },
     capabilities,
     sessionContext,
