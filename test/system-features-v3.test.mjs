@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createSystemFeatures, systemFeatureInternals } from "../server/system-features.mjs";
@@ -100,4 +100,26 @@ test("server-side push is generic, deep-linked, opt-in, and suppressed for a vis
   assert.match(pending.notification.url, /backend=codex/);
   assert.match(pending.notification.url, /session=thread-1/);
   assert.doesNotMatch(JSON.stringify(pending.notification), /prompt|code|tool output|credential/i);
+});
+
+
+test("malformed persisted device state fails closed instead of allowing a new bootstrap", async t => {
+  const stateDir = await mkdtemp(join(tmpdir(), "devmoter-state-failclosed-"));
+  t.after(() => rm(stateDir, { recursive: true, force: true }));
+  await mkdir(stateDir, { recursive: true });
+  await writeFile(join(stateDir, "devices.json"), "{not-json");
+
+  const features = createSystemFeatures({
+    stateDir,
+    appRoot: process.cwd(),
+    version: "test",
+    getProjects: async () => [],
+    getBackendHealth: async () => ({ opencode: { online: true }, codex: { online: true } }),
+    pushSender: async () => ({ ok: true, status: 201 })
+  });
+
+  await assert.rejects(
+    features.bootstrapDevice(request(), "Laptop"),
+    /unreadable or malformed/i
+  );
 });
