@@ -7,6 +7,7 @@ import {
   mutationOriginMatches,
   parseBasicAuthorization
 } from "../server/auth.mjs";
+import { redactSecretsInText } from "../server/secret-redaction.mjs";
 
 test("DevMoter auth password fails closed when weak or missing", () => {
   assert.throws(() => assertAuthPassword(""), /at least 16 characters/);
@@ -89,4 +90,14 @@ test("mutating requests require an exact same Origin", () => {
     }),
     true
   );
+});
+
+test("configured secrets are redacted from browser/log text", () => {
+  const secret = 's3cret-"quoted"-value';
+  const text = redactSecretsInText(
+    `upstream failed with credential ${secret} in response`,
+    [secret]
+  );
+  assert.equal(text.includes(secret), false);
+  assert.match(text, /\[REDACTED\]/);
 });
