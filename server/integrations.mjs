@@ -4,7 +4,11 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 const COMMAND_TIMEOUT_MS = 8_000;
 const ACTION_COOLDOWN_MS = 2_000;
+const STATUS_CACHE_MS = 1_000;
 const lastActionAt = new Map();
+let statusCacheValue = null;
+let statusCacheExpiresAt = 0;
+let statusCachePromise = null;
 
 class IntegrationError extends Error {
   constructor(message, status = 400) {
@@ -292,31 +296,50 @@ export function publicDefinition(definition) {
 }
 
 export async function listIntegrations() {
-  const [antigravityDetection, claudeDetection, remote] = await Promise.all([
-    detect(DEFINITIONS.antigravity),
-    detect(DEFINITIONS.claude),
-    antigravityRemoteStatus()
-  ]);
+  const now = Date.now();
+  if (statusCacheValue && now < statusCacheExpiresAt) return statusCacheValue;
+  if (statusCachePromise) return statusCachePromise;
 
-  return {
-    integrations: [
-      {
-        ...publicDefinition(DEFINITIONS.antigravity),
-        ...antigravityDetection,
-        remote: {
-          running: remote.running,
-          name: remote.name,
-          remoteUrl: remote.remoteUrl,
-          dashboardUrl: DEFINITIONS.antigravity.webUrl,
-          error: remote.error || null
+  statusCachePromise = (async () => {
+    const [antigravityDetection, claudeDetection, remote] = await Promise.all([
+      detect(DEFINITIONS.antigravity),
+      detect(DEFINITIONS.claude),
+      antigravityRemoteStatus()
+    ]);
+
+    return {
+      integrations: [
+        {
+          ...publicDefinition(DEFINITIONS.antigravity),
+          ...antigravityDetection,
+          remote: {
+            running: remote.running,
+            name: remote.name,
+            remoteUrl: remote.remoteUrl,
+            dashboardUrl: DEFINITIONS.antigravity.webUrl,
+            error: remote.error || null
+          }
+        },
+        {
+          ...publicDefinition(DEFINITIONS.claude),
+          ...claudeDetection
         }
-      },
-      {
-        ...publicDefinition(DEFINITIONS.claude),
-        ...claudeDetection
-      }
-    ]
-  };
+      ]
+    };
+  })();
+
+  try {
+    statusCacheValue = await statusCachePromise;
+    statusCacheExpiresAt = Date.now() + STATUS_CACHE_MS;
+    return statusCacheValue;
+  } finally {
+    statusCachePromise = null;
+  }
+}
+
+function invalidateIntegrationStatusCache() {
+  statusCacheValue = null;
+  statusCacheExpiresAt = 0;
 }
 
 export async function launchIntegration(id, cwd) {
@@ -374,6 +397,7 @@ export async function antigravityRemoteAction(action) {
   } catch {
     throw new IntegrationError("Antigravity Remote Control command failed.");
   }
+  invalidateIntegrationStatusCache();
   const status = await antigravityRemoteStatus();
 
   return {
