@@ -328,7 +328,10 @@ export function mountIntegrations(
   });
 
   async function refreshIntegrations() {
-    const result = await api<{ integrations?: IntegrationInfo[] }>("/api/integrations");
+    const result = await api<{ integrations?: IntegrationInfo[] }>("/api/integrations/status", {
+      method: "POST",
+      body: "{}"
+    });
     integrations = result.integrations || [];
     renderCards();
   }
@@ -346,7 +349,6 @@ export function mountIntegrations(
     }
   }
 
-  void refresh();
   return { refresh };
 }
 
