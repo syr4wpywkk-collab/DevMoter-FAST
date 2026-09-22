@@ -7,6 +7,7 @@ import { CodexBridge } from "./server/codex-bridge.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { createOperationRegistry } from "./server/operation-registry.mjs";
+import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
 import { createSessionControl } from "./server/session-control.mjs";
 import { applyModeToPrompt, isDirectMutationRoute, isPromptRoute, isReadOnlyMode, parseAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
 import { assertAuthPassword, authorizeBasicRequest, requireSameOriginMutation } from "./server/auth.mjs";
@@ -405,6 +406,39 @@ async function projectWriteFile(id, req, res) {
       size: info.size,
       updatedAt: info.mtimeMs
     });
+  } catch (error) {
+    json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+
+async function projectGitStatus(id, res) {
+  try {
+    const project = await getProjectById(id);
+    json(res, 200, await getGitStatus(project.path));
+  } catch (error) {
+    json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+async function projectGitFiles(id, url, res) {
+  try {
+    const project = await getProjectById(id);
+    const limit = Number(url.searchParams.get("limit") || 100);
+    const offset = Number(url.searchParams.get("offset") || 0);
+    json(res, 200, await listChangedFiles(project.path, { limit, offset }));
+  } catch (error) {
+    json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+async function projectGitDiff(id, url, res) {
+  try {
+    const project = await getProjectById(id);
+    const path = url.searchParams.get("path");
+    const scope = url.searchParams.get("scope") === "staged" ? "staged" : "all";
+    if (!path) throw new Error("Git diff path is required");
+    json(res, 200, await getFileDiff(project.path, path, { scope }));
   } catch (error) {
     json(res, 400, { error: error instanceof Error ? error.message : String(error) });
   }
@@ -1052,6 +1086,17 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/projects") {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
       await projectsCreateOrAdd(req, res);
+      return;
+    }
+
+
+    const projectGitMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/git\/(status|files|diff)$/);
+    if (projectGitMatch && req.method === "GET") {
+      const projectId = decodeURIComponent(projectGitMatch[1]);
+      const action = projectGitMatch[2];
+      if (action === "status") await projectGitStatus(projectId, res);
+      else if (action === "files") await projectGitFiles(projectId, url, res);
+      else await projectGitDiff(projectId, url, res);
       return;
     }
 
