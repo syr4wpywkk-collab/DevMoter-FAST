@@ -6,10 +6,20 @@ const RUN_STATES = new Set([
   "failed",
   "cancelled"
 ]);
+const TERMINAL_RUN_STATES = new Set(["completed", "failed", "cancelled"]);
 
 function defaultId() {
   return globalThis.crypto?.randomUUID?.() ??
     `agent-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function positiveInt(value, fallback) {
+  const number = Number(value);
+  return Number.isSafeInteger(number) && number > 0 ? number : fallback;
+}
+
+function taskFingerprint(task) {
+  return String(task || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 function cloneContext(value) {
@@ -26,15 +36,35 @@ function snapshot(run) {
     ...run,
     context: structuredClone(run.context),
     lineage: [...(run.lineage || [])],
+    budget: structuredClone(run.budget),
     pendingApproval: run.pendingApproval ? structuredClone(run.pendingApproval) : null
   };
 }
 
+function fleetSnapshot(fleet) {
+  return {
+    id: fleet.id,
+    concurrency: fleet.concurrency,
+    state: fleet.state,
+    queued: fleet.queue.length,
+    runIds: [...fleet.runIds],
+    errors: fleet.errors.map(error => ({ ...error })),
+    createdAt: fleet.createdAt,
+    updatedAt: fleet.updatedAt
+  };
+}
+
 export class SubagentRuntime {
-  constructor({ adapters = {}, idFactory = defaultId } = {}) {
+  constructor({ adapters = {}, idFactory = defaultId, policy = {} } = {}) {
     this.adapters = new Map(Object.entries(adapters));
     this.idFactory = idFactory;
+    this.policy = {
+      maxDepth: Math.max(0, Math.min(8, positiveInt(policy.maxDepth, 3))),
+      tokenBudget: Math.max(1, positiveInt(policy.tokenBudget, 12000)),
+      turnBudget: Math.max(1, positiveInt(policy.turnBudget, 8))
+    };
     this.runs = new Map();
+    this.fleets = new Map();
     this.listeners = new Set();
   }
 
@@ -62,6 +92,51 @@ export class SubagentRuntime {
     return run ? snapshot(run) : null;
   }
 
+  listFleets() {
+    return [...this.fleets.values()].map(fleetSnapshot);
+  }
+
+  getFleet(id) {
+    const fleet = this.fleets.get(String(id));
+    return fleet ? fleetSnapshot(fleet) : null;
+  }
+
+  async runFleet(specs, { id, concurrency = 2 } = {}) {
+    if (!Array.isArray(specs) || specs.length === 0) throw new Error("Fleet requires at least one agent spec");
+    if (specs.length > 24) throw new Error("Fleet is limited to 24 agents");
+    const fleetId = String(id || this.idFactory());
+    if (this.fleets.has(fleetId)) throw new Error(`Duplicate fleet id: ${fleetId}`);
+    const fleet = {
+      id: fleetId,
+      concurrency: Math.max(1, Math.min(8, positiveInt(concurrency, 2))),
+      state: "running",
+      queue: specs.map(spec => structuredClone(spec)),
+      runIds: [],
+      errors: [],
+      pumping: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    this.fleets.set(fleetId, fleet);
+    await this.#pumpFleet(fleetId);
+    return fleetSnapshot(fleet);
+  }
+
+  async cancelFleet(id) {
+    const fleet = this.fleets.get(String(id));
+    if (!fleet) throw new Error(`Unknown fleet: ${String(id)}`);
+    fleet.queue = [];
+    const active = fleet.runIds
+      .map(runId => this.runs.get(runId))
+      .filter(run => run && !TERMINAL_RUN_STATES.has(run.state));
+    await Promise.all(active.map(run => this.cancel(run.id).catch(error => {
+      fleet.errors.push({ runId: run.id, error: error instanceof Error ? error.message : String(error) });
+    })));
+    fleet.state = "cancelled";
+    fleet.updatedAt = Date.now();
+    return fleetSnapshot(fleet);
+  }
+
   async spawn(spec = {}) {
     const backend = String(spec.backend || "codex");
     const adapter = this.adapters.get(backend);
@@ -73,18 +148,70 @@ export class SubagentRuntime {
     const parentSessionId = String(spec.parentSessionId || "").trim();
     if (!parentSessionId) throw new Error("parentSessionId is required");
 
+    const parentRunId = spec.parentRunId ? String(spec.parentRunId) : null;
+    const parentRun = parentRunId ? this.runs.get(parentRunId) : null;
+    if (parentRunId && !parentRun) throw new Error(`Unknown parent run: ${parentRunId}`);
+
+    const depth = parentRun ? parentRun.depth + 1 : 0;
+    if (depth > this.policy.maxDepth) {
+      throw new Error(`Maximum subagent nesting depth exceeded: ${depth} > ${this.policy.maxDepth}`);
+    }
+
+    const fingerprint = taskFingerprint(task);
+    const lineage = parentRun
+      ? [...parentRun.lineage, parentRun.id]
+      : Array.isArray(spec.lineage) ? spec.lineage.map(String) : [];
+    for (const ancestorId of lineage) {
+      const ancestor = this.runs.get(ancestorId);
+      if (ancestor?.fingerprint === fingerprint) {
+        throw new Error(`Recursive delegation loop rejected: task already exists in lineage (${ancestorId})`);
+      }
+    }
+
+    let tokenLimit = this.policy.tokenBudget;
+    let turnLimit = this.policy.turnBudget;
+    if (parentRun) {
+      if (parentRun.budget.tokensRemaining < 1 || parentRun.budget.turnsRemaining < 1) {
+        throw new Error("Parent subagent budget is exhausted");
+      }
+      tokenLimit = Math.min(
+        positiveInt(spec.tokenBudget, Math.max(1, Math.floor(parentRun.budget.tokensRemaining / 2))),
+        parentRun.budget.tokensRemaining
+      );
+      turnLimit = Math.min(
+        positiveInt(spec.turnBudget, Math.max(1, Math.floor(parentRun.budget.turnsRemaining / 2))),
+        parentRun.budget.turnsRemaining
+      );
+      parentRun.budget.tokensRemaining -= tokenLimit;
+      parentRun.budget.turnsRemaining -= turnLimit;
+      parentRun.updatedAt = Date.now();
+      this.#emit(parentRun);
+    } else {
+      tokenLimit = Math.min(positiveInt(spec.tokenBudget, this.policy.tokenBudget), this.policy.tokenBudget);
+      turnLimit = Math.min(positiveInt(spec.turnBudget, this.policy.turnBudget), this.policy.turnBudget);
+    }
+
     const run = {
       id: String(spec.id || this.idFactory()),
       kind: String(spec.kind || "subagent"),
       backend,
       parentSessionId,
-      parentRunId: spec.parentRunId ? String(spec.parentRunId) : null,
+      parentRunId,
+      fleetId: spec.fleetId ? String(spec.fleetId) : null,
       role: String(spec.role || "executor"),
       model: spec.model ? String(spec.model) : null,
       effectiveModel: null,
       task,
+      fingerprint,
       context: cloneContext(spec.context),
-      lineage: Array.isArray(spec.lineage) ? spec.lineage.map(String) : [],
+      lineage,
+      depth,
+      budget: {
+        tokenLimit,
+        turnLimit,
+        tokensRemaining: tokenLimit,
+        turnsRemaining: turnLimit
+      },
       state: "starting",
       sessionId: null,
       turnId: null,
@@ -105,12 +232,52 @@ export class SubagentRuntime {
       if (this.runs.get(run.id)?.state === "starting") this.update(run.id, { state: "running" });
       return this.getRun(run.id);
     } catch (error) {
+      if (parentRun) {
+        parentRun.budget.tokensRemaining += tokenLimit;
+        parentRun.budget.turnsRemaining += turnLimit;
+        parentRun.updatedAt = Date.now();
+        this.#emit(parentRun);
+      }
       this.update(run.id, {
         state: "failed",
         error: error instanceof Error ? error.message : String(error)
       });
       throw error;
     }
+  }
+
+  async spawnSecondOpinion(parentRunId, options = {}) {
+    const parent = this.runs.get(String(parentRunId));
+    if (!parent) throw new Error(`Unknown parent run: ${String(parentRunId)}`);
+
+    const share = options.share && typeof options.share === "object" ? options.share : {};
+    const context = {};
+    if (share.task) context.parentTask = parent.task;
+    if (share.output) context.parentOutput = parent.output;
+    if (share.error && parent.error) context.parentError = parent.error;
+    if (!Object.keys(context).length) {
+      throw new Error("Select at least one parent context field for the second opinion");
+    }
+
+    const originalOwner = parent.role;
+    context.originalOwner = originalOwner;
+    const run = await this.spawn({
+      kind: "second-opinion",
+      backend: options.backend || parent.backend,
+      parentSessionId: parent.sessionId || parent.parentSessionId,
+      parentRunId: parent.id,
+      role: options.role || "reviewer",
+      model: options.model || null,
+      task: String(options.task || "Give an independent second opinion on the explicitly shared context. State agreements, disagreements, risks, and recommended next steps."),
+      context,
+      tokenBudget: options.tokenBudget,
+      turnBudget: options.turnBudget
+    });
+
+    if (this.runs.get(parent.id)?.role !== originalOwner) {
+      throw new Error("Second opinion must not change the current owner");
+    }
+    return run;
   }
 
   update(id, patch = {}) {
@@ -124,6 +291,9 @@ export class SubagentRuntime {
     delete next.outputDelta;
     Object.assign(run, next, { updatedAt: Date.now() });
     this.#emit(run);
+    if (run.fleetId && TERMINAL_RUN_STATES.has(run.state)) {
+      void this.#pumpFleet(run.fleetId);
+    }
     return snapshot(run);
   }
 
@@ -153,6 +323,43 @@ export class SubagentRuntime {
     this.listeners.clear();
   }
 
+  async #pumpFleet(id) {
+    const fleet = this.fleets.get(String(id));
+    if (!fleet || fleet.pumping || fleet.state !== "running") return;
+    fleet.pumping = true;
+    try {
+      while (fleet.queue.length) {
+        const activeCount = fleet.runIds
+          .map(runId => this.runs.get(runId))
+          .filter(run => run && !TERMINAL_RUN_STATES.has(run.state)).length;
+        if (activeCount >= fleet.concurrency) break;
+
+        const spec = fleet.queue.shift();
+        const runId = String(spec.id || this.idFactory());
+        fleet.runIds.push(runId);
+        fleet.updatedAt = Date.now();
+        try {
+          await this.spawn({ ...spec, id: runId, fleetId: fleet.id });
+        } catch (error) {
+          fleet.errors.push({
+            runId,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+
+      const activeCount = fleet.runIds
+        .map(runId => this.runs.get(runId))
+        .filter(run => run && !TERMINAL_RUN_STATES.has(run.state)).length;
+      if (fleet.queue.length === 0 && activeCount === 0) {
+        fleet.state = fleet.errors.length ? "completed_with_failures" : "completed";
+        fleet.updatedAt = Date.now();
+      }
+    } finally {
+      fleet.pumping = false;
+    }
+  }
+
   #emit(run) {
     const value = snapshot(run);
     for (const listener of this.listeners) listener(value);
@@ -171,7 +378,10 @@ function scopedPrompt(run) {
   return [
     `[DevMoter bounded subagent · role=${run.role}]`,
     `Parent session: ${run.parentSessionId}`,
-    "Only use the explicitly shared context below. Do not assume access to unrelated parent conversation context.",
+    `Delegation depth: ${run.depth}`,
+    `Lineage: ${run.lineage.length ? run.lineage.join(" > ") : "root"}`,
+    `Inherited budget: ${run.budget.tokenLimit} tokens / ${run.budget.turnLimit} turns`,
+    "Do not delegate beyond the supplied depth/budget. Only use the explicitly shared context below. Do not assume access to unrelated parent conversation context.",
     contextRows.length ? `Shared context:\n${contextRows.join("\n")}` : "Shared context: none",
     `Task:\n${run.task}`
   ].join("\n\n");
