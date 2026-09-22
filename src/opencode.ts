@@ -712,25 +712,67 @@ export function mountOpenCodeRemote(
       state?.content ??
       null;
 
-    if (input !== undefined) {
-      const inputLabel = document.createElement("span");
-      inputLabel.className = "ocx-tool-label";
-      inputLabel.textContent = "input";
-      const inputPre = document.createElement("pre");
-      inputPre.textContent =
-        typeof input === "string" ? input : JSON.stringify(input, null, 2);
-      content.append(inputLabel, inputPre);
+    function appendPayload(label: string, value: Json) {
+      const text = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+      const block = document.createElement("section");
+      block.className = "ocx-tool-block";
+
+      const toolbar = document.createElement("div");
+      toolbar.className = "ocx-tool-toolbar";
+
+      const payloadLabel = document.createElement("span");
+      payloadLabel.className = "ocx-tool-label";
+      payloadLabel.textContent = label;
+
+      const actions = document.createElement("span");
+      actions.className = "ocx-tool-actions";
+
+      const wrap = document.createElement("button");
+      wrap.type = "button";
+      wrap.textContent = "No wrap";
+      wrap.setAttribute("aria-pressed", "false");
+
+      const copy = document.createElement("button");
+      copy.type = "button";
+      copy.textContent = "Copy";
+
+      const pre = document.createElement("pre");
+      pre.textContent = text;
+
+      wrap.addEventListener("click", () => {
+        const nowrap = pre.classList.toggle("nowrap");
+        wrap.textContent = nowrap ? "Wrap" : "No wrap";
+        wrap.setAttribute("aria-pressed", String(nowrap));
+      });
+
+      copy.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          copy.textContent = "Copied";
+        } catch {
+          const helper = document.createElement("textarea");
+          helper.value = text;
+          helper.style.position = "fixed";
+          helper.style.opacity = "0";
+          document.body.appendChild(helper);
+          helper.select();
+          document.execCommand("copy");
+          helper.remove();
+          copy.textContent = "Copied";
+        }
+        window.setTimeout(() => {
+          copy.textContent = "Copy";
+        }, 1200);
+      });
+
+      actions.append(wrap, copy);
+      toolbar.append(payloadLabel, actions);
+      block.append(toolbar, pre);
+      content.appendChild(block);
     }
 
-    if (result !== null && result !== undefined) {
-      const outputLabel = document.createElement("span");
-      outputLabel.className = "ocx-tool-label";
-      outputLabel.textContent = "output";
-      const outputPre = document.createElement("pre");
-      outputPre.textContent =
-        typeof result === "string" ? result : JSON.stringify(result, null, 2);
-      content.append(outputLabel, outputPre);
-    }
+    if (input !== undefined) appendPayload("input", input);
+    if (result !== null && result !== undefined) appendPayload("output", result);
 
     details.append(summary, content);
     transcript.appendChild(details);
