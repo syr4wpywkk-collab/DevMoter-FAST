@@ -16,7 +16,7 @@ The agents stay on the host machine; the browser talks to DevMoter instead of co
 > DevMoter FAST is an **experimental, unofficial community project**. It is not affiliated with or endorsed by OpenAI, OpenCode, or other upstream projects/providers referenced by the software.
 
 > [!WARNING]
-> DevMoter is designed for a **private-host / private-network** setup. It does not yet provide a complete independent user-authentication layer. Do not expose the DevMoter server, OpenCode port, or agent backends directly to the public internet.
+> DevMoter is designed for a **single-user private-host / private-network** setup. DevMoter now requires its own HTTP login, but that is an access boundary for a private deployment—not a public multi-user authorization system. Keep DevMoter on localhost and use HTTPS (for example, Tailscale Serve) for remote access. Do not expose DevMoter, OpenCode, or agent backends directly to the public internet.
 
 ## Start here
 
@@ -112,10 +112,11 @@ The launcher currently:
 1. installs npm dependencies when needed;
 2. builds the web app;
 3. creates and stores a local OpenCode server password;
-4. starts OpenCode on localhost;
-5. waits for the OpenCode runtime to become ready;
-6. starts the DevMoter backend;
-7. verifies backend health.
+4. creates and stores a separate DevMoter login password;
+5. starts OpenCode on localhost;
+6. waits for the OpenCode runtime to become ready;
+7. starts the authenticated DevMoter backend;
+8. verifies backend health.
 
 Default local endpoints:
 
@@ -125,6 +126,8 @@ OpenCode: http://127.0.0.1:49374
 ```
 
 Codex app-server is launched by DevMoter over stdio instead of being exposed as a public socket.
+
+The default DevMoter username is `devmoter`. The launcher stores the generated password at `~/.config/opencode-pocket/devmoter-auth-password` with owner-only permissions. Your browser will prompt for this login when you first open DevMoter.
 
 ## Private phone access with Tailscale
 
@@ -141,9 +144,9 @@ tailscale serve status
 Open the resulting HTTPS Tailscale Serve URL from a device on the same tailnet.
 
 > [!CAUTION]
-> Do **not** expose OpenCode's port, Codex app-server, or DevMoter itself through a public tunnel without adding an appropriate authentication and authorization layer.
+> DevMoter's HTTP login does not make the app suitable for the public internet. Keep OpenCode and Codex private, keep DevMoter bound to localhost, and use an HTTPS private-network proxy such as Tailscale Serve.
 >
-> Tailscale Funnel is not the recommended deployment model for the current alpha.
+> Tailscale Funnel and other public-tunnel exposure are not the recommended deployment model for the current alpha.
 
 ## Architecture
 
@@ -256,9 +259,12 @@ DevMoter is built around a **single-user private host** rather than a public mul
 Current protections include:
 
 - DevMoter binds to `127.0.0.1` by default;
+- DevMoter requires a separate HTTP Basic login and fails closed if its password is missing or too short;
+- state-changing requests require an exact same-origin `Origin` header;
+- API and secret-bearing responses are marked `no-store`;
 - OpenCode binds to localhost;
 - Codex app-server is reached over stdio;
-- backend credentials stay server-side;
+- backend credentials stay server-side and configured secrets are redacted from JSON error payloads;
 - Codex RPC methods are allowlisted;
 - project paths are constrained to the user's home directory;
 - Markdown writes are constrained to registered projects;
@@ -267,9 +273,9 @@ Current protections include:
 
 ### Important limitation
 
-DevMoter does **not** yet have a complete independent authentication system.
+The DevMoter login is intentionally a **single-user access boundary**, not account management or fine-grained authorization. An authenticated client can control coding agents with the permissions granted to those agents.
 
-Anyone who can reach the DevMoter HTTP endpoint may be able to control coding agents with the permissions granted to those agents. Use Tailscale or another appropriately configured private network boundary.
+Use HTTPS for any non-loopback access. The recommended remote setup remains localhost + Tailscale Serve. If a reverse proxy changes the externally visible origin, set `DEVMOTER_PUBLIC_ORIGIN` to that exact HTTPS origin so mutation-origin checks remain strict.
 
 ## Testing
 
@@ -304,6 +310,10 @@ OPENCODE_URL=http://127.0.0.1:49374
 OPENCODE_SERVER_USERNAME=opencode
 OPENCODE_SERVER_PASSWORD=change-me
 
+DEVMOTER_AUTH_USERNAME=devmoter
+DEVMOTER_AUTH_PASSWORD=replace-with-at-least-16-characters
+# DEVMOTER_PUBLIC_ORIGIN=https://your-device.your-tailnet.ts.net
+
 POCKET_PORT=8787
 POCKET_HOST=127.0.0.1
 
@@ -313,7 +323,7 @@ CODEX_BIN=codex
 
 ```
 
-The normal launcher generates and stores its own OpenCode password, so manual password configuration is usually unnecessary.
+The normal launcher generates and stores both the OpenCode server password and the DevMoter login password, so manual password configuration is usually unnecessary. Direct `npm start` / `npm run dev:server` usage must set `DEVMOTER_AUTH_PASSWORD` to at least 16 characters.
 
 Examples:
 
@@ -379,12 +389,13 @@ Already implemented:
 - GitHub repository integration;
 - automated tests and coverage;
 - CI checks;
-- localhost-first launcher and health checks.
+- localhost-first launcher and health checks;
+- DevMoter-native login, same-origin mutation checks, and secret-response hardening.
 
 Still being improved:
 
 - first-run installation and upgrade experience;
-- DevMoter-native authentication;
+- richer authentication/authorization options for multi-user deployments;
 - reconnect/offline resilience;
 - richer Git/diff UX;
 - upload cleanup and retention;
@@ -405,7 +416,7 @@ For compatibility bugs, please include:
 - exact error text;
 - the action that triggered the problem.
 
-Never post API keys, login tokens, Tailscale credentials, generated OpenCode passwords, or other secrets in an issue.
+Never post API keys, login tokens, Tailscale credentials, generated OpenCode passwords, generated DevMoter login passwords, or other secrets in an issue.
 
 ## AI-assisted development
 

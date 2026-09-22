@@ -12,7 +12,7 @@ DevMoter FAST 是一个面向移动设备的 **Codex 与 OpenCode 远程界面**
 > DevMoter FAST 是一个**实验性的非官方社区项目**。它与 OpenAI、OpenCode 或软件中提到的其他上游项目 / 服务提供方不存在隶属、赞助或官方认可关系。
 
 > [!WARNING]
-> DevMoter 当前面向**单用户私有主机 / 私有网络**场景，尚未提供完整、独立的用户认证与授权层。请不要把 DevMoter 服务、OpenCode 端口或代理后端直接暴露到公网。
+> DevMoter 面向**单用户私有主机 / 私有网络**场景。DevMoter 现在要求独立的 HTTP 登录，但它仍是私有部署的单用户访问边界，而不是面向公网多用户服务的授权系统。请不要把 DevMoter、OpenCode 或代理后端直接暴露到公网。
 
 ## 开始使用
 
@@ -89,6 +89,8 @@ OpenCode:  http://127.0.0.1:49374
 
 Codex app-server 由 DevMoter 通过本地 stdio 启动和通信，不直接作为公网 socket 暴露。
 
+DevMoter 默认用户名为 `devmoter`。启动脚本会把生成的密码以仅 owner 可读的权限保存到 `~/.config/opencode-pocket/devmoter-auth-password`，首次打开 DevMoter 时浏览器会要求登录。
+
 ## 手机私有访问
 
 推荐保持 DevMoter 绑定 localhost，并使用 Tailscale Serve：
@@ -102,7 +104,7 @@ tailscale serve status
 然后从同一 tailnet 中的设备打开显示的 HTTPS 地址。
 
 > [!CAUTION]
-> 当前 Alpha 版本不建议在没有额外认证与授权保护的情况下，通过公共 tunnel 或 Tailscale Funnel 暴露 DevMoter、OpenCode 或 Codex backend。
+> 即使启用了 DevMoter HTTP 登录，当前 Alpha 版本仍不建议通过公共 tunnel 或 Tailscale Funnel 暴露服务。推荐保持 localhost，并通过 Tailscale Serve 等 HTTPS 私有网络入口访问。
 
 ## 架构
 
@@ -131,6 +133,9 @@ Phone / tablet / desktop browser / PWA
 当前主要安全边界包括：
 
 - DevMoter 默认仅绑定 `127.0.0.1`
+- DevMoter 要求独立 HTTP 登录
+- 状态变更请求必须通过严格的同源 Origin 检查
+- API 响应使用 `no-store`，已配置的秘密会从错误响应中脱敏
 - OpenCode 仅绑定 localhost
 - Codex app-server 使用 stdio
 - 后端凭据保留在服务端
@@ -139,7 +144,7 @@ Phone / tablet / desktop browser / PWA
 - 移动编辑器只能在已注册项目内写入 Markdown
 - GitHub token 不会返回给浏览器
 
-**重要限制：** DevMoter 尚未提供完整独立的认证系统。任何能够访问 DevMoter HTTP endpoint 的用户，都可能以代理已获得的权限控制这些代理。请使用 Tailscale 或其他正确配置的私有网络边界。
+**重要限制：** DevMoter 登录是单用户访问边界。通过登录的客户端可以使用代理已经获得的权限。远程访问必须使用 HTTPS，推荐 localhost + Tailscale Serve；如果反向代理改变了外部 Origin，请显式设置 `DEVMOTER_PUBLIC_ORIGIN`。
 
 ## 测试
 
@@ -174,7 +179,7 @@ DevMoter 依赖 OpenCode 和 Codex app-server 的上游协议，因此上游版�
 
 欢迎 Issue、bug 报告、协议 / 兼容性信息、文档改进和 Pull Request。
 
-请勿在公开 Issue 中发布 API key、登录 token、Tailscale 凭据、生成的 OpenCode password 或其他秘密信息。
+请勿在公开 Issue 中发布 API key、登录 token、Tailscale 凭据、生成的 OpenCode password、DevMoter login password 或其他秘密信息。
 
 ## AI-assisted development
 

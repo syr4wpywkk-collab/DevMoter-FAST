@@ -7,6 +7,7 @@ POCKET_PORT="${POCKET_PORT:-8787}"
 POCKET_HOST="${POCKET_HOST:-127.0.0.1}"
 STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode-pocket"
 SECRET_FILE="$STATE_DIR/opencode-server-password"
+AUTH_SECRET_FILE="$STATE_DIR/devmoter-auth-password"
 OC_PIDFILE="$STATE_DIR/opencode.pid"
 POCKET_PIDFILE="$STATE_DIR/pocket.pid"
 OC_LOG="$STATE_DIR/opencode.log"
@@ -24,6 +25,20 @@ PY
 fi
 
 PASS="$(cat "$SECRET_FILE")"
+
+AUTH_USER="${DEVMOTER_AUTH_USERNAME:-devmoter}"
+if [ -n "${DEVMOTER_AUTH_PASSWORD:-}" ]; then
+  AUTH_PASS="$DEVMOTER_AUTH_PASSWORD"
+else
+  if [ ! -s "$AUTH_SECRET_FILE" ]; then
+    python3 - <<'PY' > "$AUTH_SECRET_FILE"
+import secrets
+print(secrets.token_urlsafe(32))
+PY
+    chmod 600 "$AUTH_SECRET_FILE"
+  fi
+  AUTH_PASS="$(cat "$AUTH_SECRET_FILE")"
+fi
 
 stop_pidfile() {
   local pidfile="$1"
@@ -109,13 +124,13 @@ PY
 done
 
 echo "🔥 DevMoter"
-nohup env   OPENCODE_URL="http://127.0.0.1:$OC_PORT"   OPENCODE_SERVER_USERNAME="opencode"   OPENCODE_SERVER_PASSWORD="$PASS"   OPENCODE_DIRECTORY="$OC_DIR"   POCKET_HOST="$POCKET_HOST"   POCKET_PORT="$POCKET_PORT"   CODEX_BIN="${CODEX_BIN:-$(command -v codex)}"   CODEX_CWD="${CODEX_CWD:-$HOME}"   node server.mjs   >"$POCKET_LOG" 2>&1 &
+nohup env   OPENCODE_URL="http://127.0.0.1:$OC_PORT"   OPENCODE_SERVER_USERNAME="opencode"   OPENCODE_SERVER_PASSWORD="$PASS"   OPENCODE_DIRECTORY="$OC_DIR"   DEVMOTER_AUTH_USERNAME="$AUTH_USER"   DEVMOTER_AUTH_PASSWORD="$AUTH_PASS"   POCKET_HOST="$POCKET_HOST"   POCKET_PORT="$POCKET_PORT"   CODEX_BIN="${CODEX_BIN:-$(command -v codex)}"   CODEX_CWD="${CODEX_CWD:-$HOME}"   node server.mjs   >"$POCKET_LOG" 2>&1 &
 
 POCKET_PID=$!
 echo "$POCKET_PID" > "$POCKET_PIDFILE"
 
 for i in $(seq 1 40); do
-  RESULT="$(curl -fsS "http://127.0.0.1:$POCKET_PORT/api/health" 2>/dev/null || true)"
+  RESULT="$(curl -fsS -u "$AUTH_USER:$AUTH_PASS" "http://127.0.0.1:$POCKET_PORT/api/health" 2>/dev/null || true)"
   if [ -n "$RESULT" ] && echo "$RESULT" | python3 -c '
 import json, sys
 data = json.load(sys.stdin)
@@ -127,7 +142,7 @@ assert data["backends"]["codex"]["online"] is True
     echo "$RESULT"
     echo
 
-    PROVIDERS="$(curl -fsS "http://127.0.0.1:$POCKET_PORT/api/opencode/pocket/providers" 2>/dev/null || true)"
+    PROVIDERS="$(curl -fsS -u "$AUTH_USER:$AUTH_PASS" "http://127.0.0.1:$POCKET_PORT/api/opencode/pocket/providers" 2>/dev/null || true)"
     if [ -n "$PROVIDERS" ]; then
       echo "$PROVIDERS" | python3 -c '
 import json, sys
@@ -145,6 +160,11 @@ if not providers or model_count == 0:
       }
     fi
 
+    echo
+    echo "🔐 DevMoter username: $AUTH_USER"
+    if [ -z "${DEVMOTER_AUTH_PASSWORD:-}" ]; then
+      echo "🔑 DevMoter password file: $AUTH_SECRET_FILE"
+    fi
     echo
     if command -v tailscale >/dev/null 2>&1; then
       tailscale serve status || true

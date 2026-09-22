@@ -7,10 +7,21 @@ import { CodexBridge } from "./server/codex-bridge.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { createOperationRegistry } from "./server/operation-registry.mjs";
+import { assertAuthPassword, authorizeBasicRequest, requireSameOriginMutation } from "./server/auth.mjs";
+import { redactSecretsInText } from "./server/secret-redaction.mjs";
+import { antigravityRemoteAction, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
 const OPENCODE_PASSWORD = process.env.OPENCODE_SERVER_PASSWORD || "";
+const DEVMOTER_AUTH_USERNAME = process.env.DEVMOTER_AUTH_USERNAME || "devmoter";
+const DEVMOTER_AUTH_PASSWORD = assertAuthPassword(process.env.DEVMOTER_AUTH_PASSWORD || "");
+const DEVMOTER_PUBLIC_ORIGIN = process.env.DEVMOTER_PUBLIC_ORIGIN || "";
+const AUTH_CONFIG = {
+  username: DEVMOTER_AUTH_USERNAME,
+  password: DEVMOTER_AUTH_PASSWORD
+};
+const REDACTED_SECRETS = [OPENCODE_PASSWORD, DEVMOTER_AUTH_PASSWORD].filter(Boolean);
 const OPENCODE_DIRECTORY =
   process.env.OPENCODE_DIRECTORY ||
   process.env.CODEX_CWD ||
@@ -47,12 +58,18 @@ const MIME = {
   ".webmanifest": "application/manifest+json"
 };
 
+function redactText(value) {
+  return redactSecretsInText(value, REDACTED_SECRETS);
+}
+
 function json(res, status, body) {
   res.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store"
   });
-  res.end(JSON.stringify(body));
+  res.end(JSON.stringify(body, (_key, value) =>
+    typeof value === "string" ? redactText(value) : value
+  ));
 }
 
 function operationId(req) {
@@ -620,6 +637,10 @@ async function proxy(req, res) {
       headers[key] = value;
     }
   }
+  const upstreamContentType = upstream.headers.get("content-type") || "";
+  headers["cache-control"] = upstreamContentType.includes("text/event-stream")
+    ? "no-cache, no-transform"
+    : "no-store";
 
   res.writeHead(upstream.status, headers);
 
@@ -665,8 +686,7 @@ async function codexRpc(req, res) {
     const message = error instanceof Error ? error.message : String(error);
     const status = message === "Request body too large" ? 413 : 502;
     json(res, status, {
-      error: message,
-      data: error?.data ?? null
+      error: message
     });
   }
 }
@@ -779,6 +799,9 @@ async function serveStatic(req, res) {
 
 const server = http.createServer(async (req, res) => {
   try {
+    if (!authorizeBasicRequest(req, res, AUTH_CONFIG)) return;
+    if (!requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)) return;
+
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
 
     if (req.method === "GET" && url.pathname === "/api/projects") {
@@ -853,6 +876,42 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    if (req.method === "POST" && url.pathname === "/api/integrations/status") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      try {
+        json(res, 200, await listIntegrations());
+      } catch {
+        json(res, 500, { error: "Integration status unavailable" });
+      }
+      return;
+    }
+
+    const integrationLaunchMatch = url.pathname.match(/^\/api\/integrations\/(antigravity|claude)\/launch$/);
+    if (req.method === "POST" && integrationLaunchMatch) {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      try {
+        const payload = await readJson(req);
+        const project = await getProjectById(String(payload?.projectId || ""));
+        json(res, 200, await launchIntegration(integrationLaunchMatch[1], project.path));
+      } catch (error) {
+        const safe = publicIntegrationError(error);
+        json(res, safe.status, { error: safe.error });
+      }
+      return;
+    }
+
+    const antigravityRemoteMatch = url.pathname.match(/^\/api\/integrations\/antigravity\/remote\/(start|stop)$/);
+    if (req.method === "POST" && antigravityRemoteMatch) {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      try {
+        json(res, 200, await antigravityRemoteAction(antigravityRemoteMatch[1]));
+      } catch (error) {
+        const safe = publicIntegrationError(error);
+        json(res, safe.status, { error: safe.error });
+      }
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/health") {
       const [openCode, codexHealth] = await Promise.all([
         opencodeHealth(),
@@ -915,13 +974,14 @@ const server = http.createServer(async (req, res) => {
 
     await serveStatic(req, res);
   } catch (error) {
-    console.error(error);
+    console.error(redactText(error instanceof Error ? error.stack || error.message : String(error)));
     json(res, 500, { error: "DevMoter server error" });
   }
 });
 
 server.listen(PORT, HOST, () => {
   console.log(`DevMoter FAST: http://${HOST}:${PORT}`);
+  console.log(`DevMoter auth: enabled for ${DEVMOTER_AUTH_USERNAME}`);
   console.log(`OpenCode upstream: ${OPENCODE_URL}`);
   console.log(`OpenCode directory: ${OPENCODE_DIRECTORY}`);
   console.log(`Codex binary: ${process.env.CODEX_BIN || "codex"}`);

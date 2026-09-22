@@ -1,34 +1,84 @@
 # Security Policy
 
-DevMoter FAST is currently **alpha software**. Security review is ongoing, and the project has known security limitations that matter when choosing how to run it.
+DevMoter FAST is currently **alpha software**. Security review is ongoing, and the project should be deployed as a single-user private-host tool.
 
 ## Supported versions
 
-Security fixes are currently targeted at the latest commit on `main` and the latest published release, when releases are available. Older development snapshots may not receive fixes.
+Security fixes target the latest commit on `main` and the latest published release, when releases are available.
 
 ## Security boundary
 
 DevMoter FAST is designed for a **single-user private host** and a **trusted/private network**.
 
-Current expectations:
+Current protections include:
 
-- the DevMoter server binds to `127.0.0.1` by default;
-- OpenCode is expected to remain on localhost;
-- Codex app-server is accessed over local stdio;
-- upstream credentials stay on the host;
-- DevMoter does **not** yet provide a complete independent authentication and authorization layer.
+- DevMoter binds to `127.0.0.1` by default.
+- DevMoter requires its own HTTP Basic login. `DEVMOTER_AUTH_PASSWORD` must be at least 16 characters or the server fails closed.
+- The normal launcher generates a strong DevMoter password and stores it at `~/.config/opencode-pocket/devmoter-auth-password` with owner-only permissions.
+- State-changing HTTP requests require an exact same-origin `Origin` header. This reduces cross-site request forgery risk for the browser-based control surface.
+- API JSON responses use `Cache-Control: no-store`. OpenCode proxy responses are also forced to `no-store` except live SSE streams, which use `no-cache, no-transform`.
+- Configured DevMoter/OpenCode passwords are redacted from JSON error output and top-level server error logs.
+- OpenCode remains on localhost and its credentials stay server-side.
+- Codex app-server is accessed over local stdio and Codex RPC methods are allowlisted.
+- Project paths and Markdown writes remain constrained to registered project roots.
 
-Do **not** expose the DevMoter HTTP server, OpenCode port, or agent backends directly to the public internet. Public tunnels and Tailscale Funnel are not recommended for the current alpha.
+The DevMoter login is an **access boundary**, not a multi-user authorization model. After authentication, the client can control coding agents with the permissions granted to those agents.
 
-If you intentionally change `POCKET_HOST` away from localhost, you are changing the project's security boundary. Add an appropriate authentication and authorization layer before allowing untrusted clients to connect.
+## Recommended remote-access model
+
+Keep DevMoter bound to localhost and put an HTTPS private-network proxy in front of it, such as Tailscale Serve:
+
+```bash
+tailscale serve reset
+tailscale serve --bg http://127.0.0.1:8787
+tailscale serve status
+```
+
+Do not send the DevMoter Basic-auth password over cleartext HTTP on an untrusted network.
+
+If a reverse proxy changes the externally visible scheme or host and its forwarded headers do not preserve that origin, set:
+
+```text
+DEVMOTER_PUBLIC_ORIGIN=https://your-device.your-tailnet.ts.net
+```
+
+The value must be the exact public origin used by the browser. Mutation requests with a missing or mismatched `Origin` are rejected.
+
+Tailscale Funnel and other public-tunnel exposure are **not** the recommended deployment model for the current alpha. Do not expose the OpenCode port or Codex app-server directly.
+
+## Credential handling
+
+Do not place OpenCode, Codex, GitHub, provider, or DevMoter credentials in frontend source, browser storage, public Issues, screenshots, or logs.
+
+The generated DevMoter password file and OpenCode password file are host-side secrets. Keep their filesystem permissions restricted and rotate them if they are disclosed.
+
+## Host integration boundary
+
+The Antigravity and Claude Code launchers are treated as privileged host integrations:
+
+- integration endpoints are behind the same DevMoter authentication boundary as the rest of the UI/API;
+- mutation routes additionally require exact same-origin browser requests;
+- integration status discovery is an authenticated same-origin POST because status discovery invokes local executables; it is not exposed as a side-effecting GET;
+- project working directories are resolved from the existing registered Project ID rather than accepting arbitrary paths from the browser;
+- launch commands use fixed executable/argument arrays and do not invoke a shell;
+- child processes deny secret-like environment variables by default; only narrowly scoped credentials for the matching provider may be inherited (for example Anthropic credentials for Claude Code, or Gemini/Google API keys for Antigravity);
+- common process-injection environment variables such as `NODE_OPTIONS`, `BASH_ENV`, `PYTHONPATH`, and `LD_PRELOAD` are always removed;
+- Antigravity Remote URLs are accepted only from the exact `https://antigravity.google.com` origin;
+- QR handoff assets are bundled locally; displaying them does not contact a third-party QR service;
+- DevMoter does not extract Claude/Antigravity OAuth sessions or turn consumer subscriptions into proxy APIs.
+
+Enabling or hiding an integration in the UI is a presentation preference, **not** an authorization control. Treat anyone with valid DevMoter credentials as able to exercise the host integrations exposed by that installation.
+
+The installed `claude` and `agy` executables remain part of the trusted local-host boundary. DevMoter cannot make a malicious or replaced local executable safe. Keep those tools and the host PATH under the same single-user trust assumptions as the rest of DevMoter.
+
+Antigravity Remote Control is a persistent upstream capability: starting it can outlive the browser tab. Use the explicit Stop action when remote access is no longer needed.
 
 ## Known alpha limitations
 
-- Anyone who can reach an exposed DevMoter endpoint may be able to interact with coding agents using the permissions available to those agents.
-- The launcher is intended for a single-user development machine and stops older matching DevMoter/OpenCode processes before startup. Review `scripts/start-pocket.sh` before using it on a shared host.
-- Security-sensitive behavior can depend on upstream OpenCode, Codex, GitHub CLI, Node.js, and operating-system versions.
-
-These are documented limitations, not a claim that every listed scenario is an exploitable vulnerability.
+- Authentication is single-user and does not provide per-user roles or fine-grained authorization.
+- An authenticated user can trigger actions with the effective permissions of the configured coding agents and host integrations.
+- Security-sensitive behavior can depend on upstream OpenCode, Codex, GitHub CLI, Node.js, reverse-proxy, and operating-system versions.
+- The launcher is intended for a single-user development machine and stops older matching DevMoter/OpenCode processes before startup.
 
 ## Reporting a vulnerability
 
@@ -36,21 +86,11 @@ Please **do not post exploit details, credentials, tokens, private repository co
 
 Preferred reporting path:
 
-1. Use GitHub's **Report a vulnerability / private vulnerability reporting** feature for this repository when it is available.
-2. If private vulnerability reporting is unavailable, open a minimal public Issue asking for a private security contact channel. Do not include technical exploit details in that Issue.
+1. Use GitHub's **Report a vulnerability / private vulnerability reporting** feature for this repository when available.
+2. If private vulnerability reporting is unavailable, open a minimal public Issue asking for a private security contact channel. Do not include technical exploit details.
 
-A useful private report includes:
-
-- the affected DevMoter FAST version or commit;
-- operating system and relevant upstream versions;
-- the security impact;
-- concise reproduction steps;
-- suggested mitigation, if known.
-
-Please remove secrets and personal data from logs or screenshots before sharing them.
+A useful private report includes the affected commit/version, environment, security impact, concise reproduction steps, and suggested mitigation if known. Remove secrets and personal data from logs or screenshots before sharing.
 
 ## Dependency and upstream security
 
-DevMoter FAST depends on separately installed upstream tools. Keep Node.js, OpenCode, Codex CLI, GitHub CLI, and your operating system updated according to their respective security guidance.
-
-Upstream product vulnerabilities should also be reported to the relevant upstream project when appropriate.
+Keep Node.js, OpenCode, Codex CLI, GitHub CLI, Tailscale/reverse-proxy components, and the operating system updated according to their respective security guidance. Upstream vulnerabilities should also be reported to the relevant project when appropriate.
