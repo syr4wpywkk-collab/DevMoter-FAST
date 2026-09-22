@@ -7,6 +7,9 @@ import { CodexBridge } from "./server/codex-bridge.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { createOperationRegistry } from "./server/operation-registry.mjs";
+import { createTerminalManager } from "./server/terminal.mjs";
+import { createProjectIndex } from "./server/project-index.mjs";
+import { createSafetyService } from "./server/safety.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -34,6 +37,23 @@ const operationRegistry = createOperationRegistry({
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
+});
+const SAFETY_PERMISSION_FILE = join(PROJECT_CONFIG_DIR, "remembered-approvals.json");
+const PROJECT_INDEX_DIR = join(HOME_DIR, ".local", "state", "opencode-pocket", "project-indexes");
+const safety = createSafetyService({
+  permissionFile: SAFETY_PERMISSION_FILE,
+  loopThreshold: Number(process.env.DEVMOTER_LOOP_THRESHOLD || 3),
+  loopWindow: Number(process.env.DEVMOTER_LOOP_WINDOW || 20),
+  summarizerModel: process.env.DEVMOTER_CONTEXT_SUMMARIZER_MODEL || null
+});
+const projectIndex = createProjectIndex({
+  stateDir: PROJECT_INDEX_DIR,
+  resolveProject: getProjectById
+});
+const terminal = createTerminalManager({
+  resolveProject: getProjectById,
+  authPassword: process.env.DEVMOTER_AUTH_PASSWORD || "",
+  shell: process.env.SHELL
 });
 
 
@@ -786,6 +806,109 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/safety/status") {
+      json(res, 200, safety.loopDetector.inspect(url.searchParams.get("runId") || "global"));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/safety/command-scan") {
+      const payload = await readJson(req);
+      json(res, 200, safety.scanCommand(payload?.command));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/safety/guard") {
+      const payload = await readJson(req);
+      json(res, 200, safety.guard(payload));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/safety/actions") {
+      const payload = await readJson(req);
+      json(res, 200, safety.loopDetector.record(payload?.runId || "global", {
+        action: payload?.action,
+        tool: payload?.tool,
+        details: payload?.details
+      }));
+      return;
+    }
+
+    const continueMatch = url.pathname.match(/^\/api\/safety\/actions\/([^/]+)\/continue$/);
+    if (req.method === "POST" && continueMatch) {
+      json(res, 200, safety.loopDetector.continueRun(decodeURIComponent(continueMatch[1])));
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/safety/permissions") {
+      json(res, 200, { rules: await safety.permissions.list() });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/safety/permissions/match") {
+      const payload = await readJson(req);
+      json(res, 200, await safety.permissions.match(payload));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/safety/permissions") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      try {
+        const payload = await readJson(req);
+        json(res, 201, { rule: await safety.permissions.grant(payload) });
+      } catch (error) {
+        json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+      }
+      return;
+    }
+
+    const permissionRuleMatch = url.pathname.match(/^\/api\/safety\/permissions\/([^/]+)$/);
+    if (req.method === "DELETE" && permissionRuleMatch) {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      json(res, 200, {
+        ok: await safety.permissions.revoke(decodeURIComponent(permissionRuleMatch[1]))
+      });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/safety/compact") {
+      const payload = await readJson(req, 2 * 1024 * 1024);
+      json(res, 200, await safety.compact(payload?.messages, {
+        maxItems: payload?.maxItems,
+        summarizerModel: payload?.summarizerModel
+      }));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/terminal/sessions") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await terminal.create(req, res);
+      return;
+    }
+
+    const terminalMatch = url.pathname.match(/^\/api\/terminal\/sessions\/([^/]+)(?:\/(input|stream))?$/);
+    if (terminalMatch) {
+      const terminalId = decodeURIComponent(terminalMatch[1]);
+      const terminalAction = terminalMatch[2] || "";
+      if (req.method === "GET" && terminalAction === "") {
+        await terminal.info(req, res, terminalId);
+        return;
+      }
+      if (req.method === "GET" && terminalAction === "stream") {
+        await terminal.stream(req, res, terminalId, url.searchParams.get("after") || 0);
+        return;
+      }
+      if (req.method === "POST" && terminalAction === "input") {
+        if (!claimOperation(req, res, `${req.method}:${url.pathname}:${operationId(req)}`)) return;
+        await terminal.input(req, res, terminalId);
+        return;
+      }
+      if (req.method === "DELETE" && terminalAction === "") {
+        if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+        await terminal.close(req, res, terminalId);
+        return;
+      }
+    }
+
     if (req.method === "GET" && url.pathname === "/api/github/status") {
       json(res, 200, await githubStatus(HOME_DIR));
       return;
@@ -822,6 +945,59 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/projects") {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
       await projectsCreateOrAdd(req, res);
+      return;
+    }
+
+    const projectIndexMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/index(?:\/(rebuild|status|search))?$/);
+    if (projectIndexMatch) {
+      const projectId = decodeURIComponent(projectIndexMatch[1]);
+      const action = projectIndexMatch[2] || "";
+
+      if (req.method === "POST" && action === "rebuild") {
+        if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+        try {
+          const payload = await readJson(req);
+          json(res, 200, await projectIndex.rebuild(projectId, {
+            exclude: payload?.exclude
+          }));
+        } catch (error) {
+          json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+        }
+        return;
+      }
+
+      if (req.method === "GET" && action === "status") {
+        json(res, 200, await projectIndex.status(projectId));
+        return;
+      }
+
+      if (req.method === "GET" && action === "search") {
+        try {
+          json(res, 200, await projectIndex.search(
+            projectId,
+            url.searchParams.get("q") || "",
+            Number(url.searchParams.get("limit") || 30)
+          ));
+        } catch (error) {
+          json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+        }
+        return;
+      }
+
+      if (req.method === "DELETE" && action === "") {
+        if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+        json(res, 200, await projectIndex.remove(projectId));
+        return;
+      }
+    }
+
+    const projectMapMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/map$/);
+    if (req.method === "GET" && projectMapMatch) {
+      try {
+        json(res, 200, await projectIndex.repoMap(decodeURIComponent(projectMapMatch[1])));
+      } catch (error) {
+        json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+      }
       return;
     }
 
@@ -863,7 +1039,8 @@ const server = http.createServer(async (req, res) => {
         backends: {
           opencode: openCode,
           codex: codexHealth
-        }
+        },
+        terminalAuthConfigured: terminal.configured
       });
       return;
     }
@@ -919,6 +1096,8 @@ const server = http.createServer(async (req, res) => {
     json(res, 500, { error: "DevMoter server error" });
   }
 });
+
+server.on("close", () => terminal.shutdown());
 
 server.listen(PORT, HOST, () => {
   console.log(`DevMoter FAST: http://${HOST}:${PORT}`);
