@@ -72,6 +72,15 @@ function json(res, status, body) {
   ));
 }
 
+function allowSensitiveBrowserRead(req, res) {
+  const site = String(req.headers["sec-fetch-site"] || "").toLowerCase();
+  if (site && site !== "same-origin" && site !== "none") {
+    json(res, 403, { error: "Cross-site sensitive read rejected" });
+    return false;
+  }
+  return true;
+}
+
 function operationId(req) {
   const value = req.headers["x-pocket-operation-id"];
   if (Array.isArray(value)) return String(value[0] || "").slice(0, 160);
@@ -877,6 +886,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === "/api/integrations") {
+      if (!allowSensitiveBrowserRead(req, res)) return;
       try {
         json(res, 200, await listIntegrations());
       } catch {
