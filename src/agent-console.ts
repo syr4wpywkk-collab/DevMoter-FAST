@@ -13,6 +13,11 @@ import {
   renderOrchestrationPrompt,
   type OrchestrationPlan
 } from "./orchestrator-core.mjs";
+import {
+  SubagentRuntime,
+  createCodexSubagentAdapter,
+  type SubagentRun
+} from "./subagent-runtime.mjs";
 
 const CUSTOM_MODES_KEY = "devmoter-agent-custom-modes";
 
@@ -77,6 +82,10 @@ export function mountAgentConsole() {
   let customModes = loadCustomModes();
   let activeModeId = "debug";
   let orchestrationPlan: OrchestrationPlan | null = null;
+  const subagents = new SubagentRuntime({
+    adapters: { codex: createCodexSubagentAdapter() },
+    policy: { maxDepth: 3, tokenBudget: 12000, turnBudget: 8 }
+  });
 
   const launcher = document.createElement("button");
   launcher.id = "devmoterAgentLauncher";
@@ -130,6 +139,11 @@ export function mountAgentConsole() {
       <button id="devmoterOrchestrationApprove" class="devmoter-agent-run" type="button">Approve & send plan</button>
     </section>
     <button id="devmoterAgentRun" class="devmoter-agent-run" type="button">Run in active chat</button>
+    <button id="devmoterSubagentRun" class="devmoter-agent-secondary-run" type="button">Run as bounded Codex subagent</button>
+    <section id="devmoterSubagentRuns" class="devmoter-subagent-runs hidden">
+      <strong>Subagent runs</strong>
+      <div id="devmoterSubagentList"></div>
+    </section>
     <p id="devmoterAgentStatus" class="devmoter-agent-status" role="status" aria-live="polite"></p>
   `;
 
@@ -155,6 +169,9 @@ export function mountAgentConsole() {
   const orchestrationPreview = panel.querySelector<HTMLElement>("#devmoterOrchestrationPreview")!;
   const orchestrationChildren = panel.querySelector<HTMLDivElement>("#devmoterOrchestrationChildren")!;
   const orchestrationApprove = panel.querySelector<HTMLButtonElement>("#devmoterOrchestrationApprove")!;
+  const subagentRun = panel.querySelector<HTMLButtonElement>("#devmoterSubagentRun")!;
+  const subagentRuns = panel.querySelector<HTMLElement>("#devmoterSubagentRuns")!;
+  const subagentList = panel.querySelector<HTMLDivElement>("#devmoterSubagentList")!;
 
   function setStatus(message: string, error = false) {
     status.textContent = message;
@@ -218,6 +235,67 @@ export function mountAgentConsole() {
     editorMutation.value = mode.mutationPolicy;
     editorDelete.disabled = false;
   }
+
+  function parentSessionId() {
+    const backend = document.body.classList.contains("codex-mode") ? "codex" : "opencode";
+    return backend === "codex"
+      ? localStorage.getItem("opencode-pocket-codex-thread")
+      : localStorage.getItem("opencode-pocket-opencode-session");
+  }
+
+  function renderSubagentRun(run: SubagentRun) {
+    let card = subagentList.querySelector<HTMLElement>(`[data-run-id="${run.id}"]`);
+    if (!card) {
+      card = document.createElement("article");
+      card.className = "devmoter-subagent-card";
+      card.dataset.runId = run.id;
+      subagentList.prepend(card);
+    }
+    const lineage = [run.parentSessionId, ...run.lineage, run.id].join(" > ");
+    card.replaceChildren();
+    const head = document.createElement("div");
+    head.className = "devmoter-subagent-card-head";
+    const name = document.createElement("strong");
+    name.textContent = `${run.role} · ${run.state}`;
+    const model = document.createElement("span");
+    model.textContent = run.effectiveModel || run.model || "default model";
+    head.append(name, model);
+    const taskText = document.createElement("p");
+    taskText.textContent = run.task;
+    const lineageText = document.createElement("small");
+    lineageText.textContent = `Lineage: ${lineage}`;
+    const budget = document.createElement("small");
+    budget.textContent = `Depth ${run.depth} · budget ${run.budget.tokensRemaining}/${run.budget.tokenLimit} tok · ${run.budget.turnsRemaining}/${run.budget.turnLimit} turns`;
+    card.append(head, taskText, lineageText, budget);
+
+    if (!["completed", "failed", "cancelled"].includes(run.state)) {
+      const actions = document.createElement("div");
+      actions.className = "devmoter-agent-mode-tools";
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.textContent = "Cancel";
+      cancel.addEventListener("click", () => void subagents.cancel(run.id).catch(error =>
+        setStatus(error instanceof Error ? error.message : String(error), true)
+      ));
+      actions.appendChild(cancel);
+
+      if (run.pendingApproval) {
+        for (const [decision, label] of [["decline", "Deny"], ["accept", "Allow once"]] as const) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = label;
+          button.addEventListener("click", () => void subagents.respondApproval(run.id, decision).catch(error =>
+            setStatus(error instanceof Error ? error.message : String(error), true)
+          ));
+          actions.appendChild(button);
+        }
+      }
+      card.appendChild(actions);
+    }
+    subagentRuns.classList.remove("hidden");
+  }
+
+  subagents.subscribe(renderSubagentRun);
 
   launcher.addEventListener("click", () => {
     panel.classList.toggle("hidden");
@@ -298,6 +376,30 @@ export function mountAgentConsole() {
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error), true);
     }
+  });
+
+  subagentRun.addEventListener("click", () => {
+    void (async () => {
+      try {
+        const parent = parentSessionId();
+        if (!parent) throw new Error("Open a parent chat/session before spawning a subagent");
+        const mode = resolveMode(activeModeId, customModes);
+        const run = await subagents.spawn({
+          backend: "codex",
+          parentSessionId: parent,
+          role: activeModeId === "review" ? "reviewer" : activeModeId === "orchestrator" ? "planner" : "executor",
+          model: mode.model || undefined,
+          task: task.value,
+          context: {
+            mode: mode.name,
+            modePolicy: renderModePolicy(mode)
+          }
+        });
+        if (run) setStatus(`Spawned bounded subagent ${run.id}`);
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : String(error), true);
+      }
+    })();
   });
 
   orchestrationApprove.addEventListener("click", () => {
