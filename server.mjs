@@ -16,6 +16,8 @@ import { createTerminalManager } from "./server/terminal.mjs";
 import { createProjectIndex } from "./server/project-index.mjs";
 import { createSafetyService } from "./server/safety.mjs";
 import { createSystemFeatures } from "./server/system-features.mjs";
+import { ControlPlane } from "./server/control-plane.mjs";
+import { PasskeyAuth } from "./server/passkey-auth.mjs";
 import { applyModeToPrompt, isDirectMutationRoute, isPromptRoute, isReadOnlyMode, parseAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
 import { assertAuthPassword, authorizeBasicRequest, requireSameOriginMutation } from "./server/auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
@@ -27,6 +29,7 @@ const OPENCODE_PASSWORD = process.env.OPENCODE_SERVER_PASSWORD || "";
 const DEVMOTER_AUTH_USERNAME = process.env.DEVMOTER_AUTH_USERNAME || "devmoter";
 const DEVMOTER_AUTH_PASSWORD = assertAuthPassword(process.env.DEVMOTER_AUTH_PASSWORD || "");
 const DEVMOTER_PUBLIC_ORIGIN = process.env.DEVMOTER_PUBLIC_ORIGIN || "";
+const PASSKEY_REQUIRED = process.env.DEVMOTER_PASSKEY_REQUIRED === "1";
 const AUTH_CONFIG = {
   username: DEVMOTER_AUTH_USERNAME,
   password: DEVMOTER_AUTH_PASSWORD
@@ -56,6 +59,21 @@ const openCodeSessionModes = new Map();
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
+});
+const passkeys = new PasskeyAuth({ configDir: PROJECT_CONFIG_DIR });
+const controlPlane = new ControlPlane({
+  configDir: PROJECT_CONFIG_DIR,
+  executeTask: executeControlTask,
+  onLifecycle: ({ event, run }) => {
+    void controlPlane.dispatchEvent("devmoter.lifecycle", event, {
+      runId: run?.id ?? null,
+      kind: run?.kind ?? null,
+      status: run?.status ?? null,
+      endedAt: run?.endedAt ?? null
+    }).catch(error => {
+      console.error("Control-plane lifecycle dispatch failed", redactText(error instanceof Error ? error.message : String(error)));
+    });
+  }
 });
 const advancedApi = createAdvancedApi({
   homeDir: HOME_DIR,
@@ -214,7 +232,7 @@ async function openCodeHeadersForRequest(req, extra = {}) {
   return openCodeHeaders({ "x-opencode-directory": directory, ...extra });
 }
 
-async function readJson(req, limit = 1024 * 1024) {
+async function readRaw(req, limit = 1024 * 1024) {
   const chunks = [];
   let size = 0;
 
@@ -224,8 +242,13 @@ async function readJson(req, limit = 1024 * 1024) {
     chunks.push(chunk);
   }
 
-  if (chunks.length === 0) return {};
-  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  return Buffer.concat(chunks);
+}
+
+async function readJson(req, limit = 1024 * 1024) {
+  const raw = await readRaw(req, limit);
+  if (raw.length === 0) return {};
+  return JSON.parse(raw.toString("utf8"));
 }
 
 async function readProjectRegistry() {
@@ -943,6 +966,361 @@ async function opencodeProviders(res) {
   }
 }
 
+function taskTimeoutMs(context = {}) {
+  const defaultMs = 30 * 60 * 1000;
+  if (!context.deadline) return defaultMs;
+  return Math.max(1000, Math.min(defaultMs, Number(context.deadline) - Date.now()));
+}
+
+function taskModel(model) {
+  const value = String(model || "").trim();
+  if (!value.includes("/")) return null;
+  const [providerID, ...rest] = value.split("/");
+  const modelID = rest.join("/");
+  return providerID && modelID ? { providerID, modelID } : null;
+}
+
+function waitForCodexTurn(threadId, turnId, context = {}) {
+  const timeoutMs = taskTimeoutMs(context);
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let assistantText = "";
+
+    const finish = (error, result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      codex.off("notification", onNotification);
+      codex.off("offline", onOffline);
+      if (error) reject(error);
+      else resolve(result);
+    };
+
+    const onOffline = event => finish(new Error(event?.error || "Codex went offline"));
+    const onNotification = event => {
+      const method = event?.method;
+      const params = event?.params ?? {};
+      const eventThreadId = params?.threadId ?? params?.thread?.id;
+      const eventTurnId = params?.turn?.id ?? params?.turnId;
+      if (eventThreadId && String(eventThreadId) !== String(threadId)) return;
+      if (eventTurnId && String(eventTurnId) !== String(turnId)) return;
+
+      if (method === "item/agentMessage/delta" && typeof params?.delta === "string") {
+        assistantText += params.delta;
+        if (assistantText.length > 12000) assistantText = assistantText.slice(-12000);
+        return;
+      }
+      if (method !== "turn/completed") return;
+
+      const status = String(params?.turn?.status || "completed").toLowerCase();
+      if (status === "failed") {
+        finish(new Error(params?.turn?.error?.message || params?.error?.message || "Codex turn failed"));
+        return;
+      }
+      if (["cancelled", "canceled", "interrupted", "aborted"].includes(status)) {
+        finish(new Error("Codex turn was interrupted"));
+        return;
+      }
+
+      finish(null, {
+        complete: assistantText.includes("[DEVMOTER_AUTOPILOT_DONE]"),
+        summary: assistantText.trim().slice(-4000) || ("Codex turn " + turnId + " finished with status " + status + "."),
+        cost: Number.isFinite(Number(params?.turn?.cost)) ? Number(params.turn.cost) : null
+      });
+    };
+
+    const timer = setTimeout(
+      () => finish(new Error("Agent task timed out at its configured boundary")),
+      timeoutMs
+    );
+    timer.unref?.();
+    codex.on("notification", onNotification);
+    codex.on("offline", onOffline);
+  });
+}
+
+async function executeControlTask(definition, context = {}) {
+  const project = definition?.projectId ? await getProjectById(definition.projectId) : null;
+  const task = String(definition?.task || "").trim();
+  if (!task) throw new Error("Task is required");
+
+  if (definition?.backend === "opencode") {
+    const directory = project?.path || OPENCODE_DIRECTORY;
+    const headers = { "content-type": "application/json", "x-opencode-directory": directory };
+    const saved = context?.backendContext?.backend === "opencode"
+      && String(context.backendContext.projectId || "") === String(definition?.projectId || "")
+      ? String(context.backendContext.sessionId || "")
+      : "";
+
+    let sessionId = saved;
+    if (!sessionId) {
+      const body = {};
+      if (definition?.agent) body.agent = String(definition.agent);
+      const model = taskModel(definition?.model);
+      if (model) body.model = { id: model.modelID, providerID: model.providerID };
+      const session = await fetchOpenCodeJson("/api/session", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(Math.min(10000, taskTimeoutMs(context)))
+      });
+      sessionId = String(session?.id || "");
+      if (!sessionId) throw new Error("OpenCode did not return a session id");
+    }
+
+    const backendContext = {
+      backend: "opencode",
+      projectId: String(definition?.projectId || ""),
+      sessionId
+    };
+    context.setBackendContext?.(backendContext);
+
+    const cancel = async () => {
+      try {
+        await fetchOpenCodeJson("/api/session/" + encodeURIComponent(sessionId) + "/interrupt", {
+          method: "POST",
+          headers,
+          body: "{}",
+          signal: AbortSignal.timeout(5000)
+        });
+      } catch {
+      }
+    };
+    context.setCancel?.(cancel);
+
+    const promptResult = await fetchOpenCodeJson("/api/session/" + encodeURIComponent(sessionId) + "/prompt", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ text: task }),
+      signal: AbortSignal.timeout(taskTimeoutMs(context))
+    });
+    const promptSummary = JSON.stringify(promptResult ?? {}).slice(-4000);
+    return {
+      complete: promptSummary.includes("[DEVMOTER_AUTOPILOT_DONE]"),
+      summary: promptSummary || ("OpenCode session " + sessionId + " completed the requested turn."),
+      cost: null,
+      cancel,
+      context: backendContext
+    };
+  }
+
+  const saved = context?.backendContext?.backend === "codex"
+    && String(context.backendContext.projectId || "") === String(definition?.projectId || "")
+    ? String(context.backendContext.threadId || "")
+    : "";
+  let threadId = saved;
+  if (!threadId) {
+    const threadParams = {};
+    if (project?.path) threadParams.cwd = project.path;
+    if (definition?.model) threadParams.model = String(definition.model);
+    const threadResult = await codex.request("thread/start", threadParams, { timeoutMs: 10000 });
+    threadId = String(threadResult?.thread?.id || "");
+    if (!threadId) throw new Error("Codex did not return a thread id");
+  }
+
+  const backendContext = {
+    backend: "codex",
+    projectId: String(definition?.projectId || ""),
+    threadId
+  };
+  context.setBackendContext?.(backendContext);
+
+  const turnParams = {
+    threadId,
+    input: [{ type: "text", text: task }],
+    clientUserMessageId: randomUUID()
+  };
+  if (definition?.model) turnParams.model = String(definition.model);
+  const turnResult = await codex.request("turn/start", turnParams, { timeoutMs: 10000 });
+  const turnId = String(turnResult?.turn?.id || "");
+  if (!turnId) throw new Error("Codex did not return a turn id");
+
+  const cancel = async () => {
+    try {
+      await codex.request("turn/interrupt", { threadId, turnId }, { timeoutMs: 5000 });
+    } catch {
+    }
+  };
+  context.setCancel?.(cancel);
+  const result = await waitForCodexTurn(threadId, turnId, context);
+  return { ...result, cancel, context: backendContext };
+}
+
+async function passkeyRoute(req, res, url) {
+  if (!url.pathname.startsWith("/api/auth/passkey/")) return false;
+  try {
+    if (req.method === "GET" && url.pathname === "/api/auth/passkey/status") {
+      json(res, 200, await passkeys.status(req));
+      return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/auth/passkey/register/options") {
+      json(res, 200, await passkeys.registrationOptions(req));
+      return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/auth/passkey/register/verify") {
+      const result = await passkeys.verifyRegistration(req, await readJson(req, 256 * 1024));
+      res.setHeader("set-cookie", result.cookie);
+      json(res, 200, { ok: true });
+      return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/auth/passkey/login/options") {
+      json(res, 200, await passkeys.loginOptions(req));
+      return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/auth/passkey/login/verify") {
+      const result = await passkeys.verifyLogin(req, await readJson(req, 256 * 1024));
+      res.setHeader("set-cookie", result.cookie);
+      json(res, 200, { ok: true });
+      return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/auth/passkey/logout") {
+      res.setHeader("set-cookie", await passkeys.logout(req));
+      json(res, 200, { ok: true });
+      return true;
+    }
+    json(res, 404, { error: "Unknown passkey endpoint" });
+  } catch (error) {
+    json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+  }
+  return true;
+}
+
+async function controlRoute(req, res, url) {
+  if (!url.pathname.startsWith("/api/control/")) return false;
+  try {
+    const localAddress = DEVMOTER_PUBLIC_ORIGIN ||
+      ((String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim() || url.protocol.replace(":", "")) +
+        "://" +
+        (String(req.headers["x-forwarded-host"] || "").split(",")[0].trim() || req.headers.host || "localhost"));
+
+    if (req.method === "GET" && url.pathname === "/api/control/hosts") {
+      json(res, 200, { hosts: await controlPlane.listHosts(localAddress) });
+      return true;
+    }
+    if (req.method === "GET" && url.pathname === "/api/control/hosts/status") {
+      json(res, 200, {
+        hosts: await controlPlane.listHostStatuses(localAddress, {
+          force: url.searchParams.get("force") === "1"
+        })
+      });
+      return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/control/hosts") {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      json(res, 201, { host: await controlPlane.addHost(await readJson(req)) });
+      return true;
+    }
+
+    const hostMatch = url.pathname.match(/^\/api\/control\/hosts\/([^/]+)$/);
+    if (req.method === "DELETE" && hostMatch) {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      await controlPlane.removeHost(decodeURIComponent(hostMatch[1]));
+      json(res, 200, { ok: true });
+      return true;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/control/schedules") {
+      json(res, 200, { schedules: await controlPlane.listSchedules() });
+      return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/control/schedules") {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      json(res, 201, { schedule: await controlPlane.createSchedule(await readJson(req)) });
+      return true;
+    }
+
+    const scheduleMatch = url.pathname.match(/^\/api\/control\/schedules\/([^/]+)$/);
+    if (scheduleMatch && req.method === "PATCH") {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      const payload = await readJson(req);
+      json(res, 200, {
+        schedule: await controlPlane.setScheduleEnabled(
+          decodeURIComponent(scheduleMatch[1]),
+          payload?.enabled
+        )
+      });
+      return true;
+    }
+    if (scheduleMatch && req.method === "DELETE") {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      await controlPlane.deleteSchedule(decodeURIComponent(scheduleMatch[1]));
+      json(res, 200, { ok: true });
+      return true;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/control/triggers") {
+      json(res, 200, { triggers: await controlPlane.listTriggers() });
+      return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/control/triggers") {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      json(res, 201, await controlPlane.createTrigger(await readJson(req)));
+      return true;
+    }
+
+    const triggerMatch = url.pathname.match(/^\/api\/control\/triggers\/([^/]+)$/);
+    if (triggerMatch && req.method === "DELETE") {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      await controlPlane.deleteTrigger(decodeURIComponent(triggerMatch[1]));
+      json(res, 200, { ok: true });
+      return true;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/control/runs") {
+      json(res, 200, { runs: await controlPlane.listRuns() });
+      return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/control/autopilot") {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      json(res, 202, { run: await controlPlane.startAutopilot(await readJson(req)) });
+      return true;
+    }
+
+    const autopilotMatch = url.pathname.match(/^\/api\/control\/autopilot\/([^/]+)\/(pause|resume|cancel)$/);
+    if (autopilotMatch && req.method === "POST") {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      const id = decodeURIComponent(autopilotMatch[1]);
+      const run = autopilotMatch[2] === "pause"
+        ? await controlPlane.pauseAutopilot(id)
+        : autopilotMatch[2] === "resume"
+          ? await controlPlane.resumeAutopilot(id)
+          : await controlPlane.cancelAutopilot(id);
+      json(res, 200, { run });
+      return true;
+    }
+
+    json(res, 404, { error: "Unknown control endpoint" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    json(res, message === "Request body too large" ? 413 : 400, { error: message });
+  }
+  return true;
+}
+
+async function githubWebhookRoute(req, res) {
+  try {
+    const raw = await readRaw(req, 64 * 1024);
+    const event = String(req.headers["x-github-event"] || "").trim();
+    const signature = String(req.headers["x-hub-signature-256"] || "").trim();
+    if (!event || !signature) {
+      json(res, 400, { error: "Missing GitHub webhook authentication headers" });
+      return;
+    }
+    const payload = raw.length ? JSON.parse(raw.toString("utf8")) : {};
+    const runIds = await controlPlane.dispatchEvent(
+      "github.webhook",
+      event,
+      payload,
+      { rawBody: raw, signature }
+    );
+    json(res, 202, { accepted: runIds.length });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const status = Number(error?.status || (message === "Request body too large" ? 413 : 400));
+    json(res, status, { error: "Webhook rejected" });
+  }
+}
+
 async function proxy(req, res) {
   const pocketPath = req.url.replace(/^\/api\/opencode/, "") || "/";
   const upstreamPath = pocketPath.startsWith("/api/")
@@ -1195,10 +1573,31 @@ async function serveStatic(req, res) {
 
 const server = http.createServer(async (req, res) => {
   try {
+    const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+
+    if (req.method === "POST" && url.pathname === "/api/control/events/github") {
+      await githubWebhookRoute(req, res);
+      return;
+    }
+
     if (!authorizeBasicRequest(req, res, AUTH_CONFIG)) return;
     if (!requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)) return;
 
-    const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+    if (await passkeyRoute(req, res, url)) return;
+
+    if (
+      PASSKEY_REQUIRED &&
+      url.pathname.startsWith("/api/") &&
+      url.pathname !== "/api/health"
+    ) {
+      const gate = await passkeys.require(req);
+      if (gate.required && !gate.authenticated) {
+        json(res, 401, { error: "Passkey authentication required" });
+        return;
+      }
+    }
+
+    if (await controlRoute(req, res, url)) return;
 
     const advancedCandidate =
       url.pathname.startsWith("/api/advanced/") ||
@@ -1720,7 +2119,10 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.on("close", () => terminal.shutdown());
+server.on("close", () => {
+  controlPlane.stop();
+  terminal.shutdown();
+});
 
 server.listen(PORT, HOST, () => {
   console.log(`DevMoter FAST: http://${HOST}:${PORT}`);
@@ -1729,4 +2131,12 @@ server.listen(PORT, HOST, () => {
   console.log(`OpenCode directory: ${OPENCODE_DIRECTORY}`);
   console.log(`Codex binary: ${process.env.CODEX_BIN || "codex"}`);
   console.log(`Codex cwd: ${process.env.CODEX_CWD || process.cwd()}`);
+  controlPlane.start();
+  void controlPlane.dispatchEvent("devmoter.lifecycle", "server.started", {
+    startedAt: Date.now(),
+    host: HOST,
+    port: PORT
+  }).catch(error => {
+    console.error("Control-plane startup event failed", redactText(error instanceof Error ? error.message : String(error)));
+  });
 });

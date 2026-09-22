@@ -443,6 +443,12 @@ The project aims to keep that process visible rather than pretending the code wa
 - `.env.example` — environment-variable example
 - `.github/workflows/ci.yml` — automated CI checks
 
+## Remote control & bounded automation
+
+DevMoter v3 includes an optional host registry, cron-like scheduled tasks, HMAC-authenticated GitHub event triggers, bounded autopilot, and an optional secondary passkey gate. Remote host records contain no backend credentials; each host keeps its own authentication and project/session state.
+
+See [Remote control security](docs/remote-control-security.md). The [optional E2EE relay threat model](docs/relay-threat-model.md) is **design-only**; no relay implementation is shipped.
+
 ## Developer workflow configuration
 
 See [Developer workflows, extensions, MCP, ACP, Skills, and Rules](docs/developer-workflows.md) for trusted verification configuration, the extension manifest v1 contract, MCP management behavior, ACP compatibility, and scope/precedence rules.
