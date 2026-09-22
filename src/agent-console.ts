@@ -145,7 +145,10 @@ export function mountAgentConsole() {
     <button id="devmoterAgentRun" class="devmoter-agent-run" type="button">Run in active chat</button>
     <button id="devmoterSubagentRun" class="devmoter-agent-secondary-run" type="button">Run as bounded Codex subagent</button>
     <section id="devmoterSubagentRuns" class="devmoter-subagent-runs hidden">
-      <strong>Subagent runs</strong>
+      <div class="devmoter-fleet-dashboard-head">
+        <strong>Agent Fleet dashboard</strong>
+        <span id="devmoterSubagentSummary">0 agents</span>
+      </div>
       <div id="devmoterSubagentList"></div>
     </section>
     <p id="devmoterAgentStatus" class="devmoter-agent-status" role="status" aria-live="polite"></p>
@@ -178,6 +181,7 @@ export function mountAgentConsole() {
   const subagentRun = panel.querySelector<HTMLButtonElement>("#devmoterSubagentRun")!;
   const subagentRuns = panel.querySelector<HTMLElement>("#devmoterSubagentRuns")!;
   const subagentList = panel.querySelector<HTMLDivElement>("#devmoterSubagentList")!;
+  const subagentSummary = panel.querySelector<HTMLElement>("#devmoterSubagentSummary")!;
 
   function setStatus(message: string, error = false) {
     status.textContent = message;
@@ -249,6 +253,19 @@ export function mountAgentConsole() {
       : localStorage.getItem("opencode-pocket-opencode-session");
   }
 
+  function dashboardState(state: SubagentRun["state"]) {
+    if (state === "waiting_for_approval") return "waiting";
+    if (state === "completed") return "done";
+    return state;
+  }
+
+  function updateDashboardSummary() {
+    const runs = subagents.listRuns();
+    const active = runs.filter(run => ["starting", "running", "waiting_for_approval"].includes(run.state)).length;
+    const failed = runs.filter(run => run.state === "failed").length;
+    subagentSummary.textContent = `${runs.length} agents · ${active} active${failed ? ` · ${failed} failed` : ""}`;
+  }
+
   function renderSubagentRun(run: SubagentRun) {
     let card = subagentList.querySelector<HTMLElement>(`[data-run-id="${run.id}"]`);
     if (!card) {
@@ -257,15 +274,22 @@ export function mountAgentConsole() {
       card.dataset.runId = run.id;
       subagentList.prepend(card);
     }
+    card.dataset.state = run.state;
     const lineage = [run.parentSessionId, ...run.lineage, run.id].join(" > ");
     card.replaceChildren();
+
     const head = document.createElement("div");
     head.className = "devmoter-subagent-card-head";
+    const identity = document.createElement("div");
     const name = document.createElement("strong");
-    name.textContent = `${run.role} · ${run.state}${run.fleetId ? " · fleet" : ""}`;
+    name.textContent = `${run.role} · ${dashboardState(run.state)}`;
+    const agentName = document.createElement("small");
+    agentName.textContent = `Agent ${run.id}`;
+    identity.append(name, agentName);
     const model = document.createElement("span");
     model.textContent = run.effectiveModel || run.model || "default model";
-    head.append(name, model);
+    head.append(identity, model);
+
     const taskText = document.createElement("p");
     taskText.textContent = run.task;
     const lineageText = document.createElement("small");
@@ -274,9 +298,22 @@ export function mountAgentConsole() {
     budget.textContent = `Depth ${run.depth} · budget ${run.budget.tokensRemaining}/${run.budget.tokenLimit} tok · ${run.budget.turnsRemaining}/${run.budget.turnLimit} turns`;
     card.append(head, taskText, lineageText, budget);
 
+    const actions = document.createElement("div");
+    actions.className = "devmoter-agent-mode-tools";
+
+    if (run.sessionId) {
+      const open = document.createElement("button");
+      open.type = "button";
+      open.textContent = "Open session";
+      open.addEventListener("click", () => {
+        localStorage.setItem("opencode-pocket-backend", "codex");
+        localStorage.setItem("opencode-pocket-codex-thread", run.sessionId!);
+        window.location.reload();
+      });
+      actions.appendChild(open);
+    }
+
     if (!["completed", "failed", "cancelled"].includes(run.state)) {
-      const actions = document.createElement("div");
-      actions.className = "devmoter-agent-mode-tools";
       const cancel = document.createElement("button");
       cancel.type = "button";
       cancel.textContent = "Cancel";
@@ -296,9 +333,11 @@ export function mountAgentConsole() {
           actions.appendChild(button);
         }
       }
-      card.appendChild(actions);
     }
+
+    if (actions.childElementCount) card.appendChild(actions);
     subagentRuns.classList.remove("hidden");
+    updateDashboardSummary();
   }
 
   subagents.subscribe(renderSubagentRun);
