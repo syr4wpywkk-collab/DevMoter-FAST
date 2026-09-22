@@ -1,5 +1,7 @@
 import { codexThreadStatusToExecutionState, codexTurnStatusToExecutionState, isExecutionActive, type ExecutionState } from "./execution-state.mjs";
 import { speechRecognitionLanguage } from "./i18n";
+import { createDevWorkflowPanel } from "./dev-workflows-ui";
+import { isMcpToolItem, mcpToolSummary, normalizeStructuredMcpResult } from "./mcp-result";
 import { setWakeLockExecutionActive } from "./wake-lock";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 import {
@@ -117,6 +119,7 @@ export function mountCodexRemote(
           <button id="cxModelsNav" class="cx-nav-item" type="button"><span>◌</span><span>モデル</span></button>
           <button id="cxPluginsNav" class="cx-nav-item" type="button"><span>◉</span><span>プラグイン</span></button>
           <button id="cxIntegrationsNav" class="cx-nav-item" type="button"><span>⌁</span><span>Integrations</span></button>
+          <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button"><span>◇</span><span>Developer workflows</span></button>
         </nav>
 
         <div class="cx-side-section cx-agent-section">
@@ -253,6 +256,7 @@ export function mountCodexRemote(
   const libraryNav = root.querySelector<HTMLButtonElement>("#cxLibraryNav")!;
   const modelsNav = root.querySelector<HTMLButtonElement>("#cxModelsNav")!;
   const pluginsNav = root.querySelector<HTMLButtonElement>("#cxPluginsNav")!;
+  const devWorkflowsNav = root.querySelector<HTMLButtonElement>("#cxDevWorkflowsNav")!;
   const integrationsNav = root.querySelector<HTMLButtonElement>("#cxIntegrationsNav")!;
   const voice = root.querySelector<HTMLButtonElement>("#cxVoice")!;
   const reasoningTop = root.querySelector<HTMLButtonElement>("#cxReasoningTop")!;
@@ -814,6 +818,39 @@ export function mountCodexRemote(
     return bubble;
   }
 
+  function addMcpToolResult(item: Json) {
+    const summary = mcpToolSummary(item);
+    const normalized = normalizeStructuredMcpResult(summary.result);
+    const row = document.createElement("div");
+    row.className = "cx-message-row assistant";
+    const bubble = document.createElement("div");
+    bubble.className = "cx-message assistant cx-mcp-result";
+    const detailsEl = document.createElement("details");
+    detailsEl.className = "cx-mcp-result-details";
+    const head = document.createElement("summary");
+    const label = document.createElement("span");
+    label.textContent = `MCP · ${summary.server} · ${summary.tool}`;
+    const state = document.createElement("small");
+    state.textContent = summary.status + (normalized.truncated ? " · truncated" : "");
+    head.append(label, state);
+    const structured = document.createElement("pre");
+    structured.className = "cx-mcp-structured";
+    try { structured.textContent = JSON.stringify(normalized.value, null, 2); }
+    catch { structured.textContent = String(normalized.value ?? ""); }
+    const raw = document.createElement("details");
+    raw.className = "cx-mcp-raw";
+    const rawSummary = document.createElement("summary");
+    rawSummary.textContent = "Raw fallback";
+    const rawPre = document.createElement("pre");
+    rawPre.textContent = normalized.rawText;
+    raw.append(rawSummary, rawPre);
+    detailsEl.append(head, structured, raw);
+    bubble.appendChild(detailsEl);
+    row.appendChild(bubble);
+    transcript.appendChild(row);
+    followLatest();
+  }
+
   function renderThreads() {
     const q = threadSearch.value.trim().toLowerCase();
     const items = q
@@ -930,6 +967,11 @@ export function mountCodexRemote(
           continue;
         }
 
+        if (isMcpToolItem(item)) {
+          addMcpToolResult(item);
+          continue;
+        }
+
         if (item?.type === "agentMessage" && typeof item.text === "string" && item.text) {
           addMessage("assistant", item.text, [], true);
         }
@@ -977,11 +1019,42 @@ export function mountCodexRemote(
     }
   }
 
+  function selectedSkills(scope: "project" | "thread", id: string) {
+    try {
+      const parsed = JSON.parse(localStorage.getItem("devmoter-active-skills:" + scope + ":" + id) || "[]");
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter(item => item && typeof item.path === "string" && item.path)
+        .map(item => ({ id: String(item.id || item.path), name: String(item.name || "Skill"), path: String(item.path) }));
+    } catch {
+      return [];
+    }
+  }
+
+  function activeSkillInputs(threadId: string) {
+    const combined = new Map<string, { name: string; path: string }>();
+    if (activeProject?.id) {
+      for (const skill of selectedSkills("project", activeProject.id)) combined.set(skill.path, { name: skill.name, path: skill.path });
+    }
+    for (const skill of selectedSkills("thread", threadId)) combined.set(skill.path, { name: skill.name, path: skill.path });
+    return [...combined.values()];
+  }
+
+  async function sessionDeveloperInstructions() {
+    if (!activeProject?.id) return "";
+    const response = await fetch("/api/dev/session-context?projectId=" + encodeURIComponent(activeProject.id), { cache: "no-store" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload?.error || "Rulesを読み込めませんでした");
+    return typeof payload?.developerInstructions === "string" ? payload.developerInstructions : "";
+  }
+
   async function createThread() {
     try {
       const params: Json = {};
       if (selectedModel) params.model = selectedModel;
       if (activeProject?.id) params.projectId = activeProject.id;
+      const developerInstructions = await sessionDeveloperInstructions();
+      if (developerInstructions) params.developerInstructions = developerInstructions;
       const result = await rpc<{ thread?: ThreadSummary; model?: string }>("thread/start", params);
       const thread = result?.thread;
       if (!thread?.id) throw new Error("thread id が返りませんでした");
@@ -1148,6 +1221,10 @@ export function mountCodexRemote(
     const input: Json[] = [];
     if (text) input.push({ type: "text", text });
 
+    for (const skill of activeSkillInputs(threadId)) {
+      input.push({ type: "skill", name: skill.name, path: skill.path });
+    }
+
     for (const attachment of pendingAttachments) {
       if (attachment.kind === "image" && attachment.path) {
         input.push({
@@ -1282,6 +1359,11 @@ export function mountCodexRemote(
           }
         }
         void loadThreads();
+        return;
+      }
+
+      if (method === "item/completed" && params?.item && isMcpToolItem(params.item)) {
+        addMcpToolResult(params.item);
         return;
       }
 
@@ -2400,6 +2482,16 @@ export function mountCodexRemote(
     void showModels();
   });
   pluginsNav.addEventListener("click", () => void showPlugins());
+  const devWorkflowPanel = createDevWorkflowPanel({
+    modalBody,
+    openModal,
+    closeSidebar,
+    getActiveProject: () => activeProject,
+    getActiveThreadId: () => activeThreadId,
+    showToast,
+    uid
+  });
+  devWorkflowsNav.addEventListener("click", () => void devWorkflowPanel.show());
   integrationsNav.addEventListener("click", () => {
     closeSidebar();
     options.onIntegrations?.();

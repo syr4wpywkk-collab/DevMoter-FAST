@@ -10,6 +10,7 @@ import { createOperationRegistry } from "./server/operation-registry.mjs";
 import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
 import { createSessionControl } from "./server/session-control.mjs";
 import { createTaskWorkflow } from "./server/task-workflow.mjs";
+import { createDevWorkflowService } from "./server/dev-workflows.mjs";
 import { createAdvancedApi } from "./server/advanced-api.mjs";
 import { createTerminalManager } from "./server/terminal.mjs";
 import { createProjectIndex } from "./server/project-index.mjs";
@@ -61,6 +62,12 @@ const advancedApi = createAdvancedApi({
   getProjectById
 });
 const taskWorkflow = createTaskWorkflow({ homeDir: HOME_DIR, getProjectById });
+const devWorkflows = createDevWorkflowService({
+  homeDir: HOME_DIR,
+  codex,
+  projectResolver: getProjectById,
+  configDir: PROJECT_CONFIG_DIR
+});
 const SAFETY_PERMISSION_FILE = join(PROJECT_CONFIG_DIR, "remembered-approvals.json");
 const PROJECT_INDEX_DIR = join(HOME_DIR, ".local", "state", "opencode-pocket", "project-indexes");
 const safety = createSafetyService({
@@ -1035,6 +1042,17 @@ async function codexEvents(req, res) {
 }
 
 
+async function devWorkflowAction(req, res, handler) {
+  try {
+    const payload = await readJson(req);
+    json(res, 200, await handler(payload));
+  } catch (error) {
+    json(res, 400, {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
 async function serveStatic(req, res) {
   let path = req.url === "/" ? "/index.html" : req.url.split("?")[0];
   path = normalize(path).replace(/^(\.\.[/\\])+/, "");
@@ -1078,6 +1096,94 @@ const server = http.createServer(async (req, res) => {
       if (await advancedApi.handle(req, res, url)) return;
     }
 
+
+    if (req.method === "GET" && url.pathname === "/api/dev/settings") {
+      json(res, 200, { settings: await devWorkflows.getSettings() });
+      return;
+    }
+
+    if (req.method === "PUT" && url.pathname === "/api/dev/settings") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, async payload => ({
+        settings: await devWorkflows.updateSettings(payload?.settings ?? payload)
+      }));
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/dev/session-context") {
+      try {
+        json(res, 200, await devWorkflows.sessionContext(url.searchParams.get("projectId")));
+      } catch (error) {
+        json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+      }
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/dev/capabilities") {
+      try {
+        json(res, 200, await devWorkflows.capabilities(url.searchParams.get("projectId")));
+      } catch (error) {
+        json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+      }
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/dev/review") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.review(payload));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/dev/review/comment") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.postReviewComment(payload));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/dev/ci") {
+      await devWorkflowAction(req, res, payload => devWorkflows.ciStatus(payload));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/dev/verify") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.runVerification(payload?.projectId));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/dev/repair") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.repair(payload));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/dev/acp/probe") {
+      await devWorkflowAction(req, res, payload => devWorkflows.probeAcp(payload));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/dev/mcp/test") {
+      await devWorkflowAction(req, res, payload => devWorkflows.testMcpServer(payload));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/dev/mcp") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.saveMcpServer(payload));
+      return;
+    }
+
+    if (req.method === "PUT" && url.pathname === "/api/dev/mcp/enabled") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.setMcpEnabled(payload));
+      return;
+    }
+
+    if (req.method === "DELETE" && url.pathname === "/api/dev/mcp") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.removeMcpServer(payload));
+      return;
+    }
 
     if (url.pathname.startsWith("/api/workflow/")) {
       if (
