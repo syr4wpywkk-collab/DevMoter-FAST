@@ -969,11 +969,53 @@ export function mountCodexRemote(
     }
   }
 
+  function selectedSkills(scope: "project" | "thread", id: string) {
+    try {
+      const parsed = JSON.parse(localStorage.getItem("devmoter-active-skills:" + scope + ":" + id) || "[]");
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter(item => item && typeof item.path === "string" && item.path)
+        .map(item => ({
+          id: String(item.id || item.path),
+          name: String(item.name || "Skill"),
+          path: String(item.path)
+        }));
+    } catch {
+      return [];
+    }
+  }
+
+  function activeSkillInputs(threadId: string) {
+    const combined = new Map<string, { name: string; path: string }>();
+    if (activeProject?.id) {
+      for (const skill of selectedSkills("project", activeProject.id)) {
+        combined.set(skill.path, { name: skill.name, path: skill.path });
+      }
+    }
+    for (const skill of selectedSkills("thread", threadId)) {
+      combined.set(skill.path, { name: skill.name, path: skill.path });
+    }
+    return [...combined.values()];
+  }
+
+  async function sessionDeveloperInstructions() {
+    if (!activeProject?.id) return "";
+    const response = await fetch(
+      "/api/dev/session-context?projectId=" + encodeURIComponent(activeProject.id),
+      { cache: "no-store" }
+    );
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload?.error || "Rulesを読み込めませんでした");
+    return typeof payload?.developerInstructions === "string" ? payload.developerInstructions : "";
+  }
+
   async function createThread() {
     try {
       const params: Json = {};
       if (selectedModel) params.model = selectedModel;
       if (activeProject?.path) params.cwd = activeProject.path;
+      const developerInstructions = await sessionDeveloperInstructions();
+      if (developerInstructions) params.developerInstructions = developerInstructions;
       const result = await rpc<{ thread?: ThreadSummary; model?: string }>("thread/start", params);
       const thread = result?.thread;
       if (!thread?.id) throw new Error("thread id が返りませんでした");
@@ -1120,6 +1162,14 @@ export function mountCodexRemote(
 
     const input: Json[] = [];
     if (text) input.push({ type: "text", text });
+
+    for (const skill of activeSkillInputs(threadId)) {
+      input.push({
+        type: "skill",
+        name: skill.name,
+        path: skill.path
+      });
+    }
 
     for (const attachment of pendingAttachments) {
       if (attachment.kind === "image" && attachment.path) {
@@ -2278,6 +2328,7 @@ export function mountCodexRemote(
     openModal,
     closeSidebar,
     getActiveProject: () => activeProject,
+    getActiveThreadId: () => activeThreadId,
     showToast,
     uid
   });
