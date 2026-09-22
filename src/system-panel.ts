@@ -42,8 +42,12 @@ export function mountSystemPanel() {
 
   async function request(path: string, init: RequestInit = {}, auth = false) {
     const headers = new Headers(init.headers || {});
+    const method = String(init.method || "GET").toUpperCase();
     if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
     if (auth && token()) headers.set("x-devmoter-device-token", token());
+    if (method !== "GET" && method !== "HEAD" && !headers.has("x-pocket-operation-id")) {
+      headers.set("x-pocket-operation-id", crypto.randomUUID());
+    }
     const response = await fetch(path, { ...init, headers, cache: "no-store" });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload?.error || `HTTP ${response.status}`);
