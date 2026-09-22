@@ -75,11 +75,43 @@ test("server requires auth and exact Origin for mutations", async () => {
     assert.equal(wrong.status, 401);
 
 
-    const unauthenticatedIntegrations = await fetch(`${origin}/api/integrations`);
+    const unauthenticatedIntegrations = await fetch(`${origin}/api/integrations/status`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}"
+    });
     assert.equal(unauthenticatedIntegrations.status, 401);
 
-    const authenticatedIntegrations = await fetch(`${origin}/api/integrations`, {
-      headers: { authorization }
+    const inventoryMissingOrigin = await fetch(`${origin}/api/integrations/status`, {
+      method: "POST",
+      headers: {
+        authorization,
+        "content-type": "application/json"
+      },
+      body: "{}"
+    });
+    assert.equal(inventoryMissingOrigin.status, 403);
+
+    const inventoryCrossOrigin = await fetch(`${origin}/api/integrations/status`, {
+      method: "POST",
+      headers: {
+        authorization,
+        origin: "https://evil.example",
+        "content-type": "application/json"
+      },
+      body: "{}"
+    });
+    assert.equal(inventoryCrossOrigin.status, 403);
+
+    const authenticatedIntegrations = await fetch(`${origin}/api/integrations/status`, {
+      method: "POST",
+      headers: {
+        authorization,
+        origin,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "integration-status-test"
+      },
+      body: "{}"
     });
     assert.equal(authenticatedIntegrations.status, 200);
     const integrationInventory = await authenticatedIntegrations.json();
