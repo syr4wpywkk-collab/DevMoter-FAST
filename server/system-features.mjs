@@ -137,7 +137,8 @@ export function createSystemFeatures({
   getProjects,
   getBackendHealth,
   host = "127.0.0.1",
-  version = "0.0.0"
+  version = "0.0.0",
+  pushSender = sendEmptyPush
 }) {
   const devicesFile = join(stateDir, "devices.json");
   const subscriptionsFile = join(stateDir, "push-subscriptions.json");
@@ -395,7 +396,7 @@ export function createSystemFeatures({
 
       pendingNotifications.set(subscription.endpoint, notification);
       try {
-        const response = await sendEmptyPush(subscription, vapid);
+        const response = await pushSender(subscription, vapid);
         if (response.status === 404 || response.status === 410) {
           pendingNotifications.delete(subscription.endpoint);
           continue;
