@@ -545,7 +545,7 @@ export function mountCodexRemote(
     if (!res.ok) {
       if (payload?.duplicate) {
         throw new Error(
-          `Operation ${payload?.operationId || opId} was already accepted; the duplicate send was suppressed.`
+          `Operation ${payload?.operationId || opId} was already seen; the duplicate send was suppressed and the earlier outcome is unknown.`
         );
       }
       throw new Error(payload?.error || `HTTP ${res.status}`);
@@ -965,7 +965,7 @@ export function mountCodexRemote(
     try {
       const params: Json = {};
       if (selectedModel) params.model = selectedModel;
-      if (activeProject?.path) params.cwd = activeProject.path;
+      if (activeProject?.id) params.projectId = activeProject.id;
       const result = await rpc<{ thread?: ThreadSummary; model?: string }>("thread/start", params);
       const thread = result?.thread;
       if (!thread?.id) throw new Error("thread id が返りませんでした");
@@ -1108,7 +1108,9 @@ export function mountCodexRemote(
       kind: item.kind
     }));
 
+    followsBottom = true;
     addMessage("user", text, displayAttachments);
+    followLatest();
 
     const input: Json[] = [];
     if (text) input.push({ type: "text", text });
