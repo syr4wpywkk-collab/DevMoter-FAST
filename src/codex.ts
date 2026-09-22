@@ -1,5 +1,7 @@
 import { codexThreadStatusToExecutionState, codexTurnStatusToExecutionState, isExecutionActive, type ExecutionState } from "./execution-state";
 import { speechRecognitionLanguage } from "./i18n";
+import { createDevWorkflowPanel } from "./dev-workflows-ui";
+import { isMcpToolItem, mcpToolSummary, normalizeStructuredMcpResult } from "./mcp-result";
 
 const FOLLOW_BOTTOM_THRESHOLD = 48;
 
@@ -100,6 +102,7 @@ export function mountCodexRemote(
           <button id="cxProjectsNav" class="cx-nav-item" type="button"><span>▱</span><span>Projects</span></button>
           <button id="cxModelsNav" class="cx-nav-item" type="button"><span>◌</span><span>モデル</span></button>
           <button id="cxPluginsNav" class="cx-nav-item" type="button"><span>◉</span><span>プラグイン</span></button>
+          <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button"><span>⌁</span><span>Developer workflows</span></button>
         </nav>
 
         <div class="cx-side-section cx-agent-section">
@@ -236,6 +239,7 @@ export function mountCodexRemote(
   const libraryNav = root.querySelector<HTMLButtonElement>("#cxLibraryNav")!;
   const modelsNav = root.querySelector<HTMLButtonElement>("#cxModelsNav")!;
   const pluginsNav = root.querySelector<HTMLButtonElement>("#cxPluginsNav")!;
+  const devWorkflowsNav = root.querySelector<HTMLButtonElement>("#cxDevWorkflowsNav")!;
   const voice = root.querySelector<HTMLButtonElement>("#cxVoice")!;
   const reasoningTop = root.querySelector<HTMLButtonElement>("#cxReasoningTop")!;
   const modelTop = root.querySelector<HTMLButtonElement>("#cxModelTop")!;
@@ -762,6 +766,49 @@ export function mountCodexRemote(
     return bubble;
   }
 
+  function addMcpToolResult(item: Json) {
+    const summary = mcpToolSummary(item);
+    const normalized = normalizeStructuredMcpResult(summary.result);
+
+    const row = document.createElement("div");
+    row.className = "cx-message-row assistant";
+
+    const bubble = document.createElement("div");
+    bubble.className = "cx-message assistant cx-mcp-result";
+
+    const detailsEl = document.createElement("details");
+    detailsEl.className = "cx-mcp-result-details";
+
+    const head = document.createElement("summary");
+    const label = document.createElement("span");
+    label.textContent = `MCP · ${summary.server} · ${summary.tool}`;
+    const state = document.createElement("small");
+    state.textContent = summary.status + (normalized.truncated ? " · truncated" : "");
+    head.append(label, state);
+
+    const structured = document.createElement("pre");
+    structured.className = "cx-mcp-structured";
+    try {
+      structured.textContent = JSON.stringify(normalized.value, null, 2);
+    } catch {
+      structured.textContent = String(normalized.value ?? "");
+    }
+
+    const raw = document.createElement("details");
+    raw.className = "cx-mcp-raw";
+    const rawSummary = document.createElement("summary");
+    rawSummary.textContent = "Raw fallback";
+    const rawPre = document.createElement("pre");
+    rawPre.textContent = normalized.rawText;
+    raw.append(rawSummary, rawPre);
+
+    detailsEl.append(head, structured, raw);
+    bubble.appendChild(detailsEl);
+    row.appendChild(bubble);
+    transcript.appendChild(row);
+    followLatest();
+  }
+
   function renderThreads() {
     const q = threadSearch.value.trim().toLowerCase();
     const items = q
@@ -867,6 +914,11 @@ export function mountCodexRemote(
         const user = parseUserMessage(item);
         if (user) {
           addMessage("user", user.text, user.attachments);
+          continue;
+        }
+
+        if (isMcpToolItem(item)) {
+          addMcpToolResult(item);
           continue;
         }
 
@@ -1200,6 +1252,11 @@ export function mountCodexRemote(
           }
         }
         void loadThreads();
+        return;
+      }
+
+      if (method === "item/completed" && params?.item && isMcpToolItem(params.item)) {
+        addMcpToolResult(params.item);
         return;
       }
 
@@ -2216,6 +2273,15 @@ export function mountCodexRemote(
     void showModels();
   });
   pluginsNav.addEventListener("click", () => void showPlugins());
+  const devWorkflowPanel = createDevWorkflowPanel({
+    modalBody,
+    openModal,
+    closeSidebar,
+    getActiveProject: () => activeProject,
+    showToast,
+    uid
+  });
+  devWorkflowsNav.addEventListener("click", () => void devWorkflowPanel.show());
   libraryNav.addEventListener("click", showLibrary);
   root.querySelectorAll<HTMLButtonElement>(".cx-agent-option").forEach(button => {
     button.addEventListener("click", () => {
