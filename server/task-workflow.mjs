@@ -572,7 +572,8 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
       const bodyText = String(input?.body || "").slice(0, 20000) + "\n\n---\nDevMoter task: " + (task?.id || "n/a") + "\nDevMoter session: " + (task?.sessionId || worktree.sessionId || "n/a");
       const preview = { repo, base, head, title, body: bodyText, worktreeId: worktree.id, taskId: task?.id || null };
       if (input?.confirm !== true) return { created: false, confirmationRequired: true, preview };
-      await run("git", ["push", "--set-upstream", "origin", head], worktree.path, 60000);\n      const result = await run("gh", ["pr", "create", "--repo", repo, "--base", base, "--head", head, "--title", title, "--body", bodyText], worktree.path, 60000);
+      await run("git", ["push", "--set-upstream", "origin", head], worktree.path, 60000);
+      const result = await run("gh", ["pr", "create", "--repo", repo, "--base", base, "--head", head, "--title", title, "--body", bodyText], worktree.path, 60000);
       const url = result.stdout.trim().split(/\s+/).find(x => /^https:\/\/github\.com\//.test(x)) || result.stdout.trim();
       if (task) { task.status = "pr-created"; task.pr = { url, base, head, title, at: Date.now() }; await save(state); }
       return { created: true, url, preview };
@@ -599,7 +600,8 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
       if (req.method === "POST" && tail === "worktrees") { send(res, 201, { worktree: await createWorktree(projectId, await body(req)) }); return true; }
       sub = tail.match(/^worktrees\/([^/]+)\/cleanup$/);
       if (req.method === "POST" && sub) { send(res, 200, await cleanupWorktree(projectId, decodeURIComponent(sub[1]), await body(req))); return true; }
-      if (req.method === "GET" && tail === "github/tasks") { send(res, 200, { tasks: await listTasks(projectId) }); return true; }\n      if (req.method === "POST" && tail === "github/issue") { send(res, 201, await issueTask(projectId, await body(req))); return true; }
+      if (req.method === "GET" && tail === "github/tasks") { send(res, 200, { tasks: await listTasks(projectId) }); return true; }
+      if (req.method === "POST" && tail === "github/issue") { send(res, 201, await issueTask(projectId, await body(req))); return true; }
       if (req.method === "POST" && tail === "github/pr") { send(res, 200, await pullRequest(projectId, await body(req))); return true; }
       send(res, 404, { error: "Workflow endpoint not found" }); return true;
     } catch (error) {
