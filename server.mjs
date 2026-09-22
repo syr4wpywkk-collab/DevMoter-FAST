@@ -9,6 +9,7 @@ import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, 
 import { createOperationRegistry } from "./server/operation-registry.mjs";
 import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
 import { createSessionControl } from "./server/session-control.mjs";
+import { createTaskWorkflow } from "./server/task-workflow.mjs";
 import { createAdvancedApi } from "./server/advanced-api.mjs";
 import { createTerminalManager } from "./server/terminal.mjs";
 import { createProjectIndex } from "./server/project-index.mjs";
@@ -59,6 +60,7 @@ const advancedApi = createAdvancedApi({
   configDir: PROJECT_CONFIG_DIR,
   getProjectById
 });
+const taskWorkflow = createTaskWorkflow({ homeDir: HOME_DIR, getProjectById });
 const SAFETY_PERMISSION_FILE = join(PROJECT_CONFIG_DIR, "remembered-approvals.json");
 const PROJECT_INDEX_DIR = join(HOME_DIR, ".local", "state", "opencode-pocket", "project-indexes");
 const safety = createSafetyService({
@@ -1076,6 +1078,15 @@ const server = http.createServer(async (req, res) => {
       if (await advancedApi.handle(req, res, url)) return;
     }
 
+
+    if (url.pathname.startsWith("/api/workflow/")) {
+      if (
+        req.method !== "GET" &&
+        req.method !== "HEAD" &&
+        !claimOperation(req, res, `${req.method}:${url.pathname}`)
+      ) return;
+      if (await taskWorkflow.handle(req, res, url)) return;
+    }
 
     if (url.pathname.startsWith("/api/session-control")) {
       if (
