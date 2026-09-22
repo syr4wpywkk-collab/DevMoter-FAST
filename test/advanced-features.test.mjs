@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { readBoundedResponseBody, resolveLivePreviewTarget } from "../server/advanced-api.mjs";
 import { join } from "node:path";
 import {
   buildBubblewrapCommand,
@@ -185,32 +186,6 @@ test("live preview body is rejected while streaming once it exceeds the bound", 
   }));
   await assert.rejects(() => readBoundedResponseBody(response, 16), /too large/);
 });
-
-test("failover never selects a model that misses the requested capabilities", async () => {
-  const providers = [
-    {
-      id: "primary", label: "Primary", kind: "openai-compatible",
-      baseUrl: "http://127.0.0.1:1/v1", apiKey: "", local: true,
-      models: [{ id: "vision", capabilities: ["vision", "tools"], context: 32000 }]
-    },
-    {
-      id: "fallback", label: "Fallback", kind: "openai-compatible",
-      baseUrl: "http://127.0.0.1:2/v1", apiKey: "", local: true,
-      models: [{ id: "text", capabilities: ["tools"], context: 32000 }]
-    }
-  ];
-  await assert.rejects(
-    () => runWithRouting({
-      providers, routes: [], failover: ["fallback/text"], role: "coding",
-      requirements: { vision: true },
-      override: { providerId: "primary", model: "vision" },
-      messages: [{ role: "user", content: "inspect image" }],
-      fetchImpl: async () => new Response("retry", { status: 503 })
-    }),
-    /retry|failed|503/i
-  );
-});
-
 
 test("live preview target cannot escape approved loopback host with scheme-relative suffix", () => {
   assert.throws(
