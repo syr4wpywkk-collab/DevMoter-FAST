@@ -1,9 +1,20 @@
 type ApiProvider = {
   id: string;
   name: string;
-  kind: string;
+  presetId?: string;
+  protocol: "openai-compatible" | "anthropic";
+  baseUrl: string;
   ready: boolean;
   models: string[];
+  source?: "file" | "env";
+  editable?: boolean;
+};
+
+type ApiPreset = {
+  id: string;
+  name: string;
+  protocol: "openai-compatible" | "anthropic";
+  baseUrl: string;
 };
 
 type ChatMessage = {
@@ -25,6 +36,23 @@ function operationId() {
     `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
+async function apiJson<T = any>(path: string, init: RequestInit = {}): Promise<T> {
+  const method = String(init.method || "GET").toUpperCase();
+  const mutating = method !== "GET" && method !== "HEAD";
+  const res = await fetch(path, {
+    ...init,
+    cache: method === "GET" ? "no-store" : undefined,
+    headers: {
+      ...(init.body ? { "content-type": "application/json" } : {}),
+      ...(mutating ? { "x-pocket-operation-id": operationId() } : {}),
+      ...(init.headers || {})
+    }
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
+  return payload as T;
+}
+
 export function mountApiChat(
   root: HTMLElement,
   options: ApiChatOptions = {}
@@ -43,8 +71,12 @@ export function mountApiChat(
           <button id="apiGoOpenCode" type="button"><span>◈</span><span>OpenCode</span></button>
           <button class="active" type="button"><span>✦</span><span>API Chat</span></button>
         </nav>
+        <div class="api-nav-label">SETTINGS</div>
+        <nav class="api-agent-nav">
+          <button id="apiSettingsSide" type="button"><span>⚙</span><span>API Providers</span></button>
+        </nav>
         <div class="api-sidebar-note">
-          APIキーはサーバー側だけに保存され、ブラウザには送信されません。
+          APIキーはDevMoterサーバー側だけに保存され、保存後ブラウザへ返されません。
         </div>
       </aside>
 
@@ -57,6 +89,7 @@ export function mountApiChat(
         <div class="api-picker-row">
           <select id="apiProvider" aria-label="API provider"></select>
           <select id="apiModel" aria-label="Model"></select>
+          <button id="apiSettingsTop" class="api-icon-button api-settings-button" type="button" aria-label="API設定">⚙</button>
         </div>
       </header>
 
@@ -79,6 +112,19 @@ export function mountApiChat(
           </div>
         </form>
       </section>
+
+      <div id="apiSettingsModal" class="api-settings-modal hidden" role="dialog" aria-modal="true" aria-labelledby="apiSettingsTitle">
+        <div class="api-settings-card">
+          <header class="api-settings-head">
+            <div>
+              <strong id="apiSettingsTitle">API Providers</strong>
+              <small>キーはこの端末のDevMoterにだけ保存</small>
+            </div>
+            <button id="apiSettingsClose" type="button" aria-label="閉じる">×</button>
+          </header>
+          <div id="apiSettingsBody" class="api-settings-body"></div>
+        </div>
+      </div>
     </div>
   `;
 
@@ -87,6 +133,8 @@ export function mountApiChat(
   const sidebarClose = root.querySelector<HTMLButtonElement>("#apiSidebarClose")!;
   const goCodex = root.querySelector<HTMLButtonElement>("#apiGoCodex")!;
   const goOpenCode = root.querySelector<HTMLButtonElement>("#apiGoOpenCode")!;
+  const settingsSide = root.querySelector<HTMLButtonElement>("#apiSettingsSide")!;
+  const settingsTop = root.querySelector<HTMLButtonElement>("#apiSettingsTop")!;
   const newChat = root.querySelector<HTMLButtonElement>("#apiNewChat")!;
   const providerSelect = root.querySelector<HTMLSelectElement>("#apiProvider")!;
   const modelSelect = root.querySelector<HTMLSelectElement>("#apiModel")!;
@@ -96,8 +144,12 @@ export function mountApiChat(
   const prompt = root.querySelector<HTMLTextAreaElement>("#apiPrompt")!;
   const send = root.querySelector<HTMLButtonElement>("#apiSend")!;
   const status = root.querySelector<HTMLElement>("#apiStatus")!;
+  const settingsModal = root.querySelector<HTMLDivElement>("#apiSettingsModal")!;
+  const settingsClose = root.querySelector<HTMLButtonElement>("#apiSettingsClose")!;
+  const settingsBody = root.querySelector<HTMLDivElement>("#apiSettingsBody")!;
 
   let providers: ApiProvider[] = [];
+  let presets: ApiPreset[] = [];
   let messages: ChatMessage[] = [];
   let sending = false;
 
@@ -107,6 +159,10 @@ export function mountApiChat(
 
   function closeSidebar() {
     sidebar.classList.remove("open");
+  }
+
+  function closeSettings() {
+    settingsModal.classList.add("hidden");
   }
 
   function currentProvider() {
@@ -128,8 +184,9 @@ export function mountApiChat(
     if (savedModel && provider?.models.includes(savedModel)) {
       modelSelect.value = savedModel;
     }
+
     status.textContent = !provider
-      ? "API providerが未設定です"
+      ? "⚙ API Providerを追加してね"
       : provider.ready
         ? `${provider.name} · Ready`
         : `${provider.name} · APIキー未設定`;
@@ -161,19 +218,26 @@ export function mountApiChat(
   async function refresh() {
     status.textContent = "接続先を読み込み中…";
     try {
-      const res = await fetch("/api/llm/providers", { cache: "no-store" });
-      const payload = await res.json();
-      if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
+      const payload = await apiJson<{ providers?: ApiProvider[] }>("/api/llm/providers");
       providers = Array.isArray(payload?.providers) ? payload.providers : [];
 
       const saved = localStorage.getItem("devmoter-api-provider");
       providerSelect.replaceChildren();
+
+      if (providers.length === 0) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "APIを追加";
+        providerSelect.appendChild(option);
+      }
+
       for (const provider of providers) {
         const option = document.createElement("option");
         option.value = provider.id;
         option.textContent = provider.ready ? provider.name : `${provider.name} (key required)`;
         providerSelect.appendChild(option);
       }
+
       if (saved && providers.some(provider => provider.id === saved)) {
         providerSelect.value = saved;
       }
@@ -184,6 +248,292 @@ export function mountApiChat(
       modelSelect.replaceChildren();
       status.textContent = error instanceof Error ? error.message : String(error);
       send.disabled = true;
+    }
+  }
+
+  async function loadPresets() {
+    if (presets.length) return presets;
+    const payload = await apiJson<{ presets?: ApiPreset[] }>("/api/llm/presets");
+    presets = Array.isArray(payload?.presets) ? payload.presets : [];
+    return presets;
+  }
+
+  function providerSummary(provider: ApiProvider) {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "api-provider-row";
+    row.disabled = provider.editable === false;
+
+    const copy = document.createElement("span");
+    copy.className = "api-provider-row-copy";
+    const title = document.createElement("strong");
+    title.textContent = provider.name;
+    const meta = document.createElement("small");
+    const source = provider.source === "env" ? "環境変数 · 読み取り専用" : "DevMoter設定";
+    meta.textContent = `${source} · ${provider.models.length} models · ${provider.ready ? "Key saved" : "No key"}`;
+    copy.append(title, meta);
+
+    const protocol = document.createElement("span");
+    protocol.className = "api-provider-protocol";
+    protocol.textContent = provider.protocol === "anthropic" ? "Anthropic" : "OpenAI";
+
+    row.append(copy, protocol);
+    if (provider.editable !== false) {
+      row.addEventListener("click", () => void showProviderForm(provider));
+    }
+    return row;
+  }
+
+  async function renderSettingsList() {
+    settingsBody.replaceChildren();
+
+    const toolbar = document.createElement("div");
+    toolbar.className = "api-settings-toolbar";
+    const text = document.createElement("div");
+    text.innerHTML = "<strong>接続先</strong><small>APIキーは保存後に画面へ戻しません</small>";
+    const add = document.createElement("button");
+    add.type = "button";
+    add.className = "primary";
+    add.textContent = "＋ APIを追加";
+    add.addEventListener("click", () => void showProviderForm());
+    toolbar.append(text, add);
+    settingsBody.appendChild(toolbar);
+
+    if (!providers.length) {
+      const empty = document.createElement("div");
+      empty.className = "api-settings-empty";
+      empty.innerHTML = "<strong>まだAPIがありません</strong><p>企業を選んでAPIキーを追加すると、上のモデル切替からすぐ使えます。</p>";
+      settingsBody.appendChild(empty);
+      return;
+    }
+
+    const list = document.createElement("div");
+    list.className = "api-provider-list";
+    for (const provider of providers) list.appendChild(providerSummary(provider));
+    settingsBody.appendChild(list);
+  }
+
+  async function openSettings() {
+    closeSidebar();
+    settingsModal.classList.remove("hidden");
+    settingsBody.innerHTML = '<div class="api-settings-loading">読み込み中…</div>';
+    try {
+      await Promise.all([refresh(), loadPresets()]);
+      await renderSettingsList();
+    } catch (error) {
+      settingsBody.textContent = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  async function showProviderForm(provider?: ApiProvider) {
+    await loadPresets();
+    settingsBody.replaceChildren();
+
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "api-settings-back";
+    back.textContent = "‹ Providers";
+    back.addEventListener("click", () => void renderSettingsList());
+
+    const heading = document.createElement("div");
+    heading.className = "api-settings-form-title";
+    const headingTitle = document.createElement("strong");
+    headingTitle.textContent = provider ? provider.name : "APIを追加";
+    const headingText = document.createElement("small");
+    headingText.textContent = provider
+      ? "空欄のAPIキーは保存済みキーをそのまま使います"
+      : "企業プリセットを選ぶか、Customで任意のAPIを追加できます";
+    heading.append(headingTitle, headingText);
+
+    const providerForm = document.createElement("form");
+    providerForm.className = "api-provider-form";
+    providerForm.innerHTML = `
+      <label>
+        <span>企業 / Provider</span>
+        <select data-field="preset"></select>
+      </label>
+      <label>
+        <span>表示名</span>
+        <input data-field="name" type="text" maxlength="100" required />
+      </label>
+      <label>
+        <span>API形式</span>
+        <select data-field="protocol">
+          <option value="openai-compatible">OpenAI compatible</option>
+          <option value="anthropic">Anthropic Messages</option>
+        </select>
+      </label>
+      <label>
+        <span>Base URL</span>
+        <input data-field="baseUrl" type="url" inputmode="url" autocomplete="off" required />
+      </label>
+      <label>
+        <span>API Key</span>
+        <input data-field="apiKey" type="password" autocomplete="new-password" />
+        <small data-key-hint></small>
+      </label>
+      <label>
+        <span>Models</span>
+        <textarea data-field="models" rows="6" placeholder="1行に1モデル\n例: model-name"></textarea>
+        <small>接続テストに成功するとモデル一覧を自動入力できます。</small>
+      </label>
+      <div data-form-message class="api-form-message"></div>
+      <div class="api-provider-form-actions">
+        <button data-action="test" type="button">接続テスト・モデル取得</button>
+        <button data-action="save" type="submit" class="primary">保存</button>
+      </div>
+    `;
+
+    const presetSelect = providerForm.querySelector<HTMLSelectElement>('[data-field="preset"]')!;
+    const nameInput = providerForm.querySelector<HTMLInputElement>('[data-field="name"]')!;
+    const protocolSelect = providerForm.querySelector<HTMLSelectElement>('[data-field="protocol"]')!;
+    const baseUrlInput = providerForm.querySelector<HTMLInputElement>('[data-field="baseUrl"]')!;
+    const apiKeyInput = providerForm.querySelector<HTMLInputElement>('[data-field="apiKey"]')!;
+    const modelsInput = providerForm.querySelector<HTMLTextAreaElement>('[data-field="models"]')!;
+    const keyHint = providerForm.querySelector<HTMLElement>("[data-key-hint]")!;
+    const formMessage = providerForm.querySelector<HTMLElement>("[data-form-message]")!;
+    const testButton = providerForm.querySelector<HTMLButtonElement>('[data-action="test"]')!;
+    const saveButton = providerForm.querySelector<HTMLButtonElement>('[data-action="save"]')!;
+
+    for (const preset of presets) {
+      const option = document.createElement("option");
+      option.value = preset.id;
+      option.textContent = preset.name;
+      presetSelect.appendChild(option);
+    }
+
+    if (provider) {
+      presetSelect.value = provider.presetId || "custom";
+      nameInput.value = provider.name;
+      protocolSelect.value = provider.protocol;
+      baseUrlInput.value = provider.baseUrl;
+      modelsInput.value = provider.models.join("\n");
+      apiKeyInput.placeholder = provider.ready ? "保存済み（変更するときだけ入力）" : "APIキーを入力";
+      keyHint.textContent = provider.ready
+        ? "🔒 保存済みキーはブラウザへ再表示されません。"
+        : "APIキーはまだ保存されていません。";
+    } else {
+      const initial = presets[0];
+      if (initial) {
+        presetSelect.value = initial.id;
+        nameInput.value = initial.name;
+        protocolSelect.value = initial.protocol;
+        baseUrlInput.value = initial.baseUrl;
+      }
+      apiKeyInput.placeholder = "APIキーを貼り付け";
+      keyHint.textContent = "🔒 キーはDevMoterサーバー側に保存します。";
+    }
+
+    function applyPreset() {
+      const preset = presets.find(item => item.id === presetSelect.value);
+      if (!preset || preset.id === "custom") return;
+      nameInput.value = preset.name;
+      protocolSelect.value = preset.protocol;
+      baseUrlInput.value = preset.baseUrl;
+    }
+
+    function formPayload() {
+      return {
+        ...(provider ? { id: provider.id } : {}),
+        presetId: presetSelect.value,
+        name: nameInput.value.trim(),
+        protocol: protocolSelect.value,
+        baseUrl: baseUrlInput.value.trim(),
+        apiKey: apiKeyInput.value.trim(),
+        models: modelsInput.value
+          .split(/\n|,/)
+          .map(item => item.trim())
+          .filter(Boolean)
+      };
+    }
+
+    presetSelect.addEventListener("change", applyPreset);
+
+    testButton.addEventListener("click", async () => {
+      const payload = formPayload();
+      if (!payload.apiKey) {
+        formMessage.textContent = provider?.ready
+          ? "接続テストするときだけAPIキーをもう一度入力してね。保存だけなら空欄でOK。"
+          : "接続テストにはAPIキーが必要です。";
+        formMessage.dataset.state = "error";
+        return;
+      }
+
+      testButton.disabled = true;
+      saveButton.disabled = true;
+      formMessage.textContent = "接続中…";
+      formMessage.dataset.state = "loading";
+      try {
+        const result = await apiJson<{ ok?: boolean; models?: string[] }>("/api/llm/test", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        const discovered = Array.isArray(result.models) ? result.models : [];
+        if (discovered.length) modelsInput.value = discovered.join("\n");
+        formMessage.textContent = discovered.length
+          ? `✅ 接続成功 · ${discovered.length}モデル取得`
+          : "✅ 接続成功 · モデル一覧は返されなかったので手動入力してね";
+        formMessage.dataset.state = "success";
+      } catch (error) {
+        formMessage.textContent = `接続失敗: ${error instanceof Error ? error.message : String(error)}`;
+        formMessage.dataset.state = "error";
+      } finally {
+        testButton.disabled = false;
+        saveButton.disabled = false;
+      }
+    });
+
+    providerForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      testButton.disabled = true;
+      saveButton.disabled = true;
+      formMessage.textContent = "保存中…";
+      formMessage.dataset.state = "loading";
+      try {
+        await apiJson("/api/llm/providers", {
+          method: "POST",
+          body: JSON.stringify(formPayload())
+        });
+        apiKeyInput.value = "";
+        await refresh();
+        await renderSettingsList();
+      } catch (error) {
+        formMessage.textContent = error instanceof Error ? error.message : String(error);
+        formMessage.dataset.state = "error";
+      } finally {
+        testButton.disabled = false;
+        saveButton.disabled = false;
+      }
+    });
+
+    settingsBody.append(back, heading, providerForm);
+
+    if (provider?.editable !== false) {
+      const danger = document.createElement("section");
+      danger.className = "api-provider-danger";
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "このAPI設定を削除";
+      remove.addEventListener("click", async () => {
+        if (!confirm(`${provider.name} のAPI設定を削除しますか？`)) return;
+        remove.disabled = true;
+        try {
+          await apiJson(`/api/llm/providers/${encodeURIComponent(provider.id)}`, {
+            method: "DELETE"
+          });
+          if (localStorage.getItem("devmoter-api-provider") === provider.id) {
+            localStorage.removeItem("devmoter-api-provider");
+          }
+          await refresh();
+          await renderSettingsList();
+        } catch (error) {
+          formMessage.textContent = error instanceof Error ? error.message : String(error);
+          formMessage.dataset.state = "error";
+          remove.disabled = false;
+        }
+      });
+      danger.appendChild(remove);
+      settingsBody.appendChild(danger);
     }
   }
 
@@ -202,20 +552,14 @@ export function mountApiChat(
     status.textContent = `${provider.name} · 考え中…`;
 
     try {
-      const res = await fetch("/api/llm/chat", {
+      const payload = await apiJson<{ message?: { content?: string } }>("/api/llm/chat", {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-pocket-operation-id": operationId()
-        },
         body: JSON.stringify({
           providerId: provider.id,
           model,
           messages
         })
       });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
       const content = String(payload?.message?.content || "").trim();
       if (!content) throw new Error("空の応答が返されました");
       messages.push({ role: "assistant", content });
@@ -245,6 +589,12 @@ export function mountApiChat(
     closeSidebar();
     options.onOpenCode?.();
   });
+  settingsSide.addEventListener("click", () => void openSettings());
+  settingsTop.addEventListener("click", () => void openSettings());
+  settingsClose.addEventListener("click", closeSettings);
+  settingsModal.addEventListener("click", event => {
+    if (event.target === settingsModal) closeSettings();
+  });
   newChat.addEventListener("click", () => {
     messages = [];
     renderMessages();
@@ -252,6 +602,10 @@ export function mountApiChat(
     prompt.focus();
   });
   providerSelect.addEventListener("change", () => {
+    if (!providerSelect.value) {
+      void openSettings();
+      return;
+    }
     localStorage.setItem("devmoter-api-provider", providerSelect.value);
     updateModels();
   });
