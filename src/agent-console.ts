@@ -105,6 +105,7 @@ export function mountAgentConsole() {
   let modelRoutes = loadModelRoutes();
   let activeModeId = "debug";
   let orchestrationPlan: OrchestrationPlan | null = null;
+  let secondOpinionTargetId: string | null = null;
   const subagents = new SubagentRuntime({
     adapters: { codex: createCodexSubagentAdapter() },
     policy: { maxDepth: 3, tokenBudget: 12000, turnBudget: 8 }
@@ -180,6 +181,24 @@ export function mountAgentConsole() {
       </div>
       <div id="devmoterSubagentList"></div>
     </section>
+    <section id="devmoterSecondOpinionComposer" class="devmoter-second-opinion-composer hidden">
+      <strong>Ask for a second opinion</strong>
+      <small id="devmoterSecondOpinionTarget"></small>
+      <div class="devmoter-second-opinion-share">
+        <label><input id="devmoterOpinionShareTask" type="checkbox" checked /> Share task</label>
+        <label><input id="devmoterOpinionShareOutput" type="checkbox" checked /> Share current output</label>
+        <label><input id="devmoterOpinionShareError" type="checkbox" /> Share error details</label>
+      </div>
+      <textarea id="devmoterOpinionQuestion">Review the shared work independently. State agreements, disagreements, risks, and recommended next steps.</textarea>
+      <div class="devmoter-agent-mode-tools">
+        <button id="devmoterOpinionLaunch" type="button">Ask reviewer</button>
+        <button id="devmoterOpinionClose" type="button">Cancel</button>
+      </div>
+    </section>
+    <section id="devmoterSecondOpinionRuns" class="devmoter-subagent-runs hidden">
+      <div class="devmoter-fleet-dashboard-head"><strong>Second opinions</strong><span>separate results</span></div>
+      <div id="devmoterSecondOpinionList"></div>
+    </section>
     <p id="devmoterAgentStatus" class="devmoter-agent-status" role="status" aria-live="polite"></p>
   `;
 
@@ -214,6 +233,16 @@ export function mountAgentConsole() {
   const modelRoutePreview = panel.querySelector<HTMLPreElement>("#devmoterModelRoutePreview")!;
   const modelRouteRows = panel.querySelector<HTMLDivElement>("#devmoterModelRouteRows")!;
   const modelRoutesSave = panel.querySelector<HTMLButtonElement>("#devmoterModelRoutesSave")!;
+  const opinionComposer = panel.querySelector<HTMLElement>("#devmoterSecondOpinionComposer")!;
+  const opinionTarget = panel.querySelector<HTMLElement>("#devmoterSecondOpinionTarget")!;
+  const opinionShareTask = panel.querySelector<HTMLInputElement>("#devmoterOpinionShareTask")!;
+  const opinionShareOutput = panel.querySelector<HTMLInputElement>("#devmoterOpinionShareOutput")!;
+  const opinionShareError = panel.querySelector<HTMLInputElement>("#devmoterOpinionShareError")!;
+  const opinionQuestion = panel.querySelector<HTMLTextAreaElement>("#devmoterOpinionQuestion")!;
+  const opinionLaunch = panel.querySelector<HTMLButtonElement>("#devmoterOpinionLaunch")!;
+  const opinionClose = panel.querySelector<HTMLButtonElement>("#devmoterOpinionClose")!;
+  const opinionRuns = panel.querySelector<HTMLElement>("#devmoterSecondOpinionRuns")!;
+  const opinionList = panel.querySelector<HTMLDivElement>("#devmoterSecondOpinionList")!;
 
   function renderModelRouting() {
     modelRoutePreview.textContent = describeModelRoutes(modelRoutes);
@@ -332,12 +361,13 @@ export function mountAgentConsole() {
   }
 
   function renderSubagentRun(run: SubagentRun) {
-    let card = subagentList.querySelector<HTMLElement>(`[data-run-id="${run.id}"]`);
+    const targetList = run.kind === "second-opinion" ? opinionList : subagentList;
+    let card = targetList.querySelector<HTMLElement>(`[data-run-id="${run.id}"]`);
     if (!card) {
       card = document.createElement("article");
-      card.className = "devmoter-subagent-card";
+      card.className = `devmoter-subagent-card ${run.kind === "second-opinion" ? "second-opinion" : ""}`;
       card.dataset.runId = run.id;
-      subagentList.prepend(card);
+      targetList.prepend(card);
     }
     card.dataset.state = run.state;
     const lineage = [run.parentSessionId, ...run.lineage, run.id].join(" > ");
@@ -362,6 +392,12 @@ export function mountAgentConsole() {
     const budget = document.createElement("small");
     budget.textContent = `Depth ${run.depth} · budget ${run.budget.tokensRemaining}/${run.budget.tokenLimit} tok · ${run.budget.turnsRemaining}/${run.budget.turnLimit} turns`;
     card.append(head, taskText, lineageText, budget);
+    if (run.kind === "second-opinion" && run.output) {
+      const result = document.createElement("pre");
+      result.className = "devmoter-second-opinion-result";
+      result.textContent = run.output;
+      card.appendChild(result);
+    }
 
     const actions = document.createElement("div");
     actions.className = "devmoter-agent-mode-tools";
@@ -376,6 +412,21 @@ export function mountAgentConsole() {
         window.location.reload();
       });
       actions.appendChild(open);
+    }
+
+    if (run.kind !== "second-opinion") {
+      const opinion = document.createElement("button");
+      opinion.type = "button";
+      opinion.textContent = "Second opinion";
+      opinion.addEventListener("click", () => {
+        secondOpinionTargetId = run.id;
+        opinionTarget.textContent = `${run.role} · ${run.id}`;
+        opinionShareTask.checked = true;
+        opinionShareOutput.checked = Boolean(run.output);
+        opinionShareError.checked = Boolean(run.error);
+        opinionComposer.classList.remove("hidden");
+      });
+      actions.appendChild(opinion);
     }
 
     if (!["completed", "failed", "cancelled"].includes(run.state)) {
@@ -401,11 +452,41 @@ export function mountAgentConsole() {
     }
 
     if (actions.childElementCount) card.appendChild(actions);
-    subagentRuns.classList.remove("hidden");
+    if (run.kind === "second-opinion") opinionRuns.classList.remove("hidden");
+    else subagentRuns.classList.remove("hidden");
     updateDashboardSummary();
   }
 
   subagents.subscribe(renderSubagentRun);
+
+  opinionClose.addEventListener("click", () => {
+    secondOpinionTargetId = null;
+    opinionComposer.classList.add("hidden");
+  });
+
+  opinionLaunch.addEventListener("click", () => {
+    void (async () => {
+      try {
+        if (!secondOpinionTargetId) throw new Error("Choose an agent first");
+        const reviewer = resolveRoleModel("reviewer", modelRoutes);
+        const opinion = await subagents.spawnSecondOpinion(secondOpinionTargetId, {
+          role: "reviewer",
+          model: reviewer.model || undefined,
+          task: opinionQuestion.value,
+          share: {
+            task: opinionShareTask.checked,
+            output: opinionShareOutput.checked,
+            error: opinionShareError.checked
+          }
+        });
+        opinionComposer.classList.add("hidden");
+        secondOpinionTargetId = null;
+        if (opinion) setStatus(`Second opinion started: ${opinion.id}`);
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : String(error), true);
+      }
+    })();
+  });
 
   modelRoutesSave.addEventListener("click", () => {
     try {
