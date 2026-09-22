@@ -80,14 +80,30 @@ Open the HTTPS Serve URL shown by Tailscale from your phone.
 
 Do not use a public tunnel or Tailscale Funnel for the current alpha unless you have added an appropriate authentication and authorization layer.
 
-## Updating later
+## Supported install / update commands
+
+From a checkout, the idempotent installer verifies prerequisites and builds DevMoter without using `sudo`:
 
 ```bash
-cd DevMoter-FAST
-git pull --ff-only
-npm ci
-bash scripts/start-pocket.sh
+bash scripts/install.sh
 ```
+
+Update only when you explicitly request it:
+
+```bash
+bash scripts/update.sh
+```
+
+The updater refuses dirty worktrees, shows current/target versions and commits, creates a recovery branch, preserves `~/.config/opencode-pocket`, and rolls back the checkout if validation fails.
+
+Optional Linux user service:
+
+```bash
+bash scripts/install-systemd-user.sh
+systemctl --user enable --now devmoter-fast.service
+```
+
+See [docs/operations.md](./docs/operations.md) for start/stop/restart/status/log commands.
 
 ## If startup fails
 
