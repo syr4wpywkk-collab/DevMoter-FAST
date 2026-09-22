@@ -136,7 +136,11 @@ export function mountAgentConsole() {
     <section id="devmoterOrchestrationPreview" class="devmoter-orchestration-preview hidden">
       <strong>Decomposition preview</strong>
       <div id="devmoterOrchestrationChildren"></div>
-      <button id="devmoterOrchestrationApprove" class="devmoter-agent-run" type="button">Approve & send plan</button>
+      <div class="devmoter-fleet-launch">
+        <label>Concurrency <select id="devmoterFleetConcurrency"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
+        <button id="devmoterFleetLaunch" type="button">Approve & launch Agent Fleet</button>
+      </div>
+      <button id="devmoterOrchestrationApprove" class="devmoter-agent-run" type="button">Approve & send plan to active chat</button>
     </section>
     <button id="devmoterAgentRun" class="devmoter-agent-run" type="button">Run in active chat</button>
     <button id="devmoterSubagentRun" class="devmoter-agent-secondary-run" type="button">Run as bounded Codex subagent</button>
@@ -169,6 +173,8 @@ export function mountAgentConsole() {
   const orchestrationPreview = panel.querySelector<HTMLElement>("#devmoterOrchestrationPreview")!;
   const orchestrationChildren = panel.querySelector<HTMLDivElement>("#devmoterOrchestrationChildren")!;
   const orchestrationApprove = panel.querySelector<HTMLButtonElement>("#devmoterOrchestrationApprove")!;
+  const fleetConcurrency = panel.querySelector<HTMLSelectElement>("#devmoterFleetConcurrency")!;
+  const fleetLaunch = panel.querySelector<HTMLButtonElement>("#devmoterFleetLaunch")!;
   const subagentRun = panel.querySelector<HTMLButtonElement>("#devmoterSubagentRun")!;
   const subagentRuns = panel.querySelector<HTMLElement>("#devmoterSubagentRuns")!;
   const subagentList = panel.querySelector<HTMLDivElement>("#devmoterSubagentList")!;
@@ -256,7 +262,7 @@ export function mountAgentConsole() {
     const head = document.createElement("div");
     head.className = "devmoter-subagent-card-head";
     const name = document.createElement("strong");
-    name.textContent = `${run.role} · ${run.state}`;
+    name.textContent = `${run.role} · ${run.state}${run.fleetId ? " · fleet" : ""}`;
     const model = document.createElement("span");
     model.textContent = run.effectiveModel || run.model || "default model";
     head.append(name, model);
@@ -396,6 +402,36 @@ export function mountAgentConsole() {
           }
         });
         if (run) setStatus(`Spawned bounded subagent ${run.id}`);
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : String(error), true);
+      }
+    })();
+  });
+
+  fleetLaunch.addEventListener("click", () => {
+    void (async () => {
+      try {
+        if (!orchestrationPlan) throw new Error("Preview a decomposition first");
+        const parent = parentSessionId();
+        if (!parent) throw new Error("Open a parent chat/session before launching a fleet");
+        if (orchestrationPlan.state === "awaiting_approval") approveOrchestrationPlan(orchestrationPlan);
+        const mode = resolveMode(activeModeId, customModes);
+        const fleet = await subagents.runFleet(
+          orchestrationPlan.children.map(child => ({
+            backend: "codex",
+            parentSessionId: parent,
+            role: child.owner,
+            model: mode.model || undefined,
+            task: child.title,
+            context: {
+              parentTask: orchestrationPlan?.task || "",
+              approvedPlanId: orchestrationPlan?.id || ""
+            }
+          })),
+          { concurrency: Number(fleetConcurrency.value) || 2 }
+        );
+        setStatus(`Fleet ${fleet.id}: ${fleet.runIds.length} running/started, ${fleet.queued} queued.`);
+        subagentRuns.classList.remove("hidden");
       } catch (error) {
         setStatus(error instanceof Error ? error.message : String(error), true);
       }
