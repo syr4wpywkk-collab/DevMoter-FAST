@@ -1,4 +1,4 @@
-const CACHE = "devmoter-fast-v19";
+const CACHE = "devmoter-fast-v20";
 const SHELL = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", event => {
@@ -31,4 +31,50 @@ self.addEventListener("fetch", event => {
       })
       .catch(() => caches.match(request))
   );
+});
+
+self.addEventListener("push", event => {
+  event.waitUntil((async () => {
+    let notification = {
+      title: "DevMoter",
+      body: "Your coding agent needs attention.",
+      url: "/"
+    };
+
+    try {
+      const subscription = await self.registration.pushManager.getSubscription();
+      if (subscription) {
+        const response = await fetch("/api/push/pending", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ endpoint: subscription.endpoint }),
+          cache: "no-store"
+        });
+        const payload = await response.json();
+        if (payload?.notification) notification = payload.notification;
+      }
+    } catch {
+      // Keep the generic privacy-preserving fallback.
+    }
+
+    await self.registration.showNotification(notification.title || "DevMoter", {
+      body: notification.body || "Your coding agent needs attention.",
+      tag: `devmoter:${notification.url || "/"}`,
+      data: { url: notification.url || "/" }
+    });
+  })());
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const target = new URL(event.notification?.data?.url || "/", self.location.origin).href;
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of windows) {
+      if (new URL(client.url).origin !== self.location.origin) continue;
+      await client.navigate(target);
+      return client.focus();
+    }
+    return self.clients.openWindow(target);
+  })());
 });
