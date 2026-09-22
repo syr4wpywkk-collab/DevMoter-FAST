@@ -29,3 +29,14 @@ test("unknown modes and empty tasks fail closed", () => {
   assert.throws(() => getBuiltinMode("missing"), /Unknown mode/);
   assert.throws(() => compileModePrompt("debug", "   "), /Task is required/);
 });
+
+test("review mode is read-only and requests structured file findings", () => {
+  const mode = getBuiltinMode("review");
+  assert.equal(mode.name, "Review");
+  assert.equal(mode.mutationPolicy, "read-only-until-explicit-transition");
+  assert.ok(mode.tools.deny.includes("files"));
+  const prompt = compileModePrompt("review", "Review the current working tree");
+  assert.match(prompt, /Do not modify files/i);
+  assert.match(prompt, /file:line references/i);
+  assert.match(prompt, /explicit transition/i);
+});
