@@ -2404,6 +2404,205 @@ export function mountOpenCodeRemote(
     modalBody.appendChild(list);
   }
 
+  function persistImportedThreads() {
+    localStorage.setItem(
+      "opencode-pocket-imported-threads",
+      JSON.stringify(importedThreads.slice(0, 20))
+    );
+  }
+
+  function downloadText(name: string, content: string) {
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = name;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function exportActiveSession() {
+    if (!activeSession) {
+      showToast("Open a session first");
+      return;
+    }
+    const context = await api<Json[]>(
+      "/session/" + encodeURIComponent(activeSession.id) + "/context"
+    );
+    const list = Array.isArray(context) ? context : [];
+    sessionMessageCounts.set(activeSession.id, countTranscriptMessages(list));
+    const markdown = sessionContextToMarkdown(activeSession, list);
+    const fileName = (activeSession.title || activeSession.id || "session")
+      .replace(/[^A-Za-z0-9._-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "session";
+    downloadText(fileName + ".md", markdown);
+    renderSessions();
+    showToast("Markdown exported");
+  }
+
+  function showImportedThread(thread: ImportedThread) {
+    openModal(thread.title || "Imported thread", "Imported from " + thread.origin);
+    modalBody.replaceChildren();
+
+    const notice = document.createElement("div");
+    notice.className = "ocx-import-notice";
+    notice.textContent =
+      "Read-only archive. Historical tool calls are inert and will never be executed.";
+    modalBody.appendChild(notice);
+
+    if (thread.unsupported.length) {
+      const unsupported = document.createElement("div");
+      unsupported.className = "ocx-import-warning";
+      unsupported.textContent =
+        "Unsupported event types: " + [...new Set(thread.unsupported)].join(", ");
+      modalBody.appendChild(unsupported);
+    }
+
+    const importedTranscript = document.createElement("div");
+    importedTranscript.className = "ocx-import-transcript";
+    for (const message of thread.messages) {
+      const row = document.createElement("section");
+      row.className = "ocx-import-message " + message.role;
+      const role = document.createElement("strong");
+      role.textContent = message.role;
+      const body = document.createElement("pre");
+      body.textContent = message.text || "";
+      row.append(role, body);
+      importedTranscript.appendChild(row);
+    }
+    modalBody.appendChild(importedTranscript);
+
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "ocx-modal-button";
+    back.textContent = "← Session tools";
+    back.addEventListener("click", showSessionTools);
+    modalBody.appendChild(back);
+  }
+
+  function showSessionTools() {
+    closeSidebar();
+    openModal("Session tools", "Export, import and screen wake lock");
+    modalBody.replaceChildren();
+
+    const actions = document.createElement("section");
+    actions.className = "ocx-session-tools";
+
+    const exportButton = document.createElement("button");
+    exportButton.type = "button";
+    exportButton.className = "ocx-modal-button primary";
+    exportButton.textContent = "Export current session as Markdown";
+    exportButton.disabled = !activeSession;
+    exportButton.addEventListener("click", () => {
+      exportButton.disabled = true;
+      void exportActiveSession()
+        .catch(error => showToast(error instanceof Error ? error.message : String(error)))
+        .finally(() => {
+          exportButton.disabled = !activeSession;
+        });
+    });
+
+    const importButton = document.createElement("button");
+    importButton.type = "button";
+    importButton.className = "ocx-modal-button";
+    importButton.textContent = "Import external thread JSON";
+
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json,.json";
+    input.hidden = true;
+    importButton.addEventListener("click", () => input.click());
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (file.size > 4 * 1024 * 1024) {
+        showToast("Import file is too large");
+        input.value = "";
+        return;
+      }
+      void file.text().then(text => {
+        const parsed = JSON.parse(text);
+        const imported = normalizeExternalThread(parsed);
+        importedThreads = [
+          { ...imported, id: imported.id + "-" + Date.now().toString(36) },
+          ...importedThreads
+        ].slice(0, 20);
+        persistImportedThreads();
+        showSessionTools();
+        showToast(
+          imported.unsupported.length
+            ? "Imported with unsupported events surfaced"
+            : "Thread imported as read-only archive"
+        );
+      }).catch(error => {
+        showToast(error instanceof Error ? error.message : String(error));
+      }).finally(() => {
+        input.value = "";
+      });
+    });
+
+    const wake = document.createElement("label");
+    wake.className = "ocx-wake-lock-setting";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = wakeLockEnabled();
+    checkbox.disabled = !wakeLockSupported();
+    const wakeCopy = document.createElement("span");
+    const wakeTitle = document.createElement("strong");
+    wakeTitle.textContent = "Keep screen awake while a turn is running";
+    const wakeMeta = document.createElement("small");
+    wakeMeta.textContent = wakeLockSupported()
+      ? "Explicit opt-in. Releases when execution ends or the page is hidden."
+      : "Wake Lock API is not supported in this browser.";
+    wakeCopy.append(wakeTitle, wakeMeta);
+    wake.append(checkbox, wakeCopy);
+    checkbox.addEventListener("change", () => {
+      setWakeLockEnabled(checkbox.checked);
+      setWakeLockExecutionActive("opencode", isExecutionActive(executionState));
+      showToast(checkbox.checked ? "Screen wake lock enabled" : "Screen wake lock disabled");
+    });
+
+    actions.append(exportButton, importButton, input, wake);
+    modalBody.appendChild(actions);
+
+    const importedTitle = document.createElement("div");
+    importedTitle.className = "ocx-modal-section-title";
+    importedTitle.textContent = "Imported read-only threads";
+    modalBody.appendChild(importedTitle);
+
+    const list = document.createElement("div");
+    list.className = "ocx-import-list";
+    if (!importedThreads.length) {
+      const empty = document.createElement("div");
+      empty.className = "ocx-empty";
+      empty.textContent = "No imported threads";
+      list.appendChild(empty);
+    }
+
+    for (const thread of importedThreads) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "ocx-import-row";
+      const copy = document.createElement("span");
+      const title = document.createElement("strong");
+      title.textContent = thread.title;
+      const meta = document.createElement("small");
+      meta.textContent =
+        thread.origin + " · " + thread.messages.length + " events" +
+        (thread.unsupported.length ? " · " + thread.unsupported.length + " unsupported" : "");
+      copy.append(title, meta);
+      const chevron = document.createElement("span");
+      chevron.textContent = "›";
+      button.append(copy, chevron);
+      button.addEventListener("click", () => showImportedThread(thread));
+      list.appendChild(button);
+    }
+    modalBody.appendChild(list);
+  }
+
   function showSessionDetails() {
     if (!activeSession) {
       void createSession();
@@ -2420,7 +2619,15 @@ export function mountOpenCodeRemote(
         <div><span>Output tokens</span><strong>${activeSession.tokens?.output ?? 0}</strong></div>
         <div><span>Cost</span><strong>${Number(activeSession.cost || 0).toFixed(4)}</strong></div>
       </div>
+      <div class="ocx-detail-actions">
+        <button id="ocxExportSession" type="button" class="ocx-modal-button primary">Export Markdown</button>
+        <button id="ocxOpenSessionTools" type="button" class="ocx-modal-button">Session tools</button>
+      </div>
     `;
+    root.querySelector<HTMLButtonElement>("#ocxExportSession")?.addEventListener("click", () => {
+      void exportActiveSession().catch(error => showToast(error instanceof Error ? error.message : String(error)));
+    });
+    root.querySelector<HTMLButtonElement>("#ocxOpenSessionTools")?.addEventListener("click", showSessionTools);
   }
 
   async function refresh() {
@@ -2477,6 +2684,12 @@ export function mountOpenCodeRemote(
   sidebarClose.addEventListener("click", closeSidebar);
   scrim.addEventListener("click", closeSidebar);
   sessionSearch.addEventListener("input", renderSessions);
+  sessionSort.addEventListener("change", () => {
+    sessionSortMode = sessionSort.value as SessionSortMode;
+    localStorage.setItem("opencode-pocket-session-sort", sessionSortMode);
+    renderSessions();
+  });
+  sessionToolsNav.addEventListener("click", showSessionTools);
 
   newSessionSide.addEventListener("click", () => void createSession());
   newSessionTop.addEventListener("click", () => void createSession());
@@ -2612,6 +2825,8 @@ export function mountOpenCodeRemote(
   });
 
   updateContextUI();
+  renderAttention();
+  setWakeLockExecutionActive("opencode", false);
   resizeComposer();
   setOnline(false);
 
