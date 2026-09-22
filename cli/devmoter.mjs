@@ -90,7 +90,7 @@ export async function main(argv = process.argv.slice(2)) {
   const { command, positional, options } = parsed;
   if (options.help || !command) {
     process.stdout.write(`${usage()}\n`);
-    return command ? EXIT.OK : EXIT.USAGE;
+    return options.help ? EXIT.OK : EXIT.USAGE;
   }
 
   const client = new DevMoterClient({
@@ -174,29 +174,41 @@ export async function main(argv = process.argv.slice(2)) {
         throw new Error("--backend must be opencode or codex");
       }
 
-      const opId = `cli-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      if (options["stream-json"]) {
-        writeJson(createEventEnvelope("task.accepted", { project, agent, backend }, { operationId: opId }));
-      }
-
-      const result = await client.runTask({
+      const opId = "cli-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+      const taskInput = {
         project,
         agent,
         task,
         backend,
         model: options.model || ""
-      }, { operationId: opId });
+      };
 
       if (options["stream-json"]) {
-        for (const event of result.events || []) {
-          writeJson(createEventEnvelope(event.type || "task.event", event.data ?? event, { operationId: opId }));
+        writeJson(createEventEnvelope(
+          "task.accepted",
+          { project, agent, backend },
+          { operationId: opId }
+        ));
+
+        let finalResult = null;
+        for await (const event of client.streamTask(taskInput, { operationId: opId })) {
+          writeJson(event);
+          if (event?.type === "task.result") finalResult = event.data;
+          if (event?.type === "task.error") finalResult = { status: "failed" };
         }
+
+        return ["failed", "blocked"].includes(finalResult?.status)
+          ? EXIT.TASK_FAILED
+          : EXIT.OK;
+      }
+
+      const result = await client.runTask(taskInput, { operationId: opId });
+
+      if (options.json) {
         writeJson(createEventEnvelope("task.result", result, { operationId: opId }));
-      } else if (options.json) {
-        writeJson(result);
       } else {
-        process.stdout.write(`${result.output || result.message || "Task submitted"}\n`);
-        if (result.sessionId) process.stderr.write(`session: ${result.sessionId}\n`);
+        process.stdout.write(String(result.output || result.message || "Task submitted") + "\n");
+        if (result.sessionId) process.stderr.write("session: " + result.sessionId + "\n");
       }
       return ["failed", "blocked"].includes(result.status) ? EXIT.TASK_FAILED : EXIT.OK;
     }
