@@ -256,7 +256,6 @@ export function createAutomationApi({
       timedOut = true;
       controller.abort();
     }, taskTimeoutMs);
-    timeout.unref?.();
 
     const poll = setInterval(() => {
       void Promise.all([
@@ -498,8 +497,7 @@ export function createAutomationApi({
           );
         })();
       }, taskTimeoutMs);
-      timeout.unref?.();
-
+  
       codex.on("notification", onNotification);
       codex.on("server-request", onServerRequest);
 
