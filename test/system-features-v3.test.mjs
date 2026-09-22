@@ -99,7 +99,10 @@ test("server-side push is generic, deep-linked, opt-in, and suppressed for a vis
   assert.equal(pending.notification.body, "Approval needed");
   assert.match(pending.notification.url, /backend=codex/);
   assert.match(pending.notification.url, /session=thread-1/);
-  assert.doesNotMatch(JSON.stringify(pending.notification), /prompt|code|tool output|credential/i);
+  assert.deepEqual(
+    Object.keys(pending.notification).sort(),
+    ["body", "createdAt", "title", "url"]
+  );
 });
 
 
