@@ -18,12 +18,33 @@ export function sanitizeChildEnv(source = process.env) {
   const env = { ...source };
   for (const key of Object.keys(env)) {
     if (
-      /^(DEVMOTER|POCKET|OPENCODE).*?(PASSWORD|TOKEN|SECRET|API_KEY|KEY)$/i.test(key) ||
-      key === "OPENCODE_SERVER_PASSWORD"
+      /(PASSWORD|PASSWD|TOKEN|SECRET|API_KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIAL)/i.test(key) ||
+      /^AWS_(SESSION_TOKEN|SECRET_ACCESS_KEY)$/i.test(key) ||
+      /^GITHUB_TOKEN$/i.test(key) ||
+      /^GH_TOKEN$/i.test(key)
     ) {
       delete env[key];
     }
   }
+
+  // Avoid process-injection hooks when spawning third-party developer tools.
+  for (const key of [
+    "BASH_ENV",
+    "ENV",
+    "NODE_OPTIONS",
+    "NODE_PATH",
+    "PYTHONPATH",
+    "PYTHONSTARTUP",
+    "RUBYOPT",
+    "PERL5OPT",
+    "LD_PRELOAD",
+    "LD_LIBRARY_PATH",
+    "DYLD_INSERT_LIBRARIES",
+    "DYLD_LIBRARY_PATH"
+  ]) {
+    delete env[key];
+  }
+
   return env;
 }
 
