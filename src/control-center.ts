@@ -423,7 +423,7 @@ export function mountControlCenter() {
     terminalStatus.textContent = `Connected · ${payload.session.projectName} · ${payload.session.cwd}`;
     await ensureTerminalRenderer();
     void attachTerminalStream();
-    terminalInstance?.focus();
+    terminalInput?.focus();
   }
 
   async function reattachTerminal() {
