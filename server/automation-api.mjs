@@ -296,6 +296,32 @@ export function createAutomationApi({
           signal: controller.signal
         }
       );
+
+      const [permissionPayload, questionPayload] = await Promise.all([
+        fetchOpenCodeJson(
+          "/api/session/" + encodeURIComponent(sessionId) + "/permission",
+          { headers, signal: AbortSignal.timeout(2500) }
+        ).catch(() => []),
+        fetchOpenCodeJson(
+          "/api/session/" + encodeURIComponent(sessionId) + "/question",
+          { headers, signal: AbortSignal.timeout(2500) }
+        ).catch(() => [])
+      ]);
+      const permissions = Array.isArray(permissionPayload)
+        ? permissionPayload
+        : Array.isArray(permissionPayload?.data) ? permissionPayload.data : [];
+      const questions = Array.isArray(questionPayload)
+        ? questionPayload
+        : Array.isArray(questionPayload?.data) ? questionPayload.data : [];
+      if (permissions.length) {
+        blocked = { reason: "approval_required", approvalType: "permission" };
+        throw httpError("OpenCode is waiting for approval", 409, "approval_required");
+      }
+      if (questions.length) {
+        blocked = { reason: "input_required", approvalType: "question" };
+        throw httpError("OpenCode is waiting for input", 409, "input_required");
+      }
+
       const output = extractOpenCodeOutput(result);
       onEvent({ type: "task.completed", data: { sessionId } });
       return {
@@ -450,6 +476,9 @@ export function createAutomationApi({
       };
 
       const timeout = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
         void (async () => {
           if (turnId) {
             try {
@@ -460,7 +489,13 @@ export function createAutomationApi({
               );
             } catch {}
           }
-          fail(httpError("Codex task timed out and was interrupted", 504, "task_timeout"));
+          rejectTask(
+            httpError(
+              "Codex task timed out and was interrupted",
+              504,
+              "task_timeout"
+            )
+          );
         })();
       }, taskTimeoutMs);
       timeout.unref?.();
