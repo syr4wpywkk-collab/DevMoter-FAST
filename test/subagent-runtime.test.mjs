@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SubagentRuntime } from "../src/subagent-runtime.mjs";
+import { SubagentRuntime, createCodexSubagentAdapter } from "../src/subagent-runtime.mjs";
 
 function fakeAdapter() {
   const starts = [];
@@ -236,4 +236,107 @@ test("fleet cancellation clears queue and cancels active runs independently", as
   assert.equal(fleet.state, "cancelled");
   assert.equal(fleet.queued, 0);
   assert.equal(cancelled.length, 1);
+});
+
+test("Codex adapter shares one EventSource across multiple live agents", async () => {
+  let thread = 0;
+  const sources = [];
+  const fetchImpl = async (_url, init) => {
+    const request = JSON.parse(init.body);
+    if (request.method === "thread/start") {
+      thread += 1;
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return { result: { thread: { id: `thread-${thread}` }, model: "model-x" } };
+        }
+      };
+    }
+    if (request.method === "turn/start") {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return { result: { turn: { id: `turn-${thread}` } } };
+        }
+      };
+    }
+    throw new Error(`unexpected RPC: ${request.method}`);
+  };
+  const eventSourceFactory = url => {
+    const listeners = new Map();
+    const source = {
+      url,
+      addEventListener(name, listener) {
+        listeners.set(name, listener);
+      },
+      close() {}
+    };
+    sources.push(source);
+    return source;
+  };
+  let id = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: createCodexSubagentAdapter({ fetchImpl, eventSourceFactory }) },
+    idFactory: () => `live-${++id}`
+  });
+  await runtime.spawn({ parentSessionId: "parent", task: "one" });
+  await runtime.spawn({ parentSessionId: "parent", task: "two" });
+  assert.equal(sources.length, 1);
+  assert.equal(sources[0].url, "/api/codex/events");
+});
+
+test("second opinion keeps current owner unchanged and shares only selected context", async () => {
+  const adapter = {
+    async start(run) {
+      return { sessionId: `session-${run.id}`, turnId: `turn-${run.id}`, state: "running" };
+    },
+    async cancel() {}
+  };
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: adapter },
+    idFactory: () => `opinion-${++index}`,
+    policy: { tokenBudget: 1000, turnBudget: 6 }
+  });
+  const parent = await runtime.spawn({
+    parentSessionId: "parent-session",
+    role: "executor",
+    task: "Implement auth"
+  });
+  runtime.update(parent.id, { outputDelta: "implemented result", error: "hidden error" });
+  const opinion = await runtime.spawnSecondOpinion(parent.id, {
+    role: "reviewer",
+    task: "Review independently",
+    share: { task: true, output: true, error: false },
+    tokenBudget: 200,
+    turnBudget: 1
+  });
+  assert.equal(runtime.getRun(parent.id).role, "executor");
+  assert.equal(opinion.role, "reviewer");
+  assert.equal(opinion.kind, "second-opinion");
+  assert.equal(opinion.context.parentTask, "Implement auth");
+  assert.equal(opinion.context.parentOutput, "implemented result");
+  assert.equal("parentError" in opinion.context, false);
+  assert.equal(opinion.context.originalOwner, "executor");
+});
+
+test("second opinion requires an explicit context selection", async () => {
+  const adapter = {
+    async start(run) {
+      return { sessionId: `session-${run.id}`, turnId: `turn-${run.id}`, state: "running" };
+    },
+    async cancel() {}
+  };
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: adapter },
+    idFactory: () => `no-share-${++index}`
+  });
+  const parent = await runtime.spawn({ parentSessionId: "p", task: "parent" });
+  await assert.rejects(
+    () => runtime.spawnSecondOpinion(parent.id, { share: {} }),
+    /Select at least one parent context field/
+  );
 });
