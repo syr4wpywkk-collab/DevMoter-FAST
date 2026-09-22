@@ -4,6 +4,19 @@ import { mergeOpenCodeStreamText, normalizeOpenCodeEvent } from "./opencode-even
 import { countTranscriptMessages, normalizeExternalThread, sessionContextToMarkdown, sortSessions, type ImportedThread, type SessionSortMode } from "./session-tools.mjs";
 import { setWakeLockEnabled, setWakeLockExecutionActive, wakeLockEnabled, wakeLockSupported } from "./wake-lock";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
+import {
+  continueAgentRun,
+  guardMessage,
+  loopMessage,
+  matchRememberedPermission,
+  recordAgentAction,
+  rememberPermission,
+  runPreExecutionGuard,
+  scanCommand,
+  type CommandScan,
+  type LoopResult,
+  type PermissionScope
+} from "./safety-client";
 
 const FOLLOW_BOTTOM_THRESHOLD = 48;
 
@@ -431,6 +444,7 @@ export function mountOpenCodeRemote(
   let lastLiveEventAt = 0;
   let toastTimer: number | null = null;
   let pendingPermission: PendingPermission | null = null;
+  let pendingPermissionSafety = "";
   let pendingQuestion: PendingQuestion | null = null;
   let questionAnswers: Array<Set<string>> = [];
   let contextExecutionState: ExecutionState | null = null;
@@ -1362,8 +1376,13 @@ export function mountOpenCodeRemote(
       const data = await api<PendingPermission[]>(
         `/session/${encodeURIComponent(activeSession.id)}/permission`
       );
-      pendingPermission = (Array.isArray(data) ? data : [])[0] ?? null;
-      renderPermission();
+      const next = (Array.isArray(data) ? data : [])[0] ?? null;
+      if (next) await prepareOpenCodePermission(next);
+      else {
+        pendingPermission = null;
+        pendingPermissionSafety = "";
+        renderPermission();
+      }
     } catch {
       // Event stream remains the primary live source.
     }
@@ -1675,6 +1694,23 @@ export function mountOpenCodeRemote(
     const text = promptInput.value.trim();
     if (!text && !pendingAttachments.length) return;
 
+    if (text) {
+      try {
+        const guard = await runPreExecutionGuard(text);
+        if (guard.decision === "block") {
+          showToast(`Safety guard blocked this request: ${guardMessage(guard)}`);
+          return;
+        }
+        if (
+          guard.decision === "warn" &&
+          !window.confirm(`Safety check before execution:\n\n${guardMessage(guard)}\n\nContinue?`)
+        ) return;
+      } catch {
+        showToast("Safety guard unavailable; request was not sent.");
+        return;
+      }
+    }
+
     let sessionID: string | null | undefined = activeSession?.id;
     if (!sessionID) sessionID = await createSession();
     if (!sessionID) return;
@@ -1800,6 +1836,73 @@ export function mountOpenCodeRemote(
     }
   }
 
+  function openCodePermissionCommand(request: PendingPermission) {
+    const command = request.metadata?.command;
+    return typeof command === "string" ? command : "";
+  }
+
+  function openCodePermissionScope(request: PendingPermission): PermissionScope {
+    const command = openCodePermissionCommand(request);
+    const action = command || [
+      request.action || "permission",
+      ...(request.resources || []).map(value => String(value))
+    ].join("|");
+    return {
+      backend: "opencode",
+      tool: request.action || "permission",
+      action,
+      projectId: localStorage.getItem("opencode-pocket-project") || "",
+      sessionId: request.sessionID || activeSession?.id || ""
+    };
+  }
+
+  function openCodeLoopRunId(request: PendingPermission) {
+    return `opencode:${request.sessionID || activeSession?.id || "global"}`;
+  }
+
+  async function prepareOpenCodePermission(request: PendingPermission) {
+    const scope = openCodePermissionScope(request);
+    const command = openCodePermissionCommand(request);
+    let loopState: LoopResult | null = null;
+    try {
+      loopState = await recordAgentAction({
+        runId: openCodeLoopRunId(request),
+        action: scope.action,
+        tool: scope.tool,
+        details: { resources: request.resources || [], save: request.save || [] }
+      });
+    } catch {
+      loopState = null;
+    }
+
+    try {
+      const remembered = await matchRememberedPermission(scope, command || undefined);
+      if (remembered.matched && !remembered.blockedByRisk && !loopState?.paused) {
+        await api(
+          `/session/${encodeURIComponent(request.sessionID)}/permission/${encodeURIComponent(request.id)}/reply`,
+          {
+            method: "POST",
+            headers: { "x-pocket-operation-id": `opencode-remembered-${request.id}` },
+            body: JSON.stringify({ reply: "once" })
+          }
+        );
+        pendingPermission = null;
+        pendingPermissionSafety = "";
+        renderPermission();
+        showToast("Applied a remembered, narrowly scoped permission.");
+        setExecutionState("running");
+        return;
+      }
+    } catch {
+      // Fall through to the explicit approval UI.
+    }
+
+    pendingPermission = request;
+    pendingPermissionSafety = loopState?.paused ? loopMessage(loopState) : "";
+    renderPermission();
+    setExecutionState("waiting_for_approval");
+  }
+
   function renderPermission() {
     permission.classList.toggle("hidden", !pendingPermission);
     if (!pendingPermission) return;
@@ -1824,30 +1927,64 @@ export function mountOpenCodeRemote(
         ? `Metadata:\n${JSON.stringify(pendingPermission.metadata, null, 2)}`
         : ""
     ].filter(Boolean).join("\n\n");
+    if (pendingPermissionSafety) {
+      permissionDetail.textContent += `\n\nSafety pause:\n${pendingPermissionSafety}`;
+    }
   }
 
   async function answerPermission(reply: "once" | "always" | "reject") {
     if (!pendingPermission) return;
 
     const request = pendingPermission;
+    const scope = openCodePermissionScope(request);
+    const command = openCodePermissionCommand(request);
+    let effectiveReply = reply;
 
     permissionReject.disabled = true;
     permissionOnce.disabled = true;
     permissionAlways.disabled = true;
 
     try {
+      let commandRisk: CommandScan | null = null;
+      if (reply !== "reject" && command) {
+        commandRisk = await scanCommand(command);
+        if (
+          commandRisk.dangerous &&
+          !window.confirm(
+            `High-risk permission:\n\n${commandRisk.command}\n\nReasons:\n${commandRisk.reasons.map(reason => `• ${reason}`).join("\n")}\n\nApprove this one execution?`
+          )
+        ) return;
+        if (commandRisk.dangerous && reply === "always") {
+          effectiveReply = "once";
+          showToast("High-risk permissions are never remembered; approving once.");
+        }
+      }
+
+      if (reply !== "reject" && pendingPermissionSafety) {
+        if (!window.confirm(`Repeated-action safety pause:\n\n${pendingPermissionSafety}\n\nContinue this run?`)) return;
+        await continueAgentRun(openCodeLoopRunId(request)).catch(() => {});
+      }
+
+      if (effectiveReply === "always" && !commandRisk?.dangerous) {
+        await rememberPermission(scope, {
+          note: "Remembered from OpenCode permission",
+          ttlMs: 24 * 60 * 60 * 1000
+        }).catch(() => {});
+      }
+
       await api(
         `/session/${encodeURIComponent(request.sessionID)}/permission/${encodeURIComponent(request.id)}/reply`,
         {
           method: "POST",
           headers: {
             "x-pocket-operation-id":
-              `opencode-permission-${request.id}-${reply}`
+              `opencode-permission-${request.id}-${effectiveReply}`
           },
-          body: JSON.stringify({ reply })
+          body: JSON.stringify({ reply: effectiveReply })
         }
       );
       pendingPermission = null;
+      pendingPermissionSafety = "";
       renderPermission();
       setExecutionState("running");
     } catch (error) {
@@ -2280,9 +2417,7 @@ export function mountOpenCodeRemote(
 
     if (type === "permission.v2.asked") {
       if (!activeSession || props?.sessionID === activeSession.id) {
-        pendingPermission = props as PendingPermission;
-        renderPermission();
-        setExecutionState("waiting_for_approval");
+        void prepareOpenCodePermission(props as PendingPermission);
       }
       return;
     }
@@ -2290,6 +2425,7 @@ export function mountOpenCodeRemote(
     if (type === "permission.v2.replied") {
       if (pendingPermission?.id === props?.requestID) {
         pendingPermission = null;
+        pendingPermissionSafety = "";
         renderPermission();
         if (executionState === "waiting_for_approval") {
           setExecutionState("running");
