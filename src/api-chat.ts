@@ -504,7 +504,8 @@ export function mountApiChat(
     providerForm.innerHTML = `
       <label>
         <span>企業 / Provider</span>
-        <select data-field="preset"></select>
+        <div class="api-preset-grid" data-field="preset-grid"></div>
+        <select data-field="preset" class="api-preset-select-hidden" aria-label="Provider preset"></select>
       </label>
 
       <label>
@@ -545,6 +546,7 @@ export function mountApiChat(
     `;
 
     const presetSelect = providerForm.querySelector<HTMLSelectElement>('[data-field="preset"]')!;
+    const presetGrid = providerForm.querySelector<HTMLDivElement>('[data-field="preset-grid"]')!;
     const nameInput = providerForm.querySelector<HTMLInputElement>('[data-field="name"]')!;
     const protocolSelect = providerForm.querySelector<HTMLSelectElement>('[data-field="protocol"]')!;
     const baseUrlInput = providerForm.querySelector<HTMLInputElement>('[data-field="baseUrl"]')!;
@@ -560,6 +562,27 @@ export function mountApiChat(
       option.value = preset.id;
       option.textContent = preset.name;
       presetSelect.appendChild(option);
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "api-preset-button";
+      button.dataset.presetId = preset.id;
+      button.textContent = preset.name;
+      button.addEventListener("click", () => {
+        if (presetSelect.disabled) return;
+        presetSelect.value = preset.id;
+        applyPreset();
+      });
+      presetGrid.appendChild(button);
+    }
+
+    function syncPresetButtons() {
+      for (const button of presetGrid.querySelectorAll<HTMLButtonElement>(".api-preset-button")) {
+        const selected = button.dataset.presetId === presetSelect.value;
+        button.classList.toggle("selected", selected);
+        button.setAttribute("aria-pressed", selected ? "true" : "false");
+        button.disabled = presetSelect.disabled && !selected;
+      }
     }
 
     function applyPreset() {
@@ -571,6 +594,7 @@ export function mountApiChat(
         baseUrlInput.value = preset.baseUrl;
       }
       advanced.open = preset.id === "custom";
+      syncPresetButtons();
     }
 
     if (provider) {
@@ -587,6 +611,7 @@ export function mountApiChat(
         ? "🔒 保存済みキーは表示しません。変更するときだけ新しいキーを入力。"
         : "🔒 キーはDevMoterサーバー側だけに保存します。";
       advanced.open = provider.presetId === "custom";
+      syncPresetButtons();
     } else {
       const initial = presets[0];
       if (initial) presetSelect.value = initial.id;
@@ -596,6 +621,7 @@ export function mountApiChat(
     }
 
     presetSelect.addEventListener("change", applyPreset);
+    syncPresetButtons();
 
     function formPayload(modelsOverride?: string[]) {
       return {
