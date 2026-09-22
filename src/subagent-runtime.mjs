@@ -246,6 +246,40 @@ export class SubagentRuntime {
     }
   }
 
+  async spawnSecondOpinion(parentRunId, options = {}) {
+    const parent = this.runs.get(String(parentRunId));
+    if (!parent) throw new Error(`Unknown parent run: ${String(parentRunId)}`);
+
+    const share = options.share && typeof options.share === "object" ? options.share : {};
+    const context = {};
+    if (share.task) context.parentTask = parent.task;
+    if (share.output) context.parentOutput = parent.output;
+    if (share.error && parent.error) context.parentError = parent.error;
+    if (!Object.keys(context).length) {
+      throw new Error("Select at least one parent context field for the second opinion");
+    }
+
+    const originalOwner = parent.role;
+    context.originalOwner = originalOwner;
+    const run = await this.spawn({
+      kind: "second-opinion",
+      backend: options.backend || parent.backend,
+      parentSessionId: parent.sessionId || parent.parentSessionId,
+      parentRunId: parent.id,
+      role: options.role || "reviewer",
+      model: options.model || null,
+      task: String(options.task || "Give an independent second opinion on the explicitly shared context. State agreements, disagreements, risks, and recommended next steps."),
+      context,
+      tokenBudget: options.tokenBudget,
+      turnBudget: options.turnBudget
+    });
+
+    if (this.runs.get(parent.id)?.role !== originalOwner) {
+      throw new Error("Second opinion must not change the current owner");
+    }
+    return run;
+  }
+
   update(id, patch = {}) {
     const run = this.runs.get(String(id));
     if (!run) throw new Error(`Unknown subagent run: ${String(id)}`);
