@@ -1,5 +1,16 @@
 import { codexThreadStatusToExecutionState, codexTurnStatusToExecutionState, isExecutionActive, type ExecutionState } from "./execution-state";
 import { speechRecognitionLanguage } from "./i18n";
+import {
+  continueAgentRun,
+  guardMessage,
+  loopMessage,
+  matchRememberedPermission,
+  recordAgentAction,
+  rememberPermission,
+  runPreExecutionGuard,
+  scanCommand,
+  type PermissionScope
+} from "./safety-client";
 
 const FOLLOW_BOTTOM_THRESHOLD = 48;
 
@@ -284,6 +295,7 @@ export function mountCodexRemote(
   let activeTurnId: string | null = null;
   let activeAssistantBubble: HTMLDivElement | null = null;
   let pendingApproval: { id: string | number; method: string; params: Json } | null = null;
+  let pendingApprovalSafety = "";
   let events: EventSource | null = null;
   let reconnectTimer: number | null = null;
   let reconnectAttempts = 0;
@@ -1055,6 +1067,24 @@ export function mountCodexRemote(
     const text = promptInput.value.trim();
     if (!text && pendingAttachments.length === 0) return;
 
+    if (text) {
+      try {
+        const guard = await runPreExecutionGuard(text);
+        if (guard.decision === "block") {
+          addMessage("system", `Safety guard blocked this request:\n${guardMessage(guard)}`);
+          return;
+        }
+        if (
+          guard.decision === "warn" &&
+          !window.confirm(`Safety check before execution:\n\n${guardMessage(guard)}\n\nContinue?`)
+        ) {
+          return;
+        }
+      } catch {
+        // Safety service failure must not silently broaden the request.
+      }
+    }
+
     let threadId = activeThreadId;
     if (!threadId) threadId = await createThread();
     if (!threadId) return;
@@ -1227,7 +1257,7 @@ export function mountCodexRemote(
       }
     });
 
-    events.addEventListener("server-request", raw => {
+    events.addEventListener("server-request", async raw => {
       const event = raw as MessageEvent;
       const request = JSON.parse(event.data) as {
         id: string | number;
@@ -1243,6 +1273,45 @@ export function mountCodexRemote(
         return;
       }
 
+      const command = String(request.params?.command || "");
+      const scope = codexPermissionScope(request);
+      let loopState = null;
+      try {
+        loopState = await recordAgentAction({
+          runId: codexLoopRunId(request),
+          action: scope.action,
+          tool: scope.tool,
+          details: {
+            cwd: request.params?.cwd || null,
+            grantRoot: request.params?.grantRoot || null
+          }
+        });
+      } catch {
+        loopState = null;
+      }
+
+      try {
+        const remembered = await matchRememberedPermission(scope, command || undefined);
+        if (remembered.matched && !remembered.blockedByRisk && !loopState?.paused) {
+          const autoOperationId = `codex-remembered-${String(request.id)}`;
+          const auto = await fetch("/api/codex/approval", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-pocket-operation-id": autoOperationId
+            },
+            body: JSON.stringify({ id: request.id, decision: "accept" })
+          });
+          if (auto.ok) {
+            addMessage("system", "Applied a remembered, narrowly scoped Codex approval.");
+            return;
+          }
+        }
+      } catch {
+        // Fall back to the normal approval boundary.
+      }
+
+      pendingApprovalSafety = loopState?.paused ? loopMessage(loopState) : "";
       pendingApproval = request;
       setExecutionState("waiting_for_approval");
       approval.classList.remove("hidden");
@@ -1275,6 +1344,9 @@ export function mountCodexRemote(
         request.params?.cwd ? `Working directory:\n${request.params.cwd}` : "",
         request.params?.grantRoot ? `Requested write root:\n${request.params.grantRoot}` : ""
       ].filter(Boolean).join("\n\n") || "Codex is requesting permission to continue.";
+      if (pendingApprovalSafety) {
+        approvalDetail.textContent += `\n\nSafety pause:\n${pendingApprovalSafety}`;
+      }
     });
 
     events.addEventListener("offline", () => {
@@ -1288,6 +1360,26 @@ export function mountCodexRemote(
     };
   }
 
+  function codexPermissionScope(request: { method: string; params: Json }): PermissionScope {
+    const action = String(
+      request.params?.command ||
+      request.params?.grantRoot ||
+      request.params?.reason ||
+      request.method
+    );
+    return {
+      backend: "codex",
+      tool: request.method,
+      action,
+      projectId: activeProject?.id || "",
+      sessionId: String(request.params?.threadId || activeThreadId || "")
+    };
+  }
+
+  function codexLoopRunId(request: { params: Json }) {
+    return `codex:${String(request.params?.threadId || activeThreadId || "global")}`;
+  }
+
   async function answerApproval(
     decision: "accept" | "acceptForSession" | "decline"
   ) {
@@ -1299,6 +1391,36 @@ export function mountCodexRemote(
     acceptSessionApproval.disabled = true;
 
     try {
+      const command = String(request.params?.command || "");
+      const scope = codexPermissionScope(request);
+      let commandRisk = null;
+
+      if (decision !== "decline" && command) {
+        commandRisk = await scanCommand(command);
+        if (
+          commandRisk.dangerous &&
+          !window.confirm(
+            `High-risk command detected:\n\n${commandRisk.command}\n\nReasons:\n${commandRisk.reasons.map(reason => `• ${reason}`).join("\n")}\n\nApprove this one execution?`
+          )
+        ) {
+          return;
+        }
+      }
+
+      if (decision !== "decline" && pendingApprovalSafety) {
+        if (!window.confirm(`Repeated-action safety pause:\n\n${pendingApprovalSafety}\n\nContinue this run?`)) {
+          return;
+        }
+        await continueAgentRun(codexLoopRunId(request)).catch(() => {});
+      }
+
+      if (decision === "acceptForSession" && !commandRisk?.dangerous) {
+        await rememberPermission(scope, {
+          note: "Remembered from Codex session approval",
+          ttlMs: 24 * 60 * 60 * 1000
+        }).catch(() => {});
+      }
+
       const approvalOperationId =
         `codex-approval-${String(request.id)}-${decision}`;
       const res = await fetch("/api/codex/approval", {
@@ -1319,6 +1441,7 @@ export function mountCodexRemote(
       }
 
       pendingApproval = null;
+      pendingApprovalSafety = "";
       approval.classList.add("hidden");
       setExecutionState("running");
     } catch (error) {
