@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SubagentRuntime } from "../src/subagent-runtime.mjs";
+import { SubagentRuntime, createCodexSubagentAdapter } from "../src/subagent-runtime.mjs";
 
 function fakeAdapter() {
   const starts = [];
@@ -236,4 +236,53 @@ test("fleet cancellation clears queue and cancels active runs independently", as
   assert.equal(fleet.state, "cancelled");
   assert.equal(fleet.queued, 0);
   assert.equal(cancelled.length, 1);
+});
+
+test("Codex adapter shares one EventSource across multiple live agents", async () => {
+  let thread = 0;
+  const sources = [];
+  const fetchImpl = async (_url, init) => {
+    const request = JSON.parse(init.body);
+    if (request.method === "thread/start") {
+      thread += 1;
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return { result: { thread: { id: `thread-${thread}` }, model: "model-x" } };
+        }
+      };
+    }
+    if (request.method === "turn/start") {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return { result: { turn: { id: `turn-${thread}` } } };
+        }
+      };
+    }
+    throw new Error(`unexpected RPC: ${request.method}`);
+  };
+  const eventSourceFactory = url => {
+    const listeners = new Map();
+    const source = {
+      url,
+      addEventListener(name, listener) {
+        listeners.set(name, listener);
+      },
+      close() {}
+    };
+    sources.push(source);
+    return source;
+  };
+  let id = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: createCodexSubagentAdapter({ fetchImpl, eventSourceFactory }) },
+    idFactory: () => `live-${++id}`
+  });
+  await runtime.spawn({ parentSessionId: "parent", task: "one" });
+  await runtime.spawn({ parentSessionId: "parent", task: "two" });
+  assert.equal(sources.length, 1);
+  assert.equal(sources[0].url, "/api/codex/events");
 });
