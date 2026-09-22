@@ -2523,16 +2523,41 @@ export function mountCodexRemote(
   }
 
   async function showModels() {
-    openModal("モデル", activeThreadId ? "このチャットのモデルを変更" : "次のチャットで使うモデル");
+    openModal(
+      "Provider · Model · Agent",
+      activeThreadId ? "このチャットの実行環境を変更" : "次のチャットで使う実行環境"
+    );
     modalBody.innerHTML = '<div class="cx-modal-loading">読み込み中…</div>';
 
     try {
       const models = await loadModelCatalog();
       modalBody.replaceChildren();
 
+      const runtime = document.createElement("section");
+      runtime.className = "cx-settings-section cx-runtime-summary";
+      const heading = document.createElement("h3");
+      heading.textContent = "Runtime";
+      runtime.appendChild(heading);
+
+      const runtimeRows: Array<[string, string]> = [
+        ["Provider", "Codex · " + (online ? "available" : "offline")],
+        ["Agent", "codex · supported"],
+        ["Scope", activeThreadId ? "session" : activeProject ? "project" : "default"]
+      ];
+      for (const [label, value] of runtimeRows) {
+        const row = document.createElement("div");
+        row.className = "cx-info-row";
+        const key = document.createElement("span");
+        const val = document.createElement("strong");
+        key.textContent = label;
+        val.textContent = value;
+        row.append(key, val);
+        runtime.appendChild(row);
+      }
+      modalBody.appendChild(runtime);
+
       const list = document.createElement("div");
       list.className = "cx-model-list";
-
       const defaultModel = models.find(model => model.isDefault) ?? models[0] ?? null;
 
       if (defaultModel) {
@@ -2541,9 +2566,12 @@ export function mountCodexRemote(
         auto.className = `cx-model-row ${
           !selectedModel || selectedModel === defaultModel.model ? "selected" : ""
         }`;
-        auto.innerHTML = "<strong>Default</strong><small></small>";
-        auto.querySelector("small")!.textContent =
-          `${defaultModel.displayName || defaultModel.model} · Codex既定`;
+        const strong = document.createElement("strong");
+        const small = document.createElement("small");
+        strong.textContent = "Default";
+        small.textContent =
+          (defaultModel.displayName || defaultModel.model) + " · Codex default";
+        auto.append(strong, small);
         auto.addEventListener("click", () => {
           void applyModelSelection(
             defaultModel.model,
@@ -2558,22 +2586,30 @@ export function mountCodexRemote(
       for (const model of models.filter(model => !model.hidden)) {
         const value = model.model;
         const name = model.displayName || value;
+        const option = document.createElement("button");
+        option.type = "button";
+        option.disabled = !online;
+        option.className =
+          "cx-model-row " +
+          (selectedModel === value ? "selected " : "") +
+          (online ? "" : "unavailable");
 
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = `cx-model-row ${selectedModel === value ? "selected" : ""}`;
-        button.innerHTML = "<strong></strong><small></small>";
-        button.querySelector("strong")!.textContent = name;
-        button.querySelector("small")!.textContent =
-          model.description ? `${value} · ${model.description}` : value;
+        const strong = document.createElement("strong");
+        const small = document.createElement("small");
+        strong.textContent = name;
+        small.textContent = online
+          ? (model.description ? value + " · " + model.description : value)
+          : value + " · provider unavailable";
+        option.append(strong, small);
 
-        button.addEventListener("click", () => {
-          void applyModelSelection(value, name).catch(error => {
-            modalBody.textContent = error instanceof Error ? error.message : String(error);
+        if (online) {
+          option.addEventListener("click", () => {
+            void applyModelSelection(value, name).catch(error => {
+              modalBody.textContent = error instanceof Error ? error.message : String(error);
+            });
           });
-        });
-
-        list.appendChild(button);
+        }
+        list.appendChild(option);
       }
 
       modalBody.appendChild(list);
