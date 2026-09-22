@@ -512,9 +512,10 @@ export class ControlPlane {
           runId: run.id,
           kind: "autopilot",
           turn,
-          deadline
+          deadline,
+          setCancel: cancel => { runtime.cancel = typeof cancel === "function" ? cancel : null; }
         });
-        runtime.cancel = typeof result?.cancel === "function" ? result.cancel : null;
+        runtime.cancel = typeof result?.cancel === "function" ? result.cancel : runtime.cancel;
         run.turnsCompleted = turn;
         run.budgetUsed += Math.max(0, Number(result?.cost || 0));
         if (result?.summary) run.summary = String(result.summary).slice(0, 4000);
