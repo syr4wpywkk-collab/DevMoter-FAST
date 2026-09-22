@@ -277,7 +277,15 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
       for (const item of files) {
         const p = await projectPath(project, item?.path, true);
         let original = "", originalExists = true;
-        try { original = await readFile(p.target, "utf8"); } catch (error) { if (error?.code === "ENOENT") originalExists = false; else throw error; }
+        try {
+          const info = await stat(p.target);
+          if (!info.isFile()) throw new Error("Proposal target must be a regular file: " + p.path);
+          if (info.size > MAX_FILE) throw new Error("Existing file exceeds review limit: " + p.path);
+          original = await readFile(p.target, "utf8");
+        } catch (error) {
+          if (error?.code === "ENOENT") originalExists = false;
+          else throw error;
+        }
         const proposed = item?.delete === true ? null : String(item?.content ?? "");
         const size = proposed === null ? 0 : Buffer.byteLength(proposed);
         if (size > MAX_FILE) throw new Error(p.path + " exceeds proposal file limit");
@@ -467,7 +475,13 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
     const base = validBranch(requested.startsWith("devmoter/") ? requested : "devmoter/" + requested);
     for (let i = 1; i <= 100; i += 1) {
       const candidate = i === 1 ? base : base + "-" + i;
-      try { await run("git", ["show-ref", "--verify", "--quiet", "refs/heads/" + candidate], projectPath); } catch { return candidate; }
+      let localExists = true;
+      let remoteExists = true;
+      try { await run("git", ["show-ref", "--verify", "--quiet", "refs/heads/" + candidate], projectPath); }
+      catch { localExists = false; }
+      try { await run("git", ["show-ref", "--verify", "--quiet", "refs/remotes/origin/" + candidate], projectPath); }
+      catch { remoteExists = false; }
+      if (!localExists && !remoteExists) return candidate;
     }
     throw new Error("Could not allocate unique branch");
   }
@@ -554,6 +568,15 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
       }));
   }
 
+  function normalizeGithubOrigin(value) {
+    return String(value || "")
+      .trim()
+      .replace(/\.git$/, "")
+      .replace(/^git@github\.com:/, "https://github.com/")
+      .replace(/\/$/, "")
+      .toLowerCase();
+  }
+
   async function pullRequest(projectId, input) {
     return locked(async () => {
       const project = await getProjectById(projectId);
@@ -567,6 +590,11 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
       const head = validBranch(input?.head || worktree.branch);
       const active = (await run("git", ["branch", "--show-current"], worktree.path)).stdout.trim();
       if (active !== head) throw new Error("Selected head branch does not match task worktree");
+      const origin = (await run("git", ["remote", "get-url", "origin"], worktree.path)).stdout.trim();
+      const expectedOrigin = "https://github.com/" + repo;
+      if (normalizeGithubOrigin(origin) !== normalizeGithubOrigin(expectedOrigin)) {
+        throw new Error("Selected GitHub repository does not match the task worktree origin");
+      }
       if ((await run("git", ["status", "--porcelain=v1", "--untracked-files=all"], worktree.path)).stdout.trim()) throw new Error("Task worktree must be clean before creating a pull request");
       const title = String(input?.title || task?.issue?.title || ("DevMoter task " + (task?.id || worktree.id))).slice(0, 240).trim();
       const bodyText = String(input?.body || "").slice(0, 20000) + "\n\n---\nDevMoter task: " + (task?.id || "n/a") + "\nDevMoter session: " + (task?.sessionId || worktree.sessionId || "n/a");
