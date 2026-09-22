@@ -612,6 +612,254 @@ async function opencodeProviders(res) {
   }
 }
 
+function taskTimeoutMs(context = {}) {
+  const defaultMs = 30 * 60 * 1000;
+  if (!context.deadline) return defaultMs;
+  return Math.max(1_000, Math.min(defaultMs, Number(context.deadline) - Date.now()));
+}
+
+function taskModel(model) {
+  const value = String(model || "").trim();
+  if (!value.includes("/")) return null;
+  const [providerID, ...rest] = value.split("/");
+  const modelID = rest.join("/");
+  if (!providerID || !modelID) return null;
+  return { providerID, modelID };
+}
+
+function waitForCodexTurn(threadId, turnId, context = {}) {
+  const timeoutMs = taskTimeoutMs(context);
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (error, result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      codex.off("notification", onNotification);
+      codex.off("offline", onOffline);
+      if (error) reject(error);
+      else resolve(result);
+    };
+    const onOffline = event => finish(new Error(event?.error || "Codex went offline"));
+    const onNotification = event => {
+      const method = event?.method;
+      if (method !== "turn/completed") return;
+      const params = event?.params ?? {};
+      const eventThreadId = params?.threadId ?? params?.thread?.id;
+      const eventTurnId = params?.turn?.id ?? params?.turnId;
+      if (eventThreadId && String(eventThreadId) !== String(threadId)) return;
+      if (eventTurnId && String(eventTurnId) !== String(turnId)) return;
+      const status = String(params?.turn?.status || "completed");
+      if (status === "failed") {
+        finish(new Error(params?.turn?.error?.message || params?.error?.message || "Codex turn failed"));
+        return;
+      }
+      finish(null, {
+        complete: true,
+        summary: "Codex turn " + turnId + " finished with status " + status + ".",
+        cost: Number(params?.turn?.cost || 0)
+      });
+    };
+    const timer = setTimeout(() => finish(new Error("Agent task timed out at its configured boundary")), timeoutMs);
+    timer.unref?.();
+    codex.on("notification", onNotification);
+    codex.on("offline", onOffline);
+  });
+}
+
+async function executeControlTask(definition, context = {}) {
+  const project = definition?.projectId ? await getProjectById(definition.projectId) : null;
+  const task = String(definition?.task || "").trim();
+  if (!task) throw new Error("Task is required");
+
+  if (definition?.backend === "opencode") {
+    const directory = project?.path || OPENCODE_DIRECTORY;
+    const headers = { "content-type": "application/json", "x-opencode-directory": directory };
+    const body = {};
+    if (definition?.agent) body.agent = String(definition.agent);
+    const model = taskModel(definition?.model);
+    if (model) body.model = { id: model.modelID, providerID: model.providerID };
+
+    const session = await fetchOpenCodeJson("/api/session", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(Math.min(10_000, taskTimeoutMs(context)))
+    });
+    const sessionId = session?.id;
+    if (!sessionId) throw new Error("OpenCode did not return a session id");
+
+    const cancel = async () => {
+      try {
+        await fetchOpenCodeJson("/api/session/" + encodeURIComponent(sessionId) + "/interrupt", {
+          method: "POST",
+          headers,
+          body: "{}",
+          signal: AbortSignal.timeout(5_000)
+        });
+      } catch {
+      }
+    };
+    context.setCancel?.(cancel);
+
+    await fetchOpenCodeJson("/api/session/" + encodeURIComponent(sessionId) + "/prompt", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ text: task }),
+      signal: AbortSignal.timeout(taskTimeoutMs(context))
+    });
+
+    return {
+      complete: true,
+      summary: "OpenCode session " + sessionId + " completed the requested turn.",
+      cost: 0,
+      cancel
+    };
+  }
+
+  const threadParams = {};
+  if (project?.path) threadParams.cwd = project.path;
+  if (definition?.model) threadParams.model = String(definition.model);
+  const threadResult = await codex.request("thread/start", threadParams, { timeoutMs: 10_000 });
+  const threadId = threadResult?.thread?.id;
+  if (!threadId) throw new Error("Codex did not return a thread id");
+
+  const operationId = randomUUID();
+  const turnParams = {
+    threadId,
+    input: [{ type: "text", text: task }],
+    clientUserMessageId: operationId
+  };
+  if (definition?.model) turnParams.model = String(definition.model);
+  const turnResult = await codex.request("turn/start", turnParams, { timeoutMs: 10_000 });
+  const turnId = turnResult?.turn?.id;
+  if (!turnId) throw new Error("Codex did not return a turn id");
+
+  const cancel = async () => {
+    try {
+      await codex.request("turn/interrupt", { threadId, turnId }, { timeoutMs: 5_000 });
+    } catch {
+    }
+  };
+  context.setCancel?.(cancel);
+  const result = await waitForCodexTurn(threadId, turnId, context);
+  return { ...result, cancel };
+}
+
+async function passkeyRoute(req, res, url) {
+  if (!url.pathname.startsWith("/api/auth/passkey/")) return false;
+  try {
+    if (req.method === "GET" && url.pathname === "/api/auth/passkey/status") {
+      json(res, 200, await passkeys.status(req)); return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/auth/passkey/register/options") {
+      json(res, 200, await passkeys.registrationOptions(req)); return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/auth/passkey/register/verify") {
+      const result = await passkeys.verifyRegistration(req, await readJson(req, 256 * 1024));
+      res.setHeader("set-cookie", result.cookie); json(res, 200, { ok: true }); return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/auth/passkey/login/options") {
+      json(res, 200, await passkeys.loginOptions(req)); return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/auth/passkey/login/verify") {
+      const result = await passkeys.verifyLogin(req, await readJson(req, 256 * 1024));
+      res.setHeader("set-cookie", result.cookie); json(res, 200, { ok: true }); return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/auth/passkey/logout") {
+      res.setHeader("set-cookie", await passkeys.logout(req)); json(res, 200, { ok: true }); return true;
+    }
+    json(res, 404, { error: "Unknown passkey endpoint" });
+  } catch (error) {
+    json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+  }
+  return true;
+}
+
+async function controlRoute(req, res, url) {
+  if (!url.pathname.startsWith("/api/control/")) return false;
+  try {
+    const localAddress = url.protocol + "//" + (req.headers.host || "localhost");
+    if (req.method === "GET" && url.pathname === "/api/control/hosts") {
+      json(res, 200, { hosts: await controlPlane.listHosts(localAddress) }); return true;
+    }
+    if (req.method === "GET" && url.pathname === "/api/control/hosts/status") {
+      json(res, 200, { hosts: await controlPlane.listHostStatuses(localAddress, { force: url.searchParams.get("force") === "1" }) }); return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/control/hosts") {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      json(res, 201, { host: await controlPlane.addHost(await readJson(req)) }); return true;
+    }
+    const hostMatch = url.pathname.match(/^\/api\/control\/hosts\/([^/]+)$/);
+    if (req.method === "DELETE" && hostMatch) {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      await controlPlane.removeHost(decodeURIComponent(hostMatch[1])); json(res, 200, { ok: true }); return true;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/control/schedules") {
+      json(res, 200, { schedules: await controlPlane.listSchedules() }); return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/control/schedules") {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      json(res, 201, { schedule: await controlPlane.createSchedule(await readJson(req)) }); return true;
+    }
+    const scheduleMatch = url.pathname.match(/^\/api\/control\/schedules\/([^/]+)$/);
+    if (scheduleMatch && req.method === "PATCH") {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      const payload = await readJson(req);
+      json(res, 200, { schedule: await controlPlane.setScheduleEnabled(decodeURIComponent(scheduleMatch[1]), payload?.enabled) }); return true;
+    }
+    if (scheduleMatch && req.method === "DELETE") {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      await controlPlane.deleteSchedule(decodeURIComponent(scheduleMatch[1])); json(res, 200, { ok: true }); return true;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/control/triggers") {
+      json(res, 200, { triggers: await controlPlane.listTriggers() }); return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/control/triggers") {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      json(res, 201, await controlPlane.createTrigger(await readJson(req))); return true;
+    }
+    const triggerMatch = url.pathname.match(/^\/api\/control\/triggers\/([^/]+)$/);
+    if (triggerMatch && req.method === "DELETE") {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      await controlPlane.deleteTrigger(decodeURIComponent(triggerMatch[1])); json(res, 200, { ok: true }); return true;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/control/runs") {
+      json(res, 200, { runs: await controlPlane.listRuns() }); return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/control/autopilot") {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      json(res, 202, { run: await controlPlane.startAutopilot(await readJson(req)) }); return true;
+    }
+    const autopilotMatch = url.pathname.match(/^\/api\/control\/autopilot\/([^/]+)\/(pause|cancel)$/);
+    if (autopilotMatch && req.method === "POST") {
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      const id = decodeURIComponent(autopilotMatch[1]);
+      const run = autopilotMatch[2] === "pause" ? await controlPlane.pauseAutopilot(id) : await controlPlane.cancelAutopilot(id);
+      json(res, 200, { run }); return true;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/control/events/github") {
+      const raw = await readRaw(req, 64 * 1024);
+      const payload = raw.length ? JSON.parse(raw.toString("utf8")) : {};
+      const event = String(req.headers["x-github-event"] || "");
+      if (!event) throw new Error("Missing x-github-event header");
+      const signature = String(req.headers["x-hub-signature-256"] || "");
+      const runIds = await controlPlane.dispatchEvent("github.webhook", event, payload, { rawBody: raw, signature });
+      json(res, 202, { accepted: runIds.length, runIds }); return true;
+    }
+
+    json(res, 404, { error: "Unknown control endpoint" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    json(res, message === "Request body too large" ? 413 : 400, { error: message });
+  }
+  return true;
+}
+
 async function proxy(req, res) {
   const pocketPath = req.url.replace(/^\/api\/opencode/, "") || "/";
   const upstreamPath = pocketPath.startsWith("/api/")
