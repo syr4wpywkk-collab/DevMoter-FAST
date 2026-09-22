@@ -12,6 +12,15 @@ function defaultId() {
     `agent-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
+function positiveInt(value, fallback) {
+  const number = Number(value);
+  return Number.isSafeInteger(number) && number > 0 ? number : fallback;
+}
+
+function taskFingerprint(task) {
+  return String(task || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
 function cloneContext(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return Object.fromEntries(
@@ -31,9 +40,14 @@ function snapshot(run) {
 }
 
 export class SubagentRuntime {
-  constructor({ adapters = {}, idFactory = defaultId } = {}) {
+  constructor({ adapters = {}, idFactory = defaultId, policy = {} } = {}) {
     this.adapters = new Map(Object.entries(adapters));
     this.idFactory = idFactory;
+    this.policy = {
+      maxDepth: Math.max(0, Math.min(8, positiveInt(policy.maxDepth, 3))),
+      tokenBudget: Math.max(1, positiveInt(policy.tokenBudget, 12000)),
+      turnBudget: Math.max(1, positiveInt(policy.turnBudget, 8))
+    };
     this.runs = new Map();
     this.listeners = new Set();
   }
@@ -73,18 +87,69 @@ export class SubagentRuntime {
     const parentSessionId = String(spec.parentSessionId || "").trim();
     if (!parentSessionId) throw new Error("parentSessionId is required");
 
+    const parentRunId = spec.parentRunId ? String(spec.parentRunId) : null;
+    const parentRun = parentRunId ? this.runs.get(parentRunId) : null;
+    if (parentRunId && !parentRun) throw new Error(`Unknown parent run: ${parentRunId}`);
+
+    const depth = parentRun ? parentRun.depth + 1 : 0;
+    if (depth > this.policy.maxDepth) {
+      throw new Error(`Maximum subagent nesting depth exceeded: ${depth} > ${this.policy.maxDepth}`);
+    }
+
+    const fingerprint = taskFingerprint(task);
+    const lineage = parentRun
+      ? [...parentRun.lineage, parentRun.id]
+      : Array.isArray(spec.lineage) ? spec.lineage.map(String) : [];
+    for (const ancestorId of lineage) {
+      const ancestor = this.runs.get(ancestorId);
+      if (ancestor?.fingerprint === fingerprint) {
+        throw new Error(`Recursive delegation loop rejected: task already exists in lineage (${ancestorId})`);
+      }
+    }
+
+    let tokenLimit = this.policy.tokenBudget;
+    let turnLimit = this.policy.turnBudget;
+    if (parentRun) {
+      if (parentRun.budget.tokensRemaining < 1 || parentRun.budget.turnsRemaining < 1) {
+        throw new Error("Parent subagent budget is exhausted");
+      }
+      tokenLimit = Math.min(
+        positiveInt(spec.tokenBudget, Math.max(1, Math.floor(parentRun.budget.tokensRemaining / 2))),
+        parentRun.budget.tokensRemaining
+      );
+      turnLimit = Math.min(
+        positiveInt(spec.turnBudget, Math.max(1, Math.floor(parentRun.budget.turnsRemaining / 2))),
+        parentRun.budget.turnsRemaining
+      );
+      parentRun.budget.tokensRemaining -= tokenLimit;
+      parentRun.budget.turnsRemaining -= turnLimit;
+      parentRun.updatedAt = Date.now();
+      this.#emit(parentRun);
+    } else {
+      tokenLimit = Math.min(positiveInt(spec.tokenBudget, this.policy.tokenBudget), this.policy.tokenBudget);
+      turnLimit = Math.min(positiveInt(spec.turnBudget, this.policy.turnBudget), this.policy.turnBudget);
+    }
+
     const run = {
       id: String(spec.id || this.idFactory()),
       kind: String(spec.kind || "subagent"),
       backend,
       parentSessionId,
-      parentRunId: spec.parentRunId ? String(spec.parentRunId) : null,
+      parentRunId,
       role: String(spec.role || "executor"),
       model: spec.model ? String(spec.model) : null,
       effectiveModel: null,
       task,
+      fingerprint,
       context: cloneContext(spec.context),
-      lineage: Array.isArray(spec.lineage) ? spec.lineage.map(String) : [],
+      lineage,
+      depth,
+      budget: {
+        tokenLimit,
+        turnLimit,
+        tokensRemaining: tokenLimit,
+        turnsRemaining: turnLimit
+      },
       state: "starting",
       sessionId: null,
       turnId: null,
@@ -105,6 +170,12 @@ export class SubagentRuntime {
       if (this.runs.get(run.id)?.state === "starting") this.update(run.id, { state: "running" });
       return this.getRun(run.id);
     } catch (error) {
+      if (parentRun) {
+        parentRun.budget.tokensRemaining += tokenLimit;
+        parentRun.budget.turnsRemaining += turnLimit;
+        parentRun.updatedAt = Date.now();
+        this.#emit(parentRun);
+      }
       this.update(run.id, {
         state: "failed",
         error: error instanceof Error ? error.message : String(error)
@@ -171,7 +242,10 @@ function scopedPrompt(run) {
   return [
     `[DevMoter bounded subagent · role=${run.role}]`,
     `Parent session: ${run.parentSessionId}`,
-    "Only use the explicitly shared context below. Do not assume access to unrelated parent conversation context.",
+    `Delegation depth: ${run.depth}`,
+    `Lineage: ${run.lineage.length ? run.lineage.join(" > ") : "root"}`,
+    `Inherited budget: ${run.budget.tokenLimit} tokens / ${run.budget.turnLimit} turns`,
+    "Do not delegate beyond the supplied depth/budget. Only use the explicitly shared context below. Do not assume access to unrelated parent conversation context.",
     contextRows.length ? `Shared context:\n${contextRows.join("\n")}` : "Shared context: none",
     `Task:\n${run.task}`
   ].join("\n\n");
