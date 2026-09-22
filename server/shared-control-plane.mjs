@@ -67,7 +67,7 @@ export function createPolicyEngine(initialRules = []) {
     decide(input = {}) {
       const matches = rules.filter(rule => {
         if (rule.enabled === false) return false;
-        for (const key of ["tool", "path", "command", "network", "mode", "action"]) {
+        for (const key of ["backend", "tool", "path", "command", "network", "mode", "action"]) {
           if (rule[key] == null) continue;
           const actual = String(input[key] ?? "");
           const expected = String(rule[key]);
@@ -578,14 +578,31 @@ export function createSharedControlPlane({ stateDir, resolveProject, policyRules
     },
 
     async saveMicrotasks(parentId, value) {
+      const id = cleanId(parentId);
       const all = await readJsonFile(microtasksFile, {});
-      all[cleanId(parentId)] = {
+      all[id] = {
         ...value,
-        parentId: cleanId(parentId),
+        parentId: id,
         updatedAt: Date.now()
       };
       await writeJsonFile(microtasksFile, all);
-      return all[cleanId(parentId)];
+      await events.append(id, {
+        type: "microtask",
+        payload: {
+          title: String(all[id].title || "Task").slice(0, 180),
+          current: Number(all[id].current || 0),
+          status: String(all[id].status || "running"),
+          steps: Array.isArray(all[id].steps)
+            ? all[id].steps.map(step => ({
+                id: String(step?.id || ""),
+                title: String(step?.title || "").slice(0, 180),
+                status: String(step?.status || "pending"),
+                verification: String(step?.verification || "").slice(0, 1000)
+              })).slice(0, 100)
+            : []
+        }
+      });
+      return all[id];
     },
 
     async updateContextSettings(input = {}) {
