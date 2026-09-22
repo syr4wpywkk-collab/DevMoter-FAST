@@ -3373,7 +3373,8 @@ body.opencode-mode #app {
 
 .cx-dev-finding,
 .cx-dev-command-result,
-.cx-dev-mcp-card {
+.cx-dev-mcp-card,
+.cx-dev-skill-card {
   margin-top: 10px;
   padding: 12px;
   border: 1px solid #272727;
@@ -3552,4 +3553,29 @@ body.opencode-mode #app {
   padding: 9px 14px;
   color: #888;
   font-size: .75rem;
+}
+
+
+.cx-dev-skill-card {
+  margin-top: 10px;
+}
+
+.cx-dev-skill-card p {
+  margin: 7px 0 0;
+}
+
+.cx-dev-skill-toggle {
+  padding: 7px 10px;
+  border: 1px solid #292929;
+  border-radius: 12px;
+  background: #131313;
+}
+
+.cx-dev-check-row a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.cx-dev-check-row a:hover {
+  text-decoration: underline;
 }
