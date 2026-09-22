@@ -2202,6 +2202,18 @@ body.opencode-mode #app {
   border-top: 1px solid var(--oc-line-soft);
 }
 
+.ocx-tool-block {
+  min-width: 0;
+}
+
+.ocx-tool-toolbar {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .ocx-tool-label {
   display: block;
   margin: 9px 0 4px;
@@ -2211,7 +2223,26 @@ body.opencode-mode #app {
   letter-spacing: .08em;
 }
 
+.ocx-tool-actions {
+  display: flex;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.ocx-tool-actions button {
+  min-height: 28px;
+  padding: 3px 8px;
+  border: 1px solid var(--oc-line);
+  border-radius: 6px;
+  background: #191714;
+  color: var(--oc-muted);
+  font: inherit;
+  font-size: .61rem;
+  cursor: pointer;
+}
+
 .ocx-tool-content pre {
+  max-width: 100%;
   max-height: 280px;
   overflow: auto;
   margin: 0;
@@ -2223,6 +2254,14 @@ body.opencode-mode #app {
   line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ocx-tool-content pre.nowrap {
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .ocx-reasoning > div {
