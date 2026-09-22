@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { CodexBridge } from "./server/codex-bridge.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
+import { createOperationRegistry } from "./server/operation-registry.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -26,7 +27,10 @@ const PROJECT_FILE_LIMIT = 1024 * 1024;
 const PROJECT_SCAN_LIMIT = 200;
 const OPERATION_TTL_MS = 10 * 60 * 1000;
 const OPERATION_MAX_ENTRIES = 1000;
-const seenOperations = new Map();
+const operationRegistry = createOperationRegistry({
+  ttlMs: OPERATION_TTL_MS,
+  maxEntries: OPERATION_MAX_ENTRIES
+});
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
@@ -51,18 +55,6 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-function pruneSeenOperations(now = Date.now()) {
-  for (const [key, expiresAt] of seenOperations) {
-    if (expiresAt <= now) seenOperations.delete(key);
-  }
-
-  while (seenOperations.size > OPERATION_MAX_ENTRIES) {
-    const oldest = seenOperations.keys().next().value;
-    if (!oldest) break;
-    seenOperations.delete(oldest);
-  }
-}
-
 function operationId(req) {
   const value = req.headers["x-pocket-operation-id"];
   if (Array.isArray(value)) return String(value[0] || "").slice(0, 160);
@@ -73,11 +65,7 @@ function claimOperation(req, res, scope) {
   const id = operationId(req);
   if (!id) return true;
 
-  const now = Date.now();
-  pruneSeenOperations(now);
-
-  const key = `${scope}:${id}`;
-  if (seenOperations.has(key)) {
+  if (!operationRegistry.claim(scope, id)) {
     json(res, 409, {
       error: "Duplicate operation suppressed",
       duplicate: true,
@@ -86,7 +74,6 @@ function claimOperation(req, res, scope) {
     return false;
   }
 
-  seenOperations.set(key, now + OPERATION_TTL_MS);
   return true;
 }
 
