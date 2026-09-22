@@ -1,0 +1,222 @@
+.dm-tools-launcher {
+  position: fixed;
+  z-index: 80;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 15px;
+  background: rgba(20,20,22,.94);
+  color: #f1f1f3;
+  box-shadow: 0 12px 30px rgba(0,0,0,.34);
+  font-size: 1.1rem;
+}
+
+.dm-tools-panel {
+  position: fixed;
+  z-index: 90;
+  inset: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+    max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 18px;
+  background: #111214;
+  color: #ececef;
+  box-shadow: 0 24px 80px rgba(0,0,0,.52);
+}
+
+.dm-tools-panel.hidden {
+  display: none;
+}
+
+.dm-tools-head,
+.dm-tools-tabs,
+.dm-tools-row,
+.dm-terminal-actions,
+.dm-key-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dm-tools-head {
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.dm-tools-head strong {
+  font-size: .82rem;
+}
+
+.dm-tools-head button,
+.dm-tools-tabs button,
+.dm-tools-row button,
+.dm-terminal-actions button,
+.dm-key-row button,
+.dm-tools-panel select,
+.dm-tools-panel input,
+.dm-tools-panel textarea {
+  min-height: 36px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 9px;
+  background: #1c1d20;
+  color: #efeff2;
+  font: inherit;
+}
+
+.dm-tools-head button,
+.dm-tools-tabs button,
+.dm-tools-row button,
+.dm-terminal-actions button,
+.dm-key-row button {
+  padding: 0 11px;
+}
+
+.dm-tools-tabs {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  overflow-x: auto;
+}
+
+.dm-tools-tabs button.active {
+  background: #efefef;
+  color: #151515;
+}
+
+.dm-tools-body {
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+}
+
+.dm-tools-section {
+  display: grid;
+  gap: 10px;
+}
+
+.dm-tools-section.hidden {
+  display: none;
+}
+
+.dm-tools-row {
+  flex-wrap: wrap;
+}
+
+.dm-tools-row > label {
+  display: grid;
+  gap: 4px;
+  flex: 1 1 180px;
+  color: #aaaab2;
+  font-size: .68rem;
+}
+
+.dm-tools-panel select,
+.dm-tools-panel input,
+.dm-tools-panel textarea {
+  width: 100%;
+  padding: 7px 9px;
+  box-sizing: border-box;
+}
+
+.dm-tools-panel textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+
+.dm-terminal-shell {
+  min-height: 300px;
+  height: min(58vh, 560px);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  background: #070809;
+}
+
+.dm-terminal-fallback {
+  height: 100%;
+  margin: 0;
+  padding: 9px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #e7e7ea;
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.dm-terminal-actions {
+  flex-wrap: wrap;
+}
+
+.dm-terminal-actions .danger {
+  border-color: rgba(255,90,90,.45);
+  color: #ffb0b0;
+}
+
+.dm-terminal-status,
+.dm-tools-note {
+  color: #96969e;
+  font-size: .67rem;
+  line-height: 1.45;
+}
+
+.dm-key-row {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.dm-key-row button {
+  flex: 0 0 auto;
+  min-width: 42px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.dm-key-row button.active {
+  background: #dedede;
+  color: #111;
+}
+
+.dm-tools-list {
+  display: grid;
+  gap: 7px;
+}
+
+.dm-tools-card {
+  display: grid;
+  gap: 5px;
+  padding: 9px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 10px;
+  background: rgba(255,255,255,.025);
+}
+
+.dm-tools-card strong {
+  font-size: .72rem;
+}
+
+.dm-tools-card small,
+.dm-tools-card pre {
+  margin: 0;
+  color: #a2a2aa;
+  font-size: .64rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.dm-tools-card button {
+  justify-self: start;
+}
+
+.dm-risk-high {
+  border-color: rgba(255,90,90,.42);
+}
+
+@media (min-width: 820px) {
+  .dm-tools-panel {
+    left: auto;
+    width: min(720px, calc(100vw - 28px));
+  }
+}
