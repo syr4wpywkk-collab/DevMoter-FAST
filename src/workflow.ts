@@ -77,10 +77,7 @@ async function api<T>(url: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(url, {
     cache: "no-store",
     ...init,
-    headers: {
-      ...(init.body ? { "content-type": "application/json" } : {}),
-      ...(init.headers || {})
-    }
+    headers: init.body ? { "content-type": "application/json" } : init.headers
   });
   const payload = await response.json().catch(() => ({})) as Json;
   if (!response.ok) throw new Error(String(payload.error || `HTTP ${response.status}`));
