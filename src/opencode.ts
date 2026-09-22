@@ -1496,7 +1496,7 @@ export function mountOpenCodeRemote(
     }
   }
 
-  async function createSession() {
+  async function createSession(modeOverride = "") {
     setActivity("creating");
 
     try {
@@ -1513,7 +1513,7 @@ export function mountOpenCodeRemote(
       const session = await api<OpenCodeSession>("/session", {
         method: "POST",
         headers: {
-          "x-pocket-agent-mode": selectedMode
+          "x-pocket-agent-mode": modeOverride || selectedMode
         },
         body: JSON.stringify(body)
       });
@@ -1845,6 +1845,13 @@ export function mountOpenCodeRemote(
     const text = promptInput.value.trim();
     if (!text && !pendingAttachments.length) return;
 
+    const modeOverride = String(promptInput.dataset.devmoterModeOverride || "");
+    const modelOverride = String(promptInput.dataset.devmoterModelOverride || "");
+    const providerOverride = String(promptInput.dataset.devmoterProviderOverride || "");
+    delete promptInput.dataset.devmoterModeOverride;
+    delete promptInput.dataset.devmoterModelOverride;
+    delete promptInput.dataset.devmoterProviderOverride;
+
     if (text) {
       try {
         const guard = await runPreExecutionGuard(text);
@@ -1873,8 +1880,25 @@ export function mountOpenCodeRemote(
       return;
     }
 
+    if (modelOverride) {
+      if (!providerOverride) {
+        showToast("Agent mode model override requires an OpenCode provider");
+        return;
+      }
+      if (
+        selectedModel?.providerID !== providerOverride ||
+        selectedModel?.modelID !== modelOverride
+      ) {
+        try {
+          await switchModel({ providerID: providerOverride, modelID: modelOverride });
+        } catch {
+          return;
+        }
+      }
+    }
+
     let sessionID: string | null | undefined = activeSession?.id;
-    if (!sessionID) sessionID = await createSession();
+    if (!sessionID) sessionID = await createSession(modeOverride);
     if (!sessionID) return;
 
     const attachmentText = pendingAttachments.length
@@ -1912,7 +1936,7 @@ export function mountOpenCodeRemote(
         {
           method: "POST",
           headers: {
-            "x-pocket-agent-mode": selectedMode
+            "x-pocket-agent-mode": modeOverride || selectedMode
           },
           body: JSON.stringify({
             text: promptText,
