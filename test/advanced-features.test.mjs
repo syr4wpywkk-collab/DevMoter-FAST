@@ -210,3 +210,54 @@ test("failover never selects a model that misses the requested capabilities", as
     /retry|failed|503/i
   );
 });
+
+
+test("live preview target cannot escape approved loopback host with scheme-relative suffix", () => {
+  assert.throws(
+    () => resolveLivePreviewTarget("127.0.0.1", 5173, "//169.254.169.254/latest/meta-data"),
+    /Invalid live preview path/
+  );
+  const target = resolveLivePreviewTarget("127.0.0.1", 5173, "/assets/app.js", "?v=1");
+  assert.equal(target.hostname, "127.0.0.1");
+  assert.equal(target.port, "5173");
+  assert.equal(target.pathname, "/assets/app.js");
+});
+
+test("live preview rejects oversized response bodies while streaming", async () => {
+  const body = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new Uint8Array(8));
+      controller.enqueue(new Uint8Array(8));
+      controller.close();
+    }
+  });
+  const response = new Response(body);
+  await assert.rejects(() => readBoundedResponseBody(response, 10), /too large/i);
+});
+
+test("configured failover candidates must satisfy the same capability requirements", async () => {
+  const { runWithRouting } = await import("../server/advanced-features.mjs");
+  const registry = {
+    models: [
+      { providerId: "primary", id: "vision", capabilities: { vision: true, tools: true, reasoning: false, context: 1000 } },
+      { providerId: "fallback", id: "text", capabilities: { vision: false, tools: true, reasoning: false, context: 1000 } }
+    ],
+    routes: []
+  };
+  let calls = 0;
+  const result = await runWithRouting({
+    registry,
+    role: "coding",
+    requirements: { vision: true },
+    override: { providerId: "primary", model: "vision" },
+    failover: ["fallback/text"],
+    invoke: async () => {
+      calls += 1;
+      const error = new Error("temporary");
+      error.statusCode = 503;
+      throw error;
+    }
+  }).catch(error => error);
+  assert.equal(calls, 1);
+  assert.match(String(result?.message || result), /temporary/);
+});
