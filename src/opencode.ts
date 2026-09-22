@@ -631,10 +631,90 @@ export function mountOpenCodeRemote(
     return session.location?.directory || directory;
   }
 
+  function stateLabel(state: ExecutionState) {
+    switch (state) {
+      case "running": return "running";
+      case "waiting_for_approval": return "approval";
+      case "waiting_for_input": return "question";
+      case "completed": return "done";
+      case "failed": return "failed";
+      case "interrupted": return "stopped";
+      case "offline": return "offline";
+      case "reconnecting": return "syncing";
+      default: return "idle";
+    }
+  }
+
+  function stateGlyph(state: ExecutionState) {
+    switch (state) {
+      case "running": return "●";
+      case "waiting_for_approval": return "!";
+      case "waiting_for_input": return "?";
+      case "completed": return "✓";
+      case "failed": return "×";
+      case "interrupted": return "■";
+      case "offline": return "○";
+      case "reconnecting": return "↻";
+      default: return "·";
+    }
+  }
+
+  function renderAttention() {
+    attention.replaceChildren();
+    if (!sessions.length) {
+      attention.classList.add("hidden");
+      return;
+    }
+
+    const priority: Record<ExecutionState, number> = {
+      waiting_for_approval: 0,
+      waiting_for_input: 1,
+      running: 2,
+      failed: 3,
+      interrupted: 4,
+      completed: 5,
+      reconnecting: 6,
+      offline: 7,
+      idle: 8
+    };
+
+    const items = sortSessions(sessions, "recent", sessionMessageCounts)
+      .sort((a, b) => {
+        const aState = sessionStates.get(a.id) || "idle";
+        const bState = sessionStates.get(b.id) || "idle";
+        return priority[aState] - priority[bState];
+      })
+      .slice(0, 8);
+
+    attention.classList.remove("hidden");
+    const heading = document.createElement("div");
+    heading.className = "ocx-attention-label";
+    heading.textContent = "ATTENTION";
+    attention.appendChild(heading);
+
+    for (const session of items) {
+      const state = sessionStates.get(session.id) || "idle";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "ocx-attention-row " + state;
+      const glyph = document.createElement("span");
+      glyph.className = "ocx-attention-glyph";
+      glyph.textContent = stateGlyph(state);
+      const copy = document.createElement("span");
+      const title = document.createElement("strong");
+      title.textContent = session.title || "Untitled session";
+      const meta = document.createElement("small");
+      meta.textContent = stateLabel(state);
+      copy.append(title, meta);
+      button.append(glyph, copy);
+      button.addEventListener("click", () => void selectSession(session));
+      attention.appendChild(button);
+    }
+  }
+
   function renderSessions() {
     const q = sessionSearch.value.trim().toLowerCase();
-    const sorted = [...sessions]
-      .sort((a, b) => (b.time?.updated ?? 0) - (a.time?.updated ?? 0))
+    const sorted = sortSessions(sessions, sessionSortMode, sessionMessageCounts)
       .filter(session =>
         !q ||
         (session.title || "").toLowerCase().includes(q) ||
@@ -665,13 +745,25 @@ export function mountOpenCodeRemote(
       title.textContent = session.title || "Untitled session";
 
       const meta = document.createElement("small");
-      meta.textContent = session.agent || "session";
+      const state = sessionStates.get(session.id) || "idle";
+      const count =
+        sessionMessageCounts.get(session.id) ??
+        session.messageCount ??
+        session.messagesCount ??
+        session.message_count ??
+        0;
+      meta.textContent = [
+        stateLabel(state),
+        session.agent || "session",
+        count ? String(count) + " msgs" : ""
+      ].filter(Boolean).join(" · ");
 
       copy.append(title, meta);
 
       const dot = document.createElement("span");
       dot.className = "ocx-session-dot";
-      dot.textContent = session.id === activeSession?.id ? "●" : "";
+      dot.textContent = stateGlyph(state);
+      dot.dataset.state = state;
 
       button.append(copy, dot);
       button.addEventListener("click", () => void selectSession(session));
@@ -949,6 +1041,11 @@ export function mountOpenCodeRemote(
       }
     }
 
+    sessionMessageCounts.set(activeSession.id, countTranscriptMessages(list));
+    if (contextExecutionState) sessionStates.set(activeSession.id, contextExecutionState);
+    renderSessions();
+    renderAttention();
+
     transcript.replaceChildren();
     clearLiveStreams();
 
@@ -1046,6 +1143,25 @@ export function mountOpenCodeRemote(
     const data = await api<OpenCodeSession[]>("/session?limit=80&order=desc");
     sessions = Array.isArray(data) ? data : [];
 
+    try {
+      const payload = await api<Json>("/session/active");
+      const activeMap =
+        payload?.data && typeof payload.data === "object"
+          ? payload.data
+          : payload;
+      const activeIds = new Set(
+        activeMap && typeof activeMap === "object" ? Object.keys(activeMap) : []
+      );
+      for (const session of sessions) {
+        if (sessionStates.get(session.id) === "running" && !activeIds.has(session.id)) {
+          sessionStates.set(session.id, "idle");
+        }
+      }
+      for (const id of activeIds) sessionStates.set(id, "running");
+    } catch {
+      // Session list still renders when the active-session probe is unavailable.
+    }
+
     if (activeSession) {
       const fresh = sessions.find(session => session.id === activeSession?.id);
       if (fresh) {
@@ -1070,6 +1186,7 @@ export function mountOpenCodeRemote(
     }
 
     renderSessions();
+    renderAttention();
 
     if (!activeSession) {
       const saved = localStorage.getItem("opencode-pocket-opencode-session");
