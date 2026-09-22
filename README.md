@@ -21,6 +21,7 @@ The agents stay on the host machine; the browser talks to DevMoter instead of co
 ## Start here
 
 - ⚡ **Fast install:** [fastinstall.MD](./fastinstall.MD)
+- 🛠️ **Install / update / systemd operations:** [docs/operations.md](./docs/operations.md)
 - 🔐 **Security policy & vulnerability reporting:** [SECURITY.md](./SECURITY.md)
 - 📜 **Third-party licenses and interoperability notices:** [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)
 
@@ -49,7 +50,7 @@ The goal is simple: **leave the coding machine running, carry the control surfac
 | Codex | thread history, new/resume/fork, model selection, reasoning effort, streaming, interrupt, approvals, attachments, plugins/MCP inventory |
 | Projects | register/create projects, choose working directory, browse/read/write Markdown safely |
 | GitHub projects | browse repositories through the host `gh` session, clone/open repositories into DevMoter-managed paths, branch/fetch safety checks |
-| PWA | mobile-first UI, installable web app behavior, backend switching, online/offline health state |
+| PWA | mobile-first UI, installable web app behavior, backend switching, online/offline health state, opt-in generic push notifications |
 | Languages | English, 日本語, 简体中文 with browser detection and a sidebar language switcher |
 | Tests | Node test suite, coverage reporting, build checks, GitHub Actions CI |
 
@@ -383,14 +384,14 @@ Already implemented:
 
 Still being improved:
 
-- first-run installation and upgrade experience;
+- packaging and release automation beyond the new installer/update scripts;
 - DevMoter-native authentication;
 - reconnect/offline resilience;
 - richer Git/diff UX;
 - upload cleanup and retention;
 - broader upstream-version compatibility;
 - accessibility and device testing;
-- packaging/background-service setup;
+- broader background-service/device testing;
 - screenshots and demo material.
 
 ## Contributing
