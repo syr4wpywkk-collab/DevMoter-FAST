@@ -505,16 +505,34 @@ export function mountCodexRemote(
       options.operationId ??
       (mutatingMethods.has(method) ? uid() : "");
 
-    const res = await fetch("/api/codex/rpc", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...(opId ? { "x-pocket-operation-id": opId } : {})
-      },
-      body: JSON.stringify({ method, params })
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/codex/rpc", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(opId ? { "x-pocket-operation-id": opId } : {})
+        },
+        body: JSON.stringify({ method, params })
+      });
+    } catch (error) {
+      if (opId) {
+        throw new Error(
+          `Mutation outcome is unknown (operation ${opId}). DevMoter did not retry it automatically.`,
+          { cause: error }
+        );
+      }
+      throw error;
+    }
     const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
+    if (!res.ok) {
+      if (payload?.duplicate) {
+        throw new Error(
+          `Operation ${payload?.operationId || opId} was already accepted; the duplicate send was suppressed.`
+        );
+      }
+      throw new Error(payload?.error || `HTTP ${res.status}`);
+    }
     return payload.result as T;
   }
 
