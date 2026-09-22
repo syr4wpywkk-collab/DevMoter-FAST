@@ -7,6 +7,8 @@ import { CodexBridge } from "./server/codex-bridge.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { createOperationRegistry } from "./server/operation-registry.mjs";
+import { ControlPlane } from "./server/control-plane.mjs";
+import { PasskeyAuth } from "./server/passkey-auth.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -22,6 +24,7 @@ const DIST = fileURLToPath(new URL("./dist/", import.meta.url));
 const HOME_DIR = process.env.HOME || process.cwd();
 const UPLOAD_DIR = process.env.POCKET_UPLOAD_DIR || join(HOME_DIR, ".local", "state", "opencode-pocket", "uploads");
 const PROJECT_CONFIG_DIR = join(HOME_DIR, ".config", "opencode-pocket");
+const PASSKEY_REQUIRED = process.env.DEVMOTER_PASSKEY_REQUIRED === "1";
 const PROJECTS_FILE = join(PROJECT_CONFIG_DIR, "projects.json");
 const PROJECT_FILE_LIMIT = 1024 * 1024;
 const PROJECT_SCAN_LIMIT = 200;
@@ -34,6 +37,20 @@ const operationRegistry = createOperationRegistry({
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
+});
+
+const passkeys = new PasskeyAuth({ configDir: PROJECT_CONFIG_DIR });
+const controlPlane = new ControlPlane({
+  configDir: PROJECT_CONFIG_DIR,
+  executeTask: executeControlTask,
+  onLifecycle: ({ event, run }) => {
+    void controlPlane.dispatchEvent("devmoter.lifecycle", event, {
+      runId: run?.id ?? null,
+      kind: run?.kind ?? null,
+      status: run?.status ?? null,
+      endedAt: run?.endedAt ?? null
+    });
+  }
 });
 
 
@@ -98,7 +115,7 @@ async function openCodeHeadersForRequest(req, extra = {}) {
   return openCodeHeaders({ "x-opencode-directory": directory, ...extra });
 }
 
-async function readJson(req, limit = 1024 * 1024) {
+async function readRaw(req, limit = 1024 * 1024) {
   const chunks = [];
   let size = 0;
 
@@ -108,8 +125,13 @@ async function readJson(req, limit = 1024 * 1024) {
     chunks.push(chunk);
   }
 
-  if (chunks.length === 0) return {};
-  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  return Buffer.concat(chunks);
+}
+
+async function readJson(req, limit = 1024 * 1024) {
+  const raw = await readRaw(req, limit);
+  if (raw.length === 0) return {};
+  return JSON.parse(raw.toString("utf8"));
 }
 
 async function readProjectRegistry() {
@@ -135,6 +157,7 @@ async function readProjectRegistry() {
       if (!info.isDirectory()) continue;
       projects.push({
         id: randomUUID(),
+        hostId: "local",
         name: basename(actual) || actual,
         path: actual,
         addedAt: Date.now()
@@ -273,9 +296,9 @@ async function projectsList(res) {
     for (const project of projects) {
       try {
         const actual = await normalizeExistingProjectPath(project.path);
-        sanitized.push({ ...project, path: actual, available: true });
+        sanitized.push({ ...project, hostId: project.hostId || "local", path: actual, available: true });
       } catch {
-        sanitized.push({ ...project, available: false });
+        sanitized.push({ ...project, hostId: project.hostId || "local", available: false });
       }
     }
 
@@ -308,6 +331,7 @@ async function projectsCreateOrAdd(req, res) {
 
     const project = {
       id: randomUUID(),
+      hostId: "local",
       name: String(payload?.name || basename(projectPath) || projectPath).slice(0, 120),
       path: projectPath,
       addedAt: Date.now()
