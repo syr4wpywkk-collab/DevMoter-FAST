@@ -2,68 +2,89 @@ import "./style.css";
 import { mountOpenCodeRemote } from "./opencode";
 import { mountCodexRemote } from "./codex";
 import { startI18n } from "./i18n";
+import { mountDemo } from "./demo";
+import { mountSystemPanel } from "./system-panel";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
+const params = new URLSearchParams(window.location.search);
 
-app.innerHTML = `
-  <div id="openCodeView" class="pocket-view"><div id="openCodeMount"></div></div>
-  <div id="codexView" class="pocket-view hidden"><div id="codexMount"></div></div>
-`;
+if (params.get("demo") === "1") {
+  mountDemo(app);
+} else {
+  app.innerHTML = `
+    <div id="openCodeView" class="pocket-view"><div id="openCodeMount"></div></div>
+    <div id="codexView" class="pocket-view hidden"><div id="codexMount"></div></div>
+  `;
 
-const openCodeView = document.querySelector<HTMLDivElement>("#openCodeView")!;
-const codexView = document.querySelector<HTMLDivElement>("#codexView")!;
-const openCodeMount = document.querySelector<HTMLDivElement>("#openCodeMount")!;
-const codexMount = document.querySelector<HTMLDivElement>("#codexMount")!;
+  const openCodeView = document.querySelector<HTMLDivElement>("#openCodeView")!;
+  const codexView = document.querySelector<HTMLDivElement>("#codexView")!;
+  const openCodeMount = document.querySelector<HTMLDivElement>("#openCodeMount")!;
+  const codexMount = document.querySelector<HTMLDivElement>("#codexMount")!;
 
-type Backend = "opencode" | "codex";
+  type Backend = "opencode" | "codex";
 
-const savedBackend = localStorage.getItem("opencode-pocket-backend");
-let activeBackend: Backend = savedBackend === "codex" ? "codex" : "opencode";
+  const deepLinkBackend = params.get("backend");
+  const deepLinkSession = params.get("session");
+  if (deepLinkBackend === "codex" || deepLinkBackend === "opencode") {
+    localStorage.setItem("opencode-pocket-backend", deepLinkBackend);
+    if (deepLinkSession) {
+      localStorage.setItem(
+        deepLinkBackend === "codex" ? "opencode-pocket-codex-thread" : "opencode-pocket-opencode-session",
+        deepLinkSession
+      );
+    }
+  }
 
-function setBackend(next: Backend) {
-  activeBackend = next;
-  localStorage.setItem("opencode-pocket-backend", next);
-  openCodeView.classList.toggle("hidden", next !== "opencode");
-  codexView.classList.toggle("hidden", next !== "codex");
-  document.body.classList.toggle("codex-mode", next === "codex");
-  document.body.classList.toggle("opencode-mode", next === "opencode");
-}
+  const savedBackend = localStorage.getItem("opencode-pocket-backend");
+  let activeBackend: Backend = savedBackend === "codex" ? "codex" : "opencode";
 
-const openCodeRemote = mountOpenCodeRemote(openCodeMount, { onCodex: () => setBackend("codex") });
-const codexRemote = mountCodexRemote(codexMount, {
-  onOpenCode: () => setBackend("opencode")
-});
+  function setBackend(next: Backend) {
+    activeBackend = next;
+    localStorage.setItem("opencode-pocket-backend", next);
+    openCodeView.classList.toggle("hidden", next !== "opencode");
+    codexView.classList.toggle("hidden", next !== "codex");
+    document.body.classList.toggle("codex-mode", next === "codex");
+    document.body.classList.toggle("opencode-mode", next === "opencode");
+  }
 
-startI18n();
+  const openCodeRemote = mountOpenCodeRemote(openCodeMount, { onCodex: () => setBackend("codex") });
+  const codexRemote = mountCodexRemote(codexMount, {
+    onOpenCode: () => setBackend("opencode")
+  });
 
-let healthCheckInFlight = false;
-async function checkHealth() {
-  if (healthCheckInFlight) return;
-  healthCheckInFlight = true;
-  try {
-    const res = await fetch("/api/health", { cache: "no-store" });
-    const payload = await res.json();
-    openCodeRemote.setOnline(Boolean(payload?.backends?.opencode?.online));
-    codexRemote.setOnline(Boolean(payload?.backends?.codex?.online));
-  } catch {
+  startI18n();
+  mountSystemPanel();
+
+  let healthCheckInFlight = false;
+  async function checkHealth() {
+    if (healthCheckInFlight) return;
+    healthCheckInFlight = true;
+    try {
+      const res = await fetch("/api/health", { cache: "no-store" });
+      const payload = await res.json();
+      openCodeRemote.setOnline(Boolean(payload?.backends?.opencode?.online));
+      codexRemote.setOnline(Boolean(payload?.backends?.codex?.online));
+    } catch {
+      openCodeRemote.setOnline(false);
+      codexRemote.setOnline(false);
+    } finally {
+      healthCheckInFlight = false;
+    }
+  }
+
+  setBackend(activeBackend);
+  void checkHealth();
+  window.setInterval(() => void checkHealth(), 15000);
+  window.addEventListener("offline", () => {
     openCodeRemote.setOnline(false);
     codexRemote.setOnline(false);
-  } finally {
-    healthCheckInFlight = false;
-  }
+  });
+  window.addEventListener("online", () => void checkHealth());
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") void checkHealth();
+  });
 }
 
-setBackend(activeBackend);
-void checkHealth();
-window.setInterval(() => void checkHealth(), 15000);
-window.addEventListener("offline", () => {
-  openCodeRemote.setOnline(false);
-  codexRemote.setOnline(false);
-});
-window.addEventListener("online", () => void checkHealth());
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") void checkHealth();
-});
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(console.error));
 }
