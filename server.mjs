@@ -7,6 +7,7 @@ import { CodexBridge } from "./server/codex-bridge.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { createOperationRegistry } from "./server/operation-registry.mjs";
+import { createDevWorkflowService } from "./server/dev-workflows.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -34,6 +35,12 @@ const operationRegistry = createOperationRegistry({
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
+});
+const devWorkflows = createDevWorkflowService({
+  homeDir: HOME_DIR,
+  codex,
+  projectResolver: getProjectById,
+  configDir: PROJECT_CONFIG_DIR
 });
 
 
@@ -755,6 +762,17 @@ async function codexEvents(req, res) {
 }
 
 
+async function devWorkflowAction(req, res, handler) {
+  try {
+    const payload = await readJson(req);
+    json(res, 200, await handler(payload));
+  } catch (error) {
+    json(res, 400, {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
 async function serveStatic(req, res) {
   let path = req.url === "/" ? "/index.html" : req.url.split("?")[0];
   path = normalize(path).replace(/^(\.\.[/\\])+/, "");
@@ -851,6 +869,80 @@ const server = http.createServer(async (req, res) => {
         await projectWriteFile(projectId, req, res);
         return;
       }
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/dev/settings") {
+      json(res, 200, { settings: await devWorkflows.getSettings() });
+      return;
+    }
+
+    if (req.method === "PUT" && url.pathname === "/api/dev/settings") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, async payload => ({
+        settings: await devWorkflows.updateSettings(payload?.settings ?? payload)
+      }));
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/dev/capabilities") {
+      try {
+        json(res, 200, await devWorkflows.capabilities(url.searchParams.get("projectId")));
+      } catch (error) {
+        json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+      }
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/dev/review") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.review(payload));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/dev/review/comment") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.postReviewComment(payload));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/dev/ci") {
+      await devWorkflowAction(req, res, payload => devWorkflows.ciStatus(payload));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/dev/verify") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.runVerification(payload?.projectId));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/dev/repair") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.repair(payload));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/dev/mcp/test") {
+      await devWorkflowAction(req, res, payload => devWorkflows.testMcpServer(payload));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/dev/mcp") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.saveMcpServer(payload));
+      return;
+    }
+
+    if (req.method === "PUT" && url.pathname === "/api/dev/mcp/enabled") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.setMcpEnabled(payload));
+      return;
+    }
+
+    if (req.method === "DELETE" && url.pathname === "/api/dev/mcp") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.removeMcpServer(payload));
+      return;
     }
 
     if (req.method === "GET" && url.pathname === "/api/health") {
