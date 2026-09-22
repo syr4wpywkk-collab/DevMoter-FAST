@@ -1048,6 +1048,7 @@ async function executeControlTask(definition, context = {}) {
     const directory = project?.path || OPENCODE_DIRECTORY;
     const headers = { "content-type": "application/json", "x-opencode-directory": directory };
     const saved = context?.backendContext?.backend === "opencode"
+      && String(context.backendContext.projectId || "") === String(definition?.projectId || "")
       ? String(context.backendContext.sessionId || "")
       : "";
 
@@ -1067,7 +1068,11 @@ async function executeControlTask(definition, context = {}) {
       if (!sessionId) throw new Error("OpenCode did not return a session id");
     }
 
-    const backendContext = { backend: "opencode", sessionId };
+    const backendContext = {
+      backend: "opencode",
+      projectId: String(definition?.projectId || ""),
+      sessionId
+    };
     context.setBackendContext?.(backendContext);
 
     const cancel = async () => {
@@ -1100,6 +1105,7 @@ async function executeControlTask(definition, context = {}) {
   }
 
   const saved = context?.backendContext?.backend === "codex"
+    && String(context.backendContext.projectId || "") === String(definition?.projectId || "")
     ? String(context.backendContext.threadId || "")
     : "";
   let threadId = saved;
@@ -1112,7 +1118,11 @@ async function executeControlTask(definition, context = {}) {
     if (!threadId) throw new Error("Codex did not return a thread id");
   }
 
-  const backendContext = { backend: "codex", threadId };
+  const backendContext = {
+    backend: "codex",
+    projectId: String(definition?.projectId || ""),
+    threadId
+  };
   context.setBackendContext?.(backendContext);
 
   const turnParams = {
@@ -1306,9 +1316,8 @@ async function githubWebhookRoute(req, res) {
     json(res, 202, { accepted: runIds.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    json(res, message === "Request body too large" ? 413 : 400, {
-      error: "Webhook rejected"
-    });
+    const status = Number(error?.status || (message === "Request body too large" ? 413 : 400));
+    json(res, status, { error: "Webhook rejected" });
   }
 }
 
