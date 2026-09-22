@@ -1,5 +1,6 @@
 import { codexThreadStatusToExecutionState, codexTurnStatusToExecutionState, isExecutionActive, type ExecutionState } from "./execution-state";
 import { speechRecognitionLanguage } from "./i18n";
+import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 
 const FOLLOW_BOTTOM_THRESHOLD = 48;
 
@@ -1127,9 +1128,7 @@ export function mountCodexRemote(
   }
 
   function scheduleEventReconnect() {
-    if (!online || reconnectTimer !== null) return;
-
-    const delay = Math.min(1000 * 2 ** reconnectAttempts, 15000);
+    if (!shouldScheduleReconnect(online, reconnectTimer !== null)) return;\n\n    const delay = reconnectDelay(reconnectAttempts);
     reconnectAttempts += 1;
     setExecutionState("reconnecting");
 
@@ -1140,7 +1139,7 @@ export function mountCodexRemote(
   }
 
   function connectEvents() {
-    if (events || !online) return;
+    if (!shouldOpenEventSource(online, Boolean(events))) return;
     events = new EventSource("/api/codex/events");
 
     events.onopen = () => {
