@@ -1,6 +1,7 @@
 import { isExecutionActive, openCodeIdleOutcomeToExecutionState, type ExecutionState } from "./execution-state";
 import { speechRecognitionLanguage } from "./i18n";
 import { mergeOpenCodeStreamText, normalizeOpenCodeEvent } from "./opencode-event-compat.mjs";
+import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 
 const FOLLOW_BOTTOM_THRESHOLD = 48;
 
@@ -2104,9 +2105,9 @@ export function mountOpenCodeRemote(
   }
 
   function scheduleEventReconnect() {
-    if (!online || reconnectTimer !== null) return;
+    if (!shouldScheduleReconnect(online, reconnectTimer !== null)) return;
 
-    const delay = Math.min(1000 * 2 ** reconnectAttempts, 15000);
+    const delay = reconnectDelay(reconnectAttempts);
     reconnectAttempts += 1;
     setExecutionState("reconnecting");
 
@@ -2117,7 +2118,7 @@ export function mountOpenCodeRemote(
   }
 
   function connectEvents() {
-    if (eventSource || !online) return;
+    if (!shouldOpenEventSource(online, Boolean(eventSource))) return;
 
     eventSource = new EventSource("/api/opencode/event");
 
@@ -2131,7 +2132,10 @@ export function mountOpenCodeRemote(
 
       if (executionState === "reconnecting") {
         void refresh().finally(() => {
-          if (executionState === "reconnecting") setExecutionState("idle");
+          if (executionState === "reconnecting") {
+            setExecutionState("idle");
+            showToast("Connection recovered");
+          }
         });
       }
     };
