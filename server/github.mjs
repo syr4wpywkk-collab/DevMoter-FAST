@@ -164,9 +164,23 @@ export async function listGithubRepos(homeDir, query = "", page = 1, visibility 
 
 export async function listGithubBranches(homeDir, owner, repo) {
   const identity = validateRepoIdentity(owner, repo);
-  const response = await ghApi(`repos/${encodeURIComponent(identity.owner)}/${encodeURIComponent(identity.repo)}/branches?per_page=100`);
+  const repositoryPath = `repos/${encodeURIComponent(identity.owner)}/${encodeURIComponent(identity.repo)}`;
+  const [response, repository] = await Promise.all([
+    ghApi(`${repositoryPath}/branches?per_page=100`),
+    ghApi(repositoryPath)
+  ]);
   const local = await localState(homeDir, identity);
-  return { branches: response.map(item => ({ name: item.name, protected: Boolean(item.protected), current: item.name === local.currentBranch })), ...local };
+  const defaultBranch = String(repository?.default_branch || "");
+  return {
+    branches: response.map(item => ({
+      name: item.name,
+      protected: Boolean(item.protected),
+      current: item.name === local.currentBranch,
+      default: item.name === defaultBranch
+    })),
+    defaultBranch,
+    ...local
+  };
 }
 
 async function assertOrigin(path, identity) {
