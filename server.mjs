@@ -7,6 +7,7 @@ import { CodexBridge } from "./server/codex-bridge.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { createOperationRegistry } from "./server/operation-registry.mjs";
+import { applyModeToPrompt, isDirectMutationRoute, isPromptRoute, isReadOnlyMode, parseAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
 import { assertAuthPassword, authorizeBasicRequest, requireSameOriginMutation } from "./server/auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
 import { antigravityRemoteAction, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
@@ -42,6 +43,7 @@ const operationRegistry = createOperationRegistry({
   ttlMs: OPERATION_TTL_MS,
   maxEntries: OPERATION_MAX_ENTRIES
 });
+const openCodeSessionModes = new Map();
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
@@ -612,8 +614,18 @@ async function proxy(req, res) {
     ? pocketPath
     : `/api${pocketPath}`;
   const url = new URL(upstreamPath, OPENCODE_URL);
+  const policyPath = url.pathname;
+  const sessionId = sessionIdFromOpenCodePath(policyPath);
+  const requestedMode = parseAgentMode(req.headers["x-pocket-agent-mode"]);
+  if (sessionId && requestedMode) openCodeSessionModes.set(sessionId, requestedMode);
+  const mode = requestedMode || (sessionId ? openCodeSessionModes.get(sessionId) : null) || "build";
 
-  const body =
+  if (isReadOnlyMode(mode) && isDirectMutationRoute(policyPath)) {
+    json(res, 403, { error: `${mode} mode blocks direct shell and command mutations`, mode });
+    return;
+  }
+
+  let body =
     req.method === "GET" || req.method === "HEAD"
       ? undefined
       : await new Promise((resolve, reject) => {
@@ -622,6 +634,16 @@ async function proxy(req, res) {
           req.on("end", () => resolve(Buffer.concat(chunks)));
           req.on("error", reject);
         });
+
+  if (body?.length && isPromptRoute(policyPath) && isReadOnlyMode(mode)) {
+    try {
+      const payload = JSON.parse(body.toString("utf8"));
+      body = Buffer.from(JSON.stringify(applyModeToPrompt(payload, mode)));
+    } catch {
+      json(res, 400, { error: "Read-only mode requires a JSON prompt body" });
+      return;
+    }
+  }
 
   const upstream = await fetch(url, {
     method: req.method,
