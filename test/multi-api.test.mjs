@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -11,6 +11,7 @@ import {
   runMultiApiChat,
   testMultiApiProvider
 } from "../server/multi-api.mjs";
+import { createMultiApiAttachmentStore } from "../server/multi-api-attachments.mjs";
 
 const config = JSON.stringify([
   {
@@ -42,6 +43,7 @@ test("multi-api environment config keeps secrets server-side", () => {
     baseUrl: "https://example.test/v1",
     ready: true,
     models: ["demo-fast", "demo-pro"],
+    reasoningModes: ["auto"],
     source: "env",
     editable: false
   }]);
@@ -109,6 +111,40 @@ test("file-backed provider store uses private permissions and never exposes keys
 
     await store.remove(saved.id);
     assert.deepEqual(await store.listResolved(), []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+
+test("binary image attachment store keeps image bytes on disk with private permissions", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-images-"));
+
+  try {
+    const store = createMultiApiAttachmentStore({ directory: dir });
+    const bytes = Buffer.from([0xff, 0xd8, 0xff, 0x00, 0x11, 0x22]);
+    const saved = await store.save({
+      name: "../camera/photo.jpg",
+      mime: "image/jpeg",
+      buffer: bytes
+    });
+
+    assert.match(saved.id, /^[0-9a-f-]{36}$/i);
+    assert.equal(saved.name.includes("/"), false);
+
+    const entries = await readdir(dir);
+    const imageName = entries.find(name => name.endsWith(".jpg"));
+    assert.ok(imageName);
+
+    const mode = (await stat(join(dir, imageName))).mode & 0o777;
+    assert.equal(mode, 0o600);
+
+    const loaded = await store.read(saved.id);
+    assert.deepEqual(loaded.buffer, bytes);
+    assert.equal(loaded.mime, "image/jpeg");
+
+    await store.remove(saved.id);
+    assert.deepEqual(await readdir(dir), []);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -188,6 +224,7 @@ test("multi-api chat supports Anthropic Messages API directly", async () => {
     {
       providerId: "claude",
       model: "claude-test",
+      reasoning: "high",
       messages: [
         { role: "system", content: "Be concise." },
         { role: "user", content: "hello" }
@@ -211,7 +248,77 @@ test("multi-api chat supports Anthropic Messages API directly", async () => {
   assert.equal(request.init.headers["anthropic-version"], "2023-06-01");
   assert.equal(body.system, "Be concise.");
   assert.deepEqual(body.messages, [{ role: "user", content: "hello" }]);
+  assert.deepEqual(body.thinking, { type: "adaptive" });
+  assert.deepEqual(body.output_config, { effort: "high" });
+  assert.equal(result.reasoning, "high");
   assert.equal(result.message.content, "hello back");
+});
+
+
+test("OpenAI-compatible vision resolves local attachment ids only at outbound request time", async () => {
+  const providers = [{
+    id: "openai-ui",
+    name: "OpenAI",
+    presetId: "openai",
+    protocol: "openai-compatible",
+    baseUrl: "https://api.openai.com/v1",
+    apiKey: "openai-secret",
+    models: ["vision-model"],
+    source: "file"
+  }];
+
+  const payload = {
+    providerId: "openai-ui",
+    model: "vision-model",
+    reasoning: "high",
+    messages: [{
+      role: "user",
+      content: "what is in this image?",
+      attachments: [{
+        id: "11111111-1111-4111-8111-111111111111",
+        name: "photo.png",
+        mime: "image/png"
+      }]
+    }]
+  };
+
+  assert.equal(JSON.stringify(payload).includes("base64"), false);
+
+  let request = null;
+  const result = await runMultiApiChat(
+    providers,
+    payload,
+    async (url, init) => {
+      request = { url, init };
+      return new Response(JSON.stringify({
+        choices: [{ message: { role: "assistant", content: "a test image" } }]
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      });
+    },
+    {
+      attachmentStore: {
+        async read(id) {
+          assert.equal(id, "11111111-1111-4111-8111-111111111111");
+          return {
+            id,
+            name: "photo.png",
+            mime: "image/png",
+            size: 4,
+            buffer: Buffer.from([1, 2, 3, 4])
+          };
+        }
+      }
+    }
+  );
+
+  const body = JSON.parse(request.init.body);
+  assert.equal(body.reasoning_effort, "high");
+  assert.equal(body.messages[0].content[0].type, "text");
+  assert.equal(body.messages[0].content[1].type, "image_url");
+  assert.match(body.messages[0].content[1].image_url.url, /^data:image\/png;base64,/);
+  assert.equal(result.message.content, "a test image");
 });
 
 test("multi-api chat rejects models outside the configured allowlist", async () => {
