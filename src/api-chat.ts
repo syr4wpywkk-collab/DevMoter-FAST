@@ -341,47 +341,53 @@ export function mountApiChat(
     headingTitle.textContent = provider ? provider.name : "APIを追加";
     const headingText = document.createElement("small");
     headingText.textContent = provider
-      ? "空欄のAPIキーは保存済みキーをそのまま使います"
-      : "企業プリセットを選ぶか、Customで任意のAPIを追加できます";
+      ? "キーを変更しないなら空欄のままでOK"
+      : "会社を選んでAPIキーを貼るだけ。残りはDevMoterが自動設定します。";
     heading.append(headingTitle, headingText);
 
     const providerForm = document.createElement("form");
-    providerForm.className = "api-provider-form";
+    providerForm.className = "api-provider-form api-provider-form-simple";
     providerForm.innerHTML = `
       <label>
         <span>企業 / Provider</span>
         <select data-field="preset"></select>
       </label>
-      <label>
-        <span>表示名</span>
-        <input data-field="name" type="text" maxlength="100" required />
-      </label>
-      <label>
-        <span>API形式</span>
-        <select data-field="protocol">
-          <option value="openai-compatible">OpenAI compatible</option>
-          <option value="anthropic">Anthropic Messages</option>
-        </select>
-      </label>
-      <label>
-        <span>Base URL</span>
-        <input data-field="baseUrl" type="url" inputmode="url" autocomplete="off" required />
-      </label>
+
       <label>
         <span>API Key</span>
         <input data-field="apiKey" type="password" autocomplete="new-password" />
         <small data-key-hint></small>
       </label>
-      <label>
-        <span>Models</span>
-        <textarea data-field="models" rows="6" placeholder="1行に1モデル\n例: model-name"></textarea>
-        <small>接続テストに成功するとモデル一覧を自動入力できます。</small>
-      </label>
+
+      <details class="api-advanced-settings" data-advanced>
+        <summary>詳細設定</summary>
+        <div class="api-advanced-settings-body">
+          <label>
+            <span>表示名</span>
+            <input data-field="name" type="text" maxlength="100" />
+          </label>
+          <label>
+            <span>API形式</span>
+            <select data-field="protocol">
+              <option value="openai-compatible">OpenAI compatible</option>
+              <option value="anthropic">Anthropic Messages</option>
+            </select>
+          </label>
+          <label>
+            <span>Base URL</span>
+            <input data-field="baseUrl" type="url" inputmode="url" autocomplete="off" />
+          </label>
+          <label>
+            <span>Models</span>
+            <textarea data-field="models" rows="5" placeholder="自動取得できない場合だけ入力"></textarea>
+          </label>
+        </div>
+      </details>
+
       <div data-form-message class="api-form-message"></div>
-      <div class="api-provider-form-actions">
-        <button data-action="test" type="button">接続テスト・モデル取得</button>
-        <button data-action="save" type="submit" class="primary">保存</button>
-      </div>
+      <button data-action="save" type="submit" class="api-auto-connect-button">
+        ${provider ? "更新" : "接続して追加"}
+      </button>
     `;
 
     const presetSelect = providerForm.querySelector<HTMLSelectElement>('[data-field="preset"]')!;
@@ -390,9 +396,9 @@ export function mountApiChat(
     const baseUrlInput = providerForm.querySelector<HTMLInputElement>('[data-field="baseUrl"]')!;
     const apiKeyInput = providerForm.querySelector<HTMLInputElement>('[data-field="apiKey"]')!;
     const modelsInput = providerForm.querySelector<HTMLTextAreaElement>('[data-field="models"]')!;
+    const advanced = providerForm.querySelector<HTMLDetailsElement>("[data-advanced]")!;
     const keyHint = providerForm.querySelector<HTMLElement>("[data-key-hint]")!;
     const formMessage = providerForm.querySelector<HTMLElement>("[data-form-message]")!;
-    const testButton = providerForm.querySelector<HTMLButtonElement>('[data-action="test"]')!;
     const saveButton = providerForm.querySelector<HTMLButtonElement>('[data-action="save"]')!;
 
     for (const preset of presets) {
@@ -402,37 +408,42 @@ export function mountApiChat(
       presetSelect.appendChild(option);
     }
 
+    function applyPreset() {
+      const preset = presets.find(item => item.id === presetSelect.value);
+      if (!preset) return;
+      if (!provider || presetSelect.value !== (provider.presetId || "custom")) {
+        nameInput.value = preset.name;
+        protocolSelect.value = preset.protocol;
+        baseUrlInput.value = preset.baseUrl;
+      }
+      advanced.open = preset.id === "custom";
+    }
+
     if (provider) {
       presetSelect.value = provider.presetId || "custom";
+      presetSelect.disabled = true;
       nameInput.value = provider.name;
       protocolSelect.value = provider.protocol;
       baseUrlInput.value = provider.baseUrl;
       modelsInput.value = provider.models.join("\n");
-      apiKeyInput.placeholder = provider.ready ? "保存済み（変更するときだけ入力）" : "APIキーを入力";
+      apiKeyInput.placeholder = provider.ready
+        ? "保存済み（変更するときだけ入力）"
+        : "APIキーを貼り付け";
       keyHint.textContent = provider.ready
-        ? "🔒 保存済みキーはブラウザへ再表示されません。"
-        : "APIキーはまだ保存されていません。";
+        ? "🔒 保存済みキーは表示しません。変更するときだけ新しいキーを入力。"
+        : "🔒 キーはDevMoterサーバー側だけに保存します。";
+      advanced.open = provider.presetId === "custom";
     } else {
       const initial = presets[0];
-      if (initial) {
-        presetSelect.value = initial.id;
-        nameInput.value = initial.name;
-        protocolSelect.value = initial.protocol;
-        baseUrlInput.value = initial.baseUrl;
-      }
+      if (initial) presetSelect.value = initial.id;
       apiKeyInput.placeholder = "APIキーを貼り付け";
-      keyHint.textContent = "🔒 キーはDevMoterサーバー側に保存します。";
+      keyHint.textContent = "🔒 貼ったキーはこの端末のDevMoterにだけ保存します。";
+      applyPreset();
     }
 
-    function applyPreset() {
-      const preset = presets.find(item => item.id === presetSelect.value);
-      if (!preset || preset.id === "custom") return;
-      nameInput.value = preset.name;
-      protocolSelect.value = preset.protocol;
-      baseUrlInput.value = preset.baseUrl;
-    }
+    presetSelect.addEventListener("change", applyPreset);
 
-    function formPayload() {
+    function formPayload(modelsOverride?: string[]) {
       return {
         ...(provider ? { id: provider.id } : {}),
         presetId: presetSelect.value,
@@ -440,68 +451,82 @@ export function mountApiChat(
         protocol: protocolSelect.value,
         baseUrl: baseUrlInput.value.trim(),
         apiKey: apiKeyInput.value.trim(),
-        models: modelsInput.value
+        models: modelsOverride ?? modelsInput.value
           .split(/\n|,/)
           .map(item => item.trim())
           .filter(Boolean)
       };
     }
 
-    presetSelect.addEventListener("change", applyPreset);
+    providerForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      const enteredKey = apiKeyInput.value.trim();
 
-    testButton.addEventListener("click", async () => {
-      const payload = formPayload();
-      if (!payload.apiKey) {
-        formMessage.textContent = provider?.ready
-          ? "接続テストするときだけAPIキーをもう一度入力してね。保存だけなら空欄でOK。"
-          : "接続テストにはAPIキーが必要です。";
+      if (!provider && !enteredKey) {
+        formMessage.textContent = "APIキーを貼ってね";
         formMessage.dataset.state = "error";
+        apiKeyInput.focus();
         return;
       }
 
-      testButton.disabled = true;
       saveButton.disabled = true;
-      formMessage.textContent = "接続中…";
       formMessage.dataset.state = "loading";
-      try {
-        const result = await apiJson<{ ok?: boolean; models?: string[] }>("/api/llm/test", {
-          method: "POST",
-          body: JSON.stringify(payload)
-        });
-        const discovered = Array.isArray(result.models) ? result.models : [];
-        if (discovered.length) modelsInput.value = discovered.join("\n");
-        formMessage.textContent = discovered.length
-          ? `✅ 接続成功 · ${discovered.length}モデル取得`
-          : "✅ 接続成功 · モデル一覧は返されなかったので手動入力してね";
-        formMessage.dataset.state = "success";
-      } catch (error) {
-        formMessage.textContent = `接続失敗: ${error instanceof Error ? error.message : String(error)}`;
-        formMessage.dataset.state = "error";
-      } finally {
-        testButton.disabled = false;
-        saveButton.disabled = false;
-      }
-    });
 
-    providerForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      testButton.disabled = true;
-      saveButton.disabled = true;
-      formMessage.textContent = "保存中…";
-      formMessage.dataset.state = "loading";
       try {
-        await apiJson("/api/llm/providers", {
+        let models = modelsInput.value
+          .split(/\n|,/)
+          .map(item => item.trim())
+          .filter(Boolean);
+
+        if (enteredKey) {
+          formMessage.textContent = "接続確認 → モデルを自動取得中…";
+          const tested = await apiJson<{ ok?: boolean; models?: string[] }>("/api/llm/test", {
+            method: "POST",
+            body: JSON.stringify(formPayload([]))
+          });
+          const discovered = Array.isArray(tested.models) ? tested.models : [];
+          if (discovered.length) {
+            models = discovered;
+            modelsInput.value = discovered.join("\n");
+          } else if (!models.length) {
+            advanced.open = true;
+            formMessage.textContent = "接続は成功したけどモデル一覧を取得できませんでした。詳細設定でモデル名を1つ入力してね。";
+            formMessage.dataset.state = "error";
+            return;
+          }
+        }
+
+        if (!models.length) {
+          advanced.open = true;
+          formMessage.textContent = "モデル情報がありません。詳細設定でモデル名を入力してね。";
+          formMessage.dataset.state = "error";
+          return;
+        }
+
+        formMessage.textContent = "安全に保存中…";
+        const saved = await apiJson<{ provider?: ApiProvider }>("/api/llm/providers", {
           method: "POST",
-          body: JSON.stringify(formPayload())
+          body: JSON.stringify(formPayload(models))
         });
+
         apiKeyInput.value = "";
         await refresh();
-        await renderSettingsList();
+
+        const savedId = saved.provider?.id;
+        if (savedId && providers.some(item => item.id === savedId)) {
+          providerSelect.value = savedId;
+          localStorage.setItem("devmoter-api-provider", savedId);
+          updateModels();
+        }
+
+        closeSettings();
+        status.textContent = `${saved.provider?.name || provider?.name || "API"} · Ready`;
+        prompt.focus();
       } catch (error) {
-        formMessage.textContent = error instanceof Error ? error.message : String(error);
+        advanced.open = true;
+        formMessage.textContent = `接続できませんでした: ${error instanceof Error ? error.message : String(error)}`;
         formMessage.dataset.state = "error";
       } finally {
-        testButton.disabled = false;
         saveButton.disabled = false;
       }
     });
