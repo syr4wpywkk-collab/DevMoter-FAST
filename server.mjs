@@ -884,6 +884,15 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/dev/session-context") {
+      try {
+        json(res, 200, await devWorkflows.sessionContext(url.searchParams.get("projectId")));
+      } catch (error) {
+        json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+      }
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/dev/capabilities") {
       try {
         json(res, 200, await devWorkflows.capabilities(url.searchParams.get("projectId")));
