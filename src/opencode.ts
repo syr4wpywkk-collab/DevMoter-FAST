@@ -1165,6 +1165,9 @@ export function mountOpenCodeRemote(
 
       const session = await api<OpenCodeSession>("/session", {
         method: "POST",
+        headers: {
+          "x-pocket-agent-mode": selectedAgent === "plan" ? "plan" : "build"
+        },
         body: JSON.stringify(body)
       });
 
@@ -1182,7 +1185,7 @@ export function mountOpenCodeRemote(
         <div class="ocx-welcome compact">
           <div class="ocx-mark">></div>
           <h2>New session</h2>
-          <p>${selectedAgent === "plan" ? "Plan mode is active." : "Build mode is active."}</p>
+          <p>${selectedAgent === "plan" ? "Plan mode is active · read-only tools only." : "Build mode is active."}</p>
         </div>
       `;
 
@@ -1213,6 +1216,9 @@ export function mountOpenCodeRemote(
           `/session/${encodeURIComponent(activeSession.id)}/agent`,
           {
             method: "POST",
+            headers: {
+              "x-pocket-agent-mode": agentID === "plan" ? "plan" : "build"
+            },
             body: JSON.stringify({ agent: agentID })
           }
         );
@@ -1368,8 +1374,12 @@ export function mountOpenCodeRemote(
         `/session/${encodeURIComponent(sessionID)}/prompt`,
         {
           method: "POST",
+          headers: {
+            "x-pocket-agent-mode": selectedAgent === "plan" ? "plan" : "build"
+          },
           body: JSON.stringify({
-            text: promptText
+            text: promptText,
+            agent: selectedAgent
           })
         }
       );
