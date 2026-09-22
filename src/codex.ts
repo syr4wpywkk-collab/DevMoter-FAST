@@ -1128,7 +1128,9 @@ export function mountCodexRemote(
   }
 
   function scheduleEventReconnect() {
-    if (!shouldScheduleReconnect(online, reconnectTimer !== null)) return;\n\n    const delay = reconnectDelay(reconnectAttempts);
+    if (!shouldScheduleReconnect(online, reconnectTimer !== null)) return;
+
+    const delay = reconnectDelay(reconnectAttempts);
     reconnectAttempts += 1;
     setExecutionState("reconnecting");
 
