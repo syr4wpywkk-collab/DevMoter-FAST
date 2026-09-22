@@ -423,10 +423,23 @@ export class ControlPlane {
     const state = await this.load();
     const run = state.runs.find(item => item.id === id && item.kind === "autopilot");
     if (!run) throw new Error("Autopilot run not found");
+    if (!["queued", "running"].includes(run.status)) throw new Error("Autopilot is not running");
     run.status = "paused";
     if (runtime) runtime.paused = true;
     await runtime?.cancel?.().catch(() => {});
     await this.save();
+    return run;
+  }
+
+  async resumeAutopilot(id) {
+    const state = await this.load();
+    const run = state.runs.find(item => item.id === id && item.kind === "autopilot");
+    if (!run) throw new Error("Autopilot run not found");
+    if (run.status !== "paused") throw new Error("Autopilot is not paused");
+    run.status = "queued";
+    run.endedAt = null;
+    await this.save();
+    void this.#runAutopilot(run);
     return run;
   }
 
@@ -491,7 +504,7 @@ export class ControlPlane {
     const deadline = run.startedAt + run.bounds.maxMinutes * 60_000;
 
     try {
-      for (let turn = 1; turn <= run.bounds.maxTurns; turn++) {
+      for (let turn = (run.turnsCompleted || 0) + 1; turn <= run.bounds.maxTurns; turn++) {
         if (runtime.cancelled || run.status === "cancelled") break;
         if (runtime.paused || run.status === "paused") break;
         if (Date.now() >= deadline) {
@@ -517,7 +530,14 @@ export class ControlPlane {
         });
         runtime.cancel = typeof result?.cancel === "function" ? result.cancel : runtime.cancel;
         run.turnsCompleted = turn;
-        run.budgetUsed += Math.max(0, Number(result?.cost || 0));
+        const reportedCost = Number(result?.cost);
+        if (run.bounds.maxBudget > 0 && !Number.isFinite(reportedCost)) {
+          run.status = "bounded";
+          run.summary = "Stopped because the backend did not report cost telemetry for the configured budget boundary.";
+          await this.#recordRun(run);
+          break;
+        }
+        if (Number.isFinite(reportedCost)) run.budgetUsed += Math.max(0, reportedCost);
         if (result?.summary) run.summary = String(result.summary).slice(0, 4000);
         await this.#recordRun(run);
         if (result?.complete === true) break;
