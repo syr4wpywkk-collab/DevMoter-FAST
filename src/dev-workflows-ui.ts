@@ -11,6 +11,7 @@ type PanelOptions = {
   openModal(title: string, subtitle?: string): void;
   closeSidebar(): void;
   getActiveProject(): ProjectRef | null;
+  getActiveThreadId(): string | null;
   showToast(message: string): void;
   uid(): string;
 };
@@ -40,6 +41,46 @@ function statusBadge(value: string) {
   return badge;
 }
 
+type SkillSelection = {
+  id: string;
+  name: string;
+  path: string;
+};
+
+function skillStorageKey(scope: "project" | "thread", id: string) {
+  return "devmoter-active-skills:" + scope + ":" + id;
+}
+
+function readSkillSelections(key: string): SkillSelection[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(item => item && typeof item.path === "string" && item.path)
+      .map(item => ({
+        id: String(item.id || item.path),
+        name: String(item.name || "Skill"),
+        path: String(item.path)
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function writeSkillSelection(key: string, skill: Json, enabled: boolean) {
+  const selections = readSkillSelections(key);
+  const id = String(skill.id || skill.path || skill.name || "");
+  const next = selections.filter(item => item.id !== id);
+  if (enabled && skill.path) {
+    next.push({
+      id,
+      name: String(skill.name || "Skill"),
+      path: String(skill.path)
+    });
+  }
+  localStorage.setItem(key, JSON.stringify(next));
+}
+
 function pretty(value: unknown) {
   try {
     return JSON.stringify(value, null, 2);
@@ -49,7 +90,7 @@ function pretty(value: unknown) {
 }
 
 export function createDevWorkflowPanel(options: PanelOptions) {
-  const { modalBody, openModal, closeSidebar, getActiveProject, showToast, uid } = options;
+  const { modalBody, openModal, closeSidebar, getActiveProject, getActiveThreadId, showToast, uid } = options;
   let prNumber = localStorage.getItem("devmoter-pr-number") || "";
 
   async function api<T = Json>(path: string, init: RequestInit = {}): Promise<T> {
@@ -395,14 +436,75 @@ export function createDevWorkflowPanel(options: PanelOptions) {
     }
     modalBody.appendChild(mcpSection);
 
-    const capabilitySection = section("Skills / Rules", "発見時にはコードを実行せず、source・scope・trustを表示します。");
+    const capabilitySection = section("Skills / Rules", "Skillはproject/session単位で明示的に有効化。発見だけではコードを実行しません。");
     const skills = Array.isArray(capabilities.skills) ? capabilities.skills : [];
     const rules = Array.isArray(capabilities.rules) ? capabilities.rules : [];
+    const activeThreadId = getActiveThreadId();
+    const projectSkillKey = skillStorageKey("project", project.id);
+    const threadSkillKey = activeThreadId ? skillStorageKey("thread", activeThreadId) : "";
+    const projectSelected = new Set(readSkillSelections(projectSkillKey).map(item => item.id));
+    const threadSelected = new Set(threadSkillKey ? readSkillSelections(threadSkillKey).map(item => item.id) : []);
+
+    for (const skill of skills) {
+      const card = document.createElement("div");
+      card.className = "cx-dev-skill-card";
+      const head = document.createElement("div");
+      head.className = "cx-dev-result-head";
+      head.append(
+        text("strong", String(skill.name || "Skill")),
+        statusBadge(skill.trusted ? "trusted" : "untrusted")
+      );
+      card.appendChild(head);
+      card.appendChild(text(
+        "small",
+        [skill.scope, skill.source, skill.path || "no file path", "precedence " + String(skill.precedence ?? "?")].filter(Boolean).join(" · "),
+        "cx-muted"
+      ));
+      if (skill.description) card.appendChild(text("p", String(skill.description), "cx-muted"));
+
+      if (skill.path) {
+        const toggles = document.createElement("div");
+        toggles.className = "cx-dev-inline-actions";
+
+        const projectToggle = document.createElement("label");
+        projectToggle.className = "cx-dev-checkbox cx-dev-skill-toggle";
+        const projectBox = document.createElement("input");
+        projectBox.type = "checkbox";
+        projectBox.checked = projectSelected.has(String(skill.id));
+        projectBox.addEventListener("change", () => {
+          writeSkillSelection(projectSkillKey, skill, projectBox.checked);
+          showToast(projectBox.checked ? "Project Skillを有効化しました" : "Project Skillを無効化しました");
+        });
+        projectToggle.append(projectBox, text("span", "Project default"));
+
+        const sessionToggle = document.createElement("label");
+        sessionToggle.className = "cx-dev-checkbox cx-dev-skill-toggle";
+        const sessionBox = document.createElement("input");
+        sessionBox.type = "checkbox";
+        sessionBox.disabled = !activeThreadId;
+        sessionBox.checked = Boolean(activeThreadId && threadSelected.has(String(skill.id)));
+        sessionBox.addEventListener("change", () => {
+          if (!threadSkillKey) return;
+          writeSkillSelection(threadSkillKey, skill, sessionBox.checked);
+          showToast(sessionBox.checked ? "Session Skillを有効化しました" : "Session Skillを無効化しました");
+        });
+        sessionToggle.append(sessionBox, text("span", activeThreadId ? "Current session" : "Current session（チャット開始後）"));
+
+        toggles.append(projectToggle, sessionToggle);
+        card.appendChild(toggles);
+      } else {
+        card.appendChild(text("p", "このSkillには実行時に渡せるファイルpathがないため、inspect-onlyです。", "cx-dev-warning"));
+      }
+      capabilitySection.appendChild(card);
+    }
+
     const skillDetails = skills.map((skill: Json) => ({
       name: skill.name,
       scope: skill.scope,
       source: skill.source,
-      trusted: skill.trusted
+      path: skill.path,
+      trusted: skill.trusted,
+      precedence: skill.precedence
     }));
     const ruleDetails = rules.map((rule: Json) => ({
       scope: rule.scope,
@@ -412,8 +514,14 @@ export function createDevWorkflowPanel(options: PanelOptions) {
       preview: String(rule.content || "").slice(0, 240)
     }));
     capabilitySection.append(
-      details("Effective Skills · " + skills.length, pretty(skillDetails)),
-      details("Effective Rules · " + rules.length, pretty(ruleDetails))
+      details("Effective Skills · " + skills.length, pretty({
+        precedence: capabilities.skillsPrecedence,
+        skills: skillDetails
+      })),
+      details("Effective Rules · " + rules.length, pretty({
+        precedence: capabilities.rulesPrecedence,
+        rules: ruleDetails
+      }))
     );
     modalBody.appendChild(capabilitySection);
 
