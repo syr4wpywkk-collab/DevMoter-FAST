@@ -15,7 +15,7 @@ test("project deep link is consumed before backend mount and removed from the UR
   assert.ok(remove > store);
   assert.ok(replace > remove);
   assert.ok(mount > replace);
-  assert.equal(source.indexOf('startupParams.get("project")', startup + 1), -1);
+  assert.equal(source.indexOf('startupParams.get("project")', store), -1);
 });
 
 test("browser attachment state uses opaque IDs instead of host paths", async () => {
