@@ -1684,8 +1684,11 @@ export function mountCodexRemote(
           row.className = "cx-project-row";
           row.innerHTML = `<span class="cx-project-icon">◉</span><span class="cx-project-copy"><strong></strong><small></small></span><span class="cx-project-state">›</span>`;
           (row.querySelector("strong") as HTMLElement).textContent = repo.fullName;
+          const localGitState = repo.cloned
+            ? ` · local:${repo.currentBranch || repo.defaultBranch} · ${repo.dirty ? "changes" : "clean"}`
+            : "";
           (row.querySelector("small") as HTMLElement).textContent =
-            `${repo.private ? "Private" : "Public"} · ${repo.defaultBranch}${repo.cloned ? " · local" : ""}`;
+            `${repo.private ? "Private" : "Public"} · ${repo.defaultBranch}${localGitState}`;
           row.addEventListener("click", () => void showGithubRepo(repo));
           return row;
         }));
