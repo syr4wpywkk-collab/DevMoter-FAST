@@ -120,6 +120,88 @@ export class DevMoterClient {
     });
   }
 
+  async *streamTask({ project, agent, task, backend = "opencode", model = "" }, options = {}) {
+    const id = options.operationId || operationId("task");
+    const url = new URL("api/automation/tasks", this.baseUrl);
+    const headers = {
+      accept: "application/x-ndjson",
+      "content-type": "application/json",
+      "x-pocket-operation-id": id
+    };
+    if (this.token) headers.authorization = "Bearer " + this.token;
+
+    let response;
+    try {
+      response = await this.fetchImpl(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ project, agent, task, backend, model }),
+        signal: options.signal
+      });
+    } catch (cause) {
+      throw new DevMoterError(
+        cause instanceof Error ? cause.message : String(cause),
+        { code: "network_error" }
+      );
+    }
+
+    if (!response.ok) {
+      const text = await response.text();
+      let payload = null;
+      try { payload = text ? JSON.parse(text) : null; } catch {}
+      throw new DevMoterError(
+        payload?.error || "DevMoter HTTP " + response.status,
+        {
+          status: response.status,
+          code: payload?.code || "http_error",
+          data: payload
+        }
+      );
+    }
+
+    if (!response.body) {
+      throw new DevMoterError("DevMoter returned no task stream", {
+        code: "empty_stream"
+      });
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          yield JSON.parse(trimmed);
+        } catch {
+          throw new DevMoterError("Invalid stream-JSON event", {
+            code: "invalid_stream_event",
+            data: { line: trimmed.slice(0, 500) }
+          });
+        }
+      }
+
+      if (done) break;
+    }
+
+    if (buffer.trim()) {
+      try {
+        yield JSON.parse(buffer.trim());
+      } catch {
+        throw new DevMoterError("Invalid final stream-JSON event", {
+          code: "invalid_stream_event"
+        });
+      }
+    }
+  }
+
   listContext(projectId, query = "") {
     return this.request(
       `/api/projects/${encodeURIComponent(projectId)}/context?q=${encodeURIComponent(query)}`
