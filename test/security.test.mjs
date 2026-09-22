@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, realpath, rm, symlink } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, realpath, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { isInsideHome, normalizeNewProjectPath, sanitizeUploadName, createUploadPath, decodeUploadDataUrl, isAllowedCodexRpc } from "../server/security-helpers.mjs";
@@ -46,4 +46,27 @@ test("Codex RPC requests are constrained to the explicit allowlist", () => {
   assert.equal(isAllowedCodexRpc("turn/start"), true);
   assert.equal(isAllowedCodexRpc("shell/exec"), false);
   assert.equal(isAllowedCodexRpc({ toString: () => "thread/list" }), false);
+});
+
+
+test("Codex thread creation resolves project ids server-side", async () => {
+  const [client, server] = await Promise.all([
+    readFile(new URL("../src/codex.ts", import.meta.url), "utf8"),
+    readFile(new URL("../server.mjs", import.meta.url), "utf8")
+  ]);
+
+  assert.match(client, /params\.projectId = activeProject\.id/);
+  assert.doesNotMatch(client, /params\.cwd = activeProject\.path/);
+  assert.match(server, /Object\.prototype\.hasOwnProperty\.call\(params, "cwd"\)/);
+  assert.match(server, /nextParams\.cwd = project\.path/);
+});
+
+test("generated OpenCode operation ids take precedence over caller headers", async () => {
+  const source = await readFile(new URL("../src/opencode.ts", import.meta.url), "utf8");
+  const start = source.indexOf("headers: {", source.indexOf("async function api"));
+  const end = source.indexOf("},", start);
+  const block = source.slice(start, end);
+  assert.ok(block.indexOf("...(init.headers || {})") >= 0);
+  assert.ok(block.indexOf("x-pocket-operation-id") > block.indexOf("...(init.headers || {})"));
+  assert.match(source, /earlier outcome is unknown/);
 });
