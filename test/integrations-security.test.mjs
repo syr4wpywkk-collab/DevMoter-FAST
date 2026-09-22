@@ -16,15 +16,25 @@ test("integration child environment strips DevMoter and OpenCode secrets", () =>
     DEVMOTER_API_TOKEN: "do-not-leak-either",
     POCKET_SESSION_SECRET: "private",
     OPENCODE_SERVER_PASSWORD: "private-upstream",
-    ANTHROPIC_API_KEY: "provider-key-may-be-needed"
+    ANTHROPIC_API_KEY: "provider-secret",
+    GITHUB_TOKEN: "github-secret",
+    AWS_SECRET_ACCESS_KEY: "aws-secret",
+    NODE_OPTIONS: "--require=/tmp/evil.js",
+    LD_PRELOAD: "/tmp/evil.so",
+    DISPLAY: ":0"
   });
 
   assert.equal(env.DEVMOTER_AUTH_PASSWORD, undefined);
   assert.equal(env.DEVMOTER_API_TOKEN, undefined);
   assert.equal(env.POCKET_SESSION_SECRET, undefined);
   assert.equal(env.OPENCODE_SERVER_PASSWORD, undefined);
-  assert.equal(env.ANTHROPIC_API_KEY, "provider-key-may-be-needed");
+  assert.equal(env.ANTHROPIC_API_KEY, undefined);
+  assert.equal(env.GITHUB_TOKEN, undefined);
+  assert.equal(env.AWS_SECRET_ACCESS_KEY, undefined);
+  assert.equal(env.NODE_OPTIONS, undefined);
+  assert.equal(env.LD_PRELOAD, undefined);
   assert.equal(env.PATH, "/usr/bin");
+  assert.equal(env.DISPLAY, ":0");
 });
 
 test("Antigravity remote URLs are restricted to the official HTTPS origin", () => {
