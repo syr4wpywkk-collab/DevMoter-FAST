@@ -1,0 +1,17 @@
+[Unit]
+Description=DevMoter FAST
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=@WORKDIR@
+ExecStart=/usr/bin/env bash @WORKDIR@/scripts/systemd-entrypoint.sh
+Restart=on-failure
+RestartSec=3
+Environment=POCKET_HOST=127.0.0.1
+Environment=POCKET_PORT=8787
+KillMode=control-group
+
+[Install]
+WantedBy=default.target
