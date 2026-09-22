@@ -657,7 +657,7 @@ function waitForCodexTurn(threadId, turnId, context = {}) {
       finish(null, {
         complete: true,
         summary: "Codex turn " + turnId + " finished with status " + status + ".",
-        cost: Number(params?.turn?.cost || 0)
+        cost: Number.isFinite(Number(params?.turn?.cost)) ? Number(params.turn.cost) : null
       });
     };
     const timer = setTimeout(() => finish(new Error("Agent task timed out at its configured boundary")), timeoutMs);
@@ -712,7 +712,7 @@ async function executeControlTask(definition, context = {}) {
     return {
       complete: true,
       summary: "OpenCode session " + sessionId + " completed the requested turn.",
-      cost: 0,
+      cost: null,
       cancel
     };
   }
@@ -834,11 +834,15 @@ async function controlRoute(req, res, url) {
       if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
       json(res, 202, { run: await controlPlane.startAutopilot(await readJson(req)) }); return true;
     }
-    const autopilotMatch = url.pathname.match(/^\/api\/control\/autopilot\/([^/]+)\/(pause|cancel)$/);
+    const autopilotMatch = url.pathname.match(/^\/api\/control\/autopilot\/([^/]+)\/(pause|resume|cancel)$/);
     if (autopilotMatch && req.method === "POST") {
       if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
       const id = decodeURIComponent(autopilotMatch[1]);
-      const run = autopilotMatch[2] === "pause" ? await controlPlane.pauseAutopilot(id) : await controlPlane.cancelAutopilot(id);
+      const run = autopilotMatch[2] === "pause"
+        ? await controlPlane.pauseAutopilot(id)
+        : autopilotMatch[2] === "resume"
+          ? await controlPlane.resumeAutopilot(id)
+          : await controlPlane.cancelAutopilot(id);
       json(res, 200, { run }); return true;
     }
 
