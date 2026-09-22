@@ -202,7 +202,7 @@ export function mountIntegrations(
             <button data-action="qr" data-id="antigravity" ${!isEnabled ? "disabled" : ""}>QR表示</button>
           </div>
           <div id="ixQr-antigravity" class="ix-qr hidden">
-            <img src="/qr/antigravity-remote.svg" alt="Antigravity Remote Control QR code" />
+            <img src="/qr/antigravity-remote.png" alt="Antigravity Remote Control QR code" />
             <span>Antigravity Remote Control</span>
           </div>
         `
@@ -216,7 +216,7 @@ export function mountIntegrations(
             <button data-action="qr" data-id="claude" ${!isEnabled ? "disabled" : ""}>QR表示</button>
           </div>
           <div id="ixQr-claude" class="ix-qr hidden">
-            <img src="/qr/claude-code.svg" alt="Claude Code QR code" />
+            <img src="/qr/claude-code.png" alt="Claude Code QR code" />
             <span>Claude Code on the web</span>
           </div>
         `;
