@@ -793,10 +793,18 @@ export function mountCodexRemote(
     allThreads = result?.data ?? [];
     renderThreads();
 
+    if (activeThreadId && !allThreads.some(thread => thread.id === activeThreadId)) {
+      activeThreadId = null;
+      activeTurnId = null;
+      activeAssistantBubble = null;
+      localStorage.removeItem("opencode-pocket-codex-thread");
+    }
+
     if (!activeThreadId) {
       const saved = localStorage.getItem("opencode-pocket-codex-thread");
       const target = allThreads.find(thread => thread.id === saved);
       if (target) await selectThread(target);
+      else if (saved) localStorage.removeItem("opencode-pocket-codex-thread");
     }
   }
 

@@ -1020,6 +1020,11 @@ export function mountOpenCodeRemote(
 
         sessionTitle.textContent = fresh.title || "Untitled session";
         updateContextUI();
+      } else {
+        activeSession = null;
+        pendingPermission = null;
+        pendingQuestion = null;
+        localStorage.removeItem("opencode-pocket-opencode-session");
       }
     }
 
@@ -1029,6 +1034,7 @@ export function mountOpenCodeRemote(
       const saved = localStorage.getItem("opencode-pocket-opencode-session");
       const target = sessions.find(session => session.id === saved);
       if (target) await selectSession(target);
+      else if (saved) localStorage.removeItem("opencode-pocket-opencode-session");
     }
   }
 
