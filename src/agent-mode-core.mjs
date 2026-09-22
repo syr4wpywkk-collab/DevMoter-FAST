@@ -27,6 +27,25 @@ const BUILTIN_MODES = Object.freeze({
       deny: Object.freeze([])
     }),
     mutationPolicy: "approval-required"
+  }),
+  review: Object.freeze({
+    id: "review",
+    name: "Review",
+    description: "Inspect a working tree or selected diff and report risks without silently modifying code.",
+    instructions: [
+      "Review the working tree, staged changes, commit range, or diff named by the user.",
+      "Do not modify files while Review mode is active.",
+      "Use read-only inspection and git diff/status commands as needed; normal command approval still applies.",
+      "Return structured findings ordered by severity with file:line references whenever the evidence supports one.",
+      "For each finding include severity, location, evidence, impact, and a concise remediation suggestion.",
+      "If a fix is desired, ask for an explicit transition to a mutation-capable mode instead of changing code silently."
+    ],
+    model: null,
+    tools: Object.freeze({
+      allow: Object.freeze(["read", "diagnostics", "git"]),
+      deny: Object.freeze(["files"])
+    }),
+    mutationPolicy: "read-only-until-explicit-transition"
   })
 });
 
