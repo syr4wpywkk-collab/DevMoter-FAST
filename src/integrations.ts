@@ -12,7 +12,6 @@ type IntegrationInfo = {
   name: string;
   installed: boolean;
   version?: string | null;
-  warning?: string | null;
   webUrl?: string;
   mobileUrl?: string;
   capabilities: Record<string, boolean>;
@@ -103,7 +102,8 @@ export function mountIntegrations(
         <section class="ix-hero">
           <span class="ix-kicker">TOOLS</span>
           <h1>開発ツールをひとつの場所から。</h1>
-          <p>使うものだけON。認証情報の抜き取りや非公式proxyはせず、各ツールの公式CLI・公式Web導線を使います。</p>
+          <p>使うものだけ表示。認証情報の抜き取りや非公式proxyはせず、各ツールの公式CLI・公式Web導線を使います。</p>
+          <p class="ix-security-note">ON/OFFは表示設定です。アクセス制御はDevMoterの認証・same-origin境界で行います。</p>
         </section>
 
         <section class="ix-project-panel">
@@ -170,7 +170,7 @@ export function mountIntegrations(
   }
 
   function statusText(info: IntegrationInfo) {
-    if (!enabled.has(info.id)) return "Disabled";
+    if (!enabled.has(info.id)) return "Hidden";
     if (!info.installed) return "Not installed";
     if (info.id === "antigravity" && info.remote?.running) {
       return info.remote.name ? `Remote: ${info.remote.name}` : "Remote active";
@@ -202,7 +202,7 @@ export function mountIntegrations(
             <button data-action="qr" data-id="antigravity" ${!isEnabled ? "disabled" : ""}>QR表示</button>
           </div>
           <div id="ixQr-antigravity" class="ix-qr hidden">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=https%3A%2F%2Fantigravity.google.com" alt="Antigravity Remote Control QR code" referrerpolicy="no-referrer" />
+            <img src="/qr/antigravity-remote.svg" alt="Antigravity Remote Control QR code" />
             <span>Antigravity Remote Control</span>
           </div>
         `
@@ -216,7 +216,7 @@ export function mountIntegrations(
             <button data-action="qr" data-id="claude" ${!isEnabled ? "disabled" : ""}>QR表示</button>
           </div>
           <div id="ixQr-claude" class="ix-qr hidden">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=https%3A%2F%2Fclaude.ai%2Fcode" alt="Claude Code QR code" referrerpolicy="no-referrer" />
+            <img src="/qr/claude-code.svg" alt="Claude Code QR code" />
             <span>Claude Code on the web</span>
           </div>
         `;
@@ -299,6 +299,12 @@ export function mountIntegrations(
     }
 
     if ((action === "remote-start" || action === "remote-stop") && id === "antigravity") {
+      const confirmation =
+        action === "remote-start"
+          ? "Antigravity Remote Controlを開始します。PCがリモート操作可能な状態になります。続けますか？"
+          : "Antigravity Remote Controlを停止します。続けますか？";
+      if (!window.confirm(confirmation)) return;
+
       button.disabled = true;
       try {
         await api(`/api/integrations/antigravity/remote/${action === "remote-start" ? "start" : "stop"}`, {
