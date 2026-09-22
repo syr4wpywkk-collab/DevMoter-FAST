@@ -9,6 +9,9 @@ type Json = Record<string, any>;
 type OpenCodeModel = {
   id: string;
   name?: string;
+  enabled?: boolean;
+  status?: string | null;
+  capabilities?: Json | null;
 };
 
 type OpenCodeProvider = {
@@ -45,7 +48,7 @@ type PendingAttachment = {
   type: string;
   kind: "image" | "file";
   dataUrl?: string;
-  path: string;
+  uploadId: string;
   size: number;
 };
 
@@ -541,7 +544,10 @@ export function mountOpenCodeRemote(
       return raw
         .map((model: Json) => ({
           id: String(model.id ?? model.modelID ?? ""),
-          name: String(model.name ?? model.id ?? model.modelID ?? "")
+          name: String(model.name ?? model.id ?? model.modelID ?? ""),
+          enabled: model.enabled !== false,
+          status: model.status ?? null,
+          capabilities: model.capabilities ?? null
         }))
         .filter(model => model.id);
     }
@@ -549,7 +555,10 @@ export function mountOpenCodeRemote(
     return Object.entries(raw)
       .map(([id, model]) => ({
         id,
-        name: String((model as Json)?.name ?? id)
+        name: String((model as Json)?.name ?? id),
+        enabled: (model as Json)?.enabled !== false,
+        status: (model as Json)?.status ?? null,
+        capabilities: (model as Json)?.capabilities ?? null
       }))
       .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
   }
@@ -1350,7 +1359,7 @@ export function mountOpenCodeRemote(
     if (!sessionID) return;
 
     const attachmentText = pendingAttachments.length
-      ? `\n\n添付ファイル:\n${pendingAttachments.map(item => `- ${item.name} (${item.kind}): ${item.path}`).join("\n")}`
+      ? `\n\n添付ファイル:\n${pendingAttachments.map(item => `- ${item.name} (${item.kind}): devmoter-upload:${item.uploadId}`).join("\n")}`
       : "";
     const promptText = `${text}${attachmentText}`.trim();
     addUserMessage(promptText);
@@ -1399,7 +1408,7 @@ export function mountOpenCodeRemote(
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload?.error || `Upload failed (${response.status})`);
-    return { id: operationId(), name: file.name, type: file.type, kind, dataUrl: kind === "image" ? data : undefined, path: String(payload.path || ""), size: file.size } satisfies PendingAttachment;
+    return { id: operationId(), name: file.name, type: file.type, kind, dataUrl: kind === "image" ? data : undefined, uploadId: String(payload.uploadId || ""), size: file.size } satisfies PendingAttachment;
   }
 
   function renderAttachments() {
@@ -2180,6 +2189,118 @@ export function mountOpenCodeRemote(
     modalBody.appendChild(list);
   }
 
+
+  async function showRuntimePicker() {
+    openModal("Provider Â· Model Â· Agent", "Choose a compatible OpenCode runtime");
+    modalBody.replaceChildren();
+
+    const agentSection = document.createElement("section");
+    agentSection.className = "ocx-picker-section";
+    const agentHeading = document.createElement("div");
+    agentHeading.className = "ocx-picker-heading";
+    agentHeading.textContent = "Agent";
+    agentSection.appendChild(agentHeading);
+
+    for (const agent of agents) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `ocx-picker-row ${selectedAgent === agent.id ? "selected" : ""}`;
+
+      const copy = document.createElement("span");
+      copy.innerHTML = "<strong></strong><small></small>";
+      copy.querySelector("strong")!.textContent = agent.id;
+      copy.querySelector("small")!.textContent =
+        `${agent.description || agent.mode || "OpenCode agent"} Â· supported`;
+
+      const mark = document.createElement("span");
+      mark.textContent = selectedAgent === agent.id ? "â" : "âº";
+      button.append(copy, mark);
+      button.addEventListener("click", () => {
+        void switchAgent(agent.id)
+          .then(() => void showRuntimePicker())
+          .catch(() => {});
+      });
+      agentSection.appendChild(button);
+    }
+    modalBody.appendChild(agentSection);
+
+    const modelSection = document.createElement("section");
+    modelSection.className = "ocx-picker-section";
+    const modelHeading = document.createElement("div");
+    modelHeading.className = "ocx-picker-heading";
+    modelHeading.textContent = "Provider Â· Model";
+    modelSection.appendChild(modelHeading);
+
+    const sortedProviders = [...providers].sort((a, b) => {
+      const aConnected = connectedProviders.has(a.id) ? 0 : 1;
+      const bConnected = connectedProviders.has(b.id) ? 0 : 1;
+      return aConnected - bConnected || (a.name || a.id).localeCompare(b.name || b.id);
+    });
+
+    for (const provider of sortedProviders) {
+      const connected = connectedProviders.has(provider.id);
+      const heading = document.createElement("div");
+      heading.className = "ocx-picker-provider";
+      heading.innerHTML = "<strong></strong><small></small>";
+      heading.querySelector("strong")!.textContent = provider.name || provider.id;
+      heading.querySelector("small")!.textContent = connected ? "available" : "provider unavailable";
+      modelSection.appendChild(heading);
+
+      for (const model of normalizeModels(provider)) {
+        const supported = connected && model.enabled !== false && model.status !== "unavailable";
+        const button = document.createElement("button");
+        button.type = "button";
+        button.disabled = !supported;
+        button.className = `ocx-picker-row ${
+          selectedModel?.providerID === provider.id &&
+          selectedModel?.modelID === model.id
+            ? "selected"
+            : ""
+        } ${supported ? "" : "unavailable"}`;
+
+        const copy = document.createElement("span");
+        copy.innerHTML = "<strong></strong><small></small>";
+        copy.querySelector("strong")!.textContent = model.name || model.id;
+
+        const capabilityText = model.capabilities && typeof model.capabilities === "object"
+          ? Object.entries(model.capabilities)
+              .filter(([, value]) => Boolean(value))
+              .map(([key]) => key)
+              .slice(0, 4)
+              .join(", ")
+          : "";
+        copy.querySelector("small")!.textContent = supported
+          ? `${provider.id}/${model.id}${capabilityText ? ` Â· ${capabilityText}` : ""}`
+          : `${provider.id}/${model.id} Â· unavailable`;
+
+        const mark = document.createElement("span");
+        mark.textContent =
+          selectedModel?.providerID === provider.id &&
+          selectedModel?.modelID === model.id
+            ? "â"
+            : supported ? "âº" : "Ã";
+
+        button.append(copy, mark);
+        if (supported) {
+          button.addEventListener("click", () => {
+            void switchModel({ providerID: provider.id, modelID: model.id })
+              .then(() => void showRuntimePicker())
+              .catch(() => {});
+          });
+        }
+        modelSection.appendChild(button);
+      }
+    }
+    modalBody.appendChild(modelSection);
+
+    const scope = document.createElement("p");
+    scope.className = "ocx-modal-empty";
+    scope.textContent = activeSession
+      ? "Changes apply to the active session and are persisted as the next-session defaults."
+      : "Selection is saved as the default for the next session.";
+    modalBody.appendChild(scope);
+  }
+
   function showCommands() {
     openModal("Commands", "Reusable OpenCode prompts");
     modalBody.replaceChildren();
@@ -2329,7 +2450,7 @@ export function mountOpenCodeRemote(
 
   agentsNav.addEventListener("click", () => {
     closeSidebar();
-    void showAgents();
+    void showRuntimePicker();
   });
   commandsNav.addEventListener("click", () => {
     closeSidebar();
@@ -2341,7 +2462,7 @@ export function mountOpenCodeRemote(
   });
   modelsNav.addEventListener("click", () => {
     closeSidebar();
-    void showModels();
+    void showRuntimePicker();
   });
   codexNav.addEventListener("click", () => {
     closeSidebar();
@@ -2350,8 +2471,8 @@ export function mountOpenCodeRemote(
   refreshButton.addEventListener("click", () => void refresh());
 
   sessionTitleButton.addEventListener("click", showSessionDetails);
-  agentButton.addEventListener("click", () => void showAgents());
-  modelButton.addEventListener("click", () => void showModels());
+  agentButton.addEventListener("click", () => void showRuntimePicker());
+  modelButton.addEventListener("click", () => void showRuntimePicker());
 
   planMode.addEventListener("click", () => void setMode("plan"));
   buildMode.addEventListener("click", () => void setMode("build"));
@@ -2369,6 +2490,35 @@ export function mountOpenCodeRemote(
     fileInput.value = "";
     attachmentMenu.classList.add("hidden");
   });
+
+  let composerDragDepth = 0;
+  promptForm.addEventListener("dragenter", event => {
+    if (!event.dataTransfer?.types.includes("Files")) return;
+    event.preventDefault();
+    composerDragDepth += 1;
+    promptForm.classList.add("dragging");
+  });
+  promptForm.addEventListener("dragover", event => {
+    if (!event.dataTransfer?.types.includes("Files")) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    promptForm.classList.add("dragging");
+  });
+  promptForm.addEventListener("dragleave", event => {
+    if (!event.dataTransfer?.types.includes("Files")) return;
+    event.preventDefault();
+    composerDragDepth = Math.max(0, composerDragDepth - 1);
+    if (composerDragDepth === 0) promptForm.classList.remove("dragging");
+  });
+  promptForm.addEventListener("drop", event => {
+    if (!event.dataTransfer?.files?.length) return;
+    event.preventDefault();
+    composerDragDepth = 0;
+    promptForm.classList.remove("dragging");
+    attachmentMenu.classList.add("hidden");
+    void addAttachments(event.dataTransfer.files);
+  });
+
   voice.addEventListener("click", () => {
     const Recognition = (window as Window & { SpeechRecognition?: new () => any; webkitSpeechRecognition?: new () => any }).SpeechRecognition ||
       (window as Window & { webkitSpeechRecognition?: new () => any }).webkitSpeechRecognition;
