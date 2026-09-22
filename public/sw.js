@@ -25,8 +25,10 @@ self.addEventListener("fetch", event => {
   event.respondWith(
     fetch(request, { cache: "no-store" })
       .then(response => {
-        const copy = response.clone();
-        caches.open(CACHE).then(cache => cache.put(request, copy)).catch(() => {});
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE).then(cache => cache.put(request, copy)).catch(() => {});
+        }
         return response;
       })
       .catch(() => caches.match(request))
