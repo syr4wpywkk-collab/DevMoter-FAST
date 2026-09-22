@@ -5,6 +5,12 @@ import { startI18n } from "./i18n";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
+const requestedProject = new URLSearchParams(window.location.search).get("project");
+if (requestedProject) {
+  localStorage.setItem("opencode-pocket-project", requestedProject);
+}
+
+
 app.innerHTML = `
   <div id="openCodeView" class="pocket-view"><div id="openCodeMount"></div></div>
   <div id="codexView" class="pocket-view hidden"><div id="codexMount"></div></div>
