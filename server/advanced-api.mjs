@@ -48,7 +48,21 @@ function previewBaseUrl(host, port) {
   return new URL("http://" + safeHost + ":" + port + "/");
 }
 
-async function readBoundedResponseBody(response, limit = LIVE_PREVIEW_LIMIT) {
+export function resolveLivePreviewTarget(host, port, suffix, search = "") {
+  if (!loopbackHost(host)) throw Object.assign(new Error("Preview host is not allowed"), { statusCode: 403 });
+  const rawSuffix = String(suffix || "/");
+  if (!rawSuffix.startsWith("/") || rawSuffix.startsWith("//") || rawSuffix.includes("\\") || /%5c/i.test(rawSuffix)) {
+    throw Object.assign(new Error("Invalid live preview path"), { statusCode: 400 });
+  }
+  const target = new URL("." + rawSuffix, previewBaseUrl(host, port));
+  target.search = search;
+  if (!loopbackHost(target.hostname) || Number(target.port || port) !== Number(port)) {
+    throw Object.assign(new Error("Preview target escaped the approved loopback endpoint"), { statusCode: 403 });
+  }
+  return target;
+}
+
+export async function readBoundedResponseBody(response, limit = LIVE_PREVIEW_LIMIT) {
   const declared = Number(response.headers.get("content-length") || 0);
   if (Number.isFinite(declared) && declared > limit) {
     throw Object.assign(new Error("Live preview response is too large"), { statusCode: 413 });
@@ -111,17 +125,7 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
     if (!new Set(["GET", "HEAD"]).has(req.method)) { sendJson(res, 405, { error: "Live preview proxy is read-only" }); return; }
     if (!loopbackHost(preview.host)) { sendJson(res, 403, { error: "Preview host is not allowed" }); return; }
 
-    const rawSuffix = String(suffix || "/");
-    if (!rawSuffix.startsWith("/") || rawSuffix.startsWith("//") || rawSuffix.includes("\\") || /%5c/i.test(rawSuffix)) {
-      sendJson(res, 400, { error: "Invalid live preview path" });
-      return;
-    }
-    const target = new URL("." + rawSuffix, previewBaseUrl(preview.host, preview.port));
-    target.search = url.search;
-    if (!loopbackHost(target.hostname) || Number(target.port || preview.port) !== preview.port) {
-      sendJson(res, 403, { error: "Preview target escaped the approved loopback endpoint" });
-      return;
-    }
+    const target = resolveLivePreviewTarget(preview.host, preview.port, suffix || "/", url.search);
     const upstream = await fetchImpl(target, {
       method: req.method,
       headers: { accept: String(req.headers.accept || "*/*"), "user-agent": "DevMoter-LivePreview/1" },
