@@ -191,7 +191,7 @@ async function antigravityRemoteStatus() {
     return {
       installed: true,
       ...parseAntigravityStatus(output),
-      error: output || "Unable to read Antigravity Remote Control status"
+      error: "Antigravity Remote Control status unavailable"
     };
   }
 }
