@@ -12,6 +12,7 @@ import {
   previewFile,
   resolveInsideRoot,
   runWithRouting,
+  sandboxStatus,
   sandboxStatus
 } from "../server/advanced-features.mjs";
 
@@ -225,7 +226,7 @@ test("provider failover skips models that do not meet requested capabilities", a
       role: "coding",
       requirements: { vision: true }
     }),
-    /Ollama request failed/
+    /busy/
   );
 });
 
