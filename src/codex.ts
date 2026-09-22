@@ -1,6 +1,8 @@
 import { codexThreadStatusToExecutionState, codexTurnStatusToExecutionState, isExecutionActive, type ExecutionState } from "./execution-state";
 import { speechRecognitionLanguage } from "./i18n";
 
+const FOLLOW_BOTTOM_THRESHOLD = 48;
+
 type Json = Record<string, any>;
 
 type ThreadSummary = {
@@ -244,6 +246,13 @@ export function mountCodexRemote(
   const titleButton = root.querySelector<HTMLButtonElement>("#cxTitleButton")!;
   const modelLabel = root.querySelector<HTMLElement>("#cxModelLabel")!;
   const transcript = root.querySelector<HTMLDivElement>("#cxTranscript")!;
+  let followsBottom = true;
+  const followLatest = () => {
+    if (followsBottom) transcript.scrollTop = transcript.scrollHeight;
+  };
+  transcript.addEventListener("scroll", () => {
+    followsBottom = transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight <= FOLLOW_BOTTOM_THRESHOLD;
+  }, { passive: true });
   const approval = root.querySelector<HTMLDivElement>("#cxApproval")!;
   const approvalTitle = root.querySelector<HTMLElement>("#cxApprovalTitle")!;
   const approvalMeta = root.querySelector<HTMLElement>("#cxApprovalMeta")!;
@@ -749,7 +758,7 @@ export function mountCodexRemote(
 
     row.appendChild(bubble);
     transcript.appendChild(row);
-    transcript.scrollTop = transcript.scrollHeight;
+    followLatest();
     return bubble;
   }
 
@@ -877,7 +886,7 @@ export function mountCodexRemote(
       `;
     }
 
-    transcript.scrollTop = transcript.scrollHeight;
+    followLatest();
   }
 
   async function selectThread(thread: ThreadSummary) {
@@ -900,6 +909,7 @@ export function mountCodexRemote(
         if (project) setActiveProject(project);
       }
 
+      followsBottom = true;
       await loadThreadHistory(thread.id);
       renderThreads();
     } catch (error) {
@@ -1204,7 +1214,7 @@ export function mountCodexRemote(
           activeAssistantBubble.appendChild(textNode);
         }
         textNode.textContent += delta;
-        transcript.scrollTop = transcript.scrollHeight;
+        followLatest();
         return;
       }
 
