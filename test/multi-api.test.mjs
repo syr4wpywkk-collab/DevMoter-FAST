@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+  MULTI_API_PRESETS,
   createMultiApiStore,
   loadMultiApiProviders,
   publicMultiApiProviders,
@@ -12,6 +13,23 @@ import {
   testMultiApiProvider
 } from "../server/multi-api.mjs";
 import { createMultiApiAttachmentStore } from "../server/multi-api-attachments.mjs";
+
+test("provider presets include expanded verified compatibility targets without duplicate ids", () => {
+  const ids = MULTI_API_PRESETS.map(provider => provider.id);
+  assert.equal(new Set(ids).size, ids.length);
+
+  for (const expected of [
+    "openai", "gemini", "anthropic", "openrouter", "groq", "together",
+    "mistral", "xai", "deepseek", "cerebras", "fireworks", "perplexity",
+    "deepinfra", "sambanova", "nvidia", "cohere", "qwen", "custom"
+  ]) {
+    assert.ok(ids.includes(expected), `missing preset: ${expected}`);
+  }
+
+  for (const provider of MULTI_API_PRESETS.filter(provider => provider.id !== "custom")) {
+    assert.match(provider.baseUrl, /^https:\/\//);
+  }
+});
 
 const config = JSON.stringify([
   {
