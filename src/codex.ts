@@ -1153,7 +1153,10 @@ export function mountCodexRemote(
 
       if (executionState === "reconnecting") {
         void refresh().finally(() => {
-          if (executionState === "reconnecting") setExecutionState("idle");
+          if (executionState === "reconnecting") {
+            setExecutionState("idle");
+            showToast("再接続しました");
+          }
         });
       }
     };
