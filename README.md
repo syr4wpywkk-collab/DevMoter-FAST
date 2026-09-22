@@ -293,6 +293,8 @@ npm run build
 
 Coverage reports are written under `coverage/`. GitHub Actions also runs the automated checks in CI.
 
+Before tagged releases, run [RELEASE_SMOKE.md](RELEASE_SMOKE.md) on the real Chromebook/Crostini + iPhone path.
+
 The test suite is designed to exercise backend safety logic and CLI/bridge behavior without requiring real OpenCode or Codex sessions for every test.
 
 ## Configuration
