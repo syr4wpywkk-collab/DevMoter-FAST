@@ -16,7 +16,7 @@ The agents stay on the host machine; the browser talks to DevMoter instead of co
 > DevMoter FAST is an **experimental, unofficial community project**. It is not affiliated with or endorsed by OpenAI, OpenCode, or other upstream projects/providers referenced by the software.
 
 > [!WARNING]
-> DevMoter is designed for a **private-host / private-network** setup. It does not yet provide a complete independent user-authentication layer. Do not expose the DevMoter server, OpenCode port, or agent backends directly to the public internet.
+> DevMoter is designed for a **private-host / private-network** setup. Optional per-origin passkey protection is available, but DevMoter is still a single-user tool rather than a public multi-user service. Do not expose the DevMoter server, OpenCode port, or agent backends directly to the public internet.
 
 ## Start here
 
@@ -49,6 +49,8 @@ The goal is simple: **leave the coding machine running, carry the control surfac
 | Codex | thread history, new/resume/fork, model selection, reasoning effort, streaming, interrupt, approvals, attachments, plugins/MCP inventory |
 | Projects | register/create projects, choose working directory, browse/read/write Markdown safely |
 | GitHub projects | browse repositories through the host `gh` session, clone/open repositories into DevMoter-managed paths, branch/fetch safety checks |
+| Remote control | explicit multi-host registry/status, host-scoped navigation, cron-like schedules, signed event triggers, bounded autopilot |
+| Security | optional WebAuthn/passkey login gate, host-local credentials, explicit bootstrap/recovery policy |
 | PWA | mobile-first UI, installable web app behavior, backend switching, online/offline health state |
 | Languages | English, 日本語, 简体中文 with browser detection and a sidebar language switcher |
 | Tests | Node test suite, coverage reporting, build checks, GitHub Actions CI |
@@ -264,12 +266,15 @@ Current protections include:
 - Markdown writes are constrained to registered projects;
 - uploaded files stay on the host;
 - GitHub credentials stay in the host CLI session;
+- optional WebAuthn/passkey credentials are scoped to the DevMoter host origin;
+- multi-host registry entries do not contain backend credentials or SSH private keys;
+- scheduled/event/autopilot work continues to use the normal approval and permission policy.
 
 ### Important limitation
 
-DevMoter does **not** yet have a complete independent authentication system.
+DevMoter is still designed as a **single-user private-host** tool, not a public multi-user authorization system. Passkey protection can be enabled with `DEVMOTER_PASSKEY_REQUIRED=1` after registering a passkey for the intended origin. Private networking such as Tailscale remains recommended.
 
-Anyone who can reach the DevMoter HTTP endpoint may be able to control coding agents with the permissions granted to those agents. Use Tailscale or another appropriately configured private network boundary.
+See `docs/remote-control-security.md` for passkey bootstrap/recovery and automation security details. The optional relay is design-only; its threat model is documented in `docs/relay-threat-model.md` and no relay implementation ships in this change.
 
 ## Testing
 
@@ -310,6 +315,10 @@ POCKET_HOST=127.0.0.1
 CODEX_BIN=codex
 # CODEX_CWD=/home/user/project
 
+# Optional browser passkey gate (register passkeys first)
+# DEVMOTER_PASSKEY_REQUIRED=1
+# Temporary only while registering/recovering a passkey for a new remote origin:
+# DEVMOTER_PASSKEY_BOOTSTRAP=1
 
 ```
 
@@ -379,12 +388,13 @@ Already implemented:
 - GitHub repository integration;
 - automated tests and coverage;
 - CI checks;
-- localhost-first launcher and health checks.
+- localhost-first launcher and health checks;
+- optional passkey gate, multi-host registry/status, visible schedules/event triggers, and bounded autopilot.
 
 Still being improved:
 
 - first-run installation and upgrade experience;
-- DevMoter-native authentication;
+- broader authentication/authorization hardening beyond the optional single-user passkey gate;
 - reconnect/offline resilience;
 - richer Git/diff UX;
 - upload cleanup and retention;
@@ -421,6 +431,8 @@ The project aims to keep that process visible rather than pretending the code wa
 - `PROMPT_FOR_CODEX.md` — implementation / handoff context
 - `.env.example` — environment-variable example
 - `.github/workflows/ci.yml` — automated CI checks
+- `docs/remote-control-security.md` — passkeys, multi-host, schedules, triggers, and autopilot security notes
+- `docs/relay-threat-model.md` — design-only optional E2EE relay threat model and review gates
 
 ## License
 
