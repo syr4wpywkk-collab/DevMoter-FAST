@@ -2058,7 +2058,10 @@ export function mountOpenCodeRemote(
 
       if (executionState === "reconnecting") {
         void refresh().finally(() => {
-          if (executionState === "reconnecting") setExecutionState("idle");
+          if (executionState === "reconnecting") {
+            setExecutionState("idle");
+            showToast("Connection recovered");
+          }
         });
       }
     };
