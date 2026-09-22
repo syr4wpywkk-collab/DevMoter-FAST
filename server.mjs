@@ -7,6 +7,7 @@ import { CodexBridge } from "./server/codex-bridge.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { createOperationRegistry } from "./server/operation-registry.mjs";
+import { createControlPlane, handleControlPlaneRequest } from "./server/control-plane.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -34,6 +35,12 @@ const operationRegistry = createOperationRegistry({
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
+});
+
+const controlPlane = createControlPlane({
+  stateDir: join(HOME_DIR, ".local", "state", "opencode-pocket", "control-plane"),
+  resolveProject: getProjectById,
+  policyRules: []
 });
 
 
@@ -725,6 +732,17 @@ async function codexEvents(req, res) {
   });
 
   const send = (event, data) => {
+    const sessionId =
+      data?.params?.threadId ??
+      data?.params?.thread?.id ??
+      data?.threadId ??
+      data?.thread?.id ??
+      "codex";
+    void controlPlane.events.append(sessionId, {
+      type: event,
+      backend: "codex",
+      payload: data
+    }).catch(() => {});
     res.write(`event: ${event}\n`);
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
@@ -780,6 +798,8 @@ async function serveStatic(req, res) {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+
+    if (await handleControlPlaneRequest(req, res, url, controlPlane)) return;
 
     if (req.method === "GET" && url.pathname === "/api/projects") {
       await projectsList(res);
