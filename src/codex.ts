@@ -1495,7 +1495,10 @@ export function mountCodexRemote(
         const finalState = codexTurnStatusToExecutionState(params?.turn?.status);
         setExecutionState(finalState);
         activeTurnId = null;
-        if (activeAssistantBubble) addAssistantActions(activeAssistantBubble);
+        if (activeAssistantBubble) {
+          activeAssistantBubble.closest(".cx-message-row")?.classList.remove("live");
+          addAssistantActions(activeAssistantBubble);
+        }
         activeAssistantBubble = null;
         if (activeThreadId) {
           const threadId = activeThreadId;
@@ -1515,7 +1518,10 @@ export function mountCodexRemote(
       if (method === "item/agentMessage/delta") {
         const delta = typeof params?.delta === "string" ? params.delta : "";
         if (!delta) return;
-        if (!activeAssistantBubble) activeAssistantBubble = addMessage("assistant", "", [], false);
+        if (!activeAssistantBubble) {
+          activeAssistantBubble = addMessage("assistant", "", [], false);
+          activeAssistantBubble.closest(".cx-message-row")?.classList.add("live");
+        }
         let textNode = activeAssistantBubble.querySelector<HTMLElement>(".cx-message-text");
         if (!textNode) {
           textNode = document.createElement("div");
