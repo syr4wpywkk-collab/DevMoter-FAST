@@ -7,6 +7,7 @@ import { mountAgentConsole } from "./agent-console";
 import { mountSessionControl } from "./session-control";
 import { mountWorkspaceTools } from "./workspace-tools";
 import { mountAdvancedTools } from "./advanced";
+import { mountControlCenter } from "./control-center";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
@@ -62,6 +63,7 @@ mountAgentConsole();
 mountSessionControl({ switchBackend: backend => setBackend(backend) });
 mountWorkspaceTools();
 mountAdvancedTools();
+mountControlCenter();
 
 let healthCheckInFlight = false;
 async function checkHealth() {
