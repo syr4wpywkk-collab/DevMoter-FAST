@@ -98,7 +98,6 @@ async function openCodeHeadersForRequest(req, extra = {}) {
   if (projectId && !isExistingSession) directory = (await getProjectById(projectId)).path;
   return openCodeHeaders({ "x-opencode-directory": directory, ...extra });
 }
-
 async function readJson(req, limit = 1024 * 1024) {
   const chunks = [];
   let size = 0;
@@ -197,8 +196,7 @@ async function resolveProjectMarkdownPath(project, relativePath, { mustExist = f
     throw new Error("File parent escapes the project");
   }
 
-  if (mustExist) {
-    const actualTarget = await realpath(target);
+  if (mustExist) {    const actualTarget = await realpath(target);
     const targetRel = relative(root, actualTarget);
     if (targetRel.startsWith("..") || isAbsolute(targetRel)) {
       throw new Error("File escapes the project");
@@ -297,8 +295,7 @@ async function projectsCreateOrAdd(req, res) {
       projectPath = normalizeNewProjectPath(payload?.path, HOME_DIR);
       await mkdir(projectPath, { recursive: false, mode: 0o700 });
       projectPath = await normalizeExistingProjectPath(projectPath);
-    } else {
-      projectPath = await normalizeExistingProjectPath(payload?.path);
+    } else {      projectPath = await normalizeExistingProjectPath(payload?.path);
     }
 
     const existing = projects.find(project => resolve(project.path) === projectPath);
@@ -397,8 +394,7 @@ async function githubProjectsApi() {
 async function githubOpen(req, res) {
   const payload = await readJson(req);
   const owner = String(payload?.owner || "");
-  const repo = String(payload?.repo || "");
-  const branch = String(payload?.branch || "");
+  const repo = String(payload?.repo || "");  const branch = String(payload?.branch || "");
   const result = await openGithubRepo(HOME_DIR, await githubProjectsApi(), owner, repo, branch);
   json(res, 200, result);
 }
@@ -497,8 +493,7 @@ async function inspectControlSession(backend, sessionId) {
       includeTurns: true
     });
     const turns = payload?.thread?.turns ?? [];
-    const latest = turns.at(-1);
-    let status = controlStatus(payload?.thread?.status);
+    const latest = turns.at(-1);    let status = controlStatus(payload?.thread?.status);
     if (status === "unknown") status = controlStatus(latest?.status);
 
     const activeTurn = [...turns]
@@ -597,7 +592,6 @@ const sessionControlTimer = setInterval(() => {
     .catch(error => console.error("Session control reconcile failed", error));
 }, 2500);
 sessionControlTimer.unref?.();
-
 async function opencodeHealth() {
   try {
     const payload = await fetchOpenCodeJson("/api/location", {
@@ -697,8 +691,7 @@ async function opencodeProviders(res) {
       id: String(provider.id),
       name: provider.name ?? String(provider.id),
       activation: provider.activation ?? null,
-      integrationID: provider.integrationID ?? null,
-      models: grouped.get(String(provider.id)) ?? {}
+      integrationID: provider.integrationID ?? null,      models: grouped.get(String(provider.id)) ?? {}
     }));
 
     const connected = normalized
@@ -797,8 +790,7 @@ async function codexRpc(req, res) {
       return;
     }
 
-    const inventoryMethod = new Set([
-      "plugin/installed",
+    const inventoryMethod = new Set([      "plugin/installed",
       "plugin/list",
       "mcpServerStatus/list",
       "skills/list"
@@ -897,8 +889,7 @@ async function codexEvents(req, res) {
   req.on("close", () => {
     clearInterval(heartbeat);
     codex.off("notification", onNotification);
-    codex.off("server-request", onServerRequest);
-    codex.off("offline", onOffline);
+    codex.off("server-request", onServerRequest);    codex.off("offline", onOffline);
     codex.off("online", onOnline);
   });
 }
@@ -931,6 +922,11 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
 
     if (url.pathname.startsWith("/api/session-control")) {
+      if (
+        req.method !== "GET" &&
+        req.method !== "HEAD" &&
+        !claimOperation(req, res, `${req.method}:${url.pathname}`)
+      ) return;
       if (await sessionControl.handle(req, res, url)) return;
     }
 
@@ -998,7 +994,6 @@ const server = http.createServer(async (req, res) => {
         await projectReadFile(projectId, url.searchParams.get("path"), res);
         return;
       }
-
       if (req.method === "PUT" && action === "file") {
         if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
         await projectWriteFile(projectId, req, res);
