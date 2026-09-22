@@ -1,5 +1,6 @@
 import { isExecutionActive, openCodeIdleOutcomeToExecutionState, type ExecutionState } from "./execution-state";
 import { speechRecognitionLanguage } from "./i18n";
+import { enforceTranscriptLimit } from "./bounded-transcript";
 import { mergeOpenCodeStreamText, normalizeOpenCodeEvent } from "./opencode-event-compat.mjs";
 
 const FOLLOW_BOTTOM_THRESHOLD = 48;
@@ -312,6 +313,7 @@ export function mountOpenCodeRemote(
   const transcript = root.querySelector<HTMLDivElement>("#ocxTranscript")!;
   let followsBottom = true;
   const followLatest = () => {
+    enforceTranscriptLimit(transcript);
     if (followsBottom) transcript.scrollTop = transcript.scrollHeight;
   };
   transcript.addEventListener("scroll", () => {
@@ -451,6 +453,7 @@ export function mountOpenCodeRemote(
   }
 
   function setExecutionState(next: ExecutionState) {
+    const previous = executionState;
     executionState = next;
     const active = isExecutionActive(next);
 
@@ -462,6 +465,12 @@ export function mountOpenCodeRemote(
 
     if (active) startLiveFallback();
     else stopLiveFallback();
+
+    if (previous !== next) {
+      window.dispatchEvent(new CustomEvent("devmoter-agent-state", {
+        detail: { backend: "opencode", sessionId: activeSession?.id || null, state: next }
+      }));
+    }
   }
 
   function setControlsEnabled(value: boolean) {
