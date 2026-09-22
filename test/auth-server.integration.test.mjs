@@ -221,6 +221,26 @@ test("server requires auth and exact Origin for mutations", async () => {
     assert.match(String(uploadPayload.uploadId || ""), /^[0-9a-f-]{36}$/i);
     assert.equal(Object.hasOwn(uploadPayload, "path"), false);
 
+    const directPathAttachment = await fetch(`${origin}/api/codex/rpc`, {
+      method: "POST",
+      headers: {
+        authorization,
+        origin,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "direct-path-rejection"
+      },
+      body: JSON.stringify({
+        method: "turn/start",
+        params: {
+          threadId: "thread-does-not-matter",
+          input: [{ type: "localImage", path: "/etc/passwd" }]
+        }
+      })
+    });
+    assert.equal(directPathAttachment.status, 400);
+    const directPathPayload = await directPathAttachment.json();
+    assert.match(String(directPathPayload.error || ""), /Direct attachment paths are not accepted/);
+
     const missingOrigin = await fetch(`${origin}/api/projects`, {
       method: "POST",
       headers: {
