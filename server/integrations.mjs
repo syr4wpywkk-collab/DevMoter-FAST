@@ -14,20 +14,22 @@ class IntegrationError extends Error {
   }
 }
 
-export function sanitizeChildEnv(source = process.env) {
+export function sanitizeChildEnv(source = process.env, allowedSecretKeys = []) {
   const env = { ...source };
+  const allowed = new Set(allowedSecretKeys.map(key => String(key).toUpperCase()));
+
   for (const key of Object.keys(env)) {
-    if (
+    const sensitive =
       /(PASSWORD|PASSWD|TOKEN|SECRET|API_KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIAL)/i.test(key) ||
       /^AWS_(SESSION_TOKEN|SECRET_ACCESS_KEY)$/i.test(key) ||
       /^GITHUB_TOKEN$/i.test(key) ||
-      /^GH_TOKEN$/i.test(key)
-    ) {
+      /^GH_TOKEN$/i.test(key);
+    if (sensitive && !allowed.has(key.toUpperCase())) {
       delete env[key];
     }
   }
 
-  // Avoid process-injection hooks when spawning third-party developer tools.
+  // Never allow process-injection hooks into third-party developer tools.
   for (const key of [
     "BASH_ENV",
     "ENV",
@@ -46,6 +48,16 @@ export function sanitizeChildEnv(source = process.env) {
   }
 
   return env;
+}
+
+function integrationChildEnv(id) {
+  const allowed =
+    id === "claude"
+      ? ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"]
+      : id === "antigravity"
+        ? ["GEMINI_API_KEY", "GOOGLE_API_KEY"]
+        : [];
+  return sanitizeChildEnv(process.env, allowed);
 }
 
 function assertActionCooldown(key) {
@@ -113,7 +125,7 @@ async function run(bin, args, options = {}) {
     maxBuffer: 512 * 1024,
     windowsHide: true,
     env: {
-      ...sanitizeChildEnv(process.env),
+      ...(options.env || sanitizeChildEnv(process.env)),
       NO_COLOR: "1",
       TERM: process.env.TERM || "dumb"
     }
@@ -126,7 +138,10 @@ async function run(bin, args, options = {}) {
 
 async function detect(definition) {
   try {
-    const result = await run(definition.bin, definition.versionArgs, { timeoutMs: 4_000 });
+    const result = await run(definition.bin, definition.versionArgs, {
+      timeoutMs: 4_000,
+      env: integrationChildEnv(definition.id)
+    });
     return {
       installed: true,
       version: compactOutput(result.stdout || result.stderr, 300) || "installed"
@@ -197,7 +212,9 @@ async function antigravityRemoteStatus() {
   }
 
   try {
-    const result = await run(definition.bin, ["remote-control", "status"]);
+    const result = await run(definition.bin, ["remote-control", "status"], {
+      env: integrationChildEnv("antigravity")
+    });
     return {
       installed: true,
       ...parseAntigravityStatus([result.stdout, result.stderr].filter(Boolean).join("\n"))
@@ -227,13 +244,13 @@ async function findExecutable(name) {
   }
 }
 
-async function spawnDetached(bin, args, cwd) {
+async function spawnDetached(bin, args, cwd, env) {
   await new Promise((resolve, reject) => {
     const child = spawn(bin, args, {
       cwd,
       detached: true,
       stdio: "ignore",
-      env: sanitizeChildEnv(process.env)
+      env
     });
     child.once("spawn", () => {
       child.unref();
@@ -243,7 +260,7 @@ async function spawnDetached(bin, args, cwd) {
   });
 }
 
-async function launchInTerminal(command, cwd, extraArgs = []) {
+async function launchInTerminal(command, cwd, extraArgs = [], env = sanitizeChildEnv(process.env)) {
   if (process.platform === "linux") {
     const candidates = [
       { bin: "x-terminal-emulator", args: ["-e", command, ...extraArgs] },
@@ -255,7 +272,7 @@ async function launchInTerminal(command, cwd, extraArgs = []) {
 
     for (const candidate of candidates) {
       if (!(await findExecutable(candidate.bin))) continue;
-      await spawnDetached(candidate.bin, candidate.args, cwd);
+      await spawnDetached(candidate.bin, candidate.args, cwd, env);
       return { ok: true, terminal: candidate.bin };
     }
 
@@ -315,7 +332,12 @@ export async function launchIntegration(id, cwd) {
   }
 
   try {
-    const result = await launchInTerminal(definition.bin, cwd);
+    const result = await launchInTerminal(
+      definition.bin,
+      cwd,
+      [],
+      integrationChildEnv(definition.id)
+    );
     return {
       ok: true,
       integration: id,
@@ -346,7 +368,10 @@ export async function antigravityRemoteAction(action) {
   assertActionCooldown("antigravity:remote");
 
   try {
-    await run(definition.bin, args, { timeoutMs: 20_000 });
+    await run(definition.bin, args, {
+      timeoutMs: 20_000,
+      env: integrationChildEnv("antigravity")
+    });
   } catch {
     throw new IntegrationError("Antigravity Remote Control command failed.");
   }
