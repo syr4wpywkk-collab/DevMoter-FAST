@@ -64,7 +64,7 @@ export function mountApiChat(
         <div id="apiTranscript" class="api-transcript">
           <section id="apiWelcome" class="api-welcome">
             <div class="api-spark">✦</div>
-            <h1>こんにちは、まり</h1>
+            <h1>こんにちは</h1>
             <p>どのAPIで考える？</p>
           </section>
         </div>
