@@ -211,6 +211,21 @@ function statusPaths(text) {
 
 async function remoteBranchExists(cwd, branch) {
   try {
+    await execFileAsync("git", ["remote", "get-url", "origin"], {
+      cwd,
+      timeout: 10000,
+      maxBuffer: 128 * 1024,
+      windowsHide: true,
+      env: process.env
+    });
+  } catch (error) {
+    if (Number(error?.code) === 2) return false;
+    const stderr = String(error?.stderr || "").trim();
+    if (/No such remote|does not appear to be a git repository/i.test(stderr)) return false;
+    throw new Error(stderr.slice(0, 600) || "Could not inspect Git remote");
+  }
+
+  try {
     await execFileAsync("git", ["ls-remote", "--exit-code", "--heads", "origin", "refs/heads/" + branch], {
       cwd,
       timeout: 30000,
