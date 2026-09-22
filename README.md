@@ -4,6 +4,8 @@
 
 [![CI](https://github.com/syr4wpywkk-collab/DevMoter-FAST/actions/workflows/ci.yml/badge.svg)](https://github.com/syr4wpywkk-collab/DevMoter-FAST/actions/workflows/ci.yml)
 
+**English** | [日本語](./README.ja.md) | [简体中文](./README.zh-CN.md)
+
 DevMoter FAST is a **mobile-first remote interface for Codex and OpenCode**. Run your coding agents on a Linux machine, then control them from your phone, tablet, or another browser through one lightweight web UI.
 
 **Codex + OpenCode · PWA · English / 日本語 / 简体中文 · Open source**
