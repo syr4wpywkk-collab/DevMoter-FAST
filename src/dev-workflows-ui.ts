@@ -232,10 +232,18 @@ export function createDevWorkflowPanel(options: PanelOptions) {
       const row = document.createElement("div");
       row.className = "cx-dev-check-row";
       const copy = document.createElement("span");
-      copy.append(
-        text("strong", String(check.name || "check")),
-        text("small", [check.workflow, check.conclusion || check.status].filter(Boolean).join(" · "))
-      );
+      const checkName = text("strong", String(check.name || "check"));
+      if (check.detailsUrl) {
+        const link = document.createElement("a");
+        link.href = String(check.detailsUrl);
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.appendChild(checkName);
+        copy.appendChild(link);
+      } else {
+        copy.appendChild(checkName);
+      }
+      copy.appendChild(text("small", [check.workflow, check.conclusion || check.status].filter(Boolean).join(" · ")));
       row.append(copy, statusBadge(String(check.conclusion || check.status || "unknown")));
       target.appendChild(row);
     }
