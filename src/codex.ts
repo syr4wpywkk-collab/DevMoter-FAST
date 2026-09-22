@@ -1,5 +1,6 @@
 import { codexThreadStatusToExecutionState, codexTurnStatusToExecutionState, isExecutionActive, type ExecutionState } from "./execution-state";
 import { speechRecognitionLanguage } from "./i18n";
+import { enforceTranscriptLimit } from "./bounded-transcript";
 
 const FOLLOW_BOTTOM_THRESHOLD = 48;
 
@@ -248,6 +249,7 @@ export function mountCodexRemote(
   const transcript = root.querySelector<HTMLDivElement>("#cxTranscript")!;
   let followsBottom = true;
   const followLatest = () => {
+    enforceTranscriptLimit(transcript);
     if (followsBottom) transcript.scrollTop = transcript.scrollHeight;
   };
   transcript.addEventListener("scroll", () => {
@@ -533,6 +535,7 @@ export function mountCodexRemote(
   }
 
   function setExecutionState(next: ExecutionState) {
+    const previous = executionState;
     executionState = next;
     const active = isExecutionActive(next);
 
@@ -543,6 +546,12 @@ export function mountCodexRemote(
     send.textContent = active ? "■" : "↑";
     send.setAttribute("aria-label", active ? "停止" : "送信");
     send.disabled = !online || next === "reconnecting";
+
+    if (previous !== next) {
+      window.dispatchEvent(new CustomEvent("devmoter-agent-state", {
+        detail: { backend: "codex", sessionId: activeThreadId, state: next }
+      }));
+    }
   }
 
   function setOnline(next: boolean) {
