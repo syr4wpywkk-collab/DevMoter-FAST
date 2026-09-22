@@ -1,6 +1,8 @@
 import { isExecutionActive, openCodeIdleOutcomeToExecutionState, type ExecutionState } from "./execution-state";
 import { speechRecognitionLanguage } from "./i18n";
 import { mergeOpenCodeStreamText, normalizeOpenCodeEvent } from "./opencode-event-compat.mjs";
+import { countTranscriptMessages, normalizeExternalThread, sessionContextToMarkdown, sortSessions, type ImportedThread, type SessionSortMode } from "./session-tools.mjs";
+import { setWakeLockEnabled, setWakeLockExecutionActive, wakeLockEnabled, wakeLockSupported } from "./wake-lock";
 
 const FOLLOW_BOTTOM_THRESHOLD = 48;
 
@@ -82,6 +84,9 @@ type OpenCodeSession = {
     };
   };
   cost?: number;
+  messageCount?: number;
+  messagesCount?: number;
+  message_count?: number;
 };
 
 type PendingPermission = {
@@ -145,6 +150,20 @@ export function mountOpenCodeRemote(
           <span>⌕</span>
           <input id="ocxSessionSearch" type="search" placeholder="Search sessions" />
         </label>
+
+        <div class="ocx-session-toolbar">
+          <label>
+            <span>Sort</span>
+            <select id="ocxSessionSort" aria-label="Sort sessions">
+              <option value="recent">Recent activity</option>
+              <option value="created">Created time</option>
+              <option value="messages">Message count</option>
+            </select>
+          </label>
+          <button id="ocxSessionToolsNav" type="button">Session tools</button>
+        </div>
+
+        <div id="ocxAttention" class="ocx-attention hidden" aria-label="Session attention overview"></div>
 
         <nav class="ocx-side-nav">
           <button id="ocxAgentsNav" type="button"><span>◈</span><span>Agents</span></button>
@@ -299,6 +318,9 @@ export function mountOpenCodeRemote(
   const newSessionTop = root.querySelector<HTMLButtonElement>("#ocxNewSessionTop")!;
   const sessionSearch = root.querySelector<HTMLInputElement>("#ocxSessionSearch")!;
   const sessionsEl = root.querySelector<HTMLDivElement>("#ocxSessions")!;
+  const sessionSort = root.querySelector<HTMLSelectElement>("#ocxSessionSort")!;
+  const sessionToolsNav = root.querySelector<HTMLButtonElement>("#ocxSessionToolsNav")!;
+  const attention = root.querySelector<HTMLDivElement>("#ocxAttention")!;
   const agentsNav = root.querySelector<HTMLButtonElement>("#ocxAgentsNav")!;
   const commandsNav = root.querySelector<HTMLButtonElement>("#ocxCommandsNav")!;
   const skillsNav = root.querySelector<HTMLButtonElement>("#ocxSkillsNav")!;
@@ -365,6 +387,18 @@ export function mountOpenCodeRemote(
   let skills: OpenCodeSkill[] = [];
   let sessions: OpenCodeSession[] = [];
   let activeSession: OpenCodeSession | null = null;
+  let sessionSortMode = (localStorage.getItem("opencode-pocket-session-sort") || "recent") as SessionSortMode;
+  if (!["recent", "created", "messages"].includes(sessionSortMode)) sessionSortMode = "recent";
+  const sessionMessageCounts = new Map<string, number>();
+  const sessionStates = new Map<string, ExecutionState>();
+  let importedThreads: ImportedThread[] = [];
+  try {
+    const savedImports = JSON.parse(localStorage.getItem("opencode-pocket-imported-threads") || "[]");
+    importedThreads = Array.isArray(savedImports) ? savedImports.slice(0, 20) : [];
+  } catch {
+    importedThreads = [];
+  }
+  sessionSort.value = sessionSortMode;
   let eventSource: EventSource | null = null;
   let reconnectTimer: number | null = null;
   let reconnectAttempts = 0;
@@ -453,6 +487,9 @@ export function mountOpenCodeRemote(
   function setExecutionState(next: ExecutionState) {
     executionState = next;
     const active = isExecutionActive(next);
+    setWakeLockExecutionActive("opencode", active);
+    if (activeSession) sessionStates.set(activeSession.id, next);
+    renderAttention();
 
     send.textContent = active ? "■" : "↵";
     send.classList.toggle("stop", active);
