@@ -173,11 +173,13 @@ test("signed event triggers wrap payload as untrusted data and obey rate limits"
     });
     assert.equal(second.length, 0);
 
-    const bad = await plane.dispatchEvent("github.webhook", "issues", JSON.parse(raw), {
-      rawBody: raw,
-      signature: "sha256=bad"
-    });
-    assert.equal(bad.length, 0);
+    await assert.rejects(
+      plane.dispatchEvent("github.webhook", "issues", JSON.parse(raw), {
+        rawBody: raw,
+        signature: "sha256=bad"
+      }),
+      error => error?.status === 401 && /signature/i.test(error.message)
+    );
   } finally {
     await cleanup();
   }
