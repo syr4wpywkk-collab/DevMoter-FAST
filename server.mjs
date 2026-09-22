@@ -1053,6 +1053,23 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
 
+    if (await passkeyRoute(req, res, url)) return;
+
+    if (
+      PASSKEY_REQUIRED &&
+      url.pathname.startsWith("/api/") &&
+      url.pathname !== "/api/health" &&
+      url.pathname !== "/api/control/events/github"
+    ) {
+      const gate = await passkeys.require(req);
+      if (gate.required && !gate.authenticated) {
+        json(res, 401, { error: "Passkey authentication required" });
+        return;
+      }
+    }
+
+    if (await controlRoute(req, res, url)) return;
+
     if (req.method === "GET" && url.pathname === "/api/projects") {
       await projectsList(res);
       return;
@@ -1132,6 +1149,18 @@ const server = http.createServer(async (req, res) => {
       ]);
       json(res, 200, {
         online: openCode.online || codexHealth.online,
+        capabilities: {
+          projects: true,
+          multiHost: true,
+          hostStatus: true,
+          schedules: true,
+          eventTriggers: true,
+          autopilot: true,
+          passkeys: true,
+          passkeyRequired: PASSKEY_REQUIRED,
+          opencode: Boolean(openCode),
+          codex: Boolean(codexHealth)
+        },
         backends: {
           opencode: openCode,
           codex: codexHealth
@@ -1198,4 +1227,10 @@ server.listen(PORT, HOST, () => {
   console.log(`OpenCode directory: ${OPENCODE_DIRECTORY}`);
   console.log(`Codex binary: ${process.env.CODEX_BIN || "codex"}`);
   console.log(`Codex cwd: ${process.env.CODEX_CWD || process.cwd()}`);
+  controlPlane.start();
+  void controlPlane.dispatchEvent("devmoter.lifecycle", "server.started", {
+    startedAt: Date.now(),
+    host: HOST,
+    port: PORT
+  });
 });
