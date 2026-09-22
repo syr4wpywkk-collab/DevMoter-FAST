@@ -149,7 +149,7 @@ export function mountOpenCodeRemote(
           <button id="ocxCommandsNav" type="button"><span>／</span><span>Commands</span></button>
           <button id="ocxSkillsNav" type="button"><span>✦</span><span>Skills</span></button>
           <button id="ocxModelsNav" type="button"><span>◇</span><span>Models</span></button>
-          <button id="ocxCodexNav" type="button"><span>⌘</span><span>Codex UI</span></button>
+          <button id="ocxCodexNav" type="button"><span>⌘</span><span>Codex UI</span></button>\n          <button id="ocxIntegrationsNav" type="button"><span>⌁</span><span>Integrations</span></button>
         </nav>
 
         <div class="ocx-side-section">
@@ -301,7 +301,7 @@ export function mountOpenCodeRemote(
   const commandsNav = root.querySelector<HTMLButtonElement>("#ocxCommandsNav")!;
   const skillsNav = root.querySelector<HTMLButtonElement>("#ocxSkillsNav")!;
   const modelsNav = root.querySelector<HTMLButtonElement>("#ocxModelsNav")!;
-  const codexNav = root.querySelector<HTMLButtonElement>("#ocxCodexNav")!;
+  const codexNav = root.querySelector<HTMLButtonElement>("#ocxCodexNav")!;\n  const integrationsNav = root.querySelector<HTMLButtonElement>("#ocxIntegrationsNav")!;
   const refreshButton = root.querySelector<HTMLButtonElement>("#ocxRefresh")!;
   const sideStatus = root.querySelector<HTMLElement>("#ocxSideStatus")!;
   const sessionTitleButton = root.querySelector<HTMLButtonElement>("#ocxSessionTitleButton")!;
