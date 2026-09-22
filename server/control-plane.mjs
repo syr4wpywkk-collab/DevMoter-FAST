@@ -518,9 +518,10 @@ export class ControlPlane {
           break;
         }
 
+        const completionRule = "When the task is fully complete, end your response with [DEVMOTER_AUTOPILOT_DONE]. Do not bypass approvals.";
         const task = turn === 1
-          ? run.task
-          : `Continue the same task from the previous turn. This is bounded autopilot turn ${turn} of ${run.bounds.maxTurns}. Stop if the work is complete; do not bypass approvals.`;
+          ? `${run.task}\n\n${completionRule}`
+          : `Continue the same task from the previous turn. This is bounded autopilot turn ${turn} of ${run.bounds.maxTurns}. ${completionRule}`;
         const result = await this.executeTask({ ...run, task }, {
           runId: run.id,
           kind: "autopilot",
