@@ -8,7 +8,7 @@ test("project deep link is consumed before backend mount and removed from the UR
   const store = source.indexOf('localStorage.setItem("opencode-pocket-project", requestedProject)', startup);
   const remove = source.indexOf('startupParams.delete("project")', startup);
   const replace = source.indexOf("window.history.replaceState", startup);
-  const mount = source.indexOf("mountOpenCodeRemote");
+  const mount = source.indexOf("const openCodeRemote = mountOpenCodeRemote", replace);
 
   assert.ok(startup >= 0);
   assert.ok(store > startup);
