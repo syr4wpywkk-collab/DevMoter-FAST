@@ -1128,6 +1128,18 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "POST" && url.pathname === "/api/dev/extension/approve") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.approveProjectExtension(payload));
+      return;
+    }
+
+    if (req.method === "DELETE" && url.pathname === "/api/dev/extension/approval") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.revokeProjectExtension(payload));
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/dev/review") {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
       await devWorkflowAction(req, res, payload => devWorkflows.review(payload));
