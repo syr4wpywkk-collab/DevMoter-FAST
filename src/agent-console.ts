@@ -7,6 +7,12 @@ import {
   validateCustomMode,
   type ModeConfig
 } from "./agent-mode-core.mjs";
+import {
+  approveOrchestrationPlan,
+  createOrchestrationPlan,
+  renderOrchestrationPrompt,
+  type OrchestrationPlan
+} from "./orchestrator-core.mjs";
 
 const CUSTOM_MODES_KEY = "devmoter-agent-custom-modes";
 
@@ -70,6 +76,7 @@ export function mountAgentConsole() {
 
   let customModes = loadCustomModes();
   let activeModeId = "debug";
+  let orchestrationPlan: OrchestrationPlan | null = null;
 
   const launcher = document.createElement("button");
   launcher.id = "devmoterAgentLauncher";
@@ -117,6 +124,11 @@ export function mountAgentConsole() {
       <label for="devmoterAgentTask">Task</label>
       <textarea id="devmoterAgentTask" placeholder="Describe the task"></textarea>
     </div>
+    <section id="devmoterOrchestrationPreview" class="devmoter-orchestration-preview hidden">
+      <strong>Decomposition preview</strong>
+      <div id="devmoterOrchestrationChildren"></div>
+      <button id="devmoterOrchestrationApprove" class="devmoter-agent-run" type="button">Approve & send plan</button>
+    </section>
     <button id="devmoterAgentRun" class="devmoter-agent-run" type="button">Run in active chat</button>
     <p id="devmoterAgentStatus" class="devmoter-agent-status" role="status" aria-live="polite"></p>
   `;
@@ -140,6 +152,9 @@ export function mountAgentConsole() {
   const editorMutation = panel.querySelector<HTMLSelectElement>("#devmoterModeMutation")!;
   const editorSave = panel.querySelector<HTMLButtonElement>("#devmoterModeSave")!;
   const editorDelete = panel.querySelector<HTMLButtonElement>("#devmoterModeDelete")!;
+  const orchestrationPreview = panel.querySelector<HTMLElement>("#devmoterOrchestrationPreview")!;
+  const orchestrationChildren = panel.querySelector<HTMLDivElement>("#devmoterOrchestrationChildren")!;
+  const orchestrationApprove = panel.querySelector<HTMLButtonElement>("#devmoterOrchestrationApprove")!;
 
   function setStatus(message: string, error = false) {
     status.textContent = message;
@@ -170,7 +185,12 @@ export function mountAgentConsole() {
       ? "Describe the failure, regression, or test you want reproduced"
       : mode.id === "review"
         ? "Describe the working tree, diff, or range to review"
-        : "Describe the task";
+        : mode.id === "orchestrator"
+          ? "Describe the large task to decompose"
+          : "Describe the task";
+    run.textContent = mode.id === "orchestrator" ? "Preview decomposition" : "Run in active chat";
+    orchestrationPlan = null;
+    orchestrationPreview.classList.add("hidden");
   }
 
   function clearEditor() {
@@ -257,9 +277,35 @@ export function mountAgentConsole() {
   });
   run.addEventListener("click", () => {
     try {
+      if (activeModeId === "orchestrator") {
+        orchestrationPlan = createOrchestrationPlan(task.value);
+        orchestrationChildren.replaceChildren();
+        for (const child of orchestrationPlan.children) {
+          const row = document.createElement("div");
+          row.className = "devmoter-orchestration-child";
+          row.innerHTML = `<span>${child.state}</span><strong>${child.owner}</strong><p></p>`;
+          row.querySelector("p")!.textContent = child.title;
+          orchestrationChildren.appendChild(row);
+        }
+        orchestrationPreview.classList.remove("hidden");
+        setStatus("Review the decomposition, then explicitly approve it.");
+        return;
+      }
       const prompt = compileModePrompt(activeModeId, task.value, {}, customModes);
       const backend = dispatchToActiveComposer(prompt);
       setStatus(`Sent to ${backend}. Approvals and diffs stay in the normal flow.`);
+      panel.classList.add("hidden");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error), true);
+    }
+  });
+
+  orchestrationApprove.addEventListener("click", () => {
+    try {
+      if (!orchestrationPlan) throw new Error("Preview a decomposition first");
+      approveOrchestrationPlan(orchestrationPlan);
+      const backend = dispatchToActiveComposer(renderOrchestrationPrompt(orchestrationPlan));
+      setStatus(`Approved plan sent to ${backend}. Extra delegation still requires approval.`);
       panel.classList.add("hidden");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error), true);
