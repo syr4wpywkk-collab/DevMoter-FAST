@@ -7,6 +7,7 @@ import { CodexBridge } from "./server/codex-bridge.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { createOperationRegistry } from "./server/operation-registry.mjs";
+import { createAdvancedApi } from "./server/advanced-api.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -34,6 +35,11 @@ const operationRegistry = createOperationRegistry({
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
+});
+const advancedApi = createAdvancedApi({
+  homeDir: HOME_DIR,
+  configDir: PROJECT_CONFIG_DIR,
+  getProjectById
 });
 
 
@@ -780,6 +786,8 @@ async function serveStatic(req, res) {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+
+    if (await advancedApi.handle(req, res, url)) return;
 
     if (req.method === "GET" && url.pathname === "/api/projects") {
       await projectsList(res);
