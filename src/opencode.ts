@@ -484,19 +484,36 @@ export function mountOpenCodeRemote(
       `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   }
 
-  async function api<T = Json>(path: string, init: RequestInit = {}): Promise<T> {
+  async function api<T = Json>(
+    path: string,
+    init: RequestInit = {},
+    options: { operationId?: string } = {}
+  ): Promise<T> {
     const method = String(init.method || "GET").toUpperCase();
     const mutating = method !== "GET" && method !== "HEAD";
-    const res = await fetch(`/api/opencode${path}`, {
-      ...init,
-      headers: {
-        ...(init.body ? { "content-type": "application/json" } : {}),
-        ...(mutating ? { "x-pocket-operation-id": operationId() } : {}),
-        ...(localStorage.getItem("opencode-pocket-project") ? { "x-pocket-project-id": localStorage.getItem("opencode-pocket-project")! } : {}),
-        ...(init.headers || {})
-      },
-      cache: method === "GET" ? "no-store" : undefined
-    });
+    const opId = mutating ? (options.operationId || operationId()) : "";
+    let res: Response;
+
+    try {
+      res = await fetch(`/api/opencode${path}`, {
+        ...init,
+        headers: {
+          ...(init.body ? { "content-type": "application/json" } : {}),
+          ...(opId ? { "x-pocket-operation-id": opId } : {}),
+          ...(localStorage.getItem("opencode-pocket-project") ? { "x-pocket-project-id": localStorage.getItem("opencode-pocket-project")! } : {}),
+          ...(init.headers || {})
+        },
+        cache: method === "GET" ? "no-store" : undefined
+      });
+    } catch (error) {
+      if (mutating) {
+        throw new Error(
+          `Mutation outcome is unknown (operation ${opId}). DevMoter did not retry it automatically.`,
+          { cause: error }
+        );
+      }
+      throw error;
+    }
 
     if (res.status === 204) return undefined as T;
 
@@ -516,9 +533,15 @@ export function mountOpenCodeRemote(
     }
 
     if (!res.ok) {
+      if (payload?.duplicate) {
+        throw new Error(
+          `Operation ${payload?.operationId || opId} was already accepted; the duplicate send was suppressed.`
+        );
+      }
       const message =
         payload?.error?.data?.message ||
         payload?.error?.message ||
+        (typeof payload?.error === "string" ? payload.error : "") ||
         payload?.message ||
         `OpenCode HTTP ${res.status}`;
       throw new Error(message);
