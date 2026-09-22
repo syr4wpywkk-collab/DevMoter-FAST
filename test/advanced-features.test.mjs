@@ -11,7 +11,8 @@ import {
   createGrantRegistry,
   previewFile,
   resolveInsideRoot,
-  runWithRouting
+  runWithRouting,
+  sandboxStatus
 } from "../server/advanced-features.mjs";
 
 test("safe preview treats HTML as inert text and images as image data", async () => {
