@@ -6,6 +6,8 @@
   "scripts": {
     "dev:web": "vite",
     "dev:server": "node server.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "node scripts/lint.mjs",
     "build": "tsc --noEmit && vite build",
     "start": "node server.mjs",
     "test": "node --test test/**/*.test.mjs",
