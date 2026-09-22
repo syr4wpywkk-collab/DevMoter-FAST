@@ -84,7 +84,7 @@ export function mountControlCenter() {
   const shell = document.createElement("div");
   shell.className = "dm-control-shell";
   shell.innerHTML = `
-    <button class="dm-control-trigger" type="button" aria-label="DevMoter control center" aria-haspopup="dialog">⚙</button>
+    <button class="dm-control-trigger" type="button" aria-label="DevMoter control center" aria-haspopup="dialog" aria-expanded="false">⚙</button>
     <div class="dm-control-modal hidden" role="dialog" aria-modal="true" aria-labelledby="dmControlTitle">
       <div class="dm-control-card">
         <header class="dm-control-head">
@@ -103,6 +103,14 @@ export function mountControlCenter() {
   `;
   document.body.appendChild(shell);
 
+  const syncViewportHeight = () => {
+    const height = window.visualViewport?.height ?? window.innerHeight;
+    document.documentElement.style.setProperty("--dm-viewport-height", `${Math.round(height)}px`);
+  };
+  syncViewportHeight();
+  window.addEventListener("resize", syncViewportHeight, { passive: true });
+  window.visualViewport?.addEventListener("resize", syncViewportHeight, { passive: true });
+
   const trigger = shell.querySelector<HTMLButtonElement>(".dm-control-trigger")!;
   const modal = shell.querySelector<HTMLElement>(".dm-control-modal")!;
   const close = shell.querySelector<HTMLButtonElement>(".dm-control-close")!;
@@ -120,12 +128,14 @@ export function mountControlCenter() {
 
   async function open() {
     lastFocus = document.activeElement as HTMLElement | null;
+    trigger.setAttribute("aria-expanded", "true");
     modal.classList.remove("hidden");
     await render();
     body.focus();
   }
 
   function closeModal() {
+    trigger.setAttribute("aria-expanded", "false");
     modal.classList.add("hidden");
     lastFocus?.focus?.();
   }
@@ -136,7 +146,26 @@ export function mountControlCenter() {
     if (event.target === modal) closeModal();
   });
   modal.addEventListener("keydown", event => {
-    if (event.key === "Escape") closeModal();
+    if (event.key === "Escape") {
+      closeModal();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = Array.from(
+      modal.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter(item => !item.closest(".hidden"));
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   });
 
   for (const tab of tabs) {
@@ -232,7 +261,7 @@ export function mountControlCenter() {
     body.appendChild(intro);
 
     const projectOptions: Array<[string, string]> = [["", "No project"]];
-    for (const project of projects.projects || []) projectOptions.push([project.id, `${project.name} · ${project.hostId || location.host}`]);
+    for (const project of projects.projects || []) projectOptions.push([project.id, `${project.name} · ${project.hostId && project.hostId !== "local" ? project.hostId : location.host}`]);
 
     const detailsSchedule = document.createElement("details");
     detailsSchedule.open = true;
@@ -381,10 +410,11 @@ export function mountControlCenter() {
         : `${run.backend} · ${run.summary || ""}`;
       copy.append(strong, small);
       row.appendChild(copy);
-      if (run.kind === "autopilot" && ["queued", "running"].includes(run.status)) {
-        const pause = button("Pause", "dm-mini");
-        pause.addEventListener("click", async () => {
-          await api(`/api/control/autopilot/${run.id}/pause`, { method: "POST" });
+      if (run.kind === "autopilot" && ["queued", "running", "paused"].includes(run.status)) {
+        const primaryAction = button(run.status === "paused" ? "Resume" : "Pause", "dm-mini");
+        primaryAction.addEventListener("click", async () => {
+          const action = run.status === "paused" ? "resume" : "pause";
+          await api(`/api/control/autopilot/${run.id}/${action}`, { method: "POST" });
           await render();
         });
         const cancel = button("Cancel", "dm-mini");
@@ -392,7 +422,7 @@ export function mountControlCenter() {
           await api(`/api/control/autopilot/${run.id}/cancel`, { method: "POST" });
           await render();
         });
-        row.append(pause, cancel);
+        row.append(primaryAction, cancel);
       }
       runList.appendChild(row);
     }
