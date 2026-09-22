@@ -2,18 +2,21 @@ import "./style.css";
 import { mountOpenCodeRemote } from "./opencode";
 import { mountCodexRemote } from "./codex";
 import { startI18n } from "./i18n";
+import { mountTaskWorkflow } from "./workflow";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
 app.innerHTML = `
   <div id="openCodeView" class="pocket-view"><div id="openCodeMount"></div></div>
   <div id="codexView" class="pocket-view hidden"><div id="codexMount"></div></div>
+  <div id="workflowMount"></div>
 `;
 
 const openCodeView = document.querySelector<HTMLDivElement>("#openCodeView")!;
 const codexView = document.querySelector<HTMLDivElement>("#codexView")!;
 const openCodeMount = document.querySelector<HTMLDivElement>("#openCodeMount")!;
 const codexMount = document.querySelector<HTMLDivElement>("#codexMount")!;
+const workflowMount = document.querySelector<HTMLDivElement>("#workflowMount")!;
 
 type Backend = "opencode" | "codex";
 
@@ -33,6 +36,7 @@ const openCodeRemote = mountOpenCodeRemote(openCodeMount, { onCodex: () => setBa
 const codexRemote = mountCodexRemote(codexMount, {
   onOpenCode: () => setBackend("opencode")
 });
+mountTaskWorkflow(workflowMount);
 
 startI18n();
 
