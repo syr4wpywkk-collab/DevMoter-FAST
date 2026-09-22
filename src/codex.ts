@@ -9,6 +9,8 @@ import {
   rememberPermission,
   runPreExecutionGuard,
   scanCommand,
+  type CommandScan,
+  type LoopResult,
   type PermissionScope
 } from "./safety-client";
 
@@ -1275,7 +1277,7 @@ export function mountCodexRemote(
 
       const command = String(request.params?.command || "");
       const scope = codexPermissionScope(request);
-      let loopState = null;
+      let loopState: LoopResult | null = null;
       try {
         loopState = await recordAgentAction({
           runId: codexLoopRunId(request),
@@ -1393,7 +1395,7 @@ export function mountCodexRemote(
     try {
       const command = String(request.params?.command || "");
       const scope = codexPermissionScope(request);
-      let commandRisk = null;
+      let commandRisk: CommandScan | null = null;
 
       if (decision !== "decline" && command) {
         commandRisk = await scanCommand(command);
