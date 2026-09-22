@@ -52,6 +52,26 @@ const BUILTIN_MODES = Object.freeze({
     }),
     mutationPolicy: "read-only-until-explicit-transition",
     custom: false
+  }),
+  orchestrator: Object.freeze({
+    id: "orchestrator",
+    name: "Orchestrator",
+    description: "Decompose a large task into bounded child tasks, show the plan, and require approval before delegation.",
+    instructions: Object.freeze([
+      "Decompose the parent task into bounded child tasks with explicit owners and states.",
+      "Show the decomposition before execution.",
+      "Do not spawn costly or parallel agents until the user explicitly approves the displayed plan.",
+      "Keep child work scoped to the approved task and surface state changes.",
+      "All commands and file mutations remain subject to the normal backend approval and diff flow."
+    ]),
+    provider: null,
+    model: null,
+    tools: Object.freeze({
+      allow: Object.freeze(["read", "diagnostics", "tests", "git", "files", "commands"]),
+      deny: Object.freeze([])
+    }),
+    mutationPolicy: "approval-required",
+    custom: false
   })
 });
 
