@@ -5,6 +5,7 @@ export type SubagentRun = {
   backend: string;
   parentSessionId: string;
   parentRunId: string | null;
+  fleetId: string | null;
   role: string;
   model: string | null;
   effectiveModel: string | null;
@@ -45,6 +46,7 @@ export class SubagentRuntime {
     backend?: string;
     parentSessionId: string;
     parentRunId?: string;
+    fleetId?: string;
     role?: string;
     model?: string;
     task: string;
@@ -53,6 +55,10 @@ export class SubagentRuntime {
     tokenBudget?: number;
     turnBudget?: number;
   }): Promise<SubagentRun | null>;
+  listFleets(): Array<{ id: string; concurrency: number; state: string; queued: number; runIds: string[]; errors: Array<{ runId: string; error: string }>; createdAt: number; updatedAt: number }>;
+  getFleet(id: string): { id: string; concurrency: number; state: string; queued: number; runIds: string[]; errors: Array<{ runId: string; error: string }>; createdAt: number; updatedAt: number } | null;
+  runFleet(specs: Array<Record<string, unknown>>, options?: { id?: string; concurrency?: number }): Promise<{ id: string; concurrency: number; state: string; queued: number; runIds: string[]; errors: Array<{ runId: string; error: string }>; createdAt: number; updatedAt: number }>;
+  cancelFleet(id: string): Promise<{ id: string; concurrency: number; state: string; queued: number; runIds: string[]; errors: Array<{ runId: string; error: string }>; createdAt: number; updatedAt: number }>;
   update(id: string, patch?: Record<string, unknown>): SubagentRun;
   cancel(id: string): Promise<SubagentRun>;
   respondApproval(id: string, decision: string): Promise<SubagentRun>;
