@@ -531,7 +531,8 @@ export class ControlPlane {
         });
         runtime.cancel = typeof result?.cancel === "function" ? result.cancel : runtime.cancel;
         run.turnsCompleted = turn;
-        const reportedCost = Number(result?.cost);
+        const hasReportedCost = result?.cost !== null && result?.cost !== undefined && result?.cost !== "";
+        const reportedCost = hasReportedCost ? Number(result.cost) : Number.NaN;
         if (run.bounds.maxBudget > 0 && !Number.isFinite(reportedCost)) {
           run.status = "bounded";
           run.summary = "Stopped because the backend did not report cost telemetry for the configured budget boundary.";
