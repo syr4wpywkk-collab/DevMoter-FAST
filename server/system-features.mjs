@@ -31,8 +31,9 @@ function safeLabel(value, fallback = "Browser") {
 async function readJsonFile(path, fallback) {
   try {
     return JSON.parse(await readFile(path, "utf8"));
-  } catch {
-    return fallback;
+  } catch (error) {
+    if (error?.code === "ENOENT") return fallback;
+    throw new Error("DevMoter system state is unreadable or malformed: " + path);
   }
 }
 
