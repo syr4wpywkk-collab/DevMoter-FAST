@@ -1651,7 +1651,7 @@ export function mountOpenCodeRemote(
           method: "POST",
           headers: {
             "x-pocket-operation-id":
-              `opencode-question-${request.id}-reply`
+              `opencode-question-${request.id}-reply-${crypto.randomUUID()}`
           },
           body: JSON.stringify({ answers })
         }
@@ -1680,7 +1680,7 @@ export function mountOpenCodeRemote(
         {
           method: "POST",
           headers: {
-            "x-pocket-operation-id": `opencode-question-${request.id}-reject`
+            "x-pocket-operation-id": `opencode-question-${request.id}-reject-${crypto.randomUUID()}`
           }
         }
       );
