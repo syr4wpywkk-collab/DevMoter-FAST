@@ -9,8 +9,11 @@ export type SubagentRun = {
   model: string | null;
   effectiveModel: string | null;
   task: string;
+  fingerprint: string;
   context: Record<string, unknown>;
   lineage: string[];
+  depth: number;
+  budget: { tokenLimit: number; turnLimit: number; tokensRemaining: number; turnsRemaining: number };
   state: SubagentState;
   sessionId: string | null;
   turnId: string | null;
@@ -27,7 +30,11 @@ export type SubagentAdapter = {
   dispose?(): void;
 };
 export class SubagentRuntime {
-  constructor(options?: { adapters?: Record<string, SubagentAdapter>; idFactory?: () => string });
+  constructor(options?: {
+    adapters?: Record<string, SubagentAdapter>;
+    idFactory?: () => string;
+    policy?: { maxDepth?: number; tokenBudget?: number; turnBudget?: number };
+  });
   registerAdapter(name: string, adapter: SubagentAdapter): void;
   subscribe(listener: (run: SubagentRun) => void): () => boolean;
   listRuns(): SubagentRun[];
@@ -43,6 +50,8 @@ export class SubagentRuntime {
     task: string;
     context?: Record<string, unknown>;
     lineage?: string[];
+    tokenBudget?: number;
+    turnBudget?: number;
   }): Promise<SubagentRun | null>;
   update(id: string, patch?: Record<string, unknown>): SubagentRun;
   cancel(id: string): Promise<SubagentRun>;
