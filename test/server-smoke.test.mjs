@@ -56,7 +56,8 @@ test("backend POST routes reach handlers instead of crashing with an unexpected 
       HOME: home,
       POCKET_HOST: "127.0.0.1",
       POCKET_PORT: String(port),
-      CODEX_BIN: "__devmoter_test_codex_not_started__"
+      CODEX_BIN: "__devmoter_test_codex_not_started__",
+      DEVMOTER_AUTH_PASSWORD: "server-smoke-auth-password-1234"
     },
     stdio: ["ignore", "pipe", "pipe"]
   });
@@ -70,9 +71,13 @@ test("backend POST routes reach handlers instead of crashing with an unexpected 
     await waitForReady(child);
 
     const operationId = "server-smoke-operation";
-    const response = await fetch(`http://127.0.0.1:${port}/api/projects`, {
+    const authorization = `Basic ${Buffer.from("devmoter:server-smoke-auth-password-1234").toString("base64")}`;
+    const origin = `http://127.0.0.1:${port}`;
+    const response = await fetch(`${origin}/api/projects`, {
       method: "POST",
       headers: {
+        authorization,
+        origin,
         "content-type": "application/json",
         "x-pocket-operation-id": operationId
       },
@@ -84,9 +89,11 @@ test("backend POST routes reach handlers instead of crashing with an unexpected 
     const payload = await response.json();
     assert.match(String(payload.error || ""), /Project path is required/);
 
-    const duplicate = await fetch(`http://127.0.0.1:${port}/api/projects`, {
+    const duplicate = await fetch(`${origin}/api/projects`, {
       method: "POST",
       headers: {
+        authorization,
+        origin,
         "content-type": "application/json",
         "x-pocket-operation-id": operationId
       },
