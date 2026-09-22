@@ -65,6 +65,54 @@ export const MULTI_API_PRESETS = [
     baseUrl: "https://api.deepseek.com"
   },
   {
+    id: "cerebras",
+    name: "Cerebras",
+    protocol: "openai-compatible",
+    baseUrl: "https://api.cerebras.ai/v1"
+  },
+  {
+    id: "fireworks",
+    name: "Fireworks AI",
+    protocol: "openai-compatible",
+    baseUrl: "https://api.fireworks.ai/inference/v1"
+  },
+  {
+    id: "perplexity",
+    name: "Perplexity",
+    protocol: "openai-compatible",
+    baseUrl: "https://api.perplexity.ai"
+  },
+  {
+    id: "deepinfra",
+    name: "DeepInfra",
+    protocol: "openai-compatible",
+    baseUrl: "https://api.deepinfra.com/v1/openai"
+  },
+  {
+    id: "sambanova",
+    name: "SambaNova",
+    protocol: "openai-compatible",
+    baseUrl: "https://api.sambanova.ai/v1"
+  },
+  {
+    id: "nvidia",
+    name: "NVIDIA Build / NIM",
+    protocol: "openai-compatible",
+    baseUrl: "https://integrate.api.nvidia.com/v1"
+  },
+  {
+    id: "cohere",
+    name: "Cohere",
+    protocol: "openai-compatible",
+    baseUrl: "https://api.cohere.ai/compatibility/v1"
+  },
+  {
+    id: "qwen",
+    name: "Alibaba Cloud Qwen",
+    protocol: "openai-compatible",
+    baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+  },
+  {
     id: "custom",
     name: "Custom API",
     protocol: "openai-compatible",
