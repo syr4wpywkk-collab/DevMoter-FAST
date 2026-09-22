@@ -3617,3 +3617,543 @@ body.integrations-mode {
   text-align: center;
 }
 .ix-loading.error { color: #d68f99; }
+
+/* Issues #41-#50: session controls + read-only project Git/diff tools */
+.ocx-session-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin: 8px 0 10px;
+}
+
+.ocx-session-toolbar label {
+  display: grid;
+  gap: 4px;
+  color: #8f8f8f;
+  font-size: .68rem;
+}
+
+.ocx-session-toolbar select,
+.ocx-session-toolbar button,
+.ocx-modal-button {
+  min-height: 34px;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  background: #151515;
+  color: #f5f5f5;
+  padding: 0 10px;
+}
+
+.ocx-session-toolbar button {
+  align-self: end;
+}
+
+.ocx-attention {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 12px;
+  padding: 9px;
+  border: 1px solid #222;
+  border-radius: 12px;
+  background: #0f0f0f;
+}
+
+.ocx-attention.hidden { display: none; }
+
+.ocx-attention-label,
+.ocx-modal-section-title,
+.pocket-git-section-title {
+  color: #858585;
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.ocx-attention-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.ocx-attention-row:hover { background: #181818; }
+.ocx-attention-row > span:last-child { min-width: 0; display: grid; gap: 1px; }
+.ocx-attention-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; }
+.ocx-attention-row small { color: #8b8b8b; font-size: .66rem; }
+.ocx-attention-glyph { text-align: center; color: #8b8b8b; }
+.ocx-attention-row.running .ocx-attention-glyph { color: #8ee99a; }
+.ocx-attention-row.waiting_for_approval .ocx-attention-glyph,
+.ocx-attention-row.waiting_for_input .ocx-attention-glyph { color: #f4c86a; }
+.ocx-attention-row.failed .ocx-attention-glyph { color: #ff8d8d; }
+.ocx-attention-row.completed .ocx-attention-glyph { color: #8cc7ff; }
+
+.ocx-session-dot[data-state="running"] { color: #8ee99a; }
+.ocx-session-dot[data-state="waiting_for_approval"],
+.ocx-session-dot[data-state="waiting_for_input"] { color: #f4c86a; }
+.ocx-session-dot[data-state="failed"] { color: #ff8d8d; }
+.ocx-session-dot[data-state="completed"] { color: #8cc7ff; }
+
+.ocx-session-tools,
+.ocx-import-list,
+.ocx-import-transcript {
+  display: grid;
+  gap: 10px;
+}
+
+.ocx-session-tools {
+  margin-bottom: 18px;
+}
+
+.ocx-modal-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.ocx-modal-button.primary {
+  background: #f0f0f0;
+  color: #111;
+  border-color: #f0f0f0;
+}
+
+.ocx-wake-lock-setting {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid #292929;
+  border-radius: 12px;
+  background: #111;
+}
+
+.ocx-wake-lock-setting span {
+  display: grid;
+  gap: 3px;
+}
+
+.ocx-wake-lock-setting small {
+  color: #8d8d8d;
+  line-height: 1.4;
+}
+
+.ocx-import-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid #262626;
+  border-radius: 12px;
+  background: #111;
+  color: inherit;
+  text-align: left;
+}
+
+.ocx-import-row > span:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.ocx-import-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ocx-import-row small { color: #8d8d8d; }
+.ocx-import-notice,
+.ocx-import-warning {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: .8rem;
+  line-height: 1.45;
+}
+
+.ocx-import-notice {
+  background: #102017;
+  border: 1px solid #234d32;
+  color: #bde9ca;
+}
+
+.ocx-import-warning {
+  background: #2a2110;
+  border: 1px solid #5a451d;
+  color: #f0d697;
+}
+
+.ocx-import-message {
+  padding: 10px 12px;
+  border: 1px solid #242424;
+  border-radius: 12px;
+  background: #101010;
+}
+
+.ocx-import-message strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #8f8f8f;
+  font-size: .68rem;
+  text-transform: uppercase;
+}
+
+.ocx-import-message pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #e8e8e8;
+  font: inherit;
+}
+
+.ocx-detail-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pocket-git-trigger {
+  position: fixed;
+  z-index: 85;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  min-width: 48px;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid #333;
+  border-radius: 999px;
+  background: rgba(20, 20, 20, .94);
+  color: #f5f5f5;
+  box-shadow: 0 8px 28px rgba(0,0,0,.36);
+  backdrop-filter: blur(14px);
+}
+
+.pocket-git-overlay {
+  position: fixed;
+  z-index: 110;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background: rgba(0, 0, 0, .64);
+  backdrop-filter: blur(8px);
+}
+
+.pocket-git-overlay.hidden { display: none; }
+
+.pocket-git-panel {
+  width: min(1120px, 100%);
+  max-height: min(88vh, 900px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid #292929;
+  border-radius: 18px;
+  background: #0d0d0d;
+  box-shadow: 0 28px 80px rgba(0,0,0,.6);
+}
+
+.pocket-git-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #222;
+}
+
+.pocket-git-head > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.pocket-git-head small {
+  max-width: 70vw;
+  overflow: hidden;
+  color: #8f8f8f;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pocket-git-head button,
+.pocket-git-pager button,
+.pocket-diff-toolbar button,
+.pocket-diff-mode button {
+  min-height: 32px;
+  border: 1px solid #2d2d2d;
+  border-radius: 9px;
+  background: #151515;
+  color: #eee;
+}
+
+.pocket-git-head button { width: 36px; }
+.pocket-git-body {
+  min-height: 0;
+  overflow: auto;
+  padding: 14px;
+}
+
+.pocket-git-status {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid #242424;
+  border-radius: 12px;
+  background: #111;
+}
+
+.pocket-git-status > strong { font-size: .95rem; }
+.pocket-git-status > small { color: #8f8f8f; }
+.pocket-git-counts,
+.pocket-git-file-badges,
+.pocket-diff-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pocket-git-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 7px;
+  border: 1px solid #303030;
+  border-radius: 999px;
+  background: #181818;
+  color: #aaa;
+  font-size: .66rem;
+}
+
+.pocket-git-badge.staged { color: #a9e9b5; border-color: #285536; }
+.pocket-git-badge.modified { color: #f0d58d; border-color: #5b4a20; }
+.pocket-git-badge.untracked { color: #91cfff; border-color: #234b68; }
+.pocket-git-badge.conflict { color: #ffaaaa; border-color: #653030; }
+
+.pocket-git-files {
+  display: grid;
+  gap: 7px;
+}
+
+.pocket-git-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 11px;
+  border: 1px solid #242424;
+  border-radius: 11px;
+  background: #101010;
+  color: inherit;
+  text-align: left;
+}
+
+.pocket-git-file-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.pocket-git-file-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .76rem;
+}
+
+.pocket-git-file-copy small { color: #858585; }
+
+.pocket-git-pager {
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.pocket-git-pager span {
+  text-align: center;
+  color: #8f8f8f;
+  font-size: .75rem;
+}
+
+.pocket-git-empty,
+.pocket-git-note {
+  padding: 14px;
+  border: 1px solid #252525;
+  border-radius: 11px;
+  background: #111;
+  color: #929292;
+  font-size: .8rem;
+}
+
+.pocket-git-note {
+  margin-bottom: 10px;
+  color: #f0d697;
+  border-color: #58451f;
+  background: #241d10;
+}
+
+.pocket-diff-toolbar {
+  position: sticky;
+  z-index: 2;
+  top: -14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -14px -14px 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #232323;
+  background: rgba(13, 13, 13, .96);
+  backdrop-filter: blur(12px);
+}
+
+.pocket-diff-toolbar > strong {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .76rem;
+}
+
+.pocket-diff-toolbar button { padding: 0 9px; }
+.pocket-diff-mode button.active {
+  border-color: #777;
+  background: #262626;
+}
+
+.pocket-diff-wrap-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #b0b0b0;
+  font-size: .74rem;
+}
+
+.pocket-diff-file {
+  border: 1px solid #242424;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0b0b0b;
+}
+
+.pocket-diff-file > summary,
+.pocket-diff-hunk > summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+.pocket-diff-file > summary {
+  padding: 9px 11px;
+  border-bottom: 1px solid #202020;
+  color: #cfcfcf;
+  font-size: .75rem;
+}
+
+.pocket-diff-viewer {
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .72rem;
+  line-height: 1.45;
+}
+
+.pocket-diff-hunk {
+  border-bottom: 1px solid #1d1d1d;
+}
+
+.pocket-diff-hunk:last-child { border-bottom: 0; }
+.pocket-diff-hunk > summary {
+  position: sticky;
+  top: 0;
+  padding: 6px 10px;
+  background: #171717;
+  color: #8fbce0;
+  white-space: pre;
+}
+
+.pocket-diff-line {
+  display: grid;
+  grid-template-columns: 48px 48px minmax(max-content, 1fr);
+  min-width: max-content;
+}
+
+.pocket-diff-line > span {
+  min-height: 20px;
+  padding: 1px 7px;
+}
+
+.pocket-diff-line .old,
+.pocket-diff-line .new,
+.pocket-split-cell .num {
+  border-right: 1px solid #222;
+  color: #666;
+  text-align: right;
+  user-select: none;
+}
+
+.pocket-diff-line.add,
+.pocket-split-cell.add { background: rgba(52, 130, 74, .18); }
+.pocket-diff-line.del,
+.pocket-split-cell.del { background: rgba(160, 66, 66, .18); }
+.pocket-diff-line.meta { color: #777; }
+
+.pocket-diff-viewer.wrap .pocket-diff-line {
+  min-width: 0;
+  grid-template-columns: 48px 48px minmax(0, 1fr);
+}
+
+.pocket-diff-viewer.wrap .pocket-diff-line .code,
+.pocket-diff-viewer.wrap .pocket-split-cell .code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pocket-diff-viewer.nowrap .code { white-space: pre; }
+
+.pocket-split-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-width: 760px;
+  border-bottom: 1px solid #151515;
+}
+
+.pocket-split-cell {
+  display: grid;
+  grid-template-columns: 48px minmax(max-content, 1fr);
+  min-width: 0;
+}
+
+.pocket-split-cell.left { border-right: 1px solid #2a2a2a; }
+.pocket-split-cell > span { min-height: 20px; padding: 1px 7px; }
+.pocket-split-cell.empty { background: #0d0d0d; }
+
+@media (max-width: 899px) {
+  .pocket-git-panel {
+    width: 100%;
+    height: calc(100dvh - max(12px, env(safe-area-inset-top)) - max(12px, env(safe-area-inset-bottom)));
+    max-height: none;
+    border-radius: 15px;
+  }
+
+  .pocket-diff-mode button:last-child { display: none; }
+  .pocket-diff-toolbar { flex-wrap: wrap; }
+  .pocket-diff-toolbar > strong { order: -1; flex-basis: calc(100% - 48px); }
+  .pocket-diff-line { grid-template-columns: 38px 38px minmax(max-content, 1fr); }
+  .pocket-diff-viewer.wrap .pocket-diff-line { grid-template-columns: 38px 38px minmax(0, 1fr); }
+  .ocx-detail-actions { grid-template-columns: 1fr; }
+}
