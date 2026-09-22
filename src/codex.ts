@@ -253,6 +253,19 @@ export function mountCodexRemote(
   transcript.addEventListener("scroll", () => {
     followsBottom = transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight <= FOLLOW_BOTTOM_THRESHOLD;
   }, { passive: true });
+
+  const TRANSCRIPT_NODE_LIMIT = 400;
+  function trimTranscript() {
+    if (transcript.childElementCount <= TRANSCRIPT_NODE_LIMIT) return;
+
+    const activeRow = activeAssistantBubble?.closest(".cx-message-row") ?? null;
+    let candidate = transcript.firstElementChild;
+    while (transcript.childElementCount > TRANSCRIPT_NODE_LIMIT && candidate) {
+      const next = candidate.nextElementSibling;
+      if (candidate !== activeRow) candidate.remove();
+      candidate = next;
+    }
+  }
   const approval = root.querySelector<HTMLDivElement>("#cxApproval")!;
   const approvalTitle = root.querySelector<HTMLElement>("#cxApprovalTitle")!;
   const approvalMeta = root.querySelector<HTMLElement>("#cxApprovalMeta")!;
@@ -758,6 +771,7 @@ export function mountCodexRemote(
 
     row.appendChild(bubble);
     transcript.appendChild(row);
+    trimTranscript();
     followLatest();
     return bubble;
   }
