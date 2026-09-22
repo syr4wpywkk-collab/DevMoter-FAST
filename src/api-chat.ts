@@ -508,7 +508,7 @@ export function mountApiChat(
 
     settingsBody.append(back, heading, providerForm);
 
-    if (provider?.editable !== false) {
+    if (provider && provider.editable !== false) {
       const danger = document.createElement("section");
       danger.className = "api-provider-danger";
       const remove = document.createElement("button");
