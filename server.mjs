@@ -9,6 +9,7 @@ import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, 
 import { createOperationRegistry } from "./server/operation-registry.mjs";
 import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
 import { createSessionControl } from "./server/session-control.mjs";
+import { createAdvancedApi } from "./server/advanced-api.mjs";
 import { applyModeToPrompt, isDirectMutationRoute, isPromptRoute, isReadOnlyMode, parseAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
 import { assertAuthPassword, authorizeBasicRequest, requireSameOriginMutation } from "./server/auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
@@ -49,6 +50,11 @@ const openCodeSessionModes = new Map();
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
+});
+const advancedApi = createAdvancedApi({
+  homeDir: HOME_DIR,
+  configDir: PROJECT_CONFIG_DIR,
+  getProjectById
 });
 
 
@@ -1035,6 +1041,21 @@ const server = http.createServer(async (req, res) => {
     if (!requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)) return;
 
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+
+    const advancedCandidate =
+      url.pathname.startsWith("/api/advanced/") ||
+      /^\/api\/projects\/[^/]+\/(?:preview|artifacts|web-preview)$/.test(url.pathname) ||
+      /^\/api\/artifacts\/[^/]+\/(?:preview|download)$/.test(url.pathname) ||
+      /^\/api\/live-preview\/proxy\//.test(url.pathname);
+    if (advancedCandidate) {
+      if (
+        req.method !== "GET" &&
+        req.method !== "HEAD" &&
+        !claimOperation(req, res, `${req.method}:${url.pathname}`)
+      ) return;
+      if (await advancedApi.handle(req, res, url)) return;
+    }
+
 
     if (url.pathname.startsWith("/api/session-control")) {
       if (
