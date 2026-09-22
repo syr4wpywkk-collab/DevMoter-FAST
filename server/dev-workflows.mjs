@@ -673,6 +673,7 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     if (!boundedDiff.text.trim()) {
       return {
         ok: true,
+        allowed: true,
         readOnly: true,
         mode,
         policy: settings.review.policy,
@@ -725,8 +726,10 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
       repoUrl,
       meta?.headRefName || info.branch
     );
+    const allowed = settings.review.policy !== "block" || findings.length === 0;
     return {
       ok: findings.length === 0,
+      allowed,
       readOnly: true,
       mode,
       policy: settings.review.policy,
