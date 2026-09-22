@@ -9,6 +9,8 @@ import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, 
 import { createOperationRegistry } from "./server/operation-registry.mjs";
 import { listContextEntries, resolveContextReferences } from "./server/context-references.mjs";
 import { createUploadRegistry } from "./server/upload-registry.mjs";
+import { listContextEntries, resolveContextReferences } from "./server/context-references.mjs";
+import { createUploadRegistry } from "./server/upload-registry.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -33,6 +35,8 @@ const operationRegistry = createOperationRegistry({
   ttlMs: OPERATION_TTL_MS,
   maxEntries: OPERATION_MAX_ENTRIES
 });
+const uploadRegistry = createUploadRegistry();
+const DEVMOTER_API_VERSION = 1;
 const uploadRegistry = createUploadRegistry();
 const DEVMOTER_VERSION = "0.2.0";
 const AUTOMATION_API_VERSION = 1;
