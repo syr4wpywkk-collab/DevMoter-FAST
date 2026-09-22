@@ -160,8 +160,7 @@ async function detect(definition) {
 export function validateAntigravityRemoteUrl(value) {
   try {
     const url = new URL(String(value || ""));
-    if (url.protocol !== "https:") return null;
-    if (url.hostname !== "antigravity.google.com") return null;
+    if (url.origin !== "https://antigravity.google.com") return null;
     if (url.username || url.password) return null;
     return url.toString();
   } catch {
