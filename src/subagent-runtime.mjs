@@ -6,6 +6,7 @@ const RUN_STATES = new Set([
   "failed",
   "cancelled"
 ]);
+const TERMINAL_RUN_STATES = new Set(["completed", "failed", "cancelled"]);
 
 function defaultId() {
   return globalThis.crypto?.randomUUID?.() ??
@@ -35,7 +36,21 @@ function snapshot(run) {
     ...run,
     context: structuredClone(run.context),
     lineage: [...(run.lineage || [])],
+    budget: structuredClone(run.budget),
     pendingApproval: run.pendingApproval ? structuredClone(run.pendingApproval) : null
+  };
+}
+
+function fleetSnapshot(fleet) {
+  return {
+    id: fleet.id,
+    concurrency: fleet.concurrency,
+    state: fleet.state,
+    queued: fleet.queue.length,
+    runIds: [...fleet.runIds],
+    errors: fleet.errors.map(error => ({ ...error })),
+    createdAt: fleet.createdAt,
+    updatedAt: fleet.updatedAt
   };
 }
 
@@ -49,6 +64,7 @@ export class SubagentRuntime {
       turnBudget: Math.max(1, positiveInt(policy.turnBudget, 8))
     };
     this.runs = new Map();
+    this.fleets = new Map();
     this.listeners = new Set();
   }
 
@@ -74,6 +90,51 @@ export class SubagentRuntime {
   getRun(id) {
     const run = this.runs.get(String(id));
     return run ? snapshot(run) : null;
+  }
+
+  listFleets() {
+    return [...this.fleets.values()].map(fleetSnapshot);
+  }
+
+  getFleet(id) {
+    const fleet = this.fleets.get(String(id));
+    return fleet ? fleetSnapshot(fleet) : null;
+  }
+
+  async runFleet(specs, { id, concurrency = 2 } = {}) {
+    if (!Array.isArray(specs) || specs.length === 0) throw new Error("Fleet requires at least one agent spec");
+    if (specs.length > 24) throw new Error("Fleet is limited to 24 agents");
+    const fleetId = String(id || this.idFactory());
+    if (this.fleets.has(fleetId)) throw new Error(`Duplicate fleet id: ${fleetId}`);
+    const fleet = {
+      id: fleetId,
+      concurrency: Math.max(1, Math.min(8, positiveInt(concurrency, 2))),
+      state: "running",
+      queue: specs.map(spec => structuredClone(spec)),
+      runIds: [],
+      errors: [],
+      pumping: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    this.fleets.set(fleetId, fleet);
+    await this.#pumpFleet(fleetId);
+    return fleetSnapshot(fleet);
+  }
+
+  async cancelFleet(id) {
+    const fleet = this.fleets.get(String(id));
+    if (!fleet) throw new Error(`Unknown fleet: ${String(id)}`);
+    fleet.queue = [];
+    const active = fleet.runIds
+      .map(runId => this.runs.get(runId))
+      .filter(run => run && !TERMINAL_RUN_STATES.has(run.state));
+    await Promise.all(active.map(run => this.cancel(run.id).catch(error => {
+      fleet.errors.push({ runId: run.id, error: error instanceof Error ? error.message : String(error) });
+    })));
+    fleet.state = "cancelled";
+    fleet.updatedAt = Date.now();
+    return fleetSnapshot(fleet);
   }
 
   async spawn(spec = {}) {
@@ -136,6 +197,7 @@ export class SubagentRuntime {
       backend,
       parentSessionId,
       parentRunId,
+      fleetId: spec.fleetId ? String(spec.fleetId) : null,
       role: String(spec.role || "executor"),
       model: spec.model ? String(spec.model) : null,
       effectiveModel: null,
@@ -184,6 +246,40 @@ export class SubagentRuntime {
     }
   }
 
+  async spawnSecondOpinion(parentRunId, options = {}) {
+    const parent = this.runs.get(String(parentRunId));
+    if (!parent) throw new Error(`Unknown parent run: ${String(parentRunId)}`);
+
+    const share = options.share && typeof options.share === "object" ? options.share : {};
+    const context = {};
+    if (share.task) context.parentTask = parent.task;
+    if (share.output) context.parentOutput = parent.output;
+    if (share.error && parent.error) context.parentError = parent.error;
+    if (!Object.keys(context).length) {
+      throw new Error("Select at least one parent context field for the second opinion");
+    }
+
+    const originalOwner = parent.role;
+    context.originalOwner = originalOwner;
+    const run = await this.spawn({
+      kind: "second-opinion",
+      backend: options.backend || parent.backend,
+      parentSessionId: parent.sessionId || parent.parentSessionId,
+      parentRunId: parent.id,
+      role: options.role || "reviewer",
+      model: options.model || null,
+      task: String(options.task || "Give an independent second opinion on the explicitly shared context. State agreements, disagreements, risks, and recommended next steps."),
+      context,
+      tokenBudget: options.tokenBudget,
+      turnBudget: options.turnBudget
+    });
+
+    if (this.runs.get(parent.id)?.role !== originalOwner) {
+      throw new Error("Second opinion must not change the current owner");
+    }
+    return run;
+  }
+
   update(id, patch = {}) {
     const run = this.runs.get(String(id));
     if (!run) throw new Error(`Unknown subagent run: ${String(id)}`);
@@ -195,6 +291,9 @@ export class SubagentRuntime {
     delete next.outputDelta;
     Object.assign(run, next, { updatedAt: Date.now() });
     this.#emit(run);
+    if (run.fleetId && TERMINAL_RUN_STATES.has(run.state)) {
+      void this.#pumpFleet(run.fleetId);
+    }
     return snapshot(run);
   }
 
@@ -222,6 +321,43 @@ export class SubagentRuntime {
   dispose() {
     for (const adapter of this.adapters.values()) adapter.dispose?.();
     this.listeners.clear();
+  }
+
+  async #pumpFleet(id) {
+    const fleet = this.fleets.get(String(id));
+    if (!fleet || fleet.pumping || fleet.state !== "running") return;
+    fleet.pumping = true;
+    try {
+      while (fleet.queue.length) {
+        const activeCount = fleet.runIds
+          .map(runId => this.runs.get(runId))
+          .filter(run => run && !TERMINAL_RUN_STATES.has(run.state)).length;
+        if (activeCount >= fleet.concurrency) break;
+
+        const spec = fleet.queue.shift();
+        const runId = String(spec.id || this.idFactory());
+        fleet.runIds.push(runId);
+        fleet.updatedAt = Date.now();
+        try {
+          await this.spawn({ ...spec, id: runId, fleetId: fleet.id });
+        } catch (error) {
+          fleet.errors.push({
+            runId,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+
+      const activeCount = fleet.runIds
+        .map(runId => this.runs.get(runId))
+        .filter(run => run && !TERMINAL_RUN_STATES.has(run.state)).length;
+      if (fleet.queue.length === 0 && activeCount === 0) {
+        fleet.state = fleet.errors.length ? "completed_with_failures" : "completed";
+        fleet.updatedAt = Date.now();
+      }
+    } finally {
+      fleet.pumping = false;
+    }
   }
 
   #emit(run) {

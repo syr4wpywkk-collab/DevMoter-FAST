@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SubagentRuntime } from "../src/subagent-runtime.mjs";
+import { SubagentRuntime, createCodexSubagentAdapter } from "../src/subagent-runtime.mjs";
 
 function fakeAdapter() {
   const starts = [];
@@ -158,4 +158,185 @@ test("failed nested spawn refunds reserved parent budget", async () => {
   );
   assert.equal(runtime.getRun(root.id).budget.tokensRemaining, 100);
   assert.equal(runtime.getRun(root.id).budget.turnsRemaining, 4);
+});
+
+test("fleet enforces concurrency and starts queued siblings after completion", async () => {
+  const starts = [];
+  const adapter = {
+    async start(run) {
+      starts.push(run.id);
+      return { sessionId: `session-${run.id}`, turnId: `turn-${run.id}`, state: "running" };
+    },
+    async cancel() {}
+  };
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: adapter },
+    idFactory: () => `fleet-id-${++index}`
+  });
+  const specs = [1, 2, 3].map(value => ({
+    parentSessionId: "parent",
+    task: `task-${value}`
+  }));
+  const fleet = await runtime.runFleet(specs, { id: "fleet-a", concurrency: 2 });
+  assert.equal(fleet.concurrency, 2);
+  assert.equal(starts.length, 2);
+  runtime.update(fleet.runIds[0], { state: "completed" });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(starts.length, 3);
+});
+
+test("one fleet failure does not stop sibling scheduling", async () => {
+  const starts = [];
+  const adapter = {
+    async start(run) {
+      starts.push(run.task);
+      if (run.task === "bad") throw new Error("bad child");
+      return { sessionId: `session-${run.id}`, turnId: `turn-${run.id}`, state: "running" };
+    },
+    async cancel() {}
+  };
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: adapter },
+    idFactory: () => `isolation-${++index}`
+  });
+  const fleet = await runtime.runFleet([
+    { parentSessionId: "p", task: "bad" },
+    { parentSessionId: "p", task: "good" }
+  ], { id: "fleet-b", concurrency: 1 });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(starts, ["bad", "good"]);
+  const goodRun = runtime.listRuns().find(run => run.task === "good");
+  assert.equal(goodRun.state, "running");
+  assert.equal(runtime.getFleet("fleet-b").errors.length, 1);
+});
+
+test("fleet cancellation clears queue and cancels active runs independently", async () => {
+  const cancelled = [];
+  const adapter = {
+    async start(run) {
+      return { sessionId: `s-${run.id}`, turnId: `t-${run.id}`, state: "running" };
+    },
+    async cancel(run) {
+      cancelled.push(run.id);
+    }
+  };
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: adapter },
+    idFactory: () => `cancel-${++index}`
+  });
+  await runtime.runFleet([
+    { parentSessionId: "p", task: "one" },
+    { parentSessionId: "p", task: "two" },
+    { parentSessionId: "p", task: "three" }
+  ], { id: "fleet-c", concurrency: 1 });
+  const fleet = await runtime.cancelFleet("fleet-c");
+  assert.equal(fleet.state, "cancelled");
+  assert.equal(fleet.queued, 0);
+  assert.equal(cancelled.length, 1);
+});
+
+test("Codex adapter shares one EventSource across multiple live agents", async () => {
+  let thread = 0;
+  const sources = [];
+  const fetchImpl = async (_url, init) => {
+    const request = JSON.parse(init.body);
+    if (request.method === "thread/start") {
+      thread += 1;
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return { result: { thread: { id: `thread-${thread}` }, model: "model-x" } };
+        }
+      };
+    }
+    if (request.method === "turn/start") {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return { result: { turn: { id: `turn-${thread}` } } };
+        }
+      };
+    }
+    throw new Error(`unexpected RPC: ${request.method}`);
+  };
+  const eventSourceFactory = url => {
+    const listeners = new Map();
+    const source = {
+      url,
+      addEventListener(name, listener) {
+        listeners.set(name, listener);
+      },
+      close() {}
+    };
+    sources.push(source);
+    return source;
+  };
+  let id = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: createCodexSubagentAdapter({ fetchImpl, eventSourceFactory }) },
+    idFactory: () => `live-${++id}`
+  });
+  await runtime.spawn({ parentSessionId: "parent", task: "one" });
+  await runtime.spawn({ parentSessionId: "parent", task: "two" });
+  assert.equal(sources.length, 1);
+  assert.equal(sources[0].url, "/api/codex/events");
+});
+
+test("second opinion keeps current owner unchanged and shares only selected context", async () => {
+  const adapter = {
+    async start(run) {
+      return { sessionId: `session-${run.id}`, turnId: `turn-${run.id}`, state: "running" };
+    },
+    async cancel() {}
+  };
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: adapter },
+    idFactory: () => `opinion-${++index}`,
+    policy: { tokenBudget: 1000, turnBudget: 6 }
+  });
+  const parent = await runtime.spawn({
+    parentSessionId: "parent-session",
+    role: "executor",
+    task: "Implement auth"
+  });
+  runtime.update(parent.id, { outputDelta: "implemented result", error: "hidden error" });
+  const opinion = await runtime.spawnSecondOpinion(parent.id, {
+    role: "reviewer",
+    task: "Review independently",
+    share: { task: true, output: true, error: false },
+    tokenBudget: 200,
+    turnBudget: 1
+  });
+  assert.equal(runtime.getRun(parent.id).role, "executor");
+  assert.equal(opinion.role, "reviewer");
+  assert.equal(opinion.kind, "second-opinion");
+  assert.equal(opinion.context.parentTask, "Implement auth");
+  assert.equal(opinion.context.parentOutput, "implemented result");
+  assert.equal("parentError" in opinion.context, false);
+  assert.equal(opinion.context.originalOwner, "executor");
+});
+
+test("second opinion requires an explicit context selection", async () => {
+  const adapter = {
+    async start(run) {
+      return { sessionId: `session-${run.id}`, turnId: `turn-${run.id}`, state: "running" };
+    },
+    async cancel() {}
+  };
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: adapter },
+    idFactory: () => `no-share-${++index}`
+  });
+  const parent = await runtime.spawn({ parentSessionId: "p", task: "parent" });
+  await assert.rejects(
+    () => runtime.spawnSecondOpinion(parent.id, { share: {} }),
+    /Select at least one parent context field/
+  );
 });
