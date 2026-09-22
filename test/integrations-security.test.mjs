@@ -51,6 +51,7 @@ test("Antigravity remote URLs are restricted to the official HTTPS origin", () =
   );
   assert.equal(validateAntigravityRemoteUrl("http://antigravity.google.com/r/nope"), null);
   assert.equal(validateAntigravityRemoteUrl("https://evil.example/r/nope"), null);
+  assert.equal(validateAntigravityRemoteUrl("https://antigravity.google.com:444/r/nope"), null);
   assert.equal(validateAntigravityRemoteUrl("https://antigravity.google.com.evil.example/r/nope"), null);
   assert.equal(validateAntigravityRemoteUrl("https://user:pass@antigravity.google.com/r/nope"), null);
 });
