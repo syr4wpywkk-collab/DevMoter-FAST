@@ -3290,3 +3290,266 @@ body.opencode-mode #app {
 .ocx-language-setting > span {
   color: var(--oc-dim);
 }
+
+
+/* Developer workflows / MCP management */
+.cx-dev-section {
+  position: relative;
+}
+
+.cx-dev-section > h3 {
+  padding-right: 96px;
+}
+
+.cx-dev-section-action {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: auto;
+  min-height: 36px;
+  padding: 0 10px;
+}
+
+.cx-dev-pr-row,
+.cx-dev-inline-actions,
+.cx-dev-result-head,
+.cx-dev-check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cx-dev-pr-row {
+  flex-wrap: wrap;
+}
+
+.cx-dev-pr-row input {
+  flex: 1 1 90px;
+  min-width: 90px;
+  min-height: 42px;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  padding: 0 12px;
+  color: inherit;
+  background: #0d0d0d;
+}
+
+.cx-dev-pr-row button,
+.cx-dev-inline-actions button {
+  width: auto;
+  min-height: 40px;
+  padding: 0 12px;
+}
+
+.cx-dev-inline-actions {
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.cx-dev-inline-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #292929;
+  border-radius: 12px;
+  color: #d8d8d8;
+  text-decoration: none;
+  background: #151515;
+}
+
+.cx-dev-result {
+  margin-top: 12px;
+}
+
+.cx-dev-result:empty {
+  display: none;
+}
+
+.cx-dev-result-head {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.cx-dev-finding,
+.cx-dev-command-result,
+.cx-dev-mcp-card {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid #272727;
+  border-radius: 14px;
+  background: #0d0d0d;
+}
+
+.cx-dev-finding p {
+  margin: 8px 0 0;
+  font-size: .84rem;
+}
+
+.cx-dev-location {
+  margin-top: 5px;
+  color: #9d9d9d;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .74rem;
+  overflow-wrap: anywhere;
+}
+
+.cx-dev-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid #333;
+  border-radius: 999px;
+  color: #bbb;
+  font-size: .7rem;
+  text-transform: uppercase;
+  background: #171717;
+}
+
+.cx-dev-badge[data-state="success"],
+.cx-dev-badge[data-state="enabled"],
+.cx-dev-badge[data-state="valid"],
+.cx-dev-badge[data-state="connected"] {
+  color: #b9efc1;
+  border-color: #29452e;
+}
+
+.cx-dev-badge[data-state="failure"],
+.cx-dev-badge[data-state="error"],
+.cx-dev-badge[data-state="blocked"],
+.cx-dev-badge[data-state="invalid"] {
+  color: #ffb1b1;
+  border-color: #573232;
+}
+
+.cx-dev-badge[data-state="warning"],
+.cx-dev-badge[data-state="medium"],
+.cx-dev-badge[data-state="high"],
+.cx-dev-badge[data-state="blocker"] {
+  color: #f3d69b;
+  border-color: #55482d;
+}
+
+.cx-dev-success {
+  color: #b9efc1;
+}
+
+.cx-dev-warning {
+  color: #efc889;
+}
+
+.cx-dev-check-row {
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 8px 0;
+  border-bottom: 1px solid #202020;
+}
+
+.cx-dev-check-row:last-child {
+  border-bottom: 0;
+}
+
+.cx-dev-check-row > span:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.cx-dev-check-row strong,
+.cx-dev-check-row small {
+  overflow-wrap: anywhere;
+}
+
+.cx-dev-details {
+  margin-top: 10px;
+  border: 1px solid #252525;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0b0b0b;
+}
+
+.cx-dev-details > summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  color: #cacaca;
+  font-size: .8rem;
+}
+
+.cx-dev-details pre {
+  margin: 0;
+  padding: 12px;
+  border-top: 1px solid #202020;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 320px;
+  overflow: auto;
+  color: #bdbdbd;
+  font-size: .72rem;
+}
+
+.cx-dev-form select,
+.cx-dev-form textarea {
+  width: 100%;
+  border: 1px solid #292929;
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: #efefef;
+  background: #0d0d0d;
+}
+
+.cx-dev-checkbox {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+}
+
+.cx-dev-checkbox input {
+  width: 20px !important;
+  min-height: 20px !important;
+}
+
+.cx-mcp-result {
+  max-width: min(92%, 680px);
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.cx-mcp-result-details > summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  padding: 12px 14px;
+  color: #d8d8d8;
+}
+
+.cx-mcp-result-details > summary small {
+  color: #888;
+}
+
+.cx-mcp-structured,
+.cx-mcp-raw pre {
+  margin: 0;
+  padding: 12px 14px;
+  border-top: 1px solid #242424;
+  max-height: 360px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #bdbdbd;
+  font-size: .74rem;
+  background: #090909;
+}
+
+.cx-mcp-raw {
+  border-top: 1px solid #242424;
+}
+
+.cx-mcp-raw > summary {
+  cursor: pointer;
+  padding: 9px 14px;
+  color: #888;
+  font-size: .75rem;
+}
