@@ -7,6 +7,7 @@ import { CodexBridge } from "./server/codex-bridge.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { createOperationRegistry } from "./server/operation-registry.mjs";
+import { createSessionControl } from "./server/session-control.mjs";
 import { applyModeToPrompt, isDirectMutationRoute, isPromptRoute, isReadOnlyMode, parseAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
 import { assertAuthPassword, authorizeBasicRequest, requireSameOriginMutation } from "./server/auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
@@ -469,6 +470,153 @@ async function fetchOpenCodeJson(path, init = {}) {
   return payload;
 }
 
+function controlStatus(value) {
+  const raw =
+    typeof value === "string"
+      ? value
+      : String(value?.type || value?.status || value?.state || "");
+  const text = raw.toLowerCase();
+  if (/wait|approval|question|input/.test(text)) return "waiting";
+  if (/run|work|progress|active|start/.test(text)) return "running";
+  if (/fail|error/.test(text)) return "failed";
+  if (/interrupt|cancel|abort|stop/.test(text)) return "interrupted";
+  if (/complete|success|done|finish/.test(text)) return "done";
+  if (/idle|ready/.test(text)) return "idle";
+  return "unknown";
+}
+
+function controlTokens(value) {
+  if (!value || typeof value !== "object") return 0;
+  for (const key of ["totalTokens", "total_tokens", "total"]) {
+    const number = Number(value[key]);
+    if (Number.isFinite(number) && number >= 0) return number;
+  }
+
+  const direct = [
+    "inputTokens", "input_tokens", "input",
+    "outputTokens", "output_tokens", "output",
+    "reasoningTokens", "reasoning_tokens", "reasoning"
+  ]
+    .map(key => Number(value[key]))
+    .filter(Number.isFinite);
+
+  if (direct.length) return direct.reduce((sum, number) => sum + number, 0);
+
+  let best = 0;
+  for (const child of Object.values(value)) {
+    best = Math.max(best, controlTokens(child));
+  }
+  return best;
+}
+
+async function inspectControlSession(backend, sessionId) {
+  if (backend === "codex") {
+    const payload = await codex.request("thread/read", {
+      threadId: sessionId,
+      includeTurns: true
+    });
+    const turns = payload?.thread?.turns ?? [];
+    const latest = turns.at(-1);
+    let status = controlStatus(payload?.thread?.status);
+    if (status === "unknown") status = controlStatus(latest?.status);
+
+    const activeTurn = [...turns]
+      .reverse()
+      .find(turn => ["running", "waiting"].includes(controlStatus(turn?.status)));
+
+    return {
+      active: ["running", "waiting"].includes(status) || Boolean(activeTurn),
+      status,
+      turns: turns.length,
+      tokens: controlTokens(payload?.thread?.usage ?? payload?.thread),
+      activeTurnId: activeTurn?.id ?? null
+    };
+  }
+
+  const [activeRaw, contextRaw, metadata] = await Promise.all([
+    fetchOpenCodeJson("/api/session/active").catch(() => ({})),
+    fetchOpenCodeJson("/api/session/" + encodeURIComponent(sessionId) + "/context").catch(() => []),
+    fetchOpenCodeJson("/api/session/" + encodeURIComponent(sessionId)).catch(() => ({}))
+  ]);
+  const active =
+    activeRaw?.data && typeof activeRaw.data === "object"
+      ? activeRaw.data
+      : activeRaw;
+  const context = Array.isArray(contextRaw)
+    ? contextRaw
+    : Array.isArray(contextRaw?.data)
+      ? contextRaw.data
+      : [];
+  const turns = context.filter(item =>
+    item?.type === "user" || item?.info?.role === "user"
+  ).length;
+
+  return {
+    active: Boolean(active?.[sessionId]),
+    status: active?.[sessionId] ? "running" : "idle",
+    turns,
+    tokens: Math.max(controlTokens(metadata), controlTokens(context)),
+    activeTurnId: null
+  };
+}
+
+async function dispatchControlQueued(backend, sessionId, text) {
+  if (backend === "codex") {
+    await codex.request("turn/start", {
+      threadId: sessionId,
+      input: [{ type: "text", text }],
+      clientUserMessageId: randomUUID()
+    });
+    return;
+  }
+
+  await fetchOpenCodeJson(
+    "/api/session/" + encodeURIComponent(sessionId) + "/prompt",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text })
+    }
+  );
+}
+
+async function interruptControlSession(backend, sessionId, snapshot = {}) {
+  if (backend === "codex") {
+    let turnId = snapshot.activeTurnId;
+    if (!turnId) {
+      turnId = (await inspectControlSession(backend, sessionId)).activeTurnId;
+    }
+    if (!turnId) throw new Error("No active Codex turn");
+    await codex.request("turn/interrupt", {
+      threadId: sessionId,
+      turnId
+    });
+    return;
+  }
+
+  await fetchOpenCodeJson(
+    "/api/session/" + encodeURIComponent(sessionId) + "/interrupt",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" }
+    }
+  );
+}
+
+const sessionControl = createSessionControl({
+  homeDir: HOME_DIR,
+  inspectSession: inspectControlSession,
+  dispatchQueued: dispatchControlQueued,
+  interruptSession: interruptControlSession
+});
+
+const sessionControlTimer = setInterval(() => {
+  sessionControl
+    .reconcile()
+    .catch(error => console.error("Session control reconcile failed", error));
+}, 2500);
+sessionControlTimer.unref?.();
+
 async function opencodeHealth() {
   try {
     const payload = await fetchOpenCodeJson("/api/location", {
@@ -853,6 +1001,15 @@ const server = http.createServer(async (req, res) => {
     if (!requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)) return;
 
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+
+    if (url.pathname.startsWith("/api/session-control")) {
+      if (
+        req.method !== "GET" &&
+        req.method !== "HEAD" &&
+        !claimOperation(req, res, `${req.method}:${url.pathname}`)
+      ) return;
+      if (await sessionControl.handle(req, res, url)) return;
+    }
 
     if (req.method === "GET" && url.pathname === "/api/projects") {
       await projectsList(res);
