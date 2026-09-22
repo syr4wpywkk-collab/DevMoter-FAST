@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer as createNetServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -50,12 +50,15 @@ async function waitForReady(child, timeoutMs = 8000) {
 
 test("DevMoter integrates with mocked OpenCode and Codex happy/failure paths", async () => {
   const home = await mkdtemp(join(tmpdir(), "devmoter-backend-integration-"));
+  const projectDir = join(home, "project");
+  await mkdir(projectDir);
+  const authPassword = "integration-test-password-123";
 
   const openCode = http.createServer((req, res) => {
     res.setHeader("content-type", "application/json");
     if (req.url === "/api/location") {
       res.writeHead(200);
-      res.end(JSON.stringify({ directory: "/tmp/mock-project", project: { name: "mock" } }));
+      res.end(JSON.stringify({ directory: projectDir, project: { name: "mock" } }));
       return;
     }
     if (req.url === "/api/fail") {
@@ -87,6 +90,13 @@ rl.on("line", line => {
     process.stdout.write(JSON.stringify({ id: message.id, error: { message: "synthetic Codex failure" } }) + "\\n");
     return;
   }
+  if (message.method === "thread/start") {
+    process.stdout.write(JSON.stringify({
+      id: message.id,
+      result: { thread: { id: "thread-created" }, cwd: message.params?.cwd ?? null }
+    }) + "\\n");
+    return;
+  }
   process.stdout.write(JSON.stringify({ id: message.id, result: {} }) + "\\n");
 });
 `);
@@ -101,8 +111,10 @@ rl.on("line", line => {
       POCKET_HOST: "127.0.0.1",
       POCKET_PORT: String(port),
       OPENCODE_URL: `http://127.0.0.1:${openCodePort}`,
-      OPENCODE_DIRECTORY: "/tmp/mock-project",
-      CODEX_BIN: fakeCodex
+      OPENCODE_DIRECTORY: projectDir,
+      CODEX_CWD: projectDir,
+      CODEX_BIN: fakeCodex,
+      DEVMOTER_AUTH_PASSWORD: authPassword
     },
     stdio: ["ignore", "pipe", "pipe"]
   });
@@ -110,25 +122,73 @@ rl.on("line", line => {
   try {
     await waitForReady(child);
 
-    const openCodeOk = await fetch(`http://127.0.0.1:${port}/api/opencode/location`);
-    assert.equal(openCodeOk.status, 200);
-    assert.equal((await openCodeOk.json()).directory, "/tmp/mock-project");
+    const baseUrl = `http://127.0.0.1:${port}`;
+    const authorization = `Basic ${Buffer.from(`devmoter:${authPassword}`).toString("base64")}`;
+    const headers = (extra = {}) => ({
+      authorization,
+      origin: baseUrl,
+      ...extra
+    });
 
-    const openCodeFailure = await fetch(`http://127.0.0.1:${port}/api/opencode/fail`);
+    const unauthorized = await fetch(`${baseUrl}/api/health`);
+    assert.equal(unauthorized.status, 401);
+
+    const openCodeOk = await fetch(`${baseUrl}/api/opencode/location`, {
+      headers: headers()
+    });
+    assert.equal(openCodeOk.status, 200);
+    assert.equal((await openCodeOk.json()).directory, projectDir);
+
+    const openCodeFailure = await fetch(`${baseUrl}/api/opencode/fail`, {
+      headers: headers()
+    });
     assert.equal(openCodeFailure.status, 503);
     assert.match(JSON.stringify(await openCodeFailure.json()), /synthetic OpenCode failure/);
 
-    const codexOk = await fetch(`http://127.0.0.1:${port}/api/codex/rpc`, {
+    const badOrigin = await fetch(`${baseUrl}/api/codex/rpc`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-pocket-operation-id": "codex-happy" },
+      headers: {
+        authorization,
+        origin: "https://attacker.example",
+        "content-type": "application/json",
+        "x-pocket-operation-id": "codex-bad-origin"
+      },
+      body: JSON.stringify({ method: "thread/list", params: {} })
+    });
+    assert.equal(badOrigin.status, 403);
+
+    const codexOk = await fetch(`${baseUrl}/api/codex/rpc`, {
+      method: "POST",
+      headers: headers({ "content-type": "application/json", "x-pocket-operation-id": "codex-happy" }),
       body: JSON.stringify({ method: "thread/list", params: {} })
     });
     assert.equal(codexOk.status, 200);
     assert.deepEqual((await codexOk.json()).result, { data: [] });
 
-    const codexFailure = await fetch(`http://127.0.0.1:${port}/api/codex/rpc`, {
+    const projectsResponse = await fetch(`${baseUrl}/api/projects`, { headers: headers() });
+    assert.equal(projectsResponse.status, 200);
+    const projectsPayload = await projectsResponse.json();
+    const registeredProject = projectsPayload.projects.find(project => project.path === projectDir);
+    assert.ok(registeredProject?.id);
+
+    const arbitraryCwd = await fetch(`${baseUrl}/api/codex/rpc`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-pocket-operation-id": "codex-failure" },
+      headers: headers({ "content-type": "application/json", "x-pocket-operation-id": "codex-raw-cwd" }),
+      body: JSON.stringify({ method: "thread/start", params: { cwd: "/tmp/not-registered" } })
+    });
+    assert.equal(arbitraryCwd.status, 400);
+
+    const projectBound = await fetch(`${baseUrl}/api/codex/rpc`, {
+      method: "POST",
+      headers: headers({ "content-type": "application/json", "x-pocket-operation-id": "codex-project-bound" }),
+      body: JSON.stringify({ method: "thread/start", params: { projectId: registeredProject.id } })
+    });
+    assert.equal(projectBound.status, 200);
+    assert.equal((await projectBound.json()).result.cwd, projectDir);
+
+    const codexFailure = await fetch(`${baseUrl}/api/codex/rpc`, {
+      method: "POST",
+      headers: headers({ "content-type": "application/json", "x-pocket-operation-id": "codex-failure" }),
       body: JSON.stringify({ method: "thread/read", params: { threadId: "missing" } })
     });
     assert.equal(codexFailure.status, 502);
