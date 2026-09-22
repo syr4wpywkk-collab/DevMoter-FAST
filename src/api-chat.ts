@@ -6,6 +6,7 @@ type ApiProvider = {
   baseUrl: string;
   ready: boolean;
   models: string[];
+  reasoningModes?: string[];
   source?: "file" | "env";
   editable?: boolean;
 };
@@ -17,9 +18,18 @@ type ApiPreset = {
   baseUrl: string;
 };
 
+type ApiAttachment = {
+  id: string;
+  name: string;
+  mime: string;
+  size: number;
+  previewUrl?: string;
+};
+
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  attachments?: ApiAttachment[];
 };
 
 type ApiChatOptions = {
@@ -89,6 +99,7 @@ export function mountApiChat(
         <div class="api-picker-row">
           <select id="apiProvider" aria-label="API provider"></select>
           <select id="apiModel" aria-label="Model"></select>
+          <select id="apiReasoning" aria-label="推論モード"></select>
           <button id="apiSettingsTop" class="api-icon-button api-settings-button" type="button" aria-label="API設定">⚙</button>
         </div>
       </header>
@@ -105,8 +116,11 @@ export function mountApiChat(
 
       <section class="api-composer-wrap">
         <form id="apiForm" class="api-composer">
+          <div id="apiAttachments" class="api-attachment-tray hidden"></div>
           <textarea id="apiPrompt" rows="1" placeholder="メッセージを入力" aria-label="メッセージ"></textarea>
+          <input id="apiImageInput" class="hidden" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple />
           <div class="api-composer-foot">
+            <button id="apiAttachImage" class="api-attach-button" type="button" aria-label="画像を添付">＋</button>
             <span id="apiStatus">接続先を読み込み中…</span>
             <button id="apiSend" type="submit" aria-label="送信">↑</button>
           </div>
@@ -138,10 +152,14 @@ export function mountApiChat(
   const newChat = root.querySelector<HTMLButtonElement>("#apiNewChat")!;
   const providerSelect = root.querySelector<HTMLSelectElement>("#apiProvider")!;
   const modelSelect = root.querySelector<HTMLSelectElement>("#apiModel")!;
+  const reasoningSelect = root.querySelector<HTMLSelectElement>("#apiReasoning")!;
   const transcript = root.querySelector<HTMLDivElement>("#apiTranscript")!;
   const welcome = root.querySelector<HTMLElement>("#apiWelcome")!;
   const form = root.querySelector<HTMLFormElement>("#apiForm")!;
   const prompt = root.querySelector<HTMLTextAreaElement>("#apiPrompt")!;
+  const attachmentTray = root.querySelector<HTMLDivElement>("#apiAttachments")!;
+  const imageInput = root.querySelector<HTMLInputElement>("#apiImageInput")!;
+  const attachImage = root.querySelector<HTMLButtonElement>("#apiAttachImage")!;
   const send = root.querySelector<HTMLButtonElement>("#apiSend")!;
   const status = root.querySelector<HTMLElement>("#apiStatus")!;
   const settingsModal = root.querySelector<HTMLDivElement>("#apiSettingsModal")!;
@@ -151,6 +169,8 @@ export function mountApiChat(
   let providers: ApiProvider[] = [];
   let presets: ApiPreset[] = [];
   let messages: ChatMessage[] = [];
+  let pendingAttachments: ApiAttachment[] = [];
+  let uploadingCount = 0;
   let sending = false;
 
   function openSidebar() {
@@ -169,6 +189,33 @@ export function mountApiChat(
     return providers.find(provider => provider.id === providerSelect.value) ?? null;
   }
 
+  function reasoningLabel(mode: string) {
+    return ({
+      auto: "推論: Auto",
+      none: "推論: Off",
+      low: "推論: Low",
+      medium: "推論: Medium",
+      high: "推論: High"
+    } as Record<string, string>)[mode] || `推論: ${mode}`;
+  }
+
+  function updateReasoning() {
+    const provider = currentProvider();
+    const modes = provider?.reasoningModes?.length ? provider.reasoningModes : ["auto"];
+    const storageKey = `devmoter-api-reasoning:${provider?.id || ""}:${modelSelect.value || ""}`;
+    const saved = localStorage.getItem(storageKey);
+
+    reasoningSelect.replaceChildren();
+    for (const mode of modes) {
+      const option = document.createElement("option");
+      option.value = mode;
+      option.textContent = reasoningLabel(mode);
+      reasoningSelect.appendChild(option);
+    }
+    reasoningSelect.value = saved && modes.includes(saved) ? saved : "auto";
+    reasoningSelect.disabled = modes.length <= 1;
+  }
+
   function updateModels() {
     const provider = currentProvider();
     const savedModel = localStorage.getItem(`devmoter-api-model:${provider?.id || ""}`);
@@ -184,13 +231,15 @@ export function mountApiChat(
     if (savedModel && provider?.models.includes(savedModel)) {
       modelSelect.value = savedModel;
     }
+    updateReasoning();
 
     status.textContent = !provider
       ? "⚙ API Providerを追加してね"
       : provider.ready
         ? `${provider.name} · Ready`
         : `${provider.name} · APIキー未設定`;
-    send.disabled = !provider?.ready || !modelSelect.value || sending;
+    send.disabled = !provider?.ready || !modelSelect.value || sending || uploadingCount > 0;
+    attachImage.disabled = sending || uploadingCount > 0;
   }
 
   function resizePrompt() {
@@ -208,11 +257,116 @@ export function mountApiChat(
       const bubble = document.createElement("div");
       bubble.className = "api-message-bubble";
       bubble.textContent = message.content;
+
+      if (message.attachments?.length) {
+        const attachments = document.createElement("div");
+        attachments.className = "api-message-attachments";
+        for (const attachment of message.attachments) {
+          const chip = document.createElement("span");
+          chip.textContent = `🖼 ${attachment.name}`;
+          attachments.appendChild(chip);
+        }
+        bubble.appendChild(attachments);
+      }
+
       row.appendChild(bubble);
       transcript.appendChild(row);
     }
 
     transcript.scrollTop = transcript.scrollHeight;
+  }
+
+  function renderPendingAttachments() {
+    attachmentTray.replaceChildren();
+    attachmentTray.classList.toggle("hidden", pendingAttachments.length === 0);
+
+    for (const attachment of pendingAttachments) {
+      const item = document.createElement("div");
+      item.className = "api-attachment-chip";
+
+      if (attachment.previewUrl) {
+        const image = document.createElement("img");
+        image.src = attachment.previewUrl;
+        image.alt = "";
+        item.appendChild(image);
+      }
+
+      const name = document.createElement("span");
+      name.textContent = attachment.name;
+      item.appendChild(name);
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.setAttribute("aria-label", `${attachment.name} を削除`);
+      remove.textContent = "×";
+      remove.addEventListener("click", async () => {
+        pendingAttachments = pendingAttachments.filter(item => item.id !== attachment.id);
+        if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
+        renderPendingAttachments();
+        try {
+          await apiJson(`/api/llm/attachments/${encodeURIComponent(attachment.id)}`, {
+            method: "DELETE"
+          });
+        } catch {
+          // Server cleanup will remove stale temporary attachments later.
+        }
+      });
+      item.appendChild(remove);
+      attachmentTray.appendChild(item);
+    }
+  }
+
+  async function uploadImage(file: File) {
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      throw new Error("JPEG / PNG / WebP / GIF のみ対応しています");
+    }
+    if (file.size <= 0 || file.size > 15 * 1024 * 1024) {
+      throw new Error("画像は15MB以下にしてください");
+    }
+
+    const res = await fetch("/api/llm/attachments", {
+      method: "POST",
+      headers: {
+        "content-type": file.type,
+        "x-devmoter-file-name": encodeURIComponent(file.name),
+        "x-pocket-operation-id": operationId()
+      },
+      body: file
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
+
+    return {
+      ...payload.attachment,
+      previewUrl: URL.createObjectURL(file)
+    } as ApiAttachment;
+  }
+
+  async function handleImageFiles(files: FileList | File[]) {
+    const list = Array.from(files).slice(0, Math.max(0, 8 - pendingAttachments.length));
+    if (!list.length) return;
+
+    uploadingCount += list.length;
+    updateModels();
+    status.textContent = `画像をLinuxへ保存中… 0/${list.length}`;
+
+    let completed = 0;
+    try {
+      for (const file of list) {
+        const attachment = await uploadImage(file);
+        pendingAttachments.push(attachment);
+        completed += 1;
+        status.textContent = `画像をLinuxへ保存中… ${completed}/${list.length}`;
+        renderPendingAttachments();
+      }
+      status.textContent = `${currentProvider()?.name || "API"} · 画像準備OK`;
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : String(error);
+    } finally {
+      uploadingCount -= list.length;
+      imageInput.value = "";
+      updateModels();
+    }
   }
 
   async function refresh() {
@@ -563,17 +717,28 @@ export function mountApiChat(
   }
 
   async function submit() {
-    const text = prompt.value.trim();
+    const rawText = prompt.value.trim();
     const provider = currentProvider();
     const model = modelSelect.value;
-    if (!text || !provider?.ready || !model || sending) return;
+    if ((!rawText && pendingAttachments.length === 0) || !provider?.ready || !model || sending || uploadingCount > 0) return;
 
-    messages.push({ role: "user", content: text });
+    const attachments = pendingAttachments.map(({ id, name, mime, size }) => ({
+      id, name, mime, size
+    }));
+    for (const attachment of pendingAttachments) {
+      if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
+    }
+    pendingAttachments = [];
+    renderPendingAttachments();
+
+    const text = rawText || "この画像を確認してください。";
+    messages.push({ role: "user", content: text, attachments });
     prompt.value = "";
     resizePrompt();
     renderMessages();
     sending = true;
     send.disabled = true;
+    attachImage.disabled = true;
     status.textContent = `${provider.name} · 考え中…`;
 
     try {
@@ -582,7 +747,12 @@ export function mountApiChat(
         body: JSON.stringify({
           providerId: provider.id,
           model,
-          messages
+          reasoning: reasoningSelect.value || "auto",
+          messages: messages.map(message => ({
+            role: message.role,
+            content: message.content,
+            attachments: message.attachments?.map(({ id, name, mime }) => ({ id, name, mime })) || []
+          }))
         })
       });
       const content = String(payload?.message?.content || "").trim();
@@ -599,7 +769,7 @@ export function mountApiChat(
       status.textContent = `${provider.name} · Error`;
     } finally {
       sending = false;
-      send.disabled = !currentProvider()?.ready || !modelSelect.value;
+      updateModels();
       prompt.focus();
     }
   }
@@ -621,7 +791,15 @@ export function mountApiChat(
     if (event.target === settingsModal) closeSettings();
   });
   newChat.addEventListener("click", () => {
+    for (const attachment of pendingAttachments) {
+      if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
+      void apiJson(`/api/llm/attachments/${encodeURIComponent(attachment.id)}`, {
+        method: "DELETE"
+      }).catch(() => {});
+    }
+    pendingAttachments = [];
     messages = [];
+    renderPendingAttachments();
     renderMessages();
     closeSidebar();
     prompt.focus();
@@ -637,6 +815,19 @@ export function mountApiChat(
   modelSelect.addEventListener("change", () => {
     const provider = currentProvider();
     if (provider) localStorage.setItem(`devmoter-api-model:${provider.id}`, modelSelect.value);
+    updateReasoning();
+  });
+  reasoningSelect.addEventListener("change", () => {
+    const provider = currentProvider();
+    if (!provider) return;
+    localStorage.setItem(
+      `devmoter-api-reasoning:${provider.id}:${modelSelect.value}`,
+      reasoningSelect.value
+    );
+  });
+  attachImage.addEventListener("click", () => imageInput.click());
+  imageInput.addEventListener("change", () => {
+    if (imageInput.files) void handleImageFiles(imageInput.files);
   });
   prompt.addEventListener("input", resizePrompt);
   prompt.addEventListener("keydown", event => {
