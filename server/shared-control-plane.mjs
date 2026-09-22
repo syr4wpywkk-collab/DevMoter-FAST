@@ -440,7 +440,7 @@ function defaultCatalog() {
   ];
 }
 
-export function createSharedControlPlane({ stateDir, resolveProject, policyRules = [], compactBackend = async () => ({ supported: false }) }) {
+export function createSharedControlPlane({ stateDir, resolveProject, policyRules = [], compactBackend = async () => ({ supported: false }), inspectContext = async () => ({}) }) {
   const policy = createPolicyEngine(policyRules);
   const locks = createLockManager();
   const events = createEventStore({ stateDir });
@@ -604,6 +604,30 @@ export function createSharedControlPlane({ stateDir, resolveProject, policyRules
       return current.context;
     },
 
+    async contextStatus({ backend, sessionId } = {}) {
+      const current = await settings();
+      const normalizedBackend = String(backend || "");
+      const normalizedSession = cleanId(sessionId);
+      if (!["codex", "opencode"].includes(normalizedBackend)) {
+        throw new Error("backend must be codex or opencode");
+      }
+      if (!normalizedSession || normalizedSession === "default") throw new Error("sessionId is required");
+      const telemetry = await inspectContext(normalizedBackend, normalizedSession);
+      const tokens = Number(telemetry?.tokens);
+      const maxTokens = Number(current.context?.maxTokens || 128000);
+      return {
+        backend: normalizedBackend,
+        sessionId: normalizedSession,
+        tokens: Number.isFinite(tokens) && tokens >= 0 ? tokens : 0,
+        approximate: telemetry?.tokensApproximate !== false,
+        maxTokens,
+        threshold: Number(current.context?.threshold || 0.82),
+        ratio: Number.isFinite(tokens) && maxTokens > 0 ? Math.min(1, Math.max(0, tokens / maxTokens)) : 0,
+        status: telemetry?.status || "unknown",
+        active: Boolean(telemetry?.active)
+      };
+    },
+
     async compactSession(input = {}) {
       const sessionId = cleanId(input.sessionId);
       const backend = String(input.backend || "");
@@ -674,6 +698,14 @@ export async function handleSharedControlPlaneRequest(req, res, url, control) {
 
     if (req.method === "PUT" && path === "/api/shared-control/context") {
       sendJson(res, 200, { context: await control.updateContextSettings(await readRequestJson(req)) });
+      return true;
+    }
+
+    if (req.method === "GET" && path === "/api/shared-control/context/status") {
+      sendJson(res, 200, await control.contextStatus({
+        backend: url.searchParams.get("backend"),
+        sessionId: url.searchParams.get("sessionId")
+      }));
       return true;
     }
 
