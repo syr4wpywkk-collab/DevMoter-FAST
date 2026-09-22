@@ -2,6 +2,7 @@ import "./style.css";
 import { mountOpenCodeRemote } from "./opencode";
 import { mountCodexRemote } from "./codex";
 import { startI18n } from "./i18n";
+import { mountWorkspaceTools } from "./workspace-tools";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
@@ -35,6 +36,7 @@ const codexRemote = mountCodexRemote(codexMount, {
 });
 
 startI18n();
+mountWorkspaceTools();
 
 let healthCheckInFlight = false;
 async function checkHealth() {
