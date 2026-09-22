@@ -8,8 +8,8 @@ import {
   validateAntigravityRemoteUrl
 } from "../server/integrations.mjs";
 
-test("integration child environment strips DevMoter and OpenCode secrets", () => {
-  const env = sanitizeChildEnv({
+test("integration child environment denies secrets by default and allows only explicit provider keys", () => {
+  const source = {
     PATH: "/usr/bin",
     HOME: "/home/test",
     DEVMOTER_AUTH_PASSWORD: "do-not-leak",
@@ -22,19 +22,26 @@ test("integration child environment strips DevMoter and OpenCode secrets", () =>
     NODE_OPTIONS: "--require=/tmp/evil.js",
     LD_PRELOAD: "/tmp/evil.so",
     DISPLAY: ":0"
-  });
+  };
 
-  assert.equal(env.DEVMOTER_AUTH_PASSWORD, undefined);
-  assert.equal(env.DEVMOTER_API_TOKEN, undefined);
-  assert.equal(env.POCKET_SESSION_SECRET, undefined);
-  assert.equal(env.OPENCODE_SERVER_PASSWORD, undefined);
-  assert.equal(env.ANTHROPIC_API_KEY, undefined);
-  assert.equal(env.GITHUB_TOKEN, undefined);
-  assert.equal(env.AWS_SECRET_ACCESS_KEY, undefined);
-  assert.equal(env.NODE_OPTIONS, undefined);
-  assert.equal(env.LD_PRELOAD, undefined);
-  assert.equal(env.PATH, "/usr/bin");
-  assert.equal(env.DISPLAY, ":0");
+  const defaultEnv = sanitizeChildEnv(source);
+  assert.equal(defaultEnv.DEVMOTER_AUTH_PASSWORD, undefined);
+  assert.equal(defaultEnv.DEVMOTER_API_TOKEN, undefined);
+  assert.equal(defaultEnv.POCKET_SESSION_SECRET, undefined);
+  assert.equal(defaultEnv.OPENCODE_SERVER_PASSWORD, undefined);
+  assert.equal(defaultEnv.ANTHROPIC_API_KEY, undefined);
+  assert.equal(defaultEnv.GITHUB_TOKEN, undefined);
+  assert.equal(defaultEnv.AWS_SECRET_ACCESS_KEY, undefined);
+  assert.equal(defaultEnv.NODE_OPTIONS, undefined);
+  assert.equal(defaultEnv.LD_PRELOAD, undefined);
+  assert.equal(defaultEnv.PATH, "/usr/bin");
+  assert.equal(defaultEnv.DISPLAY, ":0");
+
+  const claudeEnv = sanitizeChildEnv(source, ["ANTHROPIC_API_KEY", "NODE_OPTIONS"]);
+  assert.equal(claudeEnv.ANTHROPIC_API_KEY, "provider-secret");
+  assert.equal(claudeEnv.GITHUB_TOKEN, undefined);
+  assert.equal(claudeEnv.DEVMOTER_AUTH_PASSWORD, undefined);
+  assert.equal(claudeEnv.NODE_OPTIONS, undefined);
 });
 
 test("Antigravity remote URLs are restricted to the official HTTPS origin", () => {
