@@ -631,6 +631,7 @@ function waitForCodexTurn(threadId, turnId, context = {}) {
   const timeoutMs = taskTimeoutMs(context);
   return new Promise((resolve, reject) => {
     let settled = false;
+    let assistantText = "";
     const finish = (error, result) => {
       if (settled) return;
       settled = true;
@@ -643,20 +644,27 @@ function waitForCodexTurn(threadId, turnId, context = {}) {
     const onOffline = event => finish(new Error(event?.error || "Codex went offline"));
     const onNotification = event => {
       const method = event?.method;
-      if (method !== "turn/completed") return;
       const params = event?.params ?? {};
       const eventThreadId = params?.threadId ?? params?.thread?.id;
       const eventTurnId = params?.turn?.id ?? params?.turnId;
       if (eventThreadId && String(eventThreadId) !== String(threadId)) return;
       if (eventTurnId && String(eventTurnId) !== String(turnId)) return;
+
+      if (method === "item/agentMessage/delta" && typeof params?.delta === "string") {
+        assistantText += params.delta;
+        if (assistantText.length > 12000) assistantText = assistantText.slice(-12000);
+        return;
+      }
+      if (method !== "turn/completed") return;
+
       const status = String(params?.turn?.status || "completed");
       if (status === "failed") {
         finish(new Error(params?.turn?.error?.message || params?.error?.message || "Codex turn failed"));
         return;
       }
       finish(null, {
-        complete: true,
-        summary: "Codex turn " + turnId + " finished with status " + status + ".",
+        complete: assistantText.includes("[DEVMOTER_AUTOPILOT_DONE]"),
+        summary: assistantText.trim().slice(-4000) || ("Codex turn " + turnId + " finished with status " + status + "."),
         cost: Number.isFinite(Number(params?.turn?.cost)) ? Number(params.turn.cost) : null
       });
     };
@@ -702,16 +710,17 @@ async function executeControlTask(definition, context = {}) {
     };
     context.setCancel?.(cancel);
 
-    await fetchOpenCodeJson("/api/session/" + encodeURIComponent(sessionId) + "/prompt", {
+    const promptResult = await fetchOpenCodeJson("/api/session/" + encodeURIComponent(sessionId) + "/prompt", {
       method: "POST",
       headers,
       body: JSON.stringify({ text: task }),
       signal: AbortSignal.timeout(taskTimeoutMs(context))
     });
+    const promptSummary = JSON.stringify(promptResult ?? {}).slice(-4000);
 
     return {
-      complete: true,
-      summary: "OpenCode session " + sessionId + " completed the requested turn.",
+      complete: promptSummary.includes("[DEVMOTER_AUTOPILOT_DONE]"),
+      summary: promptSummary || ("OpenCode session " + sessionId + " completed the requested turn."),
       cost: null,
       cancel
     };
