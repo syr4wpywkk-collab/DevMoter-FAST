@@ -2,12 +2,21 @@ import { execFile } from "node:child_process";
 import { lstat, mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { AcpAdapter, createAgentAdapterRegistry } from "./acp-adapter.mjs";
 
 const execFileAsync = promisify(execFile);
 const TERMINAL = new Set(["completed", "failed", "cancelled", "canceled", "interrupted", "aborted"]);
 const EXTENSION_CAPABILITIES = new Set(["commands", "skills", "hooks", "mcp", "adapters", "themes", "rules", "review", "verification"]);
+const EXTENSION_PERMISSIONS = new Set([
+  "filesystem.read",
+  "filesystem.write",
+  "network",
+  "shell",
+  "credentials",
+  "adapters",
+  "browser"
+]);
 const SECRET_KEY = /(secret|token|password|api[_-]?key|authorization|credential)/i;
 const MAX_DIFF = 220000;
 const MAX_RULE = 65536;
@@ -20,7 +29,8 @@ const DEFAULTS = {
   mcp: { servers: [] },
   skills: { user: [] },
   rules: { user: [] },
-  adapters: { acp: { enabled: false, command: "", args: [], capabilities: [] } }
+  adapters: { acp: { enabled: false, command: "", args: [], capabilities: [] } },
+  extensions: { approvals: [] }
 };
 
 function plain(value) {
@@ -135,6 +145,19 @@ export function normalizeDevWorkflowSettings(input) {
         args: strings(raw.adapters?.acp?.args, 64).map(arg => arg.slice(0, 1000)),
         capabilities: strings(raw.adapters?.acp?.capabilities, 64).map(value => value.slice(0, 120))
       }
+    },
+    extensions: {
+      approvals: Array.isArray(raw.extensions?.approvals)
+        ? raw.extensions.approvals.slice(0, 200).map(item => ({
+            projectId: String(item?.projectId || "").slice(0, 160),
+            name: String(item?.name || "").slice(0, 120),
+            version: String(item?.version || "").slice(0, 80),
+            source: String(item?.source || "").slice(0, 240),
+            digest: String(item?.digest || "").slice(0, 128),
+            permissions: strings(item?.permissions, 32).filter(value => EXTENSION_PERMISSIONS.has(value)),
+            approvedAt: Math.max(0, Number(item?.approvedAt) || 0)
+          })).filter(item => item.projectId && item.digest)
+        : []
     }
   };
 }
@@ -158,6 +181,13 @@ export function validateExtensionManifest(input) {
   const capabilities = strings(input.capabilities, 64);
   const unknown = capabilities.filter(item => !EXTENSION_CAPABILITIES.has(item));
   if (unknown.length) errors.push("Unknown capabilities: " + unknown.join(", "));
+
+  const permissions = [...new Set(strings(input.permissions, 64))].sort();
+  const unknownPermissions = permissions.filter(item => !EXTENSION_PERMISSIONS.has(item));
+  if (unknownPermissions.length) {
+    errors.push("Unknown or unsafe permissions: " + unknownPermissions.join(", "));
+  }
+
   const declarations = plain(input.declarations) ? input.declarations : {};
   for (const key of Object.keys(declarations)) {
     if (!EXTENSION_CAPABILITIES.has(key)) errors.push("Unsafe or unknown declaration: " + key);
@@ -171,9 +201,41 @@ export function validateExtensionManifest(input) {
       version: String(input.version).slice(0, 80),
       description: String(input.description || "").slice(0, 500),
       capabilities,
-      permissions: strings(input.permissions, 64),
+      permissions,
       declarations
     }
+  };
+}
+
+export function extensionPermissionDigest(manifest, source = "devmoter.extension.json") {
+  if (!manifest || typeof manifest !== "object") throw new Error("Valid extension manifest is required");
+  const normalized = {
+    name: String(manifest.name || ""),
+    version: String(manifest.version || ""),
+    source: String(source || ""),
+    capabilities: [...new Set(strings(manifest.capabilities, 64))].sort(),
+    permissions: [...new Set(strings(manifest.permissions, 64))].sort()
+  };
+  return createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
+}
+
+function extensionTrust(settings, projectId, extension) {
+  if (!extension?.valid || !extension?.manifest) {
+    return { approved: false, requiresApproval: false, reason: "invalid-or-missing" };
+  }
+  const source = String(extension.source || "devmoter.extension.json");
+  const digest = extensionPermissionDigest(extension.manifest, source);
+  const approval = settings.extensions.approvals.find(item => item.projectId === projectId);
+  const approved = Boolean(approval && approval.digest === digest);
+  return {
+    approved,
+    requiresApproval: !approved,
+    reason: approved ? "approved" : (approval ? "manifest-or-permissions-changed" : "not-approved"),
+    digest,
+    approvedAt: approved ? approval.approvedAt : null,
+    permissions: extension.manifest.permissions,
+    source,
+    isolation: "declarative-api-only"
   };
 }
 
@@ -540,13 +602,17 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
       effectiveSkills.set(String(skill.name || "").toLowerCase(), skill);
     }
 
+    const extensionView = extension?.present
+      ? { ...extension, trust: extensionTrust(settings, project.id, extension) }
+      : extension;
+
     return {
       project: { id: project.id, name: project.name, path: project.path },
       skills: [...effectiveSkills.values()].sort((a, b) => b.precedence - a.precedence),
       skillsPrecedence: "higher numeric precedence wins; DevMoter user(20) > native user(15) > DevMoter project(10) > other native/project(5)",
       rules: userRules.concat(rules).sort((a, b) => b.precedence - a.precedence),
       rulesPrecedence: "higher numeric precedence wins; trusted user rules are evaluated before untrusted project rules",
-      extension,
+      extension: extensionView,
       adapters,
       negotiation: negotiateAdapter(adapters, "", []),
       mcp: settings.mcp.servers
@@ -1148,6 +1214,47 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     return { ok: true };
   }
 
+  async function approveProjectExtension(input) {
+    const project = await getProject(input?.projectId);
+    const extension = await projectExtension(project.path);
+    if (!extension.present || !extension.valid || !extension.manifest) {
+      throw new Error("A valid project extension manifest is required before approval");
+    }
+    const source = String(extension.source || "devmoter.extension.json");
+    const digest = extensionPermissionDigest(extension.manifest, source);
+    const expected = String(input?.digest || "").trim();
+    if (expected && expected !== digest) {
+      throw new Error("Extension manifest changed before approval; review it again");
+    }
+    const settings = await readSettings();
+    settings.extensions.approvals = settings.extensions.approvals.filter(item => item.projectId !== project.id);
+    const approval = {
+      projectId: project.id,
+      name: extension.manifest.name,
+      version: extension.manifest.version,
+      source,
+      digest,
+      permissions: extension.manifest.permissions,
+      approvedAt: Date.now()
+    };
+    settings.extensions.approvals.push(approval);
+    await writeSettings(settings);
+    return {
+      approved: true,
+      approval,
+      trust: extensionTrust(settings, project.id, extension)
+    };
+  }
+
+  async function revokeProjectExtension(input) {
+    const project = await getProject(input?.projectId);
+    const settings = await readSettings();
+    const before = settings.extensions.approvals.length;
+    settings.extensions.approvals = settings.extensions.approvals.filter(item => item.projectId !== project.id);
+    if (settings.extensions.approvals.length !== before) await writeSettings(settings);
+    return { approved: false, revoked: settings.extensions.approvals.length !== before };
+  }
+
   return {
     async getSettings(options = {}) {
       const settings = await readSettings();
@@ -1178,6 +1285,8 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     saveMcpServer,
     setMcpEnabled,
     removeMcpServer,
+    approveProjectExtension,
+    revokeProjectExtension,
     probeAcp
   };
 }
