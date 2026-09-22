@@ -64,6 +64,7 @@ type PendingAttachment = {
 
 type CodexRemoteOptions = {
   onOpenCode?: () => void;
+  onIntegrations?: () => void;
 };
 
 export type CodexRemoteController = {
@@ -100,6 +101,7 @@ export function mountCodexRemote(
           <button id="cxProjectsNav" class="cx-nav-item" type="button"><span>▱</span><span>Projects</span></button>
           <button id="cxModelsNav" class="cx-nav-item" type="button"><span>◌</span><span>モデル</span></button>
           <button id="cxPluginsNav" class="cx-nav-item" type="button"><span>◉</span><span>プラグイン</span></button>
+          <button id="cxIntegrationsNav" class="cx-nav-item" type="button"><span>⌁</span><span>Integrations</span></button>
         </nav>
 
         <div class="cx-side-section cx-agent-section">
@@ -236,6 +238,7 @@ export function mountCodexRemote(
   const libraryNav = root.querySelector<HTMLButtonElement>("#cxLibraryNav")!;
   const modelsNav = root.querySelector<HTMLButtonElement>("#cxModelsNav")!;
   const pluginsNav = root.querySelector<HTMLButtonElement>("#cxPluginsNav")!;
+  const integrationsNav = root.querySelector<HTMLButtonElement>("#cxIntegrationsNav")!;
   const voice = root.querySelector<HTMLButtonElement>("#cxVoice")!;
   const reasoningTop = root.querySelector<HTMLButtonElement>("#cxReasoningTop")!;
   const modelTop = root.querySelector<HTMLButtonElement>("#cxModelTop")!;
@@ -2216,6 +2219,10 @@ export function mountCodexRemote(
     void showModels();
   });
   pluginsNav.addEventListener("click", () => void showPlugins());
+  integrationsNav.addEventListener("click", () => {
+    closeSidebar();
+    options.onIntegrations?.();
+  });
   libraryNav.addEventListener("click", showLibrary);
   root.querySelectorAll<HTMLButtonElement>(".cx-agent-option").forEach(button => {
     button.addEventListener("click", () => {
