@@ -922,6 +922,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "POST" && url.pathname === "/api/dev/acp/probe") {
+      await devWorkflowAction(req, res, payload => devWorkflows.probeAcp(payload));
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/dev/mcp/test") {
       await devWorkflowAction(req, res, payload => devWorkflows.testMcpServer(payload));
       return;
