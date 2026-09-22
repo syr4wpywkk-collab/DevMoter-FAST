@@ -1102,12 +1102,12 @@ export function mountCodexRemote(
         const small = document.createElement("small");
         strong.textContent = `@${entry.path}`;
         small.textContent = entry.kind === "folder"
-          ? "folder Â· bounded expansion"
+          ? "folder · bounded expansion"
           : `${entry.size ?? "?"} bytes`;
         copy.append(strong, small);
 
         const badge = document.createElement("span");
-        badge.textContent = entry.kind === "folder" ? "â±" : "â";
+        badge.textContent = entry.kind === "folder" ? "▱" : "⌑";
         button.append(badge, copy);
         button.addEventListener("click", () => {
           const current = contextTokenAtCursor();
