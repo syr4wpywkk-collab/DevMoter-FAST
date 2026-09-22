@@ -7,7 +7,7 @@ import { CodexBridge } from "./server/codex-bridge.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { createOperationRegistry } from "./server/operation-registry.mjs";
-import { loadMultiApiProviders, publicMultiApiProviders, runMultiApiChat } from "./server/multi-api.mjs";
+import { MULTI_API_PRESETS, createMultiApiStore, publicMultiApiProviders, runMultiApiChat, testMultiApiProvider } from "./server/multi-api.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -24,6 +24,7 @@ const HOME_DIR = process.env.HOME || process.cwd();
 const UPLOAD_DIR = process.env.POCKET_UPLOAD_DIR || join(HOME_DIR, ".local", "state", "opencode-pocket", "uploads");
 const PROJECT_CONFIG_DIR = join(HOME_DIR, ".config", "opencode-pocket");
 const PROJECTS_FILE = join(PROJECT_CONFIG_DIR, "projects.json");
+const MULTI_API_FILE = join(PROJECT_CONFIG_DIR, "llm-providers.json");
 const PROJECT_FILE_LIMIT = 1024 * 1024;
 const PROJECT_SCAN_LIMIT = 200;
 const OPERATION_TTL_MS = 10 * 60 * 1000;
@@ -36,7 +37,7 @@ const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
 });
-const multiApiProviders = loadMultiApiProviders(process.env);
+const multiApiStore = createMultiApiStore({ filePath: MULTI_API_FILE, env: process.env });
 
 
 const MIME = {
@@ -757,26 +758,65 @@ async function codexEvents(req, res) {
 }
 
 
+function multiApiErrorStatus(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  const upstreamStatus = Number(error?.status);
+  return error?.name === "TimeoutError" ? 504 :
+    Number.isInteger(upstreamStatus) && upstreamStatus >= 400 && upstreamStatus < 600
+      ? upstreamStatus
+      : message === "Request body too large" ? 413 : 400;
+}
+
 async function multiApiProviderList(res) {
+  const providers = await multiApiStore.listResolved();
   json(res, 200, {
-    providers: publicMultiApiProviders(multiApiProviders)
+    providers: publicMultiApiProviders(providers)
   });
+}
+
+async function multiApiProviderSave(req, res) {
+  try {
+    const payload = await readJson(req, 256 * 1024);
+    const provider = await multiApiStore.upsert(payload);
+    json(res, 200, { provider });
+  } catch (error) {
+    json(res, multiApiErrorStatus(error), {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
+async function multiApiProviderDelete(providerId, res) {
+  try {
+    json(res, 200, await multiApiStore.remove(providerId));
+  } catch (error) {
+    json(res, multiApiErrorStatus(error), {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
+async function multiApiProviderTest(req, res) {
+  try {
+    const payload = await readJson(req, 256 * 1024);
+    json(res, 200, await testMultiApiProvider(payload));
+  } catch (error) {
+    json(res, multiApiErrorStatus(error), {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
 }
 
 async function multiApiChat(req, res) {
   try {
     const payload = await readJson(req, 1024 * 1024);
-    const result = await runMultiApiChat(multiApiProviders, payload);
+    const providers = await multiApiStore.listResolved();
+    const result = await runMultiApiChat(providers, payload);
     json(res, 200, result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const upstreamStatus = Number(error?.status);
-    const status =
-      error?.name === "TimeoutError" ? 504 :
-      Number.isInteger(upstreamStatus) && upstreamStatus >= 400 && upstreamStatus < 600
-        ? upstreamStatus
-        : message === "Request body too large" ? 413 : 400;
-    json(res, status, { error: message });
+    json(res, multiApiErrorStatus(error), {
+      error: error instanceof Error ? error.message : String(error)
+    });
   }
 }
 
@@ -879,8 +919,32 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    if (req.method === "GET" && url.pathname === "/api/llm/presets") {
+      json(res, 200, { presets: MULTI_API_PRESETS });
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/llm/providers") {
       await multiApiProviderList(res);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/llm/providers") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await multiApiProviderSave(req, res);
+      return;
+    }
+
+    const llmProviderMatch = url.pathname.match(/^\/api\/llm\/providers\/([^/]+)$/);
+    if (req.method === "DELETE" && llmProviderMatch) {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await multiApiProviderDelete(decodeURIComponent(llmProviderMatch[1]), res);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/llm/test") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await multiApiProviderTest(req, res);
       return;
     }
 
