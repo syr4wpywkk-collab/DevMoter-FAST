@@ -3290,3 +3290,357 @@ body.opencode-mode #app {
 .ocx-language-setting > span {
   color: var(--oc-dim);
 }
+
+
+/* DevMoter setup / diagnostics / trusted-device controls */
+.devmoter-system-root {
+  position: fixed;
+  z-index: 180;
+  right: max(12px, env(safe-area-inset-right));
+  top: max(12px, env(safe-area-inset-top));
+}
+
+.devmoter-system-button {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 999px;
+  background: rgba(24,24,24,.92);
+  color: #ddd;
+  box-shadow: 0 8px 28px rgba(0,0,0,.34);
+}
+
+.devmoter-system-modal {
+  position: fixed;
+  z-index: 190;
+  inset: 0;
+  padding:
+    max(12px, env(safe-area-inset-top))
+    max(10px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom))
+    max(10px, env(safe-area-inset-left));
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,.66);
+}
+
+.devmoter-system-modal.hidden {
+  display: none;
+}
+
+.devmoter-system-card {
+  width: min(100%, 620px);
+  max-height: min(88dvh, 820px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #343434;
+  border-radius: 16px;
+  background: #151515;
+  box-shadow: 0 24px 80px rgba(0,0,0,.55);
+}
+
+.devmoter-system-head {
+  padding: 14px 14px 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #2b2b2b;
+}
+
+.devmoter-system-head > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.devmoter-system-head strong {
+  font-size: .9rem;
+}
+
+.devmoter-system-head small,
+.devmoter-system-muted {
+  color: #8d8d94;
+  font-size: .66rem;
+  line-height: 1.5;
+}
+
+.devmoter-system-close {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #333;
+  border-radius: 10px;
+  background: #1f1f1f;
+  color: #bbb;
+}
+
+.devmoter-system-body {
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.devmoter-system-section {
+  padding: 13px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid #2b2b2b;
+  border-radius: 12px;
+  background: #1a1a1a;
+}
+
+.devmoter-system-section + .devmoter-system-section {
+  margin-top: 9px;
+}
+
+.devmoter-system-title,
+.devmoter-system-actions,
+.devmoter-pairing-claim,
+.devmoter-device-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.devmoter-system-title {
+  justify-content: space-between;
+}
+
+.devmoter-system-title button,
+.devmoter-system-actions button,
+.devmoter-pairing-claim button,
+.devmoter-device-row button,
+.devmoter-system-link {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid #3a3a3a;
+  border-radius: 9px;
+  background: #242424;
+  color: #ddd;
+  font-size: .65rem;
+  text-decoration: none;
+}
+
+.devmoter-pairing-claim input {
+  min-width: 0;
+  flex: 1;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid #353535;
+  border-radius: 9px;
+  outline: none;
+  background: #111;
+  color: #eee;
+}
+
+.devmoter-checklist {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+  list-style: none;
+}
+
+.devmoter-checklist li {
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: 20px minmax(70px, .4fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  border-bottom: 1px solid #242424;
+}
+
+.devmoter-checklist li > span {
+  color: #79c99e;
+}
+
+.devmoter-checklist li > small {
+  overflow: hidden;
+  color: #8b8b92;
+  font-size: .62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.devmoter-diagnostics-grid {
+  display: grid;
+  grid-template-columns: minmax(90px, .45fr) minmax(0, 1fr);
+  gap: 6px 10px;
+  font-size: .68rem;
+}
+
+.devmoter-diagnostics-grid span {
+  color: #888;
+}
+
+.devmoter-device-row {
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #292929;
+}
+
+.devmoter-device-row > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.devmoter-device-row small {
+  color: #888;
+  font-size: .6rem;
+}
+
+.devmoter-system-message {
+  min-height: 0;
+  margin-bottom: 8px;
+  padding: 0;
+  color: #aaa;
+  font-size: .68rem;
+}
+
+.devmoter-system-message:not(:empty) {
+  padding: 9px 10px;
+  border: 1px solid #333;
+  border-radius: 9px;
+  background: #1b1b1b;
+}
+
+.devmoter-system-message[data-tone="ok"] {
+  color: #8dd7a7;
+}
+
+.devmoter-system-message[data-tone="error"],
+.devmoter-system-error {
+  color: #f0a19b;
+}
+
+.devmoter-transcript-truncated {
+  margin: 8px 0 14px;
+  padding: 8px 10px;
+  border: 1px dashed rgba(255,255,255,.12);
+  border-radius: 8px;
+  color: #898991;
+  font-size: .62rem;
+  line-height: 1.45;
+}
+
+/* Offline scripted demo */
+body.devmoter-demo-mode {
+  padding: 0;
+}
+
+.devmoter-demo {
+  width: min(100%, 780px);
+  margin: 0 auto;
+  padding:
+    max(24px, env(safe-area-inset-top))
+    max(18px, env(safe-area-inset-right))
+    max(30px, env(safe-area-inset-bottom))
+    max(18px, env(safe-area-inset-left));
+}
+
+.devmoter-demo-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.devmoter-demo-head h1 {
+  margin: 8px 0 4px;
+}
+
+.devmoter-demo-head p,
+.devmoter-demo-grid p {
+  color: #96969c;
+  line-height: 1.5;
+}
+
+.devmoter-demo-head a {
+  color: #c8c8ce;
+}
+
+.devmoter-demo-badge {
+  display: inline-flex;
+  padding: 5px 8px;
+  border: 1px solid #6e5936;
+  border-radius: 999px;
+  color: #e4b96d;
+  font-size: .62rem;
+  letter-spacing: .08em;
+}
+
+.devmoter-demo-grid {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.devmoter-demo-grid article {
+  min-height: 190px;
+  padding: 16px;
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  border: 1px solid #292929;
+  border-radius: 16px;
+  background: #151515;
+}
+
+.devmoter-demo-grid small {
+  color: #72727a;
+  letter-spacing: .08em;
+}
+
+.devmoter-demo-grid pre {
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: #aeb0b6;
+  font-size: .72rem;
+  line-height: 1.6;
+}
+
+.devmoter-demo-state {
+  width: fit-content;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #242424;
+  color: #ddd;
+  font-size: .7rem;
+}
+
+.devmoter-demo-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.devmoter-demo-actions button {
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid #353535;
+  border-radius: 11px;
+  background: #1c1c1c;
+  color: #eee;
+}
+
+@media (max-width: 620px) {
+  .devmoter-demo-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .devmoter-system-root {
+    top: auto;
+    bottom: max(116px, calc(92px + env(safe-area-inset-bottom)));
+  }
+
+  .devmoter-system-actions,
+  .devmoter-pairing-claim {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
