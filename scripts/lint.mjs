@@ -1,9 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { readdir, readFile } from "node:fs/promises";
+import { access, readdir, readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 
-const roots = ["src", "server", "test", "scripts"];
-const textExtensions = new Set([".ts", ".mts", ".mjs", ".js", ".css", ".html", ".json"]);
+const roots = ["src", "server", "test", "scripts", "public"];
+const textExtensions = new Set([".ts", ".mts", ".mjs", ".js", ".css", ".html", ".json", ".webmanifest", ".svg"]);
 const syntaxExtensions = new Set([".mjs", ".js"]);
 const files = ["server.mjs"];
 
@@ -44,6 +44,26 @@ for (const file of [...new Set(files)].sort()) {
       failures.push(`${file}: JavaScript syntax check failed\n${error.stderr?.toString() || error.message}`);
     }
   }
+}
+
+try {
+  const manifest = JSON.parse(await readFile("public/manifest.webmanifest", "utf8"));
+  const icons = Array.isArray(manifest.icons) ? manifest.icons : [];
+  if (icons.length === 0) failures.push("public/manifest.webmanifest: icons must not be empty");
+  for (const icon of icons) {
+    const src = String(icon?.src || "");
+    if (!src.startsWith("/") || src.includes("..")) {
+      failures.push(`public/manifest.webmanifest: invalid icon src ${src || "(empty)"}`);
+      continue;
+    }
+    try {
+      await access(join("public", src.slice(1)));
+    } catch {
+      failures.push(`public/manifest.webmanifest: missing icon asset ${src}`);
+    }
+  }
+} catch (error) {
+  failures.push(`public/manifest.webmanifest: invalid manifest (${error.message})`);
 }
 
 if (failures.length) {
