@@ -7,6 +7,8 @@ import { CodexBridge } from "./server/codex-bridge.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { createOperationRegistry } from "./server/operation-registry.mjs";
+import { createSystemFeatures } from "./server/system-features.mjs";
+import { createTerminalHistory } from "./server/terminal-history.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -36,6 +38,22 @@ const codex = new CodexBridge({
   cwd: process.env.CODEX_CWD || process.cwd()
 });
 
+const PACKAGE_META = JSON.parse(await readFile(fileURLToPath(new URL("./package.json", import.meta.url)), "utf8"));
+const terminalHistory = createTerminalHistory({
+  maxEntries: Number(process.env.DEVMOTER_TERMINAL_HISTORY_ENTRIES || 400),
+  maxBytes: Number(process.env.DEVMOTER_TERMINAL_HISTORY_BYTES || 512 * 1024)
+});
+const systemFeatures = createSystemFeatures({
+  stateDir: PROJECT_CONFIG_DIR,
+  appRoot: fileURLToPath(new URL(".", import.meta.url)),
+  host: HOST,
+  version: String(PACKAGE_META?.version || "0.0.0"),
+  getProjects: readProjectRegistry,
+  getBackendHealth: async () => {
+    const [openCode, codexHealth] = await Promise.all([opencodeHealth(), codex.health()]);
+    return { opencode: openCode, codex: codexHealth };
+  }
+});
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -755,6 +773,41 @@ async function codexEvents(req, res) {
 }
 
 
+async function featureJson(res, action, successStatus = 200) {
+  try {
+    const payload = await action();
+    json(res, successStatus, payload ?? { ok: true });
+  } catch (error) {
+    json(res, Number(error?.status || 400), {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
+async function terminalEvents(req, res, terminalId) {
+  res.writeHead(200, {
+    "content-type": "text/event-stream; charset=utf-8",
+    "cache-control": "no-cache, no-transform",
+    "connection": "keep-alive",
+    "x-accel-buffering": "no"
+  });
+
+  const replay = terminalHistory.snapshot(terminalId);
+  res.write("event: replay\n");
+  res.write(`data: ${JSON.stringify(replay)}\n\n`);
+
+  const unsubscribe = terminalHistory.subscribe(terminalId, entry => {
+    res.write("event: data\n");
+    res.write(`data: ${JSON.stringify(entry)}\n\n`);
+  });
+
+  const heartbeat = setInterval(() => res.write(": heartbeat\n\n"), 20000);
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    unsubscribe();
+  });
+}
+
 async function serveStatic(req, res) {
   let path = req.url === "/" ? "/index.html" : req.url.split("?")[0];
   path = normalize(path).replace(/^(\.\.[/\\])+/, "");
@@ -780,6 +833,85 @@ async function serveStatic(req, res) {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+
+    if (req.method === "GET" && url.pathname === "/api/system/diagnostics") {
+      await featureJson(res, () => systemFeatures.diagnostics());
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/devices/bootstrap") {
+      const payload = await readJson(req);
+      await featureJson(res, () => systemFeatures.bootstrapDevice(req, payload?.label), 201);
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/devices") {
+      await featureJson(res, () => systemFeatures.listDevices(req));
+      return;
+    }
+
+    const deviceMatch = url.pathname.match(/^\/api\/devices\/([^/]+)$/);
+    if (req.method === "DELETE" && deviceMatch) {
+      await featureJson(res, () => systemFeatures.revokeDevice(req, decodeURIComponent(deviceMatch[1])));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/pairings") {
+      await featureJson(res, () => systemFeatures.createPairing(req), 201);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/pairings/claim") {
+      const payload = await readJson(req);
+      await featureJson(res, () => systemFeatures.claimPairing(payload?.code, payload?.label), 201);
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/push/key") {
+      await featureJson(res, () => systemFeatures.pushPublicKey());
+      return;
+    }
+
+    if (url.pathname === "/api/push/subscriptions" && req.method === "POST") {
+      const payload = await readJson(req);
+      await featureJson(res, () => systemFeatures.subscribePush(req, payload), 201);
+      return;
+    }
+
+    if (url.pathname === "/api/push/subscriptions" && req.method === "DELETE") {
+      const payload = await readJson(req);
+      await featureJson(res, () => systemFeatures.unsubscribePush(req, payload));
+      return;
+    }
+
+    if (url.pathname === "/api/push/visibility" && req.method === "POST") {
+      const payload = await readJson(req);
+      await featureJson(res, () => systemFeatures.updateVisibility(req, payload));
+      return;
+    }
+
+    if (url.pathname === "/api/push/notify" && req.method === "POST") {
+      const payload = await readJson(req);
+      await featureJson(res, () => systemFeatures.notifyPush(req, payload));
+      return;
+    }
+
+    if (url.pathname === "/api/push/pending" && req.method === "POST") {
+      const payload = await readJson(req);
+      await featureJson(res, () => systemFeatures.takePendingPush(payload));
+      return;
+    }
+
+    const terminalMatch = url.pathname.match(/^\/api\/terminal\/([^/]+)\/(history|events)$/);
+    if (terminalMatch && req.method === "GET") {
+      const terminalId = decodeURIComponent(terminalMatch[1]);
+      if (terminalMatch[2] === "history") {
+        json(res, 200, terminalHistory.snapshot(terminalId));
+      } else {
+        await terminalEvents(req, res, terminalId);
+      }
+      return;
+    }
 
     if (req.method === "GET" && url.pathname === "/api/projects") {
       await projectsList(res);
