@@ -26,6 +26,7 @@ The agents stay on the host machine; the browser talks to DevMoter instead of co
 - 🛡️ **Threat model:** [THREAT_MODEL.md](./THREAT_MODEL.md)
 - 🧠 **Maintainer learning guide:** [MAINTAINER_GUIDE.md](./MAINTAINER_GUIDE.md)
 - 📜 **Third-party licenses and interoperability notices:** [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)
+- ✅ **Release/legal hygiene audit:** [RELEASE_LEGAL_AUDIT.md](./RELEASE_LEGAL_AUDIT.md)
 
 > [!CAUTION]
 > **Alpha security notice:** security review is ongoing. DevMoter FAST has known security limitations and should only be used on a trusted/private network. If you discover a security issue, do not publish exploit details or secrets in a public Issue; follow [SECURITY.md](./SECURITY.md).
