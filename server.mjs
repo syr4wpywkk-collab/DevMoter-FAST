@@ -16,6 +16,8 @@ import { createTerminalManager } from "./server/terminal.mjs";
 import { createProjectIndex } from "./server/project-index.mjs";
 import { createSafetyService } from "./server/safety.mjs";
 import { createSystemFeatures } from "./server/system-features.mjs";
+import { createAutomationApi, AUTOMATION_API_VERSION } from "./server/automation-api.mjs";
+import { createUploadRegistry } from "./server/upload-registry.mjs";
 import { ControlPlane } from "./server/control-plane.mjs";
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
 import { applyModeToPrompt, isDirectMutationRoute, isPromptRoute, isReadOnlyMode, parseAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
@@ -55,6 +57,7 @@ const operationRegistry = createOperationRegistry({
   ttlMs: OPERATION_TTL_MS,
   maxEntries: OPERATION_MAX_ENTRIES
 });
+const uploadRegistry = createUploadRegistry();
 const openCodeSessionModes = new Map();
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
@@ -114,6 +117,18 @@ const systemFeatures = createSystemFeatures({
   },
   host: HOST,
   version: process.env.DEVMOTER_VERSION || "0.2.0"
+});
+const automationApi = createAutomationApi({
+  readProjectRegistry,
+  getProjectById,
+  normalizeExistingProjectPath,
+  fetchOpenCodeJson,
+  codex,
+  json,
+  readJson,
+  operationId,
+  claimOperation,
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN
 });
 
 function codexThreadIdFromEvent(params = {}) {
@@ -1321,6 +1336,53 @@ async function githubWebhookRoute(req, res) {
   }
 }
 
+function materializeOpenCodeUploadBody(body, contentType, policyPath) {
+  if (
+    !body ||
+    !isPromptRoute(policyPath) ||
+    !String(contentType || "").includes("application/json")
+  ) return body;
+
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(body).toString("utf8"));
+  } catch {
+    return body;
+  }
+
+  if (typeof payload?.text !== "string" || !payload.text.includes("devmoter-upload:")) {
+    return body;
+  }
+
+  payload.text = payload.text.replace(
+    /devmoter-upload:([0-9a-f-]{36})/gi,
+    (_match, id) => uploadRegistry.get(id).path
+  );
+  return Buffer.from(JSON.stringify(payload));
+}
+
+async function materializeCodexUploadInputs(method, params) {
+  if (method !== "turn/start" || !Array.isArray(params?.input)) return params;
+  const input = params.input.map(item => {
+    if (!item || typeof item !== "object") return item;
+
+    if (item.uploadId) {
+      const upload = uploadRegistry.get(item.uploadId);
+      const next = { ...item, path: upload.path };
+      delete next.uploadId;
+      return next;
+    }
+
+    if ((item.type === "localImage" || item.type === "mention") && item.path) {
+      const error = new Error("Direct attachment paths are not accepted; upload the file first");
+      error.status = 400;
+      throw error;
+    }
+    return item;
+  });
+  return { ...params, input };
+}
+
 async function proxy(req, res) {
   const pocketPath = req.url.replace(/^\/api\/opencode/, "") || "/";
   const upstreamPath = pocketPath.startsWith("/api/")
@@ -1357,6 +1419,12 @@ async function proxy(req, res) {
       return;
     }
   }
+
+  body = materializeOpenCodeUploadBody(
+    body,
+    req.headers["content-type"] || "",
+    policyPath
+  );
 
   const upstream = await fetch(url, {
     method: req.method,
@@ -1439,6 +1507,8 @@ async function codexRpc(req, res) {
       "skills/list"
     ]).has(method);
 
+    params = await materializeCodexUploadInputs(method, params);
+
     const result = await codex.request(
       method,
       params,
@@ -1467,12 +1537,19 @@ async function codexUpload(req, res) {
     const { path } = createUploadPath(UPLOAD_DIR, name);
     await writeFile(path, buffer, { mode: 0o600 });
 
-    json(res, 200, {
-      ok: true,
+    const uploadId = uploadRegistry.add({
+      path,
       name,
       type: mime,
-      size: buffer.length,
-      path
+      size: buffer.length
+    });
+
+    json(res, 200, {
+      ok: true,
+      uploadId,
+      name,
+      type: mime,
+      size: buffer.length
     });
   } catch (error) {
     json(res, 400, {
@@ -1598,6 +1675,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (await controlRoute(req, res, url)) return;
+    if (await automationApi.handle(req, res, url)) return;
 
     const advancedCandidate =
       url.pathname.startsWith("/api/advanced/") ||
@@ -2057,6 +2135,8 @@ const server = http.createServer(async (req, res) => {
         codex.health()
       ]);
       json(res, 200, {
+        version: "0.2.0",
+        automationApiVersion: AUTOMATION_API_VERSION,
         online: openCode.online || codexHealth.online,
         backends: {
           opencode: openCode,
