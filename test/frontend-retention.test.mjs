@@ -13,7 +13,7 @@ test("frontends cap rendered transcript nodes and keep EventSource singleton gua
   assert.match(openCode, /shouldOpenEventSource\(online, Boolean\(eventSource\)\)/);
 
   const codex = await readFile(new URL("../src/codex.ts", import.meta.url), "utf8");
-  assert.match(codex, /if \(events \|\| !online\) return;/);
+  assert.match(codex, /shouldOpenEventSource\(online, Boolean\(events\)\)/);
   assert.match(codex, /trimTranscript\(\);/);
   assert.match(openCode, /trimTranscript\(\);/);
 });
