@@ -18,8 +18,17 @@ import {
   createCodexSubagentAdapter,
   type SubagentRun
 } from "./subagent-runtime.mjs";
+import {
+  AGENT_ROLES,
+  describeModelRoutes,
+  normalizeModelRoutes,
+  resolveRoleModel,
+  type AgentRole,
+  type ModelRoute
+} from "./model-routing.mjs";
 
 const CUSTOM_MODES_KEY = "devmoter-agent-custom-modes";
+const MODEL_ROUTES_KEY = "devmoter-agent-model-routes";
 
 function visible<T extends HTMLElement>(element: T | null): element is T {
   if (!element) return false;
@@ -72,6 +81,19 @@ function persistCustomModes(modes: ModeConfig[]) {
   localStorage.setItem(CUSTOM_MODES_KEY, JSON.stringify(modes));
 }
 
+function loadModelRoutes(): ModelRoute[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(MODEL_ROUTES_KEY) || "[]");
+    return normalizeModelRoutes(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return [];
+  }
+}
+
+function persistModelRoutes(routes: ModelRoute[]) {
+  localStorage.setItem(MODEL_ROUTES_KEY, JSON.stringify(routes));
+}
+
 function parseToolGroups(value: string) {
   return value.split(",").map(item => item.trim()).filter(Boolean);
 }
@@ -80,8 +102,10 @@ export function mountAgentConsole() {
   if (document.querySelector("#devmoterAgentLauncher")) return;
 
   let customModes = loadCustomModes();
+  let modelRoutes = loadModelRoutes();
   let activeModeId = "debug";
   let orchestrationPlan: OrchestrationPlan | null = null;
+  let secondOpinionTargetId: string | null = null;
   const subagents = new SubagentRuntime({
     adapters: { codex: createCodexSubagentAdapter() },
     policy: { maxDepth: 3, tokenBudget: 12000, turnBudget: 8 }
@@ -129,6 +153,12 @@ export function mountAgentConsole() {
         <button id="devmoterModeDelete" type="button">Delete</button>
       </div>
     </section>
+    <details class="devmoter-model-routing">
+      <summary>Role model routing</summary>
+      <pre id="devmoterModelRoutePreview" class="devmoter-agent-policy"></pre>
+      <div id="devmoterModelRouteRows"></div>
+      <button id="devmoterModelRoutesSave" class="devmoter-agent-secondary-run" type="button">Save role models</button>
+    </details>
     <div class="devmoter-agent-field">
       <label for="devmoterAgentTask">Task</label>
       <textarea id="devmoterAgentTask" placeholder="Describe the task"></textarea>
@@ -150,6 +180,24 @@ export function mountAgentConsole() {
         <span id="devmoterSubagentSummary">0 agents</span>
       </div>
       <div id="devmoterSubagentList"></div>
+    </section>
+    <section id="devmoterSecondOpinionComposer" class="devmoter-second-opinion-composer hidden">
+      <strong>Ask for a second opinion</strong>
+      <small id="devmoterSecondOpinionTarget"></small>
+      <div class="devmoter-second-opinion-share">
+        <label><input id="devmoterOpinionShareTask" type="checkbox" checked /> Share task</label>
+        <label><input id="devmoterOpinionShareOutput" type="checkbox" checked /> Share current output</label>
+        <label><input id="devmoterOpinionShareError" type="checkbox" /> Share error details</label>
+      </div>
+      <textarea id="devmoterOpinionQuestion">Review the shared work independently. State agreements, disagreements, risks, and recommended next steps.</textarea>
+      <div class="devmoter-agent-mode-tools">
+        <button id="devmoterOpinionLaunch" type="button">Ask reviewer</button>
+        <button id="devmoterOpinionClose" type="button">Cancel</button>
+      </div>
+    </section>
+    <section id="devmoterSecondOpinionRuns" class="devmoter-subagent-runs hidden">
+      <div class="devmoter-fleet-dashboard-head"><strong>Second opinions</strong><span>separate results</span></div>
+      <div id="devmoterSecondOpinionList"></div>
     </section>
     <p id="devmoterAgentStatus" class="devmoter-agent-status" role="status" aria-live="polite"></p>
   `;
@@ -182,6 +230,52 @@ export function mountAgentConsole() {
   const subagentRuns = panel.querySelector<HTMLElement>("#devmoterSubagentRuns")!;
   const subagentList = panel.querySelector<HTMLDivElement>("#devmoterSubagentList")!;
   const subagentSummary = panel.querySelector<HTMLElement>("#devmoterSubagentSummary")!;
+  const modelRoutePreview = panel.querySelector<HTMLPreElement>("#devmoterModelRoutePreview")!;
+  const modelRouteRows = panel.querySelector<HTMLDivElement>("#devmoterModelRouteRows")!;
+  const modelRoutesSave = panel.querySelector<HTMLButtonElement>("#devmoterModelRoutesSave")!;
+  const opinionComposer = panel.querySelector<HTMLElement>("#devmoterSecondOpinionComposer")!;
+  const opinionTarget = panel.querySelector<HTMLElement>("#devmoterSecondOpinionTarget")!;
+  const opinionShareTask = panel.querySelector<HTMLInputElement>("#devmoterOpinionShareTask")!;
+  const opinionShareOutput = panel.querySelector<HTMLInputElement>("#devmoterOpinionShareOutput")!;
+  const opinionShareError = panel.querySelector<HTMLInputElement>("#devmoterOpinionShareError")!;
+  const opinionQuestion = panel.querySelector<HTMLTextAreaElement>("#devmoterOpinionQuestion")!;
+  const opinionLaunch = panel.querySelector<HTMLButtonElement>("#devmoterOpinionLaunch")!;
+  const opinionClose = panel.querySelector<HTMLButtonElement>("#devmoterOpinionClose")!;
+  const opinionRuns = panel.querySelector<HTMLElement>("#devmoterSecondOpinionRuns")!;
+  const opinionList = panel.querySelector<HTMLDivElement>("#devmoterSecondOpinionList")!;
+
+  function renderModelRouting() {
+    modelRoutePreview.textContent = describeModelRoutes(modelRoutes);
+    modelRouteRows.replaceChildren();
+    for (const role of AGENT_ROLES) {
+      const route = modelRoutes.find(item => item.role === role);
+      const row = document.createElement("div");
+      row.className = "devmoter-model-route-row";
+      row.dataset.role = role;
+      row.innerHTML = `
+        <strong>${role}</strong>
+        <input data-route-model type="text" placeholder="backend default" />
+        <input data-route-provider type="text" placeholder="provider (optional)" />
+        <input data-route-capabilities type="text" placeholder="text, vision…" />
+      `;
+      row.querySelector<HTMLInputElement>("[data-route-model]")!.value = route?.model || "";
+      row.querySelector<HTMLInputElement>("[data-route-provider]")!.value = route?.provider || "";
+      row.querySelector<HTMLInputElement>("[data-route-capabilities]")!.value =
+        route?.capabilities.join(", ") || (role === "vision" ? "text, vision" : "text");
+      modelRouteRows.appendChild(row);
+    }
+  }
+
+  function selectedRole(activeMode: string): AgentRole {
+    if (activeMode === "review") return "reviewer";
+    if (activeMode === "orchestrator") return "planner";
+    return "executor";
+  }
+
+  function routedModel(role: AgentRole, fallback?: string | null) {
+    const route = resolveRoleModel(role, modelRoutes);
+    return route.model || fallback || undefined;
+  }
 
   function setStatus(message: string, error = false) {
     status.textContent = message;
@@ -267,12 +361,13 @@ export function mountAgentConsole() {
   }
 
   function renderSubagentRun(run: SubagentRun) {
-    let card = subagentList.querySelector<HTMLElement>(`[data-run-id="${run.id}"]`);
+    const targetList = run.kind === "second-opinion" ? opinionList : subagentList;
+    let card = targetList.querySelector<HTMLElement>(`[data-run-id="${run.id}"]`);
     if (!card) {
       card = document.createElement("article");
-      card.className = "devmoter-subagent-card";
+      card.className = `devmoter-subagent-card ${run.kind === "second-opinion" ? "second-opinion" : ""}`;
       card.dataset.runId = run.id;
-      subagentList.prepend(card);
+      targetList.prepend(card);
     }
     card.dataset.state = run.state;
     const lineage = [run.parentSessionId, ...run.lineage, run.id].join(" > ");
@@ -297,6 +392,12 @@ export function mountAgentConsole() {
     const budget = document.createElement("small");
     budget.textContent = `Depth ${run.depth} · budget ${run.budget.tokensRemaining}/${run.budget.tokenLimit} tok · ${run.budget.turnsRemaining}/${run.budget.turnLimit} turns`;
     card.append(head, taskText, lineageText, budget);
+    if (run.kind === "second-opinion" && run.output) {
+      const result = document.createElement("pre");
+      result.className = "devmoter-second-opinion-result";
+      result.textContent = run.output;
+      card.appendChild(result);
+    }
 
     const actions = document.createElement("div");
     actions.className = "devmoter-agent-mode-tools";
@@ -311,6 +412,21 @@ export function mountAgentConsole() {
         window.location.reload();
       });
       actions.appendChild(open);
+    }
+
+    if (run.kind !== "second-opinion") {
+      const opinion = document.createElement("button");
+      opinion.type = "button";
+      opinion.textContent = "Second opinion";
+      opinion.addEventListener("click", () => {
+        secondOpinionTargetId = run.id;
+        opinionTarget.textContent = `${run.role} · ${run.id}`;
+        opinionShareTask.checked = true;
+        opinionShareOutput.checked = Boolean(run.output);
+        opinionShareError.checked = Boolean(run.error);
+        opinionComposer.classList.remove("hidden");
+      });
+      actions.appendChild(opinion);
     }
 
     if (!["completed", "failed", "cancelled"].includes(run.state)) {
@@ -336,11 +452,70 @@ export function mountAgentConsole() {
     }
 
     if (actions.childElementCount) card.appendChild(actions);
-    subagentRuns.classList.remove("hidden");
+    if (run.kind === "second-opinion") opinionRuns.classList.remove("hidden");
+    else subagentRuns.classList.remove("hidden");
     updateDashboardSummary();
   }
 
   subagents.subscribe(renderSubagentRun);
+
+  opinionClose.addEventListener("click", () => {
+    secondOpinionTargetId = null;
+    opinionComposer.classList.add("hidden");
+  });
+
+  opinionLaunch.addEventListener("click", () => {
+    void (async () => {
+      try {
+        if (!secondOpinionTargetId) throw new Error("Choose an agent first");
+        const reviewer = resolveRoleModel("reviewer", modelRoutes);
+        const opinion = await subagents.spawnSecondOpinion(secondOpinionTargetId, {
+          role: "reviewer",
+          model: reviewer.model || undefined,
+          task: opinionQuestion.value,
+          share: {
+            task: opinionShareTask.checked,
+            output: opinionShareOutput.checked,
+            error: opinionShareError.checked
+          }
+        });
+        opinionComposer.classList.add("hidden");
+        secondOpinionTargetId = null;
+        if (opinion) setStatus(`Second opinion started: ${opinion.id}`);
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : String(error), true);
+      }
+    })();
+  });
+
+  modelRoutesSave.addEventListener("click", () => {
+    try {
+      const next = [...modelRouteRows.querySelectorAll<HTMLElement>(".devmoter-model-route-row")]
+        .map(row => {
+          const role = row.dataset.role as AgentRole;
+          const model = row.querySelector<HTMLInputElement>("[data-route-model]")!.value.trim();
+          if (!model) return null;
+          return {
+            role,
+            model,
+            provider: row.querySelector<HTMLInputElement>("[data-route-provider]")!.value.trim(),
+            capabilities: row.querySelector<HTMLInputElement>("[data-route-capabilities]")!.value
+              .split(",").map(value => value.trim()).filter(Boolean)
+          };
+        })
+        .filter((route): route is NonNullable<typeof route> => Boolean(route));
+      const normalized = normalizeModelRoutes(next);
+      for (const route of normalized) {
+        resolveRoleModel(route.role, normalized, { allowDefault: false });
+      }
+      modelRoutes = normalized;
+      persistModelRoutes(modelRoutes);
+      renderModelRouting();
+      setStatus("Saved role model routing.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error), true);
+    }
+  });
 
   launcher.addEventListener("click", () => {
     panel.classList.toggle("hidden");
@@ -433,7 +608,7 @@ export function mountAgentConsole() {
           backend: "codex",
           parentSessionId: parent,
           role: activeModeId === "review" ? "reviewer" : activeModeId === "orchestrator" ? "planner" : "executor",
-          model: mode.model || undefined,
+          model: routedModel(selectedRole(activeModeId), mode.model),
           task: task.value,
           context: {
             mode: mode.name,
@@ -460,7 +635,7 @@ export function mountAgentConsole() {
             backend: "codex",
             parentSessionId: parent,
             role: child.owner,
-            model: mode.model || undefined,
+            model: routedModel(child.owner as AgentRole, mode.model),
             task: child.title,
             context: {
               parentTask: orchestrationPlan?.task || "",
@@ -491,5 +666,6 @@ export function mountAgentConsole() {
 
   rebuildModeSelect();
   renderMode();
+  renderModelRouting();
   document.body.append(launcher, panel);
 }
