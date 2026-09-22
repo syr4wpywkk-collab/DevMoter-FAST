@@ -4326,3 +4326,29 @@ body.opencode-mode #app {
     width: calc(100vw - 62px);
   }
 }
+
+
+/* P0: keep native provider/model pickers readable in dark UI. */
+@media (prefers-color-scheme: dark) {
+  .api-app,
+  .api-settings-modal,
+  .api-app select,
+  .api-settings-modal select {
+    color-scheme: dark;
+  }
+
+  .api-app select,
+  .api-settings-modal select {
+    background-color: #202124;
+    color: #e8eaed;
+    border-color: rgba(232, 234, 237, 0.16);
+  }
+
+  .api-app select option,
+  .api-settings-modal select option,
+  .api-app select optgroup,
+  .api-settings-modal select optgroup {
+    background: #202124;
+    color: #e8eaed;
+  }
+}
