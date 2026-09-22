@@ -1,21 +1,10 @@
-export type ExecutionState =
-  | "offline"
-  | "reconnecting"
-  | "idle"
-  | "running"
-  | "waiting_for_approval"
-  | "waiting_for_input"
-  | "completed"
-  | "failed"
-  | "interrupted";
-
-export const TERMINAL_EXECUTION_STATES = new Set<ExecutionState>([
+export const TERMINAL_EXECUTION_STATES = new Set([
   "completed",
   "failed",
   "interrupted"
 ]);
 
-export function isExecutionActive(state: ExecutionState) {
+export function isExecutionActive(state) {
   return (
     state === "running" ||
     state === "waiting_for_approval" ||
@@ -23,13 +12,11 @@ export function isExecutionActive(state: ExecutionState) {
   );
 }
 
-export function isExecutionTerminal(state: ExecutionState) {
+export function isExecutionTerminal(state) {
   return TERMINAL_EXECUTION_STATES.has(state);
 }
 
-export function codexTurnStatusToExecutionState(
-  status: unknown
-): ExecutionState {
+export function codexTurnStatusToExecutionState(status) {
   switch (String(status || "").toLowerCase()) {
     case "completed":
       return "completed";
@@ -46,16 +33,10 @@ export function codexTurnStatusToExecutionState(
   }
 }
 
-export function codexThreadStatusToExecutionState(
-  status: unknown
-): ExecutionState {
+export function codexThreadStatusToExecutionState(status) {
   if (!status || typeof status !== "object") return "idle";
 
-  const value = status as {
-    type?: unknown;
-    activeFlags?: unknown;
-    active_flags?: unknown;
-  };
+  const value = status;
   const type = String(value.type || "").toLowerCase();
 
   if (type === "systemerror" || type === "system_error" || type === "system-error") {
@@ -90,9 +71,7 @@ export function codexThreadStatusToExecutionState(
   return "running";
 }
 
-export function openCodeIdleOutcomeToExecutionState(
-  outcome: unknown
-): ExecutionState {
+export function openCodeIdleOutcomeToExecutionState(outcome) {
   switch (String(outcome || "").toLowerCase()) {
     case "succeeded":
       return "completed";
