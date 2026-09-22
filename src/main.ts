@@ -36,6 +36,7 @@ function setBackend(next: Backend) {
   document.body.classList.toggle("codex-mode", next === "codex");
   document.body.classList.toggle("opencode-mode", next === "opencode");
   document.body.classList.toggle("integrations-mode", next === "integrations");
+  if (next === "integrations") void integrationsRemote.refresh();
 }
 
 const openCodeRemote = mountOpenCodeRemote(openCodeMount, {
@@ -47,7 +48,7 @@ const codexRemote = mountCodexRemote(codexMount, {
   onIntegrations: () => setBackend("integrations")
 });
 
-mountIntegrations(integrationsMount, {
+const integrationsRemote = mountIntegrations(integrationsMount, {
   onOpenCode: () => setBackend("opencode"),
   onCodex: () => setBackend("codex")
 });
