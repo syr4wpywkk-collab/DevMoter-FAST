@@ -351,7 +351,8 @@ async function projectSkills(projectPath) {
         enabled: true,
         scope: "project",
         source: ".devmoter/skills/" + entry.name,
-        trusted: false
+        trusted: false,
+        precedence: 10
       });
     } catch {}
   }
@@ -368,7 +369,7 @@ async function projectRules(projectPath) {
         source: name,
         content: await readSmall(join(projectPath, name), MAX_RULE),
         trusted: false,
-        precedence: 20
+        precedence: 10
       });
     } catch {}
   }
@@ -432,20 +433,27 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
       projectExtension(project.path)
     ]);
     const userSkills = settings.skills.user.filter(skill => skill.enabled).map(skill =>
-      Object.assign({}, skill, { scope: "user", source: "user settings", trusted: true })
+      Object.assign({}, skill, { scope: "user", source: "user settings", trusted: true, precedence: 20 })
     );
     const userRules = settings.rules.user.map((content, index) => ({
       scope: "user",
       source: "user-rule-" + (index + 1),
       content,
       trusted: true,
-      precedence: 10
+      precedence: 20
     }));
     const adapters = adapterInventory(settings);
+    const effectiveSkills = new Map();
+    for (const skill of skills.concat(userSkills).sort((a, b) => a.precedence - b.precedence)) {
+      effectiveSkills.set(String(skill.name || "").toLowerCase(), skill);
+    }
+
     return {
       project: { id: project.id, name: project.name, path: project.path },
-      skills: userSkills.concat(skills),
-      rules: userRules.concat(rules).sort((a, b) => a.precedence - b.precedence),
+      skills: [...effectiveSkills.values()].sort((a, b) => b.precedence - a.precedence),
+      skillsPrecedence: "higher numeric precedence wins; trusted user skill overrides same-name project skill",
+      rules: userRules.concat(rules).sort((a, b) => b.precedence - a.precedence),
+      rulesPrecedence: "higher numeric precedence wins; trusted user rules are evaluated before untrusted project rules",
       extension,
       adapters,
       negotiation: negotiateAdapter(adapters, "", []),
