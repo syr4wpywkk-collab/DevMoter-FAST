@@ -165,11 +165,17 @@ User skills are stored in trusted DevMoter settings. Project skills are Markdown
 
 Discovery only reads bounded Markdown; it never runs project code.
 
-Every skill exposes its source, scope, trust state, and precedence. Conflict behavior is deterministic:
+Every skill exposes its source, scope, trust state, path, and precedence. DevMoter also merges discoverable native Codex skills into the same inspection view.
 
-- Project skill: precedence 10, untrusted.
-- User skill: precedence 20, trusted.
-- If names collide case-insensitively, the higher-precedence user skill wins.
+Skills with a concrete file path can be explicitly enabled as either a **Project default** or for the **Current session**. Discovery alone never activates a skill. Enabled skills are passed to Codex as `type: "skill"` turn inputs, so the instructions do not need to be pasted into the user's chat message.
+
+Conflict behavior is deterministic:
+
+- DevMoter user skill: precedence 20, trusted.
+- Native user skill: precedence 15.
+- DevMoter project skill: precedence 10, untrusted.
+- Other native/project skill: precedence 5 unless the native source declares a trusted user scope.
+- If names collide case-insensitively, the higher-precedence skill wins.
 
 ## Rules
 
@@ -186,4 +192,6 @@ Precedence is explicit:
 - Project rule: precedence 10.
 - User rule: precedence 20.
 
-The Developer workflows panel shows the effective rules together with source, scope, trust state, precedence, and a preview so users can inspect what influenced the workflow.
+The Developer workflows panel shows the effective rules together with source, scope, trust state, precedence, and a preview so users can inspect what will influence a run.
+
+When a new Codex thread is created, the effective rules are supplied through `thread/start.developerInstructions`, keeping persistent Rules separate from ordinary user chat history. Repository-provided rule text is wrapped with an explicit untrusted-content warning before it is supplied to the agent.
