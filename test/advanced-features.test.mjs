@@ -211,28 +211,45 @@ test("live preview rejects oversized response bodies while streaming", async () 
 });
 
 test("configured failover candidates must satisfy the same capability requirements", async () => {
-  const { runWithRouting } = await import("../server/advanced-features.mjs");
-  const registry = {
-    models: [
-      { providerId: "primary", id: "vision", capabilities: { vision: true, tools: true, reasoning: false, context: 1000 } },
-      { providerId: "fallback", id: "text", capabilities: { vision: false, tools: true, reasoning: false, context: 1000 } }
-    ],
-    routes: []
+  const env = {
+    DEVMOTER_OLLAMA_URL: "http://127.0.0.1:11434",
+    DEVMOTER_OLLAMA_MODELS: "vision",
+    DEVMOTER_OLLAMA_CAPABILITIES: "vision,tools,context:32000",
+    DEVMOTER_OPENAI_COMPAT_BASE_URL: "http://127.0.0.1:8000/v1",
+    DEVMOTER_OPENAI_COMPAT_MODELS: "text",
+    DEVMOTER_OPENAI_COMPAT_CAPABILITIES: "tools,context:32000",
+    DEVMOTER_PROVIDER_FAILOVER: "openai-compatible/text"
   };
-  let calls = 0;
-  const result = await runWithRouting({
-    registry,
-    role: "coding",
-    requirements: { vision: true },
-    override: { providerId: "primary", model: "vision" },
-    failover: ["fallback/text"],
-    invoke: async () => {
-      calls += 1;
-      const error = new Error("temporary");
-      error.statusCode = 503;
-      throw error;
+  let primaryCalls = 0;
+  let fallbackCalls = 0;
+  const fetchImpl = async (url) => {
+    const value = String(url);
+    if (value.endsWith("/api/tags")) {
+      return new Response(JSON.stringify({ models: [{ name: "vision" }] }), { status: 200 });
     }
-  }).catch(error => error);
-  assert.equal(calls, 1);
-  assert.match(String(result?.message || result), /temporary/);
+    if (value.endsWith("/models")) {
+      return new Response(JSON.stringify({ data: [{ id: "text" }] }), { status: 200 });
+    }
+    if (value.endsWith("/api/chat")) {
+      primaryCalls += 1;
+      return new Response(JSON.stringify({ error: "temporary" }), { status: 503 });
+    }
+    if (value.endsWith("/chat/completions")) {
+      fallbackCalls += 1;
+      return new Response(JSON.stringify({ choices: [{ message: { content: "should not run" } }] }), { status: 200 });
+    }
+    throw new Error("unexpected " + value);
+  };
+  await assert.rejects(
+    () => runWithRouting({
+      env, fetchImpl,
+      messages: [{ role: "user", content: "inspect image" }],
+      role: "coding",
+      requirements: { vision: true },
+      override: { providerId: "ollama", model: "vision" }
+    }),
+    /temporary/i
+  );
+  assert.equal(primaryCalls, 1);
+  assert.equal(fallbackCalls, 0);
 });
