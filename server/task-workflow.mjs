@@ -135,10 +135,10 @@ function trimPreview(text, bytes = 192 * 1024, lines = 1200) {
   return { content: out.join(""), bytes: used, lines: out.length, totalLines: all.length, totalBytes: Buffer.byteLength(text), truncated: out.length < all.length };
 }
 
-function formatDiff(file) {
+function formatDiff(file, hunks = file.hunks) {
   let out = "--- " + (file.originalExists ? "a/" + file.path : "/dev/null") + "\n";
   out += "+++ " + (file.proposed === null ? "/dev/null" : "b/" + file.path) + "\n";
-  for (const h of file.hunks) {
+  for (const h of hunks) {
     out += "@@ -" + h.oldStart + "," + h.oldLines + " +" + h.newStart + "," + h.newLines + " @@\n";
     for (const line of splitLines(h.oldText)) out += "-" + line;
     for (const line of splitLines(h.newText)) out += "+" + line;
@@ -155,7 +155,8 @@ function publicChange(change) {
       path: file.path, decision: file.decision, originalExists: file.originalExists,
       proposedDelete: file.proposed === null,
       hunks: file.hunks.map(h => ({ ...h, decision: h.decision || "pending" })),
-      preview: trimPreview(formatDiff(file))
+      preview: trimPreview(formatDiff(file)),
+      acceptedPreview: trimPreview(formatDiff(file, file.hunks.filter(h => h.decision === "accept")))
     }))
   };
 }
