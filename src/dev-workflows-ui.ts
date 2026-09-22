@@ -147,9 +147,12 @@ export function createDevWorkflowPanel(options: PanelOptions) {
     head.className = "cx-dev-result-head";
     head.append(
       text("strong", result.mode === "final" ? "Final review" : ("PR #" + requestedPr + " review")),
-      statusBadge(result.findings?.length ? (result.policy === "block" ? "blocked" : "warning") : "success")
+      statusBadge(result.allowed === false ? "blocked" : (result.findings?.length ? "warning" : "success"))
     );
     target.appendChild(head);
+    if (result.allowed === false) {
+      target.appendChild(text("p", "Review policy=block のため、このreview結果は進行不可として扱われます。指摘を確認してから再レビューしてください。", "cx-dev-warning"));
+    }
 
     if (result.diffTruncated) {
       target.appendChild(text("p", "差分が大きいため、レビュー入力は上限で切り詰められました。", "cx-muted"));
