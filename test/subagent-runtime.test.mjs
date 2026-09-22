@@ -281,8 +281,8 @@ test("Codex adapter shares one EventSource across multiple live agents", async (
     adapters: { codex: createCodexSubagentAdapter({ fetchImpl, eventSourceFactory }) },
     idFactory: () => `live-${++id}`
   });
-  await runtime.spawn({ parentSessionId: "parent", task: "one" });
-  await runtime.spawn({ parentSessionId: "parent", task: "two" });
+  await runtime.spawn({ parentSessionId: "parent", task: "one", context: { projectId: "project-1" } });
+  await runtime.spawn({ parentSessionId: "parent", task: "two", context: { projectId: "project-1" } });
   assert.equal(sources.length, 1);
   assert.equal(sources[0].url, "/api/codex/events");
 });
