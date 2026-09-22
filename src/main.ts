@@ -4,6 +4,7 @@ import { mountCodexRemote } from "./codex";
 import { startI18n } from "./i18n";
 import { mountIntegrations } from "./integrations";
 import { mountAgentConsole } from "./agent-console";
+import { mountSessionControl } from "./session-control";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
@@ -56,6 +57,7 @@ const integrationsRemote = mountIntegrations(integrationsMount, {
 
 startI18n();
 mountAgentConsole();
+mountSessionControl({ switchBackend: backend => setBackend(backend) });
 
 let healthCheckInFlight = false;
 async function checkHealth() {
