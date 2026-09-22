@@ -1373,7 +1373,10 @@ async function materializeCodexUploadInputs(method, params) {
       return next;
     }
 
-    if ((item.type === "localImage" || item.type === "mention") && item.path) {
+    if (
+      (item.type === "localImage" || item.type === "mention") &&
+      Object.prototype.hasOwnProperty.call(item, "path")
+    ) {
       const error = new Error("Direct attachment paths are not accepted; upload the file first");
       error.status = 400;
       throw error;
@@ -1517,7 +1520,7 @@ async function codexRpc(req, res) {
     json(res, 200, { result });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const status = message === "Request body too large" ? 413 : 502;
+    const status = Number(error?.status || (message === "Request body too large" ? 413 : 502));
     json(res, status, {
       error: message
     });
