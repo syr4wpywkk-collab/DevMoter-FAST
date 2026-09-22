@@ -84,8 +84,9 @@ function claimOperation(req, res, scope) {
 
   if (!operationRegistry.claim(scope, id)) {
     json(res, 409, {
-      error: "Duplicate operation suppressed",
+      error: "Duplicate operation suppressed; previous outcome is unknown",
       duplicate: true,
+      outcome: "unknown",
       operationId: id
     });
     return false;
@@ -662,11 +663,38 @@ async function codexRpc(req, res) {
   try {
     const payload = await readJson(req, 2 * 1024 * 1024);
     const method = payload?.method;
-    const params = payload?.params ?? {};
+    let params = payload?.params ?? {};
 
     if (!isAllowedCodexRpc(method)) {
       json(res, 400, { error: "Codex RPC method is not allowed" });
       return;
+    }
+
+    if (method === "thread/start") {
+      if (!params || typeof params !== "object" || Array.isArray(params)) {
+        json(res, 400, { error: "Codex thread/start params must be an object" });
+        return;
+      }
+      if (Object.prototype.hasOwnProperty.call(params, "cwd")) {
+        json(res, 400, { error: "Codex cwd must be selected by registered project id" });
+        return;
+      }
+
+      const projectId = String(params.projectId || "").trim();
+      const nextParams = { ...params };
+      delete nextParams.projectId;
+
+      if (projectId) {
+        try {
+          const project = await getProjectById(projectId);
+          nextParams.cwd = project.path;
+        } catch {
+          json(res, 400, { error: "Registered project not found or unavailable" });
+          return;
+        }
+      }
+
+      params = nextParams;
     }
 
     const inventoryMethod = new Set([

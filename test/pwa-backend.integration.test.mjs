@@ -60,6 +60,7 @@ test("health and OpenCode SSE proxy are live without a real OpenCode account", a
   const home = await mkdtemp(join(tmpdir(), "devmoter-pwa-"));
   const upstreamPort = await freePort();
   const appPort = await freePort();
+  const authPassword = "pwa-integration-password-123";
 
   const upstream = http.createServer((req, res) => {
     if (req.url === "/api/location") {
@@ -89,7 +90,8 @@ test("health and OpenCode SSE proxy are live without a real OpenCode account", a
       POCKET_HOST: "127.0.0.1",
       POCKET_PORT: String(appPort),
       OPENCODE_URL: `http://127.0.0.1:${upstreamPort}`,
-      CODEX_BIN: "__devmoter_test_codex_not_started__"
+      CODEX_BIN: "__devmoter_test_codex_not_started__",
+      DEVMOTER_AUTH_PASSWORD: authPassword
     },
     stdio: ["ignore", "pipe", "pipe"]
   });
@@ -97,7 +99,10 @@ test("health and OpenCode SSE proxy are live without a real OpenCode account", a
   try {
     await waitForReady(child);
 
+    const authorization = `Basic ${Buffer.from(`devmoter:${authPassword}`).toString("base64")}`;
+
     const health = await fetch(`http://127.0.0.1:${appPort}/api/health`, {
+      headers: { authorization },
       signal: AbortSignal.timeout(4000)
     });
     assert.equal(health.status, 200);
@@ -106,7 +111,7 @@ test("health and OpenCode SSE proxy are live without a real OpenCode account", a
     assert.equal(healthPayload.online, true);
 
     const events = await fetch(`http://127.0.0.1:${appPort}/api/opencode/event`, {
-      headers: { accept: "text/event-stream" },
+      headers: { accept: "text/event-stream", authorization },
       signal: AbortSignal.timeout(4000)
     });
     assert.equal(events.status, 200);

@@ -518,9 +518,9 @@ export function mountOpenCodeRemote(
         ...init,
         headers: {
           ...(init.body ? { "content-type": "application/json" } : {}),
+          ...(init.headers || {}),
           ...(opId ? { "x-pocket-operation-id": opId } : {}),
-          ...(localStorage.getItem("opencode-pocket-project") ? { "x-pocket-project-id": localStorage.getItem("opencode-pocket-project")! } : {}),
-          ...(init.headers || {})
+          ...(localStorage.getItem("opencode-pocket-project") ? { "x-pocket-project-id": localStorage.getItem("opencode-pocket-project")! } : {})
         },
         cache: method === "GET" ? "no-store" : undefined
       });
@@ -554,7 +554,7 @@ export function mountOpenCodeRemote(
     if (!res.ok) {
       if (payload?.duplicate) {
         throw new Error(
-          `Operation ${payload?.operationId || opId} was already accepted; the duplicate send was suppressed.`
+          `Operation ${payload?.operationId || opId} was already seen; the duplicate send was suppressed and the earlier outcome is unknown.`
         );
       }
       const message =
@@ -860,10 +860,29 @@ export function mountOpenCodeRemote(
     return `${String(messageID)}:${String(partID)}`;
   }
 
+  const LIVE_STREAM_PROTECTION_LIMIT = 16;
+
+  function retireLiveStream(key: string) {
+    liveText.delete(key);
+    liveReasoning.delete(key);
+    livePartKinds.delete(key);
+  }
+
+  function boundLiveStreams() {
+    const keys = [...new Set([...liveText.keys(), ...liveReasoning.keys()])];
+    const excess = Math.max(0, keys.length - LIVE_STREAM_PROTECTION_LIMIT);
+    for (const key of keys.slice(0, excess)) retireLiveStream(key);
+    trimTranscript();
+  }
+
   function ensureLiveText(data: Json) {
     const key = streamKey(data);
     const existing = liveText.get(key);
-    if (existing) return existing;
+    if (existing) {
+      liveText.delete(key);
+      liveText.set(key, existing);
+      return existing;
+    }
 
     transcript.querySelector(".ocx-welcome")?.remove();
 
@@ -877,7 +896,7 @@ export function mountOpenCodeRemote(
     row.appendChild(body);
     transcript.appendChild(row);
     liveText.set(key, body);
-    trimTranscript();
+    boundLiveStreams();
     followLatest();
     return body;
   }
@@ -885,7 +904,11 @@ export function mountOpenCodeRemote(
   function ensureLiveReasoning(data: Json) {
     const key = streamKey(data);
     const existing = liveReasoning.get(key);
-    if (existing) return existing;
+    if (existing) {
+      liveReasoning.delete(key);
+      liveReasoning.set(key, existing);
+      return existing;
+    }
 
     const details = document.createElement("details");
     details.className = "ocx-reasoning";
@@ -900,7 +923,7 @@ export function mountOpenCodeRemote(
     details.append(summary, body);
     transcript.appendChild(details);
     liveReasoning.set(key, body);
-    trimTranscript();
+    boundLiveStreams();
     followLatest();
     return body;
   }
@@ -1453,6 +1476,7 @@ export function mountOpenCodeRemote(
       ? `\n\n添付ファイル:\n${pendingAttachments.map(item => `- ${item.name} (${item.kind}): ${item.path}`).join("\n")}`
       : "";
     const promptText = `${text}${attachmentText}`.trim();
+    followsBottom = true;
     addUserMessage(promptText);
     followLatest();
 
@@ -1960,6 +1984,8 @@ export function mountOpenCodeRemote(
 
     if (type === "session.idle" || type === "session.error") {
       lastLiveEventAt = Date.now();
+      clearLiveStreams();
+      trimTranscript();
       if (normalized.executionState) setExecutionState(normalized.executionState);
       scheduleRefresh(60);
       return;
@@ -1986,8 +2012,11 @@ export function mountOpenCodeRemote(
     }
 
     if (type === "session.text.ended") {
+      const key = streamKey(props);
       const body = ensureLiveText(props);
       body.textContent = mergeOpenCodeStreamText(body.textContent, normalized);
+      retireLiveStream(key);
+      trimTranscript();
       followLatest();
       return;
     }
@@ -2007,8 +2036,11 @@ export function mountOpenCodeRemote(
     }
 
     if (type === "session.reasoning.ended") {
+      const key = streamKey(props);
       const body = ensureLiveReasoning(props);
       body.textContent = mergeOpenCodeStreamText(body.textContent, normalized);
+      retireLiveStream(key);
+      trimTranscript();
       return;
     }
 

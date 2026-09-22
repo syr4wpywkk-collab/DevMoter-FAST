@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="DevMoter FAST">
+  <rect width="512" height="512" rx="112" fill="#111111"/>
+  <path d="M126 140h132c86 0 140 44 140 116s-54 116-140 116H126V140zm84 64v104h50c44 0 70-18 70-52s-26-52-70-52h-50z" fill="#ffffff"/>
+  <path d="M328 140h58v54h-58z" fill="#ffffff"/>
+</svg>
