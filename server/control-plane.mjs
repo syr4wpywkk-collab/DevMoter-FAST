@@ -381,9 +381,13 @@ export class ControlPlane {
     const payloadText = safePayload(payload);
     const matching = state.triggers.filter(item => item.enabled && item.source === source && item.event === event);
     const launched = [];
+    let githubSignatureMatched = source !== "github.webhook";
 
     for (const trigger of matching) {
-      if (source === "github.webhook" && !verifyGithubSignature(trigger.secret, rawBody, signature)) continue;
+      if (source === "github.webhook") {
+        if (!verifyGithubSignature(trigger.secret, rawBody, signature)) continue;
+        githubSignatureMatched = true;
+      }
       const active = this.activeTriggers.get(trigger.id) || 0;
       if (active >= trigger.maxConcurrency) continue;
       if (trigger.lastTriggeredAt && Date.now() - trigger.lastTriggeredAt < trigger.minIntervalMs) continue;
@@ -401,6 +405,13 @@ export class ControlPlane {
         this.activeTriggers.set(trigger.id, Math.max(0, (this.activeTriggers.get(trigger.id) || 1) - 1));
       });
     }
+
+    if (source === "github.webhook" && matching.length > 0 && !githubSignatureMatched) {
+      const error = new Error("GitHub webhook signature verification failed");
+      error.status = 401;
+      throw error;
+    }
+
     await this.save();
     return launched;
   }
