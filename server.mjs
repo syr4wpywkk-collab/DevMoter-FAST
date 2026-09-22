@@ -19,6 +19,7 @@ import { createSystemFeatures } from "./server/system-features.mjs";
 import { createAutomationApi, AUTOMATION_API_VERSION } from "./server/automation-api.mjs";
 import { createUploadRegistry } from "./server/upload-registry.mjs";
 import { ControlPlane } from "./server/control-plane.mjs";
+import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/workspace-control.mjs";
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
 import { applyModeToPrompt, isDirectMutationRoute, isPromptRoute, isReadOnlyMode, parseAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
 import { assertAuthPassword, authorizeBasicRequest, requireSameOriginMutation } from "./server/auth.mjs";
@@ -77,6 +78,10 @@ const controlPlane = new ControlPlane({
       console.error("Control-plane lifecycle dispatch failed", redactText(error instanceof Error ? error.message : String(error)));
     });
   }
+});
+const workspaceControl = createWorkspaceControl({
+  stateDir: PROJECT_CONFIG_DIR,
+  resolveProject: getProjectById
 });
 const advancedApi = createAdvancedApi({
   homeDir: HOME_DIR,
@@ -148,10 +153,27 @@ function notifyAgentState(payload) {
 }
 
 codex.on("notification", event => {
+  const sessionId = codexThreadIdFromEvent(event.params);
+  if (sessionId) {
+    const method = String(event?.method || "");
+    const type =
+      method === "turn/completed" ? "completion" :
+      /fail|error/i.test(method) ? "failure" :
+      /agentMessage/i.test(method) ? "assistant" :
+      "event";
+    void workspaceControl.events.append(sessionId, {
+      type,
+      backend: "codex",
+      payload: { method, params: event?.params ?? null }
+    }).catch(error => {
+      console.error("Workspace event append failed", redactText(error instanceof Error ? error.message : String(error)));
+    });
+  }
+
   if (event?.method === "turn/completed") {
     notifyAgentState({
       backend: "codex",
-      sessionId: codexThreadIdFromEvent(event.params),
+      sessionId,
       state: "completed"
     });
   }
@@ -161,6 +183,21 @@ codex.on("server-request", request => {
   const method = String(request?.method || "");
   const sessionId = codexThreadIdFromEvent(request?.params || {});
   if (!sessionId) return;
+
+  const type =
+    method === "item/commandExecution/requestApproval" || method === "item/fileChange/requestApproval"
+      ? "approval"
+      : /question|user.?input|request.?input/i.test(method)
+        ? "question"
+        : "event";
+  void workspaceControl.events.append(sessionId, {
+    type,
+    backend: "codex",
+    payload: { method, params: request?.params ?? null }
+  }).catch(error => {
+    console.error("Workspace request event append failed", redactText(error instanceof Error ? error.message : String(error)));
+  });
+
   if (method === "item/commandExecution/requestApproval" || method === "item/fileChange/requestApproval") {
     notifyAgentState({ backend: "codex", sessionId, state: "waiting_for_approval" });
   } else if (/question|user.?input|request.?input/i.test(method)) {
@@ -820,6 +857,17 @@ async function pollOpenCodeNotificationStates() {
       }
 
       if (prior !== undefined) {
+        if (state !== prior) {
+          void workspaceControl.events.append(sessionId, {
+            type:
+              prior === "running" && state === "idle" ? "completion" :
+              state === "waiting_for_approval" ? "approval" :
+              state === "waiting_for_input" ? "question" :
+              "state",
+            backend: "opencode",
+            payload: { previous: prior, state }
+          }).catch(() => {});
+        }
         if ((state === "waiting_for_approval" || state === "waiting_for_input") && state !== prior) {
           notifyAgentState({ backend: "opencode", sessionId, state });
         } else if (prior === "running" && state === "idle") {
@@ -1684,6 +1732,15 @@ const server = http.createServer(async (req, res) => {
         json(res, 401, { error: "Passkey authentication required" });
         return;
       }
+    }
+
+    if (url.pathname === "/api/workspace-control" || url.pathname.startsWith("/api/workspace-control/")) {
+      if (
+        req.method !== "GET" &&
+        req.method !== "HEAD" &&
+        !claimOperation(req, res, `${req.method}:${url.pathname}`)
+      ) return;
+      if (await handleWorkspaceControlRequest(req, res, url, workspaceControl)) return;
     }
 
     if (await controlRoute(req, res, url)) return;
