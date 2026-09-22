@@ -74,6 +74,85 @@ test("server requires auth and exact Origin for mutations", async () => {
     });
     assert.equal(wrong.status, 401);
 
+
+    const unauthenticatedIntegrations = await fetch(`${origin}/api/integrations/status`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}"
+    });
+    assert.equal(unauthenticatedIntegrations.status, 401);
+
+    const inventoryMissingOrigin = await fetch(`${origin}/api/integrations/status`, {
+      method: "POST",
+      headers: {
+        authorization,
+        "content-type": "application/json"
+      },
+      body: "{}"
+    });
+    assert.equal(inventoryMissingOrigin.status, 403);
+
+    const inventoryCrossOrigin = await fetch(`${origin}/api/integrations/status`, {
+      method: "POST",
+      headers: {
+        authorization,
+        origin: "https://evil.example",
+        "content-type": "application/json"
+      },
+      body: "{}"
+    });
+    assert.equal(inventoryCrossOrigin.status, 403);
+
+    const authenticatedIntegrations = await fetch(`${origin}/api/integrations/status`, {
+      method: "POST",
+      headers: {
+        authorization,
+        origin,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "integration-status-test"
+      },
+      body: "{}"
+    });
+    assert.equal(authenticatedIntegrations.status, 200);
+    const integrationInventory = await authenticatedIntegrations.json();
+    assert.equal(Array.isArray(integrationInventory.integrations), true);
+    assert.equal(JSON.stringify(integrationInventory).includes('"bin"'), false);
+    assert.equal(JSON.stringify(integrationInventory).includes("versionArgs"), false);
+
+    const integrationMissingOrigin = await fetch(`${origin}/api/integrations/claude/launch`, {
+      method: "POST",
+      headers: {
+        authorization,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({ projectId: "does-not-matter" })
+    });
+    assert.equal(integrationMissingOrigin.status, 403);
+
+    const integrationCrossOrigin = await fetch(`${origin}/api/integrations/antigravity/remote/start`, {
+      method: "POST",
+      headers: {
+        authorization,
+        origin: "https://evil.example",
+        "content-type": "application/json"
+      },
+      body: "{}"
+    });
+    assert.equal(integrationCrossOrigin.status, 403);
+
+    const integrationSameOrigin = await fetch(`${origin}/api/integrations/claude/launch`, {
+      method: "POST",
+      headers: {
+        authorization,
+        origin,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({ projectId: "missing-project" })
+    });
+    assert.equal(integrationSameOrigin.status, 500);
+    const integrationError = await integrationSameOrigin.json();
+    assert.equal(integrationError.error, "Integration operation failed");
+
     const authenticated = await fetch(`${origin}/api/projects`, {
       headers: { authorization }
     });

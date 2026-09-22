@@ -2,36 +2,55 @@ import "./style.css";
 import { mountOpenCodeRemote } from "./opencode";
 import { mountCodexRemote } from "./codex";
 import { startI18n } from "./i18n";
+import { mountIntegrations } from "./integrations";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
 app.innerHTML = `
   <div id="openCodeView" class="pocket-view"><div id="openCodeMount"></div></div>
   <div id="codexView" class="pocket-view hidden"><div id="codexMount"></div></div>
+  <div id="integrationsView" class="pocket-view hidden"><div id="integrationsMount"></div></div>
 `;
 
 const openCodeView = document.querySelector<HTMLDivElement>("#openCodeView")!;
 const codexView = document.querySelector<HTMLDivElement>("#codexView")!;
+const integrationsView = document.querySelector<HTMLDivElement>("#integrationsView")!;
 const openCodeMount = document.querySelector<HTMLDivElement>("#openCodeMount")!;
 const codexMount = document.querySelector<HTMLDivElement>("#codexMount")!;
+const integrationsMount = document.querySelector<HTMLDivElement>("#integrationsMount")!;
 
-type Backend = "opencode" | "codex";
+type Backend = "opencode" | "codex" | "integrations";
 
 const savedBackend = localStorage.getItem("opencode-pocket-backend");
-let activeBackend: Backend = savedBackend === "codex" ? "codex" : "opencode";
+let activeBackend: Backend =
+  savedBackend === "codex" || savedBackend === "integrations"
+    ? savedBackend
+    : "opencode";
 
 function setBackend(next: Backend) {
   activeBackend = next;
   localStorage.setItem("opencode-pocket-backend", next);
   openCodeView.classList.toggle("hidden", next !== "opencode");
   codexView.classList.toggle("hidden", next !== "codex");
+  integrationsView.classList.toggle("hidden", next !== "integrations");
   document.body.classList.toggle("codex-mode", next === "codex");
   document.body.classList.toggle("opencode-mode", next === "opencode");
+  document.body.classList.toggle("integrations-mode", next === "integrations");
+  if (next === "integrations") void integrationsRemote.refresh();
 }
 
-const openCodeRemote = mountOpenCodeRemote(openCodeMount, { onCodex: () => setBackend("codex") });
+const openCodeRemote = mountOpenCodeRemote(openCodeMount, {
+  onCodex: () => setBackend("codex"),
+  onIntegrations: () => setBackend("integrations")
+});
 const codexRemote = mountCodexRemote(codexMount, {
-  onOpenCode: () => setBackend("opencode")
+  onOpenCode: () => setBackend("opencode"),
+  onIntegrations: () => setBackend("integrations")
+});
+
+const integrationsRemote = mountIntegrations(integrationsMount, {
+  onOpenCode: () => setBackend("opencode"),
+  onCodex: () => setBackend("codex")
 });
 
 startI18n();

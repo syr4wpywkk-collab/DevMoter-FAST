@@ -9,6 +9,7 @@ import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, 
 import { createOperationRegistry } from "./server/operation-registry.mjs";
 import { assertAuthPassword, authorizeBasicRequest, requireSameOriginMutation } from "./server/auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
+import { antigravityRemoteAction, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -873,6 +874,42 @@ const server = http.createServer(async (req, res) => {
         await projectWriteFile(projectId, req, res);
         return;
       }
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/integrations/status") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      try {
+        json(res, 200, await listIntegrations());
+      } catch {
+        json(res, 500, { error: "Integration status unavailable" });
+      }
+      return;
+    }
+
+    const integrationLaunchMatch = url.pathname.match(/^\/api\/integrations\/(antigravity|claude)\/launch$/);
+    if (req.method === "POST" && integrationLaunchMatch) {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      try {
+        const payload = await readJson(req);
+        const project = await getProjectById(String(payload?.projectId || ""));
+        json(res, 200, await launchIntegration(integrationLaunchMatch[1], project.path));
+      } catch (error) {
+        const safe = publicIntegrationError(error);
+        json(res, safe.status, { error: safe.error });
+      }
+      return;
+    }
+
+    const antigravityRemoteMatch = url.pathname.match(/^\/api\/integrations\/antigravity\/remote\/(start|stop)$/);
+    if (req.method === "POST" && antigravityRemoteMatch) {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      try {
+        json(res, 200, await antigravityRemoteAction(antigravityRemoteMatch[1]));
+      } catch (error) {
+        const safe = publicIntegrationError(error);
+        json(res, safe.status, { error: safe.error });
+      }
+      return;
     }
 
     if (req.method === "GET" && url.pathname === "/api/health") {

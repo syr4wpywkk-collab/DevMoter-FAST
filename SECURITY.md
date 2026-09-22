@@ -52,6 +52,27 @@ Do not place OpenCode, Codex, GitHub, provider, or DevMoter credentials in front
 
 The generated DevMoter password file and OpenCode password file are host-side secrets. Keep their filesystem permissions restricted and rotate them if they are disclosed.
 
+## Host integration boundary
+
+The Antigravity and Claude Code launchers are treated as privileged host integrations:
+
+- integration endpoints are behind the same DevMoter authentication boundary as the rest of the UI/API;
+- mutation routes additionally require exact same-origin browser requests;
+- integration status discovery is an authenticated same-origin POST because status discovery invokes local executables; it is not exposed as a side-effecting GET;
+- project working directories are resolved from the existing registered Project ID rather than accepting arbitrary paths from the browser;
+- launch commands use fixed executable/argument arrays and do not invoke a shell;
+- child processes deny secret-like environment variables by default; only narrowly scoped credentials for the matching provider may be inherited (for example Anthropic credentials for Claude Code, or Gemini/Google API keys for Antigravity);
+- common process-injection environment variables such as `NODE_OPTIONS`, `BASH_ENV`, `PYTHONPATH`, and `LD_PRELOAD` are always removed;
+- Antigravity Remote URLs are accepted only from the exact `https://antigravity.google.com` origin;
+- QR handoff assets are bundled locally; displaying them does not contact a third-party QR service;
+- DevMoter does not extract Claude/Antigravity OAuth sessions or turn consumer subscriptions into proxy APIs.
+
+Enabling or hiding an integration in the UI is a presentation preference, **not** an authorization control. Treat anyone with valid DevMoter credentials as able to exercise the host integrations exposed by that installation.
+
+The installed `claude` and `agy` executables remain part of the trusted local-host boundary. DevMoter cannot make a malicious or replaced local executable safe. Keep those tools and the host PATH under the same single-user trust assumptions as the rest of DevMoter.
+
+Antigravity Remote Control is a persistent upstream capability: starting it can outlive the browser tab. Use the explicit Stop action when remote access is no longer needed.
+
 ## Known alpha limitations
 
 - Authentication is single-user and does not provide per-user roles or fine-grained authorization.
