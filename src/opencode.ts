@@ -1,4 +1,4 @@
-import { isExecutionActive, openCodeIdleOutcomeToExecutionState, type ExecutionState } from "./execution-state";
+import { isExecutionActive, openCodeIdleOutcomeToExecutionState, type ExecutionState } from "./execution-state.mjs";
 import { speechRecognitionLanguage } from "./i18n";
 import { mergeOpenCodeStreamText, normalizeOpenCodeEvent } from "./opencode-event-compat.mjs";
 
