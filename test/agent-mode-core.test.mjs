@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { compileModePrompt, getBuiltinMode, listBuiltinModes, renderModePolicy } from "../src/agent-mode-core.mjs";
+import { compileModePrompt, getBuiltinMode, listBuiltinModes, renderModePolicy, validateCustomMode } from "../src/agent-mode-core.mjs";
 
 test("debug mode is explicit and inspectable", () => {
   const mode = getBuiltinMode("debug");
@@ -39,4 +39,35 @@ test("review mode is read-only and requests structured file findings", () => {
   assert.match(prompt, /Do not modify files/i);
   assert.match(prompt, /file:line references/i);
   assert.match(prompt, /explicit transition/i);
+});
+
+test("custom modes preserve prompt, model/provider and explicit tool permissions", () => {
+  const custom = validateCustomMode({
+    id: "security-review",
+    name: "Security review",
+    instructions: ["Inspect trust boundaries", "Do not mutate files"],
+    provider: "openai",
+    model: "gpt-secure",
+    tools: { allow: ["read", "git"], deny: ["files", "network"] },
+    mutationPolicy: "read-only-until-explicit-transition"
+  });
+  assert.equal(custom.provider, "openai");
+  assert.equal(custom.model, "gpt-secure");
+  const prompt = compileModePrompt("security-review", "Review auth", {}, [custom]);
+  assert.match(prompt, /Preferred provider: openai/);
+  assert.match(prompt, /Preferred model: gpt-secure/);
+  assert.match(prompt, /Allowed tool groups: read, git/);
+});
+
+test("invalid custom permission combinations fail closed", () => {
+  const base = {
+    id: "custom-one",
+    name: "Custom one",
+    instructions: ["Inspect"],
+    tools: { allow: ["read"], deny: [] }
+  };
+  assert.throws(() => validateCustomMode({ ...base, tools: { allow: [], deny: [] } }), /explicitly allow/);
+  assert.throws(() => validateCustomMode({ ...base, tools: { allow: ["read", "root"], deny: [] } }), /Unknown tool group/);
+  assert.throws(() => validateCustomMode({ ...base, tools: { allow: ["read"], deny: ["read"] } }), /both allowed and denied/);
+  assert.throws(() => validateCustomMode({ ...base, id: "debug" }), /conflicts with built-in/);
 });
