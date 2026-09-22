@@ -22,6 +22,9 @@ The agents stay on the host machine; the browser talks to DevMoter instead of co
 
 - ⚡ **Fast install:** [fastinstall.MD](./fastinstall.MD)
 - 🔐 **Security policy & vulnerability reporting:** [SECURITY.md](./SECURITY.md)
+- 🧭 **Architecture:** [ARCHITECTURE.md](./ARCHITECTURE.md)
+- 🛡️ **Threat model:** [THREAT_MODEL.md](./THREAT_MODEL.md)
+- 🧠 **Maintainer learning guide:** [MAINTAINER_GUIDE.md](./MAINTAINER_GUIDE.md)
 - 📜 **Third-party licenses and interoperability notices:** [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)
 
 > [!CAUTION]
