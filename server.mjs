@@ -607,7 +607,8 @@ async function runOpenCodeAutomationTask(project, { agent, task, model }) {
   const result = await fetchOpenCodeJson("/api/session/" + encodeURIComponent(session.id) + "/prompt", {
     method: "POST",
     headers,
-    body: JSON.stringify({ text: task })
+    body: JSON.stringify({ text: task }),
+    signal: AbortSignal.timeout(10 * 60 * 1000)
   });
 
   return {
