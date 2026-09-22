@@ -5487,3 +5487,94 @@ textarea:focus-visible,
     animation-iteration-count: 1 !important;
   }
 }
+
+
+/* Automation context, unified runtime picker, and drag/drop */
+.cx-composer.dragging,
+.ocx-composer.dragging {
+  outline: 2px dashed currentColor;
+  outline-offset: 4px;
+}
+
+.cx-context-palette {
+  width: min(100%, 760px);
+  max-height: min(42vh, 320px);
+  margin: 0 auto 8px;
+  overflow: auto;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid #303030;
+  border-radius: 14px;
+  background: #151515;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .34);
+  z-index: 12;
+}
+
+.cx-context-option {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.cx-context-option:hover,
+.cx-context-option:focus-visible {
+  border-color: #3f3f3f;
+  background: #202020;
+}
+
+.cx-context-option > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.cx-context-option strong,
+.cx-context-option small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cx-context-option small {
+  color: #888;
+  font-size: .7rem;
+}
+
+.ocx-picker-section {
+  display: grid;
+  gap: 4px;
+}
+
+.ocx-picker-section + .ocx-picker-section {
+  margin-top: 10px;
+}
+
+.ocx-picker-provider {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 9px 4px;
+  color: var(--oc-muted);
+}
+
+.ocx-picker-provider small {
+  font-size: .62rem;
+}
+
+.ocx-picker-row.unavailable,
+.ocx-picker-row:disabled,
+.cx-model-row.unavailable,
+.cx-model-row:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
