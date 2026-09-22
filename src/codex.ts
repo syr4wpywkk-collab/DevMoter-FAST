@@ -58,7 +58,7 @@ type PendingAttachment = {
   type: string;
   kind: "image" | "file";
   dataUrl?: string;
-  path?: string;
+  uploadId?: string;
   size: number;
 };
 
@@ -175,6 +175,7 @@ export function mountCodexRemote(
           <i></i><span>オフライン</span>
         </div>
         <div id="cxAttachmentStrip" class="cx-attachment-strip hidden"></div>
+        <div id="cxContextPalette" class="cx-context-palette hidden"></div>
 
         <form id="cxPromptForm" class="cx-composer">
           <textarea
@@ -268,6 +269,7 @@ export function mountCodexRemote(
   const plusMenu = root.querySelector<HTMLDivElement>("#cxPlusMenu")!;
   const executionStatus = root.querySelector<HTMLDivElement>("#cxExecutionStatus")!;
   const attachmentStrip = root.querySelector<HTMLDivElement>("#cxAttachmentStrip")!;
+  const contextPalette = root.querySelector<HTMLDivElement>("#cxContextPalette")!;
   const photo = root.querySelector<HTMLButtonElement>("#cxPhoto")!;
   const file = root.querySelector<HTMLButtonElement>("#cxFile")!;
   const photoInput = root.querySelector<HTMLInputElement>("#cxPhotoInput")!;
@@ -291,6 +293,8 @@ export function mountCodexRemote(
   let projects: ProjectSummary[] = [];
   let activeProject: ProjectSummary | null = null;
   let pendingAttachments: PendingAttachment[] = [];
+  let selectedContextRefs: Array<{ path: string; kind: "file" | "folder" }> = [];
+  let contextRequestSerial = 0;
   let executionState: ExecutionState = "offline";
   let deepThink = localStorage.getItem("opencode-pocket-codex-think") === "1";
   let selectedModel = localStorage.getItem("opencode-pocket-codex-model") || "";
@@ -442,8 +446,10 @@ export function mountCodexRemote(
     const result = await projectApi<{ projects?: ProjectSummary[] }>("");
     projects = (result.projects ?? []).filter(project => project.available !== false);
 
+    const requested = new URLSearchParams(window.location.search).get("project");
     const saved = localStorage.getItem("opencode-pocket-project");
     activeProject =
+      projects.find(project => project.id === requested) ??
       projects.find(project => project.id === saved) ??
       activeProject ??
       projects[0] ??
@@ -1033,7 +1039,7 @@ export function mountCodexRemote(
       type: blob.type,
       kind,
       dataUrl: kind === "image" ? dataUrl : undefined,
-      path: String(payload.path || ""),
+      uploadId: String(payload.uploadId || ""),
       size: blob.size
     };
   }
@@ -1051,6 +1057,104 @@ export function mountCodexRemote(
     }
   }
 
+
+  function contextTokenAtCursor() {
+    const cursor = promptInput.selectionStart ?? promptInput.value.length;
+    const prefix = promptInput.value.slice(0, cursor);
+    const match = prefix.match(/(?:^|\s)@([^\s@]*)$/);
+    if (!match) return null;
+    return { query: match[1] || "", start: cursor - match[0].trimStart().length, end: cursor };
+  }
+
+  function hideContextPalette() {
+    contextPalette.classList.add("hidden");
+    contextPalette.replaceChildren();
+  }
+
+  async function updateContextSuggestions() {
+    const token = contextTokenAtCursor();
+    if (!token || !activeProject) {
+      hideContextPalette();
+      return;
+    }
+
+    const serial = ++contextRequestSerial;
+    try {
+      const payload = await projectApi<{ entries?: Array<{ path: string; name: string; kind: "file" | "folder"; size?: number | null }> }>(
+        `/${encodeURIComponent(activeProject.id)}/context?q=${encodeURIComponent(token.query)}`
+      );
+      if (serial !== contextRequestSerial) return;
+      const entries = (payload.entries ?? []).slice(0, 12);
+      contextPalette.replaceChildren();
+
+      if (!entries.length) {
+        hideContextPalette();
+        return;
+      }
+
+      for (const entry of entries) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "cx-context-option";
+
+        const copy = document.createElement("span");
+        const strong = document.createElement("strong");
+        const small = document.createElement("small");
+        strong.textContent = `@${entry.path}`;
+        small.textContent = entry.kind === "folder"
+          ? "folder Â· bounded expansion"
+          : `${entry.size ?? "?"} bytes`;
+        copy.append(strong, small);
+
+        const badge = document.createElement("span");
+        badge.textContent = entry.kind === "folder" ? "â±" : "â";
+        button.append(badge, copy);
+        button.addEventListener("click", () => {
+          const current = contextTokenAtCursor();
+          if (!current) return;
+          promptInput.setRangeText(`@${entry.path} `, current.start, current.end, "end");
+          selectedContextRefs = [
+            ...selectedContextRefs.filter(item => item.path !== entry.path),
+            { path: entry.path, kind: entry.kind }
+          ];
+          hideContextPalette();
+          resizeComposer();
+          promptInput.focus();
+        });
+        contextPalette.appendChild(button);
+      }
+
+      contextPalette.classList.remove("hidden");
+    } catch {
+      hideContextPalette();
+    }
+  }
+
+  async function resolvedContextText(text: string) {
+    if (!activeProject) return "";
+    const references = selectedContextRefs
+      .filter(ref => text.includes(`@${ref.path}`))
+      .slice(0, 16);
+    if (!references.length) return "";
+
+    const payload = await projectApi<{
+      items?: Array<{ path: string; content: string; size: number }>;
+      truncated?: boolean;
+    }>(
+      `/${encodeURIComponent(activeProject.id)}/context/resolve`,
+      {
+        method: "POST",
+        body: JSON.stringify({ references })
+      }
+    );
+
+    const sections = (payload.items ?? []).map(item =>
+      `--- @${item.path} ---\n${item.content}`
+    );
+    if (payload.truncated) sections.push("[Context expansion was truncated by DevMoter safety limits.]");
+    return sections.join("\n\n");
+  }
+
   async function sendMessage() {
     const text = promptInput.value.trim();
     if (!text && pendingAttachments.length === 0) return;
@@ -1058,6 +1162,8 @@ export function mountCodexRemote(
     let threadId = activeThreadId;
     if (!threadId) threadId = await createThread();
     if (!threadId) return;
+
+    const contextText = await resolvedContextText(text);
 
     const displayAttachments = pendingAttachments.map(item => ({
       name: item.name,
@@ -1067,25 +1173,30 @@ export function mountCodexRemote(
     addMessage("user", text, displayAttachments);
 
     const input: Json[] = [];
-    if (text) input.push({ type: "text", text });
+    const effectiveText = contextText
+      ? `${text}\n\n[Project context resolved by DevMoter]\n${contextText}`
+      : text;
+    if (effectiveText) input.push({ type: "text", text: effectiveText });
 
     for (const attachment of pendingAttachments) {
-      if (attachment.kind === "image" && attachment.path) {
+      if (attachment.kind === "image" && attachment.uploadId) {
         input.push({
           type: "localImage",
-          path: attachment.path
+          uploadId: attachment.uploadId
         });
-      } else if (attachment.path) {
+      } else if (attachment.uploadId) {
         input.push({
           type: "mention",
           name: attachment.name,
-          path: attachment.path
+          uploadId: attachment.uploadId
         });
       }
     }
 
     promptInput.value = "";
     pendingAttachments = [];
+    selectedContextRefs = [];
+    hideContextPalette();
     renderAttachments();
     resizeComposer();
     plusMenu.classList.add("hidden");
@@ -2112,12 +2223,17 @@ export function mountCodexRemote(
   }
 
   async function showModels() {
-    openModal("モデル", activeThreadId ? "このチャットのモデルを変更" : "次のチャットで使うモデル");
+    openModal("Provider · Model · Agent", activeThreadId ? "このチャットの実行環境を変更" : "次のチャットで使う実行環境");
     modalBody.innerHTML = '<div class="cx-modal-loading">読み込み中…</div>';
 
     try {
       const models = await loadModelCatalog();
       modalBody.replaceChildren();
+
+      const runtime = document.createElement("section");
+      runtime.className = "cx-settings-section cx-runtime-summary";
+      runtime.innerHTML = `<h3>Runtime</h3>\n        <div class="cx-info-row"><span>Provider</span><strong>Codex · ${online ? "available" : "offline"}</strong></div>\n        <div class="cx-info-row"><span>Agent</span><strong>codex · supported</strong></div>\n        <div class="cx-info-row"><span>Scope</span><strong>${activeThreadId ? "session" : activeProject ? "project" : "default"}</strong></div>`;
+      modalBody.appendChild(runtime);
 
       const list = document.createElement("div");
       list.className = "cx-model-list";
@@ -2274,6 +2390,35 @@ export function mountCodexRemote(
     plusMenu.classList.add("hidden");
   });
 
+
+  let composerDragDepth = 0;
+  promptForm.addEventListener("dragenter", event => {
+    if (!event.dataTransfer?.types.includes("Files")) return;
+    event.preventDefault();
+    composerDragDepth += 1;
+    promptForm.classList.add("dragging");
+  });
+  promptForm.addEventListener("dragover", event => {
+    if (!event.dataTransfer?.types.includes("Files")) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    promptForm.classList.add("dragging");
+  });
+  promptForm.addEventListener("dragleave", event => {
+    if (!event.dataTransfer?.types.includes("Files")) return;
+    event.preventDefault();
+    composerDragDepth = Math.max(0, composerDragDepth - 1);
+    if (composerDragDepth === 0) promptForm.classList.remove("dragging");
+  });
+  promptForm.addEventListener("drop", event => {
+    if (!event.dataTransfer?.files?.length) return;
+    event.preventDefault();
+    composerDragDepth = 0;
+    promptForm.classList.remove("dragging");
+    plusMenu.classList.add("hidden");
+    void addFiles(event.dataTransfer.files);
+  });
+
   think.classList.toggle("active", deepThink);
   think.setAttribute("aria-pressed", String(deepThink));
   think.addEventListener("click", () => {
@@ -2287,7 +2432,10 @@ export function mountCodexRemote(
     ({ auto: "Auto", low: "Fast", medium: "Balanced", high: "Deep" } as Record<string, string>)[reasoningMode] || "Auto";
   updateUsage();
 
-  promptInput.addEventListener("input", resizeComposer);
+  promptInput.addEventListener("input", () => {
+    resizeComposer();
+    void updateContextSuggestions();
+  });
   promptInput.addEventListener("keydown", event => {
     if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
