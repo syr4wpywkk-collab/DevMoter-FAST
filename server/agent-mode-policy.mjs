@@ -1,4 +1,4 @@
-const MODES = new Set(["build", "plan", "ask"]);
+const MODES = new Set(["build", "plan", "ask", "review"]);
 
 export const READ_ONLY_TOOLS = Object.freeze({
   "*": false,
@@ -21,7 +21,7 @@ export function parseAgentMode(value) {
 }
 
 export function isReadOnlyMode(mode) {
-  return mode === "plan" || mode === "ask";
+  return mode === "plan" || mode === "ask" || mode === "review";
 }
 
 export function sessionIdFromOpenCodePath(value) {
