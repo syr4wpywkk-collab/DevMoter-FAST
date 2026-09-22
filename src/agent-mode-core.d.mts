@@ -1,15 +1,21 @@
 export type ToolGroup = "read" | "diagnostics" | "tests" | "git" | "files" | "commands" | "network";
+export type MutationPolicy = "approval-required" | "read-only-until-explicit-transition";
 export type ModeConfig = {
   id: string;
   name: string;
   description: string;
   instructions: string[];
+  provider: string | null;
   model: string | null;
   tools: { allow: ToolGroup[]; deny: ToolGroup[] };
-  mutationPolicy: "approval-required" | string;
+  mutationPolicy: MutationPolicy;
+  custom: boolean;
 };
 export const MODE_TOOL_GROUPS: readonly ToolGroup[];
 export function listBuiltinModes(): ModeConfig[];
 export function getBuiltinMode(id: string): ModeConfig;
+export function validateCustomMode(input: unknown): ModeConfig;
+export function listModes(customModes?: unknown[]): ModeConfig[];
+export function resolveMode(id: string, customModes?: unknown[]): ModeConfig;
 export function renderModePolicy(mode: string | ModeConfig): string;
-export function compileModePrompt(modeId: string, task: string, context?: Record<string, unknown>): string;
+export function compileModePrompt(modeId: string, task: string, context?: Record<string, unknown>, customModes?: unknown[]): string;
