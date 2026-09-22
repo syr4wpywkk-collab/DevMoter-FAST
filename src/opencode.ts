@@ -1414,7 +1414,7 @@ export function mountOpenCodeRemote(
         const detail = document.createElement("span");
         name.textContent = `@${entry.path}`;
         detail.textContent = entry.kind === "folder"
-          ? "folder Â· bounded expansion"
+          ? "folder · bounded expansion"
           : `${entry.size ?? "?"} bytes`;
         button.append(name, detail);
         button.addEventListener("click", () => {
@@ -2315,7 +2315,7 @@ export function mountOpenCodeRemote(
 
 
   async function showRuntimePicker() {
-    openModal("Provider Â· Model Â· Agent", "Choose a compatible OpenCode runtime");
+    openModal("Provider · Model · Agent", "Choose a compatible OpenCode runtime");
     modalBody.replaceChildren();
 
     const agentSection = document.createElement("section");
@@ -2334,10 +2334,10 @@ export function mountOpenCodeRemote(
       copy.innerHTML = "<strong></strong><small></small>";
       copy.querySelector("strong")!.textContent = agent.id;
       copy.querySelector("small")!.textContent =
-        `${agent.description || agent.mode || "OpenCode agent"} Â· supported`;
+        `${agent.description || agent.mode || "OpenCode agent"} · supported`;
 
       const mark = document.createElement("span");
-      mark.textContent = selectedAgent === agent.id ? "â" : "âº";
+      mark.textContent = selectedAgent === agent.id ? "✓" : "›";
       button.append(copy, mark);
       button.addEventListener("click", () => {
         void switchAgent(agent.id)
@@ -2352,7 +2352,7 @@ export function mountOpenCodeRemote(
     modelSection.className = "ocx-picker-section";
     const modelHeading = document.createElement("div");
     modelHeading.className = "ocx-picker-heading";
-    modelHeading.textContent = "Provider Â· Model";
+    modelHeading.textContent = "Provider · Model";
     modelSection.appendChild(modelHeading);
 
     const sortedProviders = [...providers].sort((a, b) => {
@@ -2394,15 +2394,15 @@ export function mountOpenCodeRemote(
               .join(", ")
           : "";
         copy.querySelector("small")!.textContent = supported
-          ? `${provider.id}/${model.id}${capabilityText ? ` Â· ${capabilityText}` : ""}`
-          : `${provider.id}/${model.id} Â· unavailable`;
+          ? `${provider.id}/${model.id}${capabilityText ? ` · ${capabilityText}` : ""}`
+          : `${provider.id}/${model.id} · unavailable`;
 
         const mark = document.createElement("span");
         mark.textContent =
           selectedModel?.providerID === provider.id &&
           selectedModel?.modelID === model.id
-            ? "â"
-            : supported ? "âº" : "Ã";
+            ? "✓"
+            : supported ? "›" : "×";
 
         button.append(copy, mark);
         if (supported) {
