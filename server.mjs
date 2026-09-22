@@ -1336,6 +1336,16 @@ async function githubWebhookRoute(req, res) {
   }
 }
 
+function resolveUploadPath(id) {
+  try {
+    return uploadRegistry.get(id).path;
+  } catch {
+    const error = new Error("Upload id is unavailable or expired");
+    error.status = 400;
+    throw error;
+  }
+}
+
 function materializeOpenCodeUploadBody(body, contentType, policyPath) {
   if (
     !body ||
@@ -1356,7 +1366,7 @@ function materializeOpenCodeUploadBody(body, contentType, policyPath) {
 
   payload.text = payload.text.replace(
     /devmoter-upload:([0-9a-f-]{36})/gi,
-    (_match, id) => uploadRegistry.get(id).path
+    (_match, id) => resolveUploadPath(id)
   );
   return Buffer.from(JSON.stringify(payload));
 }
@@ -1367,8 +1377,7 @@ async function materializeCodexUploadInputs(method, params) {
     if (!item || typeof item !== "object") return item;
 
     if (item.uploadId) {
-      const upload = uploadRegistry.get(item.uploadId);
-      const next = { ...item, path: upload.path };
+      const next = { ...item, path: resolveUploadPath(item.uploadId) };
       delete next.uploadId;
       return next;
     }
