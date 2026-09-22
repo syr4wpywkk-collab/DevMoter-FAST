@@ -4169,3 +4169,160 @@ body.opencode-mode #app {
     min-height: 54px;
   }
 }
+
+
+/* ---------- API reasoning + binary image attachments ---------- */
+
+#apiReasoning {
+  min-width: 118px;
+}
+
+#apiReasoning:disabled {
+  opacity: 0.58;
+}
+
+.api-attachment-tray {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 1px 0 10px;
+  scrollbar-width: thin;
+}
+
+.api-attachment-tray.hidden {
+  display: none;
+}
+
+.api-attachment-chip {
+  min-width: 0;
+  max-width: 220px;
+  height: 54px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 7px 5px 5px;
+  border: 1px solid var(--api-border);
+  border-radius: 14px;
+  background: rgba(127, 127, 127, 0.05);
+}
+
+.api-attachment-chip img {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  object-fit: cover;
+  border-radius: 10px;
+  background: rgba(127, 127, 127, 0.08);
+}
+
+.api-attachment-chip span {
+  min-width: 0;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.api-attachment-chip button {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--api-muted);
+  cursor: pointer;
+}
+
+.api-attachment-chip button:hover {
+  background: rgba(127, 127, 127, 0.12);
+  color: var(--api-text);
+}
+
+.api-attach-button {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border: 1px solid var(--api-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--api-text);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.api-attach-button:hover:not(:disabled) {
+  background: rgba(66, 133, 244, 0.08);
+}
+
+.api-attach-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.api-message-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.api-message-attachments span {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 5px 8px;
+  border: 1px solid var(--api-border);
+  border-radius: 999px;
+  color: var(--api-muted);
+  font-size: 11px;
+}
+
+@media (max-width: 760px) {
+  .api-picker-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-areas:
+      "provider model settings"
+      "reasoning reasoning settings";
+    width: min(70vw, 430px);
+  }
+
+  #apiProvider {
+    grid-area: provider;
+  }
+
+  #apiModel {
+    grid-area: model;
+  }
+
+  #apiReasoning {
+    grid-area: reasoning;
+    max-width: none;
+  }
+
+  #apiSettingsTop {
+    grid-area: settings;
+    align-self: stretch;
+    height: auto;
+  }
+
+  .api-picker-row select {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .api-brand {
+    display: none;
+  }
+
+  .api-picker-row {
+    width: calc(100vw - 62px);
+  }
+}
