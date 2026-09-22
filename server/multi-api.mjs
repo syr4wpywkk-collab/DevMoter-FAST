@@ -6,6 +6,8 @@ const MAX_MESSAGES = 120;
 const MAX_CONTENT_CHARS = 500_000;
 const MAX_PROVIDERS = 40;
 const MAX_MODELS = 300;
+const MAX_ATTACHMENTS_PER_MESSAGE = 8;
+const REASONING_MODES = new Set(["auto", "none", "low", "medium", "high"]);
 
 export const MULTI_API_PRESETS = [
   {
@@ -174,11 +176,46 @@ function normalizeMessages(input) {
     if (!["system", "user", "assistant"].includes(role)) {
       throw new Error(`messages[${index}].role is invalid`);
     }
-    if (!content.trim()) throw new Error(`messages[${index}].content is empty`);
+
+    const attachments = Array.isArray(message?.attachments)
+      ? message.attachments.map(item => ({
+          id: String(item?.id || "").trim(),
+          name: String(item?.name || "image").slice(0, 160),
+          mime: String(item?.mime || "").trim()
+        }))
+      : [];
+
+    if (attachments.length > MAX_ATTACHMENTS_PER_MESSAGE) {
+      throw new Error(`messages[${index}] has too many attachments`);
+    }
+    if (attachments.length > 0 && role !== "user") {
+      throw new Error("Only user messages may contain image attachments");
+    }
+    for (const attachment of attachments) {
+      if (!attachment.id) throw new Error("Attachment id is required");
+    }
+
+    if (!content.trim() && attachments.length === 0) {
+      throw new Error(`messages[${index}] is empty`);
+    }
     total += content.length;
     if (total > MAX_CONTENT_CHARS) throw new Error("message content is too large");
-    return { role, content };
+    return { role, content, attachments };
   });
+}
+
+function normalizeReasoningMode(value) {
+  const mode = String(value || "auto").trim().toLowerCase();
+  if (!REASONING_MODES.has(mode)) throw new Error("Unsupported reasoning mode");
+  return mode;
+}
+
+function reasoningModesForProvider(provider) {
+  if (provider.protocol === "anthropic") return ["auto", "low", "medium", "high"];
+  if (["openai", "gemini"].includes(provider.presetId)) {
+    return ["auto", "none", "low", "medium", "high"];
+  }
+  return ["auto"];
 }
 
 function providerErrorMessage(payload, status) {
@@ -199,6 +236,7 @@ function publicProvider(provider) {
     baseUrl: provider.baseUrl,
     ready: Boolean(provider.apiKey),
     models: provider.models,
+    reasoningModes: reasoningModesForProvider(provider),
     source: provider.source || "file",
     editable: provider.source !== "env"
   };
@@ -410,15 +448,85 @@ export async function testMultiApiProvider(input, fetchImpl = fetch) {
   };
 }
 
-async function runOpenAiCompatible(provider, model, messages, fetchImpl) {
+async function resolveMessageAttachments(messages, attachmentStore) {
+  const cache = new Map();
+
+  async function load(id) {
+    if (!attachmentStore) throw new Error("Image attachments are not available");
+    if (!cache.has(id)) cache.set(id, await attachmentStore.read(id));
+    return cache.get(id);
+  }
+
+  const resolved = [];
+  for (const message of messages) {
+    const attachments = [];
+    for (const attachment of message.attachments || []) {
+      attachments.push(await load(attachment.id));
+    }
+    resolved.push({ ...message, resolvedAttachments: attachments });
+  }
+  return resolved;
+}
+
+function openAiMessages(messages) {
+  return messages.map(message => {
+    if (!message.resolvedAttachments?.length) {
+      return { role: message.role, content: message.content };
+    }
+
+    const content = [];
+    if (message.content.trim()) content.push({ type: "text", text: message.content });
+    for (const attachment of message.resolvedAttachments) {
+      content.push({
+        type: "image_url",
+        image_url: {
+          url: `data:${attachment.mime};base64,${attachment.buffer.toString("base64")}`
+        }
+      });
+    }
+    return { role: message.role, content };
+  });
+}
+
+function anthropicMessages(messages) {
+  return messages
+    .filter(message => message.role !== "system")
+    .map(message => {
+      if (!message.resolvedAttachments?.length) {
+        return { role: message.role, content: message.content };
+      }
+
+      const content = [];
+      if (message.content.trim()) content.push({ type: "text", text: message.content });
+      for (const attachment of message.resolvedAttachments) {
+        content.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: attachment.mime,
+            data: attachment.buffer.toString("base64")
+          }
+        });
+      }
+      return { role: message.role, content };
+    });
+}
+
+async function runOpenAiCompatible(provider, model, messages, reasoningMode, fetchImpl) {
+  const body = {
+    model,
+    messages: openAiMessages(messages),
+    stream: false
+  };
+
+  if (reasoningMode !== "auto" && ["openai", "gemini"].includes(provider.presetId)) {
+    body.reasoning_effort = reasoningMode;
+  }
+
   const upstream = await fetchImpl(`${provider.baseUrl}/chat/completions`, {
     method: "POST",
     headers: providerHeaders(provider),
-    body: JSON.stringify({
-      model,
-      messages,
-      stream: false
-    }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(120_000)
   });
 
@@ -440,20 +548,21 @@ async function runOpenAiCompatible(provider, model, messages, fetchImpl) {
   };
 }
 
-async function runAnthropic(provider, model, messages, fetchImpl) {
+async function runAnthropic(provider, model, messages, reasoningMode, fetchImpl) {
   const systemMessages = messages.filter(message => message.role === "system");
-  const conversational = messages
-    .filter(message => message.role !== "system")
-    .map(message => ({ role: message.role, content: message.content }));
-
   const body = {
     model,
-    max_tokens: 4096,
-    messages: conversational
+    max_tokens: 8192,
+    messages: anthropicMessages(messages)
   };
 
   if (systemMessages.length > 0) {
     body.system = systemMessages.map(message => message.content).join("\n\n");
+  }
+
+  if (reasoningMode !== "auto") {
+    body.thinking = { type: "adaptive" };
+    body.output_config = { effort: reasoningMode };
   }
 
   const upstream = await fetchImpl(`${provider.baseUrl}/messages`, {
@@ -487,23 +596,36 @@ async function runAnthropic(provider, model, messages, fetchImpl) {
   };
 }
 
-export async function runMultiApiChat(providers, payload, fetchImpl = fetch) {
+export async function runMultiApiChat(
+  providers,
+  payload,
+  fetchImpl = fetch,
+  { attachmentStore = null } = {}
+) {
   const providerId = String(payload?.providerId || "").trim();
   const model = String(payload?.model || "").trim();
+  const reasoning = normalizeReasoningMode(payload?.reasoning);
   const provider = providers.find(item => item.id === providerId);
 
   if (!provider) throw new Error("Unknown API provider");
   if (!provider.apiKey) throw new Error(`API key is not configured for ${provider.name}`);
   if (!provider.models.includes(model)) throw new Error("Model is not allowed for this provider");
+  if (!reasoningModesForProvider(provider).includes(reasoning)) {
+    throw new Error("Reasoning mode is not supported by this provider");
+  }
 
-  const messages = normalizeMessages(payload?.messages);
+  const messages = await resolveMessageAttachments(
+    normalizeMessages(payload?.messages),
+    attachmentStore
+  );
   const result = provider.protocol === "anthropic"
-    ? await runAnthropic(provider, model, messages, fetchImpl)
-    : await runOpenAiCompatible(provider, model, messages, fetchImpl);
+    ? await runAnthropic(provider, model, messages, reasoning, fetchImpl)
+    : await runOpenAiCompatible(provider, model, messages, reasoning, fetchImpl);
 
   return {
     providerId,
     model,
+    reasoning,
     message: { role: "assistant", content: result.content },
     usage: result.usage
   };
