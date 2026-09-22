@@ -12,6 +12,7 @@ import { mountTaskWorkflow } from "./workflow";
 import { mountDemo } from "./demo";
 import { mountSystemPanel } from "./system-panel";
 import { mountRemoteControlCenter } from "./remote-control";
+import { startWorkspaceControl } from "./workspace-control";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const startupParams = new URLSearchParams(window.location.search);
@@ -101,6 +102,7 @@ mountControlCenter();
 mountTaskWorkflow(workflowMount);
 mountSystemPanel();
 mountRemoteControlCenter();
+startWorkspaceControl();
 
 let healthCheckInFlight = false;
 async function checkHealth() {
