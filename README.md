@@ -377,6 +377,9 @@ If a newer upstream version breaks DevMoter, please include exact version number
 
 ## Project status
 
+See [ROADMAP.md](ROADMAP.md) for the staged mobile control-plane plan tracked by epic #14.
+
+
 **Alpha / active development.**
 
 Already implemented:
