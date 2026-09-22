@@ -916,6 +916,52 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     }
   }
 
+  async function saveMcpServer(input) {
+    const settings = await readSettings();
+    const payload = plain(input.server) ? input.server : input;
+    const id = String(payload.id || "").trim();
+    const existingIndex = id ? settings.mcp.servers.findIndex(item => item.id === id) : -1;
+    const existing = existingIndex >= 0 ? settings.mcp.servers[existingIndex] : null;
+
+    const merged = Object.assign({}, existing || {}, payload, {
+      id: id || randomUUID(),
+      env: existing?.env || {}
+    });
+    if (plain(payload.env)) {
+      merged.env = Object.assign({}, existing?.env || {});
+      for (const [key, value] of Object.entries(payload.env)) {
+        if (value === "••••••••" && key in merged.env) continue;
+        merged.env[key] = value;
+      }
+    }
+
+    const normalized = normalizeMcp(merged, Math.max(existingIndex, 0));
+    if (existingIndex >= 0) settings.mcp.servers[existingIndex] = normalized;
+    else settings.mcp.servers.push(normalized);
+    await writeSettings(settings);
+    return { server: maskSecrets(normalized), created: existingIndex < 0 };
+  }
+
+  async function setMcpEnabled(input) {
+    const settings = await readSettings();
+    const id = String(input.serverId || input.id || "");
+    const server = settings.mcp.servers.find(item => item.id === id);
+    if (!server) throw new Error("MCP server not found");
+    server.enabled = Boolean(input.enabled);
+    await writeSettings(settings);
+    return { server: maskSecrets(server) };
+  }
+
+  async function removeMcpServer(input) {
+    const settings = await readSettings();
+    const id = String(input.serverId || input.id || "");
+    const next = settings.mcp.servers.filter(item => item.id !== id);
+    if (next.length === settings.mcp.servers.length) throw new Error("MCP server not found");
+    settings.mcp.servers = next;
+    await writeSettings(settings);
+    return { ok: true };
+  }
+
   return {
     async getSettings(options = {}) {
       const settings = await readSettings();
@@ -930,6 +976,9 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     ciStatus: ci,
     runVerification: verify,
     repair,
-    testMcpServer: testMcp
+    testMcpServer: testMcp,
+    saveMcpServer,
+    setMcpEnabled,
+    removeMcpServer
   };
 }
