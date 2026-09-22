@@ -5,6 +5,16 @@ const STORAGE_KEY = "devmoter-language";
 type TranslationSet = Record<DevMoterLanguage, string>;
 
 const dictionary: Record<string, TranslationSet> = {
+  "Agent mode": { en: "Agent mode", ja: "エージェントモード", "zh-CN": "智能体模式" },
+  "Agent mode control": { en: "Agent mode control", ja: "エージェントモード操作", "zh-CN": "智能体模式控制" },
+  "Runs through the normal DevMoter approval flow.": { en: "Runs through the normal DevMoter approval flow.", ja: "通常のDevMoter承認フローで実行します。", "zh-CN": "通过正常的 DevMoter 审批流程运行。" },
+  "Mode": { en: "Mode", ja: "モード", "zh-CN": "模式" },
+  "Visible policy": { en: "Visible policy", ja: "適用ポリシー", "zh-CN": "可见策略" },
+  "Task": { en: "Task", ja: "タスク", "zh-CN": "任务" },
+  "Describe the failure or behavior to debug": { en: "Describe the failure or behavior to debug", ja: "調査したい不具合や挙動を入力", "zh-CN": "描述要调试的故障或行为" },
+  "Describe the failure, regression, or test you want reproduced": { en: "Describe the failure, regression, or test you want reproduced", ja: "再現したい不具合・リグレッション・テストを入力", "zh-CN": "描述要复现的故障、回归或测试" },
+  "Describe the task": { en: "Describe the task", ja: "タスクを入力", "zh-CN": "描述任务" },
+  "Run in active chat": { en: "Run in active chat", ja: "現在のチャットで実行", "zh-CN": "在当前对话中运行" },
   "閉じる": { en: "Close", ja: "閉じる", "zh-CN": "关闭" },
   "新しいチャット": { en: "New chat", ja: "新しいチャット", "zh-CN": "新建对话" },
   "チャットを検索": { en: "Search chats", ja: "チャットを検索", "zh-CN": "搜索对话" },
