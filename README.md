@@ -422,6 +422,10 @@ The project aims to keep that process visible rather than pretending the code wa
 - `.env.example` — environment-variable example
 - `.github/workflows/ci.yml` — automated CI checks
 
+## Developer workflow configuration
+
+See [Developer workflows, extensions, MCP, ACP, Skills, and Rules](docs/developer-workflows.md) for trusted verification configuration, the extension manifest v1 contract, MCP management behavior, ACP compatibility, and scope/precedence rules.
+
 ## License
 
 DevMoter FAST is licensed under the **MIT License**.
