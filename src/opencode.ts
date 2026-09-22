@@ -317,6 +317,24 @@ export function mountOpenCodeRemote(
   transcript.addEventListener("scroll", () => {
     followsBottom = transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight <= FOLLOW_BOTTOM_THRESHOLD;
   }, { passive: true });
+
+  const TRANSCRIPT_NODE_LIMIT = 400;
+  function trimTranscript() {
+    if (transcript.childElementCount <= TRANSCRIPT_NODE_LIMIT) return;
+
+    const liveRows = new Set(
+      [...liveText.values(), ...liveReasoning.values()]
+        .map(node => node.closest(".ocx-message-row, .ocx-reasoning"))
+        .filter((node): node is Element => Boolean(node))
+    );
+
+    let candidate = transcript.firstElementChild;
+    while (transcript.childElementCount > TRANSCRIPT_NODE_LIMIT && candidate) {
+      const next = candidate.nextElementSibling;
+      if (!liveRows.has(candidate)) candidate.remove();
+      candidate = next;
+    }
+  }
   const permission = root.querySelector<HTMLElement>("#ocxPermission")!;
   const permissionTitle = root.querySelector<HTMLElement>("#ocxPermissionTitle")!;
   const permissionDetail = root.querySelector<HTMLElement>("#ocxPermissionDetail")!;
@@ -647,6 +665,7 @@ export function mountOpenCodeRemote(
     row.className = "ocx-meta-line";
     row.textContent = text;
     transcript.appendChild(row);
+    trimTranscript();
     return row;
   }
 
@@ -667,6 +686,7 @@ export function mountOpenCodeRemote(
     prompt.append(glyph, body);
     row.appendChild(prompt);
     transcript.appendChild(row);
+    trimTranscript();
   }
 
   function addAssistantText(text: string) {
@@ -682,6 +702,7 @@ export function mountOpenCodeRemote(
 
     row.appendChild(body);
     transcript.appendChild(row);
+    trimTranscript();
   }
 
   function toolStateSummary(part: Json) {
@@ -734,6 +755,7 @@ export function mountOpenCodeRemote(
 
     details.append(summary, content);
     transcript.appendChild(details);
+    trimTranscript();
   }
 
   function addReasoning(text: string) {
@@ -749,6 +771,7 @@ export function mountOpenCodeRemote(
 
     details.append(summary, body);
     transcript.appendChild(details);
+    trimTranscript();
   }
 
   function streamKey(data: Json) {
@@ -785,6 +808,7 @@ export function mountOpenCodeRemote(
     row.appendChild(body);
     transcript.appendChild(row);
     liveText.set(key, body);
+    trimTranscript();
     followLatest();
     return body;
   }
@@ -807,6 +831,7 @@ export function mountOpenCodeRemote(
     details.append(summary, body);
     transcript.appendChild(details);
     liveReasoning.set(key, body);
+    trimTranscript();
     followLatest();
     return body;
   }
