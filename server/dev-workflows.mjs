@@ -3,6 +3,7 @@ import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
+import { AcpAdapter, createAgentAdapterRegistry } from "./acp-adapter.mjs";
 
 const execFileAsync = promisify(execFile);
 const TERMINAL = new Set(["completed", "failed", "cancelled", "canceled", "interrupted", "aborted"]);
@@ -386,34 +387,7 @@ async function projectExtension(projectPath) {
 }
 
 function adapterInventory(settings) {
-  return [
-    {
-      id: "codex",
-      protocol: "native-codex-app-server",
-      enabled: true,
-      native: true,
-      priority: 100,
-      capabilities: ["chat", "streaming", "approvals", "files", "mcp", "skills"]
-    },
-    {
-      id: "opencode",
-      protocol: "native-opencode-http",
-      enabled: true,
-      native: true,
-      priority: 90,
-      capabilities: ["chat", "streaming", "approvals", "commands", "skills"]
-    },
-    {
-      id: "acp",
-      protocol: "agent-client-protocol",
-      enabled: settings.adapters.acp.enabled,
-      native: false,
-      priority: 50,
-      command: settings.adapters.acp.enabled ? settings.adapters.acp.command : "",
-      args: settings.adapters.acp.enabled ? settings.adapters.acp.args : [],
-      capabilities: settings.adapters.acp.capabilities
-    }
-  ];
+  return createAgentAdapterRegistry(settings);
 }
 
 export function createDevWorkflowService({ homeDir, codex, projectResolver, configDir, pollMs = 700 }) {
@@ -916,6 +890,38 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     }
   }
 
+  async function probeAcp(input) {
+    const settings = await readSettings();
+    const project = await getProject(input.projectId);
+    const config = settings.adapters.acp;
+    if (!config.enabled) return { ok: false, state: "disabled", protocol: "ACP v1" };
+    if (!config.command) return { ok: false, state: "unconfigured", protocol: "ACP v1" };
+
+    const adapter = new AcpAdapter({
+      command: config.command,
+      args: config.args,
+      cwd: project.path
+    });
+    try {
+      const initialized = await adapter.connect({ timeoutMs: 10000 });
+      return {
+        ok: true,
+        state: "connected",
+        protocol: "ACP v1",
+        initialized: maskSecrets(initialized)
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        state: "error",
+        protocol: "ACP v1",
+        error: error instanceof Error ? error.message : String(error)
+      };
+    } finally {
+      adapter.close();
+    }
+  }
+
   async function saveMcpServer(input) {
     const settings = await readSettings();
     const payload = plain(input.server) ? input.server : input;
@@ -979,6 +985,7 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     testMcpServer: testMcp,
     saveMcpServer,
     setMcpEnabled,
-    removeMcpServer
+    removeMcpServer,
+    probeAcp
   };
 }
