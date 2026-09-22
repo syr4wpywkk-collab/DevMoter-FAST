@@ -405,7 +405,11 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
       change.audit.push({ at: change.updatedAt, action: "applied", files: change.appliedFiles }); await save(state);
       if (input?.autoCommit === true) {
         if (change.autoCommit !== true) throw new Error("Automatic commit is off for this change set");
-        return { change: publicChange(change), commit: await commitChange(projectId, changeId, { message: input.message, confirm: input.confirmCommit === true }) };
+        return {
+          change: publicChange(change),
+          commit: await commitChange(projectId, changeId, { message: input.message }),
+          autoCommitRequiresConfirmation: true
+        };
       }
       return { change: publicChange(change), commit: null };
     });
