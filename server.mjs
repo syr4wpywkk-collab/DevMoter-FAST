@@ -1021,6 +1021,17 @@ async function opencodeProviders(res) {
   }
 }
 
+function materializeOpenCodeUploadBody(body, contentType) {
+  if (!body || !String(contentType || "").includes("application/json")) return body;
+  let payload;
+  try { payload = JSON.parse(Buffer.from(body).toString("utf8")); } catch { return body; }
+  if (typeof payload?.text !== "string" || !payload.text.includes("devmoter-upload:")) return body;
+  payload.text = payload.text.replace(/devmoter-upload:([0-9a-f-]{36})/gi, (_match, id) => {
+    const upload = uploadRegistry.get(id);
+    return upload.path;
+  });
+  return Buffer.from(JSON.stringify(payload));
+}
 async function proxy(req, res) {
   const pocketPath = req.url.replace(/^\/api\/opencode/, "") || "/";
   const upstreamPath = pocketPath.startsWith("/api/")
@@ -1028,7 +1039,7 @@ async function proxy(req, res) {
     : `/api${pocketPath}`;
   const url = new URL(upstreamPath, OPENCODE_URL);
 
-  const body =
+  let body =
     req.method === "GET" || req.method === "HEAD"
       ? undefined
       : await new Promise((resolve, reject) => {
@@ -1037,6 +1048,8 @@ async function proxy(req, res) {
           req.on("end", () => resolve(Buffer.concat(chunks)));
           req.on("error", reject);
         });
+
+  body = materializeOpenCodeUploadBody(body, req.headers["content-type"] || "");
 
   const upstream = await fetch(url, {
     method: req.method,
@@ -1097,7 +1110,7 @@ async function codexRpc(req, res) {
     json(res, 200, { result });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const status = message === "Request body too large" ? 413 : 502;
+    const status = error?.status || (message === "Request body too large" ? 413 : 502);
     json(res, status, {
       error: message,
       data: error?.data ?? null
@@ -1388,7 +1401,10 @@ const server = http.createServer(async (req, res) => {
     await serveStatic(req, res);
   } catch (error) {
     console.error(error);
-    json(res, 500, { error: "DevMoter server error" });
+    json(res, error?.status || 500, {
+      error: error instanceof Error ? error.message : "DevMoter server error",
+      code: error?.code || "server_error"
+    });
   }
 });
 
