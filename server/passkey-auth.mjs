@@ -29,7 +29,11 @@ function parseClientData(value) {
 function requestHost(req) {
   const forwarded = String(req.headers["x-forwarded-host"] || "").split(",")[0].trim();
   const host = forwarded || String(req.headers.host || "localhost");
-  return host.replace(/^\[/, "").replace(/\](:\d+)?$/, "").split(":")[0];
+  try {
+    return new URL("http://" + host).hostname;
+  } catch {
+    return host.split(":")[0] || "localhost";
+  }
 }
 
 function requestOrigin(req) {
@@ -41,7 +45,14 @@ function requestOrigin(req) {
 
 function isLoopback(req) {
   const address = String(req.socket?.remoteAddress || "");
-  return address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1";
+  const host = requestHost(req).toLowerCase();
+  const loopbackAddress = address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1";
+  const loopbackHost = host === "localhost" || host === "127.0.0.1" || host === "::1";
+  return loopbackAddress && loopbackHost;
+}
+
+function explicitBootstrapEnabled() {
+  return process.env.DEVMOTER_PASSKEY_BOOTSTRAP === "1";
 }
 
 function parseCookies(req) {
@@ -146,8 +157,9 @@ export class PasskeyAuth {
       credentialCount: credentials.length,
       rpId: requestHost(req),
       origin: requestOrigin(req),
-      canRegister: Boolean(session) || (credentials.length === 0 && isLoopback(req)),
-      recovery: "Use another registered passkey for this host, or use the local loopback bootstrap flow to register a replacement."
+      canRegister: Boolean(session) || (credentials.length === 0 && (isLoopback(req) || explicitBootstrapEnabled())),
+      bootstrapEnabled: explicitBootstrapEnabled(),
+      recovery: "Use another registered passkey for this host. For a new/recovery origin, temporarily enable DEVMOTER_PASSKEY_BOOTSTRAP=1, register the passkey, then disable it."
     };
   }
 
@@ -179,7 +191,9 @@ export class PasskeyAuth {
     const existing = await this.credentialsFor(req);
     const session = await this.session(req);
     if (existing.length > 0 && !session) throw new Error("Authenticate with an existing passkey before registering another");
-    if (existing.length === 0 && !isLoopback(req)) throw new Error("First passkey registration is only allowed from the local loopback host");
+    if (existing.length === 0 && !isLoopback(req) && !explicitBootstrapEnabled()) {
+      throw new Error("First passkey registration for this origin requires localhost or temporary DEVMOTER_PASSKEY_BOOTSTRAP=1");
+    }
     const challenge = this.challenge("register", req);
     return {
       challengeId: challenge.id,
@@ -301,8 +315,8 @@ export class PasskeyAuth {
   }
 
   async require(req) {
-    const credentials = await this.credentialsFor(req);
-    if (!credentials.length) return { required: false, authenticated: true };
+    const state = await this.load();
+    if (!state.credentials.length) return { required: false, authenticated: true };
     const session = await this.session(req);
     return { required: true, authenticated: Boolean(session) };
   }
