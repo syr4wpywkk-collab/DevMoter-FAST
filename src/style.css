@@ -4064,3 +4064,108 @@ body.opencode-mode #app {
     color: #f28b82;
   }
 }
+
+
+/* ---------- Simplified API setup ---------- */
+
+.api-provider-form-simple {
+  gap: 18px;
+}
+
+.api-provider-form-simple > label > span {
+  font-size: 13px;
+}
+
+.api-provider-form-simple > label > input,
+.api-provider-form-simple > label > select {
+  min-height: 52px;
+  border-radius: 17px;
+  padding-inline: 14px;
+  font-size: 15px;
+}
+
+.api-advanced-settings {
+  border: 1px solid var(--api-border);
+  border-radius: 16px;
+  background: rgba(127, 127, 127, 0.025);
+  overflow: hidden;
+}
+
+.api-advanced-settings summary {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  color: var(--api-muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.api-advanced-settings summary::-webkit-details-marker {
+  display: none;
+}
+
+.api-advanced-settings summary::after {
+  content: "＋";
+  margin-left: auto;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.api-advanced-settings[open] summary::after {
+  content: "−";
+}
+
+.api-advanced-settings-body {
+  display: grid;
+  gap: 14px;
+  padding: 2px 14px 16px;
+  border-top: 1px solid var(--api-border);
+}
+
+.api-advanced-settings-body > label:first-child {
+  margin-top: 14px;
+}
+
+.api-auto-connect-button {
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  border-radius: 17px;
+  background: var(--api-accent);
+  color: white;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 750;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(26, 115, 232, 0.20);
+}
+
+.api-auto-connect-button:hover:not(:disabled) {
+  filter: brightness(1.04);
+}
+
+.api-auto-connect-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+  box-shadow: none;
+}
+
+.api-provider-form-simple .api-form-message:empty {
+  min-height: 0;
+}
+
+.api-provider-form-simple .api-form-message {
+  margin-top: -4px;
+}
+
+@media (max-width: 680px) {
+  .api-provider-form-simple > label > input,
+  .api-provider-form-simple > label > select,
+  .api-auto-connect-button {
+    min-height: 54px;
+  }
+}
