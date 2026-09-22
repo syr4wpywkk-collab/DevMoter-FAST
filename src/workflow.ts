@@ -31,6 +31,14 @@ type ChangeFile = {
     bytes: number;
     totalBytes: number;
   };
+  acceptedPreview: {
+    content: string;
+    truncated: boolean;
+    lines: number;
+    totalLines: number;
+    bytes: number;
+    totalBytes: number;
+  };
 };
 
 type ChangeSet = {
@@ -326,8 +334,13 @@ export function mountTaskWorkflow(root: HTMLElement) {
             </div>
             ${controls}
             <div class="wf-hunks">${hunks || '<div class="wf-notice">No textual hunks.</div>'}</div>
+            ${file.hunks.some(hunk => hunk.decision === "accept") ? `
+              <details class="wf-raw-preview wf-accepted-preview" open>
+                <summary>Accepted result preview · only selected hunks</summary>
+                <pre>${escapeHtml(file.acceptedPreview.content)}</pre>
+              </details>` : ""}
             <details class="wf-raw-preview">
-              <summary>Combined preview · ${file.preview.totalLines} lines · ${file.preview.totalBytes} bytes</summary>
+              <summary>Full proposal preview · ${file.preview.totalLines} lines · ${file.preview.totalBytes} bytes</summary>
               <pre>${escapeHtml(file.preview.content)}</pre>
             </details>
             ${file.preview.truncated ? `
