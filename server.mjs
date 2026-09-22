@@ -7,6 +7,8 @@ import { CodexBridge } from "./server/codex-bridge.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { createOperationRegistry } from "./server/operation-registry.mjs";
+import { listContextEntries, resolveContextReferences } from "./server/context-references.mjs";
+import { createUploadRegistry } from "./server/upload-registry.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -31,6 +33,9 @@ const operationRegistry = createOperationRegistry({
   ttlMs: OPERATION_TTL_MS,
   maxEntries: OPERATION_MAX_ENTRIES
 });
+const uploadRegistry = createUploadRegistry();
+const DEVMOTER_VERSION = "0.2.0";
+const AUTOMATION_API_VERSION = 1;
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
@@ -389,6 +394,434 @@ async function projectWriteFile(id, req, res) {
   }
 }
 
+
+function httpError(message, status = 400, code = "bad_request") {
+  const error = new Error(message);
+  error.status = status;
+  error.code = code;
+  return error;
+}
+
+async function resolveRegisteredProject(selector) {
+  const value = String(selector || "").trim();
+  if (!value) throw httpError("Project is required", 400, "project_required");
+
+  const projects = await readProjectRegistry();
+  const byId = projects.find(project => project.id === value);
+  if (byId) return getProjectById(byId.id);
+
+  const matches = projects.filter(
+    project => String(project.name || "").toLowerCase() === value.toLowerCase()
+  );
+  if (!matches.length) throw httpError("Project not found", 404, "project_not_found");
+  if (matches.length > 1) {
+    throw httpError("Project name is ambiguous; use its project ID", 409, "project_ambiguous");
+  }
+  return getProjectById(matches[0].id);
+}
+
+async function automationProjects(res) {
+  const projects = await readProjectRegistry();
+  const safe = [];
+  for (const project of projects) {
+    let available = false;
+    try {
+      await normalizeExistingProjectPath(project.path);
+      available = true;
+    } catch {}
+    safe.push({
+      id: project.id,
+      name: project.name,
+      addedAt: project.addedAt ?? null,
+      available
+    });
+  }
+  json(res, 200, { apiVersion: AUTOMATION_API_VERSION, projects: safe });
+}
+
+async function automationOpen(req, url, res) {
+  try {
+    const project = await resolveRegisteredProject(url.searchParams.get("project"));
+    const forwarded = String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim();
+    const protocol = forwarded === "https" ? "https" : "http";
+    const publicOrigin = String(process.env.DEVMOTER_PUBLIC_ORIGIN || "").trim();
+    const origin = publicOrigin || (protocol + "://" + String(req.headers.host || (HOST + ":" + PORT)));
+    const target = new URL("/?project=" + encodeURIComponent(project.id), origin).toString();
+    json(res, 200, {
+      apiVersion: AUTOMATION_API_VERSION,
+      project: { id: project.id, name: project.name },
+      url: target
+    });
+  } catch (error) {
+    json(res, error?.status || 400, {
+      error: error instanceof Error ? error.message : String(error),
+      code: error?.code || "open_failed"
+    });
+  }
+}
+
+function projectIdForPath(projects, value) {
+  const path = String(value || "");
+  if (!path) return null;
+  const found = projects.find(project => resolve(project.path) === resolve(path));
+  return found?.id || null;
+}
+
+function normalizeSessionStatus(value) {
+  const status = String(value || "").trim().toLowerCase();
+  return status || "unknown";
+}
+
+async function automationSessions(url, res) {
+  try {
+    const selector = url.searchParams.get("project");
+    const requestedProject = selector ? await resolveRegisteredProject(selector) : null;
+    const agentFilter = String(url.searchParams.get("agent") || "").toLowerCase();
+    const statusFilter = String(url.searchParams.get("status") || "").toLowerCase();
+    const backendFilter = String(url.searchParams.get("backend") || "").toLowerCase();
+    if (backendFilter && !["opencode", "codex"].includes(backendFilter)) {
+      throw httpError("backend must be opencode or codex", 400, "invalid_backend");
+    }
+
+    const projects = await readProjectRegistry();
+    const sessions = [];
+    const errors = [];
+
+    if (!backendFilter || backendFilter === "opencode") {
+      try {
+        const headers = requestedProject
+          ? { "x-opencode-directory": requestedProject.path }
+          : {};
+        const payload = await fetchOpenCodeJson("/api/session?limit=100&order=desc", { headers });
+        const list = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [];
+        for (const session of list) {
+          const location = typeof session?.location === "string"
+            ? session.location
+            : session?.location?.directory;
+          const projectId = requestedProject?.id || projectIdForPath(projects, location);
+          sessions.push({
+            backend: "opencode",
+            id: String(session?.id || ""),
+            title: String(session?.title || "Untitled session"),
+            agent: String(session?.agent || ""),
+            status: normalizeSessionStatus(session?.status || session?.state),
+            projectId,
+            updatedAt: session?.time?.updated ?? null
+          });
+        }
+      } catch (error) {
+        errors.push({ backend: "opencode", error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+
+    if (!backendFilter || backendFilter === "codex") {
+      try {
+        const payload = await codex.request("thread/list", { limit: 100 }, { timeoutMs: 8000 });
+        const list = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.threads) ? payload.threads : [];
+        for (const thread of list) {
+          const projectId = projectIdForPath(projects, thread?.cwd);
+          if (requestedProject && projectId !== requestedProject.id) continue;
+          sessions.push({
+            backend: "codex",
+            id: String(thread?.id || ""),
+            title: String(thread?.name || thread?.preview || "Untitled thread"),
+            agent: "codex",
+            status: normalizeSessionStatus(thread?.status || thread?.state),
+            projectId,
+            updatedAt: thread?.updatedAt ?? thread?.updated_at ?? null
+          });
+        }
+      } catch (error) {
+        errors.push({ backend: "codex", error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+
+    const filtered = sessions.filter(session =>
+      (!agentFilter || session.agent.toLowerCase() === agentFilter) &&
+      (!statusFilter || session.status.toLowerCase() === statusFilter)
+    );
+
+    json(res, 200, {
+      apiVersion: AUTOMATION_API_VERSION,
+      sessions: filtered,
+      errors
+    });
+  } catch (error) {
+    json(res, error?.status || 400, {
+      error: error instanceof Error ? error.message : String(error),
+      code: error?.code || "sessions_failed"
+    });
+  }
+}
+
+function parseOpenCodeModel(value) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  const slash = text.indexOf("/");
+  if (slash <= 0 || slash === text.length - 1) {
+    throw httpError("OpenCode model must be provider/model", 400, "invalid_model");
+  }
+  return { providerID: text.slice(0, slash), modelID: text.slice(slash + 1) };
+}
+
+function extractOpenCodeOutput(payload) {
+  if (typeof payload === "string") return payload;
+  if (typeof payload?.text === "string") return payload.text;
+  if (typeof payload?.message === "string") return payload.message;
+  if (Array.isArray(payload?.parts)) {
+    return payload.parts
+      .filter(part => part?.type === "text" && typeof part.text === "string")
+      .map(part => part.text)
+      .join("");
+  }
+  return "";
+}
+
+async function runOpenCodeAutomationTask(project, { agent, task, model }) {
+  const headers = {
+    "content-type": "application/json",
+    "x-opencode-directory": project.path
+  };
+  const agentsPayload = await fetchOpenCodeJson("/api/agent", { headers });
+  const agents = Array.isArray(agentsPayload) ? agentsPayload : Array.isArray(agentsPayload?.data) ? agentsPayload.data : [];
+  if (!agents.some(item => String(item?.id || "") === agent && item?.hidden !== true)) {
+    throw httpError("OpenCode agent is unavailable", 400, "unsupported_agent");
+  }
+
+  const selectedModel = parseOpenCodeModel(model);
+  const sessionBody = { agent };
+  if (selectedModel) {
+    sessionBody.model = {
+      id: selectedModel.modelID,
+      providerID: selectedModel.providerID
+    };
+  }
+
+  const session = await fetchOpenCodeJson("/api/session", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(sessionBody)
+  });
+  if (!session?.id) throw httpError("OpenCode did not return a session ID", 502, "backend_error");
+
+  const result = await fetchOpenCodeJson("/api/session/" + encodeURIComponent(session.id) + "/prompt", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ text: task })
+  });
+
+  return {
+    apiVersion: AUTOMATION_API_VERSION,
+    backend: "opencode",
+    status: "completed",
+    project: { id: project.id, name: project.name },
+    sessionId: String(session.id),
+    output: extractOpenCodeOutput(result),
+    events: [
+      { type: "session.created", data: { sessionId: String(session.id), backend: "opencode" } },
+      { type: "task.completed", data: { sessionId: String(session.id) } }
+    ]
+  };
+}
+
+async function runCodexAutomationTask(project, { agent, task, model }, req) {
+  if (!["codex", "default"].includes(String(agent || "").toLowerCase())) {
+    throw httpError("Codex supports the codex agent only", 400, "unsupported_agent");
+  }
+
+  const startParams = { cwd: project.path };
+  if (model) startParams.model = model;
+  const started = await codex.request("thread/start", startParams);
+  const thread = started?.thread ?? started;
+  const threadId = String(thread?.id || "");
+  if (!threadId) throw httpError("Codex did not return a thread ID", 502, "backend_error");
+
+  const clientMessageId = operationId(req) || randomUUID();
+  const events = [
+    { type: "session.created", data: { sessionId: threadId, backend: "codex" } }
+  ];
+
+  return new Promise((resolveTask, rejectTask) => {
+    let settled = false;
+    let turnId = "";
+    let output = "";
+
+    const cleanup = () => {
+      codex.off("notification", onNotification);
+      codex.off("server-request", onServerRequest);
+      clearTimeout(timeout);
+    };
+
+    const finish = result => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolveTask(result);
+    };
+
+    const fail = error => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      rejectTask(error);
+    };
+
+    const onNotification = event => {
+      const method = String(event?.method || "");
+      const params = event?.params ?? {};
+      if (params?.threadId && String(params.threadId) !== threadId) return;
+
+      if (method === "item/agentMessage/delta") {
+        const delta = typeof params?.delta === "string" ? params.delta : "";
+        if (delta) {
+          output += delta;
+          events.push({ type: "output.delta", data: { text: delta } });
+        }
+        return;
+      }
+
+      if (method === "turn/completed") {
+        const statusRaw = String(params?.turn?.status || "completed").toLowerCase();
+        const status = ["completed", "success", "succeeded"].includes(statusRaw) ? "completed" : "failed";
+        events.push({ type: "task." + status, data: { turnId: turnId || params?.turn?.id || null, status: statusRaw } });
+        finish({
+          apiVersion: AUTOMATION_API_VERSION,
+          backend: "codex",
+          status,
+          project: { id: project.id, name: project.name },
+          sessionId: threadId,
+          turnId: turnId || String(params?.turn?.id || ""),
+          output,
+          events
+        });
+      }
+    };
+
+    const onServerRequest = event => {
+      const params = event?.params ?? {};
+      if (params?.threadId && String(params.threadId) !== threadId) return;
+      const method = String(event?.method || "");
+      if (
+        method !== "item/commandExecution/requestApproval" &&
+        method !== "item/fileChange/requestApproval"
+      ) return;
+
+      events.push({
+        type: "task.blocked",
+        data: {
+          reason: "approval_required",
+          approvalType: method.includes("fileChange") ? "file_change" : "command"
+        }
+      });
+      finish({
+        apiVersion: AUTOMATION_API_VERSION,
+        backend: "codex",
+        status: "blocked",
+        message: "Task is waiting for approval in DevMoter",
+        project: { id: project.id, name: project.name },
+        sessionId: threadId,
+        turnId,
+        output,
+        events
+      });
+    };
+
+    const timeout = setTimeout(() => {
+      fail(httpError("Codex task timed out", 504, "task_timeout"));
+    }, 10 * 60 * 1000);
+
+    codex.on("notification", onNotification);
+    codex.on("server-request", onServerRequest);
+
+    const turnParams = {
+      threadId,
+      input: [{ type: "text", text: task }],
+      clientUserMessageId: clientMessageId
+    };
+    if (model) turnParams.model = model;
+
+    codex.request("turn/start", turnParams)
+      .then(result => {
+        turnId = String(result?.turn?.id || result?.turnId || "");
+        events.push({ type: "task.started", data: { turnId: turnId || null } });
+      })
+      .catch(fail);
+  });
+}
+
+async function automationTask(req, res) {
+  try {
+    const payload = await readJson(req, 512 * 1024);
+    const project = await resolveRegisteredProject(payload?.project);
+    const agent = String(payload?.agent || "").trim();
+    const task = String(payload?.task || "").trim();
+    const backend = String(payload?.backend || "opencode").trim().toLowerCase();
+    const model = String(payload?.model || "").trim();
+
+    if (!agent) throw httpError("Agent is required", 400, "agent_required");
+    if (!task) throw httpError("Task is required", 400, "task_required");
+    if (Buffer.byteLength(task, "utf8") > 256 * 1024) {
+      throw httpError("Task is too large", 413, "task_too_large");
+    }
+    if (!["opencode", "codex"].includes(backend)) {
+      throw httpError("backend must be opencode or codex", 400, "invalid_backend");
+    }
+
+    const result = backend === "opencode"
+      ? await runOpenCodeAutomationTask(project, { agent, task, model })
+      : await runCodexAutomationTask(project, { agent, task, model }, req);
+    json(res, 200, result);
+  } catch (error) {
+    json(res, error?.status || 502, {
+      error: error instanceof Error ? error.message : String(error),
+      code: error?.code || "task_failed"
+    });
+  }
+}
+
+async function projectContextList(id, url, res) {
+  try {
+    const project = await getProjectById(id);
+    const entries = await listContextEntries(project.path, url.searchParams.get("q") || "");
+    json(res, 200, { projectId: id, entries });
+  } catch (error) {
+    json(res, error?.status || 400, {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
+async function projectContextResolve(id, req, res) {
+  try {
+    const payload = await readJson(req, 128 * 1024);
+    const project = await getProjectById(id);
+    const result = await resolveContextReferences(project.path, payload?.references);
+    json(res, 200, { projectId: id, ...result });
+  } catch (error) {
+    json(res, error?.status || 400, {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
+async function materializeCodexUploadInputs(method, params) {
+  if (method !== "turn/start" || !Array.isArray(params?.input)) return params;
+  const input = params.input.map(item => {
+    if (!item || typeof item !== "object") return item;
+    if (item.uploadId) {
+      const upload = uploadRegistry.get(item.uploadId);
+      const next = { ...item, path: upload.path };
+      delete next.uploadId;
+      return next;
+    }
+    if ((item.type === "localImage" || item.type === "mention") && item.path) {
+      throw httpError("Direct attachment paths are not accepted; upload the file first", 400, "unsafe_attachment_path");
+    }
+    return item;
+  });
+  return { ...params, input };
+}
+
 async function githubProjectsApi() {
   return { read: readProjectRegistry, write: writeProjectRegistry };
 }
@@ -655,9 +1088,10 @@ async function codexRpc(req, res) {
       "skills/list"
     ]).has(method);
 
+    const safeParams = await materializeCodexUploadInputs(method, params);
     const result = await codex.request(
       method,
-      params,
+      safeParams,
       inventoryMethod ? { timeoutMs: 8000 } : {}
     );
     json(res, 200, { result });
@@ -684,12 +1118,13 @@ async function codexUpload(req, res) {
     const { path } = createUploadPath(UPLOAD_DIR, name);
     await writeFile(path, buffer, { mode: 0o600 });
 
+    const uploadId = uploadRegistry.add({ path, name, type: mime, size: buffer.length });
     json(res, 200, {
       ok: true,
+      uploadId,
       name,
       type: mime,
-      size: buffer.length,
-      path
+      size: buffer.length
     });
   } catch (error) {
     json(res, 400, {
@@ -786,6 +1221,41 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/automation/projects") {
+      await automationProjects(res);
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/automation/open") {
+      await automationOpen(req, url, res);
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/automation/sessions") {
+      await automationSessions(url, res);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/automation/tasks") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await automationTask(req, res);
+      return;
+    }
+
+    const contextMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/context(?:\/(resolve))?$/);
+    if (contextMatch) {
+      const projectId = decodeURIComponent(contextMatch[1]);
+      if (req.method === "GET" && !contextMatch[2]) {
+        await projectContextList(projectId, url, res);
+        return;
+      }
+      if (req.method === "POST" && contextMatch[2] === "resolve") {
+        if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+        await projectContextResolve(projectId, req, res);
+        return;
+      }
+    }
+
     if (req.method === "GET" && url.pathname === "/api/github/status") {
       json(res, 200, await githubStatus(HOME_DIR));
       return;
@@ -859,6 +1329,8 @@ const server = http.createServer(async (req, res) => {
         codex.health()
       ]);
       json(res, 200, {
+        version: DEVMOTER_VERSION,
+        apiVersion: AUTOMATION_API_VERSION,
         online: openCode.online || codexHealth.online,
         backends: {
           opencode: openCode,
