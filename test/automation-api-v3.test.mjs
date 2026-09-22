@@ -84,15 +84,20 @@ test("Codex timeout interrupts the known turn before rejecting", async () => {
   };
   const api = apiWith({ codex, taskTimeoutMs: 20 });
 
-  await assert.rejects(
-    api.runCodexTask(
-      { id: "p1", name: "Demo", path: "/safe/demo" },
-      { agent: "codex", task: "keep working", model: "" },
-      { headers: {} },
-      () => {}
-    ),
-    error => error?.status === 504 && error?.code === "task_timeout"
-  );
+  const keepAlive = setInterval(() => {}, 1000);
+  try {
+    await assert.rejects(
+      api.runCodexTask(
+        { id: "p1", name: "Demo", path: "/safe/demo" },
+        { agent: "codex", task: "keep working", model: "" },
+        { headers: {} },
+        () => {}
+      ),
+      error => error?.status === 504 && error?.code === "task_timeout"
+    );
+  } finally {
+    clearInterval(keepAlive);
+  }
 
   assert.deepEqual(
     calls.map(call => call.method),
