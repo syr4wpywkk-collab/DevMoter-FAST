@@ -1,5 +1,74 @@
+import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
+import { randomUUID } from "node:crypto";
+
 const MAX_MESSAGES = 120;
 const MAX_CONTENT_CHARS = 500_000;
+const MAX_PROVIDERS = 40;
+const MAX_MODELS = 300;
+
+export const MULTI_API_PRESETS = [
+  {
+    id: "openai",
+    name: "OpenAI",
+    protocol: "openai-compatible",
+    baseUrl: "https://api.openai.com/v1"
+  },
+  {
+    id: "gemini",
+    name: "Google Gemini",
+    protocol: "openai-compatible",
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai"
+  },
+  {
+    id: "anthropic",
+    name: "Anthropic Claude",
+    protocol: "anthropic",
+    baseUrl: "https://api.anthropic.com/v1"
+  },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    protocol: "openai-compatible",
+    baseUrl: "https://openrouter.ai/api/v1"
+  },
+  {
+    id: "groq",
+    name: "Groq",
+    protocol: "openai-compatible",
+    baseUrl: "https://api.groq.com/openai/v1"
+  },
+  {
+    id: "together",
+    name: "Together AI",
+    protocol: "openai-compatible",
+    baseUrl: "https://api.together.xyz/v1"
+  },
+  {
+    id: "mistral",
+    name: "Mistral AI",
+    protocol: "openai-compatible",
+    baseUrl: "https://api.mistral.ai/v1"
+  },
+  {
+    id: "xai",
+    name: "xAI",
+    protocol: "openai-compatible",
+    baseUrl: "https://api.x.ai/v1"
+  },
+  {
+    id: "deepseek",
+    name: "DeepSeek",
+    protocol: "openai-compatible",
+    baseUrl: "https://api.deepseek.com"
+  },
+  {
+    id: "custom",
+    name: "Custom API",
+    protocol: "openai-compatible",
+    baseUrl: ""
+  }
+];
 
 function isLoopback(hostname) {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
@@ -10,66 +79,83 @@ function normalizeBaseUrl(value) {
   if (url.protocol !== "https:" && !(url.protocol === "http:" && isLoopback(url.hostname))) {
     throw new Error("Provider baseUrl must use HTTPS (HTTP is allowed only for localhost)");
   }
+  url.username = "";
+  url.password = "";
+  url.hash = "";
   return url.toString().replace(/\/$/, "");
 }
 
-function normalizeModels(value) {
-  if (!Array.isArray(value)) return [];
-  return [...new Set(value.map(item => String(item || "").trim()).filter(Boolean))].slice(0, 200);
+function normalizeProtocol(value) {
+  const protocol = String(value || "openai-compatible").trim();
+  if (!["openai-compatible", "anthropic"].includes(protocol)) {
+    throw new Error("Unsupported provider protocol");
+  }
+  return protocol;
 }
 
-export function loadMultiApiProviders(env = process.env) {
-  const raw = String(env.DEVMOTER_LLM_PROVIDERS_JSON || "").trim();
-  if (!raw) return [];
+function normalizeModels(value, { allowEmpty = false } = {}) {
+  const input = Array.isArray(value)
+    ? value
+    : String(value || "")
+        .split(/[\n,]/)
+        .map(item => item.trim());
 
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error("DEVMOTER_LLM_PROVIDERS_JSON must be valid JSON");
+  const models = [...new Set(
+    input.map(item => String(item || "").trim()).filter(Boolean)
+  )].slice(0, MAX_MODELS);
+
+  if (!allowEmpty && models.length === 0) {
+    throw new Error("Configure at least one model");
   }
+  return models;
+}
 
-  if (!Array.isArray(parsed)) {
-    throw new Error("DEVMOTER_LLM_PROVIDERS_JSON must be a JSON array");
+function normalizeProviderId(value) {
+  const id = String(value || "").trim();
+  if (!id || !/^[a-zA-Z0-9._-]{1,80}$/.test(id)) {
+    throw new Error("Provider id is invalid");
   }
+  return id;
+}
 
-  const seen = new Set();
-  return parsed.map((item, index) => {
-    const id = String(item?.id || "").trim();
-    const name = String(item?.name || id).trim();
-    const apiKeyEnv = String(item?.apiKeyEnv || "").trim();
-    const models = normalizeModels(item?.models);
+function normalizeProviderInput(input, { requireKey = false, allowEmptyModels = false } = {}) {
+  const id = input?.id ? normalizeProviderId(input.id) : `ui-${randomUUID()}`;
+  const name = String(input?.name || "").trim().slice(0, 100);
+  const protocol = normalizeProtocol(input?.protocol);
+  const baseUrl = normalizeBaseUrl(input?.baseUrl);
+  const apiKey = String(input?.apiKey || "").trim();
+  const models = normalizeModels(input?.models, { allowEmpty: allowEmptyModels });
+  const presetId = String(input?.presetId || "custom").trim().slice(0, 64);
 
-    if (!id || !/^[a-zA-Z0-9._-]{1,64}$/.test(id)) {
-      throw new Error(`Provider #${index + 1} has an invalid id`);
-    }
-    if (seen.has(id)) throw new Error(`Duplicate provider id: ${id}`);
-    seen.add(id);
-    if (!apiKeyEnv || !/^[A-Z_][A-Z0-9_]*$/.test(apiKeyEnv)) {
-      throw new Error(`Provider ${id} has an invalid apiKeyEnv`);
-    }
-    if (!models.length) throw new Error(`Provider ${id} must configure at least one model`);
+  if (!name) throw new Error("Provider name is required");
+  if (requireKey && !apiKey) throw new Error("API key is required");
 
+  return {
+    id,
+    name,
+    presetId,
+    protocol,
+    baseUrl,
+    apiKey,
+    models
+  };
+}
+
+function providerHeaders(provider) {
+  if (provider.protocol === "anthropic") {
     return {
-      id,
-      name: name || id,
-      kind: "openai-compatible",
-      baseUrl: normalizeBaseUrl(item?.baseUrl),
-      apiKeyEnv,
-      apiKey: String(env[apiKeyEnv] || ""),
-      models
+      "content-type": "application/json",
+      "accept": "application/json",
+      "x-api-key": provider.apiKey,
+      "anthropic-version": "2023-06-01"
     };
-  });
-}
+  }
 
-export function publicMultiApiProviders(providers) {
-  return providers.map(provider => ({
-    id: provider.id,
-    name: provider.name,
-    kind: provider.kind,
-    ready: Boolean(provider.apiKey),
-    models: provider.models
-  }));
+  return {
+    "content-type": "application/json",
+    "accept": "application/json",
+    "authorization": `Bearer ${provider.apiKey}`
+  };
 }
 
 function normalizeMessages(input) {
@@ -100,25 +186,230 @@ function providerErrorMessage(payload, status) {
   return String(candidate).slice(0, 600);
 }
 
-export async function runMultiApiChat(providers, payload, fetchImpl = fetch) {
-  const providerId = String(payload?.providerId || "").trim();
-  const model = String(payload?.model || "").trim();
-  const provider = providers.find(item => item.id === providerId);
+function publicProvider(provider) {
+  return {
+    id: provider.id,
+    name: provider.name,
+    presetId: provider.presetId || "custom",
+    protocol: provider.protocol,
+    baseUrl: provider.baseUrl,
+    ready: Boolean(provider.apiKey),
+    models: provider.models,
+    source: provider.source || "file",
+    editable: provider.source !== "env"
+  };
+}
 
-  if (!provider) throw new Error("Unknown API provider");
-  if (!provider.apiKey) throw new Error(`API key is not configured for ${provider.name}`);
-  if (!provider.models.includes(model)) throw new Error("Model is not allowed for this provider");
+export function publicMultiApiProviders(providers) {
+  return providers.map(publicProvider);
+}
 
-  const messages = normalizeMessages(payload?.messages);
-  const endpoint = `${provider.baseUrl}/chat/completions`;
+export function loadMultiApiProviders(env = process.env) {
+  const raw = String(env.DEVMOTER_LLM_PROVIDERS_JSON || "").trim();
+  if (!raw) return [];
 
-  const upstream = await fetchImpl(endpoint, {
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("DEVMOTER_LLM_PROVIDERS_JSON must be valid JSON");
+  }
+
+  if (!Array.isArray(parsed)) {
+    throw new Error("DEVMOTER_LLM_PROVIDERS_JSON must be a JSON array");
+  }
+
+  const seen = new Set();
+  return parsed.map((item, index) => {
+    const id = normalizeProviderId(item?.id);
+    if (seen.has(id)) throw new Error(`Duplicate provider id: ${id}`);
+    seen.add(id);
+
+    const apiKeyEnv = String(item?.apiKeyEnv || "").trim();
+    if (!apiKeyEnv || !/^[A-Z_][A-Z0-9_]*$/.test(apiKeyEnv)) {
+      throw new Error(`Provider #${index + 1} has an invalid apiKeyEnv`);
+    }
+
+    const normalized = normalizeProviderInput({
+      id,
+      name: item?.name || id,
+      presetId: item?.presetId || "custom",
+      protocol: item?.protocol || "openai-compatible",
+      baseUrl: item?.baseUrl,
+      apiKey: env[apiKeyEnv] || "",
+      models: item?.models
+    });
+
+    return {
+      ...normalized,
+      apiKeyEnv,
+      source: "env"
+    };
+  });
+}
+
+async function readProviderFile(filePath) {
+  try {
+    const raw = await readFile(filePath, "utf8");
+    const parsed = JSON.parse(raw);
+    const providers = Array.isArray(parsed?.providers) ? parsed.providers : [];
+    return providers.map(item => ({
+      ...normalizeProviderInput({
+        id: item?.id,
+        name: item?.name,
+        presetId: item?.presetId,
+        protocol: item?.protocol,
+        baseUrl: item?.baseUrl,
+        apiKey: item?.apiKey,
+        models: item?.models
+      }),
+      createdAt: Number(item?.createdAt) || Date.now(),
+      updatedAt: Number(item?.updatedAt) || Date.now(),
+      source: "file"
+    }));
+  } catch (error) {
+    if (error?.code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+async function writeProviderFile(filePath, providers) {
+  const directory = dirname(filePath);
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  await chmod(directory, 0o700).catch(() => {});
+
+  const payload = JSON.stringify({
+    version: 1,
+    providers: providers.map(provider => ({
+      id: provider.id,
+      name: provider.name,
+      presetId: provider.presetId,
+      protocol: provider.protocol,
+      baseUrl: provider.baseUrl,
+      apiKey: provider.apiKey,
+      models: provider.models,
+      createdAt: provider.createdAt,
+      updatedAt: provider.updatedAt
+    }))
+  }, null, 2);
+
+  const temp = `${filePath}.${process.pid}.${randomUUID()}.tmp`;
+  await writeFile(temp, payload, { mode: 0o600 });
+  await chmod(temp, 0o600).catch(() => {});
+  await rename(temp, filePath);
+  await chmod(filePath, 0o600).catch(() => {});
+}
+
+export function createMultiApiStore({ filePath, env = process.env } = {}) {
+  if (!filePath) throw new Error("multi-API store filePath is required");
+
+  async function listResolved() {
+    const [fileProviders, envProviders] = await Promise.all([
+      readProviderFile(filePath),
+      Promise.resolve(loadMultiApiProviders(env))
+    ]);
+
+    const ids = new Set(envProviders.map(provider => provider.id));
+    return [
+      ...envProviders,
+      ...fileProviders.filter(provider => !ids.has(provider.id))
+    ].slice(0, MAX_PROVIDERS);
+  }
+
+  async function upsert(input) {
+    const providers = await readProviderFile(filePath);
+    const existingIndex = input?.id
+      ? providers.findIndex(provider => provider.id === String(input.id))
+      : -1;
+    const existing = existingIndex >= 0 ? providers[existingIndex] : null;
+
+    if (existing == null && providers.length >= MAX_PROVIDERS) {
+      throw new Error("Too many API providers");
+    }
+
+    const normalized = normalizeProviderInput({
+      ...input,
+      id: existing?.id || input?.id,
+      apiKey: String(input?.apiKey || "").trim() || existing?.apiKey || ""
+    });
+
+    if (!normalized.apiKey) throw new Error("API key is required");
+
+    const now = Date.now();
+    const record = {
+      ...normalized,
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+      source: "file"
+    };
+
+    if (existingIndex >= 0) providers[existingIndex] = record;
+    else providers.push(record);
+
+    await writeProviderFile(filePath, providers);
+    return publicProvider(record);
+  }
+
+  async function remove(id) {
+    const providerId = normalizeProviderId(id);
+    const providers = await readProviderFile(filePath);
+    const next = providers.filter(provider => provider.id !== providerId);
+    if (next.length === providers.length) throw new Error("Provider not found");
+    await writeProviderFile(filePath, next);
+    return { ok: true };
+  }
+
+  return {
+    listResolved,
+    upsert,
+    remove
+  };
+}
+
+function parseModelList(payload) {
+  const raw = Array.isArray(payload?.data)
+    ? payload.data
+    : Array.isArray(payload?.models)
+      ? payload.models
+      : [];
+
+  return [...new Set(
+    raw
+      .map(item => typeof item === "string" ? item : item?.id ?? item?.name)
+      .map(item => String(item || "").trim())
+      .filter(Boolean)
+  )].slice(0, MAX_MODELS);
+}
+
+export async function testMultiApiProvider(input, fetchImpl = fetch) {
+  const provider = normalizeProviderInput(input, {
+    requireKey: true,
+    allowEmptyModels: true
+  });
+
+  const upstream = await fetchImpl(`${provider.baseUrl}/models`, {
+    method: "GET",
+    headers: providerHeaders(provider),
+    signal: AbortSignal.timeout(20_000)
+  });
+
+  const data = await upstream.json().catch(() => ({}));
+  if (!upstream.ok) {
+    const error = new Error(providerErrorMessage(data, upstream.status));
+    error.status = upstream.status;
+    throw error;
+  }
+
+  return {
+    ok: true,
+    models: parseModelList(data)
+  };
+}
+
+async function runOpenAiCompatible(provider, model, messages, fetchImpl) {
+  const upstream = await fetchImpl(`${provider.baseUrl}/chat/completions`, {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "accept": "application/json",
-      "authorization": `Bearer ${provider.apiKey}`
-    },
+    headers: providerHeaders(provider),
     body: JSON.stringify({
       model,
       messages,
@@ -136,13 +427,80 @@ export async function runMultiApiChat(providers, payload, fetchImpl = fetch) {
 
   const content = data?.choices?.[0]?.message?.content;
   if (typeof content !== "string") {
-    throw new Error("Provider returned an unsupported response shape");
+    throw new Error("Provider returned an unsupported OpenAI-compatible response shape");
   }
+
+  return {
+    content,
+    usage: data?.usage ?? null
+  };
+}
+
+async function runAnthropic(provider, model, messages, fetchImpl) {
+  const systemMessages = messages.filter(message => message.role === "system");
+  const conversational = messages
+    .filter(message => message.role !== "system")
+    .map(message => ({ role: message.role, content: message.content }));
+
+  const body = {
+    model,
+    max_tokens: 4096,
+    messages: conversational
+  };
+
+  if (systemMessages.length > 0) {
+    body.system = systemMessages.map(message => message.content).join("\n\n");
+  }
+
+  const upstream = await fetchImpl(`${provider.baseUrl}/messages`, {
+    method: "POST",
+    headers: providerHeaders(provider),
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120_000)
+  });
+
+  const data = await upstream.json().catch(() => ({}));
+  if (!upstream.ok) {
+    const error = new Error(providerErrorMessage(data, upstream.status));
+    error.status = upstream.status;
+    throw error;
+  }
+
+  const content = Array.isArray(data?.content)
+    ? data.content
+        .filter(item => item?.type === "text")
+        .map(item => String(item?.text || ""))
+        .join("")
+    : "";
+
+  if (!content) {
+    throw new Error("Provider returned an unsupported Anthropic response shape");
+  }
+
+  return {
+    content,
+    usage: data?.usage ?? null
+  };
+}
+
+export async function runMultiApiChat(providers, payload, fetchImpl = fetch) {
+  const providerId = String(payload?.providerId || "").trim();
+  const model = String(payload?.model || "").trim();
+  const provider = providers.find(item => item.id === providerId);
+
+  if (!provider) throw new Error("Unknown API provider");
+  if (!provider.apiKey) throw new Error(`API key is not configured for ${provider.name}`);
+  if (!provider.models.includes(model)) throw new Error("Model is not allowed for this provider");
+
+  const messages = normalizeMessages(payload?.messages);
+  const result = provider.protocol === "anthropic"
+    ? await runAnthropic(provider, model, messages, fetchImpl)
+    : await runOpenAiCompatible(provider, model, messages, fetchImpl);
 
   return {
     providerId,
     model,
-    message: { role: "assistant", content },
-    usage: data?.usage ?? null
+    message: { role: "assistant", content: result.content },
+    usage: result.usage
   };
 }
