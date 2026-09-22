@@ -3,6 +3,45 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const COMMAND_TIMEOUT_MS = 8_000;
+const ACTION_COOLDOWN_MS = 2_000;
+const lastActionAt = new Map();
+
+class IntegrationError extends Error {
+  constructor(message, status = 400) {
+    super(message);
+    this.name = "IntegrationError";
+    this.status = status;
+  }
+}
+
+export function sanitizeChildEnv(source = process.env) {
+  const env = { ...source };
+  for (const key of Object.keys(env)) {
+    if (
+      /^(DEVMOTER|POCKET|OPENCODE).*?(PASSWORD|TOKEN|SECRET|API_KEY|KEY)$/i.test(key) ||
+      key === "OPENCODE_SERVER_PASSWORD"
+    ) {
+      delete env[key];
+    }
+  }
+  return env;
+}
+
+function assertActionCooldown(key) {
+  const now = Date.now();
+  const previous = lastActionAt.get(key) || 0;
+  if (now - previous < ACTION_COOLDOWN_MS) {
+    throw new IntegrationError("Please wait before repeating this integration action.", 429);
+  }
+  lastActionAt.set(key, now);
+}
+
+export function publicIntegrationError(error) {
+  if (error instanceof IntegrationError) {
+    return { status: error.status, error: error.message };
+  }
+  return { status: 500, error: "Integration operation failed" };
+}
 
 const DEFINITIONS = {
   antigravity: {
@@ -38,8 +77,12 @@ const DEFINITIONS = {
   }
 };
 
-function compactOutput(value, limit = 2_000) {
-  return String(value || "").replace(/\u001b\[[0-9;]*m/g, "").trim().slice(0, limit);
+export function compactOutput(value, limit = 2_000) {
+  return String(value || "")
+    .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .trim()
+    .slice(0, limit);
 }
 
 async function run(bin, args, options = {}) {
@@ -49,7 +92,7 @@ async function run(bin, args, options = {}) {
     maxBuffer: 512 * 1024,
     windowsHide: true,
     env: {
-      ...process.env,
+      ...sanitizeChildEnv(process.env),
       NO_COLOR: "1",
       TERM: process.env.TERM || "dumb"
     }
@@ -73,15 +116,30 @@ async function detect(definition) {
     }
     return {
       installed: true,
-      version: null,
-      warning: compactOutput(error instanceof Error ? error.message : String(error), 500)
+      version: null
     };
   }
 }
 
-function extractUrl(text) {
-  const match = String(text || "").match(/https:\/\/[^\s<>"']+/i);
-  return match?.[0]?.replace(/[),.;]+$/, "") || null;
+export function validateAntigravityRemoteUrl(value) {
+  try {
+    const url = new URL(String(value || ""));
+    if (url.protocol !== "https:") return null;
+    if (url.hostname !== "antigravity.google.com") return null;
+    if (url.username || url.password) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function extractAntigravityRemoteUrl(text) {
+  const matches = String(text || "").match(/https:\/\/[^\s<>"']+/gi) || [];
+  for (const candidate of matches) {
+    const normalized = validateAntigravityRemoteUrl(candidate.replace(/[),.;]+$/, ""));
+    if (normalized) return normalized;
+  }
+  return null;
 }
 
 function parseAntigravityStatus(output) {
@@ -99,7 +157,7 @@ function parseAntigravityStatus(output) {
   return {
     running,
     name,
-    remoteUrl: extractUrl(text),
+    remoteUrl: extractAntigravityRemoteUrl(text),
     output: text
   };
 }
@@ -154,7 +212,7 @@ async function spawnDetached(bin, args, cwd) {
       cwd,
       detached: true,
       stdio: "ignore",
-      env: process.env
+      env: sanitizeChildEnv(process.env)
     });
     child.once("spawn", () => {
       child.unref();
@@ -186,6 +244,16 @@ async function launchInTerminal(command, cwd, extraArgs = []) {
   throw new Error(`Desktop launch is not implemented for ${process.platform} yet`);
 }
 
+export function publicDefinition(definition) {
+  return {
+    id: definition.id,
+    name: definition.name,
+    webUrl: definition.webUrl,
+    ...(definition.mobileUrl ? { mobileUrl: definition.mobileUrl } : {}),
+    capabilities: { ...definition.capabilities }
+  };
+}
+
 export async function listIntegrations() {
   const [antigravityDetection, claudeDetection, remote] = await Promise.all([
     detect(DEFINITIONS.antigravity),
@@ -196,7 +264,7 @@ export async function listIntegrations() {
   return {
     integrations: [
       {
-        ...DEFINITIONS.antigravity,
+        ...publicDefinition(DEFINITIONS.antigravity),
         ...antigravityDetection,
         remote: {
           running: remote.running,
@@ -207,7 +275,7 @@ export async function listIntegrations() {
         }
       },
       {
-        ...DEFINITIONS.claude,
+        ...publicDefinition(DEFINITIONS.claude),
         ...claudeDetection
       }
     ]
@@ -216,26 +284,32 @@ export async function listIntegrations() {
 
 export async function launchIntegration(id, cwd) {
   const definition = DEFINITIONS[id];
-  if (!definition) throw new Error("Unknown integration");
+  if (!definition) throw new IntegrationError("Unknown integration");
+
+  assertActionCooldown(`launch:${id}`);
 
   const detection = await detect(definition);
   if (!detection.installed) {
-    throw new Error(`${definition.name} is not installed`);
+    throw new IntegrationError(`${definition.name} is not installed`);
   }
 
-  const result = await launchInTerminal(definition.bin, cwd);
-  return {
-    ok: true,
-    integration: id,
-    cwd,
-    ...result
-  };
+  try {
+    const result = await launchInTerminal(definition.bin, cwd);
+    return {
+      ok: true,
+      integration: id,
+      ...result
+    };
+  } catch (error) {
+    if (error instanceof IntegrationError) throw error;
+    throw new IntegrationError("Unable to launch the integration on this host.");
+  }
 }
 
 export async function antigravityRemoteAction(action) {
   const definition = DEFINITIONS.antigravity;
   const detection = await detect(definition);
-  if (!detection.installed) throw new Error("Antigravity CLI is not installed");
+  if (!detection.installed) throw new IntegrationError("Antigravity CLI is not installed");
 
   if (action === "status") {
     return antigravityRemoteStatus();
@@ -246,9 +320,15 @@ export async function antigravityRemoteAction(action) {
     stop: ["remote-control", "stop"]
   };
   const args = argsByAction[action];
-  if (!args) throw new Error("Unsupported Antigravity Remote Control action");
+  if (!args) throw new IntegrationError("Unsupported Antigravity Remote Control action");
 
-  const result = await run(definition.bin, args, { timeoutMs: 20_000 });
+  assertActionCooldown("antigravity:remote");
+
+  try {
+    await run(definition.bin, args, { timeoutMs: 20_000 });
+  } catch {
+    throw new IntegrationError("Antigravity Remote Control command failed.");
+  }
   const status = await antigravityRemoteStatus();
 
   return {
