@@ -52,6 +52,22 @@ Do not place OpenCode, Codex, GitHub, provider, or DevMoter credentials in front
 
 The generated DevMoter password file and OpenCode password file are host-side secrets. Keep their filesystem permissions restricted and rotate them if they are disclosed.
 
+## Host integration boundary
+
+The Antigravity and Claude Code launchers are treated as privileged host integrations:
+
+- integration endpoints are behind the same DevMoter authentication boundary as the rest of the UI/API;
+- mutation routes additionally require exact same-origin browser requests;
+- browser cross-site probes are rejected for integration status because status discovery invokes local executables;
+- project working directories are resolved from the existing registered Project ID rather than accepting arbitrary paths from the browser;
+- launch commands use fixed executable/argument arrays and do not invoke a shell;
+- child processes do not inherit password, token, API-key, private-key, credential, or common process-injection environment variables;
+- Antigravity Remote URLs are accepted only from the exact `https://antigravity.google.com` origin;
+- QR handoff assets are bundled locally; displaying them does not contact a third-party QR service;
+- DevMoter does not extract Claude/Antigravity OAuth sessions or turn consumer subscriptions into proxy APIs.
+
+Enabling or hiding an integration in the UI is a presentation preference, **not** an authorization control. Treat anyone with valid DevMoter credentials as able to exercise the host integrations exposed by that installation.
+
 ## Known alpha limitations
 
 - Authentication is single-user and does not provide per-user roles or fine-grained authorization.
