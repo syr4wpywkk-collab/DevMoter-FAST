@@ -119,15 +119,19 @@ function normalizeProviderId(value) {
 }
 
 function normalizeProviderInput(input, { requireKey = false, allowEmptyModels = false } = {}) {
+  const presetId = String(input?.presetId || "custom").trim().slice(0, 64);
+  const preset = MULTI_API_PRESETS.find(item => item.id === presetId);
   const id = input?.id ? normalizeProviderId(input.id) : `ui-${randomUUID()}`;
-  const name = String(input?.name || "").trim().slice(0, 100);
-  const protocol = normalizeProtocol(input?.protocol);
-  const baseUrl = normalizeBaseUrl(input?.baseUrl);
+  const name = String(input?.name || preset?.name || "").trim().slice(0, 100);
+  const protocol = normalizeProtocol(input?.protocol || preset?.protocol || "openai-compatible");
+  const baseUrl = normalizeBaseUrl(input?.baseUrl || preset?.baseUrl);
   const apiKey = String(input?.apiKey || "").trim();
   const models = normalizeModels(input?.models, { allowEmpty: allowEmptyModels });
-  const presetId = String(input?.presetId || "custom").trim().slice(0, 64);
 
   if (!name) throw new Error("Provider name is required");
+  if (presetId === "custom" && !String(input?.baseUrl || "").trim()) {
+    throw new Error("Custom API requires a Base URL");
+  }
   if (requireKey && !apiKey) throw new Error("API key is required");
 
   return {
