@@ -605,7 +605,6 @@ body.codex-mode #app {
     max(16px, env(safe-area-inset-right))
     calc(172px + env(safe-area-inset-bottom))
     max(16px, env(safe-area-inset-left));
-  scroll-behavior: smooth;
 }
 
 .cx-welcome {
@@ -2039,7 +2038,6 @@ body.opencode-mode #app {
     max(15px, env(safe-area-inset-right))
     calc(190px + env(safe-area-inset-bottom))
     max(15px, env(safe-area-inset-left));
-  scroll-behavior: smooth;
 }
 
 .ocx-welcome {
