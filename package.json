@@ -11,7 +11,8 @@
     "build": "tsc --noEmit && vite build",
     "start": "node server.mjs",
     "test": "node --test test/**/*.test.mjs",
-    "test:coverage": "c8 --reporter=text --reporter=lcov npm test"
+    "test:coverage": "c8 --reporter=text --reporter=lcov npm test",
+    "cli": "node cli/devmoter.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.2",
@@ -21,5 +22,11 @@
   "license": "MIT",
   "dependencies": {
     "@simplewebauthn/server": "14.0.2"
+  },
+  "bin": {
+    "devmoter": "./cli/devmoter.mjs"
+  },
+  "exports": {
+    "./sdk": "./sdk/index.mjs"
   }
 }

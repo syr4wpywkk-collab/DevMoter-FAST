@@ -16,6 +16,18 @@ import { mountRemoteControlCenter } from "./remote-control";
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const startupParams = new URLSearchParams(window.location.search);
 
+const requestedProject = startupParams.get("project");
+if (requestedProject) {
+  localStorage.setItem("opencode-pocket-project", requestedProject);
+  startupParams.delete("project");
+  const nextQuery = startupParams.toString();
+  window.history.replaceState(
+    window.history.state,
+    "",
+    window.location.pathname + (nextQuery ? "?" + nextQuery : "") + window.location.hash
+  );
+}
+
 if (startupParams.get("demo") === "1") {
   mountDemo(app);
 } else {

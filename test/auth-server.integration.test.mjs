@@ -159,6 +159,88 @@ test("server requires auth and exact Origin for mutations", async () => {
     assert.equal(authenticated.status, 200);
     assert.equal(authenticated.headers.get("cache-control"), "no-store");
 
+    const automationUnauthenticated = await fetch(`${origin}/api/automation/projects`);
+    assert.equal(automationUnauthenticated.status, 401);
+
+    const automationProjects = await fetch(`${origin}/api/automation/projects`, {
+      headers: { authorization }
+    });
+    assert.equal(automationProjects.status, 200);
+    const automationProjectPayload = await automationProjects.json();
+    assert.equal(Array.isArray(automationProjectPayload.projects), true);
+    assert.equal(JSON.stringify(automationProjectPayload).includes('"path"'), false);
+
+    const automationMutationMissingOrigin = await fetch(`${origin}/api/automation/tasks`, {
+      method: "POST",
+      headers: {
+        authorization,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        project: "missing-project",
+        agent: "build",
+        task: "test",
+        backend: "opencode"
+      })
+    });
+    assert.equal(automationMutationMissingOrigin.status, 403);
+
+    const automationMutationSameOrigin = await fetch(`${origin}/api/automation/tasks`, {
+      method: "POST",
+      headers: {
+        authorization,
+        origin,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "automation-auth-boundary"
+      },
+      body: JSON.stringify({
+        project: "missing-project",
+        agent: "build",
+        task: "test",
+        backend: "opencode"
+      })
+    });
+    assert.equal(automationMutationSameOrigin.status, 404);
+
+    const upload = await fetch(`${origin}/api/codex/upload`, {
+      method: "POST",
+      headers: {
+        authorization,
+        origin,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "opaque-upload-test"
+      },
+      body: JSON.stringify({
+        name: "tiny.txt",
+        type: "text/plain",
+        data: "data:text/plain;base64,aGVsbG8="
+      })
+    });
+    assert.equal(upload.status, 200);
+    const uploadPayload = await upload.json();
+    assert.match(String(uploadPayload.uploadId || ""), /^[0-9a-f-]{36}$/i);
+    assert.equal(Object.hasOwn(uploadPayload, "path"), false);
+
+    const directPathAttachment = await fetch(`${origin}/api/codex/rpc`, {
+      method: "POST",
+      headers: {
+        authorization,
+        origin,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "direct-path-rejection"
+      },
+      body: JSON.stringify({
+        method: "turn/start",
+        params: {
+          threadId: "thread-does-not-matter",
+          input: [{ type: "localImage", path: "/etc/passwd" }]
+        }
+      })
+    });
+    assert.equal(directPathAttachment.status, 400);
+    const directPathPayload = await directPathAttachment.json();
+    assert.match(String(directPathPayload.error || ""), /Direct attachment paths are not accepted/);
+
     const missingOrigin = await fetch(`${origin}/api/projects`, {
       method: "POST",
       headers: {
