@@ -192,33 +192,64 @@ function limitedCommand(bin, args, cwd, offset = 0, lineLimit = 1200, byteLimit 
   byteLimit = Math.max(1024, Math.min(MAX_WINDOW_BYTES, Number(byteLimit) || 192 * 1024));
   return new Promise((resolvePromise, reject) => {
     const child = spawn(bin, args, { cwd, env: process.env, windowsHide: true });
-    let carry = "", out = "", stderr = "", seen = 0, kept = 0, bytes = 0, truncated = false, done = false;
+    let out = "", stderr = "", seen = 0, kept = 0, bytes = 0, truncated = false, done = false, openLine = false;
+    let timer = null;
     const finish = (value, error) => {
-      if (done) return; done = true; clearTimeout(timer);
+      if (done) return;
+      done = true;
+      if (timer) clearTimeout(timer);
       error ? reject(error) : resolvePromise(value);
     };
-    const accept = line => {
-      if (seen++ < offset) return;
-      const size = Buffer.byteLength(line);
-      if (kept >= lineLimit || bytes + size > byteLimit) { truncated = true; child.kill("SIGTERM"); return; }
-      out += line; kept += 1; bytes += size;
+    const acceptPiece = (piece, endsLine) => {
+      if (seen < offset) {
+        if (endsLine) seen += 1;
+        return;
+      }
+      if (kept >= lineLimit) {
+        truncated = true;
+        child.kill("SIGTERM");
+        return;
+      }
+      const size = Buffer.byteLength(piece);
+      if (bytes + size > byteLimit) {
+        truncated = true;
+        child.kill("SIGTERM");
+        return;
+      }
+      out += piece;
+      bytes += size;
+      openLine = !endsLine;
+      if (endsLine) {
+        kept += 1;
+        seen += 1;
+        openLine = false;
+      }
     };
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", chunk => {
-      carry += chunk;
-      const lines = carry.split(/(?<=\n)/);
-      carry = lines.pop() || "";
-      for (const line of lines) { accept(line); if (truncated) break; }
+      let cursor = 0;
+      while (cursor < chunk.length && !truncated) {
+        const newline = chunk.indexOf("\n", cursor);
+        if (newline === -1) {
+          acceptPiece(chunk.slice(cursor), false);
+          break;
+        }
+        acceptPiece(chunk.slice(cursor, newline + 1), true);
+        cursor = newline + 1;
+      }
     });
     child.stderr.setEncoding("utf8");
     child.stderr.on("data", chunk => { stderr = (stderr + chunk).slice(-4000); });
     child.on("error", error => finish(null, error));
     child.on("close", code => {
-      if (carry && !truncated) accept(carry);
+      if (openLine && !truncated) kept += 1;
       if (code && !truncated) return finish(null, new Error(stderr.trim() || (bin + " exited " + code)));
       finish({ content: out, offsetLines: offset, returnedLines: kept, bytes, truncated });
     });
-    const timer = setTimeout(() => { child.kill("SIGTERM"); finish(null, new Error(bin + " timed out")); }, 30000);
+    timer = setTimeout(() => {
+      child.kill("SIGTERM");
+      finish(null, new Error(bin + " timed out"));
+    }, 30000);
   });
 }
 
@@ -295,6 +326,25 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
     });
   }
 
+  function generatedCommitMessage(change) {
+    const applied = new Set(change.appliedFiles || []);
+    const files = change.files.filter(file => applied.has(file.path));
+    if (files.length === 1) {
+      const file = files[0];
+      const action = !file.originalExists ? "add" : file.proposed === null ? "remove" : "update";
+      return "chore: " + action + " " + file.path;
+    }
+    const created = files.filter(file => !file.originalExists).length;
+    const deleted = files.filter(file => file.proposed === null).length;
+    const modified = Math.max(0, files.length - created - deleted);
+    const detail = [
+      created ? created + " added" : "",
+      modified ? modified + " modified" : "",
+      deleted ? deleted + " removed" : ""
+    ].filter(Boolean).join(", ");
+    return "chore: apply reviewed changes to " + files.length + " files" + (detail ? " (" + detail + ")" : "");
+  }
+
   async function commitChange(projectId, changeId, input = {}) {
     const project = await getProjectById(projectId); await assertRepo(project.path);
     const state = await load();
@@ -304,7 +354,7 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
     const dirty = statusPaths((await run("git", ["status", "--porcelain=v1", "--untracked-files=all"], project.path)).stdout);
     const unrelated = dirty.filter(path => !files.includes(path));
     if (unrelated.length) throw new Error("Unrelated dirty changes block commit: " + unrelated.slice(0, 8).join(", "));
-    const message = String(input?.message || (files.length === 1 ? "chore: update " + files[0] : "chore: update " + files.length + " reviewed files")).trim().slice(0, 200);
+    const message = String(input?.message || generatedCommitMessage(change)).trim().slice(0, 200);
     const preview = { files, message, unrelatedDirty: unrelated };
     if (input?.confirm !== true) return { preview, committed: false };
     await run("git", ["add", "--", ...files], project.path);
@@ -368,20 +418,49 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
     const lineLimit = Math.max(1, Math.min(MAX_WINDOW_LINES, Number(params.get("lines")) || 400));
     const byteLimit = Math.max(1024, Math.min(MAX_WINDOW_BYTES, Number(params.get("bytes")) || 192 * 1024));
     const stream = createReadStream(p.target, { encoding: "utf8" });
-    let carry = "", seen = 0, kept = 0, used = 0, content = "", truncated = false;
+    let seen = 0, kept = 0, used = 0, content = "", truncated = false, openLine = false;
+
     for await (const chunk of stream) {
-      carry += chunk;
-      const lines = carry.split(/(?<=\n)/); carry = lines.pop() || "";
-      for (const line of lines) {
-        if (seen++ < offset) continue;
-        const size = Buffer.byteLength(line);
-        if (kept >= lineLimit || used + size > byteLimit) { truncated = true; stream.destroy(); break; }
-        content += line; kept += 1; used += size;
+      let cursor = 0;
+      while (cursor < chunk.length) {
+        const newline = chunk.indexOf("\n", cursor);
+        const endsLine = newline !== -1;
+        const piece = endsLine ? chunk.slice(cursor, newline + 1) : chunk.slice(cursor);
+
+        if (seen < offset) {
+          if (endsLine) seen += 1;
+        } else {
+          if (kept >= lineLimit || used + Buffer.byteLength(piece) > byteLimit) {
+            truncated = true;
+            stream.destroy();
+            break;
+          }
+          content += piece;
+          used += Buffer.byteLength(piece);
+          openLine = !endsLine;
+          if (endsLine) {
+            kept += 1;
+            seen += 1;
+            openLine = false;
+          }
+        }
+
+        if (!endsLine) break;
+        cursor = newline + 1;
       }
       if (truncated) break;
     }
-    if (carry && !truncated && seen >= offset && kept < lineLimit && used + Buffer.byteLength(carry) <= byteLimit) { content += carry; kept += 1; used += Buffer.byteLength(carry); }
-    return { path: p.path, content, offsetLines: offset, returnedLines: kept, bytes: used, truncated, notice: truncated ? "File window truncated by server safety limits." : null };
+
+    if (openLine && !truncated) kept += 1;
+    return {
+      path: p.path,
+      content,
+      offsetLines: offset,
+      returnedLines: kept,
+      bytes: used,
+      truncated,
+      notice: truncated ? "File window truncated by server safety limits." : null
+    };
   }
 
   async function uniqueBranch(projectPath, requested) {
@@ -452,6 +531,29 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
     });
   }
 
+  async function listTasks(projectId) {
+    const state = await load();
+    return state.tasks
+      .filter(task => task.projectId === projectId)
+      .map(task => ({
+        id: task.id,
+        projectId: task.projectId,
+        repo: task.repo,
+        branch: task.branch,
+        agent: task.agent,
+        sessionId: task.sessionId,
+        status: task.status,
+        createdAt: task.createdAt,
+        issue: {
+          number: task.issue?.number,
+          title: task.issue?.title,
+          url: task.issue?.url
+        },
+        attachments: task.attachments || [],
+        pr: task.pr || null
+      }));
+  }
+
   async function pullRequest(projectId, input) {
     return locked(async () => {
       const project = await getProjectById(projectId);
@@ -470,7 +572,7 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
       const bodyText = String(input?.body || "").slice(0, 20000) + "\n\n---\nDevMoter task: " + (task?.id || "n/a") + "\nDevMoter session: " + (task?.sessionId || worktree.sessionId || "n/a");
       const preview = { repo, base, head, title, body: bodyText, worktreeId: worktree.id, taskId: task?.id || null };
       if (input?.confirm !== true) return { created: false, confirmationRequired: true, preview };
-      const result = await run("gh", ["pr", "create", "--repo", repo, "--base", base, "--head", head, "--title", title, "--body", bodyText], worktree.path, 60000);
+      await run("git", ["push", "--set-upstream", "origin", head], worktree.path, 60000);\n      const result = await run("gh", ["pr", "create", "--repo", repo, "--base", base, "--head", head, "--title", title, "--body", bodyText], worktree.path, 60000);
       const url = result.stdout.trim().split(/\s+/).find(x => /^https:\/\/github\.com\//.test(x)) || result.stdout.trim();
       if (task) { task.status = "pr-created"; task.pr = { url, base, head, title, at: Date.now() }; await save(state); }
       return { created: true, url, preview };
@@ -497,7 +599,7 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
       if (req.method === "POST" && tail === "worktrees") { send(res, 201, { worktree: await createWorktree(projectId, await body(req)) }); return true; }
       sub = tail.match(/^worktrees\/([^/]+)\/cleanup$/);
       if (req.method === "POST" && sub) { send(res, 200, await cleanupWorktree(projectId, decodeURIComponent(sub[1]), await body(req))); return true; }
-      if (req.method === "POST" && tail === "github/issue") { send(res, 201, await issueTask(projectId, await body(req))); return true; }
+      if (req.method === "GET" && tail === "github/tasks") { send(res, 200, { tasks: await listTasks(projectId) }); return true; }\n      if (req.method === "POST" && tail === "github/issue") { send(res, 201, await issueTask(projectId, await body(req))); return true; }
       if (req.method === "POST" && tail === "github/pr") { send(res, 200, await pullRequest(projectId, await body(req))); return true; }
       send(res, 404, { error: "Workflow endpoint not found" }); return true;
     } catch (error) {
@@ -507,7 +609,7 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
     }
   }
 
-  return { handle, createChange, listChanges, review, applyChange, commitChange, diff, fileWindow, createWorktree, listWorktrees, cleanupWorktree, issueTask, pullRequest };
+  return { handle, createChange, listChanges, review, applyChange, commitChange, diff, fileWindow, createWorktree, listWorktrees, cleanupWorktree, issueTask, listTasks, pullRequest };
 }
 
 export const workflowInternals = { lcsHunks, applyHunks, trimPreview, validBranch };
