@@ -8,6 +8,7 @@ import { mountSessionControl } from "./session-control";
 import { mountWorkspaceTools } from "./workspace-tools";
 import { mountAdvancedTools } from "./advanced";
 import { mountControlCenter } from "./control-center";
+import { mountTaskWorkflow } from "./workflow";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
@@ -15,6 +16,7 @@ app.innerHTML = `
   <div id="openCodeView" class="pocket-view"><div id="openCodeMount"></div></div>
   <div id="codexView" class="pocket-view hidden"><div id="codexMount"></div></div>
   <div id="integrationsView" class="pocket-view hidden"><div id="integrationsMount"></div></div>
+  <div id="workflowMount"></div>
 `;
 
 const openCodeView = document.querySelector<HTMLDivElement>("#openCodeView")!;
@@ -23,6 +25,7 @@ const integrationsView = document.querySelector<HTMLDivElement>("#integrationsVi
 const openCodeMount = document.querySelector<HTMLDivElement>("#openCodeMount")!;
 const codexMount = document.querySelector<HTMLDivElement>("#codexMount")!;
 const integrationsMount = document.querySelector<HTMLDivElement>("#integrationsMount")!;
+const workflowMount = document.querySelector<HTMLDivElement>("#workflowMount")!;
 
 type Backend = "opencode" | "codex" | "integrations";
 
@@ -64,6 +67,7 @@ mountSessionControl({ switchBackend: backend => setBackend(backend) });
 mountWorkspaceTools();
 mountAdvancedTools();
 mountControlCenter();
+mountTaskWorkflow(workflowMount);
 
 let healthCheckInFlight = false;
 async function checkHealth() {
