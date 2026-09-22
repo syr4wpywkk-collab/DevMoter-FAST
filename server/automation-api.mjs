@@ -70,7 +70,8 @@ export function createAutomationApi({
   readJson,
   operationId,
   claimOperation,
-  publicOrigin = ""
+  publicOrigin = "",
+  taskTimeoutMs = TASK_TIMEOUT_MS
 }) {
   async function resolveRegisteredProject(selector) {
     const value = String(selector || "").trim();
@@ -254,7 +255,7 @@ export function createAutomationApi({
     const timeout = setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, TASK_TIMEOUT_MS);
+    }, taskTimeoutMs);
     timeout.unref?.();
 
     const poll = setInterval(() => {
@@ -461,7 +462,7 @@ export function createAutomationApi({
           }
           fail(httpError("Codex task timed out and was interrupted", 504, "task_timeout"));
         })();
-      }, TASK_TIMEOUT_MS);
+      }, taskTimeoutMs);
       timeout.unref?.();
 
       codex.on("notification", onNotification);
