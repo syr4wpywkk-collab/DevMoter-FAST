@@ -233,6 +233,7 @@ export function mountOpenCodeRemote(
 
       <section class="ocx-composer-wrap">
         <div id="ocxSlashPalette" class="ocx-slash-palette hidden"></div>
+        <div id="ocxContextPalette" class="ocx-slash-palette hidden"></div>
 
         <div class="ocx-context-row">
           <div class="ocx-mode-switch" role="group" aria-label="agent mode">
@@ -338,6 +339,7 @@ export function mountOpenCodeRemote(
   const agentButton = root.querySelector<HTMLButtonElement>("#ocxAgentButton")!;
   const modelButton = root.querySelector<HTMLButtonElement>("#ocxModelButton")!;
   const slashPalette = root.querySelector<HTMLDivElement>("#ocxSlashPalette")!;
+  const contextPalette = root.querySelector<HTMLDivElement>("#ocxContextPalette")!;
   const promptForm = root.querySelector<HTMLFormElement>("#ocxPromptForm")!;
   const promptInput = root.querySelector<HTMLTextAreaElement>("#ocxPromptInput")!;
   const plus = root.querySelector<HTMLButtonElement>("#ocxPlus")!;
@@ -387,6 +389,8 @@ export function mountOpenCodeRemote(
     localStorage.getItem("opencode-pocket-opencode-agent") || "build";
   let selectedModel: { providerID: string; modelID: string } | null = null;
   let pendingAttachments: PendingAttachment[] = [];
+  let selectedContextRefs: Array<{ path: string; kind: "file" | "folder" }> = [];
+  let contextRequestSerial = 0;
 
   try {
     const saved = JSON.parse(localStorage.getItem("opencode-pocket-model") || "null");
@@ -1350,9 +1354,121 @@ export function mountOpenCodeRemote(
     promptInput.focus();
   }
 
+
+  function projectContextToken() {
+    const cursor = promptInput.selectionStart ?? promptInput.value.length;
+    const prefix = promptInput.value.slice(0, cursor);
+    const match = prefix.match(/(?:^|\s)@([^\s@]*)$/);
+    if (!match) return null;
+    return { query: match[1] || "", start: cursor - match[0].trimStart().length, end: cursor };
+  }
+
+  function hideProjectContextPalette() {
+    contextPalette.classList.add("hidden");
+    contextPalette.replaceChildren();
+  }
+
+  async function projectContextApi<T = Json>(projectId: string, suffix: string, init: RequestInit = {}): Promise<T> {
+    const method = String(init.method || "GET").toUpperCase();
+    const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/context${suffix}`, {
+      ...init,
+      headers: {
+        ...(init.body ? { "content-type": "application/json" } : {}),
+        ...(method !== "GET" && method !== "HEAD" ? { "x-pocket-operation-id": operationId() } : {}),
+        ...(init.headers || {})
+      },
+      cache: method === "GET" ? "no-store" : undefined
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload?.error || `Context HTTP ${res.status}`);
+    return payload as T;
+  }
+
+  async function updateProjectContextSuggestions() {
+    const token = projectContextToken();
+    const projectId = localStorage.getItem("opencode-pocket-project");
+    if (!token || !projectId) {
+      hideProjectContextPalette();
+      return;
+    }
+
+    const serial = ++contextRequestSerial;
+    try {
+      const payload = await projectContextApi<{
+        entries?: Array<{ path: string; kind: "file" | "folder"; size?: number | null }>;
+      }>(projectId, `?q=${encodeURIComponent(token.query)}`);
+      if (serial !== contextRequestSerial) return;
+
+      const entries = (payload.entries ?? []).slice(0, 10);
+      contextPalette.replaceChildren();
+      if (!entries.length) {
+        hideProjectContextPalette();
+        return;
+      }
+
+      for (const entry of entries) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "ocx-command-row";
+        const name = document.createElement("strong");
+        const detail = document.createElement("span");
+        name.textContent = `@${entry.path}`;
+        detail.textContent = entry.kind === "folder"
+          ? "folder Â· bounded expansion"
+          : `${entry.size ?? "?"} bytes`;
+        button.append(name, detail);
+        button.addEventListener("click", () => {
+          const current = projectContextToken();
+          if (!current) return;
+          promptInput.setRangeText(`@${entry.path} `, current.start, current.end, "end");
+          selectedContextRefs = [
+            ...selectedContextRefs.filter(item => item.path !== entry.path),
+            { path: entry.path, kind: entry.kind }
+          ];
+          hideProjectContextPalette();
+          resizeComposer();
+          promptInput.focus();
+        });
+        contextPalette.appendChild(button);
+      }
+      contextPalette.classList.remove("hidden");
+    } catch {
+      hideProjectContextPalette();
+    }
+  }
+
+  async function resolveProjectContext(text: string) {
+    const projectId = localStorage.getItem("opencode-pocket-project");
+    if (!projectId) return "";
+    const references = selectedContextRefs
+      .filter(ref => text.includes(`@${ref.path}`))
+      .slice(0, 16);
+    if (!references.length) return "";
+
+    const payload = await projectContextApi<{
+      items?: Array<{ path: string; content: string }>;
+      truncated?: boolean;
+    }>(projectId, "/resolve", {
+      method: "POST",
+      body: JSON.stringify({ references })
+    });
+
+    const sections = (payload.items ?? []).map(item => `--- @${item.path} ---\n${item.content}`);
+    if (payload.truncated) sections.push("[Context expansion was truncated by DevMoter safety limits.]");
+    return sections.join("\n\n");
+  }
+
   async function sendMessage() {
     const text = promptInput.value.trim();
     if (!text && !pendingAttachments.length) return;
+
+    let contextText = "";
+    try {
+      contextText = await resolveProjectContext(text);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Context resolution failed");
+      return;
+    }
 
     let sessionID: string | null | undefined = activeSession?.id;
     if (!sessionID) sessionID = await createSession();
@@ -1361,12 +1477,20 @@ export function mountOpenCodeRemote(
     const attachmentText = pendingAttachments.length
       ? `\n\n添付ファイル:\n${pendingAttachments.map(item => `- ${item.name} (${item.kind}): devmoter-upload:${item.uploadId}`).join("\n")}`
       : "";
-    const promptText = `${text}${attachmentText}`.trim();
-    addUserMessage(promptText);
+    const contextBlock = contextText
+      ? `\n\n[Project context resolved by DevMoter]\n${contextText}`
+      : "";
+    const promptText = `${text}${contextBlock}${attachmentText}`.trim();
+    const displayAttachmentText = pendingAttachments.length
+      ? `\n\n添付ファイル:\n${pendingAttachments.map(item => `- ${item.name} (${item.kind})`).join("\n")}`
+      : "";
+    addUserMessage(`${text}${displayAttachmentText}`.trim());
     followLatest();
 
     promptInput.value = "";
     pendingAttachments = [];
+    selectedContextRefs = [];
+    hideProjectContextPalette();
     renderAttachments();
     resizeComposer();
     slashPalette.classList.add("hidden");
@@ -2553,8 +2677,10 @@ export function mountOpenCodeRemote(
     resizeComposer();
     if (promptInput.value.startsWith("/")) {
       renderSlashPalette(promptInput.value);
+      hideProjectContextPalette();
     } else {
       slashPalette.classList.add("hidden");
+      void updateProjectContextSuggestions();
     }
   });
 
@@ -2563,6 +2689,15 @@ export function mountOpenCodeRemote(
 
     if (!slashPalette.classList.contains("hidden")) {
       const first = slashPalette.querySelector<HTMLButtonElement>(".ocx-command-row");
+      if (first) {
+        event.preventDefault();
+        first.click();
+      }
+      return;
+    }
+
+    if (!contextPalette.classList.contains("hidden")) {
+      const first = contextPalette.querySelector<HTMLButtonElement>(".ocx-command-row");
       if (first) {
         event.preventDefault();
         first.click();
