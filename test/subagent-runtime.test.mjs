@@ -159,3 +159,81 @@ test("failed nested spawn refunds reserved parent budget", async () => {
   assert.equal(runtime.getRun(root.id).budget.tokensRemaining, 100);
   assert.equal(runtime.getRun(root.id).budget.turnsRemaining, 4);
 });
+
+test("fleet enforces concurrency and starts queued siblings after completion", async () => {
+  const starts = [];
+  const adapter = {
+    async start(run) {
+      starts.push(run.id);
+      return { sessionId: `session-${run.id}`, turnId: `turn-${run.id}`, state: "running" };
+    },
+    async cancel() {}
+  };
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: adapter },
+    idFactory: () => `fleet-id-${++index}`
+  });
+  const specs = [1, 2, 3].map(value => ({
+    parentSessionId: "parent",
+    task: `task-${value}`
+  }));
+  const fleet = await runtime.runFleet(specs, { id: "fleet-a", concurrency: 2 });
+  assert.equal(fleet.concurrency, 2);
+  assert.equal(starts.length, 2);
+  runtime.update(fleet.runIds[0], { state: "completed" });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(starts.length, 3);
+});
+
+test("one fleet failure does not stop sibling scheduling", async () => {
+  const starts = [];
+  const adapter = {
+    async start(run) {
+      starts.push(run.task);
+      if (run.task === "bad") throw new Error("bad child");
+      return { sessionId: `session-${run.id}`, turnId: `turn-${run.id}`, state: "running" };
+    },
+    async cancel() {}
+  };
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: adapter },
+    idFactory: () => `isolation-${++index}`
+  });
+  const fleet = await runtime.runFleet([
+    { parentSessionId: "p", task: "bad" },
+    { parentSessionId: "p", task: "good" }
+  ], { id: "fleet-b", concurrency: 1 });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(starts, ["bad", "good"]);
+  const goodRun = runtime.listRuns().find(run => run.task === "good");
+  assert.equal(goodRun.state, "running");
+  assert.equal(runtime.getFleet("fleet-b").errors.length, 1);
+});
+
+test("fleet cancellation clears queue and cancels active runs independently", async () => {
+  const cancelled = [];
+  const adapter = {
+    async start(run) {
+      return { sessionId: `s-${run.id}`, turnId: `t-${run.id}`, state: "running" };
+    },
+    async cancel(run) {
+      cancelled.push(run.id);
+    }
+  };
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: adapter },
+    idFactory: () => `cancel-${++index}`
+  });
+  await runtime.runFleet([
+    { parentSessionId: "p", task: "one" },
+    { parentSessionId: "p", task: "two" },
+    { parentSessionId: "p", task: "three" }
+  ], { id: "fleet-c", concurrency: 1 });
+  const fleet = await runtime.cancelFleet("fleet-c");
+  assert.equal(fleet.state, "cancelled");
+  assert.equal(fleet.queued, 0);
+  assert.equal(cancelled.length, 1);
+});
