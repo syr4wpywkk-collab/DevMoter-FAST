@@ -2,6 +2,8 @@ import { isExecutionActive, openCodeIdleOutcomeToExecutionState, type ExecutionS
 import { speechRecognitionLanguage } from "./i18n";
 import { mergeOpenCodeStreamText, normalizeOpenCodeEvent } from "./opencode-event-compat.mjs";
 
+const FOLLOW_BOTTOM_THRESHOLD = 48;
+
 type Json = Record<string, any>;
 
 type OpenCodeModel = {
@@ -308,6 +310,13 @@ export function mountOpenCodeRemote(
   const sessionTitle = root.querySelector<HTMLElement>("#ocxSessionTitle")!;
   const sessionMeta = root.querySelector<HTMLElement>("#ocxSessionMeta")!;
   const transcript = root.querySelector<HTMLDivElement>("#ocxTranscript")!;
+  let followsBottom = true;
+  const followLatest = () => {
+    if (followsBottom) transcript.scrollTop = transcript.scrollHeight;
+  };
+  transcript.addEventListener("scroll", () => {
+    followsBottom = transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight <= FOLLOW_BOTTOM_THRESHOLD;
+  }, { passive: true });
   const permission = root.querySelector<HTMLElement>("#ocxPermission")!;
   const permissionTitle = root.querySelector<HTMLElement>("#ocxPermissionTitle")!;
   const permissionDetail = root.querySelector<HTMLElement>("#ocxPermissionDetail")!;
@@ -776,7 +785,7 @@ export function mountOpenCodeRemote(
     row.appendChild(body);
     transcript.appendChild(row);
     liveText.set(key, body);
-    transcript.scrollTop = transcript.scrollHeight;
+    followLatest();
     return body;
   }
 
@@ -798,7 +807,7 @@ export function mountOpenCodeRemote(
     details.append(summary, body);
     transcript.appendChild(details);
     liveReasoning.set(key, body);
-    transcript.scrollTop = transcript.scrollHeight;
+    followLatest();
     return body;
   }
 
@@ -920,7 +929,7 @@ export function mountOpenCodeRemote(
       `;
     }
 
-    transcript.scrollTop = transcript.scrollHeight;
+    followLatest();
   }
 
   async function loadLocation() {
@@ -1127,6 +1136,7 @@ export function mountOpenCodeRemote(
     setActivity("loading");
 
     try {
+      followsBottom = true;
       await Promise.all([
         loadContext(),
         syncPendingPermission(),
@@ -1344,7 +1354,7 @@ export function mountOpenCodeRemote(
       : "";
     const promptText = `${text}${attachmentText}`.trim();
     addUserMessage(promptText);
-    transcript.scrollTop = transcript.scrollHeight;
+    followLatest();
 
     promptInput.value = "";
     pendingAttachments = [];
@@ -1784,7 +1794,7 @@ export function mountOpenCodeRemote(
           text: part.text,
           delta: props?.delta
         });
-        transcript.scrollTop = transcript.scrollHeight;
+        followLatest();
         lastLiveEventAt = Date.now();
         setExecutionState("running");
         return;
@@ -1805,7 +1815,7 @@ export function mountOpenCodeRemote(
           text: part.text,
           delta: props?.delta
         });
-        transcript.scrollTop = transcript.scrollHeight;
+        followLatest();
         lastLiveEventAt = Date.now();
         setExecutionState("running");
         return;
@@ -1833,7 +1843,7 @@ export function mountOpenCodeRemote(
           ? ensureLiveReasoning(data)
           : ensureLiveText(data);
       body.textContent = mergeOpenCodeStreamText(body.textContent, normalized);
-      transcript.scrollTop = transcript.scrollHeight;
+      followLatest();
       lastLiveEventAt = Date.now();
       setExecutionState("running");
       return;
@@ -1870,7 +1880,7 @@ export function mountOpenCodeRemote(
     if (type === "session.text.delta") {
       const body = ensureLiveText(props);
       body.textContent = mergeOpenCodeStreamText(body.textContent, normalized);
-      transcript.scrollTop = transcript.scrollHeight;
+      followLatest();
       setExecutionState("running");
       return;
     }
@@ -1878,7 +1888,7 @@ export function mountOpenCodeRemote(
     if (type === "session.text.ended") {
       const body = ensureLiveText(props);
       body.textContent = mergeOpenCodeStreamText(body.textContent, normalized);
-      transcript.scrollTop = transcript.scrollHeight;
+      followLatest();
       return;
     }
 
@@ -1891,7 +1901,7 @@ export function mountOpenCodeRemote(
     if (type === "session.reasoning.delta") {
       const body = ensureLiveReasoning(props);
       body.textContent = mergeOpenCodeStreamText(body.textContent, normalized);
-      transcript.scrollTop = transcript.scrollHeight;
+      followLatest();
       setExecutionState("running");
       return;
     }
