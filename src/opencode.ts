@@ -4,6 +4,7 @@ import { mergeOpenCodeStreamText, normalizeOpenCodeEvent } from "./opencode-even
 import { countTranscriptMessages, normalizeExternalThread, sessionContextToMarkdown, sortSessions, type ImportedThread, type SessionSortMode } from "./session-tools.mjs";
 import { setWakeLockEnabled, setWakeLockExecutionActive, wakeLockEnabled, wakeLockSupported } from "./wake-lock";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
+import { enforceTranscriptLimit } from "./bounded-transcript";
 import {
   continueAgentRun,
   guardMessage,
@@ -352,6 +353,7 @@ export function mountOpenCodeRemote(
   const transcript = root.querySelector<HTMLDivElement>("#ocxTranscript")!;
   let followsBottom = true;
   const followLatest = () => {
+    enforceTranscriptLimit(transcript);
     if (followsBottom) transcript.scrollTop = transcript.scrollHeight;
   };
   transcript.addEventListener("scroll", () => {
@@ -530,6 +532,7 @@ export function mountOpenCodeRemote(
   }
 
   function setExecutionState(next: ExecutionState) {
+    const previous = executionState;
     executionState = next;
     const active = isExecutionActive(next);
     setWakeLockExecutionActive("opencode", active);
@@ -544,6 +547,12 @@ export function mountOpenCodeRemote(
 
     if (active) startLiveFallback();
     else stopLiveFallback();
+
+    if (previous !== next) {
+      window.dispatchEvent(new CustomEvent("devmoter-agent-state", {
+        detail: { backend: "opencode", sessionId: activeSession?.id || null, state: next }
+      }));
+    }
   }
 
   function setControlsEnabled(value: boolean) {

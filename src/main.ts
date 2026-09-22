@@ -9,9 +9,15 @@ import { mountWorkspaceTools } from "./workspace-tools";
 import { mountAdvancedTools } from "./advanced";
 import { mountControlCenter } from "./control-center";
 import { mountTaskWorkflow } from "./workflow";
+import { mountDemo } from "./demo";
+import { mountSystemPanel } from "./system-panel";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
+const startupParams = new URLSearchParams(window.location.search);
 
+if (startupParams.get("demo") === "1") {
+  mountDemo(app);
+} else {
 app.innerHTML = `
   <div id="openCodeView" class="pocket-view"><div id="openCodeMount"></div></div>
   <div id="codexView" class="pocket-view hidden"><div id="codexMount"></div></div>
@@ -28,6 +34,18 @@ const integrationsMount = document.querySelector<HTMLDivElement>("#integrationsM
 const workflowMount = document.querySelector<HTMLDivElement>("#workflowMount")!;
 
 type Backend = "opencode" | "codex" | "integrations";
+
+const deepLinkBackend = startupParams.get("backend");
+const deepLinkSession = startupParams.get("session");
+if (deepLinkBackend === "codex" || deepLinkBackend === "opencode") {
+  localStorage.setItem("opencode-pocket-backend", deepLinkBackend);
+  if (deepLinkSession) {
+    localStorage.setItem(
+      deepLinkBackend === "codex" ? "opencode-pocket-codex-thread" : "opencode-pocket-opencode-session",
+      deepLinkSession
+    );
+  }
+}
 
 const savedBackend = localStorage.getItem("opencode-pocket-backend");
 let activeBackend: Backend =
@@ -68,6 +86,7 @@ mountWorkspaceTools();
 mountAdvancedTools();
 mountControlCenter();
 mountTaskWorkflow(workflowMount);
+mountSystemPanel();
 
 let healthCheckInFlight = false;
 async function checkHealth() {
@@ -99,4 +118,5 @@ document.addEventListener("visibilitychange", () => {
 });
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(console.error));
+}
 }

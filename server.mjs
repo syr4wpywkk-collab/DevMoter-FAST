@@ -15,6 +15,7 @@ import { createAdvancedApi } from "./server/advanced-api.mjs";
 import { createTerminalManager } from "./server/terminal.mjs";
 import { createProjectIndex } from "./server/project-index.mjs";
 import { createSafetyService } from "./server/safety.mjs";
+import { createSystemFeatures } from "./server/system-features.mjs";
 import { applyModeToPrompt, isDirectMutationRoute, isPromptRoute, isReadOnlyMode, parseAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
 import { assertAuthPassword, authorizeBasicRequest, requireSameOriginMutation } from "./server/auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
@@ -85,6 +86,54 @@ const terminal = createTerminalManager({
   authPassword: DEVMOTER_AUTH_PASSWORD,
   shell: process.env.SHELL
 });
+const systemFeatures = createSystemFeatures({
+  stateDir: PROJECT_CONFIG_DIR,
+  appRoot: process.cwd(),
+  getProjects: readProjectRegistry,
+  getBackendHealth: async () => {
+    const [openCode, codexHealth] = await Promise.all([opencodeHealth(), codex.health()]);
+    return { opencode: openCode, codex: codexHealth };
+  },
+  host: HOST,
+  version: process.env.DEVMOTER_VERSION || "0.2.0"
+});
+
+function codexThreadIdFromEvent(params = {}) {
+  return String(
+    params?.threadId ||
+    params?.turn?.threadId ||
+    params?.thread?.id ||
+    params?.item?.threadId ||
+    ""
+  ).slice(0, 200);
+}
+
+function notifyAgentState(payload) {
+  void systemFeatures.notifyAgentState(payload).catch(error => {
+    console.error("Push notification dispatch failed", error);
+  });
+}
+
+codex.on("notification", event => {
+  if (event?.method === "turn/completed") {
+    notifyAgentState({
+      backend: "codex",
+      sessionId: codexThreadIdFromEvent(event.params),
+      state: "completed"
+    });
+  }
+});
+
+codex.on("server-request", request => {
+  const method = String(request?.method || "");
+  const sessionId = codexThreadIdFromEvent(request?.params || {});
+  if (!sessionId) return;
+  if (method === "item/commandExecution/requestApproval" || method === "item/fileChange/requestApproval") {
+    notifyAgentState({ backend: "codex", sessionId, state: "waiting_for_approval" });
+  } else if (/question|user.?input|request.?input/i.test(method)) {
+    notifyAgentState({ backend: "codex", sessionId, state: "waiting_for_input" });
+  }
+});
 
 
 const MIME = {
@@ -109,6 +158,16 @@ function json(res, status, body) {
   res.end(JSON.stringify(body, (_key, value) =>
     typeof value === "string" ? redactText(value) : value
   ));
+}
+
+async function featureJson(res, task, successStatus = 200) {
+  try {
+    json(res, successStatus, await task());
+  } catch (error) {
+    json(res, Number(error?.status || 400), {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
 }
 
 function operationId(req) {
@@ -686,6 +745,65 @@ const sessionControlTimer = setInterval(() => {
 }, 2500);
 sessionControlTimer.unref?.();
 
+const openCodeNotificationStates = new Map();
+let openCodeNotificationPollInFlight = false;
+async function pollOpenCodeNotificationStates() {
+  if (openCodeNotificationPollInFlight) return;
+  openCodeNotificationPollInFlight = true;
+  try {
+    const [sessionsRaw, activeRaw] = await Promise.all([
+      fetchOpenCodeJson("/api/session?limit=40&order=desc"),
+      fetchOpenCodeJson("/api/session/active")
+    ]);
+    const sessions = Array.isArray(sessionsRaw)
+      ? sessionsRaw
+      : Array.isArray(sessionsRaw?.data) ? sessionsRaw.data : [];
+    const active = activeRaw?.data && typeof activeRaw.data === "object"
+      ? activeRaw.data
+      : (activeRaw && typeof activeRaw === "object" ? activeRaw : {});
+    const seen = new Set();
+
+    for (const session of sessions.slice(0, 40)) {
+      const sessionId = String(session?.id || "");
+      if (!sessionId) continue;
+      seen.add(sessionId);
+      const prior = openCodeNotificationStates.get(sessionId);
+      let state = active?.[sessionId] ? "running" : "idle";
+
+      if (active?.[sessionId] || prior === "running" || prior === "waiting_for_approval" || prior === "waiting_for_input") {
+        const [permissionRaw, questionRaw] = await Promise.all([
+          fetchOpenCodeJson("/api/session/" + encodeURIComponent(sessionId) + "/permission").catch(() => []),
+          fetchOpenCodeJson("/api/session/" + encodeURIComponent(sessionId) + "/question").catch(() => [])
+        ]);
+        const permissions = Array.isArray(permissionRaw) ? permissionRaw : (Array.isArray(permissionRaw?.data) ? permissionRaw.data : []);
+        const questions = Array.isArray(questionRaw) ? questionRaw : (Array.isArray(questionRaw?.data) ? questionRaw.data : []);
+        if (permissions.length) state = "waiting_for_approval";
+        else if (questions.length) state = "waiting_for_input";
+      }
+
+      if (prior !== undefined) {
+        if ((state === "waiting_for_approval" || state === "waiting_for_input") && state !== prior) {
+          notifyAgentState({ backend: "opencode", sessionId, state });
+        } else if (prior === "running" && state === "idle") {
+          notifyAgentState({ backend: "opencode", sessionId, state: "completed" });
+        }
+      }
+      openCodeNotificationStates.set(sessionId, state);
+    }
+
+    for (const key of openCodeNotificationStates.keys()) {
+      if (!seen.has(key) && openCodeNotificationStates.size > 80) openCodeNotificationStates.delete(key);
+    }
+  } catch {
+    // OpenCode can be offline during startup/reconnect. A later poll will rehydrate without notifying.
+  } finally {
+    openCodeNotificationPollInFlight = false;
+  }
+}
+const openCodeNotificationTimer = setInterval(() => void pollOpenCodeNotificationStates(), 2500);
+openCodeNotificationTimer.unref?.();
+void pollOpenCodeNotificationStates();
+
 async function opencodeHealth() {
   try {
     const payload = await fetchOpenCodeJson("/api/location", {
@@ -1201,6 +1319,74 @@ const server = http.createServer(async (req, res) => {
         !claimOperation(req, res, `${req.method}:${url.pathname}`)
       ) return;
       if (await sessionControl.handle(req, res, url)) return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/system/diagnostics") {
+      await featureJson(res, () => systemFeatures.diagnostics());
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/devices/bootstrap") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      const payload = await readJson(req);
+      await featureJson(res, () => systemFeatures.bootstrapDevice(req, payload?.label), 201);
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/devices") {
+      await featureJson(res, () => systemFeatures.listDevices(req));
+      return;
+    }
+
+    const trustedDeviceMatch = url.pathname.match(/^\/api\/devices\/([^/]+)$/);
+    if (req.method === "DELETE" && trustedDeviceMatch) {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await featureJson(res, () => systemFeatures.revokeDevice(req, decodeURIComponent(trustedDeviceMatch[1])));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/pairings") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await featureJson(res, () => systemFeatures.createPairing(req), 201);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/pairings/claim") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      const payload = await readJson(req);
+      await featureJson(res, () => systemFeatures.claimPairing(payload?.code, payload?.label), 201);
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/push/key") {
+      await featureJson(res, () => systemFeatures.pushPublicKey());
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/push/subscriptions") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      const payload = await readJson(req);
+      await featureJson(res, () => systemFeatures.subscribePush(req, payload), 201);
+      return;
+    }
+
+    if (req.method === "DELETE" && url.pathname === "/api/push/subscriptions") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      const payload = await readJson(req);
+      await featureJson(res, () => systemFeatures.unsubscribePush(req, payload));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/push/visibility") {
+      const payload = await readJson(req);
+      await featureJson(res, () => systemFeatures.updateVisibility(req, payload));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/push/pending") {
+      const payload = await readJson(req);
+      await featureJson(res, () => systemFeatures.takePendingPush(payload));
+      return;
     }
 
     if (req.method === "GET" && url.pathname === "/api/safety/status") {

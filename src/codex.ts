@@ -4,6 +4,7 @@ import { createDevWorkflowPanel } from "./dev-workflows-ui";
 import { isMcpToolItem, mcpToolSummary, normalizeStructuredMcpResult } from "./mcp-result";
 import { setWakeLockExecutionActive } from "./wake-lock";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
+import { enforceTranscriptLimit } from "./bounded-transcript";
 import {
   continueAgentRun,
   guardMessage,
@@ -270,6 +271,7 @@ export function mountCodexRemote(
   const transcript = root.querySelector<HTMLDivElement>("#cxTranscript")!;
   let followsBottom = true;
   const followLatest = () => {
+    enforceTranscriptLimit(transcript);
     if (followsBottom) transcript.scrollTop = transcript.scrollHeight;
   };
   transcript.addEventListener("scroll", () => {
@@ -587,6 +589,7 @@ export function mountCodexRemote(
   }
 
   function setExecutionState(next: ExecutionState) {
+    const previous = executionState;
     executionState = next;
     const active = isExecutionActive(next);
     setWakeLockExecutionActive("codex", active);
@@ -598,6 +601,12 @@ export function mountCodexRemote(
     send.textContent = active ? "■" : "↑";
     send.setAttribute("aria-label", active ? "停止" : "送信");
     send.disabled = !online || next === "reconnecting";
+
+    if (previous !== next) {
+      window.dispatchEvent(new CustomEvent("devmoter-agent-state", {
+        detail: { backend: "codex", sessionId: activeThreadId, state: next }
+      }));
+    }
   }
 
   function setOnline(next: boolean) {
