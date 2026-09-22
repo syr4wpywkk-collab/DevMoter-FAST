@@ -8,6 +8,7 @@ import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, ope
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { createOperationRegistry } from "./server/operation-registry.mjs";
 import { assertAuthPassword, authorizeBasicRequest, requireSameOriginMutation } from "./server/auth.mjs";
+import { redactSecretsInText } from "./server/secret-redaction.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -57,11 +58,7 @@ const MIME = {
 };
 
 function redactText(value) {
-  let text = String(value);
-  for (const secret of REDACTED_SECRETS) {
-    if (secret) text = text.split(secret).join("[REDACTED]");
-  }
-  return text;
+  return redactSecretsInText(value, REDACTED_SECRETS);
 }
 
 function json(res, status, body) {
