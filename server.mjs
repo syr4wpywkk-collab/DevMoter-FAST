@@ -578,7 +578,7 @@ function extractOpenCodeOutput(payload) {
   return "";
 }
 
-async function runOpenCodeAutomationTask(project, { agent, task, model }) {
+async function runOpenCodeAutomationTask(project, { agent, task, model }, onEvent = () => {}) {
   const headers = {
     "content-type": "application/json",
     "x-opencode-directory": project.path
@@ -605,12 +605,27 @@ async function runOpenCodeAutomationTask(project, { agent, task, model }) {
   });
   if (!session?.id) throw httpError("OpenCode did not return a session ID", 502, "backend_error");
 
+  const events = [];
+  const sessionEvent = {
+    type: "session.created",
+    data: { sessionId: String(session.id), backend: "opencode" }
+  };
+  events.push(sessionEvent);
+  onEvent(sessionEvent);
+
   const result = await fetchOpenCodeJson("/api/session/" + encodeURIComponent(session.id) + "/prompt", {
     method: "POST",
     headers,
     body: JSON.stringify({ text: task }),
     signal: AbortSignal.timeout(10 * 60 * 1000)
   });
+
+  const completedEvent = {
+    type: "task.completed",
+    data: { sessionId: String(session.id) }
+  };
+  events.push(completedEvent);
+  onEvent(completedEvent);
 
   return {
     apiVersion: AUTOMATION_API_VERSION,
@@ -619,14 +634,11 @@ async function runOpenCodeAutomationTask(project, { agent, task, model }) {
     project: { id: project.id, name: project.name },
     sessionId: String(session.id),
     output: extractOpenCodeOutput(result),
-    events: [
-      { type: "session.created", data: { sessionId: String(session.id), backend: "opencode" } },
-      { type: "task.completed", data: { sessionId: String(session.id) } }
-    ]
+    events
   };
 }
 
-async function runCodexAutomationTask(project, { agent, task, model }, req) {
+async function runCodexAutomationTask(project, { agent, task, model }, req, onEvent = () => {}) {
   if (!["codex", "default"].includes(String(agent || "").toLowerCase())) {
     throw httpError("Codex supports the codex agent only", 400, "unsupported_agent");
   }
@@ -639,9 +651,12 @@ async function runCodexAutomationTask(project, { agent, task, model }, req) {
   if (!threadId) throw httpError("Codex did not return a thread ID", 502, "backend_error");
 
   const clientMessageId = operationId(req) || randomUUID();
-  const events = [
-    { type: "session.created", data: { sessionId: threadId, backend: "codex" } }
-  ];
+  const events = [];
+  const emit = event => {
+    events.push(event);
+    onEvent(event);
+  };
+  emit({ type: "session.created", data: { sessionId: threadId, backend: "codex" } });
 
   return new Promise((resolveTask, rejectTask) => {
     let settled = false;
@@ -677,7 +692,7 @@ async function runCodexAutomationTask(project, { agent, task, model }, req) {
         const delta = typeof params?.delta === "string" ? params.delta : "";
         if (delta) {
           output += delta;
-          events.push({ type: "output.delta", data: { text: delta } });
+          emit({ type: "output.delta", data: { text: delta } });
         }
         return;
       }
@@ -685,7 +700,7 @@ async function runCodexAutomationTask(project, { agent, task, model }, req) {
       if (method === "turn/completed") {
         const statusRaw = String(params?.turn?.status || "completed").toLowerCase();
         const status = ["completed", "success", "succeeded"].includes(statusRaw) ? "completed" : "failed";
-        events.push({ type: "task." + status, data: { turnId: turnId || params?.turn?.id || null, status: statusRaw } });
+        emit({ type: "task." + status, data: { turnId: turnId || params?.turn?.id || null, status: statusRaw } });
         finish({
           apiVersion: AUTOMATION_API_VERSION,
           backend: "codex",
@@ -708,7 +723,7 @@ async function runCodexAutomationTask(project, { agent, task, model }, req) {
         method !== "item/fileChange/requestApproval"
       ) return;
 
-      events.push({
+      emit({
         type: "task.blocked",
         data: {
           reason: "approval_required",
@@ -745,13 +760,38 @@ async function runCodexAutomationTask(project, { agent, task, model }, req) {
     codex.request("turn/start", turnParams)
       .then(result => {
         turnId = String(result?.turn?.id || result?.turnId || "");
-        events.push({ type: "task.started", data: { turnId: turnId || null } });
+        emit({ type: "task.started", data: { turnId: turnId || null } });
       })
       .catch(fail);
   });
 }
 
 async function automationTask(req, res) {
+  const operation = operationId(req) || randomUUID();
+  const wantsStream = String(req.headers.accept || "").includes("application/x-ndjson");
+  let streamStarted = false;
+
+  const envelope = (type, data) => ({
+    version: AUTOMATION_API_VERSION,
+    type,
+    timestamp: new Date().toISOString(),
+    operationId: operation,
+    data
+  });
+
+  const emit = event => {
+    if (!wantsStream) return;
+    if (!streamStarted) {
+      res.writeHead(200, {
+        "content-type": "application/x-ndjson; charset=utf-8",
+        "cache-control": "no-store",
+        "x-accel-buffering": "no"
+      });
+      streamStarted = true;
+    }
+    res.write(JSON.stringify(envelope(event.type || "task.event", event.data ?? event)) + "\n");
+  };
+
   try {
     const payload = await readJson(req, 512 * 1024);
     const project = await resolveRegisteredProject(payload?.project);
@@ -770,14 +810,26 @@ async function automationTask(req, res) {
     }
 
     const result = backend === "opencode"
-      ? await runOpenCodeAutomationTask(project, { agent, task, model })
-      : await runCodexAutomationTask(project, { agent, task, model }, req);
+      ? await runOpenCodeAutomationTask(project, { agent, task, model }, emit)
+      : await runCodexAutomationTask(project, { agent, task, model }, req, emit);
+
+    if (wantsStream) {
+      emit({ type: "task.result", data: result });
+      res.end();
+      return;
+    }
     json(res, 200, result);
   } catch (error) {
-    json(res, error?.status || 502, {
+    const failure = {
       error: error instanceof Error ? error.message : String(error),
       code: error?.code || "task_failed"
-    });
+    };
+    if (wantsStream && streamStarted) {
+      emit({ type: "task.error", data: failure });
+      res.end();
+      return;
+    }
+    json(res, error?.status || 502, failure);
   }
 }
 
