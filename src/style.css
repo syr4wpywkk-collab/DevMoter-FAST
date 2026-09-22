@@ -3290,3 +3290,334 @@ body.opencode-mode #app {
 .ocx-language-setting > span {
   color: var(--oc-dim);
 }
+
+
+/* DevMoter control center */
+:root {
+  --dm-viewport-height: 100dvh;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+}
+
+.cx-app,
+.ocx-app {
+  height: var(--dm-viewport-height, 100dvh);
+  max-height: var(--dm-viewport-height, 100dvh);
+}
+
+.cx-title-button > span,
+.cx-title-button > small,
+.ocx-session-title > strong,
+.ocx-session-title > small,
+.dm-row-copy strong,
+.dm-row-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dm-control-shell {
+  position: fixed;
+  z-index: 120;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+.dm-control-trigger,
+.dm-control-close,
+.dm-mini {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.dm-control-trigger {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.38);
+}
+
+.dm-control-modal {
+  position: fixed;
+  z-index: 130;
+  inset: 0;
+  display: grid;
+  align-items: end;
+  padding:
+    max(12px, env(safe-area-inset-top))
+    max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom))
+    max(12px, env(safe-area-inset-left));
+  background: rgba(0,0,0,.62);
+}
+
+.dm-control-card {
+  width: min(100%, 760px);
+  max-height: min(88dvh, var(--dm-viewport-height, 88dvh));
+  margin: 0 auto;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid #333;
+  border-radius: 22px;
+  background: #111;
+  box-shadow: 0 24px 70px rgba(0,0,0,.55);
+}
+
+.dm-control-head {
+  min-height: 60px;
+  padding: 10px 12px 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  border-bottom: 1px solid #252525;
+}
+
+.dm-control-head > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.dm-control-head strong {
+  color: #fff;
+}
+
+.dm-control-head small {
+  overflow: hidden;
+  color: #888;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dm-control-close {
+  width: 44px;
+  padding: 0;
+  border-radius: 999px;
+}
+
+.dm-control-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #222;
+}
+
+.dm-control-tabs button {
+  min-height: 44px;
+  padding: 0 8px;
+  border-radius: 12px;
+  background: transparent;
+}
+
+.dm-control-tabs button[aria-selected="true"] {
+  background: #f0f0f0;
+  color: #111;
+}
+
+.dm-control-body {
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 14px;
+}
+
+.dm-section-title {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 12px;
+}
+
+.dm-section-title span {
+  color: #909090;
+  font-size: .78rem;
+  line-height: 1.45;
+}
+
+.dm-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.dm-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #282828;
+  border-radius: 14px;
+  background: #161616;
+}
+
+.dm-row-copy {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 3px;
+}
+
+.dm-row-copy small {
+  color: #858585;
+  font-size: .7rem;
+}
+
+.dm-state {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border: 1px solid #333;
+  border-radius: 999px;
+  color: #bbb;
+  font-size: .68rem;
+}
+
+.dm-state.online::before { content: "● "; }
+.dm-state.timeout::before { content: "◷ "; }
+.dm-state.auth-required::before { content: "🔒 "; }
+.dm-state.offline::before { content: "○ "; }
+
+.dm-mini {
+  width: auto;
+  padding: 0 11px;
+  border-radius: 11px;
+  font-size: .72rem;
+}
+
+.dm-form {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #282828;
+  border-radius: 16px;
+  background: #141414;
+}
+
+.dm-form.compact {
+  margin-top: 10px;
+}
+
+.dm-field {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.dm-field > span {
+  color: #999;
+  font-size: .7rem;
+}
+
+.dm-field input,
+.dm-field select,
+.dm-field textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 10px;
+  border: 1px solid #303030;
+  border-radius: 11px;
+  background: #0d0d0d;
+  color: #f5f5f5;
+}
+
+.dm-field textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.dm-control-body details {
+  margin-top: 12px;
+  border-top: 1px solid #242424;
+  padding-top: 10px;
+}
+
+.dm-control-body summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.dm-passkey-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #2b2b2b;
+  border-radius: 16px;
+  background: #151515;
+}
+
+.dm-passkey-card p {
+  margin: 0;
+}
+
+.dm-control-toast {
+  margin: 0 12px 12px;
+  padding: 9px 11px;
+  border: 1px solid #363636;
+  border-radius: 12px;
+  background: #191919;
+  color: #ddd;
+  font-size: .75rem;
+  overflow-wrap: anywhere;
+}
+
+.dm-error {
+  color: #ffb3b3;
+}
+
+@media (min-width: 760px) {
+  .dm-control-modal {
+    align-items: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .dm-control-shell {
+    bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+
+  .dm-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .dm-row-copy {
+    flex-basis: calc(100% - 90px);
+  }
+
+  .dm-control-card {
+    max-height: calc(var(--dm-viewport-height, 100dvh) - 18px);
+    border-radius: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
