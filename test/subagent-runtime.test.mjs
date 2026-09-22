@@ -76,3 +76,86 @@ test("missing parent, task, or adapter fails closed", async () => {
   await assert.rejects(() => runtime.spawn({ parentSessionId: "", task: "x" }), /parentSessionId/);
   await assert.rejects(() => runtime.spawn({ parentSessionId: "p", task: "" }), /task is required/i);
 });
+
+test("nested delegation inherits bounded budget and exposes lineage", async () => {
+  const fake = fakeAdapter();
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: fake.adapter },
+    idFactory: () => `nested-${++index}`,
+    policy: { maxDepth: 2, tokenBudget: 100, turnBudget: 4 }
+  });
+  const root = await runtime.spawn({ parentSessionId: "parent", task: "root task" });
+  const child = await runtime.spawn({
+    parentSessionId: root.sessionId,
+    parentRunId: root.id,
+    task: "child task",
+    tokenBudget: 30,
+    turnBudget: 1
+  });
+  assert.equal(child.depth, 1);
+  assert.deepEqual(child.lineage, [root.id]);
+  assert.equal(child.budget.tokenLimit, 30);
+  assert.equal(child.budget.turnLimit, 1);
+  assert.equal(runtime.getRun(root.id).budget.tokensRemaining, 70);
+  assert.equal(runtime.getRun(root.id).budget.turnsRemaining, 3);
+});
+
+test("maximum nesting depth rejects deeper delegation", async () => {
+  const fake = fakeAdapter();
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: fake.adapter },
+    idFactory: () => `depth-${++index}`,
+    policy: { maxDepth: 1, tokenBudget: 100, turnBudget: 4 }
+  });
+  const root = await runtime.spawn({ parentSessionId: "p", task: "root" });
+  const child = await runtime.spawn({ parentSessionId: root.sessionId, parentRunId: root.id, task: "child" });
+  await assert.rejects(
+    () => runtime.spawn({ parentSessionId: child.sessionId, parentRunId: child.id, task: "grandchild" }),
+    /Maximum subagent nesting depth/
+  );
+});
+
+test("recursive delegation loops are rejected using ancestor fingerprints", async () => {
+  const fake = fakeAdapter();
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: fake.adapter },
+    idFactory: () => `loop-${++index}`
+  });
+  const root = await runtime.spawn({ parentSessionId: "p", task: "Repeat this exact task" });
+  await assert.rejects(
+    () => runtime.spawn({
+      parentSessionId: root.sessionId,
+      parentRunId: root.id,
+      task: "  repeat   this exact TASK "
+    }),
+    /Recursive delegation loop rejected/
+  );
+});
+
+test("failed nested spawn refunds reserved parent budget", async () => {
+  let starts = 0;
+  const adapter = {
+    async start() {
+      starts += 1;
+      if (starts > 1) throw new Error("backend failed");
+      return { sessionId: "root-session", turnId: "root-turn", state: "running" };
+    },
+    async cancel() {}
+  };
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: adapter },
+    idFactory: () => `refund-${++index}`,
+    policy: { tokenBudget: 100, turnBudget: 4 }
+  });
+  const root = await runtime.spawn({ parentSessionId: "p", task: "root" });
+  await assert.rejects(
+    () => runtime.spawn({ parentSessionId: root.sessionId, parentRunId: root.id, task: "child", tokenBudget: 25, turnBudget: 1 }),
+    /backend failed/
+  );
+  assert.equal(runtime.getRun(root.id).budget.tokensRemaining, 100);
+  assert.equal(runtime.getRun(root.id).budget.turnsRemaining, 4);
+});
