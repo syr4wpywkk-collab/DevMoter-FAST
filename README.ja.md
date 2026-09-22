@@ -12,7 +12,7 @@ DevMoter FAST は、**Codex と OpenCode をスマホ・タブレット・PC の
 > DevMoter FAST は **実験的な非公式コミュニティプロジェクト** です。OpenAI、OpenCode、その他ソフトウェア内で参照される上流プロジェクトや提供元とは提携しておらず、承認・推奨を受けたものでもありません。
 
 > [!WARNING]
-> DevMoter は **単一ユーザーのプライベートホスト / プライベートネットワーク** を前提にしています。現時点では独立した完全なユーザー認証・認可レイヤーを備えていません。DevMoter サーバー、OpenCode ポート、エージェントのバックエンドをそのまま公開インターネットへ露出させないでください。
+> DevMoter は **単一ユーザーのプライベートホスト / プライベートネットワーク** を前提にしています。DevMoter 自体の HTTP ログインを必須にしていますが、これはプライベート環境向けの単一ユーザー境界であり、公開 SaaS 向けの認可システムではありません。DevMoter、OpenCode、エージェント backend を公開インターネットへ直接露出させないでください。
 
 ## はじめに
 
@@ -91,6 +91,8 @@ OpenCode:  http://127.0.0.1:49374
 
 Codex app-server は公開ソケットではなく、DevMoter からローカル stdio 経由で起動・通信します。
 
+DevMoter の既定ユーザー名は `devmoter` です。ランチャーが生成したパスワードは `~/.config/opencode-pocket/devmoter-auth-password` に owner-only 権限で保存され、初回アクセス時にブラウザがログインを求めます。
+
 ## スマホからのプライベートアクセス
 
 DevMoter 自体は localhost に bind したまま使う設計です。Tailscale Serve を使う例:
@@ -104,7 +106,7 @@ tailscale serve status
 同じ tailnet に参加している端末から、表示された HTTPS URL を開きます。
 
 > [!CAUTION]
-> 現在の Alpha では、認証・認可を追加せず DevMoter / OpenCode / Codex backend を public tunnel や Tailscale Funnel で公開する構成は推奨しません。
+> DevMoter の HTTP ログインがあっても、public tunnel や Tailscale Funnel での公開は現在の Alpha では推奨しません。localhost + HTTPS の Tailscale Serve など、プライベートネットワーク経由で利用してください。
 
 ## アーキテクチャ
 
@@ -133,6 +135,9 @@ Phone / tablet / desktop browser / PWA
 主な境界:
 
 - DevMoter は既定で `127.0.0.1` に bind
+- DevMoter 独自の HTTP ログインを必須化
+- 状態変更リクエストは同一 Origin を検証
+- API 応答は `no-store`、設定済み秘密情報はエラー応答からマスク
 - OpenCode も localhost
 - Codex app-server は stdio
 - バックエンド資格情報はサーバー側
@@ -141,7 +146,7 @@ Phone / tablet / desktop browser / PWA
 - モバイルエディタからの書き込みは登録済みプロジェクト内の Markdown に制限
 - GitHub トークンはブラウザへ返さない
 
-**重要:** DevMoter 単体にはまだ完全な独立認証がありません。DevMoter HTTP endpoint に到達できる利用者は、エージェントに与えられた権限で操作できる可能性があります。必ず適切なプライベートネットワーク境界を利用してください。
+**重要:** DevMoter のログインは単一ユーザー向けのアクセス境界です。ログイン後のクライアントはエージェントに与えられた権限で操作できます。リモート利用では HTTPS を使い、推奨構成の localhost + Tailscale Serve を維持してください。reverse proxy で外部 Origin が変わる場合は `DEVMOTER_PUBLIC_ORIGIN` を明示します。
 
 ## テスト
 
@@ -176,7 +181,7 @@ DevMoter は OpenCode と Codex app-server の上流プロトコルを利用し�
 
 Issue、バグ報告、互換性情報、ドキュメント改善、Pull Request を歓迎します。
 
-公開 Issue に API キー、ログイントークン、Tailscale の資格情報、生成された OpenCode password などの秘密情報を投稿しないでください。
+公開 Issue に API キー、ログイントークン、Tailscale の資格情報、生成された OpenCode password、DevMoter login password などの秘密情報を投稿しないでください。
 
 ## AI-assisted development
 
