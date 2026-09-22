@@ -539,11 +539,42 @@ export function mountTaskWorkflow(root: HTMLElement) {
       } else if (action === "file-window") {
         await loadFile(path, 0);
       } else if (action === "apply") {
+        const selectedChange = changes.find(item => item.id === changeId);
+        const endpoint = `/api/workflow/projects/${encodeURIComponent(activeProjectId)}/changes/${encodeURIComponent(changeId)}`;
         const result = await api<{ change: ChangeSet }>(
-          `/api/workflow/projects/${encodeURIComponent(activeProjectId)}/changes/${encodeURIComponent(changeId)}/apply`,
+          endpoint + "/apply",
           { method: "POST", body: jsonBody({}) }
         );
         setStatus(`Applied exactly: ${result.change.appliedFiles.join(", ")}`);
+
+        if (selectedChange?.autoCommit) {
+          const preview = await api<{ preview: { files: string[]; message: string } }>(
+            endpoint + "/commit",
+            { method: "POST", body: jsonBody({}) }
+          );
+          const edited = window.prompt(
+            `Auto-commit is enabled for this change set.\n\nFiles:\n${preview.preview.files.join("\n")}\n\nEdit the commit message before continuing:`,
+            preview.preview.message
+          );
+          if (edited !== null) {
+            const message = edited.trim() || preview.preview.message;
+            const approved = window.confirm(
+              `Create the opt-in commit now?\n\nMessage: ${message}\nFiles:\n${preview.preview.files.join("\n")}`
+            );
+            if (approved) {
+              await api(endpoint + "/commit", {
+                method: "POST",
+                body: jsonBody({ message, confirm: true })
+              });
+              setStatus("Accepted changes were applied and committed.");
+            } else {
+              setStatus("Changes applied; automatic commit was cancelled.");
+            }
+          } else {
+            setStatus("Changes applied; automatic commit was cancelled.");
+          }
+        }
+
         await refreshData();
         return;
       } else if (action === "generate-message") {
