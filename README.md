@@ -1,10 +1,14 @@
 # DevMoter FAST
 
-**A mobile-first remote control for local coding agents.**
+**Your AI coding agents, anywhere. 📱**
 
-DevMoter FAST lets you run coding agents on a Linux machine and control them from your phone, tablet, or another browser through one lightweight web UI.
+[![CI](https://github.com/syr4wpywkk-collab/DevMoter-FAST/actions/workflows/ci.yml/badge.svg)](https://github.com/syr4wpywkk-collab/DevMoter-FAST/actions/workflows/ci.yml)
 
-It currently brings together **OpenCode** and **OpenAI Codex CLI / app-server** behind a single local DevMoter server. The agents stay on the host machine; the browser talks to DevMoter instead of connecting to the agent processes directly.
+DevMoter FAST is a **mobile-first remote interface for Codex and OpenCode**. Run your coding agents on a Linux machine, then control them from your phone, tablet, or another browser through one lightweight web UI.
+
+**Codex + OpenCode · PWA · English / 日本語 / 简体中文 · Open source**
+
+The agents stay on the host machine; the browser talks to DevMoter instead of connecting to the agent processes directly.
 
 > [!IMPORTANT]
 > DevMoter FAST is an **experimental, unofficial community project**. It is not affiliated with or endorsed by OpenAI, OpenCode, or other upstream projects/providers referenced by the software.
