@@ -1,5 +1,6 @@
 import { codexThreadStatusToExecutionState, codexTurnStatusToExecutionState, isExecutionActive, type ExecutionState } from "./execution-state.mjs";
 import { speechRecognitionLanguage } from "./i18n";
+import { setWakeLockExecutionActive } from "./wake-lock";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 
 const FOLLOW_BOTTOM_THRESHOLD = 48;
@@ -570,6 +571,7 @@ export function mountCodexRemote(
   function setExecutionState(next: ExecutionState) {
     executionState = next;
     const active = isExecutionActive(next);
+    setWakeLockExecutionActive("codex", active);
 
     executionStatus.dataset.state = next;
     executionStatus.querySelector("span")!.textContent = executionLabel(next);
