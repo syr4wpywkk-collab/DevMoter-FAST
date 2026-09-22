@@ -33,7 +33,9 @@ test("build mode leaves prompt tools unchanged", () => {
 test("mode and session route parsing are strict", () => {
   assert.equal(parseAgentMode("plan"), "plan");
   assert.equal(parseAgentMode("BUILD"), "build");
-  assert.equal(parseAgentMode("ask"), null);
+  assert.equal(parseAgentMode("ask"), "ask");
+  const askPayload = applyModeToPrompt({ text: "explain", tools: { bash: true } }, "ask");
+  assert.deepEqual(askPayload.tools, READ_ONLY_TOOLS);
   assert.equal(sessionIdFromOpenCodePath("/api/session/abc%201/prompt"), "abc 1");
   assert.equal(isPromptRoute("/api/session/abc/prompt"), true);
   assert.equal(isPromptRoute("/api/session/abc/message"), true);
