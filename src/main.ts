@@ -2,6 +2,7 @@ import "./style.css";
 import { mountOpenCodeRemote } from "./opencode";
 import { mountCodexRemote } from "./codex";
 import { startI18n } from "./i18n";
+import { mountSessionControl } from "./session-control";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
@@ -34,6 +35,7 @@ const codexRemote = mountCodexRemote(codexMount, {
   onOpenCode: () => setBackend("opencode")
 });
 
+mountSessionControl({ switchBackend: setBackend });
 startI18n();
 
 let healthCheckInFlight = false;
