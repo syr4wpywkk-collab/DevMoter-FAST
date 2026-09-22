@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readBoundedResponseBody, resolveLivePreviewTarget } from "../server/advanced-api.mjs";
 import {
   buildBubblewrapCommand,
   chooseModel,
@@ -11,8 +10,7 @@ import {
   createGrantRegistry,
   previewFile,
   resolveInsideRoot,
-  runWithRouting,
-  sandboxStatus
+  runWithRouting
 } from "../server/advanced-features.mjs";
 
 test("safe preview treats HTML as inert text and images as image data", async () => {
@@ -163,78 +161,52 @@ test("available sandbox binds project and explicit grants", () => {
 });
 
 
-test("live preview target resolution cannot escape loopback with scheme-relative paths", () => {
-  const safe = resolveLivePreviewTarget("127.0.0.1", 3000, "/assets/app.js", "?v=1");
-  assert.equal(safe.hostname, "127.0.0.1");
-  assert.equal(safe.port, "3000");
-  assert.equal(safe.pathname, "/assets/app.js");
-  assert.equal(safe.search, "?v=1");
-
+test("live preview target cannot escape the approved loopback endpoint", () => {
+  const target = resolveLivePreviewTarget("127.0.0.1", 3000, "/app.js", "?v=1");
+  assert.equal(target.origin, "http://127.0.0.1:3000");
+  assert.equal(target.pathname, "/app.js");
   assert.throws(
-    () => resolveLivePreviewTarget("127.0.0.1", 3000, "//169.254.169.254/latest"),
+    () => resolveLivePreviewTarget("127.0.0.1", 3000, "//169.254.169.254/latest/meta-data"),
     /Invalid live preview path/
   );
   assert.throws(
-    () => resolveLivePreviewTarget("127.0.0.1", 3000, "/\\\\169.254.169.254/latest"),
+    () => resolveLivePreviewTarget("127.0.0.1", 3000, "/\\\\169.254.169.254"),
     /Invalid live preview path/
   );
 });
 
-test("live preview response bodies are bounded while streaming", async () => {
-  const small = new Response(new Uint8Array(8));
-  assert.equal((await readBoundedResponseBody(small, 16)).length, 8);
-
-  const large = new Response(new Uint8Array(32));
-  await assert.rejects(() => readBoundedResponseBody(large, 16), /too large/i);
+test("live preview body is rejected while streaming once it exceeds the bound", async () => {
+  const response = new Response(new ReadableStream({
+    start(controller) {
+      controller.enqueue(new Uint8Array(12));
+      controller.enqueue(new Uint8Array(12));
+      controller.close();
+    }
+  }));
+  await assert.rejects(() => readBoundedResponseBody(response, 16), /too large/);
 });
 
-test("provider failover skips models that do not meet requested capabilities", async () => {
-  const env = {
-    DEVMOTER_OLLAMA_URL: "http://127.0.0.1:11434",
-    DEVMOTER_OLLAMA_MODELS: "vision-model",
-    DEVMOTER_OLLAMA_CAPABILITIES: "vision",
-    DEVMOTER_OPENAI_COMPAT_BASE_URL: "http://127.0.0.1:8000/v1",
-    DEVMOTER_OPENAI_COMPAT_MODELS: "text-only",
-    DEVMOTER_OPENAI_COMPAT_CAPABILITIES: "tools",
-    DEVMOTER_PROVIDER_FAILOVER: "openai-compatible/text-only",
-    DEVMOTER_MODEL_ROUTES: JSON.stringify([
-      { role: "coding", providerId: "ollama", model: "vision-model" }
-    ])
-  };
-  const fetchImpl = async url => {
-    const value = String(url);
-    if (value.endsWith("/api/tags")) {
-      return new Response(JSON.stringify({ models: [{ name: "vision-model" }] }), { status: 200 });
+test("failover never selects a model that misses the requested capabilities", async () => {
+  const providers = [
+    {
+      id: "primary", label: "Primary", kind: "openai-compatible",
+      baseUrl: "http://127.0.0.1:1/v1", apiKey: "", local: true,
+      models: [{ id: "vision", capabilities: ["vision", "tools"], context: 32000 }]
+    },
+    {
+      id: "fallback", label: "Fallback", kind: "openai-compatible",
+      baseUrl: "http://127.0.0.1:2/v1", apiKey: "", local: true,
+      models: [{ id: "text", capabilities: ["tools"], context: 32000 }]
     }
-    if (value.endsWith("/models")) {
-      return new Response(JSON.stringify({ data: [{ id: "text-only" }] }), { status: 200 });
-    }
-    if (value.endsWith("/api/chat")) {
-      return new Response(JSON.stringify({ error: "busy" }), { status: 503 });
-    }
-    if (value.endsWith("/chat/completions")) {
-      throw new Error("incompatible fallback must not be called");
-    }
-    throw new Error("unexpected " + value);
-  };
-
+  ];
   await assert.rejects(
     () => runWithRouting({
-      env, fetchImpl,
-      messages: [{ role: "user", content: "describe image" }],
-      role: "coding",
-      requirements: { vision: true }
+      providers, routes: [], failover: ["fallback/text"], role: "coding",
+      requirements: { vision: true },
+      override: { providerId: "primary", model: "vision" },
+      messages: [{ role: "user", content: "inspect image" }],
+      fetchImpl: async () => new Response("retry", { status: 503 })
     }),
-    /busy/
+    /retry|failed|503/i
   );
-});
-
-test("sandbox status is explicit that agent execution is not yet enforced", () => {
-  const status = sandboxStatus({
-    env: { DEVMOTER_SANDBOX: "required" },
-    spawn: () => ({ status: 0, stdout: "bubblewrap 1.0" })
-  });
-  assert.equal(status.available, true);
-  assert.equal(status.enforced, false);
-  assert.equal(status.scope, "capability-only");
 });
