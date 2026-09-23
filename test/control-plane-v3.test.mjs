@@ -18,7 +18,7 @@ async function tempControlPlane(executeTask = async () => ({ complete: true, cos
   return {
     dir,
     plane,
-    cleanup: () => rm(dir, { recursive: true, force: true })
+    cleanup: async () => {\n      let lastError;\n      for (let attempt = 0; attempt < 5; attempt += 1) {\n        try {\n          await rm(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });\n          return;\n        } catch (error) {\n          lastError = error;\n          if (error?.code !== "ENOTEMPTY" && error?.code !== "EBUSY") throw error;\n          await new Promise(resolve => setTimeout(resolve, 20 * (attempt + 1)));\n        }\n      }\n      throw lastError;\n    }
   };
 }
 
