@@ -86,14 +86,17 @@ const DEFINITIONS = {
     name: "Antigravity",
     bin: process.env.ANTIGRAVITY_BIN || process.env.AGY_BIN || "agy",
     versionArgs: ["--version"],
-    webUrl: "https://antigravity.google.com",
+    webUrl: "https://antigravity.google",
+    installUrl: "https://antigravity.google/product/antigravity-cli",
     capabilities: {
       launch: true,
       openProject: true,
-      remoteControl: true,
-      remoteUrl: true,
-      qrHandoff: true,
-      agentChat: false
+      remoteControl: false,
+      remoteUrl: false,
+      qrHandoff: false,
+      agentChat: true,
+      modelDiscovery: true,
+      sessionExport: true
     }
   },
   claude: {
@@ -291,6 +294,7 @@ export function publicDefinition(definition) {
     name: definition.name,
     webUrl: definition.webUrl,
     ...(definition.mobileUrl ? { mobileUrl: definition.mobileUrl } : {}),
+    ...(definition.installUrl ? { installUrl: definition.installUrl } : {}),
     capabilities: { ...definition.capabilities }
   };
 }
@@ -368,6 +372,25 @@ export async function launchIntegration(id, cwd) {
   } catch (error) {
     if (error instanceof IntegrationError) throw error;
     throw new IntegrationError("Unable to launch the integration on this host.");
+  }
+}
+
+export async function antigravityModels() {
+  const definition = DEFINITIONS.antigravity;
+  const detection = await detect(definition);
+  if (!detection.installed) throw new IntegrationError("Antigravity CLI is not installed");
+
+  try {
+    const result = await run(definition.bin, ["models"], {
+      timeoutMs: 10_000,
+      env: integrationChildEnv("antigravity")
+    });
+    return {
+      ok: true,
+      output: compactOutput([result.stdout, result.stderr].filter(Boolean).join("\n"), 8_000)
+    };
+  } catch {
+    throw new IntegrationError("Unable to list Antigravity CLI models.");
   }
 }
 
