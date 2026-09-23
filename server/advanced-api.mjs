@@ -423,6 +423,7 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
           if (!loopbackHost(host)) {
             throw Object.assign(new Error("Live preview targets must use a loopback host"), { statusCode: 400 });
           }
+          await browser.stop(projectId);
           const item = {
             projectId, host, port, token: randomBytes(24).toString("hex"), startedAt: Date.now()
           };
@@ -433,6 +434,7 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
           return true;
         }
         if (req.method === "DELETE") {
+          await browser.stop(projectId);
           previews.delete(projectId);
           sendJson(res, 200, { ok: true });
           return true;
