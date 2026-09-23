@@ -2,16 +2,19 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-test("only the exact GitHub webhook route is handled before Basic auth", async () => {
+test("webhook and explicit login endpoints are routed before the owner auth boundary", async () => {
   const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
   const serverStart = source.indexOf("const server = http.createServer");
   const webhook = source.indexOf('url.pathname === "/api/control/events/github"', serverStart);
-  const auth = source.indexOf("authorizeBasicRequest", serverStart);
-  const origin = source.indexOf("requireSameOriginMutation", serverStart);
+  const login = source.indexOf('url.pathname === "/login.html"', serverStart);
+  const publicAuth = source.indexOf('url.pathname.startsWith("/api/auth/")', serverStart);
+  const auth = source.indexOf("if (!basicAuthenticated && !ownerSession)", serverStart);
+  const origin = source.indexOf("requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)", auth);
   const passkey = source.indexOf("await passkeyRoute(req, res, url)", serverStart);
   const control = source.indexOf("await controlRoute(req, res, url)", serverStart);
 
-  assert.ok(webhook > serverStart && webhook < auth);
+  assert.ok(webhook > serverStart && webhook < login);
+  assert.ok(login < publicAuth && publicAuth < auth);
   assert.ok(auth < origin);
   assert.ok(origin < passkey);
   assert.ok(passkey < control);
@@ -26,11 +29,11 @@ test("control-plane task execution explicitly reuses backend context", async () 
   assert.match(source, /context: backendContext/);
 });
 
-test("passkey and control APIs stay behind Basic auth and same-origin mutation checks", async () => {
+test("passkey and control APIs stay behind owner auth and same-origin mutation checks", async () => {
   const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
   const serverStart = source.indexOf("const server = http.createServer");
-  const auth = source.indexOf("authorizeBasicRequest", serverStart);
-  const origin = source.indexOf("requireSameOriginMutation", serverStart);
+  const auth = source.indexOf("if (!basicAuthenticated && !ownerSession)", serverStart);
+  const origin = source.indexOf("requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)", auth);
   const passkey = source.indexOf("await passkeyRoute(req, res, url)", serverStart);
   const control = source.indexOf("await controlRoute(req, res, url)", serverStart);
   assert.ok(passkey > auth && passkey > origin);
