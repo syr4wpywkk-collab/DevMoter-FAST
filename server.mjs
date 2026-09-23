@@ -27,6 +27,8 @@ import { applyModeToPrompt, isDirectMutationRoute, isPromptRoute, isReadOnlyMode
 import { assertAuthPassword, authorizeBasicRequest, requireSameOriginMutation } from "./server/auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
 import { antigravityRemoteAction, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
+import { MULTI_API_PRESETS, createMultiApiStore, publicMultiApiProviders, runMultiApiChat, testMultiApiProvider } from "./server/multi-api.mjs";
+import { createMultiApiAttachmentStore } from "./server/multi-api-attachments.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -52,6 +54,8 @@ const HOME_DIR = process.env.HOME || process.cwd();
 const UPLOAD_DIR = process.env.POCKET_UPLOAD_DIR || join(HOME_DIR, ".local", "state", "opencode-pocket", "uploads");
 const PROJECT_CONFIG_DIR = join(HOME_DIR, ".config", "opencode-pocket");
 const PROJECTS_FILE = join(PROJECT_CONFIG_DIR, "projects.json");
+const MULTI_API_FILE = join(PROJECT_CONFIG_DIR, "llm-providers.json");
+const MULTI_API_IMAGE_DIR = join(HOME_DIR, ".local", "share", "devmoter", "api-chat-images");
 const PROJECT_FILE_LIMIT = 1024 * 1024;
 const PROJECT_SCAN_LIMIT = 200;
 const OPERATION_TTL_MS = 10 * 60 * 1000;
@@ -65,6 +69,11 @@ const openCodeSessionModes = new Map();
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
+});
+const multiApiStore = createMultiApiStore({ filePath: MULTI_API_FILE, env: process.env });
+const multiApiAttachments = createMultiApiAttachmentStore({ directory: MULTI_API_IMAGE_DIR });
+void multiApiAttachments.cleanup().catch(error => {
+  console.warn("multi-api attachment cleanup failed", redactText(error instanceof Error ? error.message : String(error)));
 });
 const passkeys = new PasskeyAuth({ configDir: PROJECT_CONFIG_DIR });
 let userAutomation = null;
@@ -1753,6 +1762,81 @@ async function codexEvents(req, res) {
 }
 
 
+function multiApiErrorStatus(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  const upstreamStatus = Number(error?.status);
+  return error?.name === "TimeoutError" ? 504 :
+    Number.isInteger(upstreamStatus) && upstreamStatus >= 400 && upstreamStatus < 600
+      ? upstreamStatus
+      : message === "Request body too large" ? 413 : 400;
+}
+
+async function multiApiProviderList(res) {
+  const providers = await multiApiStore.listResolved();
+  json(res, 200, { providers: publicMultiApiProviders(providers) });
+}
+
+async function multiApiProviderSave(req, res) {
+  try {
+    const payload = await readJson(req, 256 * 1024);
+    const provider = await multiApiStore.upsert(payload);
+    json(res, 200, { provider });
+  } catch (error) {
+    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+async function multiApiProviderDelete(providerId, res) {
+  try {
+    json(res, 200, await multiApiStore.remove(providerId));
+  } catch (error) {
+    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+async function multiApiProviderTest(req, res) {
+  try {
+    const payload = await readJson(req, 256 * 1024);
+    json(res, 200, await testMultiApiProvider(payload));
+  } catch (error) {
+    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+async function multiApiAttachmentUpload(req, res) {
+  try {
+    const mime = String(req.headers["content-type"] || "").split(";", 1)[0].trim();
+    const encodedName = String(req.headers["x-devmoter-file-name"] || "image");
+    let name = "image";
+    try { name = decodeURIComponent(encodedName); } catch { name = encodedName; }
+    const buffer = await readRaw(req, 15 * 1024 * 1024);
+    if (!buffer.length) throw new Error("Request body is empty");
+    const attachment = await multiApiAttachments.save({ name, mime, buffer });
+    json(res, 200, { attachment });
+  } catch (error) {
+    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+async function multiApiAttachmentDelete(attachmentId, res) {
+  try {
+    json(res, 200, await multiApiAttachments.remove(attachmentId));
+  } catch (error) {
+    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+async function multiApiChat(req, res) {
+  try {
+    const payload = await readJson(req, 1024 * 1024);
+    const providers = await multiApiStore.listResolved();
+    const result = await runMultiApiChat(providers, payload, fetch, { attachmentStore: multiApiAttachments });
+    json(res, 200, result);
+  } catch (error) {
+    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
 async function devWorkflowAction(req, res, handler) {
   try {
     const payload = await readJson(req);
@@ -1823,6 +1907,54 @@ const server = http.createServer(async (req, res) => {
 
     if (await controlRoute(req, res, url)) return;
     if (await automationApi.handle(req, res, url)) return;
+
+    if (req.method === "GET" && url.pathname === "/api/llm/presets") {
+      json(res, 200, { presets: MULTI_API_PRESETS });
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/llm/providers") {
+      await multiApiProviderList(res);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/llm/providers") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await multiApiProviderSave(req, res);
+      return;
+    }
+
+    const llmProviderMatch = url.pathname.match(/^\/api\/llm\/providers\/([^/]+)$/);
+    if (req.method === "DELETE" && llmProviderMatch) {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await multiApiProviderDelete(decodeURIComponent(llmProviderMatch[1]), res);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/llm/test") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await multiApiProviderTest(req, res);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/llm/attachments") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await multiApiAttachmentUpload(req, res);
+      return;
+    }
+
+    const llmAttachmentMatch = url.pathname.match(/^\/api\/llm\/attachments\/([^/]+)$/);
+    if (req.method === "DELETE" && llmAttachmentMatch) {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await multiApiAttachmentDelete(decodeURIComponent(llmAttachmentMatch[1]), res);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/llm/chat") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await multiApiChat(req, res);
+      return;
+    }
 
     const advancedCandidate =
       url.pathname.startsWith("/api/advanced/") ||
