@@ -43,7 +43,7 @@ export function decodeUploadDataUrl(data, maxBytes = 15 * 1024 * 1024) {
 
 export const CODEX_RPC_ALLOWLIST = new Set([
   "thread/list", "thread/read", "thread/start", "thread/resume", "thread/fork", "thread/loaded/list",
-  "thread/settings/update", "turn/start", "turn/steer", "turn/interrupt", "model/list",
+  "thread/settings/update", "turn/start", "turn/steer", "turn/interrupt", "model/list", "account/rateLimits/read",
   "plugin/list", "plugin/installed", "mcpServerStatus/list", "skills/list"
 ]);
 
