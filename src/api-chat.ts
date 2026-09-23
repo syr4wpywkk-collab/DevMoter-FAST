@@ -81,17 +81,22 @@ export function mountApiChat(
   root.innerHTML = `
     <div class="api-app">
       <aside id="apiSidebar" class="api-sidebar">
-        <div class="api-sidebar-head">
-          <strong>DevMoter</strong>
+        <div class="api-sidebar-head dm-agent-head">
+          <div class="dm-agent-switch-shell">
+            <button id="apiAgentSwitchButton" class="dm-agent-switch-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span class="dm-agent-switch-icon">✦</span>
+              <span class="dm-agent-switch-copy"><strong>API Chat</strong><small>現在のエージェント</small></span>
+              <span class="dm-agent-switch-chevron">⌄</span>
+            </button>
+            <div id="apiAgentSwitchMenu" class="dm-agent-switch-menu hidden" role="listbox" aria-label="エージェントを選択">
+              <button id="apiGoCodex" type="button" data-agent="codex"><span>⌘</span><span><strong>Codex</strong><small>実装・修正</small></span><span></span></button>
+              <button id="apiGoOpenCode" type="button" data-agent="opencode"><span>◈</span><span><strong>OpenCode</strong><small>エージェント実行</small></span><span></span></button>
+              <button id="apiAgentCurrent" class="active" type="button" data-agent="api"><span>✦</span><span><strong>API Chat</strong><small>マルチプロバイダー</small></span><span>✓</span></button>
+            </div>
+          </div>
           <button id="apiSidebarClose" type="button" aria-label="閉じる">×</button>
         </div>
         <button id="apiNewChat" class="api-new-chat" type="button">＋ 新しいチャット</button>
-        <div class="api-nav-label">AGENTS</div>
-        <nav class="api-agent-nav">
-          <button id="apiGoCodex" type="button"><span>⌘</span><span>Codex</span></button>
-          <button id="apiGoOpenCode" type="button"><span>◈</span><span>OpenCode</span></button>
-          <button class="active" type="button"><span>✦</span><span>API Chat</span></button>
-        </nav>
         <div class="api-nav-label">SETTINGS</div>
         <nav class="api-agent-nav">
           <button id="apiSettingsSide" type="button"><span>⚙</span><span>API Providers</span></button>
@@ -156,6 +161,9 @@ export function mountApiChat(
   const sidebar = root.querySelector<HTMLElement>("#apiSidebar")!;
   const menu = root.querySelector<HTMLButtonElement>("#apiMenu")!;
   const sidebarClose = root.querySelector<HTMLButtonElement>("#apiSidebarClose")!;
+  const agentSwitchButton = root.querySelector<HTMLButtonElement>("#apiAgentSwitchButton")!;
+  const agentSwitchMenu = root.querySelector<HTMLDivElement>("#apiAgentSwitchMenu")!;
+  const agentCurrent = root.querySelector<HTMLButtonElement>("#apiAgentCurrent")!;
   const goCodex = root.querySelector<HTMLButtonElement>("#apiGoCodex")!;
   const goOpenCode = root.querySelector<HTMLButtonElement>("#apiGoOpenCode")!;
   const settingsSide = root.querySelector<HTMLButtonElement>("#apiSettingsSide")!;
@@ -197,6 +205,8 @@ export function mountApiChat(
   }
 
   function closeSidebar() {
+    agentSwitchMenu.classList.add("hidden");
+    agentSwitchButton.setAttribute("aria-expanded", "false");
     sidebar.classList.remove("open");
   }
 
@@ -842,6 +852,14 @@ export function mountApiChat(
   }
 
   menu.addEventListener("click", openSidebar);
+  agentSwitchButton.addEventListener("click", () => {
+    const open = agentSwitchMenu.classList.toggle("hidden") === false;
+    agentSwitchButton.setAttribute("aria-expanded", String(open));
+  });
+  agentCurrent.addEventListener("click", () => {
+    agentSwitchMenu.classList.add("hidden");
+    agentSwitchButton.setAttribute("aria-expanded", "false");
+  });
   sidebarClose.addEventListener("click", closeSidebar);
   goCodex.addEventListener("click", () => {
     closeSidebar();
