@@ -3,12 +3,13 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readBoundedResponseBody, resolveLivePreviewTarget } from "../server/advanced-api.mjs";
+import { readBoundedResponseBody, resolveLivePreviewTarget, rewriteLivePreviewBody } from "../server/advanced-api.mjs";
 import {
   buildBubblewrapCommand,
   chooseModel,
   createArtifactRegistry,
   createGrantRegistry,
+  listProjectDirectory,
   previewFile,
   resolveInsideRoot,
   runWithRouting,
@@ -237,4 +238,43 @@ test("sandbox status is explicit that agent execution is not yet enforced", () =
   assert.equal(status.available, true);
   assert.equal(status.enforced, false);
   assert.equal(status.scope, "capability-only");
+});
+
+
+test("read-only file browser hides sensitive dotfiles and blocks symlink escapes", async () => {
+  const parent = await mkdtemp(join(tmpdir(), "devmoter-browser-"));
+  const root = join(parent, "project");
+  const outside = join(parent, "outside");
+  await mkdir(root);
+  await mkdir(outside);
+  await mkdir(join(root, "src"));
+  await writeFile(join(root, "src", "main.js"), "console.log('ok')");
+  await writeFile(join(root, ".env"), "SECRET=nope");
+  await writeFile(join(outside, "secret.txt"), "outside");
+  await symlink(outside, join(root, "escape"));
+
+  const browser = await listProjectDirectory(root, "");
+  assert.ok(browser.entries.some(item => item.name === "src" && item.kind === "directory"));
+  assert.equal(browser.entries.some(item => item.name === ".env"), false);
+  assert.equal(browser.entries.some(item => item.name === "escape"), false);
+
+  const src = await listProjectDirectory(root, "src");
+  assert.equal(src.entries[0].path, "src/main.js");
+  assert.equal(src.entries[0].kind, "text");
+  await assert.rejects(() => listProjectDirectory(root, "../outside"), /stay inside|escapes/i);
+});
+
+test("live preview rewrites root-relative HTML/CSS/module assets through the authenticated proxy", () => {
+  const html = Buffer.from('<html><head></head><body><script type="module" src="/src/main.js"></script><img src="/logo.png"><form action="/submit"></form></body></html>');
+  const rewritten = rewriteLivePreviewBody(html, "text/html; charset=utf-8", "abc123").toString("utf8");
+  assert.match(rewritten, /<base href="\/api\/live-preview\/proxy\/abc123\/">/);
+  assert.match(rewritten, /src="\/api\/live-preview\/proxy\/abc123\/src\/main\.js"/);
+  assert.match(rewritten, /action="\/api\/live-preview\/proxy\/abc123\/submit"/);
+  assert.match(rewritten, /XMLHttpRequest/);
+
+  const css = rewriteLivePreviewBody(Buffer.from('body{background:url("/bg.png")}'), "text/css", "abc123").toString("utf8");
+  assert.match(css, /url\("\/api\/live-preview\/proxy\/abc123\/bg\.png/);
+
+  const js = rewriteLivePreviewBody(Buffer.from('import x from "/src/x.js";'), "application/javascript", "abc123").toString("utf8");
+  assert.match(js, /from "\/api\/live-preview\/proxy\/abc123\/src\/x\.js"/);
 });
