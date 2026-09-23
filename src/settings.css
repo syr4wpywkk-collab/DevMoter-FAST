@@ -607,3 +607,72 @@ html[data-devmoter-theme="light"] .devmoter-settings-form-card input {
   background: #f4f4f7;
   color: #111;
 }
+
+
+/* Mobile workspace declutter: keep one primary floating entry point and move
+   secondary controls behind Settings. Their panels remain mounted so Settings
+   can open them programmatically without duplicating functionality. */
+@media (max-width: 620px) {
+  .wf-launch,
+  .devmoter-agent-launcher,
+  .sc-fab,
+  .dm-controlbar > button {
+    display: none !important;
+  }
+
+  .dm-controlbar {
+    width: 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    pointer-events: none;
+  }
+
+  .dm-controlbar .dm-panel {
+    pointer-events: auto;
+  }
+
+  /* The OpenCode composer keeps the three primary modes visible, while
+     secondary agent/model and slash/status controls move to menus/settings. */
+  .ocx-context-buttons,
+  #ocxSlashButton,
+  .ocx-activity {
+    display: none !important;
+  }
+
+  .ocx-context-row {
+    justify-content: flex-start !important;
+  }
+
+  .ocx-mode-switch {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .ocx-mode-switch button {
+    min-height: 32px;
+    padding-inline: 12px;
+  }
+
+  .ocx-composer-wrap {
+    padding-top: 10px !important;
+  }
+
+  .ocx-composer {
+    border-radius: 18px !important;
+  }
+
+  /* Once any secondary panel is open, hide the settings launcher as well.
+     This prevents floating controls from sitting on top of dialogs. */
+  body:has(.devmoter-agent-panel:not(.hidden)) .devmoter-settings-trigger,
+  body:has(.sc-panel.open) .devmoter-settings-trigger,
+  body:has(.wf-modal:not(.hidden)) .devmoter-settings-trigger,
+  body:has(.dm-panel:not(.hidden)) .devmoter-settings-trigger,
+  body:has(.dm-control-modal:not(.hidden)) .devmoter-settings-trigger,
+  body:has(.devmoter-system-modal:not(.hidden)) .devmoter-settings-trigger {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}

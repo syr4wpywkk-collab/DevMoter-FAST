@@ -184,6 +184,14 @@ export function mountSettingsPanel() {
         <span aria-hidden="true">›</span>
       </button>
 
+      ${section("ワークスペース",
+        row("✦", "Activity / Session Control", { action: "existing:.sc-fab", value: "実行中・Queue・Checkpoint・History" }) +
+        row("⌁", "Review & Tasks", { action: "existing:#wfLaunch", value: "差分・Worktree・GitHub" }) +
+        row("◇", "エージェントモード", { action: "existing:#devmoterAgentLauncher", value: "Mode・Subagent・Fleet" }) +
+        row("◒", "Context", { action: "existing:.dm-context", value: "使用量・Auto compact" }) +
+        row("✓", "Task checkpoints", { action: "existing:.dm-tasks", value: "現在のmicro-task" })
+      )}
+
       ${section("DevMoter をカスタマイズする",
         row("▣", "表示とレイアウト", { action: "page:appearance", value: densityLabel(density) }) +
         row("◐", "テーマ", { action: "page:appearance", value: themeLabel(theme) }) +
