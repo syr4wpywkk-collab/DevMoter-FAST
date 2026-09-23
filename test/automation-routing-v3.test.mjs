@@ -23,10 +23,10 @@ test("project deep-link is consumed once in shared startup before either backend
   );
 });
 
-test("automation and attachment routes stay after the global Basic/same-origin boundary", async () => {
+test("automation and attachment routes stay after the owner-session/same-origin boundary", async () => {
   const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
-  const auth = source.indexOf("authorizeBasicRequest(req, res, AUTH_CONFIG)");
-  const origin = source.indexOf("requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)");
+  const auth = source.indexOf("if (!basicAuthenticated && !ownerSession)");
+  const origin = source.indexOf("requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)", auth);
   const automation = source.indexOf("automationApi.handle(req, res, url)");
   const upload = source.indexOf('url.pathname === "/api/codex/upload"');
 
