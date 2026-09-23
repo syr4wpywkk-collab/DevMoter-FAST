@@ -63,6 +63,22 @@ function approvalCapability(method) {
   return null;
 }
 
+function assertNoCapabilityEscalation(parentInput, requestedInput) {
+  if (requestedInput == null) return;
+  const parent = normalizeCapabilityPolicy(parentInput);
+  const requested = normalizeCapabilityPolicy(requestedInput);
+  const extra = requested.allow.filter(group => !parent.allow.includes(group));
+  const mutationEscalation =
+    parent.mutationPolicy === "read-only-until-explicit-transition" &&
+    requested.mutationPolicy !== "read-only-until-explicit-transition";
+  if (extra.length || mutationEscalation) {
+    const reasons = [];
+    if (extra.length) reasons.push("capabilities outside parent ceiling: " + extra.join(", "));
+    if (mutationEscalation) reasons.push("mutation policy would broaden parent authority");
+    throw new Error("Subagent capability escalation rejected: " + reasons.join("; "));
+  }
+}
+
 
 function defaultId() {
   return globalThis.crypto?.randomUUID?.() ??
@@ -225,6 +241,7 @@ export class SubagentRuntime {
       }
     }
 
+    if (parentRun) assertNoCapabilityEscalation(parentRun.capabilityPolicy, spec.capabilityPolicy);
     const capabilityPolicy = parentRun
       ? intersectCapabilityPolicies(parentRun.capabilityPolicy, spec.capabilityPolicy)
       : normalizeCapabilityPolicy(spec.capabilityPolicy);
@@ -647,4 +664,4 @@ export function createCodexSubagentAdapter({
   };
 }
 
-export { CAPABILITY_GROUPS, intersectCapabilityPolicies, normalizeCapabilityPolicy, scopedPrompt };
+export { CAPABILITY_GROUPS, assertNoCapabilityEscalation, intersectCapabilityPolicies, normalizeCapabilityPolicy, scopedPrompt };
