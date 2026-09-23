@@ -1919,7 +1919,14 @@ export function mountCodexRemote(
         if (!id) continue;
         entries.push({
           id,
-          name: String(plugin?.name || id.split("@")[0]),
+          name: String(
+            plugin?.interface?.displayName ||
+            plugin?.release?.interface?.displayName ||
+            plugin?.release?.displayName ||
+            plugin?.displayName ||
+            plugin?.name ||
+            id.split("@")[0]
+          ),
           marketplace: String(marketplace?.name || ""),
           installed: plugin?.installed !== false,
           enabled: plugin?.enabled !== false
