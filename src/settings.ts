@@ -1,3 +1,5 @@
+import "./settings.css";
+
 type Json = Record<string, any>;
 
 const THEME_KEY = "devmoter-theme";
