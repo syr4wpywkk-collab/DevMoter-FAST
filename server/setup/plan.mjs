@@ -1,8 +1,13 @@
 import { createSetupStatus, setupAdapters } from "./engine.mjs";
+import { randomUUID, createHash } from "node:crypto";
 
 const REQUEST_ACTIONS = new Set(["install", "keep", "manual_review"]);
 const AUTOMATIC_SOURCE_CLASSES = new Set(["A", "B"]);
 const TOOL_BY_ID = new Map(setupAdapters.map(adapter => [adapter.id, adapter]));
+// Short lived, server-owned snapshots bind confirmation to the exact preview.
+const planSnapshots = new Map();
+const PLAN_TTL_MS = 5 * 60 * 1000;
+const MAX_PLAN_SNAPSHOTS = 100;
 
 export class SetupPlanError extends Error {
   constructor(code, status = 400) {
@@ -181,7 +186,55 @@ export function buildInstallPlan(payload, setupStatus) {
   };
 }
 
-export async function previewInstallPlan(payload) {
-  const setupStatus = await createSetupStatus();
-  return buildInstallPlan(payload, setupStatus);
+export async function previewInstallPlan(payload, options = {}) {
+  const setupStatus = await createSetupStatus(options);
+  const plan = buildInstallPlan(payload, setupStatus);
+  const now = Date.now();
+  for (const [id, snapshot] of planSnapshots) if (snapshot.expiresAt <= now) planSnapshots.delete(id);
+  while (planSnapshots.size >= MAX_PLAN_SNAPSHOTS) planSnapshots.delete(planSnapshots.keys().next().value);
+  const planId = randomUUID();
+  const digest = createHash("sha256").update(JSON.stringify(plan)).digest("hex");
+  planSnapshots.set(planId, { plan, digest, expiresAt: now + PLAN_TTL_MS, state: "pending" });
+  return { ...plan, planId, expiresAt: new Date(now + PLAN_TTL_MS).toISOString() };
+}
+
+function parseExecuteRequest(payload) {
+  if (!isPlainRecord(payload) || !exactKeys(payload, ["planId", "confirmedActions"])) throw new SetupPlanError("invalid_execute_request");
+  if (typeof payload.planId !== "string" || !/^[0-9a-f-]{36}$/i.test(payload.planId)) throw new SetupPlanError("invalid_plan");
+  if (!Array.isArray(payload.confirmedActions) || payload.confirmedActions.length > setupAdapters.length) throw new SetupPlanError("invalid_confirmation");
+  const ids = new Set();
+  for (const action of payload.confirmedActions) {
+    if (!isPlainRecord(action) || !exactKeys(action, ["toolId", "actionId", "confirmed"]) || action.actionId !== "install" || action.confirmed !== true || typeof action.toolId !== "string" || !TOOL_BY_ID.has(action.toolId) || ids.has(action.toolId)) throw new SetupPlanError("invalid_confirmation");
+    ids.add(action.toolId);
+  }
+  return ids;
+}
+
+// Deliberately fail closed: no adapter currently has an approved noninteractive,
+// privilege-safe executor. In particular GH/Tailscale need distro-specific package
+// sources and a local OS privilege prompt, neither of which is exposed to browsers.
+export async function executeInstallPlan(payload) {
+  const confirmations = parseExecuteRequest(payload);
+  const snapshot = planSnapshots.get(payload.planId);
+  if (!snapshot || snapshot.expiresAt <= Date.now()) throw new SetupPlanError("stale_plan", 409);
+  const currentDigest = createHash("sha256").update(JSON.stringify(snapshot.plan)).digest("hex");
+  if (currentDigest !== snapshot.digest) throw new SetupPlanError("stale_plan", 409);
+  if (snapshot.state !== "pending") return snapshot.result;
+  const installItems = snapshot.plan.items.filter(item => item.action === "install");
+  for (const item of installItems) if (!confirmations.has(item.toolId)) throw new SetupPlanError("confirmation_required", 403);
+  if (confirmations.size !== installItems.length) throw new SetupPlanError("invalid_confirmation");
+  for (const item of installItems) {
+    if (item.status !== "reviewable" && item.status !== "confirmation-required") throw new SetupPlanError("unsupported_action", 422);
+  }
+  // Never infer execution support from preview metadata alone. No OS-specific
+  // broker is installed/configured yet, so report the required local action.
+  snapshot.state = "completed";
+  snapshot.result = {
+    planId: payload.planId,
+    status: "needs_user_action",
+    items: snapshot.plan.items.map(item => item.action === "install"
+      ? { toolId: item.toolId, status: "needs_user_action", errorCode: "executor_unavailable", summary: "A safe local installer is not configured for this tool and platform.", nextAction: "Install using the official source shown in the review, then rescan." }
+      : { toolId: item.toolId, status: item.action === "keep" ? "succeeded" : "needs_user_action", errorCode: null, summary: item.action === "keep" ? "Existing installation was preserved." : "Review this tool manually.", nextAction: null })
+  };
+  return snapshot.result;
 }

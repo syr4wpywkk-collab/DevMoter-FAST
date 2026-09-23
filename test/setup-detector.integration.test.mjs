@@ -216,6 +216,11 @@ test("setup API retains auth, ignores command-shaped browser input, and redacts 
   await waitForReady(child);
   const unauthorized = await fetch(`${origin}/api/setup/status`);
   assert.equal(unauthorized.status, 401);
+  const unauthorizedExecution = await fetch(`${origin}/api/setup/execute`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ planId: "0".repeat(36), confirmedActions: [] })
+  });
+  assert.equal(unauthorizedExecution.status, 401);
 
   const response = await fetch(`${origin}/api/setup/status?executable=/tmp/evil&argv[]=--help&cwd=/tmp&env[token]=exposed`, {
     headers: { authorization }
@@ -242,6 +247,7 @@ test("setup API retains auth, ignores command-shaped browser input, and redacts 
   const plan = await planResponse.json();
   assert.equal(plan.phase, "experimental-phase-2");
   assert.equal(plan.executable, false);
+  assert.match(plan.planId, /^[0-9a-f-]{36}$/i);
   assert.equal(plan.items.find(item => item.toolId === "codex").action, "keep");
   assert.equal(plan.items.find(item => item.toolId === "github").action, "manual_review");
   assert.equal(JSON.stringify(plan).includes(root), false);
@@ -259,6 +265,25 @@ test("setup API retains auth, ignores command-shaped browser input, and redacts 
     body: JSON.stringify({ selections: [{ toolId: "codex", action: "install" }] })
   });
   assert.equal(crossOriginPlan.status, 403);
+  const crossOriginExecution = await fetch(`${origin}/api/setup/execute`, {
+    method: "POST",
+    headers: { authorization, origin: "https://attacker.invalid", "content-type": "application/json" },
+    body: JSON.stringify({ planId: plan.planId, confirmedActions: [] })
+  });
+  assert.equal(crossOriginExecution.status, 403);
+  const forgedExecution = await fetch(`${origin}/api/setup/execute`, {
+    method: "POST", headers: { authorization, origin, "content-type": "application/json" },
+    body: JSON.stringify({ planId: plan.planId, confirmedActions: [], cwd: "/tmp/attacker", source: "https://attacker.invalid" })
+  });
+  assert.equal(forgedExecution.status, 400);
+  const execution = await fetch(`${origin}/api/setup/execute`, {
+    method: "POST", headers: { authorization, origin, "content-type": "application/json" },
+    body: JSON.stringify({ planId: plan.planId, confirmedActions: [] })
+  });
+  assert.equal(execution.status, 200);
+  const executionResult = await execution.json();
+  assert.equal(executionResult.status, "needs_user_action");
+  assert.equal(JSON.stringify(executionResult).includes(root), false);
   await assert.rejects(access(unexpectedInstallerCommand));
 
   const repeated = await fetch(`${origin}/api/setup/status`, { headers: { authorization } });

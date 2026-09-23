@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { setupAdapters } from "../server/setup/engine.mjs";
-import { buildInstallPlan, installSourceDecision, SetupPlanError } from "../server/setup/plan.mjs";
+import { buildInstallPlan, executeInstallPlan, installSourceDecision, previewInstallPlan, SetupPlanError } from "../server/setup/plan.mjs";
 
 function statusFor(overrides = {}) {
   return {
@@ -156,4 +156,27 @@ test("partial or duplicate selections fail closed", () => {
   expectPlanError(() => buildInstallPlan({ selections: [
     { toolId: "codex", action: "keep" }, { toolId: "codex", action: "install" }
   ] }, statusFor()), "duplicate_tool");
+});
+
+test("execution accepts only a server snapshot and rejects forged or injected requests", async () => {
+  await assert.rejects(executeInstallPlan({ planId: "0".repeat(36), confirmedActions: [], command: "id" }), error => error.code === "invalid_execute_request");
+  await assert.rejects(executeInstallPlan({ planId: "0".repeat(36), confirmedActions: [] }), error => error.code === "stale_plan");
+});
+
+test("executor requires exact explicit confirmations and never invents an installer", async () => {
+  const preview = await previewInstallPlan({ selections: [{ toolId: "codex", action: "install" }] }, { env: { PATH: "", HOME: "/tmp" } });
+  await assert.rejects(executeInstallPlan({ planId: preview.planId, confirmedActions: [] }), error => error.code === "confirmation_required");
+  await assert.rejects(executeInstallPlan({ planId: preview.planId, confirmedActions: [{ toolId: "codex", actionId: "install", confirmed: true, cwd: "/tmp/unsafe" }] }), error => error.code === "invalid_confirmation");
+  const result = await executeInstallPlan({ planId: preview.planId, confirmedActions: [{ toolId: "codex", actionId: "install", confirmed: true }] });
+  assert.equal(result.status, "needs_user_action");
+  assert.equal(result.items[0].status, "needs_user_action");
+  assert.equal(JSON.stringify(result).includes("/home/"), false);
+  assert.deepEqual(await executeInstallPlan({ planId: preview.planId, confirmedActions: [{ toolId: "codex", actionId: "install", confirmed: true }] }), result);
+});
+
+test("manual review and unsupported selections can never reach an executor", async () => {
+  const preview = await previewInstallPlan({ selections: [{ toolId: "github", action: "manual_review" }] }, { env: { PATH: "", HOME: "/tmp" } });
+  assert.equal(preview.items[0].status, "manual-review");
+  const result = await executeInstallPlan({ planId: preview.planId, confirmedActions: [] });
+  assert.equal(result.items[0].status, "needs_user_action");
 });
