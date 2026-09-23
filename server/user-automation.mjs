@@ -291,8 +291,9 @@ export function createUserAutomationService({ configDir, resolveProject, execute
     };
     runs.set(id, run);
     while (runs.size > MAX_RUNS) runs.delete(runs.keys().next().value);
+    const queuedSnapshot = structuredClone(run);
     void executeRecipe(run, recipe);
-    return structuredClone(run);
+    return queuedSnapshot;
   }
 
   async function executeRecipe(run, recipe) {
