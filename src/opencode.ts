@@ -52,6 +52,7 @@ type OpenCodeCommand = {
   name: string;
   template: string;
   description?: string;
+  devmoterCustom?: boolean;
   agent?: string;
   model?: {
     providerID?: string;
@@ -652,6 +653,19 @@ export function mountOpenCodeRemote(
       return payload.data as T;
     }
 
+    return payload as T;
+  }
+
+  async function devmoterApi<T = Json>(path: string, init: RequestInit = {}): Promise<T> {
+    const method = String(init.method || "GET").toUpperCase();
+    const headers = new Headers(init.headers || {});
+    if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
+    if (method !== "GET" && method !== "HEAD" && !headers.has("x-pocket-operation-id")) {
+      headers.set("x-pocket-operation-id", operationId());
+    }
+    const res = await fetch(path, { ...init, headers, cache: method === "GET" ? "no-store" : undefined });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload?.error || ("DevMoter HTTP " + res.status));
     return payload as T;
   }
 
@@ -1302,11 +1316,30 @@ export function mountOpenCodeRemote(
   }
 
   async function loadCommands() {
+    let native: OpenCodeCommand[] = [];
     try {
       const data = await api<OpenCodeCommand[]>("/command");
-      commands = Array.isArray(data) ? data : [];
+      native = Array.isArray(data) ? data : [];
     } catch {
-      commands = [];
+      native = [];
+    }
+
+    try {
+      const payload = await devmoterApi<{ commands?: Array<{ name: string; description?: string; template?: string; kind?: string }> }>(
+        "/api/user-automation/slash"
+      );
+      const nativeNames = new Set(native.map(command => command.name.toLowerCase()));
+      const custom = (payload.commands || [])
+        .filter(command => command.kind === "prompt" && !nativeNames.has(String(command.name || "").toLowerCase()))
+        .map(command => ({
+          name: String(command.name),
+          description: command.description || "DevMoter custom command",
+          template: command.template || "",
+          devmoterCustom: true
+        }));
+      commands = [...native, ...custom];
+    } catch {
+      commands = native;
     }
   }
 
@@ -1648,7 +1681,7 @@ export function mountOpenCodeRemote(
   }
 
   function renderSlashPalette(query = "") {
-    const normalized = query.replace(/^\//, "").trim().toLowerCase();
+    const normalized = query.replace(/^\//, "").trim().toLowerCase().split(/\s+/, 1)[0];
     const items = commands
       .filter(command =>
         !normalized ||
@@ -1699,7 +1732,22 @@ export function mountOpenCodeRemote(
       return;
     }
 
-    promptInput.value = command.template || `/${command.name}`;
+    if (command.devmoterCustom) {
+      try {
+        const current = promptInput.value.trim();
+        const args = current.match(/^\/[a-z][a-z0-9-]*(?:\s+([\s\S]*))?$/i)?.[1] || "";
+        const resolved = await devmoterApi<{ prompt?: string }>("/api/user-automation/slash/resolve", {
+          method: "POST",
+          body: JSON.stringify({ input: "/" + command.name + (args ? " " + args : "") })
+        });
+        promptInput.value = resolved.prompt || command.template || `/${command.name}`;
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : "Custom command failed");
+        return;
+      }
+    } else {
+      promptInput.value = command.template || `/${command.name}`;
+    }
     updateContextUI();
     resizeComposer();
     slashPalette.classList.add("hidden");
