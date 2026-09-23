@@ -154,18 +154,20 @@ export function mountOpenCodeRemote(
       <div id="ocxScrim" class="ocx-scrim hidden"></div>
 
       <aside id="ocxSidebar" class="ocx-sidebar" aria-hidden="true">
-        <div class="ocx-sidebar-head">
-          <div>
-            <strong>OpenCode</strong>
-            <small id="ocxSidebarDirectory">workspace</small>
+        <div class="ocx-sidebar-head dm-agent-head">
+          <div class="dm-agent-switch-shell">
+            <button id="ocxAgentSwitchButton" class="dm-agent-switch-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span class="dm-agent-switch-icon">◈</span>
+              <span class="dm-agent-switch-copy"><strong>OpenCode</strong><small id="ocxSidebarDirectory">workspace</small></span>
+              <span class="dm-agent-switch-chevron">⌄</span>
+            </button>
+            <div id="ocxAgentSwitchMenu" class="dm-agent-switch-menu hidden" role="listbox" aria-label="エージェントを選択">
+              <button id="ocxBackendOpenCode" class="active" type="button" data-agent="opencode"><span>◈</span><span><strong>OpenCode</strong><small>エージェント実行</small></span><span>✓</span></button>
+              <button id="ocxBackendCodex" type="button" data-agent="codex"><span>⌘</span><span><strong>Codex</strong><small>実装・修正</small></span><span></span></button>
+              <button id="ocxBackendApi" type="button" data-agent="api"><span>✦</span><span><strong>API Chat</strong><small>マルチプロバイダー</small></span><span></span></button>
+            </div>
           </div>
           <button id="ocxSidebarClose" class="ocx-icon" type="button" aria-label="閉じる">×</button>
-        </div>
-
-        <div class="ocx-backend-switch" role="group" aria-label="Backend">
-          <button id="ocxBackendOpenCode" class="active" type="button" aria-current="page">OpenCode</button>
-          <button id="ocxBackendCodex" type="button">Codex</button>
-          <button id="ocxBackendApi" type="button">API Chat</button>
         </div>
 
         <button id="ocxNewSessionSide" class="ocx-new-session" type="button">
@@ -346,6 +348,9 @@ export function mountOpenCodeRemote(
   const sidebarDirectory = root.querySelector<HTMLElement>("#ocxSidebarDirectory")!;
   const sidebarClose = root.querySelector<HTMLButtonElement>("#ocxSidebarClose")!;
   const menu = root.querySelector<HTMLButtonElement>("#ocxMenu")!;
+  const agentSwitchButton = root.querySelector<HTMLButtonElement>("#ocxAgentSwitchButton")!;
+  const agentSwitchMenu = root.querySelector<HTMLDivElement>("#ocxAgentSwitchMenu")!;
+  const backendOpenCode = root.querySelector<HTMLButtonElement>("#ocxBackendOpenCode")!;
   const backendCodex = root.querySelector<HTMLButtonElement>("#ocxBackendCodex")!;
   const backendApi = root.querySelector<HTMLButtonElement>("#ocxBackendApi")!;
   const newSessionSide = root.querySelector<HTMLButtonElement>("#ocxNewSessionSide")!;
@@ -506,6 +511,8 @@ export function mountOpenCodeRemote(
   }
 
   function closeSidebar() {
+    agentSwitchMenu.classList.add("hidden");
+    agentSwitchButton.setAttribute("aria-expanded", "false");
     sidebar.classList.remove("open");
     sidebar.setAttribute("aria-hidden", "true");
     scrim.classList.add("hidden");
@@ -3376,6 +3383,14 @@ export function mountOpenCodeRemote(
   }
 
   menu.addEventListener("click", openSidebar);
+  agentSwitchButton.addEventListener("click", () => {
+    const open = agentSwitchMenu.classList.toggle("hidden") === false;
+    agentSwitchButton.setAttribute("aria-expanded", String(open));
+  });
+  backendOpenCode.addEventListener("click", () => {
+    agentSwitchMenu.classList.add("hidden");
+    agentSwitchButton.setAttribute("aria-expanded", "false");
+  });
   sidebarClose.addEventListener("click", closeSidebar);
   scrim.addEventListener("click", closeSidebar);
   sessionSearch.addEventListener("input", renderSessions);
