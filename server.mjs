@@ -11,6 +11,7 @@ import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-worksp
 import { createSessionControl } from "./server/session-control.mjs";
 import { createTaskWorkflow } from "./server/task-workflow.mjs";
 import { createDevWorkflowService } from "./server/dev-workflows.mjs";
+import { createUserAutomationService, userAutomationPolicy } from "./server/user-automation.mjs";
 import { createAdvancedApi } from "./server/advanced-api.mjs";
 import { createTerminalManager } from "./server/terminal.mjs";
 import { createProjectIndex } from "./server/project-index.mjs";
@@ -65,6 +66,7 @@ const codex = new CodexBridge({
   cwd: process.env.CODEX_CWD || process.cwd()
 });
 const passkeys = new PasskeyAuth({ configDir: PROJECT_CONFIG_DIR });
+let userAutomation = null;
 const controlPlane = new ControlPlane({
   configDir: PROJECT_CONFIG_DIR,
   executeTask: executeControlTask,
@@ -94,6 +96,12 @@ const devWorkflows = createDevWorkflowService({
   codex,
   projectResolver: getProjectById,
   configDir: PROJECT_CONFIG_DIR
+});
+userAutomation = createUserAutomationService({
+  configDir: PROJECT_CONFIG_DIR,
+  resolveProject: getProjectById,
+  executeTask: executeControlTask,
+  runVerification: (projectId, options) => devWorkflows.runVerification(projectId, options)
 });
 const SAFETY_PERMISSION_FILE = join(PROJECT_CONFIG_DIR, "remembered-approvals.json");
 const PROJECT_INDEX_DIR = join(HOME_DIR, ".local", "state", "opencode-pocket", "project-indexes");
@@ -175,6 +183,18 @@ codex.on("notification", event => {
       backend: "codex",
       sessionId,
       state: "completed"
+    });
+  }
+
+  const method = String(event?.method || "");
+  if (/^item\/.+\/(?:completed|failed)$/i.test(method)) {
+    void userAutomation?.emitHook("after-tool", {
+      backend: "codex",
+      sessionId,
+      method,
+      itemId: event?.params?.item?.id ?? event?.params?.itemId ?? null
+    }).catch(error => {
+      console.error("after-tool hook failed", redactText(error instanceof Error ? error.message : String(error)));
     });
   }
 });
@@ -1103,6 +1123,23 @@ function waitForCodexTurn(threadId, turnId, context = {}) {
 }
 
 async function executeControlTask(definition, context = {}) {
+  const hookPayload = {
+    projectId: String(definition?.projectId || ""),
+    backend: String(definition?.backend || "codex"),
+    kind: String(context?.kind || "task"),
+    runId: String(context?.runId || "")
+  };
+  await userAutomation?.emitHook("before-run", hookPayload);
+  try {
+    return await executeControlTaskCore(definition, context);
+  } finally {
+    void userAutomation?.emitHook("after-run", hookPayload).catch(error => {
+      console.error("after-run hook failed", redactText(error instanceof Error ? error.message : String(error)));
+    });
+  }
+}
+
+async function executeControlTaskCore(definition, context = {}) {
   const project = definition?.projectId ? await getProjectById(definition.projectId) : null;
   const task = String(definition?.task || "").trim();
   if (!task) throw new Error("Task is required");
@@ -1748,7 +1785,8 @@ const server = http.createServer(async (req, res) => {
 
     const advancedCandidate =
       url.pathname.startsWith("/api/advanced/") ||
-      /^\/api\/projects\/[^/]+\/(?:preview|artifacts|web-preview)$/.test(url.pathname) ||
+      url.pathname.startsWith("/api/attachments/") ||
+      /^\/api\/projects\/[^/]+\/(?:preview|files|artifacts|web-preview)$/.test(url.pathname) ||
       /^\/api\/artifacts\/[^/]+\/(?:preview|download)$/.test(url.pathname) ||
       /^\/api\/live-preview\/proxy\//.test(url.pathname);
     if (advancedCandidate) {
@@ -1792,6 +1830,12 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "POST" && url.pathname === "/api/dev/extension/approve") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devWorkflowAction(req, res, payload => devWorkflows.approveExtension(payload?.projectId));
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/dev/review") {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
       await devWorkflowAction(req, res, payload => devWorkflows.review(payload));
@@ -1811,7 +1855,18 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/api/dev/verify") {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
-      await devWorkflowAction(req, res, payload => devWorkflows.runVerification(payload?.projectId));
+      await devWorkflowAction(req, res, async payload => {
+        const result = await devWorkflows.runVerification(payload?.projectId);
+        void userAutomation?.emitHook("verification-complete", {
+          projectId: String(payload?.projectId || ""),
+          ok: result?.ok === true,
+          configured: result?.configured !== false,
+          timedOut: result?.timedOut === true
+        }).catch(error => {
+          console.error("verification-complete hook failed", redactText(error instanceof Error ? error.message : String(error)));
+        });
+        return result;
+      });
       return;
     }
 
@@ -1846,6 +1901,67 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "DELETE" && url.pathname === "/api/dev/mcp") {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
       await devWorkflowAction(req, res, payload => devWorkflows.removeMcpServer(payload));
+      return;
+    }
+
+    if (url.pathname === "/api/user-automation" && req.method === "GET") {
+      const state = await userAutomation.readState();
+      json(res, 200, {
+        state,
+        policy: userAutomationPolicy,
+        runs: userAutomation.listRuns()
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/user-automation" && req.method === "PUT") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      const state = await userAutomation.writeState(await readJson(req, 512 * 1024));
+      json(res, 200, { state, policy: userAutomationPolicy });
+      return;
+    }
+
+    if (url.pathname === "/api/user-automation/slash" && req.method === "GET") {
+      json(res, 200, {
+        commands: await userAutomation.listSlashCommands(),
+        precedence: userAutomationPolicy.slashPrecedence
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/user-automation/slash/resolve" && req.method === "POST") {
+      const payload = await readJson(req, 64 * 1024);
+      json(res, 200, await userAutomation.resolveSlash(payload?.input));
+      return;
+    }
+
+    if (url.pathname === "/api/user-automation/recipes" && req.method === "GET") {
+      json(res, 200, { recipes: await userAutomation.listRecipes(), runs: userAutomation.listRuns() });
+      return;
+    }
+
+    const recipeRunMatch = url.pathname.match(/^\/api\/user-automation\/recipes\/([^/]+)\/run$/);
+    if (recipeRunMatch && req.method === "POST") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      const payload = await readJson(req, 128 * 1024);
+      json(res, 202, {
+        run: await userAutomation.startRecipe(decodeURIComponent(recipeRunMatch[1]), payload)
+      });
+      return;
+    }
+
+    const automationRunMatch = url.pathname.match(/^\/api\/user-automation\/runs\/([^/]+)$/);
+    if (automationRunMatch && req.method === "GET") {
+      const run = userAutomation.getRun(decodeURIComponent(automationRunMatch[1]));
+      if (!run) json(res, 404, { error: "Recipe run not found" });
+      else json(res, 200, { run });
+      return;
+    }
+
+    const automationCancelMatch = url.pathname.match(/^\/api\/user-automation\/runs\/([^/]+)\/cancel$/);
+    if (automationCancelMatch && req.method === "POST") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      json(res, 200, { run: await userAutomation.cancelRecipe(decodeURIComponent(automationCancelMatch[1])) });
       return;
     }
 

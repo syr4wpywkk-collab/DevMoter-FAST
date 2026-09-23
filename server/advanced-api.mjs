@@ -2,9 +2,12 @@ import { readFile, realpath, stat } from "node:fs/promises";
 import { basename, extname, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 import {
-  buildModelRegistry, createArtifactRegistry, createGrantRegistry, parseRoutingRules,
+  buildModelRegistry, createArtifactRegistry, createGrantRegistry, listProjectDirectory, parseRoutingRules,
   previewFile, providerConfigFromEnv, runWithRouting, sandboxStatus
 } from "./advanced-features.mjs";
+import {
+  backendAttachmentCapabilities, fetchUrlAttachment, negotiateAttachments, previewUrlInput
+} from "./attachments.mjs";
 
 function sendJson(res, status, body) {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -89,6 +92,32 @@ export async function readBoundedResponseBody(response, limit = LIVE_PREVIEW_LIM
   return Buffer.concat(chunks, size);
 }
 
+function previewProxyPrefix(token) {
+  return "/api/live-preview/proxy/" + token;
+}
+
+function rewriteRootAssetReferences(text, prefix) {
+  return String(text)
+    .replace(/\b(src|href|action|poster)=(["'])\/(?!\/)/gi, (_m, attr, quote) => attr + "=" + quote + prefix + "/")
+    .replace(/url\(\s*(["']?)\/(?!\/)/gi, (_m, quote) => "url(" + quote + prefix + "/")
+    .replace(/\b(from\s+|import\s*\(\s*|import\s+)(["'])\/(?!\/)/g, (_m, lead, quote) => lead + quote + prefix + "/");
+}
+
+export function rewriteLivePreviewBody(body, contentType, token) {
+  const type = String(contentType || "").toLowerCase();
+  const prefix = previewProxyPrefix(token);
+  if (!/(?:text\/html|application\/xhtml\+xml|text\/css|javascript|ecmascript)/i.test(type)) return body;
+  let text = Buffer.isBuffer(body) ? body.toString("utf8") : String(body || "");
+  text = rewriteRootAssetReferences(text, prefix);
+  if (/html|xhtml/i.test(type)) {
+    const base = '<base href="' + prefix + '/">';
+    const shim = '<script>(function(){const p=' + JSON.stringify(prefix) + ';const n=u=>typeof u==="string"&&u.startsWith("/")&&!u.startsWith(p+"/")?p+u:u;const f=window.fetch;if(f)window.fetch=(u,o)=>f.call(window,n(u),o);const xo=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u){arguments[1]=n(u);return xo.apply(this,arguments)};})();<\/script>';
+    if (/<head\b[^>]*>/i.test(text)) text = text.replace(/<head\b[^>]*>/i, match => match + base + shim);
+    else text = base + shim + text;
+  }
+  return Buffer.from(text, "utf8");
+}
+
 function publicProvider(provider) {
   const { apiKey, ...rest } = provider;
   return { ...rest, secretConfigured: Boolean(apiKey) };
@@ -145,7 +174,7 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
 
     const headers = {
       "cache-control": "no-store",
-      "content-security-policy": "sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads; default-src 'self' data: blob: http: https:; connect-src 'self' http: https: ws: wss:",
+      "content-security-policy": "sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads; default-src 'self' data: blob: http: https:; script-src 'self' 'unsafe-inline' blob: http: https:; connect-src 'self' http: https: ws: wss:",
       "x-content-type-options": "nosniff",
       "referrer-policy": "no-referrer"
     };
@@ -163,7 +192,9 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
       res.end();
       return;
     }
-    const body = await readBoundedResponseBody(upstream);
+    let body = await readBoundedResponseBody(upstream);
+    body = rewriteLivePreviewBody(body, contentType || "", token);
+    headers["content-length"] = String(body.length);
     res.writeHead(upstream.status, headers);
     res.end(body);
   }
@@ -210,6 +241,38 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
         return true;
       }
 
+      if (req.method === "POST" && url.pathname === "/api/attachments/url/preview") {
+        const payload = await readJson(req, 64 * 1024);
+        sendJson(res, 200, { preview: previewUrlInput(payload.url) });
+        return true;
+      }
+
+      if (req.method === "POST" && url.pathname === "/api/attachments/url/fetch") {
+        const payload = await readJson(req, 64 * 1024);
+        const result = await fetchUrlAttachment(payload.url, {
+          maxBytes: payload.maxBytes,
+          maxRedirects: payload.maxRedirects,
+          timeoutMs: payload.timeoutMs
+        });
+        sendJson(res, 200, result);
+        return true;
+      }
+
+      if (req.method === "GET" && url.pathname === "/api/attachments/capabilities") {
+        sendJson(res, 200, backendAttachmentCapabilities(url.searchParams.get("backend") || ""));
+        return true;
+      }
+
+      if (req.method === "POST" && url.pathname === "/api/attachments/negotiate") {
+        const payload = await readJson(req, 256 * 1024);
+        const capabilities = backendAttachmentCapabilities(payload.backend);
+        sendJson(res, 200, {
+          backend: capabilities.backend,
+          attachments: negotiateAttachments(payload.attachments, capabilities)
+        });
+        return true;
+      }
+
       if (req.method === "GET" && url.pathname === "/api/advanced/providers") {
         sendJson(res, 200, { providers: providerConfigFromEnv(env).map(publicProvider) });
         return true;
@@ -234,6 +297,17 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
       if (grantMatch && req.method === "DELETE") {
         const ok = await grants.revoke(decodeURIComponent(grantMatch[1]));
         sendJson(res, ok ? 200 : 404, ok ? { ok: true } : { error: "Grant not found" });
+        return true;
+      }
+
+      const projectFiles = url.pathname.match(/^\/api\/projects\/([^/]+)\/files$/);
+      if (projectFiles && req.method === "GET") {
+        const project = await getProjectById(decodeURIComponent(projectFiles[1]));
+        const path = url.searchParams.get("path") || "";
+        sendJson(res, 200, {
+          projectId: project.id,
+          browser: await listProjectDirectory(project.path, path)
+        });
         return true;
       }
 

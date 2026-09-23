@@ -369,3 +369,200 @@ test("Codex adapter starts subagents with registered Project id and never caller
   }, () => {});
   assert.equal(calls[0].method, "thread/start");
 });
+
+
+test("nested subagents reject explicit capability escalation before adapter start", async () => {
+  const fake = fakeAdapter();
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: fake.adapter },
+    idFactory: () => `cap-${++index}`
+  });
+  const root = await runtime.spawn({
+    parentSessionId: "parent",
+    task: "review root",
+    capabilityPolicy: {
+      allow: ["read", "diagnostics", "git"],
+      deny: ["files", "commands", "network"],
+      mutationPolicy: "read-only-until-explicit-transition"
+    }
+  });
+  const startsBefore = fake.starts.length;
+  await assert.rejects(
+    () => runtime.spawn({
+      parentSessionId: root.sessionId,
+      parentRunId: root.id,
+      task: "try executor child",
+      capabilityPolicy: {
+        allow: ["read", "files", "commands", "network"],
+        deny: [],
+        mutationPolicy: "approval-required"
+      }
+    }),
+    /capability escalation rejected.*files.*commands.*network/i
+  );
+  assert.equal(fake.starts.length, startsBefore);
+});
+
+test("capability ceiling remains monotonic across deeper delegation", async () => {
+  const fake = fakeAdapter();
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: fake.adapter },
+    idFactory: () => `deep-cap-${++index}`,
+    policy: { maxDepth: 3 }
+  });
+  const root = await runtime.spawn({
+    parentSessionId: "p",
+    task: "root",
+    capabilityPolicy: { allow: ["read", "git"], deny: ["files", "commands", "network"] }
+  });
+  const child = await runtime.spawn({
+    parentSessionId: root.sessionId,
+    parentRunId: root.id,
+    task: "child",
+    capabilityPolicy: { allow: ["read"], deny: [] }
+  });
+  assert.deepEqual(child.capabilityPolicy.allow, ["read"]);
+  const startsBefore = fake.starts.length;
+  await assert.rejects(
+    () => runtime.spawn({
+      parentSessionId: child.sessionId,
+      parentRunId: child.id,
+      task: "grandchild",
+      capabilityPolicy: { allow: ["read", "git", "files", "commands"], deny: [] }
+    }),
+    /capability escalation rejected/i
+  );
+  assert.equal(fake.starts.length, startsBefore);
+});
+
+test("second opinions inherit the parent capability ceiling", async () => {
+  const fake = fakeAdapter();
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: fake.adapter },
+    idFactory: () => `op-cap-${++index}`
+  });
+  const parent = await runtime.spawn({
+    parentSessionId: "p",
+    task: "review",
+    capabilityPolicy: {
+      allow: ["read", "diagnostics"],
+      deny: ["files", "commands", "network"],
+      mutationPolicy: "read-only-until-explicit-transition"
+    }
+  });
+  const opinion = await runtime.spawnSecondOpinion(parent.id, {
+    share: { task: true },
+    task: "independent review"
+  });
+  assert.deepEqual(opinion.capabilityPolicy.allow, ["read", "diagnostics"]);
+  assert.equal(opinion.capabilityPolicy.mutationPolicy, "read-only-until-explicit-transition");
+});
+
+test("legacy unrestricted roots preserve all capability groups", async () => {
+  const fake = fakeAdapter();
+  const runtime = new SubagentRuntime({
+    adapters: { codex: fake.adapter },
+    idFactory: () => "legacy-cap"
+  });
+  const run = await runtime.spawn({ parentSessionId: "p", task: "legacy" });
+  assert.deepEqual(
+    run.capabilityPolicy.allow,
+    ["read", "diagnostics", "tests", "git", "files", "commands", "network"]
+  );
+  assert.deepEqual(run.capabilityPolicy.deny, []);
+});
+
+test("Codex adapter auto-declines approvals for denied inherited capabilities", async () => {
+  const listeners = new Map();
+  const approvals = [];
+  const fetchImpl = async (url, init) => {
+    if (url === "/api/codex/approval") {
+      approvals.push(JSON.parse(init.body));
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+    const request = JSON.parse(init.body);
+    if (request.method === "thread/start") {
+      return new Response(JSON.stringify({ result: { thread: { id: "thread-policy" }, model: "m" } }), { status: 200 });
+    }
+    if (request.method === "turn/start") {
+      return new Response(JSON.stringify({ result: { turn: { id: "turn-policy" } } }), { status: 200 });
+    }
+    throw new Error("unexpected RPC " + request.method);
+  };
+  const eventSourceFactory = () => ({
+    addEventListener(name, listener) { listeners.set(name, listener); },
+    close() {}
+  });
+  const runtime = new SubagentRuntime({
+    adapters: { codex: createCodexSubagentAdapter({ fetchImpl, eventSourceFactory }) },
+    idFactory: () => "policy-run"
+  });
+  const run = await runtime.spawn({
+    parentSessionId: "parent",
+    task: "read only",
+    context: { projectId: "project-1" },
+    capabilityPolicy: {
+      allow: ["read"],
+      deny: ["files", "commands", "network"],
+      mutationPolicy: "read-only-until-explicit-transition"
+    }
+  });
+
+  listeners.get("server-request")({
+    data: JSON.stringify({
+      id: 44,
+      method: "item/commandExecution/requestApproval",
+      params: { threadId: run.sessionId, command: "touch nope" }
+    })
+  });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(approvals, [{ id: 44, decision: "decline" }]);
+  assert.equal(runtime.getRun(run.id).pendingApproval, null);
+  assert.equal(runtime.getRun(run.id).state, "running");
+});
+
+test("nested child may explicitly reduce capabilities", async () => {
+  const fake = fakeAdapter();
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: fake.adapter },
+    idFactory: () => `reduce-${++index}`
+  });
+  const root = await runtime.spawn({
+    parentSessionId: "p",
+    task: "root",
+    capabilityPolicy: { allow: ["read", "git"], deny: ["files", "commands", "network"] }
+  });
+  const child = await runtime.spawn({
+    parentSessionId: root.sessionId,
+    parentRunId: root.id,
+    task: "child",
+    capabilityPolicy: { allow: ["read"], deny: ["git"] }
+  });
+  assert.deepEqual(child.capabilityPolicy.allow, ["read"]);
+});
+
+test("fleet nested children reject escalation and record the reason", async () => {
+  const fake = fakeAdapter();
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: fake.adapter },
+    idFactory: () => `fleet-cap-${++index}`
+  });
+  const root = await runtime.spawn({
+    parentSessionId: "p",
+    task: "root",
+    capabilityPolicy: { allow: ["read"], deny: ["files", "commands", "network"] }
+  });
+  const fleet = await runtime.runFleet([{
+    parentSessionId: root.sessionId,
+    parentRunId: root.id,
+    task: "escalating child",
+    capabilityPolicy: { allow: ["read", "commands"], deny: [] }
+  }], { id: "fleet-capability", concurrency: 1 });
+  assert.equal(fleet.errors.length, 1);
+  assert.match(fleet.errors[0].error, /capability escalation rejected/i);
+});

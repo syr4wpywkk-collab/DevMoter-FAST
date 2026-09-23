@@ -6,6 +6,7 @@ import { join } from "node:path";
 import {
   createDevWorkflowService,
   devWorkflowInternals,
+  extensionPermissionFingerprint,
   maskSecrets,
   negotiateAdapter,
   normalizeDevWorkflowSettings,
@@ -179,4 +180,66 @@ test("masked MCP secrets survive full settings read-modify-write", async t => {
   const raw = await service.getSettings({ masked: false });
   assert.equal(raw.mcp.servers[0].env.API_TOKEN, "real-secret");
   assert.equal(raw.review.policy, "block");
+});
+
+
+test("extension manifest separates sensitive permissions and fingerprints permission changes", () => {
+  const base = {
+    manifestVersion: 1,
+    name: "browser-tools",
+    version: "1.0.0",
+    capabilities: ["hooks", "browser"],
+    permissions: ["filesystem:read", "browser"]
+  };
+  const valid = validateExtensionManifest(base);
+  assert.equal(valid.valid, true);
+  assert.deepEqual(valid.manifest.permissions, ["browser", "filesystem:read"]);
+
+  const escalated = { ...base, version: "1.0.1", permissions: [...base.permissions, "network"] };
+  assert.notEqual(extensionPermissionFingerprint(base), extensionPermissionFingerprint(escalated));
+
+  const unknown = validateExtensionManifest({ ...base, permissions: ["root-everything"] });
+  assert.equal(unknown.valid, false);
+  assert.match(unknown.errors.join("\n"), /Unknown permissions/i);
+});
+
+test("extension permission escalation requires explicit re-approval", async t => {
+  const home = await mkdtemp(join(tmpdir(), "devmoter-extension-"));
+  t.after(() => rm(home, { recursive: true, force: true }));
+  const project = join(home, "project");
+  const configDir = join(home, "config");
+  await mkdir(project, { recursive: true });
+  const manifestPath = join(project, "devmoter.extension.json");
+  await writeFile(manifestPath, JSON.stringify({
+    manifestVersion: 1,
+    name: "demo",
+    version: "1.0.0",
+    capabilities: ["hooks"],
+    permissions: ["filesystem:read"]
+  }));
+
+  const service = createDevWorkflowService({
+    homeDir: home,
+    configDir,
+    codex: { request: async () => ({ data: [] }) },
+    projectResolver: async () => ({ id: "p1", name: "p1", path: project })
+  });
+
+  let state = await service.capabilities("p1");
+  assert.equal(state.extension.approvalRequired, true);
+  await service.approveExtension("p1");
+  state = await service.capabilities("p1");
+  assert.equal(state.extension.approved, true);
+
+  await writeFile(manifestPath, JSON.stringify({
+    manifestVersion: 1,
+    name: "demo",
+    version: "1.0.1",
+    capabilities: ["hooks"],
+    permissions: ["filesystem:read", "network"]
+  }));
+  state = await service.capabilities("p1");
+  assert.equal(state.extension.approved, false);
+  assert.equal(state.extension.approvalRequired, true);
+  assert.deepEqual(state.extension.approvedPermissions, ["filesystem:read"]);
 });

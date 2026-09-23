@@ -616,6 +616,11 @@ export function mountAgentConsole() {
           role: activeModeId === "review" ? "reviewer" : activeModeId === "orchestrator" ? "planner" : "executor",
           model: routedModel(selectedRole(activeModeId), mode.model),
           task: task.value,
+          capabilityPolicy: {
+            allow: mode.tools.allow,
+            deny: mode.tools.deny,
+            mutationPolicy: mode.mutationPolicy
+          },
           context: {
             projectId: activeProjectId(),
             mode: mode.name,
@@ -644,6 +649,11 @@ export function mountAgentConsole() {
             role: child.owner,
             model: routedModel(child.owner as AgentRole, mode.model),
             task: child.title,
+            capabilityPolicy: {
+              allow: mode.tools.allow,
+              deny: mode.tools.deny,
+              mutationPolicy: mode.mutationPolicy
+            },
             context: {
               projectId: activeProjectId(),
               parentTask: orchestrationPlan?.task || "",

@@ -2,12 +2,13 @@ import { execFile } from "node:child_process";
 import { lstat, mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { AcpAdapter, createAgentAdapterRegistry } from "./acp-adapter.mjs";
 
 const execFileAsync = promisify(execFile);
 const TERMINAL = new Set(["completed", "failed", "cancelled", "canceled", "interrupted", "aborted"]);
-const EXTENSION_CAPABILITIES = new Set(["commands", "skills", "hooks", "mcp", "adapters", "themes", "rules", "review", "verification"]);
+const EXTENSION_CAPABILITIES = new Set(["commands", "skills", "hooks", "mcp", "adapters", "themes", "rules", "review", "verification", "browser"]);
+const EXTENSION_PERMISSIONS = new Set(["filesystem:read", "filesystem:write", "network", "shell", "credentials", "adapters", "browser"]);
 const SECRET_KEY = /(secret|token|password|api[_-]?key|authorization|credential)/i;
 const MAX_DIFF = 220000;
 const MAX_RULE = 65536;
@@ -20,6 +21,7 @@ const DEFAULTS = {
   mcp: { servers: [] },
   skills: { user: [] },
   rules: { user: [] },
+  extensions: { approvals: {} },
   adapters: { acp: { enabled: false, command: "", args: [], capabilities: [] } }
 };
 
@@ -128,6 +130,18 @@ export function normalizeDevWorkflowSettings(input) {
     rules: {
       user: strings(raw.rules?.user, 100).map(rule => rule.slice(0, 4000))
     },
+    extensions: {
+      approvals: plain(raw.extensions?.approvals)
+        ? Object.fromEntries(Object.entries(raw.extensions.approvals).slice(0, 200).map(([projectId, value]) => [
+            String(projectId).slice(0, 160),
+            plain(value) ? {
+              fingerprint: String(value.fingerprint || "").slice(0, 128),
+              permissions: strings(value.permissions, 32),
+              approvedAt: Number(value.approvedAt) || 0
+            } : { fingerprint: "", permissions: [], approvedAt: 0 }
+          ]))
+        : {}
+    },
     adapters: {
       acp: {
         enabled: Boolean(raw.adapters?.acp?.enabled),
@@ -158,6 +172,9 @@ export function validateExtensionManifest(input) {
   const capabilities = strings(input.capabilities, 64);
   const unknown = capabilities.filter(item => !EXTENSION_CAPABILITIES.has(item));
   if (unknown.length) errors.push("Unknown capabilities: " + unknown.join(", "));
+  const permissions = strings(input.permissions, 64);
+  const unknownPermissions = permissions.filter(item => !EXTENSION_PERMISSIONS.has(item));
+  if (unknownPermissions.length) errors.push("Unknown permissions: " + unknownPermissions.join(", "));
   const declarations = plain(input.declarations) ? input.declarations : {};
   for (const key of Object.keys(declarations)) {
     if (!EXTENSION_CAPABILITIES.has(key)) errors.push("Unsafe or unknown declaration: " + key);
@@ -171,10 +188,20 @@ export function validateExtensionManifest(input) {
       version: String(input.version).slice(0, 80),
       description: String(input.description || "").slice(0, 500),
       capabilities,
-      permissions: strings(input.permissions, 64),
+      permissions: [...new Set(permissions)].sort(),
       declarations
     }
   };
+}
+
+export function extensionPermissionFingerprint(manifest) {
+  const validated = validateExtensionManifest(manifest);
+  if (!validated.valid) throw new Error("Cannot fingerprint invalid extension manifest");
+  const payload = {
+    name: validated.manifest.name,
+    permissions: validated.manifest.permissions
+  };
+  return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
 }
 
 export function structureMcpResult(value, options = {}) {
@@ -540,13 +567,26 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
       effectiveSkills.set(String(skill.name || "").toLowerCase(), skill);
     }
 
+    let extensionTrust = extension;
+    if (extension?.valid && extension?.manifest) {
+      const fingerprint = extensionPermissionFingerprint(extension.manifest);
+      const approval = settings.extensions.approvals[project.id] || null;
+      extensionTrust = {
+        ...extension,
+        fingerprint,
+        approved: Boolean(approval && approval.fingerprint === fingerprint),
+        approvalRequired: !approval || approval.fingerprint !== fingerprint,
+        approvedPermissions: approval?.permissions || []
+      };
+    }
+
     return {
       project: { id: project.id, name: project.name, path: project.path },
       skills: [...effectiveSkills.values()].sort((a, b) => b.precedence - a.precedence),
       skillsPrecedence: "higher numeric precedence wins; DevMoter user(20) > native user(15) > DevMoter project(10) > other native/project(5)",
       rules: userRules.concat(rules).sort((a, b) => b.precedence - a.precedence),
       rulesPrecedence: "higher numeric precedence wins; trusted user rules are evaluated before untrusted project rules",
-      extension,
+      extension: extensionTrust,
       adapters,
       negotiation: negotiateAdapter(adapters, "", []),
       mcp: settings.mcp.servers
@@ -1102,6 +1142,28 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     };
   }
 
+  async function approveExtension(projectId) {
+    const settings = await readSettings();
+    const project = await getProject(projectId);
+    const extension = await projectExtension(project.path);
+    if (!extension.present || !extension.valid || !extension.manifest) {
+      throw new Error("A valid project extension manifest is required");
+    }
+    const fingerprint = extensionPermissionFingerprint(extension.manifest);
+    settings.extensions.approvals[project.id] = {
+      fingerprint,
+      permissions: [...extension.manifest.permissions],
+      approvedAt: Date.now()
+    };
+    await writeSettings(settings);
+    return {
+      projectId: project.id,
+      fingerprint,
+      permissions: [...extension.manifest.permissions],
+      approved: true
+    };
+  }
+
   async function saveMcpServer(input) {
     const settings = await readSettings();
     const payload = plain(input.server) ? input.server : input;
@@ -1178,6 +1240,7 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     saveMcpServer,
     setMcpEnabled,
     removeMcpServer,
+    approveExtension,
     probeAcp
   };
 }
