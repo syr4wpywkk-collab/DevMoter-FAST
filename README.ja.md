@@ -1,101 +1,78 @@
 # DevMoter FAST
 
-**AI コーディングエージェントを、どこからでも。📱**
+**コーディングエージェントを、ポケットサイズのコントロールプレーンへ。📱**
 
-[English](./README.md) | **日本語** | [简体中文](./README.zh-CN.md)
+[English](./README.md) · **日本語** · [简体中文](./README.zh-CN.md)
 
-DevMoter FAST は、**Codex と OpenCode をスマホ・タブレット・PC のブラウザから操作するための mobile-first なリモート UI** です。コーディングエージェント本体は Linux ホスト上で動作し、ブラウザは DevMoter を経由して操作します。
+DevMoter FAST は、Codex / OpenCode / API Chat とローカルの開発環境をまとめて操作するための **オープンソース・セルフホスト・mobile-first コントロールプレーン**です。
 
-**Codex + OpenCode · PWA · English / 日本語 / 简体中文 · Open source**
+エージェント、リポジトリ、認証情報、ツールは Linux ホスト側に置いたまま、スマホ・タブレット・ブラウザを操作面として使います。単なるチャットUIではなく、セッション、Projects、Git/GitHub、Reviewed Changes、ホスト連携、automation、安全境界までを一つのUIにまとめることを目指しています。
 
 > [!IMPORTANT]
-> DevMoter FAST は **実験的な非公式コミュニティプロジェクト** です。OpenAI、OpenCode、その他ソフトウェア内で参照される上流プロジェクトや提供元とは提携しておらず、承認・推奨を受けたものでもありません。
+> **Alpha / active development.** 非公式コミュニティプロジェクトであり、OpenAI、OpenCode、GitHub、Anthropic、Google、Tailscale その他の提供元とは提携・承認関係にありません。
 
 > [!WARNING]
-> DevMoter は **単一ユーザーのプライベートホスト / プライベートネットワーク** を前提にしています。DevMoter 自体の HTTP ログインを必須にしていますが、これはプライベート環境向けの単一ユーザー境界であり、公開 SaaS 向けの認可システムではありません。DevMoter、OpenCode、エージェント backend を公開インターネットへ直接露出させないでください。
+> 現在は **単一ユーザーのプライベートホスト / プライベートネットワーク** 向けです。localhost を基本とし、外部から使う場合は Tailscale Serve などのプライベート HTTPS を利用してください。公開インターネットへ直接露出する用途は想定していません。
 
-## はじめに
+## 30秒で分かる構成
 
-- ⚡ **高速インストール:** [fastinstall.MD](./fastinstall.MD)
-- 🔐 **セキュリティと脆弱性報告:** [SECURITY.md](./SECURITY.md)
-- 📜 **サードパーティ通知:** [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)
-
-> [!CAUTION]
-> **Alpha セキュリティ通知:** セキュリティレビューは継続中です。既知の制約があるため、信頼できるプライベートネットワークでのみ使用してください。脆弱性を見つけた場合、攻撃手順や秘密情報を公開 Issue に投稿せず、[SECURITY.md](./SECURITY.md) に従ってください。
-
-## DevMoter でできること
-
-- OpenCode のセッション、モデル、エージェント、コマンド、スキル、ライブイベント、権限確認、割り込み
-- Codex のスレッド履歴、新規 / 再開 / fork、モデル選択、推論強度、ストリーミング、承認、添付ファイル
-- プロジェクト登録・作成、作業ディレクトリ選択、安全な Markdown 閲覧・編集
-- ホスト側の `gh` セッションを利用した GitHub リポジトリ操作
-- モバイル向け PWA
-- English / 日本語 / 简体中文 の UI
-- Node テスト、coverage、build、GitHub Actions CI
-
-DevMoter FAST は現在 **Alpha / active development** です。プロトコル変更、UI の粗さ、上流バージョン依存の互換性問題が起こる可能性があります。
-
-## クイックスタート
-
-### 必要なもの
-
-Linux 環境に次を用意してください。
-
-- Node.js / npm
-- OpenCode CLI
-- OpenAI Codex CLI
-- Python 3
-- `curl`
-
-GitHub リポジトリ機能を使う場合は GitHub CLI をインストールし、自分のアカウントで認証します。
-
-```bash
-gh auth login
-gh auth status
+```text
+スマホ / タブレット / PWA
+          │
+          ▼
+     DevMoter FAST
+   mobile control plane
+     │      │      │
+     ▼      ▼      ▼
+  Codex  OpenCode  API Chat
+     └──────┼──────┘
+            ▼
+      Projects · Git
+            ▼
+        Linux host
 ```
 
-各コーディングエージェントの CLI は、上流ツールが提供する正式な手順で事前に認証・設定してください。
+開発マシンを動かしたまま席を離れ、スマホから進捗確認・承認・割り込み・モデル/エージェント切替・作業継続を行う、というワークフローが中心です。
 
-### 上流サービスのアカウントと利用規約
+## 機能ステータス
 
-DevMoter FAST は、上流サービスのアカウント、サブスクリプション、API キー、ログイントークン、その他の認証情報を提供・販売・共有・同梱しません。
+「画面にある」ことと「完成している」ことを区別します。
 
-利用者はそれぞれ、
+| 機能 | 状態 | 現在の範囲 |
+| --- | --- | --- |
+| OpenCode | ✅ Shipped | sessions、agents、models/providers、modes、commands、skills、streaming、permissions/questions、interrupt |
+| Codex | ✅ Shipped | threads、resume/fork、動的モデル取得、推論量、streaming、approvals、attachments、plugins/MCP |
+| Projects | ✅ Shipped | project登録/切替、安全境界付きMarkdown閲覧・編集 |
+| GitHub workspace | ✅ Shipped | host `gh` を使ったrepo取得、managed clone/open、安全なbranch/fetch |
+| API Chat | 🧪 Experimental | 複数provider/model、推論モード、画像添付 |
+| Reviewed Changes / Tasks | 🧪 Experimental | proposal、hunk review、drift検証、apply/commit、worktree/PR |
+| Automation / Control plane | 🧪 Experimental | host registry、schedule/trigger、bounded automation |
+| Antigravity / Claude連携 | 🧪 Experimental | ローカル検出と一部launch/remote handoff |
+| PWA / mobile UI | ✅ Shipped | responsive UI、backend切替、reconnect、installable shell |
+| Passkey / device controls | 🧪 Experimental | 補助的な端末制御。公開SaaS向け認可ではありません |
+| Library | 🗺️ Planned | 未実装 |
+| Google / Microsoft / Appleログイン | 🗺️ Planned | 未実装 |
 
-- 自分が利用資格を持つアカウントを使用する
-- 上流ツールがサポートする認証フローを使用する
-- 適用される利用規約、年齢要件、ポリシー、アカウントルールを守る
-- 他人の認証情報を共有・借用しない
+Codexのモデル一覧など、上流が提供する情報に依存する機能は動的です。DevMoter側で存在しないモデルを捏造しません。
 
-必要があります。
+## 最短起動
 
-### 1. Clone
+必要環境: Linux、Node.js 22 + npm、Git、Python 3、curl、OpenCode CLI、OpenAI Codex CLI。
 
 ```bash
 git clone https://github.com/syr4wpywkk-collab/DevMoter-FAST.git
 cd DevMoter-FAST
-```
-
-### 2. 起動
-
-```bash
+npm ci
 bash scripts/start-pocket.sh
 ```
 
-既定のローカルエンドポイント:
+ローカルでは `http://127.0.0.1:8787` を開きます。
 
-```text
-DevMoter:  http://127.0.0.1:8787
-OpenCode:  http://127.0.0.1:49374
-```
+詳しくは [Fast Install](./fastinstall.MD) と [Operations](./docs/operations.md) を参照してください。
 
-Codex app-server は公開ソケットではなく、DevMoter からローカル stdio 経由で起動・通信します。
+## スマホから使う
 
-DevMoter の既定ユーザー名は `devmoter` です。ランチャーが生成したパスワードは `~/.config/opencode-pocket/devmoter-auth-password` に owner-only 権限で保存され、初回アクセス時にブラウザがログインを求めます。
-
-## スマホからのプライベートアクセス
-
-DevMoter 自体は localhost に bind したまま使う設計です。Tailscale Serve を使う例:
+DevMoterはlocalhost運用を基本にしています。Tailscaleを使う場合:
 
 ```bash
 tailscale serve reset
@@ -103,90 +80,83 @@ tailscale serve --bg http://127.0.0.1:8787
 tailscale serve status
 ```
 
-同じ tailnet に参加している端末から、表示された HTTPS URL を開きます。
+同じtailnetのスマホから表示されたHTTPS URLを開きます。現在のAlphaではFunnelや任意の公開トンネルを推奨しません。
 
-> [!CAUTION]
-> DevMoter の HTTP ログインがあっても、public tunnel や Tailscale Funnel での公開は現在の Alpha では推奨しません。localhost + HTTPS の Tailscale Serve など、プライベートネットワーク経由で利用してください。
+## 主要サーフェス
 
-## アーキテクチャ
+**Codex** — ローカルCodex app-serverとstdio/JSONLで通信します。threads、streaming、approvals、interrupt、attachments、動的model discovery、modelが公開するreasoning effort、plugins/MCPを扱います。RPCはサーバー側allowlistを通ります。
 
-```text
-Phone / tablet / desktop browser / PWA
-                  │
-                  │ HTTPS via Tailscale Serve (optional)
-                  ▼
-          DevMoter FAST :8787
-            127.0.0.1 default
-              │       │
-              ▼       ▼
-          OpenCode   Codex
-            HTTP     stdio
-          :49374   app-server
-              │       │
-              └───┬───┘
-                  │
-             local projects
-```
+**OpenCode** — localhost上のOpenCodeをDevMoter経由で操作します。sessions、agents、Plan/Ask/Build、provider/model、commands/skills、reasoning/tool activity、permissions/questions、interruptを扱います。OpenCodeの認証情報はブラウザへ返しません。
 
-ブラウザにエージェントの資格情報を渡すのではなく、バックエンドのプロセス・ローカルパス・資格情報はホスト側に保持します。
+**API Chat** — Experimentalな複数provider向けUIです。保存したAPI keyは設定後にfrontendへ返さない設計です。
+
+## Projects / Git / Reviewed Changes
+
+ブラウザから任意cwdを直接指定するのではなく、登録済みProject IDをサーバー側で解決します。Projectはhome directory配下に制約され、traversalやsymlink escapeを防ぎ、モバイルエディタの書き込みはサイズ制限付きMarkdownへ絞っています。
+
+GitHub連携はhostの`gh`セッションを利用し、clone先をmanaged rootに限定します。Reviewed Changesはproposal→hunk review→drift検証→apply/commit→worktree/PRという流れをExperimental機能として提供します。
 
 ## セキュリティモデル
 
+DevMoterは **認証した利用者＝ホスト所有者** を前提とする単一ユーザー設計です。
+
 主な境界:
+- localhost bindが既定
+- DevMoter独自認証
+- mutationのexact-origin検証
+- secret/API responseの`no-store`
+- OpenCode credentialはserver-side
+- Codexはstdio + RPC allowlist
+- registered-project filesystem boundary
+- attachmentはhost-local
+- GitHub credentialはhostの`gh`に保持
 
-- DevMoter は既定で `127.0.0.1` に bind
-- DevMoter 独自の HTTP ログインを必須化
-- 状態変更リクエストは同一 Origin を検証
-- API 応答は `no-store`、設定済み秘密情報はエラー応答からマスク
-- OpenCode も localhost
-- Codex app-server は stdio
-- バックエンド資格情報はサーバー側
-- Codex RPC は allowlist
-- プロジェクトパスをユーザーの home 配下に制限
-- モバイルエディタからの書き込みは登録済みプロジェクト内の Markdown に制限
-- GitHub トークンはブラウザへ返さない
+遠隔利用前に [SECURITY.md](./SECURITY.md) と [THREAT_MODEL.md](./THREAT_MODEL.md) を読んでください。
 
-**重要:** DevMoter のログインは単一ユーザー向けのアクセス境界です。ログイン後のクライアントはエージェントに与えられた権限で操作できます。リモート利用では HTTPS を使い、推奨構成の localhost + Tailscale Serve を維持してください。reverse proxy で外部 Origin が変わる場合は `DEVMOTER_PUBLIC_ORIGIN` を明示します。
+## ドキュメント
 
-## テスト
-
-```bash
-npm test
-npm run test:coverage
-npm run build
-```
-
-GitHub Actions でも自動チェックを実行します。実アカウントが不要な backend safety / bridge / compatibility テストをできるだけ CI に含めています。
+- [Architecture](./ARCHITECTURE.md)
+- [Security](./SECURITY.md)
+- [Threat model](./THREAT_MODEL.md)
+- [Fast Install](./fastinstall.MD)
+- [Operations](./docs/operations.md)
+- [Developer workflows](./docs/developer-workflows.md)
+- [Remote-control security](./docs/remote-control-security.md)
+- [Release smoke](./RELEASE_SMOKE.md)
+- [Roadmap](./ROADMAP.md)
 
 ## 開発
 
 ```bash
 npm install
-npm run dev:server
+npm run typecheck
+npm run lint
+npm test
+npm run build
 ```
 
-別ターミナル:
+CIだけでは実機互換性を保証しないため、release前にはChromebook/Crostini + iPhoneの [Release Smoke](./RELEASE_SMOKE.md) も使用します。
 
-```bash
-npm run dev:web
-```
+## 方針
 
-現在の package version: **0.2.0**
-
-## 互換性
-
-DevMoter は OpenCode と Codex app-server の上流プロトコルを利用しているため、上流の変更によって互換性が壊れる場合があります。Issue を報告する際は DevMoter commit、OpenCode / Codex のバージョン、ブラウザ環境、エラー内容を添えてください。
-
-## コントリビューション
-
-Issue、バグ報告、互換性情報、ドキュメント改善、Pull Request を歓迎します。
-
-公開 Issue に API キー、ログイントークン、Tailscale の資格情報、生成された OpenCode password、DevMoter login password などの秘密情報を投稿しないでください。
+1. **Host-local by default**
+2. **Mobile first**
+3. **Agent actionsには安全境界を置く**
+4. **ハリボテを完成機能として扱わない**
+5. **既存ツールとのinteroperabilityを優先する**
 
 ## AI-assisted development
 
-このプロジェクトは AI を大きく活用して開発されています。実装、デバッグ、プロトコル調査、テスト、反復に AI を利用していますが、製品方針、要件、実機テスト、リリース判断、保守は人間が管理します。
+実装、デバッグ、protocol調査、test、iterationにAIを積極的に利用しています。製品方向、要件、実機検証、release判断、maintenanceは人間主導です。
 
-## ライセンス
+## Contributing / Security
 
-DevMoter FAST は **MIT License** です。[LICENSE](./LICENSE) を参照してください。
+Issue、互換性報告、ドキュメント改善、Pull Requestを歓迎します。脆弱性は攻撃詳細を公開Issueへ書かず [SECURITY.md](./SECURITY.md) の手順を利用してください。秘密情報・token・API key・private repository内容をIssueへ投稿しないでください。
+
+## License
+
+MIT License。詳しくは [LICENSE](./LICENSE)。
+
+---
+
+**DevMoter FAST — 開発マシンは動かしたまま、コントロールプレーンだけ持ち歩く。**

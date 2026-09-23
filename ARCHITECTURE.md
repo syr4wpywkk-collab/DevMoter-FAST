@@ -1,93 +1,89 @@
 # Architecture
 
-DevMoter FAST is a single-user, mobile-first control plane that keeps coding-agent processes and credentials on the host machine.
+DevMoter FAST is a **single-user, host-local coding-agent control plane** with a mobile-first browser surface.
 
-## High-level flow
+## System map
 
 ```text
 Browser / installed PWA
-        |
-        | HTTP(S) to DevMoter only
-        v
-DevMoter Node server (localhost by default)
-   |                         |
-   | HTTP proxy              | JSONL over stdio
-   v                         v
-OpenCode                   Codex app-server
-   |                         |
-   +-----------+-------------+
-               |
-        registered projects
-        managed uploads/repos
+        │ authenticated HTTP(S)
+        ▼
+┌──────────────── DevMoter Node server ────────────────┐
+│ auth · origin checks · project identities · routing  │
+│                                                      │
+│  OpenCode proxy   Codex bridge   API Chat            │
+│       │               │            │                 │
+│       ▼               ▼            ▼                 │
+│  localhost HTTP   JSONL/stdio   provider HTTPS       │
+│                                                      │
+│  Projects · GitHub · Reviewed Changes · Automation   │
+│  Attachments · Host integrations · Device controls  │
+└────────────────────────┬─────────────────────────────┘
+                         ▼
+              registered host resources
 ```
 
-Tailscale Serve may provide private HTTPS access to the DevMoter listener. It is deployment plumbing, not permission to expose the OpenCode port or Codex process directly.
+Tailscale Serve can provide private HTTPS transport to the DevMoter listener. It does not change the application trust model or make agent backends safe to expose publicly.
 
-## Browser to DevMoter
+## Browser boundary
 
-The frontend is built with Vite and served by `server.mjs`.
+The browser is untrusted input. It sends identities and bounded requests; the server resolves privileged resources.
 
-The browser talks to narrow DevMoter routes:
+Important route families include:
+- `/api/opencode/*` — OpenCode proxy/events;
+- `/api/codex/*` — Codex RPC, events and attachments;
+- `/api/projects/*` — registered projects and bounded file operations;
+- `/api/github/*` — host-`gh` repository operations;
+- API Chat/provider routes;
+- workflow/review, automation, system/device and integration routes;
+- `/api/health` — runtime health.
 
-- `/api/opencode/*` for proxied OpenCode HTTP operations and events;
-- `/api/codex/rpc` for allowlisted Codex app-server methods;
-- `/api/codex/events` for Codex notifications/server requests;
-- `/api/projects/*` for the local project registry and Markdown-only file access;
-- `/api/github/*` for host-`gh` backed repository browsing/opening;
-- `/api/health` for backend status.
+State-changing browser requests cross authentication and same-origin checks. Operation IDs are used where supported to suppress accidental duplicate delivery.
 
-Mutating requests carry a client operation ID where supported. The server keeps a bounded, expiring registry to suppress duplicate delivery.
+## Agent boundaries
 
-## OpenCode boundary
+### OpenCode
 
-DevMoter proxies HTTP to the configured localhost OpenCode server. OpenCode Basic Auth credentials stay in the Node process and are not returned to the browser.
+OpenCode runs on localhost. DevMoter proxies its HTTP API and keeps Basic Auth credentials server-side. Browser project selection uses a DevMoter Project ID; the server resolves that ID before supplying directory context.
 
-Project selection is identity-based: the browser supplies a DevMoter Project ID, and the server resolves it to a registered path before setting the OpenCode directory header. Existing OpenCode sessions keep their own session context instead of being silently moved by a later project selection.
+### Codex
 
-## Codex boundary
+DevMoter launches `codex app-server --listen stdio://` and speaks JSONL over stdin/stdout. Browser RPC names pass a deny-by-default allowlist before forwarding. Approvals/server requests are surfaced to the UI and their responses are validated before being returned to the app-server.
 
-DevMoter starts `codex app-server --listen stdio://` and communicates over newline-delimited JSON on stdin/stdout.
+Model availability and supported reasoning effort are discovered from the installed Codex app-server. DevMoter should not hard-code availability that upstream does not advertise.
 
-The server allowlists Codex RPC method names before forwarding them. Codex approvals arrive as app-server requests and are surfaced to the browser; the browser response is validated before DevMoter writes the corresponding app-server result.
+### API Chat
 
-The Codex process uses the authentication already configured for the local Codex CLI. DevMoter does not put an OpenAI API key in frontend code.
+The experimental API Chat surface uses host-side provider configuration. Stored provider secrets are not returned to the browser after configuration. Requests are validated for provider/model/reasoning and bounded attachment content before outbound provider calls.
 
-## Projects and filesystem boundaries
+## Project and Git boundaries
 
-Projects are registered host directories constrained to the user's home directory. The home directory itself is not a valid project.
+A browser cannot select an arbitrary raw cwd for privileged operations. Registered Project IDs resolve to host paths inside the configured boundary.
 
-The mobile file editor is intentionally narrow:
+The project/editor layer rejects traversal and escape paths, checks symlink/real-path boundaries where relevant, bounds file sizes, and intentionally restricts browser editing to Markdown.
 
-- only files inside a registered project are addressable;
-- traversal and absolute-path escapes are rejected;
-- symlink/real-path checks are used around project operations;
-- browser write access is limited to Markdown files;
-- Markdown reads/writes are size bounded;
-- unregistering a project never deletes the directory.
+GitHub repository operations use the authenticated host `gh` session and a managed repository root. Existing origins and worktree state are checked before reuse or branch operations.
 
-GitHub repositories are cloned only under the DevMoter-managed repository root. Browser input is an owner/repository identity, not an arbitrary clone URL or destination.
+The reviewed-changes workflow adds a second boundary: proposed content is reviewed, context drift is detected, applied content is revalidated before commit, and unrelated dirty changes can block commits.
 
-## Upload lifecycle
+## Attachments
 
-Browser attachments are decoded by DevMoter and written under the configured upload directory with sanitized, generated names and restrictive file modes. Size limits are enforced before the file is handed to an agent.
+Attachments are stored as host-local files with generated/sanitized identities and size/type limits instead of repeatedly transporting large base64 payloads through agent protocol messages. Retention and cleanup remain an explicit operational concern.
 
-Uploads are host-local temporary working data. Release work should keep cleanup/retention explicit rather than assuming the browser owns the file lifecycle.
+## Automation and host integrations
 
-## Streaming and reconnect
+Automation/control-plane and desktop integrations are **experimental privileged surfaces**. Host integration launchers use fixed executable/argument arrays rather than browser-provided shell strings, resolve project context server-side, and filter dangerous environment inheritance.
 
-OpenCode events are normalized before the UI applies streamed text/reasoning state. Codex notifications are fanned out through DevMoter's event endpoint.
+Automation must remain bounded: a scheduler or event trigger is not permission to bypass project, authentication, approval, or host boundaries.
 
-The frontend keeps one active event source per backend surface, reconciles persisted session/thread state after reconnect, and does not treat a transport retry as permission to replay a mutation.
+## Streaming, reconnect and failure
 
-Rendered transcript state may be bounded independently from the canonical backend session/thread history.
+OpenCode events and Codex notifications are normalized for the UI. The frontend reconciles persisted session/thread state after reconnect and must not interpret a transport retry as permission to replay an ambiguous mutation.
 
-## Process interruption and failure
+One backend failing does not imply the other backend is unavailable. CLI/app-server exits reject pending work and move their surface into an offline/reconnect state.
 
-- OpenCode execution is interrupted through its HTTP API.
-- Codex turns are interrupted through the allowlisted `turn/interrupt` RPC.
-- CLI/app-server exits reject pending Codex requests and mark the bridge offline.
-- Health and reconnect logic are backend-specific; one backend failing must not be treated as proof that the other backend is unavailable.
+## Trust summary
 
-## Configuration boundaries
+DevMoter protects the boundary **between a browser and privileged host tools**. It does not sandbox the coding agents themselves. Once an authenticated user authorizes an agent action, the underlying agent may have broader filesystem/shell permissions than the narrow browser editor.
 
-Machine-specific paths, passwords, tokens, and Tailnet names do not belong in source or documentation. Configuration is supplied through environment variables, the host CLI configuration, and DevMoter-owned state directories.
+See [THREAT_MODEL.md](./THREAT_MODEL.md) and [SECURITY.md](./SECURITY.md).

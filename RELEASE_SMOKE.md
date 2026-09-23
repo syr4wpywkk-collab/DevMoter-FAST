@@ -1,46 +1,95 @@
 # Release smoke checklist
 
-Run this checklist before every tagged DevMoter release. Automated CI is necessary, but it does not replace the real Chromebook/Crostini + iPhone path.
+Automated CI is necessary, but it does not prove that upstream agents, systemd, Chromebook/Crostini, or iPhone behavior works. Run this checklist before a tagged release or when promoting an Experimental surface to Shipped.
 
 ## Automated gate
 
 - [ ] `npm ci`
-- [ ] `npm run build`
+- [ ] `npm run typecheck`
+- [ ] `npm run lint`
 - [ ] `npm test`
 - [ ] `npm run test:coverage`
-- [ ] CI is green on the release commit
+- [ ] `npm run build`
+- [ ] CI is green on the exact candidate commit
 
-The integration suite uses mocked OpenCode and Codex backends, so ordinary CI does not require real external accounts.
+## Startup parity
 
-## Chromebook / Crostini host
+- [ ] `scripts/start-pocket.sh` reaches healthy state
+- [ ] `devmoter-fast.service` reaches the same healthy state
+- [ ] service restart does not loop
+- [ ] DevMoter binds to localhost by default
+- [ ] OpenCode is not exposed directly
+- [ ] `/api/health` reports understandable backend state
+- [ ] Tailscale Serve, if used, points only to DevMoter
 
-- [ ] Start DevMoter using the documented launcher/service.
-- [ ] Confirm DevMoter binds to localhost by default.
-- [ ] Confirm OpenCode is not exposed directly.
-- [ ] Confirm `/api/health` reports the expected backend state.
-- [ ] If using Tailscale Serve, confirm the private HTTPS URL points only at DevMoter.
+## Authentication and boundary smoke
 
-## iPhone / mobile browser
+- [ ] unauthenticated API requests are rejected
+- [ ] unauthenticated event/stream requests are rejected
+- [ ] mutation with missing/mismatched Origin is rejected
+- [ ] valid authenticated same-origin mutation succeeds
+- [ ] registered project boundary rejects path escape
+- [ ] secrets do not appear in normal browser API responses
 
-- [ ] Open the DevMoter URL.
-- [ ] Authenticate when DevMoter-native authentication is enabled.
-- [ ] Select a project.
-- [ ] Select a model/agent as applicable.
-- [ ] Create or resume one OpenCode session.
-- [ ] Send a prompt and verify streamed output.
-- [ ] Interrupt an active run and confirm the UI returns to a stable state.
-- [ ] Reload during/after a run and confirm session state reconciles.
-- [ ] Create or resume one Codex thread.
-- [ ] Send a prompt and verify streamed output.
-- [ ] Exercise an approval/question flow when available.
-- [ ] Confirm long tool/log output remains scrollable and copyable.
-- [ ] Confirm GitHub Projects can open an already-managed repository without discarding local work.
+## OpenCode real-runtime smoke
 
-## Failure-path checks
+- [ ] create/resume session
+- [ ] select agent/mode/model
+- [ ] send prompt and receive streaming output
+- [ ] tool/reasoning state remains readable
+- [ ] exercise permission/question flow
+- [ ] interrupt an active run
+- [ ] reload/reconnect reconciles state without duplicate mutation
 
-- [ ] Stop one backend and confirm the other surface remains understandable/usable.
-- [ ] Restore the backend and confirm reconnect/reconciliation works.
-- [ ] Simulate a network interruption during a mutation and confirm DevMoter does not blindly resend it.
-- [ ] Confirm unauthenticated API/SSE requests are rejected once #10 is present on the release branch.
+## Codex real-runtime smoke
 
-Record the device/browser versions and release commit in the release notes.
+- [ ] create/resume/fork thread
+- [ ] model picker reflects app-server-advertised models
+- [ ] reasoning picker reflects selected model metadata
+- [ ] explicit reasoning effort reaches a real turn
+- [ ] Auto works without forcing an unsupported effort
+- [ ] send prompt and receive streaming output
+- [ ] approval flow works
+- [ ] image/file attachment works
+- [ ] plugin/MCP names/status are meaningful
+- [ ] Usage view either returns real supported data or clearly reports unavailable; no synthetic quota claim
+- [ ] interrupt an active turn
+
+## Projects / GitHub / reviewed changes
+
+- [ ] switch projects without arbitrary cwd injection
+- [ ] Markdown read/write stays inside registered project
+- [ ] GitHub picker opens a managed repository without discarding local changes
+- [ ] reviewed proposal can be inspected and applied
+- [ ] context drift blocks stale apply
+- [ ] unrelated dirty changes block unsafe commit
+- [ ] worktree/PR flow uses the selected repository/branch
+
+## Experimental surfaces
+
+For every Experimental feature mentioned in release notes:
+- [ ] API Chat uses a real configured provider without returning stored API key to frontend
+- [ ] host integrations report missing/unsupported executables clearly
+- [ ] automation trigger/schedule stays inside intended project/host boundary
+- [ ] device/passkey controls have a tested recovery path
+
+Do not promote a surface to Shipped solely because its UI renders.
+
+## Mobile smoke
+
+On the target iPhone/mobile browser:
+- [ ] navigation and composer fit without inaccessible controls
+- [ ] long transcript/tool output remains scrollable/copyable
+- [ ] keyboard open/close does not strand the composer
+- [ ] background/foreground reconnect is understandable
+- [ ] PWA launch works when installed
+
+## Failure paths
+
+- [ ] stop OpenCode; Codex surface remains understandable
+- [ ] stop/crash Codex; OpenCode remains understandable
+- [ ] restore each backend and confirm recovery
+- [ ] interrupt network during mutation; no blind replay
+- [ ] unsupported upstream response produces an explicit error rather than fake success
+
+Record commit, OS, Node, OpenCode, Codex, browser and device versions with release notes.
