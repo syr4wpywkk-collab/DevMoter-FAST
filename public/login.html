@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Sign in · DevMoter FAST</title>
+  <style>
+    :root {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #171717;
+      background: #f6f5f2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100dvh; display: grid; place-items: center;
+      padding: max(24px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+      background:
+        radial-gradient(circle at 20% 0%, rgba(255,255,255,.95), transparent 42%),
+        #f6f5f2;
+    }
+    main { width: min(100%, 430px); }
+    .brand { text-align: center; margin-bottom: 20px; }
+    .mark {
+      width: 52px; height: 52px; margin: 0 auto 12px; border-radius: 16px;
+      display: grid; place-items: center; background: #171717; color: white;
+      font-size: 24px; box-shadow: 0 12px 32px rgba(0,0,0,.12);
+    }
+    h1 { margin: 0; font-size: 28px; letter-spacing: -.04em; }
+    .sub { margin: 7px 0 0; color: #707070; font-size: 14px; }
+    .card {
+      background: rgba(255,255,255,.88); backdrop-filter: blur(18px);
+      border: 1px solid rgba(0,0,0,.08); border-radius: 24px; padding: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.08);
+    }
+    button, input, a.action {
+      width: 100%; min-height: 50px; border-radius: 14px; font: inherit;
+    }
+    button {
+      border: 1px solid #d8d8d8; background: white; color: #171717;
+      font-weight: 700; cursor: pointer; padding: 0 14px;
+    }
+    button:hover { border-color: #999; }
+    button:disabled { opacity: .48; cursor: not-allowed; }
+    .github { background: #171717; border-color: #171717; color: white; }
+    .provider-row { display: grid; gap: 10px; }
+    .provider small { float: right; font-weight: 600; opacity: .58; }
+    .divider { display: flex; align-items: center; gap: 10px; margin: 17px 0; color: #888; font-size: 12px; }
+    .divider::before, .divider::after { content: ""; height: 1px; background: #ddd; flex: 1; }
+    details { border-top: 1px solid #e4e4e4; padding-top: 14px; }
+    summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+    label { display: block; font-size: 12px; font-weight: 700; margin: 12px 0 6px; color: #555; }
+    input {
+      border: 1px solid #d8d8d8; background: #fff; color: #171717; padding: 0 14px; outline: none;
+    }
+    input:focus { border-color: #777; box-shadow: 0 0 0 3px rgba(0,0,0,.06); }
+    .recovery { margin-top: 12px; }
+    .message { margin: 14px 2px 0; min-height: 20px; font-size: 13px; color: #666; }
+    .message.error { color: #b42318; }
+    .message.ok { color: #067647; }
+    .device {
+      margin-top: 14px; padding: 15px; border-radius: 16px; background: #f1f1ef;
+      border: 1px solid #dededb;
+    }
+    .device.hidden { display: none; }
+    .device p { margin: 0 0 10px; font-size: 13px; color: #555; }
+    .code {
+      font: 800 28px/1.1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: .08em; text-align: center; padding: 12px; border-radius: 12px;
+      background: white; border: 1px dashed #aaa; user-select: all;
+    }
+    .device-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 10px; }
+    a.action {
+      display: grid; place-items: center; text-decoration: none; color: white;
+      background: #171717; font-weight: 700; padding: 0 14px;
+    }
+    .copy { width: auto; min-width: 92px; }
+    .foot { text-align: center; margin-top: 14px; color: #888; font-size: 11px; line-height: 1.5; }
+    @media (prefers-color-scheme: dark) {
+      :root { color: #f6f6f6; background: #111; }
+      body { background: radial-gradient(circle at 20% 0%, #262626, transparent 42%), #111; }
+      .card { background: rgba(28,28,28,.9); border-color: #343434; }
+      button { background: #252525; color: #f5f5f5; border-color: #444; }
+      .github { background: #f4f4f4; color: #151515; border-color: #f4f4f4; }
+      input { background: #1d1d1d; color: white; border-color: #444; }
+      .divider::before, .divider::after, details { border-color: #3b3b3b; }
+      .device { background: #1b1b1b; border-color: #3b3b3b; }
+      .code { background: #111; border-color: #666; }
+      a.action { background: #f4f4f4; color: #151515; }
+      .sub, .message, .device p, .foot { color: #aaa; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="brand">
+      <div class="mark">✦</div>
+      <h1>DevMoter FAST</h1>
+      <p class="sub">Your AI coding agents, anywhere.</p>
+    </div>
+
+    <section class="card">
+      <div class="provider-row">
+        <button id="github" class="provider github" type="button">GitHubで続ける</button>
+        <button class="provider" type="button" disabled>Googleで続ける <small>Coming soon</small></button>
+        <button class="provider" type="button" disabled>Microsoftで続ける <small>Coming soon</small></button>
+        <button class="provider" type="button" disabled>Appleで続ける <small>Coming soon</small></button>
+      </div>
+
+      <div id="device" class="device hidden">
+        <p>GitHubで次のコードを入力してください。認証が終わると自動でDevMoterに戻ります。</p>
+        <div id="userCode" class="code"></div>
+        <div class="device-actions">
+          <a id="verifyLink" class="action" target="_blank" rel="noopener noreferrer">GitHubを開く</a>
+          <button id="copyCode" class="copy" type="button">コピー</button>
+        </div>
+      </div>
+
+      <div class="divider">または</div>
+
+      <details id="recovery">
+        <summary>ローカル復旧ログイン</summary>
+        <label for="username">ユーザー名</label>
+        <input id="username" autocomplete="username" value="devmoter" />
+        <label for="password">パスワード</label>
+        <input id="password" type="password" autocomplete="current-password" />
+        <button id="localLogin" class="recovery" type="button">ローカルでログイン</button>
+      </details>
+
+      <p id="message" class="message" aria-live="polite"></p>
+    </section>
+
+    <p class="foot">GitHubのOAuthトークンは本人確認にだけ使われ、DevMoterには保存されません。<br />Local recovery は初回接続・復旧用です。</p>
+  </main>
+
+  <script>
+    const github = document.querySelector("#github");
+    const localLogin = document.querySelector("#localLogin");
+    const username = document.querySelector("#username");
+    const password = document.querySelector("#password");
+    const recovery = document.querySelector("#recovery");
+    const device = document.querySelector("#device");
+    const userCode = document.querySelector("#userCode");
+    const verifyLink = document.querySelector("#verifyLink");
+    const copyCode = document.querySelector("#copyCode");
+    const message = document.querySelector("#message");
+
+    let authStatus = null;
+    let activeFlow = "";
+    let pollTimer = 0;
+
+    function setMessage(text, tone = "") {
+      message.textContent = text || "";
+      message.className = "message" + (tone ? " " + tone : "");
+    }
+
+    async function json(path, init = {}) {
+      const headers = new Headers(init.headers || {});
+      if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
+      const response = await fetch(path, { ...init, headers, cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(payload?.error || ("HTTP " + response.status));
+        error.status = response.status;
+        throw error;
+      }
+      return payload;
+    }
+
+    async function loadStatus() {
+      authStatus = await json("/api/auth/status");
+      if (authStatus.authenticated) {
+        location.replace("/");
+        return;
+      }
+      if (!authStatus.github?.configured) {
+        github.disabled = true;
+        github.textContent = "GitHubログイン — 設定が必要";
+        setMessage("Chromebook側で DEVMOTER_GITHUB_CLIENT_ID を設定するとGitHubログインを有効化できます。");
+      } else if (!authStatus.github?.bound) {
+        github.textContent = "GitHubをオーナーとして接続";
+        recovery.open = true;
+        setMessage("初回のGitHub接続だけ、ローカル復旧パスワードで本人確認します。");
+      }
+    }
+
+    async function signInLocal() {
+      localLogin.disabled = true;
+      setMessage("確認中…");
+      try {
+        await json("/api/auth/local/login", {
+          method: "POST",
+          body: JSON.stringify({ username: username.value, password: password.value })
+        });
+        setMessage("ログインしました。", "ok");
+        location.replace("/");
+      } catch (error) {
+        setMessage(error.message || String(error), "error");
+      } finally {
+        localLogin.disabled = false;
+      }
+    }
+
+    async function startGithub() {
+      github.disabled = true;
+      setMessage("GitHub認証を準備中…");
+      try {
+        const body = authStatus?.github?.bound
+          ? {}
+          : { username: username.value, password: password.value };
+        const flow = await json("/api/auth/github/start", {
+          method: "POST",
+          body: JSON.stringify(body)
+        });
+        activeFlow = flow.flowId;
+        userCode.textContent = flow.userCode;
+        verifyLink.href = flow.verificationUri;
+        device.classList.remove("hidden");
+        setMessage("GitHubでコードを承認してください。");
+        window.open(flow.verificationUri, "_blank", "noopener,noreferrer");
+        schedulePoll(Math.max(1000, Number(flow.interval || 5) * 1000));
+      } catch (error) {
+        if (error.status === 403 && !authStatus?.github?.bound) recovery.open = true;
+        setMessage(error.message || String(error), "error");
+        github.disabled = false;
+      }
+    }
+
+    function schedulePoll(delay) {
+      clearTimeout(pollTimer);
+      pollTimer = setTimeout(pollGithub, delay);
+    }
+
+    async function pollGithub() {
+      if (!activeFlow) return;
+      try {
+        const result = await json("/api/auth/github/poll", {
+          method: "POST",
+          body: JSON.stringify({ flowId: activeFlow })
+        });
+        if (result.status === "complete") {
+          setMessage("GitHubでログインしました。", "ok");
+          location.replace("/");
+          return;
+        }
+        schedulePoll(Math.max(1000, Number(result.retryAfterMs || 5000)));
+      } catch (error) {
+        activeFlow = "";
+        github.disabled = false;
+        setMessage(error.message || String(error), "error");
+      }
+    }
+
+    copyCode.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(userCode.textContent || "");
+        copyCode.textContent = "コピー済み";
+        setTimeout(() => { copyCode.textContent = "コピー"; }, 1400);
+      } catch {
+        setMessage("コードを長押ししてコピーしてください。", "error");
+      }
+    });
+    github.addEventListener("click", startGithub);
+    localLogin.addEventListener("click", signInLocal);
+    password.addEventListener("keydown", event => {
+      if (event.key === "Enter") signInLocal();
+    });
+
+    loadStatus().catch(error => setMessage(error.message || String(error), "error"));
+  </script>
+</body>
+</html>
