@@ -70,6 +70,7 @@ function assertNoCapabilityEscalation(parentInput, requestedInput) {
   const extra = requested.allow.filter(group => !parent.allow.includes(group));
   const mutationEscalation =
     parent.mutationPolicy === "read-only-until-explicit-transition" &&
+    requestedInput?.mutationPolicy !== undefined &&
     requested.mutationPolicy !== "read-only-until-explicit-transition";
   if (extra.length || mutationEscalation) {
     const reasons = [];
