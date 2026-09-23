@@ -7,9 +7,9 @@ const apiChatSource = await readFile(new URL("../src/api-chat.ts", import.meta.u
 const mainSource = await readFile(new URL("../src/main.ts", import.meta.url), "utf8");
 const i18nSource = await readFile(new URL("../src/i18n.ts", import.meta.url), "utf8");
 
-test("multi-API routes remain behind the v3 HTTP authentication gates", () => {
-  const auth = serverSource.indexOf("if (!authorizeBasicRequest(req, res, AUTH_CONFIG)) return;");
-  const origin = serverSource.indexOf("if (!requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)) return;");
+test("multi-API routes remain behind the v3 owner authentication gates", () => {
+  const auth = serverSource.indexOf("if (!basicAuthenticated && !ownerSession)");
+  const origin = serverSource.indexOf("if (!requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)) return;", auth);
   const passkey = serverSource.indexOf("PASSKEY_REQUIRED &&");
   const llm = serverSource.indexOf('url.pathname === "/api/llm/providers"');
 
