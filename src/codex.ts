@@ -2154,7 +2154,20 @@ export function mountCodexRemote(
       const title = document.createElement("h3"); title.textContent = repo.fullName;
       const label = document.createElement("label"); label.innerHTML = "<span>Branch</span>";
       const select = document.createElement("select");
-      for (const branch of result.branches || []) { const option = document.createElement("option"); option.value = branch.name; option.textContent = branch.name; option.selected = branch.name === repo.defaultBranch; select.appendChild(option); }
+      const branches = Array.isArray(result.branches) ? result.branches : [];
+      const refreshedDefaultBranch = String(
+        result.defaultBranch ||
+        branches.find((branch: { default?: boolean }) => branch.default)?.name ||
+        repo.defaultBranch ||
+        ""
+      );
+      for (const branch of branches) {
+        const option = document.createElement("option");
+        option.value = branch.name;
+        option.textContent = branch.name;
+        option.selected = branch.name === refreshedDefaultBranch;
+        select.appendChild(option);
+      }
       label.appendChild(select);
       const submit = document.createElement("button"); submit.type = "submit"; submit.className = "primary"; submit.textContent = repo.cloned ? "Fetch and open" : "Clone and open";
       const error = document.createElement("p"); error.className = "cx-form-error hidden";
