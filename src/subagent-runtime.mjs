@@ -7,6 +7,62 @@ const RUN_STATES = new Set([
   "cancelled"
 ]);
 const TERMINAL_RUN_STATES = new Set(["completed", "failed", "cancelled"]);
+const CAPABILITY_GROUPS = Object.freeze(["read", "diagnostics", "tests", "git", "files", "commands", "network"]);
+const CAPABILITY_SET = new Set(CAPABILITY_GROUPS);
+
+function normalizeCapabilityPolicy(input) {
+  if (input == null) {
+    return {
+      allow: [...CAPABILITY_GROUPS],
+      deny: [],
+      mutationPolicy: "approval-required"
+    };
+  }
+  if (typeof input !== "object" || Array.isArray(input)) throw new Error("capabilityPolicy must be an object");
+  const normalizeList = (value, field, fallback) => {
+    if (value === undefined) return [...fallback];
+    if (!Array.isArray(value)) throw new Error(`${field} must be an array`);
+    const out = [...new Set(value.map(item => String(item || "").trim()).filter(Boolean))];
+    for (const group of out) {
+      if (!CAPABILITY_SET.has(group)) throw new Error(`Unknown capability group: ${group}`);
+    }
+    return out;
+  };
+  const requestedAllow = normalizeList(input.allow, "capabilityPolicy.allow", CAPABILITY_GROUPS);
+  const requestedDeny = normalizeList(input.deny, "capabilityPolicy.deny", []);
+  const allow = requestedAllow.filter(group => !requestedDeny.includes(group));
+  const mutationPolicy = String(input.mutationPolicy || "approval-required");
+  if (!["approval-required", "read-only-until-explicit-transition"].includes(mutationPolicy)) {
+    throw new Error(`Unsupported capability mutation policy: ${mutationPolicy}`);
+  }
+  return {
+    allow,
+    deny: CAPABILITY_GROUPS.filter(group => !allow.includes(group)),
+    mutationPolicy
+  };
+}
+
+function intersectCapabilityPolicies(parentInput, childInput) {
+  const parent = normalizeCapabilityPolicy(parentInput);
+  const child = childInput == null ? parent : normalizeCapabilityPolicy(childInput);
+  const allow = child.allow.filter(group => parent.allow.includes(group));
+  return {
+    allow,
+    deny: CAPABILITY_GROUPS.filter(group => !allow.includes(group)),
+    mutationPolicy:
+      parent.mutationPolicy === "read-only-until-explicit-transition" ||
+      child.mutationPolicy === "read-only-until-explicit-transition"
+        ? "read-only-until-explicit-transition"
+        : "approval-required"
+  };
+}
+
+function approvalCapability(method) {
+  if (method === "item/fileChange/requestApproval") return "files";
+  if (method === "item/commandExecution/requestApproval") return "commands";
+  return null;
+}
+
 
 function defaultId() {
   return globalThis.crypto?.randomUUID?.() ??
@@ -37,6 +93,7 @@ function snapshot(run) {
     context: structuredClone(run.context),
     lineage: [...(run.lineage || [])],
     budget: structuredClone(run.budget),
+    capabilityPolicy: structuredClone(run.capabilityPolicy),
     pendingApproval: run.pendingApproval ? structuredClone(run.pendingApproval) : null
   };
 }
@@ -168,6 +225,10 @@ export class SubagentRuntime {
       }
     }
 
+    const capabilityPolicy = parentRun
+      ? intersectCapabilityPolicies(parentRun.capabilityPolicy, spec.capabilityPolicy)
+      : normalizeCapabilityPolicy(spec.capabilityPolicy);
+
     let tokenLimit = this.policy.tokenBudget;
     let turnLimit = this.policy.turnBudget;
     if (parentRun) {
@@ -212,6 +273,7 @@ export class SubagentRuntime {
         tokensRemaining: tokenLimit,
         turnsRemaining: turnLimit
       },
+      capabilityPolicy,
       state: "starting",
       sessionId: null,
       turnId: null,
@@ -290,6 +352,11 @@ export class SubagentRuntime {
     if (patch.outputDelta) run.output += String(patch.outputDelta);
     const next = { ...patch };
     delete next.outputDelta;
+    // Delegation authority is assigned by the runtime, never by backend callbacks.
+    delete next.capabilityPolicy;
+    delete next.parentRunId;
+    delete next.lineage;
+    delete next.depth;
     Object.assign(run, next, { updatedAt: Date.now() });
     this.#emit(run);
     if (run.fleetId && TERMINAL_RUN_STATES.has(run.state)) {
@@ -382,7 +449,10 @@ function scopedPrompt(run) {
     `Delegation depth: ${run.depth}`,
     `Lineage: ${run.lineage.length ? run.lineage.join(" > ") : "root"}`,
     `Inherited budget: ${run.budget.tokenLimit} tokens / ${run.budget.turnLimit} turns`,
-    "Do not delegate beyond the supplied depth/budget. Only use the explicitly shared context below. Do not assume access to unrelated parent conversation context.",
+    `Effective capabilities: ${run.capabilityPolicy.allow.join(", ") || "none"}`,
+    `Denied capabilities: ${run.capabilityPolicy.deny.join(", ") || "none"}`,
+    `Mutation policy: ${run.capabilityPolicy.mutationPolicy}`,
+    "The effective capability policy above is a hard ceiling inherited from the parent. Never request or use a denied capability. Do not delegate beyond the supplied depth/budget. Only use the explicitly shared context below. Do not assume access to unrelated parent conversation context.",
     contextRows.length ? `Shared context:\n${contextRows.join("\n")}` : "Shared context: none",
     `Task:\n${run.task}`
   ].join("\n\n");
@@ -396,6 +466,7 @@ export function createCodexSubagentAdapter({
 
   const callbacks = new Map();
   const threadToRun = new Map();
+  const runPolicies = new Map();
   let events = null;
 
   async function rpc(method, params = {}) {
@@ -425,6 +496,19 @@ export function createCodexSubagentAdapter({
   function emitFor(runId, patch) {
     const emit = callbacks.get(runId);
     if (emit) emit(patch);
+  }
+
+  async function sendApproval(id, decision) {
+    const res = await fetchImpl("/api/codex/approval", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-pocket-operation-id": operationId()
+      },
+      body: JSON.stringify({ id, decision })
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload?.error || `Approval failed (${res.status})`);
   }
 
   function ensureEvents() {
@@ -471,6 +555,18 @@ export function createCodexSubagentAdapter({
       const request = JSON.parse(raw.data);
       const runId = findRun(request.params || {});
       if (!runId) return;
+      const required = approvalCapability(request.method);
+      const policy = runPolicies.get(runId);
+      if (required && policy && !policy.allow.includes(required)) {
+        void sendApproval(request.id, "decline").catch(error => {
+          emitFor(runId, {
+            state: "failed",
+            error: `Failed to enforce denied ${required} capability: ${error instanceof Error ? error.message : String(error)}`,
+            pendingApproval: null
+          });
+        });
+        return;
+      }
       emitFor(runId, {
         state: "waiting_for_approval",
         pendingApproval: {
@@ -485,6 +581,7 @@ export function createCodexSubagentAdapter({
   return {
     async start(run, emit) {
       callbacks.set(run.id, emit);
+      runPolicies.set(run.id, structuredClone(run.capabilityPolicy));
       ensureEvents();
 
       const projectId = String(run.context?.projectId || "").trim();
@@ -531,16 +628,12 @@ export function createCodexSubagentAdapter({
     async respondApproval(run, decision) {
       const approval = run.pendingApproval;
       if (!approval) throw new Error("Approval request is no longer pending");
-      const res = await fetchImpl("/api/codex/approval", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-pocket-operation-id": operationId()
-        },
-        body: JSON.stringify({ id: approval.id, decision })
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload?.error || `Approval failed (${res.status})`);
+      const required = approvalCapability(approval.method);
+      const policy = runPolicies.get(run.id) || run.capabilityPolicy;
+      if (required && policy && !policy.allow.includes(required) && decision !== "decline" && decision !== "cancel") {
+        throw new Error(`${required} capability is denied by the inherited subagent policy`);
+      }
+      await sendApproval(approval.id, decision);
     },
 
     dispose() {
@@ -548,8 +641,9 @@ export function createCodexSubagentAdapter({
       events = null;
       callbacks.clear();
       threadToRun.clear();
+      runPolicies.clear();
     }
   };
 }
 
-export { scopedPrompt };
+export { CAPABILITY_GROUPS, intersectCapabilityPolicies, normalizeCapabilityPolicy, scopedPrompt };
