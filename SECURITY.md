@@ -73,12 +73,24 @@ The installed `claude` and `agy` executables remain part of the trusted local-ho
 
 Antigravity Remote Control is a persistent upstream capability: starting it can outlive the browser tab. Use the explicit Stop action when remote access is no longer needed.
 
+## Browser/device credential caveat
+
+Some optional device-control flows currently persist bearer material in browser `localStorage`. Treat a same-origin script compromise/XSS as capable of acting with the browser's authority. Reducing long-lived script-readable credential material and strengthening CSP/XSS regression coverage are active hardening work.
+
+Do not interpret passkey/device UI as a multi-user authorization boundary.
+
+## Maturity of privileged surfaces
+
+API Chat, reviewed-change/task workflows, automation/control-plane features, and desktop host integrations are **experimental privileged surfaces**. They are implemented, but their end-to-end contract/device coverage is still being expanded. A release should not promote them to fully supported status without the checks in [RELEASE_SMOKE.md](./RELEASE_SMOKE.md).
+
 ## Known alpha limitations
 
 - Authentication is single-user and does not provide per-user roles or fine-grained authorization.
 - An authenticated user can trigger actions with the effective permissions of the configured coding agents and host integrations.
+- Browser-stored device bearer material increases the impact of a same-origin script compromise.
 - Security-sensitive behavior can depend on upstream OpenCode, Codex, GitHub CLI, Node.js, reverse-proxy, and operating-system versions.
-- The launcher is intended for a single-user development machine and stops older matching DevMoter/OpenCode processes before startup.
+- Manual and systemd startup paths require real-host parity validation.
+- The launcher is intended for a single-user development machine and may manage older matching DevMoter/OpenCode processes during startup.
 
 ## Reporting a vulnerability
 
