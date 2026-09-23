@@ -14,6 +14,7 @@ type IntegrationInfo = {
   version?: string | null;
   webUrl?: string;
   mobileUrl?: string;
+  installUrl?: string;
   capabilities: Record<string, boolean>;
   remote?: {
     running?: boolean;
@@ -192,19 +193,14 @@ export function mountIntegrations(
       const antigravityActions = info.id === "antigravity"
         ? `
           <div class="ix-actions">
-            <button data-action="launch" data-id="antigravity" ${!info.installed || !isEnabled ? "disabled" : ""}>PCで開く</button>
-            <button class="primary" data-action="${info.remote?.running ? "remote-stop" : "remote-start"}" data-id="antigravity" ${!info.installed || !isEnabled ? "disabled" : ""}>
-              ${info.remote?.running ? "Remote停止" : "Remote開始"}
-            </button>
+            <button class="primary" data-action="launch" data-id="antigravity" ${!info.installed || !isEnabled ? "disabled" : ""}>agyを開く</button>
+            <button data-action="models" data-id="antigravity" ${!info.installed || !isEnabled ? "disabled" : ""}>Models</button>
           </div>
           <div class="ix-actions">
-            <button data-action="open-url" data-url="${escapeAttr(remoteUrl)}" ${!remoteUrl || !isEnabled ? "disabled" : ""}>Remoteを開く</button>
-            <button data-action="qr" data-id="antigravity" ${!isEnabled ? "disabled" : ""}>QR表示</button>
+            <button data-action="open-url" data-url="${escapeAttr(info.webUrl || "https://antigravity.google")}" ${!isEnabled ? "disabled" : ""}>公式サイト</button>
+            <button data-action="open-url" data-url="${escapeAttr(info.installUrl || "https://antigravity.google/product/antigravity-cli")}" ${info.installed || !isEnabled ? "disabled" : ""}>CLIを導入</button>
           </div>
-          <div id="ixQr-antigravity" class="ix-qr hidden">
-            <img src="/qr/antigravity-remote.png" alt="Antigravity Remote Control QR code" />
-            <span>Antigravity Remote Control</span>
-          </div>
+          <pre id="ixModels-antigravity" class="ix-qr hidden" aria-live="polite"></pre>
         `
         : `
           <div class="ix-actions">
@@ -239,7 +235,7 @@ export function mountIntegrations(
 
           <p class="ix-description">
             ${info.id === "antigravity"
-              ? "公式CLIのRemote Control daemonを管理し、公式Remote画面へハンドオフします。"
+              ? "Google公式のAntigravity CLI (agy) をホスト側で検出・起動します。認証と権限管理はagy自身に任せ、DevMoterはCLIをラップします。"
               : "ローカルClaude Codeを端末で開くか、公式Claude Code Web / モバイルアプリへ移動します。"}
           </p>
 
@@ -274,6 +270,23 @@ export function mountIntegrations(
 
     if (action === "qr" && id) {
       root.querySelector<HTMLElement>(`#ixQr-${id}`)?.classList.toggle("hidden");
+      return;
+    }
+
+    if (action === "models" && id === "antigravity") {
+      button.disabled = true;
+      try {
+        const result = await api<{ output?: string }>("/api/integrations/antigravity/models");
+        const panel = root.querySelector<HTMLElement>("#ixModels-antigravity");
+        if (panel) {
+          panel.textContent = result.output || "No models reported by agy.";
+          panel.classList.remove("hidden");
+        }
+      } catch (error) {
+        showNotice(error instanceof Error ? error.message : String(error), "error");
+      } finally {
+        button.disabled = false;
+      }
       return;
     }
 
