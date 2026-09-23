@@ -12,7 +12,7 @@ AUTH_SECRET_FILE="$STATE_DIR/devmoter-auth-password"
 # systemd --user does not necessarily inherit the interactive shell PATH.
 # Keep this list conservative and user-local so common OpenCode/Codex installs
 # remain discoverable after login, reboot, or service restart.
-export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$HOME/.bun/bin:$HOME/.npm-global/bin:$HOME/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}"
+export PATH="${PATH:-/usr/local/bin:/usr/bin:/bin}:$HOME/.local/bin:$HOME/.opencode/bin:$HOME/.bun/bin:$HOME/.npm-global/bin:$HOME/bin"
 
 resolve_binary() {
   local env_name="$1"
