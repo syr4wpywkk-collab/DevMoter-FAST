@@ -213,6 +213,11 @@ function createToolbar() {
   host.className = "dm-controlbar";
   host.setAttribute("aria-label", "DevMoter control plane");
   host.innerHTML = `
+    <button type="button" class="dm-mobile-menu-toggle" aria-label="More DevMoter controls" aria-expanded="false">••• <span>More</span></button>
+    <button type="button" class="dm-mobile-shortcut dm-review-shortcut" aria-label="Review changes">⌁ <span>Review</span></button>
+    <button type="button" class="dm-mobile-shortcut dm-agent-shortcut" aria-label="Agent mode">✦ <span>Agent</span></button>
+    <button type="button" class="dm-mobile-shortcut dm-session-shortcut" aria-label="Session activity">◎ <span>Activity</span></button>
+    <button type="button" class="dm-mobile-shortcut dm-settings-shortcut" aria-label="Settings">⚙ <span>Settings</span></button>
     <button type="button" class="dm-theme" aria-label="Theme">◐ <span>System</span></button>
     <button type="button" class="dm-context" aria-label="Context usage">◒ <span>Context</span></button>
     <button type="button" class="dm-tasks" aria-label="Task checkpoints">✓ <span>Tasks</span></button>
@@ -221,11 +226,39 @@ function createToolbar() {
   `;
   document.body.appendChild(host);
 
+  const mobileMenuToggle = host.querySelector<HTMLButtonElement>(".dm-mobile-menu-toggle")!;
+  const reviewShortcut = host.querySelector<HTMLButtonElement>(".dm-review-shortcut")!;
+  const agentShortcut = host.querySelector<HTMLButtonElement>(".dm-agent-shortcut")!;
+  const sessionShortcut = host.querySelector<HTMLButtonElement>(".dm-session-shortcut")!;
+  const settingsShortcut = host.querySelector<HTMLButtonElement>(".dm-settings-shortcut")!;
   const themeButton = host.querySelector<HTMLButtonElement>(".dm-theme")!;
   const contextButton = host.querySelector<HTMLButtonElement>(".dm-context")!;
   const tasksButton = host.querySelector<HTMLButtonElement>(".dm-tasks")!;
   const extensionsButton = host.querySelector<HTMLButtonElement>(".dm-extensions")!;
   const panel = host.querySelector<HTMLDivElement>(".dm-panel")!;
+
+  const closeMobileMenu = () => {
+    host.classList.remove("mobile-open");
+    mobileMenuToggle.setAttribute("aria-expanded", "false");
+    mobileMenuToggle.firstChild!.textContent = "••• ";
+  };
+
+  mobileMenuToggle.addEventListener("click", () => {
+    const open = host.classList.toggle("mobile-open");
+    mobileMenuToggle.setAttribute("aria-expanded", String(open));
+    mobileMenuToggle.firstChild!.textContent = open ? "× " : "••• ";
+    if (!open) panel.classList.add("hidden");
+  });
+
+  const openHiddenLauncher = (selector: string) => {
+    closeMobileMenu();
+    window.setTimeout(() => document.querySelector<HTMLElement>(selector)?.click(), 0);
+  };
+
+  reviewShortcut.addEventListener("click", () => openHiddenLauncher("#wfLaunch"));
+  agentShortcut.addEventListener("click", () => openHiddenLauncher("#devmoterAgentLauncher"));
+  sessionShortcut.addEventListener("click", () => openHiddenLauncher(".sc-fab"));
+  settingsShortcut.addEventListener("click", () => openHiddenLauncher(".devmoter-settings-trigger"));
 
   const activeSessionId = () => {
     const backend = localStorage.getItem("opencode-pocket-backend");
@@ -249,6 +282,7 @@ function createToolbar() {
 
   const themeModes: ThemeMode[] = ["system", "light", "dark"];
   themeButton.addEventListener("click", () => {
+    closeMobileMenu();
     const current = (localStorage.getItem(THEME_KEY) as ThemeMode) || "system";
     const next = themeModes[(themeModes.indexOf(current) + 1) % themeModes.length];
     applyTheme(next);
@@ -296,6 +330,7 @@ function createToolbar() {
   }
 
   contextButton.addEventListener("click", () => {
+    closeMobileMenu();
     const state = renderContext();
     panel.classList.remove("hidden");
     panel.innerHTML =
@@ -320,6 +355,7 @@ function createToolbar() {
   });
 
   tasksButton.addEventListener("click", async () => {
+    closeMobileMenu();
     const parentId = activeSessionId();
     panel.classList.remove("hidden");
     panel.innerHTML = panelHead("Task checkpoints") + "<p>Loading current micro-task…</p>";
@@ -401,6 +437,7 @@ function createToolbar() {
   });
 
   extensionsButton.addEventListener("click", async () => {
+    closeMobileMenu();
     panel.classList.remove("hidden");
     panel.innerHTML = panelHead("Extensions") + "<p>Loading approved catalog…</p>";
     wireClose();
@@ -470,8 +507,9 @@ function injectStyles() {
     :root[data-devmoter-theme="dark"] { color-scheme: dark; }
     :root[data-devmoter-theme="light"] body { background:#f7f7f8 !important; color:#171717 !important; }
     :root[data-devmoter-theme="dark"] body { background:#111214 !important; color:#f5f5f5 !important; }
-    .dm-controlbar { position:fixed; z-index:1100; right:max(10px,env(safe-area-inset-right)); bottom:max(10px,env(safe-area-inset-bottom)); display:flex; gap:6px; padding:6px; border:1px solid color-mix(in srgb,currentColor 18%,transparent); border-radius:14px; background:color-mix(in srgb,Canvas 92%,transparent); backdrop-filter:blur(14px); box-shadow:0 8px 30px rgba(0,0,0,.16); }
+    .dm-controlbar { position:fixed; z-index:70; right:max(10px,env(safe-area-inset-right)); bottom:max(10px,env(safe-area-inset-bottom)); display:flex; gap:6px; padding:6px; border:1px solid color-mix(in srgb,currentColor 18%,transparent); border-radius:14px; background:color-mix(in srgb,Canvas 92%,transparent); backdrop-filter:blur(14px); box-shadow:0 8px 30px rgba(0,0,0,.16); }
     .dm-controlbar>button { min-height:38px; border:0; border-radius:10px; padding:0 10px; background:color-mix(in srgb,currentColor 8%,transparent); color:inherit; }
+    .dm-mobile-menu-toggle,.dm-mobile-shortcut { display:none; }
     .dm-context[data-pressure="high"] { outline:2px solid currentColor; }
     .dm-panel { position:absolute; right:0; bottom:52px; width:min(380px,calc(100vw - 20px)); max-height:min(70vh,620px); overflow:auto; padding:14px; border:1px solid color-mix(in srgb,currentColor 18%,transparent); border-radius:16px; background:Canvas; color:CanvasText; box-shadow:0 18px 50px rgba(0,0,0,.25); }
     .dm-panel.hidden { display:none; }
@@ -497,8 +535,96 @@ function injectStyles() {
     .dm-output-bounded { max-height:46vh; overflow:auto; }
     .dm-virtual-placeholder { width:100%; min-height:40px; border:1px dashed color-mix(in srgb,currentColor 25%,transparent); border-radius:10px; background:transparent; color:inherit; opacity:.78; }
     @media (max-width:640px) {
-      .dm-controlbar>button span { display:none; }
-      .dm-controlbar>button { width:40px; padding:0; }
+      .wf-launch,
+      .devmoter-agent-launcher,
+      .devmoter-settings-trigger,
+      .sc-fab {
+        display:none !important;
+      }
+
+      .ocx-context-buttons {
+        display:none !important;
+      }
+
+      .dm-controlbar {
+        right:max(12px,env(safe-area-inset-right));
+        bottom:max(12px,env(safe-area-inset-bottom));
+        padding:5px;
+        border-radius:16px;
+      }
+
+      .dm-controlbar>button {
+        width:44px;
+        min-height:44px;
+        padding:0;
+      }
+
+      .dm-controlbar>button span {
+        display:none;
+      }
+
+      .dm-controlbar .dm-mobile-menu-toggle {
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-size:1rem;
+        letter-spacing:.04em;
+      }
+
+      .dm-controlbar:not(.mobile-open)>button:not(.dm-mobile-menu-toggle) {
+        display:none;
+      }
+
+      .dm-controlbar.mobile-open {
+        width:min(330px,calc(100vw - 24px));
+        display:grid;
+        grid-template-columns:repeat(3,minmax(0,1fr));
+        gap:6px;
+        padding:8px;
+        border-radius:20px;
+      }
+
+      .dm-controlbar.mobile-open>button {
+        width:auto;
+        min-width:0;
+        min-height:54px;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        gap:3px;
+        padding:4px 6px;
+      }
+
+      .dm-controlbar.mobile-open>button span {
+        display:block;
+        max-width:100%;
+        overflow:hidden;
+        font-size:.58rem;
+        line-height:1.15;
+        text-overflow:ellipsis;
+        white-space:nowrap;
+      }
+
+      .dm-controlbar.mobile-open .dm-mobile-shortcut {
+        display:flex;
+      }
+
+      .dm-controlbar.mobile-open .dm-mobile-menu-toggle {
+        grid-column:3;
+      }
+
+      .dm-panel {
+        bottom:54px;
+      }
+
+      .dm-controlbar.mobile-open .dm-panel {
+        bottom:calc(100% + 8px);
+      }
+
+      body.devmoter-settings-open .dm-controlbar {
+        display:none !important;
+      }
     }
   `;
   document.head.appendChild(style);
