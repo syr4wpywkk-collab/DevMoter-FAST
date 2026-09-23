@@ -6738,3 +6738,171 @@ textarea:focus-visible,
     z-index: 2;
   }
 }
+
+
+/* Shared ChatGPT-style agent switcher used by Codex, OpenCode and API Chat sidebars. */
+.dm-agent-head {
+  position: relative;
+  gap: 8px;
+}
+
+.dm-agent-switch-shell {
+  position: relative;
+  min-width: 0;
+  flex: 1;
+}
+
+.dm-agent-switch-trigger {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 5px 8px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.dm-agent-switch-trigger:hover,
+.dm-agent-switch-trigger:active,
+.dm-agent-switch-trigger[aria-expanded="true"] {
+  background: rgba(255,255,255,.06);
+}
+
+.dm-agent-switch-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(255,255,255,.08);
+  font-size: .92rem;
+}
+
+.dm-agent-switch-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.dm-agent-switch-copy strong,
+.dm-agent-switch-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dm-agent-switch-copy strong {
+  color: inherit;
+  font-size: .9rem;
+  font-weight: 650;
+}
+
+.dm-agent-switch-copy small {
+  color: #8d8d94;
+  font-size: .6rem;
+  font-weight: 500;
+}
+
+.dm-agent-switch-chevron {
+  color: #888890;
+  font-size: .82rem;
+  text-align: center;
+}
+
+.dm-agent-switch-menu {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(300px, calc(100vw - 72px));
+  padding: 6px;
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  background: #242426;
+  box-shadow: 0 18px 50px rgba(0,0,0,.48);
+}
+
+.dm-agent-switch-menu.hidden {
+  display: none;
+}
+
+.dm-agent-switch-menu > button,
+.dm-agent-switch-menu .cx-agent-option {
+  width: 100%;
+  min-height: 56px;
+  padding: 7px 10px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #ededf2;
+  text-align: left;
+}
+
+.dm-agent-switch-menu > button:hover,
+.dm-agent-switch-menu > button:active,
+.dm-agent-switch-menu > button.active,
+.dm-agent-switch-menu .cx-agent-option.active {
+  background: rgba(255,255,255,.075);
+  box-shadow: none;
+}
+
+.dm-agent-switch-menu > button > span:nth-child(2),
+.dm-agent-switch-menu .cx-agent-option > span:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.dm-agent-switch-menu strong {
+  font-size: .76rem;
+  font-weight: 650;
+}
+
+.dm-agent-switch-menu small {
+  color: #96969d;
+  font-size: .6rem;
+}
+
+.dm-agent-switch-menu > button > span:last-child,
+.dm-agent-switch-menu .cx-agent-option > span:last-child {
+  color: #8d72df;
+  text-align: center;
+}
+
+.ocx-sidebar-head.dm-agent-head > .dm-agent-switch-shell,
+.cx-sidebar-head.dm-agent-head > .dm-agent-switch-shell,
+.api-sidebar-head.dm-agent-head > .dm-agent-switch-shell {
+  min-width: 0;
+  flex: 1;
+}
+
+.ocx-sidebar-head.dm-agent-head .dm-agent-switch-trigger {
+  color: var(--oc-text);
+}
+
+.ocx-sidebar-head.dm-agent-head .dm-agent-switch-icon {
+  background: #2e2018;
+  color: #e6aa84;
+}
+
+.api-sidebar-head.dm-agent-head .dm-agent-switch-trigger {
+  color: var(--api-text);
+}
+
+@media (max-width: 640px) {
+  .dm-agent-switch-menu {
+    width: min(320px, calc(100vw - 54px));
+  }
+}
