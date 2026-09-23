@@ -82,6 +82,7 @@ type PendingAttachment = {
 
 type CodexRemoteOptions = {
   onOpenCode?: () => void;
+  onApi?: () => void;
   onIntegrations?: () => void;
 };
 
@@ -128,6 +129,7 @@ export function mountCodexRemote(
           <div class="cx-agent-switcher" role="listbox" aria-label="エージェントを選択">
             <button class="cx-agent-option active" type="button" data-agent="codex"><span>⌘</span><span>Codex</span></button>
             <button class="cx-agent-option" type="button" data-agent="opencode"><span>◈</span><span>OpenCode</span></button>
+            <button class="cx-agent-option" type="button" data-agent="api"><span>✦</span><span>API Chat</span></button>
           </div>
         </div>
 
@@ -2690,6 +2692,11 @@ export function mountCodexRemote(
       if (agent === "opencode") {
         closeSidebar();
         options.onOpenCode?.();
+        return;
+      }
+      if (agent === "api") {
+        closeSidebar();
+        options.onApi?.();
         return;
       }
       root.querySelectorAll(".cx-agent-option").forEach(item => item.classList.remove("active"));
