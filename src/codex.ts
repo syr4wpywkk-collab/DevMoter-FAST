@@ -100,8 +100,19 @@ export function mountCodexRemote(
       <div id="cxScrim" class="cx-scrim hidden"></div>
 
       <aside id="cxSidebar" class="cx-sidebar" aria-hidden="true">
-        <div class="cx-sidebar-head">
-          <strong>DevMoter</strong>
+        <div class="cx-sidebar-head dm-agent-head">
+          <div class="dm-agent-switch-shell">
+            <button id="cxAgentSwitchButton" class="dm-agent-switch-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span class="dm-agent-switch-icon">⌘</span>
+              <span class="dm-agent-switch-copy"><strong>Codex</strong><small>現在のエージェント</small></span>
+              <span class="dm-agent-switch-chevron">⌄</span>
+            </button>
+            <div id="cxAgentSwitchMenu" class="dm-agent-switch-menu hidden" role="listbox" aria-label="エージェントを選択">
+              <button class="cx-agent-option active" type="button" data-agent="codex"><span>⌘</span><span><strong>Codex</strong><small>実装・修正</small></span><span>✓</span></button>
+              <button class="cx-agent-option" type="button" data-agent="opencode"><span>◈</span><span><strong>OpenCode</strong><small>エージェント実行</small></span><span></span></button>
+              <button class="cx-agent-option" type="button" data-agent="api"><span>✦</span><span><strong>API Chat</strong><small>マルチプロバイダー</small></span><span></span></button>
+            </div>
+          </div>
           <button id="cxSidebarClose" class="cx-icon-button" type="button" aria-label="閉じる">×</button>
         </div>
 
@@ -124,15 +135,6 @@ export function mountCodexRemote(
           <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button"><span>◇</span><span>Developer workflows</span></button>
           <button id="cxSettingsNav" class="cx-nav-item" type="button"><span>⚙</span><span>Settings</span></button>
         </nav>
-
-        <div class="cx-side-section cx-agent-section">
-          <div class="cx-side-label">エージェント</div>
-          <div class="cx-agent-switcher" role="listbox" aria-label="エージェントを選択">
-            <button class="cx-agent-option active" type="button" data-agent="codex"><span>⌘</span><span>Codex</span></button>
-            <button class="cx-agent-option" type="button" data-agent="opencode"><span>◈</span><span>OpenCode</span></button>
-            <button class="cx-agent-option" type="button" data-agent="api"><span>✦</span><span>API Chat</span></button>
-          </div>
-        </div>
 
         <div class="cx-side-section">
           <div class="cx-side-label">最近</div>
@@ -252,6 +254,8 @@ export function mountCodexRemote(
   const sidebar = root.querySelector<HTMLElement>("#cxSidebar")!;
   const scrim = root.querySelector<HTMLElement>("#cxScrim")!;
   const sidebarClose = root.querySelector<HTMLButtonElement>("#cxSidebarClose")!;
+  const agentSwitchButton = root.querySelector<HTMLButtonElement>("#cxAgentSwitchButton")!;
+  const agentSwitchMenu = root.querySelector<HTMLDivElement>("#cxAgentSwitchMenu")!;
   const settingsNav = root.querySelector<HTMLButtonElement>("#cxSettingsNav")!;
   const menu = root.querySelector<HTMLButtonElement>("#cxMenu")!;
   const newChatSide = root.querySelector<HTMLButtonElement>("#cxNewChatSide")!;
@@ -515,6 +519,8 @@ export function mountCodexRemote(
   }
 
   function closeSidebar() {
+    agentSwitchMenu.classList.add("hidden");
+    agentSwitchButton.setAttribute("aria-expanded", "false");
     sidebar.classList.remove("open");
     sidebar.setAttribute("aria-hidden", "true");
     scrim.classList.add("hidden");
@@ -2676,6 +2682,10 @@ export function mountCodexRemote(
   }
 
   menu.addEventListener("click", openSidebar);
+  agentSwitchButton.addEventListener("click", () => {
+    const open = agentSwitchMenu.classList.toggle("hidden") === false;
+    agentSwitchButton.setAttribute("aria-expanded", String(open));
+  });
   sidebarClose.addEventListener("click", closeSidebar);
   scrim.addEventListener("click", closeSidebar);
   threadSearch.addEventListener("input", renderThreads);
@@ -2723,9 +2733,8 @@ export function mountCodexRemote(
         options.onApi?.();
         return;
       }
-      root.querySelectorAll(".cx-agent-option").forEach(item => item.classList.remove("active"));
-      button.classList.add("active");
-      closeSidebar();
+      agentSwitchMenu.classList.add("hidden");
+      agentSwitchButton.setAttribute("aria-expanded", "false");
     });
   });
   titleButton.addEventListener("click", () => void showModels());
