@@ -1,71 +1,68 @@
-# DevMoter control-plane roadmap
+# DevMoter FAST roadmap
 
-Issue #14 is the umbrella roadmap for the "best-of mobile coding-agent control plane" work. It is intentionally an epic rather than a single implementation task.
+DevMoter FAST is evolving from a mobile remote UI into a **self-hosted control plane for coding agents**. This roadmap describes maturity gates, not promises or release dates.
 
-## Baseline to preserve
+## Status vocabulary
 
-Current `main` already provides the foundations future work must not regress:
+- **Shipped** — wired to a real backend path and part of the supported product surface.
+- **Experimental** — implemented, but still receiving contract, device, security, or UX hardening.
+- **Planned** — design/roadmap work; must not be presented as a shipped capability.
 
-- distinct Codex and OpenCode surfaces rather than a generic terminal wrapper;
-- Projects and GitHub-backed workspace selection;
-- server-side Project-ID path resolution;
-- localhost-first/Tailscale deployment;
-- operation-ID duplicate suppression;
-- reconnect and execution-state recovery;
-- approval/question flows;
-- PWA/mobile-first navigation.
+## Now — make the control plane boringly reliable
 
-## Phase order
+The current priority is validation and hardening of already-large functionality:
 
-### Phase 0 — reliability and release safety
+- real Codex/OpenCode protocol contract tests;
+- model/reasoning/plugin/usage compatibility;
+- systemd/manual-launch parity;
+- reconnect and duplicate-mutation safety;
+- mobile/Chromebook release smoke coverage;
+- host integration validation;
+- authentication/token-storage hardening;
+- documentation that matches implementation.
 
-Finish the hardening work before broad expansion:
+Security and integration findings should be fixed before turning experimental surfaces into release claims.
 
-1. authentication and security boundaries;
-2. duplicate-mutation/reconnect behavior;
-3. automated smoke and protocol tests;
-4. architecture/threat-model documentation;
-5. legal/branding/third-party notice audit;
-6. real Chromebook + iPhone smoke validation.
+## Next — finish the daily mobile workflow
 
-### Phase 1 — high-value coding controls
+High-value work after the reliability gate:
 
-Prioritize review and intervention surfaces that are useful from a phone:
+- richer Git/diff review;
+- better project/context/file selection;
+- notification and waiting-state UX;
+- attachment lifecycle/retention;
+- accessibility and mobile ergonomics;
+- clearer diagnostics and first-run setup;
+- packaging/install/update improvements.
 
-- Git status and diff review;
-- compact file explorer/context picker;
-- safe terminal access;
-- completion/waiting notifications;
-- diagnostics and first-run setup.
+## Later — scale and extensibility
 
-### Phase 2 — host/device scale
+Only after single-host behavior is predictable:
 
-After single-host reliability is boring and predictable:
+- stronger device/session controls;
+- multi-host UX;
+- broader agent/provider adapters;
+- extension/plugin discovery;
+- safer scheduled/event-driven automation;
+- optional relay research without weakening the host-local trust model.
 
-- device pairing/revocation;
-- passkey/WebAuthn option;
-- multi-host registry and host-scoped projects/sessions;
-- optional relay research without weakening the local-first model.
+## Explicitly planned, not shipped
 
-### Phase 3 — automation and extensibility
+These should stay labeled as planned until they have a real implementation and validation path:
 
-Only after the safety policy is explicit:
-
-- scheduled/event-triggered tasks;
-- bounded autopilot;
-- CLI/SDK;
-- provider/model/agent abstraction;
-- extension catalog;
-- deterministic tool policy.
+- DevMoter Library;
+- Google/Microsoft/Apple sign-in;
+- public multi-user authorization;
+- production relay service.
 
 ## Pull-request rule
 
-Child work should land as small, independently reviewable PRs linked to its concrete issue. The epic should remain open while child issues are active; completing one child feature must not be treated as completing the whole control-plane roadmap.
-
-## Licensing rule
-
-External projects referenced by #14 are product and UX research unless their exact source license is verified compatible. Reimplement ideas independently by default. Do not copy AGPL, GPL, FSL, enterprise-only, or otherwise incompatible source into DevMoter.
+Prefer small, independently reviewable PRs linked to concrete issues. A broad roadmap item is not complete because one child feature landed.
 
 ## Validation rule
 
-Do not claim iPhone/Chromebook behavior based only on desktop CI. Device-specific acceptance remains manual until an equivalent automated environment exists.
+A UI element is not evidence that a feature works. Shipped claims should have a real backend path and, where practical, contract/integration coverage. Device-specific claims require real-device validation until equivalent automation exists.
+
+## Licensing rule
+
+External projects are product/UX research unless their source license is verified compatible. Reimplement ideas independently by default; do not copy incompatible source into DevMoter.
