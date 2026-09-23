@@ -122,6 +122,7 @@ export function mountCodexRemote(
           <button id="cxPluginsNav" class="cx-nav-item" type="button"><span>◉</span><span>プラグイン</span></button>
           <button id="cxIntegrationsNav" class="cx-nav-item" type="button"><span>⌁</span><span>Integrations</span></button>
           <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button"><span>◇</span><span>Developer workflows</span></button>
+          <button id="cxSettingsNav" class="cx-nav-item" type="button"><span>⚙</span><span>Settings</span></button>
         </nav>
 
         <div class="cx-side-section cx-agent-section">
@@ -251,6 +252,7 @@ export function mountCodexRemote(
   const sidebar = root.querySelector<HTMLElement>("#cxSidebar")!;
   const scrim = root.querySelector<HTMLElement>("#cxScrim")!;
   const sidebarClose = root.querySelector<HTMLButtonElement>("#cxSidebarClose")!;
+  const settingsNav = root.querySelector<HTMLButtonElement>("#cxSettingsNav")!;
   const menu = root.querySelector<HTMLButtonElement>("#cxMenu")!;
   const newChatSide = root.querySelector<HTMLButtonElement>("#cxNewChatSide")!;
   const newChatTop = root.querySelector<HTMLButtonElement>("#cxNewChatTop")!;
@@ -2702,6 +2704,11 @@ export function mountCodexRemote(
     closeSidebar();
     options.onIntegrations?.();
   });
+  settingsNav.addEventListener("click", () => {
+    closeSidebar();
+    window.dispatchEvent(new CustomEvent("devmoter:open-settings"));
+  });
+
   libraryNav.addEventListener("click", showLibrary);
   root.querySelectorAll<HTMLButtonElement>(".cx-agent-option").forEach(button => {
     button.addEventListener("click", () => {

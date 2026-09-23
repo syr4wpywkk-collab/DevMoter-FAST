@@ -200,6 +200,7 @@ export function mountOpenCodeRemote(
           <button id="ocxCodexNav" type="button"><span>⌘</span><span>Codex UI</span></button>
           <button id="ocxApiNav" type="button"><span>✦</span><span>API Chat</span></button>
           <button id="ocxIntegrationsNav" type="button"><span>⌁</span><span>Integrations</span></button>
+          <button id="ocxSettingsNav" type="button"><span>⚙</span><span>Settings</span></button>
         </nav>
 
         <div class="ocx-side-section">
@@ -361,6 +362,7 @@ export function mountOpenCodeRemote(
   const codexNav = root.querySelector<HTMLButtonElement>("#ocxCodexNav")!;
   const apiNav = root.querySelector<HTMLButtonElement>("#ocxApiNav")!;
   const integrationsNav = root.querySelector<HTMLButtonElement>("#ocxIntegrationsNav")!;
+  const settingsNav = root.querySelector<HTMLButtonElement>("#ocxSettingsNav")!;
   const refreshButton = root.querySelector<HTMLButtonElement>("#ocxRefresh")!;
   const sideStatus = root.querySelector<HTMLElement>("#ocxSideStatus")!;
   const sessionTitleButton = root.querySelector<HTMLButtonElement>("#ocxSessionTitleButton")!;
@@ -3423,6 +3425,10 @@ export function mountOpenCodeRemote(
   integrationsNav.addEventListener("click", () => {
     closeSidebar();
     options.onIntegrations?.();
+  });
+  settingsNav.addEventListener("click", () => {
+    closeSidebar();
+    window.dispatchEvent(new CustomEvent("devmoter:open-settings"));
   });
   refreshButton.addEventListener("click", () => void refresh());
 

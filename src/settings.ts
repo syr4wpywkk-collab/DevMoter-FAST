@@ -655,6 +655,7 @@ export function mountSettingsPanel() {
   }
 
   trigger.addEventListener("click", open);
+  window.addEventListener("devmoter:open-settings", open);
   closeButton.addEventListener("click", close);
   backButton.addEventListener("click", () => setPage("root"));
   modal.addEventListener("click", event => {
