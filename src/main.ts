@@ -14,6 +14,7 @@ import { mountDemo } from "./demo";
 import { mountSystemPanel } from "./system-panel";
 import { mountRemoteControlCenter } from "./remote-control";
 import { startWorkspaceControl } from "./workspace-control";
+import { mountSettingsPanel } from "./settings";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const startupParams = new URLSearchParams(window.location.search);
@@ -115,6 +116,7 @@ mountControlCenter();
 mountTaskWorkflow(workflowMount);
 mountSystemPanel();
 mountRemoteControlCenter();
+mountSettingsPanel();
 startWorkspaceControl();
 
 let healthCheckInFlight = false;
