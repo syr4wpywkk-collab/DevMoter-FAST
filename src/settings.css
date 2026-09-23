@@ -1,0 +1,361 @@
+.devmoter-settings-root {
+  position: fixed;
+  z-index: 920;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(116px, calc(92px + env(safe-area-inset-bottom)));
+}
+
+.devmoter-settings-trigger {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 999px;
+  background: rgba(29,29,31,.94);
+  color: #f5f5f7;
+  font-size: 1.1rem;
+  box-shadow: 0 12px 34px rgba(0,0,0,.42);
+  backdrop-filter: blur(18px);
+}
+
+.devmoter-settings-modal {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  align-items: end;
+  padding:
+    max(10px, env(safe-area-inset-top))
+    max(8px, env(safe-area-inset-right))
+    max(8px, env(safe-area-inset-bottom))
+    max(8px, env(safe-area-inset-left));
+  background: rgba(0,0,0,.72);
+  backdrop-filter: blur(8px);
+}
+
+.devmoter-settings-modal.hidden {
+  display: none;
+}
+
+.devmoter-settings-sheet {
+  width: min(100%, 760px);
+  height: min(94dvh, 940px);
+  margin: 0 auto;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 28px;
+  background: #1c1c1e;
+  box-shadow: 0 28px 90px rgba(0,0,0,.62);
+}
+
+.devmoter-settings-head {
+  min-height: 78px;
+  padding: 17px 18px 14px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+.devmoter-settings-head > div {
+  display: grid;
+  gap: 2px;
+}
+
+.devmoter-settings-head strong {
+  color: #fff;
+  font-size: 1.35rem;
+  letter-spacing: -.02em;
+}
+
+.devmoter-settings-head small {
+  color: #98989f;
+  font-size: .72rem;
+}
+
+.devmoter-settings-close {
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 999px;
+  background: #303034;
+  color: #f4f4f5;
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.devmoter-settings-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 14px calc(24px + env(safe-area-inset-bottom));
+  scrollbar-width: thin;
+}
+
+.devmoter-settings-loading {
+  padding: 36px 18px;
+  color: #8e8e93;
+  text-align: center;
+}
+
+.devmoter-settings-profile {
+  width: 100%;
+  min-height: 76px;
+  margin-bottom: 18px;
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  border-radius: 20px;
+  background: #2c2c2e;
+  color: #fff;
+  text-align: left;
+}
+
+.devmoter-settings-profile > span:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.devmoter-settings-profile strong,
+.devmoter-settings-profile small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.devmoter-settings-profile strong {
+  font-size: .95rem;
+}
+
+.devmoter-settings-profile small {
+  color: #a9a9af;
+  font-size: .7rem;
+}
+
+.devmoter-settings-profile > span:last-child,
+.devmoter-settings-chevron {
+  color: #77777d;
+  font-size: 1.35rem;
+}
+
+.devmoter-settings-avatar {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7042ff, #b45ed8);
+  color: white;
+  font-size: 1rem;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
+}
+
+.devmoter-settings-section {
+  margin: 0 0 18px;
+}
+
+.devmoter-settings-section h2 {
+  margin: 0 0 8px 10px;
+  color: #a9a9af;
+  font-size: .74rem;
+  font-weight: 650;
+  letter-spacing: .01em;
+}
+
+.devmoter-settings-card {
+  overflow: hidden;
+  border-radius: 20px;
+  background: #2c2c2e;
+}
+
+.devmoter-settings-row {
+  width: 100%;
+  min-height: 52px;
+  padding: 9px 14px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto 20px;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #f5f5f7;
+  text-align: left;
+}
+
+.devmoter-settings-row + .devmoter-settings-row {
+  position: relative;
+}
+
+.devmoter-settings-row + .devmoter-settings-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50px;
+  right: 14px;
+  height: 1px;
+  background: rgba(255,255,255,.085);
+}
+
+.devmoter-settings-row:active {
+  background: rgba(255,255,255,.055);
+}
+
+.devmoter-settings-row:disabled {
+  cursor: default;
+  opacity: .55;
+}
+
+.devmoter-settings-icon {
+  width: 28px;
+  display: grid;
+  place-items: center;
+  color: #f2f2f3;
+  font-size: .93rem;
+}
+
+.devmoter-settings-row-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.devmoter-settings-row-copy strong {
+  overflow: hidden;
+  font-size: .83rem;
+  font-weight: 540;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.devmoter-settings-row-copy small {
+  overflow: hidden;
+  color: #9a9aa1;
+  font-size: .67rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.devmoter-settings-badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #4a4a4f;
+  color: #dedee2;
+  font-size: .58rem;
+  white-space: nowrap;
+}
+
+.devmoter-settings-logout-card {
+  margin-top: 24px;
+  background: rgba(118,28,30,.26);
+}
+
+.devmoter-settings-row.danger {
+  color: #ff453a;
+}
+
+.devmoter-settings-row.danger .devmoter-settings-icon,
+.devmoter-settings-row.danger .devmoter-settings-chevron {
+  color: #ff453a;
+}
+
+.devmoter-settings-toast {
+  position: fixed;
+  z-index: 1100;
+  left: 50%;
+  bottom: calc(22px + env(safe-area-inset-bottom));
+  max-width: min(86vw, 520px);
+  padding: 10px 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  background: rgba(37,37,39,.96);
+  color: #f5f5f7;
+  font-size: .72rem;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 8px);
+  transition: opacity .16s ease, transform .16s ease;
+}
+
+.devmoter-settings-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+body.devmoter-settings-open .devmoter-settings-trigger {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (min-width: 760px) {
+  .devmoter-settings-modal {
+    align-items: center;
+  }
+
+  .devmoter-settings-sheet {
+    height: min(90dvh, 900px);
+  }
+}
+
+@media (max-width: 620px) {
+  .devmoter-settings-root {
+    bottom: max(112px, calc(88px + env(safe-area-inset-bottom)));
+  }
+
+  /* Settings becomes the single entry point for these utilities on mobile. */
+  .devmoter-system-button,
+  .dm-control-trigger,
+  .dm-tools-launcher,
+  .adv-fab {
+    display: none !important;
+  }
+
+  .devmoter-settings-modal {
+    padding: max(7px, env(safe-area-inset-top)) 0 0;
+  }
+
+  .devmoter-settings-sheet {
+    width: 100%;
+    height: calc(100dvh - max(7px, env(safe-area-inset-top)));
+    border-radius: 30px 30px 0 0;
+    border-bottom: 0;
+  }
+
+  .devmoter-settings-scroll {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+html[data-devmoter-theme="light"] .devmoter-settings-sheet {
+  background: #f2f2f7;
+  border-color: rgba(0,0,0,.08);
+}
+
+html[data-devmoter-theme="light"] .devmoter-settings-head strong,
+html[data-devmoter-theme="light"] .devmoter-settings-row,
+html[data-devmoter-theme="light"] .devmoter-settings-profile {
+  color: #111113;
+}
+
+html[data-devmoter-theme="light"] .devmoter-settings-card,
+html[data-devmoter-theme="light"] .devmoter-settings-profile {
+  background: #fff;
+}
+
+html[data-devmoter-theme="light"] .devmoter-settings-row + .devmoter-settings-row::before {
+  background: rgba(0,0,0,.10);
+}
+
+html[data-devmoter-theme="light"] .devmoter-settings-section h2,
+html[data-devmoter-theme="light"] .devmoter-settings-head small,
+html[data-devmoter-theme="light"] .devmoter-settings-profile small,
+html[data-devmoter-theme="light"] .devmoter-settings-row-copy small {
+  color: #73737a;
+}
