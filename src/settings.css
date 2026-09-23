@@ -359,3 +359,251 @@ html[data-devmoter-theme="light"] .devmoter-settings-profile small,
 html[data-devmoter-theme="light"] .devmoter-settings-row-copy small {
   color: #73737a;
 }
+
+
+.devmoter-settings-back {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #f5f5f7;
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.devmoter-settings-back.hidden {
+  display: none;
+}
+
+.devmoter-settings-head:has(.devmoter-settings-back:not(.hidden)) {
+  grid-template-columns: 40px minmax(0, 1fr) 46px;
+}
+
+.devmoter-settings-head:has(.devmoter-settings-back:not(.hidden)) {
+  display: grid;
+}
+
+.devmoter-settings-head:has(.devmoter-settings-back:not(.hidden)) > div {
+  min-width: 0;
+}
+
+.devmoter-settings-profile.detail {
+  pointer-events: none;
+}
+
+.devmoter-settings-note,
+.devmoter-guide-hero {
+  margin: 12px 8px 18px;
+  color: #a4a4aa;
+  font-size: .72rem;
+  line-height: 1.55;
+}
+
+.devmoter-guide-hero {
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+  background: #252527;
+}
+
+.devmoter-guide-hero strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #f5f5f7;
+  font-size: .9rem;
+}
+
+.devmoter-guide-hero p {
+  margin: 0;
+}
+
+.devmoter-settings-detail-card {
+  padding: 6px 14px;
+}
+
+.devmoter-settings-detail-row {
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.devmoter-settings-detail-row:last-child {
+  border-bottom: 0;
+}
+
+.devmoter-settings-detail-row span {
+  color: #aaaab0;
+  font-size: .72rem;
+}
+
+.devmoter-settings-detail-row strong {
+  color: #f5f5f7;
+  font-size: .74rem;
+  text-align: right;
+}
+
+.devmoter-settings-actions,
+.devmoter-settings-action-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.devmoter-settings-actions button,
+.devmoter-settings-action-card button,
+.devmoter-settings-form-card button,
+.devmoter-settings-device button {
+  min-height: 44px;
+  padding: 0 13px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  background: #3a3a3d;
+  color: #f5f5f7;
+}
+
+.devmoter-settings-form-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.devmoter-settings-form-card input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 13px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  outline: none;
+  background: #1e1e20;
+  color: #fff;
+  font-size: .82rem;
+}
+
+.devmoter-settings-device {
+  min-height: 58px;
+  padding: 10px 12px 10px 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.devmoter-settings-device + .devmoter-settings-device {
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.devmoter-settings-device > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.devmoter-settings-device strong,
+.devmoter-settings-device small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.devmoter-settings-device strong {
+  font-size: .78rem;
+}
+
+.devmoter-settings-device small {
+  color: #9b9ba1;
+  font-size: .62rem;
+}
+
+.devmoter-settings-device button {
+  min-height: 36px;
+  color: #ff9b95;
+}
+
+.devmoter-settings-empty {
+  padding: 18px 14px;
+  color: #929298;
+  font-size: .72rem;
+  text-align: center;
+}
+
+.devmoter-settings-health {
+  padding: 2px 14px;
+}
+
+.devmoter-settings-health-row {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 22px minmax(80px, .55fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.devmoter-settings-health-row:last-child {
+  border-bottom: 0;
+}
+
+.devmoter-settings-health-row > span {
+  font-weight: 800;
+}
+
+.devmoter-settings-health-row > span.ok {
+  color: #71d49a;
+}
+
+.devmoter-settings-health-row > span.bad {
+  color: #ff9b95;
+}
+
+.devmoter-settings-health-row strong {
+  font-size: .74rem;
+}
+
+.devmoter-settings-health-row small {
+  overflow: hidden;
+  color: #96969c;
+  font-size: .65rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-devmoter-density="compact"] .devmoter-settings-row {
+  min-height: 44px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+html[data-devmoter-density="compact"] .devmoter-settings-section {
+  margin-bottom: 12px;
+}
+
+html[data-devmoter-density="compact"] .devmoter-settings-card {
+  border-radius: 16px;
+}
+
+html[data-devmoter-theme="light"] .devmoter-settings-detail-row strong,
+html[data-devmoter-theme="light"] .devmoter-guide-hero strong {
+  color: #111113;
+}
+
+html[data-devmoter-theme="light"] .devmoter-settings-detail-row,
+html[data-devmoter-theme="light"] .devmoter-settings-device,
+html[data-devmoter-theme="light"] .devmoter-settings-health-row {
+  border-color: rgba(0,0,0,.10);
+}
+
+html[data-devmoter-theme="light"] .devmoter-guide-hero {
+  border-color: rgba(0,0,0,.08);
+  background: #fff;
+}
+
+html[data-devmoter-theme="light"] .devmoter-settings-form-card input {
+  border-color: rgba(0,0,0,.12);
+  background: #f4f4f7;
+  color: #111;
+}
