@@ -30,6 +30,11 @@ while :; do sleep 1; done
   await executable(join(fakeBin, "codex"), "#!/usr/bin/env bash\nexit 0\n");
   await executable(join(fakeBin, "curl"), `#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "$DEVMOTER_CURL_LOG"
+case "$*" in
+  *"/api/provider"*) printf '%s\\n' '{"data":[{"id":"mock-provider"}]}' ;;
+  *"/api/model"*) printf '%s\\n' '{"data":[{"id":"mock-model"}]}' ;;
+  *"/api/health"*) printf '%s\\n' '{"backends":{"opencode":{"online":true},"codex":{"online":true}}}' ;;
+esac
 exit 0
 `);
   await executable(join(fakeBin, "node"), `#!/usr/bin/env bash
@@ -63,5 +68,7 @@ exit 0
   const log = await readFile(curlLog, "utf8");
   assert.match(log, /-u opencode:/);
   assert.match(log, /-u devmoter:/);
+  assert.match(log, /\/api\/provider/);
+  assert.match(log, /\/api\/model/);
   assert.match(log, /\/api\/health/);
 });
