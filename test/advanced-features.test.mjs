@@ -5,12 +5,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readBoundedResponseBody, resolveLivePreviewTarget, rewriteLivePreviewBody } from "../server/advanced-api.mjs";
 import {
+  assertExternalBackendExecutionAllowed,
   buildBubblewrapCommand,
   chooseModel,
   createArtifactRegistry,
   createGrantRegistry,
   listProjectDirectory,
   previewFile,
+  externalBackendSandboxPolicy,
   resolveInsideRoot,
   runWithRouting,
   sandboxStatus
@@ -230,14 +232,38 @@ test("provider failover skips models that do not meet requested capabilities", a
   );
 });
 
-test("sandbox status is explicit that agent execution is not yet enforced", () => {
+test("sandbox status reports enforced DevMoter-owned tool boundary", () => {
   const status = sandboxStatus({
     env: { DEVMOTER_SANDBOX: "required" },
     spawn: () => ({ status: 0, stdout: "bubblewrap 1.0" })
   });
   assert.equal(status.available, true);
-  assert.equal(status.enforced, false);
-  assert.equal(status.scope, "capability-only");
+  assert.equal(status.enforced, true);
+  assert.equal(status.scope, "devmoter-owned-agent-tools");
+  assert.equal(status.externalBackends, "blocked");
+});
+
+test("required sandbox fails closed for external agent backends", () => {
+  const spawn = () => ({ status: 0, stdout: "bubblewrap 1.0" });
+  const blocked = externalBackendSandboxPolicy("codex", {
+    env: { DEVMOTER_SANDBOX: "required" },
+    spawn
+  });
+  assert.equal(blocked.allowed, false);
+  assert.match(blocked.reason, /cannot guarantee|blocks external/i);
+  assert.throws(
+    () => assertExternalBackendExecutionAllowed("opencode", {
+      env: { DEVMOTER_SANDBOX: "required" },
+      spawn
+    }),
+    /required blocks external|cannot guarantee/i
+  );
+
+  const preferred = externalBackendSandboxPolicy("codex", {
+    env: { DEVMOTER_SANDBOX: "preferred" },
+    spawn
+  });
+  assert.equal(preferred.allowed, true);
 });
 
 

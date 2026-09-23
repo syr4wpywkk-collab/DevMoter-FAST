@@ -95,6 +95,7 @@ export function mountAdvancedTools() {
     '<section class="adv-section"><h3>URL attachment</h3><div class="adv-row"><input data-url-input inputmode="url" placeholder="https://example.com/docs"/><button type="button" data-url-preview>Preview URL</button><button type="button" data-url-attach disabled>Fetch & attach</button></div><div class="adv-status" data-url-status>URL metadata is shown before any network fetch.</div></section>' +
     '<section class="adv-section"><h3>Generated outputs</h3><div class="adv-row"><input data-artifact-path placeholder="dist/report.json"/><button type="button" data-artifact-add>Add</button></div><input data-session placeholder="session id (optional)"/><div class="adv-list" data-artifacts></div></section>' +
     '<section class="adv-section"><h3>Live web preview</h3><div class="adv-row"><input data-preview-port inputmode="numeric" placeholder="3000"/><button type="button" data-preview-start>Start / restart</button><button type="button" data-preview-stop>Stop</button></div><div class="adv-status" data-live-status></div><iframe class="adv-frame hidden" data-live-frame sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"></iframe></section>' +
+    '<section class="adv-section"><h3>Browser automation</h3><div class="adv-status">Opt-in · approved live preview only · isolated temporary profile · no personal browser cookies.</div><div class="adv-row"><button type="button" data-agent-browser-start>Start browser</button><button type="button" data-agent-browser-inspect>Inspect DOM</button><button type="button" data-agent-browser-stop>Stop</button></div><div class="adv-status" data-agent-browser-status>Checking…</div><pre class="adv-code hidden" data-agent-browser-result></pre></section>' +
     '<section class="adv-section"><h3>Models</h3><div class="adv-checks"><label><input type="checkbox" data-cap="vision"/>Vision</label><label><input type="checkbox" data-cap="tools"/>Tools</label><label><input type="checkbox" data-cap="reasoning"/>Reasoning</label></div><select data-model></select><div class="adv-row"><input data-model-prompt placeholder="Test prompt for selected route"/><button type="button" data-model-run>Run</button></div><div class="adv-status" data-model-status></div><pre class="adv-code hidden" data-model-result></pre></section>' +
     '<section class="adv-section"><h3>Directory grants</h3><div class="adv-row"><input data-grant-path placeholder="/home/me/shared"/><select data-grant-mode><option value="read">Read</option><option value="read-write">Read/write</option></select><button type="button" data-grant-add>Grant</button></div><div class="adv-list" data-grants></div></section>' +
     '<section class="adv-section"><h3>OS sandbox</h3><div class="adv-status" data-sandbox>Checking…</div></section>' +
@@ -116,6 +117,8 @@ export function mountAdvancedTools() {
   const modelStatus = q<HTMLElement>("[data-model-status]");
   const liveStatus = q<HTMLElement>("[data-live-status]");
   const liveFrame = q<HTMLIFrameElement>("[data-live-frame]");
+  const agentBrowserStatus = q<HTMLElement>("[data-agent-browser-status]");
+  const agentBrowserResult = q<HTMLPreElement>("[data-agent-browser-result]");
   let models: Model[] = [];
   let currentBrowserPath = "";
   let previewedUrl = "";
@@ -233,7 +236,7 @@ export function mountAdvancedTools() {
         projectSelect.append(option);
       }
       setStatus(projectStatus, data.projects.length ? (data.projects.length + " project(s)") : "Register a project first.");
-      if (projectSelect.value) await Promise.all([loadArtifacts(), loadLivePreview(), loadFileBrowser("")]);
+      if (projectSelect.value) await Promise.all([loadArtifacts(), loadLivePreview(), loadFileBrowser(""), loadAgentBrowser()]);
     } catch (error) {
       setStatus(projectStatus, error instanceof Error ? error.message : String(error), true);
     }
@@ -343,6 +346,80 @@ export function mountAdvancedTools() {
     }
   }
 
+  async function loadAgentBrowser() {
+    if (!projectId()) {
+      setStatus(agentBrowserStatus, "Select a project first.");
+      return;
+    }
+    try {
+      const data = await api<{
+        capability: { enabled: boolean; available: boolean; binary?: string | null; version?: string | null };
+        session: null | { active: boolean; sandboxed: boolean; startedAt: number };
+      }>("/api/advanced/browser?projectId=" + encodeURIComponent(projectId()));
+      const capability = data.capability;
+      const session = data.session;
+      if (!capability.enabled) {
+        setStatus(agentBrowserStatus, "Disabled · set DEVMOTER_BROWSER_AUTOMATION=1 to opt in.");
+      } else if (!capability.available) {
+        setStatus(agentBrowserStatus, "Enabled, but Chromium/Chrome was not found.", true);
+      } else if (session?.active) {
+        setStatus(agentBrowserStatus, (capability.binary || "browser") + " · active · " + (session.sandboxed ? "bwrap" : "unsandboxed/preferred"));
+      } else {
+        setStatus(agentBrowserStatus, (capability.binary || "browser") + " · ready · start an approved live preview first.");
+      }
+    } catch (error) {
+      setStatus(agentBrowserStatus, error instanceof Error ? error.message : String(error), true);
+    }
+  }
+
+  async function startAgentBrowser() {
+    if (!projectId()) return;
+    agentBrowserResult.classList.add("hidden");
+    try {
+      const data = await api<{ session: { active: boolean; sandboxed: boolean } }>(
+        "/api/advanced/browser/start",
+        { method: "POST", body: JSON.stringify({ projectId: projectId() }) }
+      );
+      setStatus(agentBrowserStatus, "Active · " + (data.session.sandboxed ? "OS sandboxed" : "preferred mode / bwrap unavailable"));
+      await loadAgentBrowser();
+    } catch (error) {
+      setStatus(agentBrowserStatus, error instanceof Error ? error.message : String(error), true);
+    }
+  }
+
+  async function inspectAgentBrowser() {
+    if (!projectId()) return;
+    agentBrowserResult.classList.remove("hidden");
+    agentBrowserResult.textContent = "Inspecting approved live preview…";
+    try {
+      const data = await api<{ inspection: { content: string; truncated: boolean; sandboxed: boolean } }>(
+        "/api/advanced/browser/inspect",
+        { method: "POST", body: JSON.stringify({ projectId: projectId() }) }
+      );
+      agentBrowserResult.textContent = data.inspection.content +
+        (data.inspection.truncated ? "\n\n[DOM output truncated by DevMoter]" : "");
+      setStatus(agentBrowserStatus, "Inspection complete · " + (data.inspection.sandboxed ? "OS sandboxed" : "preferred mode"));
+    } catch (error) {
+      agentBrowserResult.textContent = error instanceof Error ? error.message : String(error);
+      setStatus(agentBrowserStatus, agentBrowserResult.textContent, true);
+    }
+  }
+
+  async function stopAgentBrowser() {
+    if (!projectId()) return;
+    try {
+      await api("/api/advanced/browser/stop", {
+        method: "POST",
+        body: JSON.stringify({ projectId: projectId() })
+      });
+      agentBrowserResult.classList.add("hidden");
+      setStatus(agentBrowserStatus, "Stopped");
+      await loadAgentBrowser();
+    } catch (error) {
+      setStatus(agentBrowserStatus, error instanceof Error ? error.message : String(error), true);
+    }
+  }
+
   function refreshModelOptions() {
     const reqs = {
       vision: q<HTMLInputElement>('[data-cap="vision"]').checked,
@@ -412,16 +489,18 @@ export function mountAdvancedTools() {
   async function loadSandbox() {
     const node = q<HTMLElement>("[data-sandbox]");
     try {
-      const data = await api<{ mode: string; backend: string; available: boolean; version?: string | null }>(
-        "/api/advanced/sandbox"
-      );
+      const data = await api<{
+        mode: string; backend: string; available: boolean; enforced: boolean;
+        scope: string; externalBackends: string; version?: string | null
+      }>("/api/advanced/sandbox");
       setStatus(
         node,
         data.backend + ": " + (data.available ? "available" : "unavailable") +
-          " · policy builder " + data.mode +
-          " · agent execution is not yet enforced (#89)" +
+          " · mode " + data.mode +
+          " · " + (data.enforced ? "enforced for DevMoter-owned agent tools" : "not enforced") +
+          " · external backends " + data.externalBackends +
           (data.version ? " · " + data.version : ""),
-        data.mode === "required"
+        data.mode === "required" && !data.available
       );
     } catch (error) {
       setStatus(node, error instanceof Error ? error.message : String(error), true);
@@ -435,7 +514,7 @@ export function mountAdvancedTools() {
   q<HTMLButtonElement>("[data-close]").addEventListener("click", () => drawer.classList.add("hidden"));
   projectSelect.addEventListener("change", () => {
     currentBrowserPath = "";
-    void Promise.all([loadArtifacts(), loadLivePreview(), loadFileBrowser("")]);
+    void Promise.all([loadArtifacts(), loadLivePreview(), loadFileBrowser(""), loadAgentBrowser()]);
   });
   q<HTMLButtonElement>("[data-browser-refresh]").addEventListener("click", () => void loadFileBrowser());
   q<HTMLButtonElement>("[data-browser-up]").addEventListener("click", () => {
@@ -491,6 +570,9 @@ export function mountAdvancedTools() {
     await api("/api/projects/" + encodeURIComponent(projectId()) + "/web-preview", { method: "DELETE" });
     await loadLivePreview();
   });
+  q<HTMLButtonElement>("[data-agent-browser-start]").addEventListener("click", () => void startAgentBrowser());
+  q<HTMLButtonElement>("[data-agent-browser-inspect]").addEventListener("click", () => void inspectAgentBrowser());
+  q<HTMLButtonElement>("[data-agent-browser-stop]").addEventListener("click", () => void stopAgentBrowser());
   drawer.querySelectorAll<HTMLInputElement>("[data-cap]").forEach(input =>
     input.addEventListener("change", refreshModelOptions)
   );

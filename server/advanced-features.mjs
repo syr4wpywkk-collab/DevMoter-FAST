@@ -422,32 +422,72 @@ export async function runWithRouting({ env = process.env, fetchImpl = fetch, mes
 }
 
 export function sandboxStatus({ env = process.env, spawn = spawnSync } = {}) {
-  const mode = String(env.DEVMOTER_SANDBOX || "preferred").toLowerCase();
-  const probe = spawn("bwrap", ["--version"], { encoding: "utf8" });
+  const requested = String(env.DEVMOTER_SANDBOX || "preferred").toLowerCase();
+  const mode = ["off", "preferred", "required"].includes(requested) ? requested : "preferred";
+  let probe = { status: 127, stdout: "" };
+  try {
+    probe = spawn("bwrap", ["--version"], { encoding: "utf8", timeout: 3000 }) || probe;
+  } catch {
+    probe = { status: 127, stdout: "" };
+  }
   const available = probe.status === 0;
   return {
-    mode: ["off", "preferred", "required"].includes(mode) ? mode : "preferred",
-    backend: "bwrap", available,
-    enforced: false,
-    scope: "capability-only",
+    mode,
+    backend: "bwrap",
+    available,
+    enforced: mode !== "off" && available,
+    scope: mode !== "off" && available ? "devmoter-owned-agent-tools" : "none",
+    externalBackends: mode === "required" ? "blocked" : "backend-native",
     version: available ? String(probe.stdout || "").trim() : null
   };
 }
 
+export function externalBackendSandboxPolicy(backend, { env = process.env, spawn = spawnSync } = {}) {
+  const status = sandboxStatus({ env, spawn });
+  const allowed = status.mode !== "required";
+  return {
+    backend: String(backend || "external"),
+    allowed,
+    mode: status.mode,
+    reason: allowed
+      ? (status.mode === "preferred"
+          ? "External backend execution uses its native sandbox; DevMoter bwrap is enforced only for DevMoter-owned agent tools."
+          : "OS sandbox enforcement is disabled.")
+      : "DEVMOTER_SANDBOX=required blocks external backend agent execution because DevMoter cannot guarantee its commands are wrapped by bwrap."
+  };
+}
+
+export function assertExternalBackendExecutionAllowed(backend, options = {}) {
+  const policy = externalBackendSandboxPolicy(backend, options);
+  if (!policy.allowed) {
+    const error = new Error(policy.reason);
+    error.statusCode = 409;
+    error.code = "DEVMOTER_SANDBOX_REQUIRED";
+    throw error;
+  }
+  return policy;
+}
+
 export function buildBubblewrapCommand({ projectPath, grants = [], command, args = [], allowNetwork = false, env = process.env, spawn = spawnSync }) {
   const status = sandboxStatus({ env, spawn });
-  if (status.mode === "off") return { sandboxed: false, command, args };
+  if (status.mode === "off") return { sandboxed: false, command, args, policy: status };
   if (!status.available) {
     if (status.mode === "required") throw new Error("Sandbox is required but bubblewrap (bwrap) is unavailable");
-    return { sandboxed: false, command, args, warning: "bubblewrap unavailable" };
+    return { sandboxed: false, command, args, warning: "bubblewrap unavailable", policy: status };
+  }
+  if (!projectPath || !String(projectPath).startsWith("/")) {
+    throw new Error("Sandboxed agent tools require an absolute registered project path");
   }
   const bwrapArgs = ["--die-with-parent", "--new-session", "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp"];
   if (!allowNetwork) bwrapArgs.push("--unshare-net");
-  for (const systemPath of ["/usr", "/bin", "/lib", "/lib64", "/etc"]) bwrapArgs.push("--ro-bind-try", systemPath, systemPath);
+  for (const systemPath of ["/usr", "/bin", "/lib", "/lib64", "/etc", "/run"]) bwrapArgs.push("--ro-bind-try", systemPath, systemPath);
   bwrapArgs.push("--bind", projectPath, projectPath, "--chdir", projectPath);
-  for (const grant of grants) bwrapArgs.push(grant.mode === "read-write" ? "--bind" : "--ro-bind", grant.path, grant.path);
-  bwrapArgs.push("--", command, ...args);
-  return { sandboxed: true, command: "bwrap", args: bwrapArgs };
+  for (const grant of grants) {
+    if (!grant?.path || !String(grant.path).startsWith("/")) continue;
+    bwrapArgs.push(grant.mode === "read-write" ? "--bind" : "--ro-bind", grant.path, grant.path);
+  }
+  bwrapArgs.push("--", command, ...args.map(value => String(value)));
+  return { sandboxed: true, command: "bwrap", args: bwrapArgs, policy: status };
 }
 
 export async function assertReadable(path) {
