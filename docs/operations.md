@@ -44,3 +44,16 @@ journalctl --user -u devmoter-fast.service -f
 ```
 
 The unit keeps DevMoter bound to `127.0.0.1` by default and runs OpenCode in the same user-service control group.
+
+
+## Release/readiness note
+
+The manual launcher and `devmoter-fast.service` are intended to reach the same healthy runtime, but startup-parity testing remains an active reliability item. After installation or an update, verify both the service status and application health on the target host.
+
+```bash
+systemctl --user restart devmoter-fast.service
+systemctl --user status devmoter-fast.service --no-pager -l
+curl -fsS http://127.0.0.1:8787/api/health
+```
+
+If the unit restart-loops, inspect `journalctl --user -u devmoter-fast.service` rather than falling back to or documenting an obsolete service name. The supported user unit is **`devmoter-fast.service`**.
