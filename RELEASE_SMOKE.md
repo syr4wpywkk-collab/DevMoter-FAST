@@ -98,3 +98,12 @@ Record commit, OS, Node, OpenCode, Codex, browser and device versions with relea
 - Open `/?setup=1` from the local DevMoter URL and confirm the environment and six tool rows render; confirm Rescan can be repeated.
 - Confirm missing tools, unsupported auth status, and broken version checks are shown without raw command output or executable paths.
 - Confirm no Install or Connect action is active. This check does not qualify Installer v2 for release; clean-device, Crostini, authentication, service, and Tailscale/phone handoff checks belong to later phases.
+
+# Installer v2 Phase 2 (Experimental plan preview)
+
+- [ ] Select a missing Codex candidate and confirm Review shows only the official source class, privilege, changes, verification, and notes.
+- [ ] Confirm installed/ready tools say Keep existing and never show a reinstall plan; broken and unsupported tools cannot be planned for install.
+- [ ] Confirm Class C is not preselected and is labeled as requiring explicit confirmation in a later phase; manual-review metadata stays visibly blocked from execution.
+- [ ] Use Back and change selections; the deterministic preview updates without an Install now action.
+- [ ] Confirm unauthenticated/cross-origin plan requests fail and command-shaped extra fields are rejected.
+- [ ] Confirm the plan response has `executable: false`; no apt/npm installer, sudo, downloader, login, service, or Tailscale mutation is run.

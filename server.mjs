@@ -31,6 +31,7 @@ import { antigravityRemoteAction, launchIntegration, listIntegrations, publicInt
 import { MULTI_API_PRESETS, createMultiApiStore, publicMultiApiProviders, runMultiApiChat, testMultiApiProvider } from "./server/multi-api.mjs";
 import { createMultiApiAttachmentStore } from "./server/multi-api-attachments.mjs";
 import { createSetupStatus } from "./server/setup/engine.mjs";
+import { previewInstallPlan, SetupPlanError } from "./server/setup/plan.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -2036,6 +2037,48 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       json(res, 200, await createSetupStatus());
+      return;
+    }
+
+    if (url.pathname === "/api/setup/plan") {
+      if (req.method !== "POST") {
+        json(res, 405, { error: "Method not allowed" });
+        return;
+      }
+      if (!isLoopbackAddress(req.socket.remoteAddress) || !isLoopbackHost(req.headers.host)) {
+        json(res, 403, { error: "Setup planning is available only from localhost" });
+        return;
+      }
+      const contentType = String(req.headers["content-type"] || "").split(";", 1)[0].trim().toLowerCase();
+      if (contentType !== "application/json") {
+        json(res, 415, { error: "Expected a JSON plan request" });
+        return;
+      }
+      let payload;
+      try {
+        payload = await readJson(req, 16 * 1024);
+      } catch (error) {
+        const tooLarge = error instanceof Error && error.message === "Request body too large";
+        json(res, tooLarge ? 413 : 400, { error: tooLarge ? "Plan request is too large" : "Invalid plan request" });
+        return;
+      }
+      try {
+        json(res, 200, await previewInstallPlan(payload));
+      } catch (error) {
+        if (!(error instanceof SetupPlanError)) throw error;
+        const messages = {
+          invalid_request: "Invalid plan request.",
+          invalid_selections: "Selections must contain between one and six tools.",
+          invalid_selection: "Each selection must contain only a tool ID and action.",
+          unknown_tool: "Unknown setup tool.",
+          unknown_action: "Unknown setup action.",
+          duplicate_tool: "A tool may be selected only once.",
+          unsupported_tool: "This tool cannot be installed on the detected platform.",
+          machine_state_unavailable: "Machine setup state is unavailable. Rescan and try again."
+        };
+        const errorCode = Object.hasOwn(messages, error.code) ? error.code : "invalid_request";
+        json(res, error.status, { error: messages[errorCode], code: errorCode });
+      }
       return;
     }
 

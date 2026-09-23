@@ -1,6 +1,6 @@
 # DevMoter FAST Installer v2 — Design
 
-Status: **Experimental / Phase 1 read-only implementation**
+Status: **Experimental / Phase 2 install plan preview (read-only; no installation)**
 Target: DevMoter FAST Alpha
 Primary goal: **installation should cost time, not expertise.**
 
@@ -700,3 +700,23 @@ Upstream status references checked on 2026-09-23:
 - [Tailscale CLI reference](https://tailscale.com/docs/reference/tailscale-cli) documents machine-readable status and warns that the JSON format may change.
 - [Claude Code setup docs](https://code.claude.com/docs/en/getting-started) documents `claude doctor` as installation/update diagnostics, not a machine-readable authentication status API.
 - [Antigravity CLI install and auth docs](https://antigravity.google/docs/cli/install) describe keyring-backed and interactive authentication, not a read-only noninteractive auth-status command.
+
+## 24. Phase 2 install plan preview contract
+
+Phase 2 extends the Phase 1 dashboard only through tool selection, a declarative plan preview, and a human review screen. The preview is not an installer, approval token, or executable plan: every response has `mode: "preview-only"` and `executable: false`. No package manager, installer, downloader, shell, login flow, sudo path, Tailscale mutation, or service operation is invoked.
+
+Each server-owned adapter declares `installSupport`, `installSourceClass` (`A`, `B`, `C`, or `D`), `requiresPrivilege`, `installStatus`, source display metadata, changes, verification, and notes. The browser receives only display metadata and selects a known `toolId` plus `action` (`install`, `keep`, or `manual_review`). It never submits or receives executable paths, argv, package names, installer URLs, cwd, environment maps, or shell text. Extra fields are rejected. Plans are built in adapter order, contain no timestamp or random plan ID, and are identical for the same detected states and selections.
+
+Source classes A/B can be reviewable candidates when the adapter marks the current route supported. Class C can be previewed only as `confirmation-required` and is never a default selection. Class D and unsupported/blocked sources cannot become automatic candidates. Existing installed/ready/auth-required tools are normalized to `keep` even if a stale client asks for `install`; broken or unknown state becomes manual review; unsupported platform cannot install. OpenCode package/protocol compatibility, and GitHub/Tailscale distribution selection, remain manual review until future phases can verify those details. Existing Tailscale login/Serve configuration is explicitly outside the plan and must remain untouched.
+
+`POST /api/setup/plan` follows the existing owner auth, exact-Origin mutation boundary, optional passkey gate, and loopback peer/Host requirements. It accepts only bounded JSON containing selections, rescans server state, validates exact fixed enums and known IDs, rejects duplicate and command-shaped input, and returns sanitized plan data. It has no execution capability. The Setup Wizard uses checkboxes and a review screen with Back; there is no Install button in this phase.
+
+Current install source decisions were checked against official sources on 2026-09-23:
+- [OpenAI Codex CLI getting started](https://help.openai.com/en/articles/11096431) documents the official npm distribution. Its plan is a user-prefix Class A candidate and never uses sudo.
+- [OpenCode v2 CLI installation](https://opencode.ai/v2/docs) documents an official npm distribution; package/protocol compatibility with the currently detected CLI still requires manual review.
+- [Claude Code setup](https://code.claude.com/docs/en/getting-started) documents its official native installer (Class C), whose use requires explicit confirmation in a later install phase.
+- [Antigravity CLI installation](https://antigravity.google/docs/cli-install) documents the official Linux/macOS installer script (Class C), and installer flags for avoiding shell-profile edits. Later implementation must review/avoid those side effects before execution.
+- [GitHub CLI Linux installation](https://github.com/cli/cli/blob/trunk/docs/install_linux.md) documents maintainer-supported Linux distribution packages (Class A); this phase does not yet identify a matching distro source.
+- [Tailscale Linux installation](https://tailscale.com/docs/install/linux) documents signed distribution packages as an alternative to its official bootstrap script (Class A). A later phase must identify the distribution and preserve existing daemon, login, and Serve configuration.
+
+These definitions are display-only reviewed metadata. Phase 2 does not perform package-manager or installer actions; distribution support and exact install commands must be revalidated when a future install executor is designed.

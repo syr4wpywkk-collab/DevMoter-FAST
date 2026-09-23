@@ -87,6 +87,6 @@ One backend failing does not imply the other backend is unavailable. CLI/app-ser
 DevMoter protects the boundary **between a browser and privileged host tools**. It does not sandbox the coding agents themselves. Once an authenticated user authorizes an agent action, the underlying agent may have broader filesystem/shell permissions than the narrow browser editor.
 
 See [THREAT_MODEL.md](./THREAT_MODEL.md) and [SECURITY.md](./SECURITY.md).
-# Experimental Setup detector
+# Experimental Setup Wizard
 
-Installer v2 Phase 1 adds a read-only Setup Engine under `server/setup/`. Its declarative adapters share one detector process policy, and the authenticated, loopback-only `GET /api/setup/status` endpoint returns normalized, sanitized status for the six external tools. The dashboard is available at `/?setup=1`. Phase 1 performs no installation, provider login, sudo, service, or Tailscale configuration work; see `docs/INSTALLER_V2_DESIGN.md`.
+Installer v2 Phase 1 adds a read-only Setup Engine under `server/setup/`. Its declarative adapters share one detector process policy, and the authenticated, loopback-only `GET /api/setup/status` endpoint returns normalized status plus sanitized server-owned install metadata for the six external tools. Phase 2 adds a same-origin, authenticated, loopback-only `POST /api/setup/plan` that validates fixed selections, rescans the machine, and returns deterministic `executable: false` plan data. The dashboard is available at `/?setup=1` and has a review screen with no Install action. Neither phase performs installation, downloads, provider login, sudo, service setup, or Tailscale configuration; see `docs/INSTALLER_V2_DESIGN.md`.

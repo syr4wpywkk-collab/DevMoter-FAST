@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { chmod, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { access, chmod, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -30,9 +30,11 @@ const config = ${JSON.stringify({
     authCode: options.authCode ?? 0,
     authOutput: options.authOutput || "",
     authStderr: options.authStderr || "",
-    tailscaleState: options.tailscaleState || "Running"
+    tailscaleState: options.tailscaleState || "Running",
+    unexpectedCommandsFile: options.unexpectedCommandsFile || null
   })};
 const args = process.argv.slice(2);
+if (config.unexpectedCommandsFile) require("node:fs").appendFileSync(config.unexpectedCommandsFile, args.join(" ") + "\\n");
 const isVersion = args[0] === "--version" || (args.length === 1 && args[0] === "version");
 if (isVersion) {
   if (config.version) process.stdout.write(config.version + "\\n");
@@ -187,7 +189,9 @@ async function waitForReady(child) {
 test("setup API retains auth, ignores command-shaped browser input, and redacts tool output", async t => {
   const { root, bin } = await fakePath(t);
   const secret = "sk-proj-this-is-a-fake-secret-value";
+  const unexpectedInstallerCommand = join(root, "unexpected-installer-command.log");
   await fakeExecutable(bin, "codex", { authOutput: secret });
+  await fakeExecutable(bin, "npm", { unexpectedCommandsFile: unexpectedInstallerCommand });
   const port = await freePort();
   const origin = `http://127.0.0.1:${port}`;
   const child = spawn(process.execPath, ["server.mjs"], {
@@ -225,6 +229,37 @@ test("setup API retains auth, ignores command-shaped browser input, and redacts 
   assert.equal(JSON.stringify(payload).includes(root), false);
   assert.equal(JSON.stringify(payload).includes("resolvedPath"), false);
   assert.equal(JSON.stringify(payload).includes("browser-must-not-control-this"), false);
+
+  const planResponse = await fetch(`${origin}/api/setup/plan`, {
+    method: "POST",
+    headers: { authorization, origin, "content-type": "application/json" },
+    body: JSON.stringify({ selections: [
+      { toolId: "codex", action: "install" },
+      { toolId: "github", action: "install" }
+    ] })
+  });
+  assert.equal(planResponse.status, 200);
+  const plan = await planResponse.json();
+  assert.equal(plan.phase, "experimental-phase-2");
+  assert.equal(plan.executable, false);
+  assert.equal(plan.items.find(item => item.toolId === "codex").action, "keep");
+  assert.equal(plan.items.find(item => item.toolId === "github").action, "manual_review");
+  assert.equal(JSON.stringify(plan).includes(root), false);
+
+  const injectedPlan = await fetch(`${origin}/api/setup/plan`, {
+    method: "POST",
+    headers: { authorization, origin, "content-type": "application/json" },
+    body: JSON.stringify({ selections: [{ toolId: "codex", action: "install", argv: ["--help"] }] })
+  });
+  assert.equal(injectedPlan.status, 400);
+
+  const crossOriginPlan = await fetch(`${origin}/api/setup/plan`, {
+    method: "POST",
+    headers: { authorization, origin: "https://attacker.invalid", "content-type": "application/json" },
+    body: JSON.stringify({ selections: [{ toolId: "codex", action: "install" }] })
+  });
+  assert.equal(crossOriginPlan.status, 403);
+  await assert.rejects(access(unexpectedInstallerCommand));
 
   const repeated = await fetch(`${origin}/api/setup/status`, { headers: { authorization } });
   assert.deepEqual(await repeated.json(), payload);
