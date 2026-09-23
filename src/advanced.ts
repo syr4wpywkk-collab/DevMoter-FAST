@@ -90,7 +90,9 @@ export function mountAdvancedTools() {
     '<div class="adv-head"><div><strong>DevMoter Tools</strong><small>Preview · Models · Gallery · Sandbox</small></div><button type="button" data-close>×</button></div>' +
     '<div class="adv-scroll">' +
     '<section class="adv-section"><label>Project<select data-project></select></label><div class="adv-status" data-project-status></div></section>' +
+    '<section class="adv-section"><h3>Project files</h3><div class="adv-row"><button type="button" data-browser-up>↑ Up</button><code data-browser-path>/</code><button type="button" data-browser-refresh>Refresh</button></div><div class="adv-list" data-file-browser></div></section>' +
     '<section class="adv-section"><h3>Safe file preview</h3><div class="adv-row"><input data-file-path placeholder="src/main.ts"/><button type="button" data-file-open>Preview</button></div><div class="adv-preview" data-preview></div></section>' +
+    '<section class="adv-section"><h3>URL attachment</h3><div class="adv-row"><input data-url-input inputmode="url" placeholder="https://example.com/docs"/><button type="button" data-url-preview>Preview URL</button><button type="button" data-url-attach disabled>Fetch & attach</button></div><div class="adv-status" data-url-status>URL metadata is shown before any network fetch.</div></section>' +
     '<section class="adv-section"><h3>Generated outputs</h3><div class="adv-row"><input data-artifact-path placeholder="dist/report.json"/><button type="button" data-artifact-add>Add</button></div><input data-session placeholder="session id (optional)"/><div class="adv-list" data-artifacts></div></section>' +
     '<section class="adv-section"><h3>Live web preview</h3><div class="adv-row"><input data-preview-port inputmode="numeric" placeholder="3000"/><button type="button" data-preview-start>Start / restart</button><button type="button" data-preview-stop>Stop</button></div><div class="adv-status" data-live-status></div><iframe class="adv-frame hidden" data-live-frame sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"></iframe></section>' +
     '<section class="adv-section"><h3>Models</h3><div class="adv-checks"><label><input type="checkbox" data-cap="vision"/>Vision</label><label><input type="checkbox" data-cap="tools"/>Tools</label><label><input type="checkbox" data-cap="reasoning"/>Reasoning</label></div><select data-model></select><div class="adv-row"><input data-model-prompt placeholder="Test prompt for selected route"/><button type="button" data-model-run>Run</button></div><div class="adv-status" data-model-status></div><pre class="adv-code hidden" data-model-result></pre></section>' +
@@ -103,6 +105,11 @@ export function mountAdvancedTools() {
   const projectSelect = q<HTMLSelectElement>("[data-project]");
   const projectStatus = q<HTMLElement>("[data-project-status]");
   const previewBox = q<HTMLElement>("[data-preview]");
+  const fileBrowser = q<HTMLElement>("[data-file-browser]");
+  const browserPath = q<HTMLElement>("[data-browser-path]");
+  const urlInput = q<HTMLInputElement>("[data-url-input]");
+  const urlStatus = q<HTMLElement>("[data-url-status]");
+  const urlAttach = q<HTMLButtonElement>("[data-url-attach]");
   const artifactList = q<HTMLElement>("[data-artifacts]");
   const grantList = q<HTMLElement>("[data-grants]");
   const modelSelect = q<HTMLSelectElement>("[data-model]");
@@ -110,8 +117,109 @@ export function mountAdvancedTools() {
   const liveStatus = q<HTMLElement>("[data-live-status]");
   const liveFrame = q<HTMLIFrameElement>("[data-live-frame]");
   let models: Model[] = [];
+  let currentBrowserPath = "";
+  let previewedUrl = "";
 
   const projectId = () => projectSelect.value;
+
+  function appendUrlAttachmentToComposer(source: string, title: string, text: string) {
+    const candidates = [
+      document.querySelector<HTMLTextAreaElement>("#codexView #cxPromptInput"),
+      document.querySelector<HTMLTextAreaElement>("#openCodeView #ocxPromptInput")
+    ].filter((node): node is HTMLTextAreaElement => Boolean(node));
+    const input = candidates.find(node => !node.closest(".hidden") && !node.disabled);
+    if (!input) throw new Error("Open a Codex/OpenCode composer before attaching a URL");
+    const block = "\n\n[URL attachment: " + (title || source) + "]\nSource: " + source + "\n" + text + "\n[/URL attachment]\n";
+    input.value = input.value + block;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.focus();
+  }
+
+  async function loadFileBrowser(path = currentBrowserPath) {
+    if (!projectId()) return;
+    try {
+      const data = await api<{
+        browser: {
+          path: string;
+          parent: string | null;
+          entries: Array<{ name: string; path: string; kind: string; size: number | null; previewable?: boolean }>;
+          truncated: boolean;
+        };
+      }>("/api/projects/" + encodeURIComponent(projectId()) + "/files?path=" + encodeURIComponent(path));
+      currentBrowserPath = data.browser.path;
+      browserPath.textContent = "/" + currentBrowserPath;
+      fileBrowser.replaceChildren();
+      if (!data.browser.entries.length) fileBrowser.textContent = "No visible files in this directory.";
+      for (const item of data.browser.entries) {
+        const row = element("div", "adv-item");
+        const open = element("button");
+        open.type = "button";
+        open.textContent = (item.kind === "directory" ? "📁 " : "📄 ") + item.name;
+        open.addEventListener("click", () => {
+          if (item.kind === "directory") void loadFileBrowser(item.path);
+          else if (item.previewable) {
+            q<HTMLInputElement>("[data-file-path]").value = item.path;
+            void showPreview(item.path);
+          }
+        });
+        if (item.kind !== "directory" && !item.previewable) open.disabled = true;
+        const meta = element("small");
+        meta.textContent = item.kind + (item.size == null ? "" : " · " + item.size.toLocaleString() + " B");
+        row.append(open, meta);
+        fileBrowser.append(row);
+      }
+      if (data.browser.truncated) {
+        const note = element("div", "adv-status");
+        note.textContent = "Directory list truncated for safety.";
+        fileBrowser.append(note);
+      }
+    } catch (error) {
+      fileBrowser.textContent = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  async function previewUrl() {
+    previewedUrl = "";
+    urlAttach.disabled = true;
+    const raw = urlInput.value.trim();
+    if (!raw) return;
+    try {
+      const data = await api<{ preview: { normalizedUrl: string; host: string; port: number; path: string } }>(
+        "/api/attachments/url/preview",
+        { method: "POST", body: JSON.stringify({ url: raw }) }
+      );
+      previewedUrl = data.preview.normalizedUrl;
+      setStatus(urlStatus, data.preview.host + ":" + data.preview.port + data.preview.path + " · no network request made yet");
+      urlAttach.disabled = false;
+    } catch (error) {
+      setStatus(urlStatus, error instanceof Error ? error.message : String(error), true);
+    }
+  }
+
+  async function fetchAndAttachUrl() {
+    if (!previewedUrl || previewedUrl !== urlInput.value.trim()) {
+      await previewUrl();
+      if (!previewedUrl) return;
+    }
+    urlAttach.disabled = true;
+    setStatus(urlStatus, "Fetching bounded public webpage…");
+    try {
+      const data = await api<{
+        attachment: { name: string; source: string; size: number; mime: string };
+        text: string;
+        redirects: unknown[];
+      }>("/api/attachments/url/fetch", {
+        method: "POST",
+        body: JSON.stringify({ url: previewedUrl })
+      });
+      appendUrlAttachmentToComposer(data.attachment.source, data.attachment.name, data.text);
+      setStatus(urlStatus, "Attached " + data.attachment.size.toLocaleString() + " B as inert extracted text · " + data.redirects.length + " redirect(s)");
+    } catch (error) {
+      setStatus(urlStatus, error instanceof Error ? error.message : String(error), true);
+    } finally {
+      urlAttach.disabled = false;
+    }
+  }
 
   async function loadProjects() {
     try {
@@ -125,7 +233,7 @@ export function mountAdvancedTools() {
         projectSelect.append(option);
       }
       setStatus(projectStatus, data.projects.length ? (data.projects.length + " project(s)") : "Register a project first.");
-      if (projectSelect.value) await Promise.all([loadArtifacts(), loadLivePreview()]);
+      if (projectSelect.value) await Promise.all([loadArtifacts(), loadLivePreview(), loadFileBrowser("")]);
     } catch (error) {
       setStatus(projectStatus, error instanceof Error ? error.message : String(error), true);
     }
@@ -325,7 +433,24 @@ export function mountAdvancedTools() {
     await Promise.all([loadProjects(), loadModels(), loadGrants(), loadSandbox()]);
   });
   q<HTMLButtonElement>("[data-close]").addEventListener("click", () => drawer.classList.add("hidden"));
-  projectSelect.addEventListener("change", () => void Promise.all([loadArtifacts(), loadLivePreview()]));
+  projectSelect.addEventListener("change", () => {
+    currentBrowserPath = "";
+    void Promise.all([loadArtifacts(), loadLivePreview(), loadFileBrowser("")]);
+  });
+  q<HTMLButtonElement>("[data-browser-refresh]").addEventListener("click", () => void loadFileBrowser());
+  q<HTMLButtonElement>("[data-browser-up]").addEventListener("click", () => {
+    const next = currentBrowserPath.includes("/")
+      ? currentBrowserPath.slice(0, currentBrowserPath.lastIndexOf("/"))
+      : "";
+    void loadFileBrowser(next);
+  });
+  q<HTMLButtonElement>("[data-url-preview]").addEventListener("click", () => void previewUrl());
+  urlAttach.addEventListener("click", () => void fetchAndAttachUrl());
+  urlInput.addEventListener("input", () => {
+    previewedUrl = "";
+    urlAttach.disabled = true;
+    setStatus(urlStatus, "URL changed · preview it before fetching.");
+  });
   q<HTMLButtonElement>("[data-file-open]").addEventListener("click", () =>
     void showPreview(q<HTMLInputElement>("[data-file-path]").value.trim())
   );
