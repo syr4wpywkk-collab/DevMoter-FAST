@@ -130,7 +130,6 @@ export function mountCodexRemote(
           <button id="cxLibraryNav" class="cx-nav-item" type="button"><span>▦</span><span>ライブラリ</span></button>
           <button id="cxProjectsNav" class="cx-nav-item" type="button"><span>▱</span><span>Projects</span></button>
           <button id="cxModelsNav" class="cx-nav-item" type="button"><span>◌</span><span>モデル</span></button>
-          <button id="cxPluginsNav" class="cx-nav-item" type="button"><span>◉</span><span>プラグイン</span></button>
           <button id="cxIntegrationsNav" class="cx-nav-item" type="button"><span>⌁</span><span>Integrations</span></button>
           <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button"><span>◇</span><span>Developer workflows</span></button>
           <button id="cxSettingsNav" class="cx-nav-item" type="button"><span>⚙</span><span>Settings</span></button>
@@ -228,6 +227,7 @@ export function mountCodexRemote(
         <div id="cxPlusMenu" class="cx-plus-menu hidden">
           <button id="cxPhoto" type="button"><span>▧</span><span>画像送信</span></button>
           <button id="cxFile" type="button"><span>⌑</span><span>ファイル</span></button>
+          <button id="cxPluginsQuick" type="button"><span>◉</span><span>プラグイン</span></button>
         </div>
 
         <input id="cxPhotoInput" type="file" accept="image/*" multiple hidden />
@@ -265,11 +265,11 @@ export function mountCodexRemote(
   const projectsNav = root.querySelector<HTMLButtonElement>("#cxProjectsNav")!;
   const libraryNav = root.querySelector<HTMLButtonElement>("#cxLibraryNav")!;
   const modelsNav = root.querySelector<HTMLButtonElement>("#cxModelsNav")!;
-  const pluginsNav = root.querySelector<HTMLButtonElement>("#cxPluginsNav")!;
   const devWorkflowsNav = root.querySelector<HTMLButtonElement>("#cxDevWorkflowsNav")!;
   const integrationsNav = root.querySelector<HTMLButtonElement>("#cxIntegrationsNav")!;
   const voice = root.querySelector<HTMLButtonElement>("#cxVoice")!;
   const reasoningTop = root.querySelector<HTMLButtonElement>("#cxReasoningTop")!;
+  const usageTop = root.querySelector<HTMLButtonElement>("#cxUsageTop")!;
   const modelTop = root.querySelector<HTMLButtonElement>("#cxModelTop")!;
   const modelTopLabel = root.querySelector<HTMLElement>("#cxModelTopLabel")!;
   const usageLabel = root.querySelector<HTMLElement>("#cxUsageLabel")!;
@@ -317,6 +317,7 @@ export function mountCodexRemote(
   const contextPalette = root.querySelector<HTMLDivElement>("#cxContextPalette")!;
   const photo = root.querySelector<HTMLButtonElement>("#cxPhoto")!;
   const file = root.querySelector<HTMLButtonElement>("#cxFile")!;
+  const pluginsQuick = root.querySelector<HTMLButtonElement>("#cxPluginsQuick")!;
   const photoInput = root.querySelector<HTMLInputElement>("#cxPhotoInput")!;
   const fileInput = root.querySelector<HTMLInputElement>("#cxFileInput")!;
   const toast = root.querySelector<HTMLDivElement>("#cxToast")!;
@@ -374,6 +375,103 @@ export function mountCodexRemote(
     usageLabel.textContent = usageTokens >= 1000
       ? `${(usageTokens / 1000).toFixed(1)}k tok`
       : `${usageTokens} tok`;
+  }
+
+  function formatResetTime(value: unknown) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric <= 0) return "";
+    const date = new Date(numeric < 1e12 ? numeric * 1000 : numeric);
+    return new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(date);
+  }
+
+  async function showUsage() {
+    openModal("Usage", "Codexアカウントの利用枠");
+    modalBody.innerHTML = '<div class="cx-modal-loading">読み込み中…</div>';
+
+    try {
+      const payload = await rpc<Json>("account/rateLimits/read", {});
+      const snapshots = [
+        payload?.rateLimits,
+        ...Object.values(payload?.rateLimitsByLimitId ?? {})
+      ].filter((value, index, all) =>
+        value && typeof value === "object" && all.indexOf(value) === index
+      ) as Json[];
+
+      modalBody.replaceChildren();
+      if (!snapshots.length) {
+        const empty = document.createElement("section");
+        empty.className = "cx-library-empty";
+        const title = document.createElement("strong");
+        title.textContent = "利用枠の情報がありません";
+        const note = document.createElement("p");
+        note.textContent = "Codexがこのアカウントについて返した利用枠だけを表示します。";
+        empty.append(title, note);
+        modalBody.appendChild(empty);
+        usageLabel.textContent = "Usage";
+        return;
+      }
+
+      const seen = new Set<string>();
+      for (const snapshot of snapshots) {
+        const key = String(snapshot.limitId ?? snapshot.limitName ?? JSON.stringify(snapshot));
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const section = document.createElement("section");
+        section.className = "cx-usage-card";
+        const heading = document.createElement("strong");
+        heading.textContent = String(snapshot.limitName || snapshot.limitId || "Codex");
+        section.appendChild(heading);
+
+        const windows = [
+          ["Primary", snapshot.primary],
+          ["Secondary", snapshot.secondary]
+        ] as const;
+        for (const [label, windowData] of windows) {
+          if (!windowData || typeof windowData !== "object") continue;
+          const used = Number(windowData.usedPercent);
+          const row = document.createElement("div");
+          row.className = "cx-usage-row";
+          const copy = document.createElement("span");
+          const reset = formatResetTime(windowData.resetsAt);
+          copy.textContent = Number.isFinite(used)
+            ? `${label}: ${Math.max(0, 100 - used).toFixed(0)}% left${reset ? ` · reset ${reset}` : ""}`
+            : `${label}${reset ? ` · reset ${reset}` : ""}`;
+          row.appendChild(copy);
+          section.appendChild(row);
+        }
+
+        if (snapshot.credits && typeof snapshot.credits === "object") {
+          const credits = document.createElement("div");
+          credits.className = "cx-usage-row";
+          const balance = snapshot.credits.balance;
+          credits.textContent = balance == null ? "Credits available" : `Credits: ${String(balance)}`;
+          section.appendChild(credits);
+        }
+        modalBody.appendChild(section);
+      }
+
+      const primary = payload?.rateLimits?.primary;
+      const used = Number(primary?.usedPercent);
+      usageLabel.textContent = Number.isFinite(used)
+        ? `${Math.max(0, 100 - used).toFixed(0)}% left`
+        : "Usage";
+    } catch (error) {
+      modalBody.replaceChildren();
+      const empty = document.createElement("section");
+      empty.className = "cx-library-empty";
+      const title = document.createElement("strong");
+      title.textContent = "Usageを取得できませんでした";
+      const note = document.createElement("p");
+      note.textContent = error instanceof Error ? error.message : "Codex app-serverから利用枠を取得できませんでした";
+      empty.append(title, note);
+      modalBody.appendChild(empty);
+    }
   }
 
   function showReasoningPicker() {
@@ -1410,6 +1508,7 @@ export function mountCodexRemote(
       clientUserMessageId: operationId
     };
     if (deepThink) params.effort = "high";
+    else if (reasoningMode !== "auto") params.effort = reasoningMode;
     if (selectedModel) params.model = selectedModel;
 
     try {
@@ -2699,7 +2798,6 @@ export function mountCodexRemote(
     closeSidebar();
     void showModels();
   });
-  pluginsNav.addEventListener("click", () => void showPlugins());
   const devWorkflowPanel = createDevWorkflowPanel({
     modalBody,
     openModal,
@@ -2747,7 +2845,12 @@ export function mountCodexRemote(
   plus.addEventListener("click", () => plusMenu.classList.toggle("hidden"));
   photo.addEventListener("click", () => photoInput.click());
   file.addEventListener("click", () => fileInput.click());
+  pluginsQuick.addEventListener("click", () => {
+    plusMenu.classList.add("hidden");
+    void showPlugins();
+  });
   reasoningTop.addEventListener("click", showReasoningPicker);
+  usageTop.addEventListener("click", () => void showUsage());
   voice.addEventListener("click", () => {
     const SpeechRecognition = (window as Window & { SpeechRecognition?: new () => any; webkitSpeechRecognition?: new () => any }).SpeechRecognition ||
       (window as Window & { webkitSpeechRecognition?: new () => any }).webkitSpeechRecognition;
