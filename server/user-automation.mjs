@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
+import { buildBubblewrapCommand, sandboxStatus } from "./advanced-features.mjs";
 
 const execFileAsync = promisify(execFile);
 export const HOOK_SCHEMA_VERSION = 1;
@@ -243,7 +244,19 @@ export function createUserAutomationService({ configDir, resolveProject, execute
       }
       try {
         const project = payload.projectId ? await resolveProject(String(payload.projectId)) : null;
-        const result = await execFileAsync(hook.command, hook.args, {
+        const policy = sandboxStatus();
+        if (!project && policy.mode === "required") {
+          throw new Error("Sandbox-required command hooks need a registered project boundary");
+        }
+        const wrapped = project
+          ? buildBubblewrapCommand({
+              projectPath: project.path,
+              command: hook.command,
+              args: hook.args,
+              allowNetwork: false
+            })
+          : { sandboxed: false, command: hook.command, args: hook.args };
+        const result = await execFileAsync(wrapped.command, wrapped.args, {
           cwd: project?.path,
           timeout: hook.timeoutMs,
           maxBuffer: 256 * 1024,
@@ -258,6 +271,7 @@ export function createUserAutomationService({ configDir, resolveProject, execute
         return {
           id: hook.id,
           status: "completed",
+          sandboxed: wrapped.sandboxed === true,
           stdout: String(result.stdout || "").slice(0, 12000),
           stderr: String(result.stderr || "").slice(0, 4000)
         };
