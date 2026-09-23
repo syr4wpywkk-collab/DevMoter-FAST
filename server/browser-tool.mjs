@@ -21,29 +21,32 @@ function browserCandidates(env = process.env) {
   ].filter(Boolean);
 }
 
-export function browserAutomationStatus({ env = process.env, spawnSyncImpl = spawnSync } = {}) {
-  const enabled = String(env.DEVMOTER_BROWSER_AUTOMATION || "") === "1";
-  let binary = null;
-  let version = null;
-  if (enabled) {
-    for (const candidate of browserCandidates(env)) {
-      try {
-        const probe = spawnSyncImpl(candidate, ["--version"], { encoding: "utf8", timeout: 3000 });
-        if (probe?.status === 0) {
-          binary = candidate;
-          version = String(probe.stdout || probe.stderr || "").trim().slice(0, 240) || null;
-          break;
-        }
-      } catch {
-        // Continue probing allowlisted browser binaries.
+function detectBrowserBinary({ env = process.env, spawnSyncImpl = spawnSync } = {}) {
+  if (String(env.DEVMOTER_BROWSER_AUTOMATION || "") !== "1") return { binary: null, version: null };
+  for (const candidate of browserCandidates(env)) {
+    try {
+      const probe = spawnSyncImpl(candidate, ["--version"], { encoding: "utf8", timeout: 3000 });
+      if (probe?.status === 0) {
+        return {
+          binary: candidate,
+          version: String(probe.stdout || probe.stderr || "").trim().slice(0, 240) || null
+        };
       }
+    } catch {
+      // Continue probing allowlisted browser binaries.
     }
   }
+  return { binary: null, version: null };
+}
+
+export function browserAutomationStatus({ env = process.env, spawnSyncImpl = spawnSync } = {}) {
+  const enabled = String(env.DEVMOTER_BROWSER_AUTOMATION || "") === "1";
+  const detected = detectBrowserBinary({ env, spawnSyncImpl });
   return {
     enabled,
-    available: Boolean(binary),
-    binary: binary ? String(binary).split("/").pop() : null,
-    version,
+    available: Boolean(detected.binary),
+    binary: detected.binary ? String(detected.binary).split("/").pop() : null,
+    version: detected.version,
     scope: "approved-live-preview-only",
     profile: "ephemeral-isolated",
     credentials: "personal-browser-profile-not-mounted"
@@ -157,8 +160,10 @@ export function createBrowserAutomation({
     if (!preview || !loopbackHost(preview.host)) {
       throw Object.assign(new Error("Start an approved loopback live preview for this project first"), { statusCode: 409 });
     }
+    const detected = detectBrowserBinary({ env, spawnSyncImpl });
     return {
       status,
+      binary: detected.binary,
       project,
       preview,
       target: "http://" + (preview.host === "::1" ? "[::1]" : preview.host) + ":" + preview.port + "/"
@@ -170,9 +175,7 @@ export function createBrowserAutomation({
     const wrapped = buildBubblewrapCommand({
       projectPath: ctx.project.path,
       grants: [{ path: profileDir, mode: "read-write" }],
-      command: ctx.status.binary === String(env.DEVMOTER_BROWSER_BIN || "").trim()
-        ? String(env.DEVMOTER_BROWSER_BIN || "").trim()
-        : ctx.status.binary,
+      command: ctx.binary,
       args,
       allowNetwork: true,
       env,
