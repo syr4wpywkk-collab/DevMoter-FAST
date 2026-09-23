@@ -27,7 +27,7 @@ import { applyModeToPrompt, isDirectMutationRoute, isPromptRoute, isReadOnlyMode
 import { assertAuthPassword, credentialsMatch, parseBasicAuthorization, requireSameOriginMutation } from "./server/auth.mjs";
 import { ExternalAuth } from "./server/external-auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
-import { antigravityRemoteAction, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
+import { antigravityModels, antigravityRemoteAction, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
 import { MULTI_API_PRESETS, createMultiApiStore, publicMultiApiProviders, runMultiApiChat, testMultiApiProvider } from "./server/multi-api.mjs";
 import { createMultiApiAttachmentStore } from "./server/multi-api-attachments.mjs";
 
@@ -2583,6 +2583,16 @@ const server = http.createServer(async (req, res) => {
         const payload = await readJson(req);
         const project = await getProjectById(String(payload?.projectId || ""));
         json(res, 200, await launchIntegration(integrationLaunchMatch[1], project.path));
+      } catch (error) {
+        const safe = publicIntegrationError(error);
+        json(res, safe.status, { error: safe.error });
+      }
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/integrations/antigravity/models") {
+      try {
+        json(res, 200, await antigravityModels());
       } catch (error) {
         const safe = publicIntegrationError(error);
         json(res, safe.status, { error: safe.error });
