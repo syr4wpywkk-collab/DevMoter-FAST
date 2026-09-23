@@ -218,6 +218,7 @@ function createToolbar() {
     <button type="button" class="dm-mobile-shortcut dm-agent-shortcut" aria-label="Agent mode">✦ <span>Agent</span></button>
     <button type="button" class="dm-mobile-shortcut dm-session-shortcut" aria-label="Session activity">◎ <span>Activity</span></button>
     <button type="button" class="dm-mobile-shortcut dm-settings-shortcut" aria-label="Settings">⚙ <span>Settings</span></button>
+    <button type="button" class="dm-mobile-shortcut dm-git-shortcut" aria-label="Project Git">⑂ <span>Git</span></button>
     <button type="button" class="dm-theme" aria-label="Theme">◐ <span>System</span></button>
     <button type="button" class="dm-context" aria-label="Context usage">◒ <span>Context</span></button>
     <button type="button" class="dm-tasks" aria-label="Task checkpoints">✓ <span>Tasks</span></button>
@@ -231,6 +232,7 @@ function createToolbar() {
   const agentShortcut = host.querySelector<HTMLButtonElement>(".dm-agent-shortcut")!;
   const sessionShortcut = host.querySelector<HTMLButtonElement>(".dm-session-shortcut")!;
   const settingsShortcut = host.querySelector<HTMLButtonElement>(".dm-settings-shortcut")!;
+  const gitShortcut = host.querySelector<HTMLButtonElement>(".dm-git-shortcut")!;
   const themeButton = host.querySelector<HTMLButtonElement>(".dm-theme")!;
   const contextButton = host.querySelector<HTMLButtonElement>(".dm-context")!;
   const tasksButton = host.querySelector<HTMLButtonElement>(".dm-tasks")!;
@@ -259,6 +261,7 @@ function createToolbar() {
   agentShortcut.addEventListener("click", () => openHiddenLauncher("#devmoterAgentLauncher"));
   sessionShortcut.addEventListener("click", () => openHiddenLauncher(".sc-fab"));
   settingsShortcut.addEventListener("click", () => openHiddenLauncher(".devmoter-settings-trigger"));
+  gitShortcut.addEventListener("click", () => openHiddenLauncher(".pocket-git-trigger"));
 
   const activeSessionId = () => {
     const backend = localStorage.getItem("opencode-pocket-backend");
