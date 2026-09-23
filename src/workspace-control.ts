@@ -216,6 +216,7 @@ function createToolbar() {
     <button type="button" class="dm-mobile-menu-toggle" aria-label="More DevMoter controls" aria-expanded="false">••• <span>More</span></button>
     <button type="button" class="dm-mobile-shortcut dm-review-shortcut" aria-label="Review changes">⌁ <span>Review</span></button>
     <button type="button" class="dm-mobile-shortcut dm-agent-shortcut" aria-label="Agent mode">✦ <span>Agent</span></button>
+    <button type="button" class="dm-mobile-shortcut dm-session-shortcut" aria-label="Session activity">◎ <span>Activity</span></button>
     <button type="button" class="dm-mobile-shortcut dm-settings-shortcut" aria-label="Settings">⚙ <span>Settings</span></button>
     <button type="button" class="dm-theme" aria-label="Theme">◐ <span>System</span></button>
     <button type="button" class="dm-context" aria-label="Context usage">◒ <span>Context</span></button>
@@ -228,6 +229,7 @@ function createToolbar() {
   const mobileMenuToggle = host.querySelector<HTMLButtonElement>(".dm-mobile-menu-toggle")!;
   const reviewShortcut = host.querySelector<HTMLButtonElement>(".dm-review-shortcut")!;
   const agentShortcut = host.querySelector<HTMLButtonElement>(".dm-agent-shortcut")!;
+  const sessionShortcut = host.querySelector<HTMLButtonElement>(".dm-session-shortcut")!;
   const settingsShortcut = host.querySelector<HTMLButtonElement>(".dm-settings-shortcut")!;
   const themeButton = host.querySelector<HTMLButtonElement>(".dm-theme")!;
   const contextButton = host.querySelector<HTMLButtonElement>(".dm-context")!;
@@ -255,6 +257,7 @@ function createToolbar() {
 
   reviewShortcut.addEventListener("click", () => openHiddenLauncher("#wfLaunch"));
   agentShortcut.addEventListener("click", () => openHiddenLauncher("#devmoterAgentLauncher"));
+  sessionShortcut.addEventListener("click", () => openHiddenLauncher(".sc-fab"));
   settingsShortcut.addEventListener("click", () => openHiddenLauncher(".devmoter-settings-trigger"));
 
   const activeSessionId = () => {
@@ -534,7 +537,8 @@ function injectStyles() {
     @media (max-width:640px) {
       .wf-launch,
       .devmoter-agent-launcher,
-      .devmoter-settings-trigger {
+      .devmoter-settings-trigger,
+      .sc-fab {
         display:none !important;
       }
 
