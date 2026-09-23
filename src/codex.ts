@@ -68,6 +68,8 @@ type CodexModel = {
   description?: string;
   isDefault?: boolean;
   hidden?: boolean;
+  defaultReasoningEffort?: string;
+  supportedReasoningEfforts?: Array<{ reasoningEffort: string; description?: string }>;
 };
 
 type PendingAttachment = {
@@ -129,7 +131,6 @@ export function mountCodexRemote(
         <nav class="cx-side-nav">
           <button id="cxLibraryNav" class="cx-nav-item" type="button"><span>▦</span><span>ライブラリ</span></button>
           <button id="cxProjectsNav" class="cx-nav-item" type="button"><span>▱</span><span>Projects</span></button>
-          <button id="cxModelsNav" class="cx-nav-item" type="button"><span>◌</span><span>モデル</span></button>
           <button id="cxIntegrationsNav" class="cx-nav-item" type="button"><span>⌁</span><span>Integrations</span></button>
           <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button"><span>◇</span><span>Developer workflows</span></button>
           <button id="cxSettingsNav" class="cx-nav-item" type="button"><span>⚙</span><span>Settings</span></button>
@@ -213,8 +214,8 @@ export function mountCodexRemote(
           <div class="cx-composer-row">
             <div class="cx-composer-left">
               <button id="cxPlus" class="cx-round-button" type="button" aria-label="追加">＋</button>
-              <button id="cxThink" class="cx-think-button" type="button" aria-pressed="false">
-                <span>◌</span><span>深く思考</span>
+              <button id="cxThink" class="cx-think-button" type="button" aria-label="推論量を選択">
+                <span>◌</span><span id="cxThinkLabel">推論量</span>
               </button>
             </div>
             <div class="cx-composer-right">
@@ -264,7 +265,6 @@ export function mountCodexRemote(
   const sidebarThreads = root.querySelector<HTMLDivElement>("#cxSidebarThreads")!;
   const projectsNav = root.querySelector<HTMLButtonElement>("#cxProjectsNav")!;
   const libraryNav = root.querySelector<HTMLButtonElement>("#cxLibraryNav")!;
-  const modelsNav = root.querySelector<HTMLButtonElement>("#cxModelsNav")!;
   const devWorkflowsNav = root.querySelector<HTMLButtonElement>("#cxDevWorkflowsNav")!;
   const integrationsNav = root.querySelector<HTMLButtonElement>("#cxIntegrationsNav")!;
   const voice = root.querySelector<HTMLButtonElement>("#cxVoice")!;
@@ -311,6 +311,7 @@ export function mountCodexRemote(
   const send = root.querySelector<HTMLButtonElement>("#cxSend")!;
   const plus = root.querySelector<HTMLButtonElement>("#cxPlus")!;
   const think = root.querySelector<HTMLButtonElement>("#cxThink")!;
+  const thinkLabel = root.querySelector<HTMLElement>("#cxThinkLabel")!;
   const plusMenu = root.querySelector<HTMLDivElement>("#cxPlusMenu")!;
   const executionStatus = root.querySelector<HTMLDivElement>("#cxExecutionStatus")!;
   const attachmentStrip = root.querySelector<HTMLDivElement>("#cxAttachmentStrip")!;
@@ -343,7 +344,6 @@ export function mountCodexRemote(
   let selectedContextRefs: Array<{ path: string; kind: "file" | "folder" }> = [];
   let contextRequestSerial = 0;
   let executionState: ExecutionState = "offline";
-  let deepThink = localStorage.getItem("opencode-pocket-codex-think") === "1";
   let selectedModel = localStorage.getItem("opencode-pocket-codex-model") || "";
   let modelCatalog: CodexModel[] = [];
   let modalCloseGuard: (() => boolean) | null = null;
@@ -474,26 +474,65 @@ export function mountCodexRemote(
     }
   }
 
+  function selectedModelMetadata() {
+    return modelCatalog.find(model => model.model === selectedModel || model.id === selectedModel)
+      ?? modelCatalog.find(model => model.isDefault)
+      ?? null;
+  }
+
+  function reasoningLabel(value: string) {
+    return ({
+      none: "None",
+      minimal: "Minimal",
+      low: "Low",
+      medium: "Medium",
+      high: "High",
+      xhigh: "Extra High"
+    } as Record<string, string>)[value] || value;
+  }
+
+  function syncReasoningLabels() {
+    const model = selectedModelMetadata();
+    const supported = model?.supportedReasoningEfforts?.map(item => item.reasoningEffort) ?? [];
+    if (reasoningMode !== "auto" && supported.length && !supported.includes(reasoningMode)) {
+      reasoningMode = "auto";
+      localStorage.setItem("opencode-pocket-reasoning", "auto");
+    }
+    const defaultEffort = model?.defaultReasoningEffort;
+    const label = reasoningMode === "auto"
+      ? `Auto${defaultEffort ? ` · ${reasoningLabel(defaultEffort)}` : ""}`
+      : reasoningLabel(reasoningMode);
+    reasoningTop.querySelector("small")!.textContent = label;
+    thinkLabel.textContent = label;
+  }
+
   function showReasoningPicker() {
+    const model = selectedModelMetadata();
+    const advertised = model?.supportedReasoningEfforts ?? [];
     const values = [
-      ["auto", "Auto"],
-      ["low", "Fast"],
-      ["medium", "Balanced"],
-      ["high", "Deep"]
-    ] as const;
-    openModal("推論性能", "このチャットの思考量を選択");
+      { value: "auto", label: "Auto", description: model?.defaultReasoningEffort ? `モデル既定: ${reasoningLabel(model.defaultReasoningEffort)}` : "Codexに自動選択させる" },
+      ...advertised.map(item => ({
+        value: item.reasoningEffort,
+        label: reasoningLabel(item.reasoningEffort),
+        description: item.description || `${reasoningLabel(item.reasoningEffort)} reasoning`
+      }))
+    ];
+    openModal("推論量", model ? `${model.displayName || model.model} が対応している推論量` : "このモデルの思考量を選択");
     modalBody.innerHTML = `<div class="cx-choice-list"></div>`;
     const list = modalBody.querySelector<HTMLDivElement>(".cx-choice-list")!;
-    for (const [value, label] of values) {
+    for (const item of values) {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `cx-choice-row ${reasoningMode === value ? "selected" : ""}`;
-      button.innerHTML = `<strong>${label}</strong><small>${value === "auto" ? "Codexに自動選択させる" : `${label} reasoning`}</small>`;
+      button.className = `cx-choice-row ${reasoningMode === item.value ? "selected" : ""}`;
+      const strong = document.createElement("strong");
+      strong.textContent = item.label;
+      const small = document.createElement("small");
+      small.textContent = item.description;
+      button.append(strong, small);
       button.addEventListener("click", () => {
-        reasoningMode = value;
-        localStorage.setItem("opencode-pocket-reasoning", value);
-        reasoningTop.querySelector("small")!.textContent = label;
-        think.classList.toggle("active", value === "high");
+        reasoningMode = item.value;
+        localStorage.setItem("opencode-pocket-reasoning", item.value);
+        syncReasoningLabels();
         closeModal();
       });
       list.appendChild(button);
@@ -530,7 +569,16 @@ export function mountCodexRemote(
             displayName: String(model?.displayName || model?.name || model?.model || model?.id || ""),
             description: String(model?.description || ""),
             isDefault: Boolean(model?.isDefault),
-            hidden: Boolean(model?.hidden)
+            hidden: Boolean(model?.hidden),
+            defaultReasoningEffort: String(model?.defaultReasoningEffort || ""),
+            supportedReasoningEfforts: Array.isArray(model?.supportedReasoningEfforts)
+              ? model.supportedReasoningEfforts
+                  .map((item: Json) => ({
+                    reasoningEffort: String(item?.reasoningEffort || ""),
+                    description: String(item?.description || "")
+                  }))
+                  .filter((item: { reasoningEffort: string }) => item.reasoningEffort)
+              : []
           }))
           .filter((model: CodexModel) => model.model)
       : [];
@@ -538,6 +586,7 @@ export function mountCodexRemote(
     const migrated = modelCatalog.find(model => model.id === selectedModel && model.model !== selectedModel);
     if (migrated) persistSelectedModel(migrated.model);
 
+    syncReasoningLabels();
     return modelCatalog;
   }
 
@@ -1507,8 +1556,7 @@ export function mountCodexRemote(
       input,
       clientUserMessageId: operationId
     };
-    if (deepThink) params.effort = "high";
-    else if (reasoningMode !== "auto") params.effort = reasoningMode;
+    if (reasoningMode !== "auto") params.effort = reasoningMode;
     if (selectedModel) params.model = selectedModel;
 
     try {
@@ -1871,7 +1919,14 @@ export function mountCodexRemote(
         if (!id) continue;
         entries.push({
           id,
-          name: String(plugin?.name || id.split("@")[0]),
+          name: String(
+            plugin?.interface?.displayName ||
+            plugin?.release?.interface?.displayName ||
+            plugin?.release?.displayName ||
+            plugin?.displayName ||
+            plugin?.name ||
+            id.split("@")[0]
+          ),
           marketplace: String(marketplace?.name || ""),
           installed: plugin?.installed !== false,
           enabled: plugin?.enabled !== false
@@ -2794,10 +2849,6 @@ export function mountCodexRemote(
     closeSidebar();
     void showProjects();
   });
-  modelsNav.addEventListener("click", () => {
-    closeSidebar();
-    void showModels();
-  });
   const devWorkflowPanel = createDevWorkflowPanel({
     modalBody,
     openModal,
@@ -2850,6 +2901,7 @@ export function mountCodexRemote(
     void showPlugins();
   });
   reasoningTop.addEventListener("click", showReasoningPicker);
+  think.addEventListener("click", showReasoningPicker);
   usageTop.addEventListener("click", () => void showUsage());
   voice.addEventListener("click", () => {
     const SpeechRecognition = (window as Window & { SpeechRecognition?: new () => any; webkitSpeechRecognition?: new () => any }).SpeechRecognition ||
@@ -2912,17 +2964,8 @@ export function mountCodexRemote(
     void addFiles(event.dataTransfer.files);
   });
 
-  think.classList.toggle("active", deepThink);
-  think.setAttribute("aria-pressed", String(deepThink));
-  think.addEventListener("click", () => {
-    deepThink = !deepThink;
-    think.classList.toggle("active", deepThink);
-    think.setAttribute("aria-pressed", String(deepThink));
-    localStorage.setItem("opencode-pocket-codex-think", deepThink ? "1" : "0");
-  });
-
-  reasoningTop.querySelector("small")!.textContent =
-    ({ auto: "Auto", low: "Fast", medium: "Balanced", high: "Deep" } as Record<string, string>)[reasoningMode] || "Auto";
+  localStorage.removeItem("opencode-pocket-codex-think");
+  syncReasoningLabels();
   updateUsage();
 
   promptInput.addEventListener("input", resizeComposer);
