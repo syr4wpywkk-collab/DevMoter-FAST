@@ -13,6 +13,7 @@ import { createTaskWorkflow } from "./server/task-workflow.mjs";
 import { createDevWorkflowService } from "./server/dev-workflows.mjs";
 import { createUserAutomationService, userAutomationPolicy } from "./server/user-automation.mjs";
 import { createAdvancedApi } from "./server/advanced-api.mjs";
+import { assertExternalBackendExecutionAllowed, externalBackendSandboxPolicy } from "./server/advanced-features.mjs";
 import { createTerminalManager } from "./server/terminal.mjs";
 import { createProjectIndex } from "./server/project-index.mjs";
 import { createSafetyService } from "./server/safety.mjs";
@@ -784,6 +785,7 @@ async function inspectControlSession(backend, sessionId) {
 }
 
 async function dispatchControlQueued(backend, sessionId, text) {
+  assertExternalBackendExecutionAllowed(backend);
   if (backend === "codex") {
     await codex.request("turn/start", {
       threadId: sessionId,
@@ -1143,6 +1145,8 @@ async function executeControlTaskCore(definition, context = {}) {
   const project = definition?.projectId ? await getProjectById(definition.projectId) : null;
   const task = String(definition?.task || "").trim();
   if (!task) throw new Error("Task is required");
+  const backend = definition?.backend === "opencode" ? "opencode" : "codex";
+  assertExternalBackendExecutionAllowed(backend);
 
   if (definition?.backend === "opencode") {
     const directory = project?.path || OPENCODE_DIRECTORY;
@@ -1497,6 +1501,12 @@ async function proxy(req, res) {
     return;
   }
 
+  const sandboxPolicy = externalBackendSandboxPolicy("opencode");
+  if (!sandboxPolicy.allowed && (isPromptRoute(policyPath) || isDirectMutationRoute(policyPath))) {
+    json(res, 409, { error: sandboxPolicy.reason, sandbox: sandboxPolicy });
+    return;
+  }
+
   let body =
     req.method === "GET" || req.method === "HEAD"
       ? undefined
@@ -1513,6 +1523,19 @@ async function proxy(req, res) {
       body = Buffer.from(JSON.stringify(applyModeToPrompt(payload, mode)));
     } catch {
       json(res, 400, { error: "Read-only mode requires a JSON prompt body" });
+      return;
+    }
+  }
+
+  if (!sandboxPolicy.allowed && /\/permission\/[^/]+\/reply$/.test(policyPath) && body?.length) {
+    try {
+      const payload = JSON.parse(body.toString("utf8"));
+      if (String(payload?.reply || "") !== "reject") {
+        json(res, 409, { error: sandboxPolicy.reason, sandbox: sandboxPolicy });
+        return;
+      }
+    } catch {
+      json(res, 400, { error: "Sandbox-required permission replies must be valid JSON" });
       return;
     }
   }
@@ -1568,6 +1591,18 @@ async function codexRpc(req, res) {
     if (!isAllowedCodexRpc(method)) {
       json(res, 400, { error: "Codex RPC method is not allowed" });
       return;
+    }
+
+    if (method === "turn/start" || method === "turn/steer") {
+      try {
+        assertExternalBackendExecutionAllowed("codex");
+      } catch (error) {
+        json(res, Number(error?.statusCode || 409), {
+          error: error instanceof Error ? error.message : String(error),
+          code: error?.code || "DEVMOTER_SANDBOX_REQUIRED"
+        });
+        return;
+      }
     }
 
     if (method === "thread/start") {
@@ -1658,10 +1693,16 @@ async function codexUpload(req, res) {
 async function codexApproval(req, res) {
   try {
     const payload = await readJson(req);
+    const decision = String(payload?.decision || "");
+    const sandboxPolicy = externalBackendSandboxPolicy("codex");
+    if (!sandboxPolicy.allowed && (decision === "accept" || decision === "acceptForSession")) {
+      json(res, 409, { error: sandboxPolicy.reason, sandbox: sandboxPolicy });
+      return;
+    }
     codex.respondApproval(payload?.id, payload?.decision);
     json(res, 200, { ok: true });
   } catch (error) {
-    json(res, 400, {
+    json(res, Number(error?.statusCode || 400), {
       error: error instanceof Error ? error.message : String(error)
     });
   }
