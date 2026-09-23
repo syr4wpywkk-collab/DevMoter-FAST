@@ -1,4 +1,4 @@
-const CACHE = "devmoter-fast-v20";
+const CACHE = "devmoter-fast-v21";
 const SHELL = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", event => {
@@ -20,12 +20,13 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   const request = event.request;
   if (request.method !== "GET") return;
-  if (new URL(request.url).pathname.startsWith("/api/")) return;
+  const url = new URL(request.url);
+  if (url.pathname.startsWith("/api/") || url.pathname === "/login.html") return;
 
   event.respondWith(
     fetch(request, { cache: "no-store" })
       .then(response => {
-        if (response.ok) {
+        if (response.ok && !response.redirected) {
           const copy = response.clone();
           caches.open(CACHE).then(cache => cache.put(request, copy)).catch(() => {});
         }

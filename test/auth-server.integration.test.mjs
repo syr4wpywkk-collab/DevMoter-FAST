@@ -64,8 +64,14 @@ test("server requires auth and exact Origin for mutations", async () => {
 
     const unauthenticated = await fetch(`${origin}/api/projects`);
     assert.equal(unauthenticated.status, 401);
-    assert.match(unauthenticated.headers.get("www-authenticate") || "", /^Basic /);
+    assert.equal(unauthenticated.headers.get("www-authenticate"), null);
     assert.equal(unauthenticated.headers.get("cache-control"), "no-store");
+    const unauthenticatedPayload = await unauthenticated.json();
+    assert.equal(unauthenticatedPayload.login, "/login.html");
+
+    const rootRedirect = await fetch(origin + "/", { redirect: "manual" });
+    assert.equal(rootRedirect.status, 302);
+    assert.equal(rootRedirect.headers.get("location"), "/login.html");
 
     const wrong = await fetch(`${origin}/api/projects`, {
       headers: {

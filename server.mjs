@@ -24,7 +24,8 @@ import { ControlPlane } from "./server/control-plane.mjs";
 import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/workspace-control.mjs";
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
 import { applyModeToPrompt, isDirectMutationRoute, isPromptRoute, isReadOnlyMode, parseAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
-import { assertAuthPassword, authorizeBasicRequest, requireSameOriginMutation } from "./server/auth.mjs";
+import { assertAuthPassword, credentialsMatch, parseBasicAuthorization, requireSameOriginMutation } from "./server/auth.mjs";
+import { ExternalAuth } from "./server/external-auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
 import { antigravityRemoteAction, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
 import { MULTI_API_PRESETS, createMultiApiStore, publicMultiApiProviders, runMultiApiChat, testMultiApiProvider } from "./server/multi-api.mjs";
@@ -53,6 +54,10 @@ const DIST = fileURLToPath(new URL("./dist/", import.meta.url));
 const HOME_DIR = process.env.HOME || process.cwd();
 const UPLOAD_DIR = process.env.POCKET_UPLOAD_DIR || join(HOME_DIR, ".local", "state", "opencode-pocket", "uploads");
 const PROJECT_CONFIG_DIR = join(HOME_DIR, ".config", "opencode-pocket");
+const externalAuth = new ExternalAuth({
+  configDir: PROJECT_CONFIG_DIR,
+  githubClientId: process.env.DEVMOTER_GITHUB_CLIENT_ID || ""
+});
 const PROJECTS_FILE = join(PROJECT_CONFIG_DIR, "projects.json");
 const MULTI_API_FILE = join(PROJECT_CONFIG_DIR, "llm-providers.json");
 const MULTI_API_IMAGE_DIR = join(HOME_DIR, ".local", "share", "devmoter", "api-chat-images");
@@ -254,6 +259,17 @@ function json(res, status, body) {
   res.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store"
+  });
+  res.end(JSON.stringify(body, (_key, value) =>
+    typeof value === "string" ? redactText(value) : value
+  ));
+}
+
+function jsonWithCookie(res, status, body, cookie) {
+  res.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "no-store",
+    "set-cookie": cookie
   });
   res.end(JSON.stringify(body, (_key, value) =>
     typeof value === "string" ? redactText(value) : value
@@ -1259,6 +1275,72 @@ async function executeControlTaskCore(definition, context = {}) {
   return { ...result, cancel, context: backendContext };
 }
 
+async function externalAuthRoute(req, res, url) {
+  if (!url.pathname.startsWith("/api/auth/") || url.pathname.startsWith("/api/auth/passkey/")) {
+    return false;
+  }
+
+  try {
+    if (req.method === "GET" && url.pathname === "/api/auth/status") {
+      json(res, 200, await externalAuth.status(req));
+      return true;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/auth/local/login") {
+      const payload = await readJson(req, 64 * 1024);
+      const result = await externalAuth.localLogin(req, payload, AUTH_CONFIG);
+      jsonWithCookie(res, 200, { ok: true, identity: result.identity }, result.cookie);
+      return true;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/auth/github/start") {
+      const payload = await readJson(req, 64 * 1024);
+      const session = await externalAuth.session(req);
+      const bootstrapAuthorized =
+        Boolean(session) ||
+        credentialsMatch(
+          {
+            username: String(payload?.username || ""),
+            password: String(payload?.password || "")
+          },
+          AUTH_CONFIG
+        );
+      json(res, 200, await externalAuth.startGithub(req, { bootstrapAuthorized }));
+      return true;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/auth/github/poll") {
+      const payload = await readJson(req, 64 * 1024);
+      const result = await externalAuth.pollGithub(req, payload?.flowId);
+      if (result.status === "complete") {
+        jsonWithCookie(
+          res,
+          200,
+          { status: "complete", identity: result.identity },
+          result.cookie
+        );
+      } else {
+        json(res, 200, result);
+      }
+      return true;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/auth/logout") {
+      const cookie = await externalAuth.logout(req);
+      jsonWithCookie(res, 200, { ok: true }, cookie);
+      return true;
+    }
+
+    json(res, 404, { error: "Unknown authentication endpoint" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    json(res, Number(error?.status || (message === "Request body too large" ? 413 : 400)), {
+      error: message
+    });
+  }
+  return true;
+}
+
 async function passkeyRoute(req, res, url) {
   if (!url.pathname.startsWith("/api/auth/passkey/")) return false;
   try {
@@ -1879,7 +1961,40 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (!authorizeBasicRequest(req, res, AUTH_CONFIG)) return;
+    if ((req.method === "GET" || req.method === "HEAD") && url.pathname === "/login.html") {
+      await serveStatic(req, res);
+      return;
+    }
+
+    if (
+      url.pathname.startsWith("/api/auth/") &&
+      !url.pathname.startsWith("/api/auth/passkey/")
+    ) {
+      if (!requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)) return;
+      if (await externalAuthRoute(req, res, url)) return;
+    }
+
+    const basicAuthenticated = credentialsMatch(
+      parseBasicAuthorization(req.headers.authorization),
+      AUTH_CONFIG
+    );
+    const ownerSession = await externalAuth.session(req);
+    if (!basicAuthenticated && !ownerSession) {
+      if (
+        (req.method === "GET" || req.method === "HEAD") &&
+        !url.pathname.startsWith("/api/")
+      ) {
+        res.writeHead(302, {
+          "location": "/login.html",
+          "cache-control": "no-store"
+        });
+        res.end();
+      } else {
+        json(res, 401, { error: "Authentication required", login: "/login.html" });
+      }
+      return;
+    }
+
     if (!requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)) return;
 
     if (await passkeyRoute(req, res, url)) return;

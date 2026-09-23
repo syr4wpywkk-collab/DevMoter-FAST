@@ -6,9 +6,9 @@ test("workspace control uses its own authenticated API namespace", async () => {
   const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
   assert.match(source, /handleWorkspaceControlRequest/);
   assert.match(source, /\/api\/workspace-control/);
-  assert.match(source, /if \(!authorizeBasicRequest\(req, res, AUTH_CONFIG\)\) return;/);
+  assert.match(source, /if \(!basicAuthenticated && !ownerSession\)/);
 
-  const auth = source.indexOf("authorizeBasicRequest(req, res, AUTH_CONFIG)");
+  const auth = source.indexOf("if (!basicAuthenticated && !ownerSession)");
   const route = source.indexOf('url.pathname === "/api/workspace-control"');
   assert.ok(auth >= 0 && route > auth);
 });
