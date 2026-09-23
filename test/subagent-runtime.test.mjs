@@ -371,7 +371,7 @@ test("Codex adapter starts subagents with registered Project id and never caller
 });
 
 
-test("nested subagents can never exceed a restrictive parent capability ceiling", async () => {
+test("nested subagents reject explicit capability escalation before adapter start", async () => {
   const fake = fakeAdapter();
   let index = 0;
   const runtime = new SubagentRuntime({
@@ -387,21 +387,21 @@ test("nested subagents can never exceed a restrictive parent capability ceiling"
       mutationPolicy: "read-only-until-explicit-transition"
     }
   });
-  const child = await runtime.spawn({
-    parentSessionId: root.sessionId,
-    parentRunId: root.id,
-    task: "try executor child",
-    capabilityPolicy: {
-      allow: ["read", "files", "commands", "network"],
-      deny: [],
-      mutationPolicy: "approval-required"
-    }
-  });
-  assert.deepEqual(child.capabilityPolicy.allow, ["read"]);
-  assert.ok(child.capabilityPolicy.deny.includes("files"));
-  assert.ok(child.capabilityPolicy.deny.includes("commands"));
-  assert.ok(child.capabilityPolicy.deny.includes("network"));
-  assert.equal(child.capabilityPolicy.mutationPolicy, "read-only-until-explicit-transition");
+  const startsBefore = fake.starts.length;
+  await assert.rejects(
+    () => runtime.spawn({
+      parentSessionId: root.sessionId,
+      parentRunId: root.id,
+      task: "try executor child",
+      capabilityPolicy: {
+        allow: ["read", "files", "commands", "network"],
+        deny: [],
+        mutationPolicy: "approval-required"
+      }
+    }),
+    /capability escalation rejected.*files.*commands.*network/i
+  );
+  assert.equal(fake.starts.length, startsBefore);
 });
 
 test("capability ceiling remains monotonic across deeper delegation", async () => {
@@ -423,14 +423,18 @@ test("capability ceiling remains monotonic across deeper delegation", async () =
     task: "child",
     capabilityPolicy: { allow: ["read"], deny: [] }
   });
-  const grandchild = await runtime.spawn({
-    parentSessionId: child.sessionId,
-    parentRunId: child.id,
-    task: "grandchild",
-    capabilityPolicy: { allow: ["read", "git", "files", "commands"], deny: [] }
-  });
   assert.deepEqual(child.capabilityPolicy.allow, ["read"]);
-  assert.deepEqual(grandchild.capabilityPolicy.allow, ["read"]);
+  const startsBefore = fake.starts.length;
+  await assert.rejects(
+    () => runtime.spawn({
+      parentSessionId: child.sessionId,
+      parentRunId: child.id,
+      task: "grandchild",
+      capabilityPolicy: { allow: ["read", "git", "files", "commands"], deny: [] }
+    }),
+    /capability escalation rejected/i
+  );
+  assert.equal(fake.starts.length, startsBefore);
 });
 
 test("second opinions inherit the parent capability ceiling", async () => {
@@ -518,4 +522,47 @@ test("Codex adapter auto-declines approvals for denied inherited capabilities", 
   assert.deepEqual(approvals, [{ id: 44, decision: "decline" }]);
   assert.equal(runtime.getRun(run.id).pendingApproval, null);
   assert.equal(runtime.getRun(run.id).state, "running");
+});
+
+test("nested child may explicitly reduce capabilities", async () => {
+  const fake = fakeAdapter();
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: fake.adapter },
+    idFactory: () => `reduce-${++index}`
+  });
+  const root = await runtime.spawn({
+    parentSessionId: "p",
+    task: "root",
+    capabilityPolicy: { allow: ["read", "git"], deny: ["files", "commands", "network"] }
+  });
+  const child = await runtime.spawn({
+    parentSessionId: root.sessionId,
+    parentRunId: root.id,
+    task: "child",
+    capabilityPolicy: { allow: ["read"], deny: ["git"] }
+  });
+  assert.deepEqual(child.capabilityPolicy.allow, ["read"]);
+});
+
+test("fleet nested children reject escalation and record the reason", async () => {
+  const fake = fakeAdapter();
+  let index = 0;
+  const runtime = new SubagentRuntime({
+    adapters: { codex: fake.adapter },
+    idFactory: () => `fleet-cap-${++index}`
+  });
+  const root = await runtime.spawn({
+    parentSessionId: "p",
+    task: "root",
+    capabilityPolicy: { allow: ["read"], deny: ["files", "commands", "network"] }
+  });
+  const fleet = await runtime.runFleet([{
+    parentSessionId: root.sessionId,
+    parentRunId: root.id,
+    task: "escalating child",
+    capabilityPolicy: { allow: ["read", "commands"], deny: [] }
+  }], { id: "fleet-capability", concurrency: 1 });
+  assert.equal(fleet.errors.length, 1);
+  assert.match(fleet.errors[0].error, /capability escalation rejected/i);
 });
