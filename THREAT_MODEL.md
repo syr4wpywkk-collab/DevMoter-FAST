@@ -1,83 +1,98 @@
 # Threat model
 
-This document describes the current DevMoter FAST trust boundaries. It is not a claim that the project is safe for public-Internet exposure.
+This document describes the current DevMoter FAST trust boundaries. It is **not** a claim that the project is safe for public-Internet or hostile multi-user deployment.
 
 ## Assets
 
-DevMoter must protect:
-
-- local source repositories and files;
-- agent credentials held by Codex/OpenCode/GitHub CLI;
-- project paths and private repository metadata;
-- approval/question state;
+DevMoter can reach valuable host resources:
+- source repositories and local files;
+- Codex/OpenCode/provider/GitHub credentials held by host tools;
+- project identities and private repository metadata;
+- approvals and agent execution state;
 - uploaded attachments;
-- the ability to execute commands or edit files through the underlying agents.
+- Git branches/worktrees and reviewed changes;
+- privileged host integrations and automation state.
 
 ## Deployment assumption
 
-The default server binds to `127.0.0.1`. Remote-phone access is expected to use a private transport such as Tailscale Serve.
+The supported model is a **single-user private host**. DevMoter binds to `127.0.0.1` by default and remote-phone access should use private HTTPS transport such as Tailscale Serve.
 
-Current `main` must still be treated as a private-host/private-network product. DevMoter-native authentication tracked by #10 is an additional application boundary; until that work is present on the release branch and verified, network reachability itself remains security-sensitive.
+DevMoter-native authentication is an application access boundary, but it is not a multi-user role/authorization system. An authenticated client is assumed to represent the host owner.
 
 ## Trust boundaries
 
-1. **Browser ↔ DevMoter** — browser input is untrusted. Paths, operation IDs, JSON bodies, project IDs, filenames, and method names require validation.
-2. **DevMoter ↔ OpenCode** — OpenCode is trusted to perform the agent operations the user has enabled, but its credentials must not cross into the browser.
-3. **DevMoter ↔ Codex app-server** — the app-server is a privileged local process. DevMoter restricts the browser to an RPC allowlist and validates approval responses.
-4. **DevMoter ↔ filesystem** — project content is data, not trusted instructions to the server. Path containment must be enforced server-side.
-5. **DevMoter ↔ GitHub CLI** — the host `gh` session is privileged. Tokens stay in the host process environment/configuration; browser input never selects an arbitrary executable, URL, or clone destination.
+1. **Browser ↔ DevMoter** — all browser input is untrusted: JSON, IDs, filenames, operation IDs, model/RPC names and UI state.
+2. **DevMoter ↔ OpenCode** — privileged localhost agent runtime; credentials stay server-side.
+3. **DevMoter ↔ Codex app-server** — privileged local process reached over stdio; browser RPC is allowlisted.
+4. **DevMoter ↔ provider APIs** — API Chat sends validated requests using host-side credentials.
+5. **DevMoter ↔ filesystem/Git** — Project IDs resolve server-side; paths, symlinks, drift and dirty state require validation.
+6. **DevMoter ↔ GitHub CLI** — the host `gh` session is privileged; the browser cannot choose arbitrary executables or clone destinations.
+7. **DevMoter ↔ host integrations** — installed CLIs and desktop launch targets are trusted local software but remain privileged.
+8. **Automation/event boundary** — a trigger is data, not blanket authority; schedules/events must not bypass existing boundaries.
 
 ## Attacker models
 
-### Same LAN or reachable private network peer
+### Reachable network peer
 
-If that peer can reach a DevMoter deployment without a verified application-auth boundary, they may be able to control privileged agents. Bind locally and expose only through an intentionally configured private layer.
+A peer that can obtain valid DevMoter credentials can exercise powerful host capabilities. Keep the listener private, use HTTPS for remote access, and treat credentials as host-control credentials.
 
-### Same Tailnet peer
+### Same-tailnet peer
 
-Tailnet membership alone should not be confused with least privilege. Device/account ACLs and DevMoter-native authentication should be treated as separate controls.
+Tailnet membership is transport/network identity, not DevMoter authorization. Tailnet ACLs and DevMoter authentication are separate controls.
 
-### Malicious browser request / CSRF-like request
+### Malicious web origin / CSRF
 
-Mutation endpoints must validate origin/authentication when that layer is enabled, validate request bodies, and use operation IDs so ambiguous network failures are not blindly replayed.
+Mutation endpoints require authentication and exact-origin validation. Reverse-proxy deployments must preserve/configure the externally visible origin correctly.
 
-### Hostile filename or path
+### XSS / compromised same-origin frontend
 
-Reject traversal, absolute-path escapes, unexpected extensions, arbitrary clone destinations, and unsafe symlink/real-path escapes. Never trust a browser-provided raw working-directory header.
+Script-readable browser state is sensitive. A same-origin script compromise can act as the authenticated browser and may access browser-stored device material. CSP, escaping, dependency hygiene and reducing long-lived script-readable secrets are defense-in-depth priorities.
 
-### Compromised project content
+### Hostile path, repository or filename
 
-Repository files can contain misleading text, malicious scripts, or instructions intended for an agent. DevMoter's path restrictions do not sandbox the underlying coding agent. Agent permissions and approval policy remain a separate boundary.
+Reject traversal, absolute escapes, unsafe symlinks, arbitrary clone destinations and mismatched Git origins. Browser-supplied project identities must resolve through server-owned registration.
+
+### Compromised project content / prompt injection
+
+Repository text may contain malicious instructions. Filesystem restrictions do not sandbox the coding agent or make project content trustworthy. Agent permission/approval policy is a separate boundary.
+
+### Compromised local executable
+
+A malicious/replaced `codex`, `opencode`, `gh`, `claude`, `agy` or other trusted host executable is inside the host trust boundary. DevMoter cannot turn a compromised local tool into a safe one.
 
 ## Important controls
 
-- localhost-first bind;
-- server-side OpenCode and GitHub credentials;
+- localhost-first bind and private HTTPS deployment;
+- DevMoter authentication + exact-origin mutation checks;
+- server-side upstream credentials;
 - Codex RPC allowlist;
-- Project-ID to server-side path resolution;
-- Markdown-only mobile writes;
-- upload size/name controls;
+- Project-ID → server-side path resolution;
+- bounded Markdown editor;
+- attachment size/type/name controls;
 - managed GitHub clone root and origin verification;
-- no automatic reset/rebase/stash/force checkout;
+- reviewed-change drift and dirty-tree checks;
+- fixed-argument host launchers and filtered environment inheritance;
 - bounded duplicate-mutation registry;
-- no automatic retry of ambiguous writes.
+- no blind retry of ambiguous writes.
 
 ## Non-goals
 
 DevMoter is not currently:
-
 - a hostile multi-tenant SaaS isolation boundary;
 - a sandbox for arbitrary untrusted code;
 - a replacement for OS user permissions;
-- a guarantee that an enabled coding agent cannot modify files outside the narrow browser editor;
-- an authorization layer for sharing one host among mutually untrusted users.
+- a guarantee that an enabled coding agent stays inside the mobile editor's filesystem scope;
+- a public relay service;
+- authorization for mutually untrusted people sharing one host.
 
-## Residual risks
+## Known/residual risks
 
-- a reachable unauthenticated release can expose powerful agent controls;
-- upstream Codex/OpenCode protocol changes can invalidate assumptions;
-- an agent may have broader filesystem/shell permissions than the DevMoter browser editor;
-- uploaded data and local logs require lifecycle/retention discipline;
-- mobile reconnect and backgrounding behavior varies by browser and needs real-device release testing.
+- upstream protocol/CLI changes can invalidate assumptions;
+- an authenticated browser controls powerful agent capabilities;
+- coding agents may have broader filesystem/shell authority than DevMoter's browser editor;
+- browser-stored device material increases impact of same-origin script compromise;
+- attachments/logs require retention discipline;
+- experimental automation and host integrations need continuing contract/device testing;
+- mobile background/reconnect behavior remains browser-dependent.
 
-Security changes should update this document when a trust boundary or assumption changes.
+Security changes should update this document whenever a trust boundary or deployment assumption changes.
