@@ -540,14 +540,34 @@ export function createDevWorkflowPanel(options: PanelOptions) {
     if (!capabilities.extension?.present) {
       extensionSection.appendChild(text("p", "このProjectにmanifestはありません。", "cx-muted"));
     } else {
+      const extension = capabilities.extension;
       extensionSection.append(
-        statusBadge(capabilities.extension.valid ? "valid" : "invalid"),
+        statusBadge(extension.valid ? (extension.approved ? "approved" : "approval required") : "invalid"),
+        text("p", "Source: " + String(extension.source || "devmoter.extension.json"), "cx-muted"),
         details(
-          capabilities.extension.valid ? "Manifest" : "Validation errors",
-          pretty(capabilities.extension.valid ? capabilities.extension.manifest : capabilities.extension.errors),
-          !capabilities.extension.valid
+          extension.valid ? "Manifest & permissions" : "Validation errors",
+          pretty(extension.valid ? extension.manifest : extension.errors),
+          !extension.valid
         )
       );
+      if (extension.valid && extension.approvalRequired) {
+        extensionSection.appendChild(text(
+          "p",
+          "Filesystem / network / shell / credentials / adapters / browser permissions are explicit. New or expanded permissions require approval again.",
+          "cx-dev-warning"
+        ));
+        extensionSection.appendChild(makeAction("Approve declared permissions", async button => {
+          if (!confirm("このProject extensionの宣言済みpermissionsを承認しますか？ 変更・追加された場合は再承認が必要です。")) return;
+          await api("/extension/approve", {
+            method: "POST",
+            body: JSON.stringify({ projectId: project.id })
+          });
+          button.textContent = "Approved ✓";
+          await show();
+        }, true));
+      } else if (extension.valid) {
+        extensionSection.appendChild(text("p", "Declared permissions approved for this exact permission fingerprint.", "cx-dev-success"));
+      }
     }
     modalBody.appendChild(extensionSection);
 
