@@ -17,7 +17,8 @@ export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$HOME/.bun/bin:$HOME/.npm-glob
 resolve_binary() {
   local env_name="$1"
   local command_name="$2"
-  local configured="${!env_name:-}"
+  local configured
+  configured="$(printenv "$env_name" 2>/dev/null || true)"
 
   if [ -n "$configured" ]; then
     if [ ! -x "$configured" ]; then
