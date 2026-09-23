@@ -1748,7 +1748,8 @@ const server = http.createServer(async (req, res) => {
 
     const advancedCandidate =
       url.pathname.startsWith("/api/advanced/") ||
-      /^\/api\/projects\/[^/]+\/(?:preview|artifacts|web-preview)$/.test(url.pathname) ||
+      url.pathname.startsWith("/api/attachments/") ||
+      /^\/api\/projects\/[^/]+\/(?:preview|files|artifacts|web-preview)$/.test(url.pathname) ||
       /^\/api\/artifacts\/[^/]+\/(?:preview|download)$/.test(url.pathname) ||
       /^\/api\/live-preview\/proxy\//.test(url.pathname);
     if (advancedCandidate) {
