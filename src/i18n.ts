@@ -194,7 +194,32 @@ const dictionary: Record<string, TranslationSet> = {
   "Choose the model for subsequent work": { en: "Choose the model for subsequent work", ja: "以降の作業で使うモデルを選択", "zh-CN": "选择后续工作使用的模型" },
   "OpenCode skill": { en: "OpenCode skill", ja: "OpenCodeスキル", "zh-CN": "OpenCode 技能" },
   "loading": { en: "loading", ja: "読み込み中", "zh-CN": "加载中" },
-  "working": { en: "working", ja: "実行中", "zh-CN": "运行中" }
+  "working": { en: "working", ja: "実行中", "zh-CN": "运行中" },
+  "＋ 新しいチャット": { en: "＋ New chat", ja: "＋ 新しいチャット", "zh-CN": "＋ 新建对话" },
+  "APIキーはDevMoterサーバー側だけに保存され、保存後ブラウザへ返されません。": { en: "API keys are stored only on the DevMoter server and are never returned to the browser after saving.", ja: "APIキーはDevMoterサーバー側だけに保存され、保存後ブラウザへ返されません。", "zh-CN": "API 密钥仅保存在 DevMoter 服务器端，保存后不会返回浏览器。" },
+  "API Providers": { en: "API Providers", ja: "API Providers", "zh-CN": "API Provider" },
+  "推論モード": { en: "Reasoning mode", ja: "推論モード", "zh-CN": "推理模式" },
+  "API設定": { en: "API settings", ja: "API設定", "zh-CN": "API 设置" },
+  "こんにちは": { en: "Hello", ja: "こんにちは", "zh-CN": "你好" },
+  "どのAPIで考える？": { en: "Which API should think about this?", ja: "どのAPIで考える？", "zh-CN": "要用哪个 API 来思考？" },
+  "メッセージを入力": { en: "Type a message", ja: "メッセージを入力", "zh-CN": "输入消息" },
+  "メッセージ": { en: "Message", ja: "メッセージ", "zh-CN": "消息" },
+  "画像を添付": { en: "Attach image", ja: "画像を添付", "zh-CN": "附加图片" },
+  "接続先を読み込み中…": { en: "Loading providers…", ja: "接続先を読み込み中…", "zh-CN": "正在加载 Provider…" },
+  "キーはこの端末のDevMoterにだけ保存": { en: "Keys are stored only in DevMoter on this device", ja: "キーはこの端末のDevMoterにだけ保存", "zh-CN": "密钥仅保存在此设备的 DevMoter 中" },
+  "接続先": { en: "Providers", ja: "接続先", "zh-CN": "Provider" },
+  "APIキーは保存後に画面へ戻しません": { en: "Saved API keys are never shown again", ja: "APIキーは保存後に画面へ戻しません", "zh-CN": "保存后不会再次显示 API 密钥" },
+  "＋ APIを追加": { en: "＋ Add API", ja: "＋ APIを追加", "zh-CN": "＋ 添加 API" },
+  "まだAPIがありません": { en: "No APIs configured yet", ja: "まだAPIがありません", "zh-CN": "尚未配置 API" },
+  "企業を選んでAPIキーを追加すると、上のモデル切替からすぐ使えます。": { en: "Choose a provider and add an API key, then select its model from the top bar.", ja: "企業を選んでAPIキーを追加すると、上のモデル切替からすぐ使えます。", "zh-CN": "选择 Provider 并添加 API 密钥后，即可从顶部选择模型。" },
+  "APIを追加": { en: "Add API", ja: "APIを追加", "zh-CN": "添加 API" },
+  "API Key": { en: "API Key", ja: "API Key", "zh-CN": "API 密钥" },
+  "詳細設定": { en: "Advanced settings", ja: "詳細設定", "zh-CN": "高级设置" },
+  "表示名": { en: "Display name", ja: "表示名", "zh-CN": "显示名称" },
+  "API形式": { en: "API format", ja: "API形式", "zh-CN": "API 格式" },
+  "更新": { en: "Update", ja: "更新", "zh-CN": "更新" },
+  "接続して追加": { en: "Connect and add", ja: "接続して追加", "zh-CN": "连接并添加" },
+  "このAPI設定を削除": { en: "Delete this API configuration", ja: "このAPI設定を削除", "zh-CN": "删除此 API 配置" }
 };
 
 function resolveLanguage(): DevMoterLanguage {
@@ -231,7 +256,7 @@ function translateValue(value: string) {
 }
 
 function shouldSkip(element: Element | null) {
-  return Boolean(element?.closest(".cx-message, .ocx-message, pre, code, [data-i18n-skip]"));
+  return Boolean(element?.closest(".cx-message, .ocx-message, .api-message, pre, code, [data-i18n-skip]"));
 }
 
 function translateTextNode(node: Text) {
