@@ -8,6 +8,7 @@ import {
 import {
   backendAttachmentCapabilities, fetchUrlAttachment, negotiateAttachments, previewUrlInput
 } from "./attachments.mjs";
+import { createBrowserAutomation, browserAutomationPolicy } from "./browser-tool.mjs";
 
 function sendJson(res, status, body) {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -131,6 +132,12 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
   });
   const artifacts = createArtifactRegistry({ file: resolve(configDir, "artifacts.json") });
   const previews = new Map();
+  const browser = createBrowserAutomation({
+    configDir,
+    resolveProject: getProjectById,
+    getPreview: projectId => previews.get(String(projectId)) || null,
+    env
+  });
   const routingLog = [];
 
   async function approvedOutputRoots(project) {
@@ -283,6 +290,32 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
         return true;
       }
 
+      if (req.method === "GET" && url.pathname === "/api/advanced/browser") {
+        sendJson(res, 200, {
+          ...browser.status(url.searchParams.get("projectId") || ""),
+          policy: browserAutomationPolicy
+        });
+        return true;
+      }
+
+      if (req.method === "POST" && url.pathname === "/api/advanced/browser/start") {
+        const payload = await readJson(req, 64 * 1024);
+        sendJson(res, 200, await browser.start(payload.projectId));
+        return true;
+      }
+
+      if (req.method === "POST" && url.pathname === "/api/advanced/browser/inspect") {
+        const payload = await readJson(req, 64 * 1024);
+        sendJson(res, 200, { inspection: await browser.inspect(payload.projectId) });
+        return true;
+      }
+
+      if (req.method === "POST" && url.pathname === "/api/advanced/browser/stop") {
+        const payload = await readJson(req, 64 * 1024);
+        sendJson(res, 200, await browser.stop(payload.projectId));
+        return true;
+      }
+
       if (url.pathname === "/api/advanced/grants") {
         if (req.method === "GET") { sendJson(res, 200, { grants: await grants.list() }); return true; }
         if (req.method === "POST") {
@@ -426,5 +459,5 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
     }
   }
 
-  return { handle, grants, artifacts, previews };
+  return { handle, grants, artifacts, previews, browser };
 }
