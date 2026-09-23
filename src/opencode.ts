@@ -136,6 +136,7 @@ type PendingQuestion = {
 
 type OpenCodeRemoteOptions = {
   onCodex?: () => void;
+  onApi?: () => void;
   onIntegrations?: () => void;
 };
 
@@ -191,6 +192,7 @@ export function mountOpenCodeRemote(
           <button id="ocxSkillsNav" type="button"><span>✦</span><span>Skills</span></button>
           <button id="ocxModelsNav" type="button"><span>◇</span><span>Models</span></button>
           <button id="ocxCodexNav" type="button"><span>⌘</span><span>Codex UI</span></button>
+          <button id="ocxApiNav" type="button"><span>✦</span><span>API Chat</span></button>
           <button id="ocxIntegrationsNav" type="button"><span>⌁</span><span>Integrations</span></button>
         </nav>
 
@@ -349,6 +351,7 @@ export function mountOpenCodeRemote(
   const skillsNav = root.querySelector<HTMLButtonElement>("#ocxSkillsNav")!;
   const modelsNav = root.querySelector<HTMLButtonElement>("#ocxModelsNav")!;
   const codexNav = root.querySelector<HTMLButtonElement>("#ocxCodexNav")!;
+  const apiNav = root.querySelector<HTMLButtonElement>("#ocxApiNav")!;
   const integrationsNav = root.querySelector<HTMLButtonElement>("#ocxIntegrationsNav")!;
   const refreshButton = root.querySelector<HTMLButtonElement>("#ocxRefresh")!;
   const sideStatus = root.querySelector<HTMLElement>("#ocxSideStatus")!;
@@ -3395,6 +3398,10 @@ export function mountOpenCodeRemote(
   codexNav.addEventListener("click", () => {
     closeSidebar();
     options.onCodex?.();
+  });
+  apiNav.addEventListener("click", () => {
+    closeSidebar();
+    options.onApi?.();
   });
   integrationsNav.addEventListener("click", () => {
     closeSidebar();
