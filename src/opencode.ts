@@ -162,6 +162,12 @@ export function mountOpenCodeRemote(
           <button id="ocxSidebarClose" class="ocx-icon" type="button" aria-label="閉じる">×</button>
         </div>
 
+        <div class="ocx-backend-switch" role="group" aria-label="Backend">
+          <button id="ocxBackendOpenCode" class="active" type="button" aria-current="page">OpenCode</button>
+          <button id="ocxBackendCodex" type="button">Codex</button>
+          <button id="ocxBackendApi" type="button">API Chat</button>
+        </div>
+
         <button id="ocxNewSessionSide" class="ocx-new-session" type="button">
           <span>＋</span>
           <span>New session</span>
@@ -339,6 +345,8 @@ export function mountOpenCodeRemote(
   const sidebarDirectory = root.querySelector<HTMLElement>("#ocxSidebarDirectory")!;
   const sidebarClose = root.querySelector<HTMLButtonElement>("#ocxSidebarClose")!;
   const menu = root.querySelector<HTMLButtonElement>("#ocxMenu")!;
+  const backendCodex = root.querySelector<HTMLButtonElement>("#ocxBackendCodex")!;
+  const backendApi = root.querySelector<HTMLButtonElement>("#ocxBackendApi")!;
   const newSessionSide = root.querySelector<HTMLButtonElement>("#ocxNewSessionSide")!;
   const newSessionTop = root.querySelector<HTMLButtonElement>("#ocxNewSessionTop")!;
   const sessionSearch = root.querySelector<HTMLInputElement>("#ocxSessionSearch")!;
@@ -3375,6 +3383,15 @@ export function mountOpenCodeRemote(
     renderSessions();
   });
   sessionToolsNav.addEventListener("click", showSessionTools);
+
+  backendCodex.addEventListener("click", () => {
+    closeSidebar();
+    options.onCodex?.();
+  });
+  backendApi.addEventListener("click", () => {
+    closeSidebar();
+    options.onApi?.();
+  });
 
   newSessionSide.addEventListener("click", () => void createSession());
   newSessionTop.addEventListener("click", () => void createSession());
