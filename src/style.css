@@ -2659,6 +2659,35 @@ body.opencode-mode #app {
   white-space: nowrap;
 }
 
+.ocx-backend-switch {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 7px 0 4px;
+  padding: 4px;
+  border: 1px solid var(--oc-line-soft);
+  border-radius: 9px;
+  background: #11100d;
+}
+
+.ocx-backend-switch button {
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--oc-dim);
+  font-size: .62rem;
+  white-space: nowrap;
+}
+
+.ocx-backend-switch button.active {
+  background: #2e2018;
+  color: #efb28b;
+  box-shadow: inset 0 0 0 1px #6d452f;
+}
+
 .ocx-new-session {
   width: 100%;
   min-height: 44px;
@@ -3656,6 +3685,12 @@ body.integrations-mode {
   border: 1px solid #222;
   border-radius: 12px;
   background: #0f0f0f;
+}
+
+.ocx-attention {
+  max-height: min(22dvh, 180px);
+  overflow-y: auto;
+  margin-bottom: 8px;
 }
 
 .ocx-attention.hidden { display: none; }
@@ -6688,5 +6723,18 @@ textarea:focus-visible,
   .api-preset-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     max-height: 320px;
+  }
+}
+
+
+@media (max-width: 640px) {
+  .pocket-git-trigger {
+    display: none !important;
+  }
+
+  .ocx-backend-switch {
+    position: sticky;
+    top: 0;
+    z-index: 2;
   }
 }
