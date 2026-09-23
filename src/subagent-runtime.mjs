@@ -440,6 +440,7 @@ function operationId() {
 }
 
 function scopedPrompt(run) {
+  const capabilityPolicy = normalizeCapabilityPolicy(run.capabilityPolicy);
   const contextRows = Object.entries(run.context || {})
     .filter(([key]) => key !== "projectId")
     .map(([key, value]) => `- ${key}: ${typeof value === "string" ? value : JSON.stringify(value)}`);
@@ -449,9 +450,9 @@ function scopedPrompt(run) {
     `Delegation depth: ${run.depth}`,
     `Lineage: ${run.lineage.length ? run.lineage.join(" > ") : "root"}`,
     `Inherited budget: ${run.budget.tokenLimit} tokens / ${run.budget.turnLimit} turns`,
-    `Effective capabilities: ${run.capabilityPolicy.allow.join(", ") || "none"}`,
-    `Denied capabilities: ${run.capabilityPolicy.deny.join(", ") || "none"}`,
-    `Mutation policy: ${run.capabilityPolicy.mutationPolicy}`,
+    `Effective capabilities: ${capabilityPolicy.allow.join(", ") || "none"}`,
+    `Denied capabilities: ${capabilityPolicy.deny.join(", ") || "none"}`,
+    `Mutation policy: ${capabilityPolicy.mutationPolicy}`,
     "The effective capability policy above is a hard ceiling inherited from the parent. Never request or use a denied capability. Do not delegate beyond the supplied depth/budget. Only use the explicitly shared context below. Do not assume access to unrelated parent conversation context.",
     contextRows.length ? `Shared context:\n${contextRows.join("\n")}` : "Shared context: none",
     `Task:\n${run.task}`
@@ -581,7 +582,7 @@ export function createCodexSubagentAdapter({
   return {
     async start(run, emit) {
       callbacks.set(run.id, emit);
-      runPolicies.set(run.id, structuredClone(run.capabilityPolicy));
+      runPolicies.set(run.id, normalizeCapabilityPolicy(run.capabilityPolicy));
       ensureEvents();
 
       const projectId = String(run.context?.projectId || "").trim();
