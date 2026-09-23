@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
+import { access, lstat, mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import { basename, extname, isAbsolute, relative, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -87,6 +87,81 @@ export async function previewFile(root, relativePath) {
   return {
     kind: "text", name: basename(resolved.target), path: resolved.relativePath, size: info.size,
     language: languageForPath(resolved.target), content: data.toString("utf8")
+  };
+}
+
+const FILE_BROWSER_LIMIT = 250;
+const FILE_BROWSER_LARGE = 1024 * 1024;
+const SENSITIVE_BROWSER_NAME = /^(?:\.env(?:\.|$)|\.git$|id_[a-z0-9_-]+(?:\.pub)?$|.*(?:secret|credential|credentials|private[_-]?key).*)/i;
+
+function normalizeBrowserRelative(input) {
+  const value = String(input || "").replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$/, "");
+  if (value.includes("\0") || value.startsWith("/") || value.split("/").includes("..")) {
+    throw new Error("Browser path must stay inside the registered project");
+  }
+  return value;
+}
+
+export async function listProjectDirectory(rootInput, relativePath = "", options = {}) {
+  const root = await realpath(rootInput);
+  const safeRelative = normalizeBrowserRelative(relativePath);
+  const candidate = safeRelative ? resolve(root, safeRelative) : root;
+  const target = await realpath(candidate);
+  if (!inside(root, target)) throw new Error("Browser path escapes the registered project");
+  const targetInfo = await lstat(target);
+  if (targetInfo.isSymbolicLink() || !targetInfo.isDirectory()) throw new Error("Browser path is not a regular project directory");
+
+  const includeHidden = options.includeHidden === true;
+  const entries = await readdir(target, { withFileTypes: true });
+  const output = [];
+  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name)).slice(0, FILE_BROWSER_LIMIT + 1)) {
+    if (output.length >= FILE_BROWSER_LIMIT) break;
+    if (entry.isSymbolicLink()) continue;
+    const hidden = entry.name.startsWith(".");
+    if (SENSITIVE_BROWSER_NAME.test(entry.name)) continue;
+    if (hidden && !includeHidden) continue;
+
+    const relativeEntry = safeRelative ? safeRelative + "/" + entry.name : entry.name;
+    const full = resolve(target, entry.name);
+    const info = await lstat(full);
+    if (info.isSymbolicLink()) continue;
+    const actual = await realpath(full);
+    if (!inside(root, actual)) continue;
+
+    if (info.isDirectory()) {
+      output.push({ name: entry.name, path: relativeEntry, kind: "directory", hidden, size: null });
+      continue;
+    }
+    if (!info.isFile()) continue;
+
+    const ext = extname(entry.name).toLowerCase();
+    let kind = "binary";
+    if (info.size > FILE_BROWSER_LARGE) kind = "large";
+    else if (TEXT_EXTENSIONS.has(ext) || ext === "") {
+      try {
+        const sample = await readFile(actual);
+        kind = looksBinary(sample.subarray(0, Math.min(sample.length, 8192))) ? "binary" : "text";
+      } catch {
+        kind = "binary";
+      }
+    } else if (SAFE_IMAGE_MIME.has(ext)) {
+      kind = "image";
+    }
+    output.push({
+      name: entry.name,
+      path: relativeEntry,
+      kind,
+      hidden,
+      size: info.size,
+      language: kind === "text" ? languageForPath(entry.name) : null,
+      previewable: kind === "text" || kind === "image"
+    });
+  }
+  return {
+    path: safeRelative,
+    parent: safeRelative.includes("/") ? safeRelative.slice(0, safeRelative.lastIndexOf("/")) : (safeRelative ? "" : null),
+    entries: output,
+    truncated: entries.length > FILE_BROWSER_LIMIT
   };
 }
 
