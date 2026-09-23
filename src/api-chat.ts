@@ -1,3 +1,5 @@
+import { getLanguage } from "./i18n";
+
 type ApiProvider = {
   id: string;
   name: string;
@@ -42,6 +44,13 @@ type ApiChatOptions = {
 export type ApiChatController = {
   refresh(): Promise<void>;
 };
+
+function apiLocale(en: string, ja: string, zhCN: string) {
+  const language = getLanguage();
+  if (language === "ja") return ja;
+  if (language === "zh-CN") return zhCN;
+  return en;
+}
 
 function operationId() {
   return globalThis.crypto?.randomUUID?.() ??
@@ -200,13 +209,14 @@ export function mountApiChat(
   }
 
   function reasoningLabel(mode: string) {
-    return ({
-      auto: "推論: Auto",
-      none: "推論: Off",
-      low: "推論: Low",
-      medium: "推論: Medium",
-      high: "推論: High"
-    } as Record<string, string>)[mode] || `推論: ${mode}`;
+    const label = ({
+      auto: "Auto",
+      none: "Off",
+      low: "Low",
+      medium: "Medium",
+      high: "High"
+    } as Record<string, string>)[mode] || mode;
+    return apiLocale("Reasoning: " + label, "推論: " + label, "推理: " + label);
   }
 
   function updateReasoning() {
@@ -244,10 +254,10 @@ export function mountApiChat(
     updateReasoning();
 
     status.textContent = !provider
-      ? "⚙ API Providerを追加してね"
+      ? apiLocale("⚙ Add an API provider", "⚙ API Providerを追加してね", "⚙ 添加 API Provider")
       : provider.ready
         ? `${provider.name} · Ready`
-        : `${provider.name} · APIキー未設定`;
+        : `${provider.name} · ${apiLocale("API key missing", "APIキー未設定", "未设置 API 密钥")}`;
     send.disabled = !provider?.ready || !modelSelect.value || sending || uploadingCount > 0;
     attachImage.disabled = sending || uploadingCount > 0;
   }
@@ -328,10 +338,10 @@ export function mountApiChat(
 
   async function uploadImage(file: File) {
     if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
-      throw new Error("JPEG / PNG / WebP / GIF のみ対応しています");
+      throw new Error(apiLocale("Only JPEG / PNG / WebP / GIF are supported", "JPEG / PNG / WebP / GIF のみ対応しています", "仅支持 JPEG / PNG / WebP / GIF"));
     }
     if (file.size <= 0 || file.size > 15 * 1024 * 1024) {
-      throw new Error("画像は15MB以下にしてください");
+      throw new Error(apiLocale("Images must be 15 MB or smaller", "画像は15MB以下にしてください", "图片必须不超过 15MB"));
     }
 
     const res = await fetch("/api/llm/attachments", {
@@ -358,7 +368,11 @@ export function mountApiChat(
 
     uploadingCount += list.length;
     updateModels();
-    status.textContent = `画像をLinuxへ保存中… 0/${list.length}`;
+    status.textContent = apiLocale(
+      `Saving images to Linux… 0/${list.length}`,
+      `画像をLinuxへ保存中… 0/${list.length}`,
+      `正在将图片保存到 Linux… 0/${list.length}`
+    );
 
     let completed = 0;
     try {
@@ -366,10 +380,14 @@ export function mountApiChat(
         const attachment = await uploadImage(file);
         pendingAttachments.push(attachment);
         completed += 1;
-        status.textContent = `画像をLinuxへ保存中… ${completed}/${list.length}`;
+        status.textContent = apiLocale(
+          `Saving images to Linux… ${completed}/${list.length}`,
+          `画像をLinuxへ保存中… ${completed}/${list.length}`,
+          `正在将图片保存到 Linux… ${completed}/${list.length}`
+        );
         renderPendingAttachments();
       }
-      status.textContent = `${currentProvider()?.name || "API"} · 画像準備OK`;
+      status.textContent = `${currentProvider()?.name || "API"} · ${apiLocale("image ready", "画像準備OK", "图片已准备")}`;
     } catch (error) {
       status.textContent = error instanceof Error ? error.message : String(error);
     } finally {
@@ -380,7 +398,7 @@ export function mountApiChat(
   }
 
   async function refresh() {
-    status.textContent = "接続先を読み込み中…";
+    status.textContent = apiLocale("Loading providers…", "接続先を読み込み中…", "正在加载 Provider…");
     try {
       const payload = await apiJson<{ providers?: ApiProvider[] }>("/api/llm/providers");
       providers = Array.isArray(payload?.providers) ? payload.providers : [];
@@ -799,7 +817,7 @@ export function mountApiChat(
       });
       if (generation !== conversationGeneration) return;
       const content = String(payload?.message?.content || "").trim();
-      if (!content) throw new Error("空の応答が返されました");
+      if (!content) throw new Error(apiLocale("The provider returned an empty response", "空の応答が返されました", "Provider 返回了空响应"));
       messages.push({ role: "assistant", content });
       trimHistory();
       renderMessages();
@@ -808,7 +826,7 @@ export function mountApiChat(
       if (generation !== conversationGeneration || controller.signal.aborted) return;
       messages.push({
         role: "assistant",
-        content: `エラー: ${error instanceof Error ? error.message : String(error)}`
+        content: `${apiLocale("Error", "エラー", "错误")}: ${error instanceof Error ? error.message : String(error)}`
       });
       trimHistory();
       renderMessages();
