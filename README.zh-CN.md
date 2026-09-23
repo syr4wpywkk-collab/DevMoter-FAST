@@ -1,99 +1,76 @@
 # DevMoter FAST
 
-**随时随地控制你的 AI 编程代理。📱**
+**把编程代理装进一个口袋大小的控制平面。📱**
 
-[English](./README.md) | [日本語](./README.ja.md) | **简体中文**
+[English](./README.md) · [日本語](./README.ja.md) · **简体中文**
 
-DevMoter FAST 是一个面向移动设备的 **Codex 与 OpenCode 远程界面**。编程代理运行在你的 Linux 主机上，你可以通过手机、平板或桌面浏览器使用同一个轻量 Web UI 进行控制。
+DevMoter FAST 是一个**开源、自托管、移动优先的编程代理控制平面**。Codex、OpenCode、仓库、凭据和工具继续运行在 Linux 主机上，手机、平板或浏览器只作为控制界面。
 
-**Codex + OpenCode · PWA · English / 日本語 / 简体中文 · Open source**
+它不只是聊天包装器：DevMoter 把代理会话、Projects、Git/GitHub、Reviewed Changes、API Chat、主机集成、自动化和安全边界放到同一个 UI 中。
 
 > [!IMPORTANT]
-> DevMoter FAST 是一个**实验性的非官方社区项目**。它与 OpenAI、OpenCode 或软件中提到的其他上游项目 / 服务提供方不存在隶属、赞助或官方认可关系。
+> **Alpha / active development.** 本项目是非官方社区项目，与 OpenAI、OpenCode、GitHub、Anthropic、Google、Tailscale 等服务提供方不存在隶属、赞助或认可关系。
 
 > [!WARNING]
-> DevMoter 面向**单用户私有主机 / 私有网络**场景。DevMoter 现在要求独立的 HTTP 登录，但它仍是私有部署的单用户访问边界，而不是面向公网多用户服务的授权系统。请不要把 DevMoter、OpenCode 或代理后端直接暴露到公网。
+> 当前面向**单用户私有主机 / 私有网络**。默认保持 localhost；远程使用时推荐 Tailscale Serve 等私有 HTTPS。不要把 DevMoter 或代理后端直接暴露到公网。
 
-## 开始使用
+## 30 秒架构
 
-- ⚡ **快速安装:** [fastinstall.MD](./fastinstall.MD)
-- 🔐 **安全策略与漏洞报告:** [SECURITY.md](./SECURITY.md)
-- 📜 **第三方许可与互操作说明:** [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)
-
-> [!CAUTION]
-> **Alpha 安全提示:** 安全审查仍在进行中，并且当前存在已知限制。请仅在可信的私有网络中使用。如果发现安全问题，请不要在公开 Issue 中发布利用细节、密钥或其他敏感信息，并按照 [SECURITY.md](./SECURITY.md) 进行报告。
-
-## 当前功能
-
-- OpenCode：会话、代理、模型选择、命令、skills、实时事件、推理 / 工具活动、权限请求、问题流程和中断
-- Codex：线程历史、新建 / 恢复 / fork、模型选择、推理强度、流式响应、中断、审批、附件、插件 / MCP 状态
-- Projects：注册 / 创建项目、选择工作目录、安全浏览与编辑 Markdown
-- GitHub：使用主机上的 `gh` 登录状态浏览并打开仓库
-- PWA：移动优先、可安装、在线 / 离线状态
-- UI 语言：English / 日本語 / 简体中文
-- 自动化测试、coverage、build 与 GitHub Actions CI
-
-DevMoter FAST 目前处于 **Alpha / active development**。上游协议变化、粗糙的 UI 边角以及版本相关兼容问题仍可能出现。
-
-## 快速启动
-
-### 环境要求
-
-Linux 环境需要：
-
-- Node.js 与 npm
-- OpenCode CLI
-- OpenAI Codex CLI
-- Python 3
-- `curl`
-
-如需使用 GitHub 仓库功能，请安装并使用你自己的 GitHub 账号登录 GitHub CLI：
-
-```bash
-gh auth login
-gh auth status
+```text
+Phone / tablet / PWA
+        │
+        ▼
+   DevMoter FAST
+ mobile control plane
+   │      │      │
+   ▼      ▼      ▼
+Codex  OpenCode  API Chat
+   └──────┼──────┘
+          ▼
+    Projects · Git
+          ▼
+      Linux host
 ```
 
-本地 Codex / OpenCode CLI 应按照各自上游工具支持的正式方式完成认证与配置。
+核心工作流：**在主机开始任务 → 离开电脑 → 从手机检查、审批、中断、切换上下文或继续工作。**
 
-### 上游账号与条款
+## 功能状态
 
-DevMoter FAST **不会提供、转售、共享或捆绑**任何上游账号、订阅、API key、登录 token 或其他凭据。
+UI 中出现一个入口并不等于功能已经完成。
 
-每位用户都应：
+| 功能 | 状态 | 当前范围 |
+| --- | --- | --- |
+| OpenCode | ✅ Shipped | sessions、agents、models/providers、modes、commands、skills、streaming、permissions/questions、interrupt |
+| Codex | ✅ Shipped | threads、resume/fork、动态模型发现、reasoning effort、streaming、approvals、attachments、plugins/MCP |
+| Projects | ✅ Shipped | 项目注册/切换、有边界的 Markdown 浏览与编辑 |
+| GitHub workspace | ✅ Shipped | host `gh` 仓库发现、managed clone/open、branch/fetch 安全检查 |
+| API Chat | 🧪 Experimental | 多 provider/model、reasoning mode、图片附件 |
+| Reviewed Changes / Tasks | 🧪 Experimental | proposal、hunk review、drift checks、apply/commit、worktree/PR |
+| Automation / Control plane | 🧪 Experimental | host registry、schedule/trigger、bounded automation |
+| Antigravity / Claude 集成 | 🧪 Experimental | 本地发现和部分 launch/remote handoff |
+| PWA / mobile UI | ✅ Shipped | responsive UI、backend switching、reconnect、installable shell |
+| Passkey / device controls | 🧪 Experimental | 辅助设备控制；不是公网多用户授权系统 |
+| Library | 🗺️ Planned | 尚未实现 |
+| Google / Microsoft / Apple 登录 | 🗺️ Planned | 尚未实现 |
 
-- 使用自己具有使用资格的账号
-- 使用上游工具支持的认证流程
-- 遵守适用的服务条款、年龄要求、使用政策与账号规则
-- 不共享或借用他人的账号凭据
+Codex 模型等上游能力由本机安装的 app-server 动态提供；DevMoter 不伪造不存在的模型可用性。
 
-### 1. Clone
+## 最快启动
+
+要求：Linux、Node.js 22 + npm、Git、Python 3、curl、OpenCode CLI、OpenAI Codex CLI。
 
 ```bash
 git clone https://github.com/syr4wpywkk-collab/DevMoter-FAST.git
 cd DevMoter-FAST
-```
-
-### 2. 启动
-
-```bash
+npm ci
 bash scripts/start-pocket.sh
 ```
 
-默认本地地址：
+打开 `http://127.0.0.1:8787`。
 
-```text
-DevMoter:  http://127.0.0.1:8787
-OpenCode:  http://127.0.0.1:49374
-```
-
-Codex app-server 由 DevMoter 通过本地 stdio 启动和通信，不直接作为公网 socket 暴露。
-
-DevMoter 默认用户名为 `devmoter`。启动脚本会把生成的密码以仅 owner 可读的权限保存到 `~/.config/opencode-pocket/devmoter-auth-password`，首次打开 DevMoter 时浏览器会要求登录。
+更多内容见 [Fast Install](./fastinstall.MD) 和 [Operations](./docs/operations.md)。
 
 ## 手机私有访问
-
-推荐保持 DevMoter 绑定 localhost，并使用 Tailscale Serve：
 
 ```bash
 tailscale serve reset
@@ -101,90 +78,74 @@ tailscale serve --bg http://127.0.0.1:8787
 tailscale serve status
 ```
 
-然后从同一 tailnet 中的设备打开显示的 HTTPS 地址。
+从同一 tailnet 的设备打开显示的 HTTPS URL。当前 Alpha 不推荐 Funnel 或任意公网 tunnel。
 
-> [!CAUTION]
-> 即使启用了 DevMoter HTTP 登录，当前 Alpha 版本仍不建议通过公共 tunnel 或 Tailscale Funnel 暴露服务。推荐保持 localhost，并通过 Tailscale Serve 等 HTTPS 私有网络入口访问。
+## 三个代理界面
 
-## 架构
+**Codex** — 通过 stdio/JSONL 与本地 Codex app-server 通信，支持 threads、streaming、approvals、interrupt、attachments、动态 models、model-advertised reasoning effort 和 plugins/MCP。RPC 经过服务器 allowlist。
 
-```text
-Phone / tablet / desktop browser / PWA
-                  │
-                  │ HTTPS via Tailscale Serve (optional)
-                  ▼
-          DevMoter FAST :8787
-            127.0.0.1 default
-              │       │
-              ▼       ▼
-          OpenCode   Codex
-            HTTP     stdio
-          :49374   app-server
-              │       │
-              └───┬───┘
-                  │
-             local projects
-```
+**OpenCode** — 通过 DevMoter 代理 localhost OpenCode。支持 sessions、agents、Plan/Ask/Build、provider/model、commands/skills、reasoning/tool activity、permissions/questions 和 interrupt。OpenCode 凭据不会返回浏览器。
 
-浏览器只与 DevMoter 通信。代理进程、本地路径以及后端凭据保留在主机侧。
+**API Chat** — Experimental 多 provider UI。保存后的 API key 不会重新返回 frontend。
+
+## Projects / Git / Reviewed Changes
+
+浏览器提交 Project ID，由服务器解析工作目录，而不是接受任意 cwd。项目限制在 home directory 内，敏感文件操作检查 traversal/symlink 边界，移动编辑器只允许有大小限制的 Markdown 写入。
+
+GitHub 集成使用主机的 `gh` session，clone 目标限制在 managed root。Reviewed Changes 以 Experimental 状态提供 proposal → hunk review → drift check → apply/commit → worktree/PR 流程。
 
 ## 安全模型
 
-当前主要安全边界包括：
+DevMoter 假设**已认证用户就是主机所有者**，不是多租户服务。
 
-- DevMoter 默认仅绑定 `127.0.0.1`
-- DevMoter 要求独立 HTTP 登录
-- 状态变更请求必须通过严格的同源 Origin 检查
-- API 响应使用 `no-store`，已配置的秘密会从错误响应中脱敏
-- OpenCode 仅绑定 localhost
-- Codex app-server 使用 stdio
-- 后端凭据保留在服务端
-- Codex RPC 使用 allowlist
-- 项目路径被限制在用户 home 目录内
-- 移动编辑器只能在已注册项目内写入 Markdown
-- GitHub token 不会返回给浏览器
+主要边界包括 localhost 默认绑定、DevMoter 自身认证、mutation exact-origin 检查、API/secret response `no-store`、server-side OpenCode credentials、Codex stdio + RPC allowlist、registered-project filesystem boundary、host-local attachments 和 host `gh` credentials。
 
-**重要限制：** DevMoter 登录是单用户访问边界。通过登录的客户端可以使用代理已经获得的权限。远程访问必须使用 HTTPS，推荐 localhost + Tailscale Serve；如果反向代理改变了外部 Origin，请显式设置 `DEVMOTER_PUBLIC_ORIGIN`。
+远程部署前请阅读 [SECURITY.md](./SECURITY.md) 与 [THREAT_MODEL.md](./THREAT_MODEL.md)。
 
-## 测试
+## 文档
 
-```bash
-npm test
-npm run test:coverage
-npm run build
-```
-
-GitHub Actions 也会执行自动检查。项目尽量让 backend safety、bridge 与兼容性测试在不需要真实 Codex / OpenCode 账号的情况下运行。
+- [Architecture](./ARCHITECTURE.md)
+- [Security](./SECURITY.md)
+- [Threat model](./THREAT_MODEL.md)
+- [Fast Install](./fastinstall.MD)
+- [Operations](./docs/operations.md)
+- [Developer workflows](./docs/developer-workflows.md)
+- [Remote-control security](./docs/remote-control-security.md)
+- [Release smoke](./RELEASE_SMOKE.md)
+- [Roadmap](./ROADMAP.md)
 
 ## 开发
 
 ```bash
 npm install
-npm run dev:server
+npm run typecheck
+npm run lint
+npm test
+npm run build
 ```
 
-另一个终端：
+CI 不能代替真实设备验证。发布前仍应执行 Chromebook/Crostini + iPhone 的 [Release Smoke](./RELEASE_SMOKE.md)。
 
-```bash
-npm run dev:web
-```
+## 项目原则
 
-当前 package version: **0.2.0**
-
-## 兼容性
-
-DevMoter 依赖 OpenCode 和 Codex app-server 的上游协议，因此上游版本变化可能导致兼容问题。提交 Issue 时，请提供 DevMoter commit、OpenCode / Codex 版本、浏览器 / PWA 环境以及准确错误信息。
-
-## 参与贡献
-
-欢迎 Issue、bug 报告、协议 / 兼容性信息、文档改进和 Pull Request。
-
-请勿在公开 Issue 中发布 API key、登录 token、Tailscale 凭据、生成的 OpenCode password、DevMoter login password 或其他秘密信息。
+1. **Host-local by default**
+2. **Mobile first**
+3. **代理操作必须有安全边界**
+4. **不把占位功能当成已完成能力**
+5. **优先与现有工具互操作**
 
 ## AI-assisted development
 
-本项目大量使用 AI 辅助实现、调试、协议研究、测试和迭代；产品方向、需求、真实设备测试、发布决策和维护由人类负责。
+项目大量使用 AI 辅助实现、调试、协议研究、测试与迭代；产品方向、需求、真实设备验证、发布决定和维护由人类负责。
 
-## 许可证
+## Contributing / Security
 
-DevMoter FAST 使用 **MIT License**。详见 [LICENSE](./LICENSE)。
+欢迎 Issue、兼容性报告、文档改进和 Pull Request。安全漏洞请按照 [SECURITY.md](./SECURITY.md) 私下报告，不要在公开 Issue 中发布利用细节、token、API key、密码或私有仓库内容。
+
+## License
+
+MIT License。详见 [LICENSE](./LICENSE)。
+
+---
+
+**DevMoter FAST — 让开发机继续运行，把控制平面带在身边。**
