@@ -2147,14 +2147,31 @@ export function mountCodexRemote(
   async function showGithubRepo(repo: GithubRepo) {
     modalBody.textContent = "ブランチを読み込み中…";
     try {
-      const result = await fetch(`/api/github/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/branches`, { cache: "no-store" }).then(response => response.json());
+      const branchResponse = await fetch(
+        `/api/github/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/branches`,
+        { cache: "no-store" }
+      );
+      const result = await branchResponse.json().catch(() => ({}));
+      if (!branchResponse.ok) throw new Error(result?.error || `HTTP ${branchResponse.status}`);
+      const refreshedDefaultBranch = String(
+        result?.defaultBranch ||
+        (result?.branches || []).find((branch: { default?: boolean }) => branch?.default)?.name ||
+        repo.defaultBranch ||
+        ""
+      );
       const form = document.createElement("form");
       form.className = "cx-project-form";
       const back = document.createElement("button"); back.type = "button"; back.className = "cx-back-button"; back.textContent = "‹ GitHub"; back.addEventListener("click", () => void showGithubProjects());
       const title = document.createElement("h3"); title.textContent = repo.fullName;
       const label = document.createElement("label"); label.innerHTML = "<span>Branch</span>";
       const select = document.createElement("select");
-      for (const branch of result.branches || []) { const option = document.createElement("option"); option.value = branch.name; option.textContent = branch.name; option.selected = branch.name === repo.defaultBranch; select.appendChild(option); }
+      for (const branch of result.branches || []) {
+        const option = document.createElement("option");
+        option.value = branch.name;
+        option.textContent = branch.name;
+        option.selected = branch.name === refreshedDefaultBranch;
+        select.appendChild(option);
+      }
       label.appendChild(select);
       const submit = document.createElement("button"); submit.type = "submit"; submit.className = "primary"; submit.textContent = repo.cloned ? "Fetch and open" : "Clone and open";
       const error = document.createElement("p"); error.className = "cx-form-error hidden";
