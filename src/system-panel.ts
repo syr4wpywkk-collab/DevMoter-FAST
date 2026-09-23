@@ -94,11 +94,28 @@ export function mountSystemPanel() {
   }
 
   async function render() {
-    const [diag, deviceData] = await Promise.all([diagnostics(), devices()]);
+    const [diag, deviceData, authStatus] = await Promise.all([
+      diagnostics(),
+      devices(),
+      request("/api/auth/status")
+    ]);
     const trusted = Boolean(token());
+    const identity = authStatus?.identity || null;
 
     body.innerHTML = `
       <div data-system-message class="devmoter-system-message" data-tone="info"></div>
+
+      <section class="devmoter-system-section">
+        <strong>Account</strong>
+        <div class="devmoter-diagnostics-grid">
+          <span>Signed in with</span><b>${escapeHtml(identity?.provider || "recovery")}</b>
+          <span>Identity</span><b>${escapeHtml(identity?.login || "DevMoter owner")}</b>
+          <span>GitHub login</span><b>${authStatus?.github?.bound ? "connected" : authStatus?.github?.configured ? "ready to connect" : "not configured"}</b>
+        </div>
+        <div class="devmoter-system-actions">
+          ${authStatus?.authenticated ? '<button type="button" data-sign-out>Sign out</button>' : ""}
+        </div>
+      </section>
 
       <section class="devmoter-system-section">
         <div class="devmoter-system-title"><strong>First-run checklist</strong><button type="button" data-dismiss-setup>Skip for now</button></div>
@@ -148,6 +165,15 @@ export function mountSystemPanel() {
         <a class="devmoter-system-link" href="/?demo=1">Open scripted demo</a>
       </section>
     `;
+
+    body.querySelector("[data-sign-out]")?.addEventListener("click", async () => {
+      try {
+        await request("/api/auth/logout", { method: "POST", body: "{}" });
+        location.replace("/login.html");
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : String(error), "error");
+      }
+    });
 
     body.querySelector("[data-dismiss-setup]")?.addEventListener("click", () => {
       localStorage.setItem(SETUP_DISMISSED_KEY, "1");
