@@ -478,3 +478,203 @@ Installer v2 is ready for an Alpha release when a supported Linux user can:
 The success metric is simple:
 
 > **The user may need to wait and approve official login/OS prompts, but should not need to understand the installation plumbing.**
+
+
+## 17. Verified adapter compatibility matrix (2026-09-23)
+
+This section is the Phase 0 research baseline. **Re-check upstream documentation immediately before implementation**, because installer/auth behavior is external and version-sensitive.
+
+| Adapter | Linux install baseline | Binary / detect | Interactive auth baseline | Auth verification | v1 implementation decision |
+| --- | --- | --- | --- | --- | --- |
+| Codex CLI | Official standalone installer; npm `@openai/codex` remains an alternative | `codex`, `codex --version` | Launch `codex` / supported ChatGPT sign-in; API/access-token modes exist but are not the default wizard path | Prefer a supported status/probe command or app-server/account probe; never parse credential files as the primary contract | **Implement** |
+| OpenCode | Official installer or current official package-manager route | `opencode`, `opencode --version` | Provider configuration is provider-specific; current UI/docs expose `/connect` and auth/provider flows | Use supported provider/auth listing where available plus a runtime probe | **Implement**, but do not pretend there is one universal OpenCode account |
+| Claude Code | Current official native/managed installer path; package-manager route only if still officially supported at implementation time | `claude`, version/doctor probe | Launch official Claude Code authentication flow; Claude.ai/Console/enterprise options are upstream-owned | `claude doctor` plus supported authenticated-session probe | **Implement** |
+| Antigravity CLI | Official Google installer currently installs `agy` under the user's local bin path | `agy` + version/help probe | Existing secure keyring can sign in silently; otherwise local browser Google sign-in; SSH can emit URL/code flow | Start/probe CLI and observe supported auth/session status without reading keyring secrets | **Implement** |
+| GitHub CLI | Official distro/package-manager instructions | `gh`, `gh --version` | `gh auth login`, browser flow by default | `gh auth status` | **Implement** |
+| Tailscale | Official distro repository/package instructions or official installer | `tailscale`, version + daemon/status | `tailscale up` emits/opens supported login flow when needed | `tailscale status` | **Implement** |
+
+### 17.1 Codex adapter notes
+
+Current official Codex distribution supports a standalone installer on Linux/macOS and also the `@openai/codex` npm package. Installer v2 should prefer a user-level, officially supported path that does not require DevMoter to manage npm global permissions when practical.
+
+The normal consumer setup path is **Sign in with ChatGPT**. DevMoter must initiate or surface the upstream flow rather than collect OpenAI credentials. API-key, enterprise access-token and workload-identity modes are advanced/existing-environment states: detect/preserve them, but do not silently replace them.
+
+The adapter must verify that the installed CLI supports the app-server behavior DevMoter requires, not merely that a `codex` binary exists.
+
+### 17.2 OpenCode adapter notes
+
+OpenCode is different from Codex/Claude: installation and provider authentication are separate concerns. A healthy OpenCode binary can legitimately have zero or multiple configured providers.
+
+Therefore model these independently:
+
+```text
+OpenCode installation: missing | ready | incompatible
+OpenCode providers: none | configured | needs_attention
+```
+
+The wizard may offer **Configure providers**, but v1 must not ingest provider API keys into a generic DevMoter setup form. Prefer upstream/provider-specific connection flows. Existing OpenCode auth/config must be preserved.
+
+OpenCode's published package/install surface has changed over time. The adapter implementation must pin its expected distribution identity in tests and re-check the canonical docs rather than accepting similarly named third-party packages.
+
+### 17.3 Claude Code adapter notes
+
+Claude Code's installation guidance has evolved from npm toward native/managed installation. Codex implementing this adapter must inspect the current official Anthropic documentation at implementation time and choose the currently recommended Linux path.
+
+Do not run `sudo npm install -g` as a fallback. Authentication belongs to Claude Code: DevMoter launches the supported flow and waits for a verifiable result.
+
+Enterprise Bedrock/Vertex configurations count as valid pre-existing states and must not be overwritten.
+
+### 17.4 Antigravity adapter notes
+
+The current official Antigravity CLI binary is `agy`. Google's installer targets a user-local binary path and authentication can reuse a secure OS keyring or open Google Sign-In; SSH/headless use can produce an authorization URL/code flow.
+
+DevMoter should use the **account-based upstream flow** for interactive setup. Gemini API-key mode is an advanced configuration and must not lead the wizard to ask users to paste a Gemini key into DevMoter.
+
+Because the official fast path is a remote installer script, implementation must decide whether to:
+1. invoke the verified official installer after plan review; or
+2. download/inspect/execute it as a separately auditable step.
+
+Whichever route is chosen, the plan UI must show the exact official origin and must not accept an installer URL from the browser.
+
+### 17.5 GitHub adapter notes
+
+`gh auth login` uses a browser-based flow by default. `gh auth status` is the verification contract. Existing authenticated hosts must be preserved.
+
+Do not request a PAT in the Setup Wizard. Environment-provided `GH_TOKEN`/enterprise credentials are valid pre-existing states and should be reported without revealing values.
+
+### 17.6 Tailscale adapter notes
+
+Current Linux guidance supports distribution packages and an official installer. Authentication is initiated with `tailscale up`. Tailscale Serve is private-tailnet sharing; Funnel is public exposure and is **not** part of the default setup.
+
+After authentication, Installer v2 should configure only the intended reverse proxy to DevMoter localhost and then read the actual Serve status/config. The QR code is generated from that verified URL.
+
+Do **not** begin setup by running `tailscale serve reset`: an existing user may already have unrelated Serve configuration. Installer v2 needs a conflict-aware plan and must avoid destroying existing routes.
+
+## 18. Installation-source policy
+
+Adapters classify install mechanisms:
+
+```text
+A — signed/native distro repository or package manager
+B — official standalone release/binary
+C — official remote bootstrap script
+D — third-party/community package
+```
+
+Preference is A/B where they are current and practical. C is allowed only when it is the upstream-supported route and the source is fixed server-side, disclosed in the plan, fetched over HTTPS, and covered by adapter tests. D is never an automatic default.
+
+The Setup Engine must not dynamically scrape documentation and execute whatever command it finds. Install commands are **reviewed code**, versioned with DevMoter.
+
+## 19. Auth challenge model
+
+Different CLIs expose authentication differently, so `beginAuth()` returns a typed challenge instead of a guessed URL:
+
+```ts
+type AuthChallenge =
+  | { kind: "already_authenticated" }
+  | { kind: "browser"; url?: string; instructions: string }
+  | { kind: "device_code"; url: string; userCode: string; expiresAt?: string }
+  | { kind: "terminal"; instructions: string }
+  | { kind: "external_config"; instructions: string }
+  | { kind: "unsupported"; reason: string };
+```
+
+Rules:
+- URLs must originate from a trusted adapter/upstream process, not arbitrary browser input.
+- Device codes are ephemeral and must not be written to persistent setup logs.
+- Never echo tokens or provider passwords.
+- If an upstream CLI requires a TTY, use a narrowly scoped PTY owned by the adapter; do not expose the general DevMoter terminal as the setup API.
+- Poll auth status with bounded timeout/backoff and allow user cancellation.
+
+## 20. Privilege broker design
+
+Linux package installation and Tailscale daemon setup may require root. The browser must never become a sudo-password terminal.
+
+v1 strategy:
+1. prefer user-level installers for coding-agent CLIs;
+2. separate privileged system packages from user-level tools;
+3. build an exact allowlisted privileged plan;
+4. execute via a local OS-mediated elevation path only after explicit confirmation;
+5. never persist elevation credentials.
+
+If safe noninteractive elevation is unavailable, pause and show a narrowly scoped command for the user to run in their local terminal, then automatically resume detection afterward.
+
+## 21. Codex implementation brief
+
+This section is intentionally written as a handoff contract for a coding agent implementing Installer v2.
+
+### Mission
+
+Implement Installer v2 incrementally without weakening existing DevMoter authentication, project, command-execution or network boundaries.
+
+### First PR: Phase 1 only
+
+**Do not start by installing software.** The first implementation PR must be read-only:
+
+1. create `server/setup/` with adapter registry, detector, normalized states and diagnostics;
+2. implement detection adapters for Codex, OpenCode, Claude Code, Antigravity (`agy`), GitHub CLI and Tailscale;
+3. expose an authenticated/local setup-status API returning only sanitized structured data;
+4. add a Setup Wizard page that renders machine/tool status;
+5. add fake-PATH integration tests for missing/installed/broken binaries;
+6. add tests proving browser input cannot choose executable paths or argv;
+7. update docs with the exact API/state contract.
+
+No package installation, sudo, login initiation, Tailscale mutation or arbitrary terminal execution in PR 1.
+
+### Required review checkpoints
+
+After each phase:
+- run typecheck, lint, tests and build;
+- perform security review of every new process spawn;
+- search for shell-string execution and reject it unless there is a documented unavoidable reason;
+- inspect responses/logs for secrets and local-path overexposure;
+- verify idempotency with a partially configured fake environment;
+- keep Experimental labels until real-device smoke passes.
+
+### Process-spawn rule
+
+Prefer:
+
+```js
+spawn(resolvedExecutable, validatedArgv, {
+  shell: false,
+  env: filteredEnvironment
+})
+```
+
+Never accept an executable, command string, install URL, cwd or arbitrary environment map directly from the setup browser request.
+
+### Expected PR sequence
+
+```text
+PR 1  detector + read-only Setup Wizard
+PR 2  install-plan engine + user-level adapters
+PR 3  privileged package broker / GitHub + Tailscale install
+PR 4  auth coordinator + provider handoffs
+PR 5  service + Tailscale Serve + verified QR handoff
+PR 6  failure injection, security hardening, real-device smoke/docs
+```
+
+Each PR should be independently reviewable and should reference the Installer v2 epic.
+
+### Stop conditions
+
+Codex must stop and open/record a blocking issue rather than guessing when:
+- official upstream installation/auth behavior cannot be verified;
+- a provider requires DevMoter to collect a password/token contrary to this design;
+- an operation would overwrite existing auth/config without explicit migration semantics;
+- safe privilege escalation cannot be implemented without broad shell access;
+- a Tailscale Serve change would destroy unrelated existing configuration;
+- a test requires weakening an existing security boundary.
+
+## 22. Research sources
+
+Phase 0 was checked against current official/upstream documentation on 2026-09-23:
+- OpenAI Codex repository/documentation for current CLI installation and ChatGPT sign-in behavior;
+- OpenCode canonical documentation for installation, provider connection and credential status;
+- Anthropic Claude Code setup documentation for installation/authentication;
+- Google Antigravity CLI installation/authentication documentation;
+- GitHub CLI manual for `gh auth login` / `gh auth status`;
+- Tailscale Linux installation, `tailscale up`, and Serve documentation.
+
+These are research inputs, **not runtime dependencies**. Adapter behavior remains versioned code and must fail closed when observed upstream behavior no longer matches its contract.
