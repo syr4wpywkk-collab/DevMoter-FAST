@@ -58,7 +58,7 @@ The Antigravity and Claude Code launchers are treated as privileged host integra
 
 - integration endpoints are behind the same DevMoter authentication boundary as the rest of the UI/API;
 - mutation routes additionally require exact same-origin browser requests;
-- integration status discovery is an authenticated same-origin POST because status discovery invokes local executables; it is not exposed as a side-effecting GET;
+- integration action/status routes use authenticated same-origin POST because those routes launch integrations or perform stateful discovery. The separate Installer v2 Phase 1 `GET /api/setup/status` is a read-only, localhost-only exception: it runs only fixed version/auth-status probes, discards raw output, and never starts a login or mutating action;
 - project working directories are resolved from the existing registered Project ID rather than accepting arbitrary paths from the browser;
 - launch commands use fixed executable/argument arrays and do not invoke a shell;
 - child processes deny secret-like environment variables by default; only narrowly scoped credentials for the matching provider may be inherited (for example Anthropic credentials for Claude Code, or Gemini/Google API keys for Antigravity);
@@ -106,3 +106,6 @@ A useful private report includes the affected commit/version, environment, secur
 ## Dependency and upstream security
 
 Keep Node.js, OpenCode, Codex CLI, GitHub CLI, Tailscale/reverse-proxy components, and the operating system updated according to their respective security guidance. Upstream vulnerabilities should also be reported to the relevant project when appropriate.
+# Installer v2 Phase 1 (Experimental)
+
+The read-only Setup status endpoint retains DevMoter's owner authentication, same-origin policy, and optional passkey gate, and additionally requires a loopback peer and loopback Host. It accepts no request body or command parameters. Tool processes use server-owned executable names and fixed argument arrays, absolute paths resolved from the server PATH, `spawn` with `shell: false`, a filtered environment, a home-directory working directory, and bounded output/time. Credential-like environment variables are never inherited by Setup probes: Codex and GitHub report when only stored CLI authentication was checked because their environment-backed credentials are deliberately excluded. Only parsed versions, normalized states, and fixed diagnostic messages are returned; executable paths and child output are not exposed. See `docs/INSTALLER_V2_DESIGN.md` for the Phase 1 contract. Installation, login initiation, sudo, and Tailscale configuration remain out of scope.

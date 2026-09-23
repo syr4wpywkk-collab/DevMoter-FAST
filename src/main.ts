@@ -15,6 +15,7 @@ import { mountSystemPanel } from "./system-panel";
 import { mountRemoteControlCenter } from "./remote-control";
 import { startWorkspaceControl } from "./workspace-control";
 import { mountSettingsPanel } from "./settings";
+import { mountSetupWizard } from "./setup-wizard";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const startupParams = new URLSearchParams(window.location.search);
@@ -33,6 +34,8 @@ if (requestedProject) {
 
 if (startupParams.get("demo") === "1") {
   mountDemo(app);
+} else if (startupParams.get("setup") === "1") {
+  mountSetupWizard(app);
 } else {
 app.innerHTML = `
   <div id="openCodeView" class="pocket-view"><div id="openCodeMount"></div></div>

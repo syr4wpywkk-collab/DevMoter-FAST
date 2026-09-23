@@ -93,3 +93,8 @@ On the target iPhone/mobile browser:
 - [ ] unsupported upstream response produces an explicit error rather than fake success
 
 Record commit, OS, Node, OpenCode, Codex, browser and device versions with release notes.
+# Installer v2 Phase 1 (Experimental)
+
+- Open `/?setup=1` from the local DevMoter URL and confirm the environment and six tool rows render; confirm Rescan can be repeated.
+- Confirm missing tools, unsupported auth status, and broken version checks are shown without raw command output or executable paths.
+- Confirm no Install or Connect action is active. This check does not qualify Installer v2 for release; clean-device, Crostini, authentication, service, and Tailscale/phone handoff checks belong to later phases.
