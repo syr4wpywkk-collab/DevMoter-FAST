@@ -1,4 +1,10 @@
 export type SubagentState = "starting" | "running" | "waiting_for_approval" | "completed" | "failed" | "cancelled";
+export type SubagentCapabilityGroup = "read" | "diagnostics" | "tests" | "git" | "files" | "commands" | "network";
+export type SubagentCapabilityPolicy = {
+  allow: SubagentCapabilityGroup[];
+  deny: SubagentCapabilityGroup[];
+  mutationPolicy: "approval-required" | "read-only-until-explicit-transition";
+};
 export type SubagentRun = {
   id: string;
   kind: string;
@@ -15,6 +21,7 @@ export type SubagentRun = {
   lineage: string[];
   depth: number;
   budget: { tokenLimit: number; turnLimit: number; tokensRemaining: number; turnsRemaining: number };
+  capabilityPolicy: SubagentCapabilityPolicy;
   state: SubagentState;
   sessionId: string | null;
   turnId: string | null;
@@ -54,6 +61,7 @@ export class SubagentRuntime {
     lineage?: string[];
     tokenBudget?: number;
     turnBudget?: number;
+    capabilityPolicy?: Partial<SubagentCapabilityPolicy>;
   }): Promise<SubagentRun | null>;
   listFleets(): Array<{ id: string; concurrency: number; state: string; queued: number; runIds: string[]; errors: Array<{ runId: string; error: string }>; createdAt: number; updatedAt: number }>;
   getFleet(id: string): { id: string; concurrency: number; state: string; queued: number; runIds: string[]; errors: Array<{ runId: string; error: string }>; createdAt: number; updatedAt: number } | null;
@@ -67,6 +75,7 @@ export class SubagentRuntime {
     share?: { task?: boolean; output?: boolean; error?: boolean };
     tokenBudget?: number;
     turnBudget?: number;
+    capabilityPolicy?: Partial<SubagentCapabilityPolicy>;
   }): Promise<SubagentRun | null>;
   update(id: string, patch?: Record<string, unknown>): SubagentRun;
   cancel(id: string): Promise<SubagentRun>;
@@ -77,3 +86,7 @@ export function createCodexSubagentAdapter(options?: {
   fetchImpl?: typeof fetch;
   eventSourceFactory?: (url: string) => EventSource;
 }): SubagentAdapter;
+
+export const CAPABILITY_GROUPS: readonly SubagentCapabilityGroup[];
+export function normalizeCapabilityPolicy(input?: Partial<SubagentCapabilityPolicy> | null): SubagentCapabilityPolicy;
+export function intersectCapabilityPolicies(parent: Partial<SubagentCapabilityPolicy>, child?: Partial<SubagentCapabilityPolicy> | null): SubagentCapabilityPolicy;
