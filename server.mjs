@@ -2055,7 +2055,9 @@ const server = http.createServer(async (req, res) => {
         req.method !== "HEAD" &&
         !claimOperation(req, res, `${req.method}:${url.pathname}`)
       ) return;
-      if (await handleWorkspaceControlRequest(req, res, url, workspaceControl)) return;
+      if (await handleWorkspaceControlRequest(req, res, url, workspaceControl, {
+        authenticateDevice: request => systemFeatures.authenticate(request)
+      })) return;
     }
 
     if (await controlRoute(req, res, url)) return;

@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,10 +9,29 @@ import {
   createLockManager,
   createPolicyEngine,
   createWorkspaceControl,
+  handleWorkspaceControlRequest,
   parseSymbols,
   structuralSearch,
   workspaceControlInternals
 } from "../server/workspace-control.mjs";
+
+function responseRecorder() {
+  return {
+    status: 0,
+    headers: {},
+    writeHead(status, headers) { this.status = status; this.headers = headers; },
+    end(body) { this.body = body; }
+  };
+}
+
+function request(method = "GET", body = "") {
+  const req = new EventEmitter();
+  req.method = method;
+  req[Symbol.asyncIterator] = async function* () {
+    if (body) yield Buffer.from(body);
+  };
+  return req;
+}
 
 test("policy engine is deterministic and deny wins", () => {
   const policy = createPolicyEngine([
@@ -155,4 +175,50 @@ test("workspace settings fail closed when persisted state is malformed", async t
     () => control.getOverview(),
     /unreadable or malformed/
   );
+});
+
+test("workspace control denies unpaired requests before reading or mutating state", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-workspace-device-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  let resolved = 0;
+  const control = createWorkspaceControl({
+    stateDir: dir,
+    resolveProject: async id => { resolved += 1; return { id, name: id, path: dir }; }
+  });
+  const res = responseRecorder();
+  const handled = await handleWorkspaceControlRequest(
+    request("POST", JSON.stringify({ rules: [{ effect: "allow" }] })),
+    res,
+    new URL("http://localhost/api/workspace-control/policy"),
+    control,
+    { authenticateDevice: async () => null }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(res.status, 403);
+  assert.equal(JSON.parse(res.body).error, "Trusted device required");
+  assert.equal(resolved, 0);
+  await assert.rejects(readFile(join(dir, "workspace-control.json")), { code: "ENOENT" });
+});
+
+test("workspace control accepts an active trusted device and preserves policy API behavior", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-workspace-device-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const control = createWorkspaceControl({
+    stateDir: dir,
+    resolveProject: async id => ({ id, name: id, path: dir })
+  });
+  const res = responseRecorder();
+  await handleWorkspaceControlRequest(
+    request("PUT", JSON.stringify({ rules: [{ id: "deny-write", action: "write", effect: "deny" }] })),
+    res,
+    new URL("http://localhost/api/workspace-control/policy"),
+    control,
+    { authenticateDevice: async () => ({ id: "paired-device-1" }) }
+  );
+
+  assert.equal(res.status, 200);
+  assert.deepEqual(JSON.parse(res.body), {
+    rules: [{ id: "deny-write", action: "write", effect: "deny" }]
+  });
 });

@@ -138,7 +138,7 @@ The checks are independent. Authentication establishes who is calling; a session
 | Check | Existing coverage | vNext requirement |
 |---|---|---|
 | AUTH | Basic auth / external owner session at HTTP dispatch; optional passkey gate | Keep mandatory on all control APIs, including streams and future WebSocket upgrades. |
-| DEVICE/TRUST | Terminal HTTP requires an active paired-device token; sessions bind to a device ID; revocation closes that device's sockets and managed PTYs | Apply the same device/resource binding to Secrets, Browser, and Host control APIs; reduce script-readable device-token exposure. |
+| DEVICE/TRUST | Terminal HTTP requires an active paired-device token; sessions bind to a device ID; revocation closes that device's sockets and managed PTYs. Workspace-control routes also require an active paired-device token. | Apply resource binding to Secrets, Browser, and Host control APIs; reduce script-readable device-token exposure. |
 | ORIGIN | Exact same-origin mutation checks; WebSocket ticket carries the validated Origin and is single-use | Keep handshake and reconnect checks covered as the terminal protocol evolves. |
 | SESSION | Terminal ID plus 256-bit capability; persistent capability hash is rotated on explicit claim and TTL/revocation remove access | Extend revocation to provider/agent sessions; add fresh authentication for sensitive session transfer. |
 | CAPABILITY | Narrow existing Codex RPC allowlist, agent modes, workspace policy; terminal has explicit entry header | Define operation-level permissions for the new Host protocol; unknown action means deny. |
