@@ -1,6 +1,7 @@
 import http from "node:http";
+import { accessSync, constants as fsConstants } from "node:fs";
 import { mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
-import { basename, dirname, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
+import { basename, delimiter, dirname, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { CodexBridge } from "./server/codex-bridge.mjs";
@@ -132,10 +133,24 @@ const projectIndex = createProjectIndex({
   stateDir: PROJECT_INDEX_DIR,
   resolveProject: getProjectById
 });
+function executableAvailable(name) {
+  if (process.platform === "win32") return false;
+  for (const directory of String(process.env.PATH || "").split(delimiter).filter(Boolean)) {
+    try {
+      accessSync(join(directory, name), fsConstants.X_OK);
+      return true;
+    } catch {
+      // Keep optional host tools from blocking server startup.
+    }
+  }
+  return false;
+}
+const tmuxAvailable = executableAvailable("tmux");
 const terminal = createTerminalManager({
   resolveProject: getProjectById,
   authPassword: DEVMOTER_AUTH_PASSWORD,
-  shell: process.env.SHELL
+  shell: process.env.SHELL,
+  sessionStoreFile: tmuxAvailable ? join(PROJECT_CONFIG_DIR, "terminal-sessions.json") : undefined
 });
 const hostRuntime = createHostAdapter({
   platform: process.platform,
@@ -143,7 +158,10 @@ const hostRuntime = createHostAdapter({
   env: process.env,
   capabilities: {
       terminal: terminal.configured
-      ? { state: "available", features: ["pty", "ndjson-stream", "websocket", "resize", "project-cwd"] }
+      ? {
+          state: "available",
+          features: ["pty", "ndjson-stream", "websocket", "resize", "project-cwd", ...(tmuxAvailable ? ["named-persistent-sessions"] : [])]
+        }
       : { state: "unavailable", reason: "terminal_auth_not_configured" },
     files: { state: "available", features: ["registered-projects", "markdown-edit"] },
     git: { state: "available", features: ["status", "diff", "reviewed-changes"] },
@@ -2432,9 +2450,21 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/terminal/sessions") {
+      await terminal.listSessions(req, res);
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/terminal/sessions") {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
       await terminal.create(req, res);
+      return;
+    }
+
+    const terminalClaimMatch = url.pathname.match(/^\/api\/terminal\/sessions\/([a-f0-9]{36})\/claim$/);
+    if (req.method === "POST" && terminalClaimMatch) {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await terminal.claimSession(req, res, terminalClaimMatch[1]);
       return;
     }
 

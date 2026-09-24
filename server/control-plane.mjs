@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { randomBytes, randomUUID, createHmac, timingSafeEqual } from "node:crypto";
 
@@ -174,6 +174,7 @@ export class ControlPlane {
     this.statusCache = new Map();
     this.activeTriggers = new Map();
     this.activeAutopilots = new Map();
+    this.saveQueue = Promise.resolve();
     this.timer = null;
   }
 
@@ -215,10 +216,20 @@ export class ControlPlane {
 
   async save() {
     if (!this.state) return;
-    await mkdir(this.configDir, { recursive: true, mode: 0o700 });
-    const temp = this.file + "." + process.pid + "." + randomUUID() + ".tmp";
-    await writeFile(temp, JSON.stringify(this.state, null, 2), { mode: 0o600 });
-    await rename(temp, this.file);
+    const snapshot = JSON.stringify(this.state, null, 2);
+    const write = this.saveQueue.catch(() => {}).then(async () => {
+      await mkdir(this.configDir, { recursive: true, mode: 0o700 });
+      const temp = this.file + "." + process.pid + "." + randomUUID() + ".tmp";
+      try {
+        await writeFile(temp, snapshot, { mode: 0o600 });
+        await rename(temp, this.file);
+      } catch (error) {
+        await unlink(temp).catch(() => {});
+        throw error;
+      }
+    });
+    this.saveQueue = write;
+    await write;
   }
 
   async listHosts(localAddress = null) {
