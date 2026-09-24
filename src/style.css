@@ -6254,6 +6254,10 @@ textarea:focus-visible,
   gap: 7px;
 }
 
+.api-provider-form [hidden] {
+  display: none !important;
+}
+
 .api-provider-form label > span {
   font-size: 12px;
   font-weight: 700;

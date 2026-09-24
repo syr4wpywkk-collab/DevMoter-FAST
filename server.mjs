@@ -29,7 +29,7 @@ import { assertAuthPassword, credentialsMatch, parseBasicAuthorization, requireS
 import { ExternalAuth } from "./server/external-auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
 import { antigravityRemoteAction, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
-import { MULTI_API_PRESETS, createMultiApiStore, publicMultiApiProviders, runMultiApiChat, testMultiApiProvider } from "./server/multi-api.mjs";
+import { MULTI_API_PRESETS, assertVaultProviderDestination, createMultiApiStore, publicMultiApiProviders, runMultiApiChat, testMultiApiProvider } from "./server/multi-api.mjs";
 import { createMultiApiAttachmentStore } from "./server/multi-api-attachments.mjs";
 import { createSecretStore } from "./server/secret-store.mjs";
 import { createSecretVaultApi } from "./server/secret-vault-api.mjs";
@@ -1878,6 +1878,44 @@ function multiApiErrorStatus(error) {
       : message === "Request body too large" ? 413 : 400;
 }
 
+function parseSecretProvider(reference) {
+  const match = String(reference || "").match(/^secret:\/\/([A-Za-z0-9][A-Za-z0-9._-]{0,79})\/[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/);
+  if (!match) throw Object.assign(new Error("Vault Secret reference is invalid"), { status: 400 });
+  return match[1];
+}
+
+async function requireVaultProviderDevice(req) {
+  const device = await systemFeatures.authenticate(req);
+  if (!device?.id) throw Object.assign(new Error("Trusted device required"), { status: 401 });
+  return device;
+}
+
+async function authorizeVaultProviderReference(req, { secretRef, projectId, presetId = "custom", baseUrl, protocol } = {}, { resolveValue = false } = {}) {
+  await requireVaultProviderDevice(req);
+  if (typeof projectId !== "string" || !projectId) {
+    throw Object.assign(new Error("A registered project is required for a Vault Secret"), { status: 400 });
+  }
+  let project;
+  try {
+    project = await getProjectById(projectId);
+  } catch {
+    throw Object.assign(new Error("Vault Secret project is unavailable"), { status: 400 });
+  }
+  const secretProvider = parseSecretProvider(secretRef);
+  try {
+    assertVaultProviderDestination({ presetId, baseUrl, protocol, secretProvider });
+  } catch (error) {
+    throw Object.assign(error, { status: 403 });
+  }
+  const metadata = (await secretStore.list()).find(item => item.reference === secretRef);
+  if (!metadata || !metadata.projectIds.includes(project.id)) {
+    throw Object.assign(new Error("Vault Secret is unavailable for this project"), { status: 403 });
+  }
+  if (!resolveValue) return { project, metadata };
+  const value = await secretStore.resolve(secretRef, { projectId: project.id, provider: secretProvider });
+  return { project, metadata, value };
+}
+
 async function multiApiProviderList(res) {
   const providers = await multiApiStore.listResolved();
   json(res, 200, { providers: publicMultiApiProviders(providers) });
@@ -1886,6 +1924,17 @@ async function multiApiProviderList(res) {
 async function multiApiProviderSave(req, res) {
   try {
     const payload = await readJson(req, 256 * 1024);
+    const currentProviders = await multiApiStore.listResolved();
+    const existing = currentProviders.find(item => item.id === payload.id);
+    if (payload.secretRef || payload.credentialMode === "vault" || existing?.secretRef) {
+      await authorizeVaultProviderReference(req, {
+        secretRef: payload.secretRef || existing?.secretRef,
+        projectId: payload.projectId || existing?.projectId,
+        presetId: payload.presetId || existing?.presetId,
+        baseUrl: payload.baseUrl || existing?.baseUrl,
+        protocol: payload.protocol || existing?.protocol
+      });
+    }
     const provider = await multiApiStore.upsert(payload);
     json(res, 200, { provider });
   } catch (error) {
@@ -1893,8 +1942,12 @@ async function multiApiProviderSave(req, res) {
   }
 }
 
-async function multiApiProviderDelete(providerId, res) {
+async function multiApiProviderDelete(req, providerId, res) {
   try {
+    const existing = (await multiApiStore.listResolved()).find(item => item.id === providerId);
+    if (existing?.secretRef) {
+      await requireVaultProviderDevice(req);
+    }
     json(res, 200, await multiApiStore.remove(providerId));
   } catch (error) {
     json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
@@ -1902,11 +1955,23 @@ async function multiApiProviderDelete(providerId, res) {
 }
 
 async function multiApiProviderTest(req, res) {
+  let vaultSecretValue = "";
   try {
     const payload = await readJson(req, 256 * 1024);
+    if (payload.secretRef) {
+      const resolved = await authorizeVaultProviderReference(req, payload, { resolveValue: true });
+      vaultSecretValue = resolved.value;
+      const result = await testMultiApiProvider({ ...payload, apiKey: vaultSecretValue, secretRef: "", projectId: "" });
+      json(res, 200, {
+        ...result,
+        models: result.models.map(model => redactSecretsInText(model, [vaultSecretValue]))
+      });
+      return;
+    }
     json(res, 200, await testMultiApiProvider(payload));
   } catch (error) {
-    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+    const message = error instanceof Error ? error.message : String(error);
+    json(res, multiApiErrorStatus(error), { error: redactSecretsInText(message, [vaultSecretValue]) });
   }
 }
 
@@ -1934,13 +1999,34 @@ async function multiApiAttachmentDelete(attachmentId, res) {
 }
 
 async function multiApiChat(req, res) {
+  let vaultSecretValue = "";
   try {
     const payload = await readJson(req, 1024 * 1024);
-    const providers = await multiApiStore.listResolved();
+    let providers = await multiApiStore.listResolved();
+    const selectedProvider = providers.find(item => item.id === String(payload?.providerId || ""));
+    if (selectedProvider?.secretRef) {
+      if (!payload.projectId || payload.projectId !== selectedProvider.projectId) {
+        throw Object.assign(new Error("Select the project bound to this Vault-backed provider"), { status: 403 });
+      }
+      const resolved = await authorizeVaultProviderReference(req, {
+        secretRef: selectedProvider.secretRef,
+        projectId: payload.projectId,
+        presetId: selectedProvider.presetId,
+        baseUrl: selectedProvider.baseUrl,
+        protocol: selectedProvider.protocol
+      }, { resolveValue: true });
+      vaultSecretValue = resolved.value;
+      providers = providers.map(provider => provider.id === selectedProvider.id
+        ? { ...provider, apiKey: vaultSecretValue, secretRef: "" }
+        : provider);
+    }
     const result = await runMultiApiChat(providers, payload, fetch, { attachmentStore: multiApiAttachments });
-    json(res, 200, result);
+    json(res, 200, vaultSecretValue
+      ? { ...result, message: { ...result.message, content: redactSecretsInText(result.message.content, [vaultSecretValue]) } }
+      : result);
   } catch (error) {
-    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+    const message = error instanceof Error ? error.message : String(error);
+    json(res, multiApiErrorStatus(error), { error: redactSecretsInText(message, [vaultSecretValue]) });
   }
 }
 
@@ -2067,7 +2153,7 @@ const server = http.createServer(async (req, res) => {
     const llmProviderMatch = url.pathname.match(/^\/api\/llm\/providers\/([^/]+)$/);
     if (req.method === "DELETE" && llmProviderMatch) {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
-      await multiApiProviderDelete(decodeURIComponent(llmProviderMatch[1]), res);
+      await multiApiProviderDelete(req, decodeURIComponent(llmProviderMatch[1]), res);
       return;
     }
 

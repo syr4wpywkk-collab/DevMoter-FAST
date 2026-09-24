@@ -7,6 +7,9 @@ type ApiProvider = {
   protocol: "openai-compatible" | "anthropic";
   baseUrl: string;
   ready: boolean;
+  secretRef?: string;
+  projectId?: string;
+  credentialSource?: "api-key" | "vault";
   models: string[];
   reasoningModes?: string[];
   source?: "file" | "env";
@@ -35,6 +38,8 @@ type ChatMessage = {
 };
 
 const API_CHAT_HISTORY_LIMIT = 100;
+const DEVICE_TOKEN_KEY = "devmoter-device-token";
+const PROJECT_KEY = "opencode-pocket-project";
 
 type ApiChatOptions = {
   onCodex?: () => void;
@@ -60,14 +65,15 @@ function operationId() {
 async function apiJson<T = any>(path: string, init: RequestInit = {}): Promise<T> {
   const method = String(init.method || "GET").toUpperCase();
   const mutating = method !== "GET" && method !== "HEAD";
+  const headers = new Headers(init.headers || {});
+  if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
+  if (mutating && !headers.has("x-pocket-operation-id")) headers.set("x-pocket-operation-id", operationId());
+  const deviceToken = localStorage.getItem(DEVICE_TOKEN_KEY);
+  if (deviceToken) headers.set("x-devmoter-device-token", deviceToken);
   const res = await fetch(path, {
     ...init,
     cache: method === "GET" ? "no-store" : undefined,
-    headers: {
-      ...(init.body ? { "content-type": "application/json" } : {}),
-      ...(mutating ? { "x-pocket-operation-id": operationId() } : {}),
-      ...(init.headers || {})
-    }
+    headers
   });
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
@@ -463,6 +469,7 @@ export function mountApiChat(
     const meta = document.createElement("small");
     const source = provider.source === "env" ? "環境変数 · 読み取り専用" : "DevMoter設定";
     meta.textContent = `${source} · ${provider.models.length} models · ${provider.ready ? "Key saved" : "No key"}`;
+    if (provider.secretRef) meta.textContent = `${source} · Host Vault · ${provider.models.length} models`;
     copy.append(title, meta);
 
     const protocol = document.createElement("span");
@@ -520,6 +527,20 @@ export function mountApiChat(
   async function showProviderForm(provider?: ApiProvider) {
     await loadPresets();
     settingsBody.replaceChildren();
+    const activeProjectId = localStorage.getItem(PROJECT_KEY) || "";
+    const bindingProjectId = provider?.projectId || activeProjectId;
+    let vaultSecrets: Array<{ reference: string; provider: string; name: string; purpose?: string; projectIds: string[] }> = [];
+    if (localStorage.getItem(DEVICE_TOKEN_KEY) && bindingProjectId) {
+      try {
+        const vaultStatus = await apiJson<{ unlocked?: boolean }>("/api/secrets/status");
+        if (vaultStatus.unlocked) {
+          const vaultPayload = await apiJson<{ secrets?: typeof vaultSecrets }>("/api/secrets");
+          vaultSecrets = (vaultPayload.secrets || []).filter(secret => secret.projectIds?.includes(bindingProjectId));
+        }
+      } catch {
+        // The form remains usable with a manually entered API key when Vault is locked or unavailable.
+      }
+    }
 
     const back = document.createElement("button");
     back.type = "button";
@@ -547,6 +568,21 @@ export function mountApiChat(
       </label>
 
       <label>
+        <span>認証情報の保存先</span>
+        <select data-field="credentialMode">
+          <option value="api-key">API Key（既存方式）</option>
+          <option value="vault" ${provider?.secretRef ? "selected" : ""} ${bindingProjectId && (vaultSecrets.length || provider?.secretRef) ? "" : "disabled"}>Host API Vault</option>
+        </select>
+        <small data-credential-hint></small>
+      </label>
+
+      <label data-vault-reference-row hidden>
+        <span>Vault Secret（選択Projectに紐付いたもの）</span>
+        <select data-field="secretRef"></select>
+        <small data-vault-status></small>
+      </label>
+
+      <label data-api-key-row>
         <span>API Key</span>
         <input data-field="apiKey" type="password" autocomplete="new-password" />
         <small data-key-hint></small>
@@ -588,6 +624,12 @@ export function mountApiChat(
     const nameInput = providerForm.querySelector<HTMLInputElement>('[data-field="name"]')!;
     const protocolSelect = providerForm.querySelector<HTMLSelectElement>('[data-field="protocol"]')!;
     const baseUrlInput = providerForm.querySelector<HTMLInputElement>('[data-field="baseUrl"]')!;
+    const credentialModeSelect = providerForm.querySelector<HTMLSelectElement>('[data-field="credentialMode"]')!;
+    const secretRefSelect = providerForm.querySelector<HTMLSelectElement>('[data-field="secretRef"]')!;
+    const vaultReferenceRow = providerForm.querySelector<HTMLElement>("[data-vault-reference-row]")!;
+    const apiKeyRow = providerForm.querySelector<HTMLElement>("[data-api-key-row]")!;
+    const credentialHint = providerForm.querySelector<HTMLElement>("[data-credential-hint]")!;
+    const vaultStatus = providerForm.querySelector<HTMLElement>("[data-vault-status]")!;
     const apiKeyInput = providerForm.querySelector<HTMLInputElement>('[data-field="apiKey"]')!;
     const modelsInput = providerForm.querySelector<HTMLTextAreaElement>('[data-field="models"]')!;
     const advanced = providerForm.querySelector<HTMLDetailsElement>("[data-advanced]")!;
@@ -633,6 +675,44 @@ export function mountApiChat(
       }
       advanced.open = preset.id === "custom";
       syncPresetButtons();
+      refreshVaultChoices();
+    }
+
+    function refreshVaultChoices() {
+      const selectedReference = secretRefSelect.value || provider?.secretRef || "";
+      secretRefSelect.replaceChildren();
+      const matching = vaultSecrets.filter(secret =>
+        secret.provider === presetSelect.value && presetSelect.value !== "custom"
+      );
+      for (const secret of matching) {
+        const option = document.createElement("option");
+        option.value = secret.reference;
+        option.textContent = `${secret.provider}/${secret.name}${secret.purpose ? ` · ${secret.purpose}` : ""}`;
+        secretRefSelect.appendChild(option);
+      }
+      if (provider?.secretRef && !matching.some(secret => secret.reference === provider.secretRef)) {
+        const option = document.createElement("option");
+        option.value = provider.secretRef;
+        option.textContent = provider.secretRef;
+        secretRefSelect.appendChild(option);
+      }
+      if (Array.from(secretRefSelect.options).some(option => option.value === selectedReference)) {
+        secretRefSelect.value = selectedReference;
+      }
+      const canUseVault = Boolean(bindingProjectId && (secretRefSelect.options.length || provider?.secretRef));
+      for (const option of credentialModeSelect.options) {
+        if (option.value === "vault") option.disabled = !canUseVault;
+      }
+      if (credentialModeSelect.value === "vault" && !canUseVault) credentialModeSelect.value = "api-key";
+      vaultReferenceRow.hidden = credentialModeSelect.value !== "vault";
+      apiKeyRow.hidden = credentialModeSelect.value === "vault";
+      apiKeyInput.required = credentialModeSelect.value === "api-key" && (!provider?.ready || provider.credentialSource === "vault");
+      credentialHint.textContent = bindingProjectId
+        ? `Project binding: ${bindingProjectId}`
+        : "Vaultを使うにはProjectを選択してね。";
+      vaultStatus.textContent = vaultSecrets.length
+        ? `${matching.length}件のSecretがこのProviderで使えるよ。Vault設定はHost側で検証される。`
+        : "Vaultがロック中、端末が未登録、またはこのProjectに紐付くSecretがありません。Settings → API Vaultを確認してね。";
     }
 
     if (provider) {
@@ -643,11 +723,12 @@ export function mountApiChat(
       baseUrlInput.value = provider.baseUrl;
       modelsInput.value = provider.models.join("\n");
       apiKeyInput.placeholder = provider.ready
-        ? "保存済み（変更するときだけ入力）"
+        ? provider.secretRef ? "Vaultで管理中" : "保存済み（変更するときだけ入力）"
         : "APIキーを貼り付け";
       keyHint.textContent = provider.ready
-        ? "🔒 保存済みキーは表示しません。変更するときだけ新しいキーを入力。"
+        ? provider.secretRef ? "🔒 Secret値はVaultから読まず、API Chat送信時だけHostで解決します。" : "🔒 保存済みキーは表示しません。変更するときだけ新しいキーを入力。"
         : "🔒 キーはDevMoterサーバー側だけに保存します。";
+      credentialModeSelect.value = provider.secretRef ? "vault" : "api-key";
       advanced.open = provider.presetId === "custom";
       syncPresetButtons();
     } else {
@@ -659,6 +740,8 @@ export function mountApiChat(
     }
 
     presetSelect.addEventListener("change", applyPreset);
+    credentialModeSelect.addEventListener("change", refreshVaultChoices);
+    refreshVaultChoices();
     syncPresetButtons();
 
     function formPayload(modelsOverride?: string[]) {
@@ -668,7 +751,10 @@ export function mountApiChat(
         name: nameInput.value.trim(),
         protocol: protocolSelect.value,
         baseUrl: baseUrlInput.value.trim(),
-        apiKey: apiKeyInput.value.trim(),
+        credentialMode: credentialModeSelect.value,
+        apiKey: credentialModeSelect.value === "api-key" ? apiKeyInput.value.trim() : "",
+        secretRef: credentialModeSelect.value === "vault" ? secretRefSelect.value : "",
+        projectId: credentialModeSelect.value === "vault" ? bindingProjectId : "",
         models: modelsOverride ?? modelsInput.value
           .split(/\n|,/)
           .map(item => item.trim())
@@ -679,8 +765,10 @@ export function mountApiChat(
     providerForm.addEventListener("submit", async event => {
       event.preventDefault();
       const enteredKey = apiKeyInput.value.trim();
+      const usesVault = credentialModeSelect.value === "vault";
+      const selectedSecretRef = secretRefSelect.value;
 
-      if (!provider && !enteredKey) {
+      if (!usesVault && !provider && !enteredKey) {
         formMessage.textContent = "APIキーを貼ってね";
         formMessage.dataset.state = "error";
         apiKeyInput.focus();
@@ -691,12 +779,17 @@ export function mountApiChat(
       formMessage.dataset.state = "loading";
 
       try {
+        if (usesVault && !selectedSecretRef) {
+          formMessage.textContent = "このProjectで使えるVault Secretを選んでね。";
+          formMessage.dataset.state = "error";
+          return;
+        }
         let models = modelsInput.value
           .split(/\n|,/)
           .map(item => item.trim())
           .filter(Boolean);
 
-        if (enteredKey) {
+        if (enteredKey || usesVault) {
           formMessage.textContent = "接続確認 → モデルを自動取得中…";
           const tested = await apiJson<{ ok?: boolean; models?: string[] }>("/api/llm/test", {
             method: "POST",
@@ -785,6 +878,14 @@ export function mountApiChat(
     const provider = currentProvider();
     const model = modelSelect.value;
     if ((!rawText && pendingAttachments.length === 0) || !provider?.ready || !model || sending || uploadingCount > 0) return;
+    if (provider.secretRef && (localStorage.getItem(PROJECT_KEY) || "") !== provider.projectId) {
+      status.textContent = apiLocale(
+        "Select the project bound to this Vault provider",
+        "このVault Providerに紐付いたProjectを選択してね",
+        "请选择绑定到此 Vault Provider 的项目"
+      );
+      return;
+    }
 
     const attachments = pendingAttachments.map(({ id, name, mime, size }) => ({
       id, name, mime, size
@@ -815,6 +916,7 @@ export function mountApiChat(
         method: "POST",
         body: JSON.stringify({
           providerId: provider.id,
+          projectId: localStorage.getItem(PROJECT_KEY) || "",
           model,
           reasoning: reasoningSelect.value || "auto",
           messages: messages.slice(-API_CHAT_HISTORY_LIMIT).map(message => ({
