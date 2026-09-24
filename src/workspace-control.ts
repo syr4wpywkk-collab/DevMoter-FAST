@@ -4,7 +4,6 @@ type Json = Record<string, any>;
 const THEME_KEY = "devmoter-theme";
 const CONTEXT_THRESHOLD_KEY = "devmoter-context-threshold";
 const LAST_COMPACT_KEY = "devmoter-last-auto-compact";
-const DEVICE_TOKEN_KEY = "devmoter-device-token";
 const TRANSCRIPT_WINDOW = 180;
 const RAW_OUTPUT_LIMIT = 12_000;
 const RICH_SELECTOR =
@@ -13,8 +12,6 @@ const TRANSCRIPT_SELECTOR = ".cx-transcript, .ocx-transcript";
 
 function workspaceControlFetch(input: RequestInfo | URL, init: RequestInit = {}) {
   const headers = new Headers(init.headers || {});
-  const deviceToken = localStorage.getItem(DEVICE_TOKEN_KEY);
-  if (deviceToken) headers.set("x-devmoter-device-token", deviceToken);
   return fetch(input, {
     ...init,
     headers,
