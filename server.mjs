@@ -19,7 +19,7 @@ import { createTerminalManager } from "./server/terminal.mjs";
 import { installTerminalWebSocketEndpoint } from "./server/terminal-websocket.mjs";
 import { createProjectIndex } from "./server/project-index.mjs";
 import { createSafetyService } from "./server/safety.mjs";
-import { createSystemFeatures } from "./server/system-features.mjs";
+import { createSystemFeatures, deviceSessionCookie } from "./server/system-features.mjs";
 import { createHostAdapter } from "./server/host/adapters.mjs";
 import { createAutomationApi, AUTOMATION_API_VERSION } from "./server/automation-api.mjs";
 import { createUploadRegistry } from "./server/upload-registry.mjs";
@@ -2502,8 +2502,15 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/api/devices/bootstrap") {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
-      const payload = await readJson(req);
-      await featureJson(res, () => systemFeatures.bootstrapDevice(req, payload?.label), 201);
+      try {
+        const payload = await readJson(req);
+        const issued = await systemFeatures.bootstrapDevice(req, payload?.label);
+        const { token, device } = issued;
+        const { tokenHash: _tokenHash, ...publicDevice } = device;
+        jsonWithCookie(res, 201, { device: publicDevice }, deviceSessionCookie(req, token));
+      } catch (error) {
+        json(res, Number(error?.status || 400), { error: error instanceof Error ? error.message : String(error) });
+      }
       return;
     }
 
@@ -2515,7 +2522,16 @@ const server = http.createServer(async (req, res) => {
     const trustedDeviceMatch = url.pathname.match(/^\/api\/devices\/([^/]+)$/);
     if (req.method === "DELETE" && trustedDeviceMatch) {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
-      await featureJson(res, () => systemFeatures.revokeDevice(req, decodeURIComponent(trustedDeviceMatch[1])));
+      try {
+        const result = await systemFeatures.revokeDevice(req, decodeURIComponent(trustedDeviceMatch[1]));
+        if (result.revokedCurrentDevice) {
+          jsonWithCookie(res, 200, result, deviceSessionCookie(req, "", 0));
+        } else {
+          json(res, 200, result);
+        }
+      } catch (error) {
+        json(res, Number(error?.status || 400), { error: error instanceof Error ? error.message : String(error) });
+      }
       return;
     }
 
@@ -2527,8 +2543,20 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/api/pairings/claim") {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
-      const payload = await readJson(req);
-      await featureJson(res, () => systemFeatures.claimPairing(payload?.code, payload?.label), 201);
+      try {
+        const payload = await readJson(req);
+        const issued = await systemFeatures.claimPairing(payload?.code, payload?.label);
+        const { token, device, approvedByDeviceId } = issued;
+        const { tokenHash: _tokenHash, ...publicDevice } = device;
+        jsonWithCookie(
+          res,
+          201,
+          { device: publicDevice, approvedByDeviceId },
+          deviceSessionCookie(req, token)
+        );
+      } catch (error) {
+        json(res, Number(error?.status || 400), { error: error instanceof Error ? error.message : String(error) });
+      }
       return;
     }
 
