@@ -23,6 +23,14 @@ test("workspace control handler fails closed without an active trusted device", 
   assert.match(body, /Trusted device required/);
 });
 
+test("workspace control UI sends its paired-device token on every API request", async () => {
+  const ui = await readFile(new URL("../src/workspace-control.ts", import.meta.url), "utf8");
+  assert.match(ui, /const DEVICE_TOKEN_KEY = "devmoter-device-token"/);
+  assert.match(ui, /headers\.set\("x-devmoter-device-token", deviceToken\)/);
+  assert.doesNotMatch(ui, /fetch\(\s*[`"]\/api\/workspace-control/);
+  assert.match(ui, /workspaceControlFetch\("\/api\/workspace-control"\)/);
+});
+
 test("Codex canonical events are persisted once at the global bridge, not per SSE client", async () => {
   const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
   const globalListener = source.indexOf('codex.on("notification"');

@@ -201,6 +201,26 @@ test("workspace control denies unpaired requests before reading or mutating stat
   await assert.rejects(readFile(join(dir, "workspace-control.json")), { code: "ENOENT" });
 });
 
+test("workspace control preserves authentication status from trusted-device checks", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-workspace-device-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const control = createWorkspaceControl({
+    stateDir: dir,
+    resolveProject: async id => ({ id, name: id, path: dir })
+  });
+  const res = responseRecorder();
+  await handleWorkspaceControlRequest(
+    request("GET"),
+    res,
+    new URL("http://localhost/api/workspace-control"),
+    control,
+    { authenticateDevice: async () => { throw Object.assign(new Error("Trusted device token required"), { status: 401 }); } }
+  );
+
+  assert.equal(res.status, 401);
+  assert.equal(JSON.parse(res.body).error, "Trusted device token required");
+});
+
 test("workspace control accepts an active trusted device and preserves policy API behavior", async t => {
   const dir = await mkdtemp(join(tmpdir(), "devmoter-workspace-device-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
