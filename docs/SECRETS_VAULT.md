@@ -1,6 +1,6 @@
 # Host Secret Vault — API Foundation
 
-This MAR-13 slice connects the encrypted, host-local secret store to a device-authenticated HTTP API. It is an API foundation, not yet the mobile Vault UI or provider integration.
+This MAR-13 stack connects the encrypted, host-local secret store to a device-authenticated HTTP API and a mobile-first Settings page. Provider integration and Secret use by agents are not included.
 
 ## Storage and unlock contract
 
@@ -26,8 +26,12 @@ Every `/api/secrets` request requires normal DevMoter authentication and an acti
 
 There is deliberately no HTTP reveal, copy, or resolve route. A secret value is accepted on create/replace but is never returned by this API. Provider/Agent injection is not enabled by this API slice.
 
+## Settings UI
+
+Settings → API Vault supports create, unlock, lock, metadata listing, replacement, and confirmed deletion. The UI requires a paired-device token, sends mutations through the existing same-origin request path, and keeps passphrases/secret values in form memory only. It does not provide Reveal/Copy; saved values are never read back into the page. Project binding is selected from the server's registered Project list.
+
 ## Security boundary and limitations
 
-The encryption key is derived from a passphrase entered during explicit unlock rather than stored beside ciphertext. When locked, the API exposes no secret values. The API remains separate from `llm-providers.json`; existing API Chat provider keys continue to use the previous server-side storage path. There is no mobile Vault UI, provider/Agent injection, fresh-authentication/reveal flow, comprehensive audit trail, or end-to-end log/context redaction yet. Unlock rate limits are process-local and reset when the server restarts.
+The encryption key is derived from a passphrase entered during explicit unlock rather than stored beside ciphertext. When locked, the API exposes no secret values. The API remains separate from `llm-providers.json`; existing API Chat provider keys continue to use the previous server-side storage path. There is no provider/Agent injection, fresh-authentication/reveal flow, comprehensive audit trail, or end-to-end log/context redaction yet. Unlock rate limits are process-local and reset when the server restarts.
 
 Never describe this slice as completing MAR-13 acceptance. In particular, API Chat/Agent/Browser Secret ID usage, provider migration, and end-to-end log/context redaction remain incomplete.
