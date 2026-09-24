@@ -150,7 +150,9 @@ const terminal = createTerminalManager({
   resolveProject: getProjectById,
   authPassword: DEVMOTER_AUTH_PASSWORD,
   shell: process.env.SHELL,
-  sessionStoreFile: tmuxAvailable ? join(PROJECT_CONFIG_DIR, "terminal-sessions.json") : undefined
+  sessionStoreFile: tmuxAvailable ? join(PROJECT_CONFIG_DIR, "terminal-sessions.json") : undefined,
+  authenticateDevice: req => systemFeatures.authenticate(req),
+  isDeviceActive: deviceId => systemFeatures.isDeviceActive(deviceId)
 });
 const hostRuntime = createHostAdapter({
   platform: process.platform,
@@ -179,7 +181,8 @@ const systemFeatures = createSystemFeatures({
     return { opencode: openCode, codex: codexHealth };
   },
   host: HOST,
-  version: process.env.DEVMOTER_VERSION || "0.2.0"
+  version: process.env.DEVMOTER_VERSION || "0.2.0",
+  onDeviceRevoked: deviceId => terminal.revokeDeviceSessions(deviceId)
 });
 const automationApi = createAutomationApi({
   readProjectRegistry,

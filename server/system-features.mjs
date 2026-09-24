@@ -139,7 +139,8 @@ export function createSystemFeatures({
   getBackendHealth,
   host = "127.0.0.1",
   version = "0.0.0",
-  pushSender = sendEmptyPush
+  pushSender = sendEmptyPush,
+  onDeviceRevoked = async () => {}
 }) {
   const devicesFile = join(stateDir, "devices.json");
   const subscriptionsFile = join(stateDir, "push-subscriptions.json");
@@ -147,6 +148,8 @@ export function createSystemFeatures({
   const pairings = new Map();
   const pendingNotifications = new Map();
   const recentNotifications = new Map();
+  let deviceMutationQueue = Promise.resolve();
+  const recentDeviceUse = new Map();
 
   async function readDevices() {
     const data = await readJsonFile(devicesFile, { version: 1, devices: [] });
@@ -156,6 +159,17 @@ export function createSystemFeatures({
   async function writeDevices(devices) {
     await mkdir(stateDir, { recursive: true, mode: 0o700 });
     await writeJsonFile(devicesFile, { version: 1, devices });
+  }
+
+  async function updateDevices(mutator) {
+    const operation = deviceMutationQueue.catch(() => {}).then(async () => {
+      const devices = await readDevices();
+      const result = await mutator(devices);
+      await writeDevices(devices);
+      return result;
+    });
+    deviceMutationQueue = operation;
+    return operation;
   }
 
   async function authenticate(req, { optional = false } = {}) {
@@ -174,14 +188,17 @@ export function createSystemFeatures({
     }
 
     const now = Date.now();
-    if (!devices[index].lastUsedAt || now - devices[index].lastUsedAt > 15_000) {
-      devices[index].lastUsedAt = now;
-      await writeDevices(devices);
-    }
-    return { ...devices[index], token };
+    recentDeviceUse.set(devices[index].id, now);
+    return { ...devices[index], lastUsedAt: now, token };
   }
 
-  async function issueDevice(label) {
+  async function isDeviceActive(deviceId) {
+    if (typeof deviceId !== "string" || !deviceId) return false;
+    const devices = await readDevices();
+    return devices.some(device => device.id === deviceId && !device.revokedAt);
+  }
+
+  async function issueDevice(label, { requireNoActive = false, approvedByDeviceId = null } = {}) {
     const token = base64url(randomBytes(32));
     const device = {
       id: randomUUID(),
@@ -190,21 +207,23 @@ export function createSystemFeatures({
       lastUsedAt: Date.now(),
       tokenHash: sha256(token)
     };
-    const devices = await readDevices();
-    devices.push(device);
-    await writeDevices(devices);
+    await updateDevices(devices => {
+      if (requireNoActive && devices.some(item => !item.revokedAt)) {
+        throw Object.assign(new Error("A trusted device already exists; use pairing instead"), { status: 409 });
+      }
+      if (approvedByDeviceId && !devices.some(item => item.id === approvedByDeviceId && !item.revokedAt)) {
+        throw Object.assign(new Error("The pairing device has been revoked"), { status: 403 });
+      }
+      devices.push(device);
+    });
     return { device, token };
   }
 
   async function bootstrapDevice(req, label) {
-    const devices = await readDevices();
-    if (devices.some(device => !device.revokedAt)) {
-      throw Object.assign(new Error("A trusted device already exists; use pairing instead"), { status: 409 });
-    }
     if (!isLocalBootstrapRequest(req)) {
       throw Object.assign(new Error("First trusted device must be created from http://127.0.0.1 or http://localhost"), { status: 403 });
     }
-    return issueDevice(label);
+    return issueDevice(label, { requireNoActive: true });
   }
 
   async function listDevices(req) {
@@ -214,7 +233,11 @@ export function createSystemFeatures({
       currentDeviceId: current.id,
       devices: devices
         .filter(device => !device.revokedAt)
-        .map(({ tokenHash, ...device }) => ({ ...device, current: device.id === current.id }))
+        .map(({ tokenHash, ...device }) => ({
+          ...device,
+          lastUsedAt: recentDeviceUse.get(device.id) || device.lastUsedAt,
+          current: device.id === current.id
+        }))
     };
   }
 
@@ -242,7 +265,7 @@ export function createSystemFeatures({
       }
       if (pairing.codeHash !== codeHash) continue;
       pairings.delete(id);
-      const issued = await issueDevice(label);
+      const issued = await issueDevice(label, { approvedByDeviceId: pairing.approvedByDeviceId });
       return {
         ...issued,
         approvedByDeviceId: pairing.approvedByDeviceId
@@ -253,11 +276,19 @@ export function createSystemFeatures({
 
   async function revokeDevice(req, deviceId) {
     const current = await authenticate(req);
-    const devices = await readDevices();
-    const index = devices.findIndex(device => device.id === deviceId && !device.revokedAt);
-    if (index < 0) throw Object.assign(new Error("Device not found"), { status: 404 });
-    devices[index].revokedAt = Date.now();
-    await writeDevices(devices);
+    await updateDevices(devices => {
+      if (!devices.some(device => device.id === current.id && !device.revokedAt)) {
+        throw Object.assign(new Error("Invalid or revoked device token"), { status: 401 });
+      }
+      const index = devices.findIndex(device => device.id === deviceId && !device.revokedAt);
+      if (index < 0) throw Object.assign(new Error("Device not found"), { status: 404 });
+      devices[index].revokedAt = Date.now();
+    });
+    recentDeviceUse.delete(deviceId);
+    for (const [pairingId, pairing] of pairings) {
+      if (pairing.approvedByDeviceId === deviceId) pairings.delete(pairingId);
+    }
+    await onDeviceRevoked(deviceId);
 
     const subscriptions = await readSubscriptions();
     await writeSubscriptions(subscriptions.filter(item => item.deviceId !== deviceId));
@@ -485,6 +516,7 @@ export function createSystemFeatures({
 
   return {
     authenticate,
+    isDeviceActive,
     bootstrapDevice,
     listDevices,
     createPairing,

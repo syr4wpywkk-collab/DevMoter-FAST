@@ -19,6 +19,7 @@ function request({ token = "", host = "127.0.0.1:8787", remoteAddress = "127.0.0
 test("IPv6 localhost bootstrap, pairing, list and revoke use a separate opaque device token", async t => {
   const stateDir = await mkdtemp(join(tmpdir(), "devmoter-system-v3-"));
   t.after(() => rm(stateDir, { recursive: true, force: true }));
+  const revokedCallbacks = [];
   const features = createSystemFeatures({
     stateDir,
     appRoot: process.cwd(),
@@ -26,7 +27,8 @@ test("IPv6 localhost bootstrap, pairing, list and revoke use a separate opaque d
     version: "test",
     getProjects: async () => [],
     getBackendHealth: async () => ({ opencode: { online: true }, codex: { online: true } }),
-    pushSender: async () => ({ ok: true, status: 201 })
+    pushSender: async () => ({ ok: true, status: 201 }),
+    onDeviceRevoked: async deviceId => { revokedCallbacks.push(deviceId); }
   });
 
   assert.equal(systemFeatureInternals.requestHostname(request({ host: "[::1]:8787" })), "::1");
@@ -46,13 +48,42 @@ test("IPv6 localhost bootstrap, pairing, list and revoke use a separate opaque d
   const pairing = await features.createPairing(request({ token: first.token }));
   assert.match(pairing.code, /^\d{6}$/);
   const second = await features.claimPairing(pairing.code, "Phone");
+  assert.equal(await features.isDeviceActive(second.device.id), true);
   const list = await features.listDevices(request({ token: first.token }));
   assert.equal(list.devices.length, 2);
   assert.equal(list.devices.some(device => Object.hasOwn(device, "tokenHash")), false);
 
   const revoked = await features.revokeDevice(request({ token: first.token }), second.device.id);
   assert.equal(revoked.revokedCurrentDevice, false);
+  assert.equal(await features.isDeviceActive(second.device.id), false);
+  assert.deepEqual(revokedCallbacks, [second.device.id]);
   await assert.rejects(features.listDevices(request({ token: second.token })), /Invalid or revoked/);
+});
+
+test("concurrent bootstrap is single-winner and revoking a pairing approver invalidates pending codes", async t => {
+  const stateDir = await mkdtemp(join(tmpdir(), "devmoter-device-race-"));
+  t.after(() => rm(stateDir, { recursive: true, force: true }));
+  const features = createSystemFeatures({
+    stateDir,
+    appRoot: process.cwd(),
+    version: "test",
+    getProjects: async () => [],
+    getBackendHealth: async () => ({ opencode: { online: true }, codex: { online: true } })
+  });
+
+  const bootstrapResults = await Promise.allSettled([
+    features.bootstrapDevice(request(), "Laptop A"),
+    features.bootstrapDevice(request(), "Laptop B")
+  ]);
+  assert.equal(bootstrapResults.filter(result => result.status === "fulfilled").length, 1);
+  assert.equal(bootstrapResults.filter(result => result.status === "rejected").length, 1);
+  const first = bootstrapResults.find(result => result.status === "fulfilled").value;
+  const pairing = await features.createPairing(request({ token: first.token }));
+  await features.revokeDevice(request({ token: first.token }), first.device.id);
+  await assert.rejects(features.claimPairing(pairing.code, "Phone"), /invalid or expired|pairing device has been revoked/i);
+
+  const replacement = await features.bootstrapDevice(request(), "Recovery browser");
+  assert.equal(await features.isDeviceActive(replacement.device.id), true);
 });
 
 test("server-side push is generic, deep-linked, opt-in, and suppressed for a visible session", async t => {
