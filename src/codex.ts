@@ -129,7 +129,7 @@ export function mountCodexRemote(
         </label>
 
         <nav class="cx-side-nav">
-          <button id="cxLibraryNav" class="cx-nav-item" type="button"><span>▦</span><span>ライブラリ</span></button>
+          <button id="cxLibraryNav" class="cx-nav-item" type="button"><span>▦</span><span>ライブラリ · 準備中</span></button>
           <button id="cxProjectsNav" class="cx-nav-item" type="button"><span>▱</span><span>Projects</span></button>
           <button id="cxIntegrationsNav" class="cx-nav-item" type="button"><span>⌁</span><span>Integrations</span></button>
           <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button"><span>◇</span><span>Developer workflows</span></button>
@@ -167,7 +167,7 @@ export function mountCodexRemote(
         <div class="cx-topbar-controls">
           <button id="cxModelTop" class="cx-topbar-pill" type="button" aria-label="モデルを選択"><span>◉</span><small id="cxModelTopLabel">default</small></button>
           <button id="cxReasoningTop" class="cx-topbar-pill" type="button" aria-label="推論性能を選択"><span>◌</span><small>Auto</small></button>
-          <button id="cxUsageTop" class="cx-topbar-pill cx-usage-pill" type="button" aria-label="使用量"><span>◒</span><small id="cxUsageLabel">0 tok</small></button>
+          <button id="cxUsageTop" class="cx-topbar-pill cx-usage-pill" type="button" aria-label="使用量"><span>◒</span><small id="cxUsageLabel">Usage</small></button>
           <button id="cxNewChatTop" class="cx-icon-button" type="button" aria-label="新しいチャット">✎</button>
         </div>
       </header>
@@ -372,9 +372,9 @@ export function mountCodexRemote(
 
   function updateUsage(tokens = 0) {
     usageTokens = Math.max(0, usageTokens + tokens);
-    usageLabel.textContent = usageTokens >= 1000
-      ? `${(usageTokens / 1000).toFixed(1)}k tok`
-      : `${usageTokens} tok`;
+    usageLabel.textContent = usageTokens > 0
+      ? (usageTokens >= 1000 ? `${(usageTokens / 1000).toFixed(1)}k tok` : `${usageTokens} tok`)
+      : "Usage";
   }
 
   function formatResetTime(value: unknown) {

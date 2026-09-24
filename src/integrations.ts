@@ -212,7 +212,7 @@ export function mountIntegrations(
             <button class="primary" data-action="open-url" data-url="https://claude.ai/code" ${!isEnabled ? "disabled" : ""}>Claude Code Web</button>
           </div>
           <div class="ix-actions">
-            <button data-action="mobile" ${!isEnabled ? "disabled" : ""}>Claudeアプリ</button>
+            <button disabled title="公式モバイル起動先の対応確認中">Claudeアプリ（準備中）</button>
             <button data-action="qr" data-id="claude" ${!isEnabled ? "disabled" : ""}>QR表示</button>
           </div>
           <div id="ixQr-claude" class="ix-qr hidden">
@@ -264,11 +264,6 @@ export function mountIntegrations(
     if (action === "open-url") {
       const url = button.dataset.url;
       if (url) window.open(url, "_blank", "noopener,noreferrer");
-      return;
-    }
-
-    if (action === "mobile") {
-      window.location.href = "claude://code";
       return;
     }
 
