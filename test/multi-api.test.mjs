@@ -20,7 +20,7 @@ test("provider presets include expanded verified compatibility targets without d
   assert.equal(new Set(ids).size, ids.length);
 
   for (const expected of [
-    "openai", "gemini", "anthropic", "openrouter", "groq", "together",
+    "openai", "gemini", "anthropic", "openrouter", "ahefi", "groq", "together",
     "mistral", "xai", "deepseek", "cerebras", "fireworks", "perplexity",
     "deepinfra", "sambanova", "nvidia", "cohere", "qwen", "custom"
   ]) {
@@ -30,6 +30,22 @@ test("provider presets include expanded verified compatibility targets without d
   for (const provider of MULTI_API_PRESETS.filter(provider => provider.id !== "custom")) {
     assert.match(provider.baseUrl, /^https:\/\//);
   }
+});
+
+test("Ahefi preset uses the verified OpenAI-compatible v1 endpoint", () => {
+  const ahefi = MULTI_API_PRESETS.find(provider => provider.id === "ahefi");
+  assert.deepEqual(ahefi, {
+    id: "ahefi",
+    name: "Ahefi",
+    protocol: "openai-compatible",
+    baseUrl: "https://ahefi.com/v1"
+  });
+  assert.equal(assertVaultProviderDestination({
+    presetId: "ahefi",
+    secretProvider: "ahefi",
+    protocol: "openai-compatible",
+    baseUrl: "https://ahefi.com/v1/"
+  }), true);
 });
 
 const config = JSON.stringify([
