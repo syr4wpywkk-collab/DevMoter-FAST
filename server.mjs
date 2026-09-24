@@ -31,6 +31,8 @@ import { redactSecretsInText } from "./server/secret-redaction.mjs";
 import { antigravityRemoteAction, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
 import { MULTI_API_PRESETS, createMultiApiStore, publicMultiApiProviders, runMultiApiChat, testMultiApiProvider } from "./server/multi-api.mjs";
 import { createMultiApiAttachmentStore } from "./server/multi-api-attachments.mjs";
+import { createSecretStore } from "./server/secret-store.mjs";
+import { createSecretVaultApi } from "./server/secret-vault-api.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -61,6 +63,7 @@ const externalAuth = new ExternalAuth({
 });
 const PROJECTS_FILE = join(PROJECT_CONFIG_DIR, "projects.json");
 const MULTI_API_FILE = join(PROJECT_CONFIG_DIR, "llm-providers.json");
+const SECRET_VAULT_FILE = join(HOME_DIR, ".local", "share", "devmoter-fast", "secrets", "vault.json");
 const MULTI_API_IMAGE_DIR = join(HOME_DIR, ".local", "share", "devmoter", "api-chat-images");
 const PROJECT_FILE_LIMIT = 1024 * 1024;
 const PROJECT_SCAN_LIMIT = 200;
@@ -77,6 +80,7 @@ const codex = new CodexBridge({
   cwd: process.env.CODEX_CWD || process.cwd()
 });
 const multiApiStore = createMultiApiStore({ filePath: MULTI_API_FILE, env: process.env });
+const secretStore = createSecretStore({ filePath: SECRET_VAULT_FILE });
 const multiApiAttachments = createMultiApiAttachmentStore({ directory: MULTI_API_IMAGE_DIR });
 void multiApiAttachments.cleanup().catch(error => {
   console.warn("multi-api attachment cleanup failed", redactText(error instanceof Error ? error.message : String(error)));
@@ -148,7 +152,7 @@ const hostRuntime = createHostAdapter({
     git: { state: "available", features: ["status", "diff", "reviewed-changes"] },
     agents: { state: "available", features: ["codex", "opencode"] },
     notifications: { state: "available", features: ["web-push", "agent-state"] },
-    secrets: { state: "unavailable", reason: "host_vault_not_implemented" }
+    secrets: { state: "available", features: ["encrypted-at-rest", "project-bindings", "metadata-api"] }
   }
 });
 const systemFeatures = createSystemFeatures({
@@ -161,6 +165,11 @@ const systemFeatures = createSystemFeatures({
   },
   host: HOST,
   version: process.env.DEVMOTER_VERSION || "0.2.0"
+});
+const secretVaultApi = createSecretVaultApi({
+  store: secretStore,
+  authenticateDevice: req => systemFeatures.authenticate(req),
+  resolveProject: getProjectById
 });
 const automationApi = createAutomationApi({
   readProjectRegistry,
@@ -2295,6 +2304,15 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/host") {
       json(res, 200, await hostRuntime.snapshot());
       return;
+    }
+
+    if (url.pathname === "/api/secrets" || url.pathname.startsWith("/api/secrets/")) {
+      if (
+        req.method !== "GET" &&
+        req.method !== "HEAD" &&
+        !claimOperation(req, res, `${req.method}:${url.pathname}`)
+      ) return;
+      if (await secretVaultApi.handle(req, res, url)) return;
     }
 
     if (req.method === "POST" && url.pathname === "/api/devices/bootstrap") {

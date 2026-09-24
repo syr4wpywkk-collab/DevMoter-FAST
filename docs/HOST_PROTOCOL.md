@@ -23,9 +23,9 @@ The Host Protocol gives clients one OS-neutral way to identify the DevMoter runt
       "features": ["pty", "ndjson-stream", "project-cwd"]
     },
     "secrets": {
-      "state": "unavailable",
-      "reason": "host_vault_not_implemented",
-      "features": []
+      "state": "available",
+      "reason": null,
+      "features": ["encrypted-at-rest", "project-bindings", "metadata-api"]
     }
   }
 }
@@ -47,8 +47,8 @@ The full capability map always includes `terminal`, `files`, `processes`, `servi
 
 ## Platform adapters
 
-- **LinuxHost:** advertises the existing registered-project Files, Git, agent, notifications, and terminal surfaces. Terminal is unavailable until DevMoter authentication is configured.
+- **LinuxHost:** advertises the existing registered-project Files, Git, agent, notifications, terminal, and encrypted Secret Vault metadata/management API surfaces. Secret Vault API calls require an active paired device; listing returns metadata only. Terminal is unavailable until DevMoter authentication is configured.
 - **WindowsWSLHost:** used when DevMoter is actually running inside WSL. It advertises only the capabilities supported by that Linux runtime. A native Windows process without a connected WSL engine reports all capabilities unavailable with `wsl_engine_not_connected`.
 - **MacOSHost:** currently reports capabilities unavailable with `macos_adapter_not_implemented`; this prevents Linux-specific behavior from being presented as supported on macOS before a native adapter is implemented and verified.
 
-The v1 endpoint is a discovery contract. It does not yet replace the existing capability-specific HTTP APIs or provide process/service/port/secret/browser operations. Clients must keep using authenticated routes and their existing project/session ownership checks until those operations migrate behind Host adapters.
+The v1 endpoint is a discovery contract. It does not yet replace the existing capability-specific HTTP APIs or provide process/service/port/browser operations. Secret Vault management currently uses its own paired-device-gated API; it has no HTTP reveal/resolve operation and is not yet integrated with provider or agent secret injection. Clients must keep using documented authenticated routes and their project/session ownership checks until those operations migrate behind Host adapters.
