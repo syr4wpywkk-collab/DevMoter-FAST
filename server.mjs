@@ -15,6 +15,7 @@ import { createUserAutomationService, userAutomationPolicy } from "./server/user
 import { createAdvancedApi } from "./server/advanced-api.mjs";
 import { assertExternalBackendExecutionAllowed, externalBackendSandboxPolicy } from "./server/advanced-features.mjs";
 import { createTerminalManager } from "./server/terminal.mjs";
+import { installTerminalWebSocketEndpoint } from "./server/terminal-websocket.mjs";
 import { createProjectIndex } from "./server/project-index.mjs";
 import { createSafetyService } from "./server/safety.mjs";
 import { createSystemFeatures } from "./server/system-features.mjs";
@@ -141,8 +142,8 @@ const hostRuntime = createHostAdapter({
   architecture: process.arch,
   env: process.env,
   capabilities: {
-    terminal: terminal.configured
-      ? { state: "available", features: ["pty", "ndjson-stream", "project-cwd"] }
+      terminal: terminal.configured
+      ? { state: "available", features: ["pty", "ndjson-stream", "websocket", "resize", "project-cwd"] }
       : { state: "unavailable", reason: "terminal_auth_not_configured" },
     files: { state: "available", features: ["registered-projects", "markdown-edit"] },
     git: { state: "available", features: ["status", "diff", "reviewed-changes"] },
@@ -2437,7 +2438,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const terminalMatch = url.pathname.match(/^\/api\/terminal\/sessions\/([^/]+)(?:\/(input|stream))?$/);
+    const terminalMatch = url.pathname.match(/^\/api\/terminal\/sessions\/([^/]+)(?:\/(input|stream|socket-ticket))?$/);
     if (terminalMatch) {
       const terminalId = decodeURIComponent(terminalMatch[1]);
       const terminalAction = terminalMatch[2] || "";
@@ -2452,6 +2453,11 @@ const server = http.createServer(async (req, res) => {
       if (req.method === "POST" && terminalAction === "input") {
         if (!claimOperation(req, res, `${req.method}:${url.pathname}:${operationId(req)}`)) return;
         await terminal.input(req, res, terminalId);
+        return;
+      }
+      if (req.method === "POST" && terminalAction === "socket-ticket") {
+        if (!claimOperation(req, res, `${req.method}:${url.pathname}:${operationId(req)}`)) return;
+        await terminal.issueSocketTicket(req, res, terminalId);
         return;
       }
       if (req.method === "DELETE" && terminalAction === "") {
@@ -2693,9 +2699,14 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+const terminalSockets = installTerminalWebSocketEndpoint(server, terminal, {
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN
+});
+
 server.on("close", () => {
   controlPlane.stop();
   terminal.shutdown();
+  terminalSockets.close();
 });
 
 server.listen(PORT, HOST, () => {

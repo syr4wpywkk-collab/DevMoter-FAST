@@ -1,12 +1,18 @@
-import { spawn } from "node:child_process";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { isAbsolute } from "node:path";
+import { spawn as spawnPty } from "node-pty";
 
 const OUTPUT_LIMIT_BYTES = 512 * 1024;
 const OUTPUT_LIMIT_CHUNKS = 4000;
+const OUTPUT_CHUNK_BYTES = 16 * 1024;
 const SESSION_RETENTION_MS = 15 * 60 * 1000;
 const SESSION_IDLE_LIMIT_MS = 12 * 60 * 60 * 1000;
 const DEFAULT_MAX_SESSIONS = 4;
+const MAX_SOCKET_CLIENTS_PER_SESSION = 2;
+const MAX_PENDING_SOCKET_TICKETS = 32;
+const SOCKET_TICKET_TTL_MS = 20_000;
+const MAX_TERMINAL_COLS = 500;
+const MAX_TERMINAL_ROWS = 300;
 
 function json(res, status, body) {
   res.writeHead(status, {
@@ -87,6 +93,22 @@ function sessionTokenFrom(req) {
 function appendOutput(session, stream, data) {
   const text = Buffer.isBuffer(data) ? data.toString("utf8") : String(data || "");
   if (!text) return;
+  let chunk = "";
+  let chunkBytes = 0;
+  for (const character of text) {
+    const size = Buffer.byteLength(character, "utf8");
+    if (chunk && chunkBytes + size > OUTPUT_CHUNK_BYTES) {
+      appendOutputChunk(session, stream, chunk);
+      chunk = "";
+      chunkBytes = 0;
+    }
+    chunk += character;
+    chunkBytes += size;
+  }
+  if (chunk) appendOutputChunk(session, stream, chunk);
+}
+
+function appendOutputChunk(session, stream, text) {
   const item = {
     seq: ++session.seq,
     at: Date.now(),
@@ -133,7 +155,7 @@ function publicSession(session) {
 export function createTerminalManager(options = {}) {
   const resolveProject = options.resolveProject;
   const password = String(options.authPassword || "");
-  const spawnImpl = options.spawnImpl || spawn;
+  const spawnPtyImpl = options.spawnPty || spawnPty;
   const maxSessions = Math.max(1, Math.min(16, Math.floor(Number(options.maxSessions) || DEFAULT_MAX_SESSIONS)));
   const shell = resolveShell(options.shell || process.env.SHELL);
   if (typeof resolveProject !== "function") {
@@ -141,6 +163,7 @@ export function createTerminalManager(options = {}) {
   }
 
   const sessions = new Map();
+  const socketTickets = new Map();
 
   function auth(req, res) {
     const result = authenticateTerminalRequest(req, password);
@@ -204,15 +227,16 @@ export function createTerminalManager(options = {}) {
 
       const id = randomBytes(18).toString("hex");
       const token = randomBytes(32).toString("hex");
-      const command = `exec ${shell} -l`;
-      const child = spawnImpl("script", ["-qefc", command, "/dev/null"], {
+      const child = spawnPtyImpl(shell, ["-l"], {
+        name: "xterm-256color",
+        cols: 80,
+        rows: 24,
         cwd: project.path,
         env: {
           ...process.env,
           TERM: process.env.TERM || "xterm-256color",
           COLORTERM: process.env.COLORTERM || "truecolor"
-        },
-        stdio: ["pipe", "pipe", "pipe"]
+        }
       });
 
       const session = {
@@ -232,39 +256,27 @@ export function createTerminalManager(options = {}) {
         output: [],
         outputBytes: 0,
         listeners: new Set(),
+        sockets: new Set(),
         cleanupTimer: null
       };
       sessions.set(id, session);
 
-      child.stdout.on("data", chunk => {
+      child.onData(chunk => {
         session.lastActivityAt = Date.now();
         appendOutput(session, "stdout", chunk);
       });
-      child.stderr.on("data", chunk => {
-        session.lastActivityAt = Date.now();
-        appendOutput(session, "stderr", chunk);
-      });
-      child.on("error", error => {
-        if (session.closed) return;
-        session.lastActivityAt = Date.now();
-        appendOutput(session, "system", `\r\n[terminal error] ${error.message}\r\n`);
-        session.closed = true;
-        session.exitCode = null;
-        session.signal = null;
-        session.cleanupTimer = setTimeout(() => sessions.delete(id), SESSION_RETENTION_MS);
-        session.cleanupTimer.unref?.();
-      });
-      child.on("exit", (code, signal) => {
+      child.onExit(({ exitCode, signal }) => {
         if (session.closed) return;
         session.closed = true;
-        session.exitCode = code;
-        session.signal = signal;
+        session.exitCode = exitCode;
+        session.signal = signal ? String(signal) : null;
         session.lastActivityAt = Date.now();
         appendOutput(
           session,
           "system",
-          `\r\n[terminal exited${code === null ? "" : ` with code ${code}`}${signal ? `, signal ${signal}` : ""}]\r\n`
+          `\r\n[terminal exited${exitCode === null ? "" : ` with code ${exitCode}`}${signal ? `, signal ${signal}` : ""}]\r\n`
         );
+        closeSockets(session, 1000, "Terminal process exited.");
         session.cleanupTimer = setTimeout(() => sessions.delete(id), SESSION_RETENTION_MS);
         session.cleanupTimer.unref?.();
       });
@@ -287,7 +299,7 @@ export function createTerminalManager(options = {}) {
   }
 
   async function input(req, res, id) {
-    const session = await getAuthorizedSession(req, res, id, { allowClosed: false });
+    const session = await getAuthorizedSession(req, res, id);
     if (!session) return;
     try {
       const payload = await readJson(req, 48 * 1024);
@@ -301,10 +313,125 @@ export function createTerminalManager(options = {}) {
         return;
       }
       session.lastActivityAt = Date.now();
-      session.process.stdin.write(data);
+      session.process.write(data);
       json(res, 200, { ok: true });
     } catch (error) {
       json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  async function issueSocketTicket(req, res, id) {
+    const session = await getAuthorizedSession(req, res, id);
+    if (!session) return;
+    const origin = String(req.headers.origin || "");
+    if (!origin) {
+      json(res, 403, { error: "Terminal socket Origin is required." });
+      return;
+    }
+    for (const [ticket, value] of socketTickets) {
+      if (value.sessionId === id || value.expiresAt <= Date.now()) socketTickets.delete(ticket);
+    }
+    if (socketTickets.size >= MAX_PENDING_SOCKET_TICKETS) {
+      json(res, 429, { error: "Too many pending terminal connections." });
+      return;
+    }
+    const ticket = randomBytes(32).toString("hex");
+    socketTickets.set(ticket, { sessionId: id, origin, expiresAt: Date.now() + SOCKET_TICKET_TTL_MS });
+    json(res, 201, { ticket, expiresInMs: SOCKET_TICKET_TTL_MS });
+  }
+
+  async function authorizeSocket(req, id, ticket, origin) {
+    const grant = socketTickets.get(ticket);
+    if (!grant || grant.sessionId !== id || grant.origin !== origin || grant.expiresAt <= Date.now()) {
+      if (grant) socketTickets.delete(ticket);
+      return null;
+    }
+    socketTickets.delete(ticket);
+    const session = sessions.get(id);
+    if (!session) return null;
+    try {
+      const project = await resolveProject(session.projectId);
+      if (project.path !== session.cwd) return null;
+    } catch {
+      return null;
+    }
+    return session;
+  }
+
+  function attachSocket(session, socket, after = 0) {
+    if (session.sockets.size >= MAX_SOCKET_CLIENTS_PER_SESSION) {
+      socket.close(1013, "Terminal connection limit reached.");
+      return false;
+    }
+    session.lastAttachedAt = Date.now();
+    session.sockets.add(socket);
+    let inputWindowStartedAt = Date.now();
+    let inputWindowMessages = 0;
+    const write = item => {
+      if (socket.readyState !== 1) return;
+      if (socket.bufferedAmount > 256 * 1024) {
+        socket.close(1013, "Terminal client is too slow.");
+        return;
+      }
+      try { socket.send(JSON.stringify(item), error => { if (error) socket.terminate?.(); }); }
+      catch { socket.terminate?.(); }
+    };
+    for (const item of session.output) {
+      if (item.seq > after) write(item);
+    }
+    if (session.closed) {
+      socket.close(1000, "Terminal process exited.");
+      return true;
+    }
+    const listener = item => write(item);
+    session.listeners.add(listener);
+    socket.on("message", (message, isBinary) => {
+      if (session.closed) {
+        socket.close(1008, "Terminal session is closed.");
+        return;
+      }
+      try {
+        const now = Date.now();
+        if (now - inputWindowStartedAt >= 1000) {
+          inputWindowStartedAt = now;
+          inputWindowMessages = 0;
+        }
+        if (++inputWindowMessages > 120 || isBinary) throw new Error("message_rate_or_type_limit");
+        if (Buffer.byteLength(message) > 40 * 1024) throw new Error("message_too_large");
+        const payload = JSON.parse(message.toString("utf8"));
+        if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("invalid_message");
+        if (payload.type === "input" && typeof payload.data === "string") {
+          if (Buffer.byteLength(payload.data, "utf8") > 32 * 1024) throw new Error("input_too_large");
+          if (payload.data) {
+            session.lastActivityAt = Date.now();
+            session.process.write(payload.data);
+          }
+          return;
+        }
+        if (payload.type === "resize" && Number.isInteger(payload.cols) && Number.isInteger(payload.rows)) {
+          if (payload.cols < 1 || payload.cols > MAX_TERMINAL_COLS || payload.rows < 1 || payload.rows > MAX_TERMINAL_ROWS) {
+            throw new Error("invalid_terminal_size");
+          }
+          session.process.resize(payload.cols, payload.rows);
+          return;
+        }
+        throw new Error("unsupported_message");
+      } catch {
+        socket.close(1008, "Invalid terminal message.");
+      }
+    });
+    const detach = () => {
+      session.listeners.delete(listener);
+      session.sockets.delete(socket);
+    };
+    socket.once("close", detach);
+    socket.once("error", detach);
+    return true;
+  }
+
+  function closeSockets(session, code, reason) {
+    for (const socket of session.sockets) {
+      try { socket.close(code, reason); } catch { socket.terminate?.(); }
     }
   }
 
@@ -361,6 +488,9 @@ export function createTerminalManager(options = {}) {
 
   async function sweepIdle() {
     const now = Date.now();
+    for (const [ticket, grant] of socketTickets) {
+      if (grant.expiresAt <= now) socketTickets.delete(ticket);
+    }
     for (const session of sessions.values()) {
       if (!session.closed && now - session.lastActivityAt > SESSION_IDLE_LIMIT_MS) {
         session.process.kill("SIGTERM");
@@ -375,8 +505,10 @@ export function createTerminalManager(options = {}) {
     clearInterval(sweepTimer);
     for (const session of sessions.values()) {
       if (session.cleanupTimer) clearTimeout(session.cleanupTimer);
-      if (!session.closed) session.process.kill("SIGTERM");
+      closeSockets(session, 1001, "DevMoter is shutting down.");
+      if (!session.closed) session.process.kill();
     }
+    socketTickets.clear();
   }
 
   return {
@@ -385,6 +517,9 @@ export function createTerminalManager(options = {}) {
     info,
     input,
     stream,
+    issueSocketTicket,
+    authorizeSocket,
+    attachSocket,
     close,
     shutdown
   };

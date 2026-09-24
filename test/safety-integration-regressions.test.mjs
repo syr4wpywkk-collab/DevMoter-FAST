@@ -15,10 +15,12 @@ test("dangerous OpenCode always approvals are downgraded to once", async () => {
   assert.match(source, /effectiveReply = "once"/);
 });
 
-test("closed terminal sessions are still attached once to replay buffered output", async () => {
+test("closed terminal sessions replay buffered output through an authorized websocket attach", async () => {
   const source = await readFile(new URL("../src/control-center.ts", import.meta.url), "utf8");
-  assert.match(source, /void attachTerminalStream\(\)/);
-  assert.match(source, /let replayClosed = Boolean\(terminalRecord\.session\.closed\)/);
+  const terminal = await readFile(new URL("../server/terminal.mjs", import.meta.url), "utf8");
+  assert.match(source, /void connectTerminalSocket\(\)/);
+  assert.match(source, /socketUrl = `\$\{protocol\}\/\/\$\{location\.host\}\/api\/terminal\/sessions\/\$\{encodeURIComponent\(record\.session\.id\)\}\/socket\?after=\$\{lastSeq\}`/);
+  assert.match(terminal, /if \(session\.closed\) \{\s+socket\.close\(1000, "Terminal process exited\."\);/);
 });
 
 test("terminal UI does not execute remote CDN JavaScript", async () => {
