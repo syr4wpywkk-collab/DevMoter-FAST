@@ -23,10 +23,11 @@ test("workspace control handler fails closed without an active trusted device", 
   assert.match(body, /Trusted device required/);
 });
 
-test("workspace control UI sends its paired-device token on every API request", async () => {
+test("workspace control UI relies on same-origin HttpOnly device cookie", async () => {
   const ui = await readFile(new URL("../src/workspace-control.ts", import.meta.url), "utf8");
-  assert.match(ui, /const DEVICE_TOKEN_KEY = "devmoter-device-token"/);
-  assert.match(ui, /headers\.set\("x-devmoter-device-token", deviceToken\)/);
+  assert.doesNotMatch(ui, /devmoter-device-token/);
+  assert.doesNotMatch(ui, /x-devmoter-device-token/);
+  assert.match(ui, /credentials: "same-origin"/);
   assert.doesNotMatch(ui, /fetch\(\s*[`"]\/api\/workspace-control/);
   assert.match(ui, /workspaceControlFetch\("\/api\/workspace-control"\)/);
 });
