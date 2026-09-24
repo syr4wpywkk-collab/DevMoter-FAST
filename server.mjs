@@ -2,7 +2,7 @@ import http from "node:http";
 import { mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { CodexBridge } from "./server/codex-bridge.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
@@ -73,6 +73,7 @@ const operationRegistry = createOperationRegistry({
   ttlMs: OPERATION_TTL_MS,
   maxEntries: OPERATION_MAX_ENTRIES
 });
+const multiApiVaultMigrations = new Set();
 const uploadRegistry = createUploadRegistry();
 const openCodeSessionModes = new Map();
 const codex = new CodexBridge({
@@ -1954,6 +1955,73 @@ async function multiApiProviderDelete(req, providerId, res) {
   }
 }
 
+async function migrateMultiApiProviderToVault(req, providerId, res) {
+  let createdReference = "";
+  let migrationClaimed = false;
+  try {
+    await requireVaultProviderDevice(req);
+    const payload = await readJson(req, 64 * 1024);
+    if (payload.confirm !== true) {
+      throw Object.assign(new Error("Explicit confirmation is required to move this API key into the Vault"), { status: 400 });
+    }
+    if (multiApiVaultMigrations.has(providerId)) {
+      throw Object.assign(new Error("This provider is already being migrated"), { status: 409 });
+    }
+    multiApiVaultMigrations.add(providerId);
+    migrationClaimed = true;
+    const project = await getProjectById(String(payload.projectId || ""));
+    const status = await secretStore.status();
+    if (!status.initialized || !status.unlocked) {
+      throw Object.assign(new Error("Initialize and unlock API Vault before migrating provider keys"), { status: 409 });
+    }
+
+    const providers = await multiApiStore.listResolved();
+    const provider = providers.find(item => item.id === providerId);
+    if (!provider) throw Object.assign(new Error("Provider not found"), { status: 404 });
+    if (provider.source !== "file" || !provider.apiKey || provider.secretRef) {
+      throw Object.assign(new Error("Only editable file-backed API key providers can be migrated"), { status: 409 });
+    }
+    const presetId = provider.presetId || "custom";
+    const name = `api-chat-${createHash("sha256").update(provider.id).digest("hex").slice(0, 24)}`;
+    const secretRef = `secret://${presetId}/${name}`;
+    try {
+      assertVaultProviderDestination({
+        presetId,
+        secretProvider: presetId,
+        baseUrl: provider.baseUrl,
+        protocol: provider.protocol
+      });
+    } catch {
+      throw Object.assign(new Error("This provider must use a verified preset endpoint before its key can be migrated"), { status: 409 });
+    }
+    if ((await secretStore.list()).some(item => item.reference === secretRef)) {
+      throw Object.assign(new Error("A Vault entry already exists for this provider; select or review it in API Vault"), { status: 409 });
+    }
+
+    await secretStore.set({
+      provider: presetId,
+      name,
+      value: provider.apiKey,
+      purpose: `Migrated API Chat provider: ${provider.name}`,
+      projectIds: [project.id]
+    });
+    createdReference = secretRef;
+    const migrated = await multiApiStore.upsert({
+      ...provider,
+      apiKey: "",
+      credentialMode: "vault",
+      secretRef,
+      projectId: project.id
+    });
+    json(res, 200, { provider: migrated, migrated: true });
+  } catch (error) {
+    if (createdReference) await secretStore.remove(createdReference).catch(() => {});
+    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+  } finally {
+    if (migrationClaimed) multiApiVaultMigrations.delete(providerId);
+  }
+}
+
 async function multiApiProviderTest(req, res) {
   let vaultSecretValue = "";
   try {
@@ -2147,6 +2215,13 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/llm/providers") {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
       await multiApiProviderSave(req, res);
+      return;
+    }
+
+    const providerMigrationMatch = url.pathname.match(/^\/api\/llm\/providers\/([^/]+)\/migrate-to-vault$/);
+    if (req.method === "POST" && providerMigrationMatch) {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await migrateMultiApiProviderToVault(req, decodeURIComponent(providerMigrationMatch[1]), res);
       return;
     }
 

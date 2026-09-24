@@ -26,8 +26,18 @@ async function freePort() {
 
 async function waitForReady(child) {
   let output = "";
+  let stderr = "";
+  child.stderr.on("data", chunk => { stderr += chunk.toString(); });
+  if (child.exitCode !== null || child.signalCode !== null || !child.pid) {
+    throw new Error(`DevMoter Vault provider server exited before startup: ${stderr || output}`);
+  }
   await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`DevMoter Vault provider server did not become ready: ${output}`)), 8000);
+    const fail = error => {
+      clearTimeout(timer);
+      child.stdout.off("data", onData);
+      reject(error);
+    };
+    const timer = setTimeout(() => fail(new Error(`DevMoter Vault provider server did not become ready: ${output}\n${stderr}`)), 8000);
     const onData = chunk => {
       output += chunk.toString();
       if (output.includes("DevMoter FAST:")) {
@@ -38,9 +48,9 @@ async function waitForReady(child) {
     };
     child.stdout.on("data", onData);
     child.once("exit", code => {
-      clearTimeout(timer);
-      reject(new Error(`DevMoter Vault provider server exited with ${code}: ${output}`));
+      fail(new Error(`DevMoter Vault provider server exited with ${code}: ${output}\n${stderr}`));
     });
+    child.once("error", error => fail(new Error(`Could not start DevMoter Vault provider server: ${error.message}\n${stderr}`)));
   });
 }
 
@@ -93,8 +103,10 @@ test("API Chat resolves Vault-backed credentials only for the paired device and 
     stdio: ["ignore", "pipe", "pipe"]
   });
   t.after(async () => {
-    child.kill("SIGTERM");
-    await once(child, "exit").catch(() => {});
+    if (child.pid && child.exitCode === null && child.signalCode === null) {
+      child.kill("SIGTERM");
+      await once(child, "exit").catch(() => {});
+    }
     await new Promise(resolve => upstream.close(() => resolve()));
     await rm(home, { recursive: true, force: true });
   });
@@ -130,9 +142,56 @@ test("API Chat resolves Vault-backed credentials only for the paired device and 
   const token = bootstrap.payload.token;
   const projects = await json("/api/projects");
   const projectId = projects.payload.projects[0].id;
+  const legacyKey = "legacy-provider-key-to-migrate";
+  const legacySave = await json("/api/llm/providers", {
+    method: "POST",
+    body: {
+      id: "legacy-openai", presetId: "openai", name: "Legacy OpenAI", protocol: "openai-compatible",
+      baseUrl: "https://api.openai.com/v1", apiKey: legacyKey, models: ["legacy-model"]
+    }
+  });
+  assert.equal(legacySave.response.status, 200);
+  const noDeviceMigration = await json("/api/llm/providers/legacy-openai/migrate-to-vault", {
+    method: "POST", body: { projectId, confirm: true }
+  });
+  assert.equal(noDeviceMigration.response.status, 401);
+  const lockedMigration = await json("/api/llm/providers/legacy-openai/migrate-to-vault", {
+    token, method: "POST", body: { projectId, confirm: true }
+  });
+  assert.equal(lockedMigration.response.status, 409);
   const passphrase = "a correct and sufficiently long vault passphrase";
   const initialize = await json("/api/secrets/initialize", { token, method: "POST", body: { passphrase } });
   assert.equal(initialize.response.status, 200);
+  const wrongProjectMigration = await json("/api/llm/providers/legacy-openai/migrate-to-vault", {
+    token, method: "POST", body: { projectId: "not-a-project", confirm: true }
+  });
+  assert.equal(wrongProjectMigration.response.status, 400);
+  const unconfirmedMigration = await json("/api/llm/providers/legacy-openai/migrate-to-vault", {
+    token, method: "POST", body: { projectId, confirm: false }
+  });
+  assert.equal(unconfirmedMigration.response.status, 400);
+  const migratedLegacy = await json("/api/llm/providers/legacy-openai/migrate-to-vault", {
+    token, method: "POST", body: { projectId, confirm: true }
+  });
+  assert.equal(migratedLegacy.response.status, 200);
+  assert.equal(migratedLegacy.payload.provider.credentialSource, "vault");
+  assert.equal(migratedLegacy.payload.provider.projectId, projectId);
+  assert.match(migratedLegacy.payload.provider.secretRef, /^secret:\/\/openai\/api-chat-[a-f0-9]{24}$/);
+  assert.equal(JSON.stringify(migratedLegacy.payload).includes(legacyKey), false);
+  const repeatMigration = await json("/api/llm/providers/legacy-openai/migrate-to-vault", {
+    token, method: "POST", body: { projectId, confirm: true }
+  });
+  assert.equal(repeatMigration.response.status, 409);
+  const providerConfigDirectory = join(home, ".config", "opencode-pocket");
+  const migratedFile = await readFile(join(providerConfigDirectory, "llm-providers.json"), "utf8");
+  assert.equal(migratedFile.includes(legacyKey), false);
+  assert.equal(migratedFile.includes('"apiKey"'), false);
+  assert.equal(migratedFile.includes(migratedLegacy.payload.provider.secretRef), true);
+  const vaultMetadata = await json("/api/secrets", { token });
+  const migratedMetadata = vaultMetadata.payload.secrets.find(item => item.reference === migratedLegacy.payload.provider.secretRef);
+  assert.ok(migratedMetadata);
+  assert.deepEqual(migratedMetadata.projectIds, [projectId]);
+
   const setSecret = await json("/api/secrets", {
     token,
     method: "PUT",

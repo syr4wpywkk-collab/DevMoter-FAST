@@ -508,7 +508,47 @@ export function mountApiChat(
 
     const list = document.createElement("div");
     list.className = "api-provider-list";
-    for (const provider of providers) list.appendChild(providerSummary(provider));
+    for (const provider of providers) {
+      const item = document.createElement("div");
+      item.className = "api-provider-settings-item";
+      item.appendChild(providerSummary(provider));
+      if (provider.editable !== false && provider.source === "file" && provider.ready && !provider.secretRef) {
+        const preset = presets.find(item => item.id === (provider.presetId || "custom"));
+        const migrationEligible = Boolean(preset && preset.id !== "custom" && preset.baseUrl === provider.baseUrl && preset.protocol === provider.protocol);
+        const migrate = document.createElement("button");
+        migrate.type = "button";
+        migrate.className = "api-provider-migrate";
+        migrate.textContent = migrationEligible ? "暗号化Vaultへ移行" : "このProviderは移行対象外";
+        migrate.disabled = !migrationEligible || !localStorage.getItem(DEVICE_TOKEN_KEY) || !localStorage.getItem(PROJECT_KEY);
+        migrate.title = !migrationEligible
+          ? "Vault移行には対応Provider presetと正規Endpointが必要"
+          : migrate.disabled ? "端末を登録し、Projectを選択してね" : "保存済みAPIキーをVaultへ移動";
+        migrate.addEventListener("click", async () => {
+          const projectId = localStorage.getItem(PROJECT_KEY) || "";
+          if (!projectId || !localStorage.getItem(DEVICE_TOKEN_KEY)) return;
+          if (!confirm(`${provider.name} のAPIキーを選択中のProjectに紐付けた暗号化Vaultへ移動し、旧Provider設定から削除するよ。続ける？`)) return;
+          migrate.disabled = true;
+          migrate.textContent = "Vaultへ移動中…";
+          try {
+            await apiJson(`/api/llm/providers/${encodeURIComponent(provider.id)}/migrate-to-vault`, {
+              method: "POST",
+              body: JSON.stringify({ projectId, confirm: true })
+            });
+            await refresh();
+            await renderSettingsList();
+          } catch (error) {
+            migrate.disabled = false;
+            migrate.textContent = "暗号化Vaultへ移行";
+            const message = document.createElement("small");
+            message.className = "api-provider-migrate-error";
+            message.textContent = error instanceof Error ? error.message : String(error);
+            item.appendChild(message);
+          }
+        });
+        item.appendChild(migrate);
+      }
+      list.appendChild(item);
+    }
     settingsBody.appendChild(list);
   }
 
