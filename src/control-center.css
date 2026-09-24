@@ -128,23 +128,18 @@
 }
 
 .dm-terminal-shell {
-  min-height: 300px;
-  height: min(58vh, 560px);
+  min-height: 220px;
+  height: min(56vh, 560px);
   overflow: hidden;
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 10px;
   background: #070809;
 }
 
-.dm-terminal-fallback {
+.dm-terminal-shell .xterm {
   height: 100%;
-  margin: 0;
-  padding: 9px;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: #e7e7ea;
-  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  padding: 8px;
+  box-sizing: border-box;
 }
 
 .dm-terminal-actions {
@@ -170,8 +165,10 @@
 
 .dm-key-row button {
   flex: 0 0 auto;
-  min-width: 42px;
+  min-width: 44px;
+  min-height: 42px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  touch-action: manipulation;
 }
 
 .dm-key-row button.active {
