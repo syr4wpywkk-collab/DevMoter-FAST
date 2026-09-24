@@ -7,6 +7,7 @@ const STORE_VERSION = 1;
 const MAX_STORE_BYTES = 1024 * 1024;
 const SESSION_ID = /^[a-f0-9]{36}$/;
 const TMUX_NAME = /^devmoter-[a-f0-9]{24}$/;
+const DEVICE_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 
 function ownedByCurrentUser(info) {
   const uid = typeof process.getuid === "function" ? process.getuid() : null;
@@ -23,6 +24,7 @@ function normalizeSession(value) {
     cwd: String(value.cwd || ""),
     tmuxName: String(value.tmuxName || ""),
     tokenHash: String(value.tokenHash || ""),
+    ownerDeviceId: value.ownerDeviceId == null ? null : String(value.ownerDeviceId),
     createdAt: Number(value.createdAt),
     lastActivityAt: Number(value.lastActivityAt),
     expiresAt: Number(value.expiresAt)
@@ -31,6 +33,7 @@ function normalizeSession(value) {
     !SESSION_ID.test(session.id) || !TMUX_NAME.test(session.tmuxName) ||
     !session.name || session.name.length > 48 || !session.projectId ||
     !session.projectName || !session.cwd || !/^[a-f0-9]{64}$/.test(session.tokenHash) ||
+    (session.ownerDeviceId !== null && !DEVICE_ID.test(session.ownerDeviceId)) ||
     !Number.isSafeInteger(session.createdAt) || !Number.isSafeInteger(session.lastActivityAt) ||
     !Number.isSafeInteger(session.expiresAt) || session.expiresAt <= session.createdAt
   ) return null;

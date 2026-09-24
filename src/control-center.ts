@@ -56,6 +56,7 @@ type PermissionRule = {
 
 const TERMINAL_RECORD_KEY = "devmoter-terminal-record";
 const TERMINAL_AUTH_KEY = "devmoter-terminal-auth";
+const DEVICE_TOKEN_KEY = "devmoter-device-token";
 function uid() {
   return typeof crypto.randomUUID === "function"
     ? crypto.randomUUID()
@@ -104,6 +105,8 @@ async function terminalFetch(
   const headers = new Headers(init.headers || {});
   const auth = terminalAuthorization(false);
   if (auth) headers.set("authorization", auth);
+  const deviceToken = localStorage.getItem(DEVICE_TOKEN_KEY);
+  if (deviceToken) headers.set("x-devmoter-device-token", deviceToken);
 
   let response = await fetch(path, {
     ...init,

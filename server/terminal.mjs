@@ -199,6 +199,8 @@ function publicSession(session) {
 export function createTerminalManager(options = {}) {
   const resolveProject = options.resolveProject;
   const password = String(options.authPassword || "");
+  const authenticateDevice = typeof options.authenticateDevice === "function" ? options.authenticateDevice : null;
+  const isDeviceActive = typeof options.isDeviceActive === "function" ? options.isDeviceActive : null;
   const spawnPtyImpl = options.spawnPty || spawnPty;
   const maxSessions = Math.max(1, Math.min(16, Math.floor(Number(options.maxSessions) || DEFAULT_MAX_SESSIONS)));
   const shell = resolveShell(options.shell || process.env.SHELL);
@@ -218,6 +220,7 @@ export function createTerminalManager(options = {}) {
 
   const sessions = new Map();
   const socketTickets = new Map();
+  const revokedDeviceIds = new Set();
   let storeLoaded = false;
   let storeLoadPromise = null;
 
@@ -268,6 +271,7 @@ export function createTerminalManager(options = {}) {
         projectId: session.projectId,
         projectName: session.projectName,
         cwd: session.cwd,
+        ownerDeviceId: session.ownerDeviceId,
         tmuxName: session.tmuxName,
         tokenHash: session.tokenHash,
         createdAt: session.createdAt,
@@ -357,6 +361,28 @@ export function createTerminalManager(options = {}) {
     return false;
   }
 
+  async function trustedDevice(req, res) {
+    if (!authenticateDevice) return null;
+    try {
+      const device = await authenticateDevice(req);
+      if (!device?.id) throw new Error("Trusted device identity is missing.");
+      if (revokedDeviceIds.has(device.id)) throw new Error("Trusted device has been revoked.");
+      return device;
+    } catch (error) {
+      const status = error?.status === 503 ? 503 : 403;
+      json(res, status, { error: status === 503 ? "Trusted device state is unavailable." : "A trusted device is required for terminal access." });
+      return false;
+    }
+  }
+
+  function sessionDeviceAllowed(session, res) {
+    if (session.ownerDeviceId && revokedDeviceIds.has(session.ownerDeviceId)) {
+      if (res) json(res, 403, { error: "Trusted device has been revoked." });
+      return false;
+    }
+    return true;
+  }
+
   async function getAuthorizedSession(req, res, id, { allowClosed = true } = {}) {
     if (!auth(req, res)) return null;
     try {
@@ -365,9 +391,15 @@ export function createTerminalManager(options = {}) {
       json(res, 503, { error: "Persistent terminal state is unavailable." });
       return null;
     }
+    const device = await trustedDevice(req, res);
+    if (device === false) return null;
     const session = sessions.get(id);
     if (!session) {
       json(res, 404, { error: "Terminal session not found." });
+      return null;
+    }
+    if (device && session.ownerDeviceId !== device.id) {
+      json(res, 403, { error: "Terminal session is not owned by this trusted device. Claim it explicitly to transfer access." });
       return null;
     }
     const supplied = sessionTokenFrom(req, id);
@@ -398,6 +430,7 @@ export function createTerminalManager(options = {}) {
         return null;
       }
     }
+    if (!sessionDeviceAllowed(session, res)) return null;
     return session;
   }
 
@@ -409,6 +442,8 @@ export function createTerminalManager(options = {}) {
         json(res, 400, { error: "Terminal entry must be explicit." });
         return;
       }
+      const device = await trustedDevice(req, res);
+      if (device === false) return;
       const payload = await readJson(req);
       const projectId = String(payload?.projectId || "").trim();
       if (!projectId) throw new Error("projectId is required.");
@@ -444,6 +479,11 @@ export function createTerminalManager(options = {}) {
           json(res, 503, { error: "Persistent terminal sessions require an available tmux installation." });
           return;
         }
+        if (device && revokedDeviceIds.has(device.id)) {
+          await callTmux(["kill-session", "-t", tmuxName]).catch(() => {});
+          json(res, 403, { error: "Trusted device has been revoked." });
+          return;
+        }
       }
       let child;
       try {
@@ -477,6 +517,7 @@ export function createTerminalManager(options = {}) {
         projectId: project.id,
         projectName: project.name,
         cwd: project.path,
+        ownerDeviceId: device?.id || null,
         process: child,
         createdAt: Date.now(),
         lastAttachedAt: null,
@@ -508,6 +549,15 @@ export function createTerminalManager(options = {}) {
           return;
         }
       }
+      if (device && revokedDeviceIds.has(device.id)) {
+        sessions.delete(id);
+        session.closed = true;
+        if (persistent) await callTmux(["kill-session", "-t", tmuxName]).catch(() => {});
+        try { child.kill("SIGTERM"); } catch { /* The revoked device cannot retain the new PTY. */ }
+        if (persistent) await persistSessions().catch(() => {});
+        json(res, 403, { error: "Trusted device has been revoked." });
+        return;
+      }
       if (persistent) {
         setSessionCookie(req, res, id, token, Math.floor(PERSISTENT_SESSION_TTL_MS / 1000));
       }
@@ -523,6 +573,7 @@ export function createTerminalManager(options = {}) {
   async function info(req, res, id) {
     const session = await getAuthorizedSession(req, res, id);
     if (!session) return;
+    if (!sessionDeviceAllowed(session, res)) return;
     session.lastAttachedAt = Date.now();
     json(res, 200, { session: publicSession(session) });
   }
@@ -541,6 +592,7 @@ export function createTerminalManager(options = {}) {
         json(res, 413, { error: "Terminal input chunk is too large." });
         return;
       }
+      if (!sessionDeviceAllowed(session, res)) return;
       session.lastActivityAt = Date.now();
       session.process.write(data);
       json(res, 200, { ok: true });
@@ -552,6 +604,7 @@ export function createTerminalManager(options = {}) {
   async function issueSocketTicket(req, res, id) {
     const session = await getAuthorizedSession(req, res, id);
     if (!session) return;
+    if (!sessionDeviceAllowed(session, res)) return;
     const origin = String(req.headers.origin || "");
     if (!origin) {
       json(res, 403, { error: "Terminal socket Origin is required." });
@@ -565,7 +618,12 @@ export function createTerminalManager(options = {}) {
       return;
     }
     const ticket = randomBytes(32).toString("hex");
-    socketTickets.set(ticket, { sessionId: id, origin, expiresAt: Date.now() + SOCKET_TICKET_TTL_MS });
+    socketTickets.set(ticket, {
+      sessionId: id,
+      origin,
+      deviceId: session.ownerDeviceId || null,
+      expiresAt: Date.now() + SOCKET_TICKET_TTL_MS
+    });
     json(res, 201, { ticket, expiresInMs: SOCKET_TICKET_TTL_MS });
   }
 
@@ -573,6 +631,8 @@ export function createTerminalManager(options = {}) {
     if (!auth(req, res)) return;
     try {
       await ensureStoreLoaded();
+      const device = await trustedDevice(req, res);
+      if (device === false) return;
       const result = [];
       for (const session of sessions.values()) {
         if (session.persistent && !session.process && !session.closed) {
@@ -594,6 +654,10 @@ export function createTerminalManager(options = {}) {
           status: session.closed ? "exited" : session.process ? "attached" : "detached"
         });
       }
+      if (device && revokedDeviceIds.has(device.id)) {
+        json(res, 403, { error: "Trusted device has been revoked." });
+        return;
+      }
       json(res, 200, { sessions: result });
     } catch {
       json(res, 503, { error: "Persistent terminal state is unavailable." });
@@ -604,6 +668,8 @@ export function createTerminalManager(options = {}) {
     if (!auth(req, res)) return;
     try {
       await ensureStoreLoaded();
+      const device = await trustedDevice(req, res);
+      if (device === false) return;
       const session = sessions.get(id);
       if (!session || !session.persistent || session.closed || session.expiresAt <= Date.now()) {
         json(res, 404, { error: "Persistent terminal session not found." });
@@ -624,14 +690,25 @@ export function createTerminalManager(options = {}) {
         json(res, 410, { error: "Persistent terminal session is no longer running." });
         return;
       }
+      if (device && revokedDeviceIds.has(device.id)) {
+        json(res, 403, { error: "Trusted device has been revoked." });
+        return;
+      }
       const token = randomBytes(32).toString("hex");
       const previousTokenHash = session.tokenHash;
+      const previousOwnerDeviceId = session.ownerDeviceId || null;
       session.tokenHash = tokenHash(token);
+      if (device) session.ownerDeviceId = device.id;
       try {
         await persistSessions();
       } catch {
         session.tokenHash = previousTokenHash;
+        session.ownerDeviceId = previousOwnerDeviceId;
         throw new Error("Persistent terminal state could not be updated safely.");
+      }
+      if (device && revokedDeviceIds.has(device.id)) {
+        json(res, 403, { error: "Trusted device has been revoked." });
+        return;
       }
       setSessionCookie(req, res, id, token, Math.max(0, Math.floor((session.expiresAt - Date.now()) / 1000)));
       json(res, 200, { session: publicSession(session) });
@@ -649,17 +726,31 @@ export function createTerminalManager(options = {}) {
     socketTickets.delete(ticket);
     const session = sessions.get(id);
     if (!session) return null;
+    if ((grant.deviceId || null) !== (session.ownerDeviceId || null)) return null;
+    if (grant.deviceId && isDeviceActive) {
+      try {
+        if (!(await isDeviceActive(grant.deviceId))) return null;
+      } catch {
+        return null;
+      }
+    }
     try {
       const project = await resolveProject(session.projectId);
       if (project.path !== session.cwd) return null;
     } catch {
       return null;
     }
+    if (grant.deviceId && revokedDeviceIds.has(grant.deviceId)) return null;
     if (session.persistent && !session.process && !(await attachPersistentProcess(session))) return null;
+    if (!sessionDeviceAllowed(session)) return null;
     return session;
   }
 
   function attachSocket(session, socket, after = 0) {
+    if (!sessionDeviceAllowed(session)) {
+      socket.close(1008, "Trusted device revoked.");
+      return false;
+    }
     if (session.sockets.size >= MAX_SOCKET_CLIENTS_PER_SESSION) {
       socket.close(1013, "Terminal connection limit reached.");
       return false;
@@ -739,6 +830,7 @@ export function createTerminalManager(options = {}) {
   async function stream(req, res, id, after = 0) {
     const session = await getAuthorizedSession(req, res, id);
     if (!session) return;
+    if (!sessionDeviceAllowed(session, res)) return;
     session.lastAttachedAt = Date.now();
 
     res.writeHead(200, {
@@ -777,6 +869,7 @@ export function createTerminalManager(options = {}) {
   async function close(req, res, id) {
     const session = await getAuthorizedSession(req, res, id);
     if (!session) return;
+    if (!sessionDeviceAllowed(session, res)) return;
     if (!session.closed) {
       if (session.persistent) {
         await callTmux(["kill-session", "-t", session.tmuxName]).catch(() => {});
@@ -792,8 +885,52 @@ export function createTerminalManager(options = {}) {
         force.unref?.();
       }
     }
+    if (!sessionDeviceAllowed(session, res)) return;
     if (session.persistent) setSessionCookie(req, res, id, "", 0);
     json(res, 200, { ok: true, session: publicSession(session) });
+  }
+
+  async function revokeDeviceSessions(deviceId) {
+    const id = String(deviceId || "");
+    if (!id) return { terminated: 0 };
+    revokedDeviceIds.add(id);
+    let metadataUnavailable = false;
+    try {
+      await ensureStoreLoaded();
+    } catch {
+      // Continue revoking already loaded sessions even if saved metadata is corrupt.
+      metadataUnavailable = true;
+    }
+    const affected = [...sessions.values()].filter(session => session.ownerDeviceId === id);
+    for (const session of affected) {
+      if (session.cleanupTimer) clearTimeout(session.cleanupTimer);
+      session.closed = true;
+      closeSockets(session, 1008, "Trusted device revoked.");
+      if (session.persistent) await callTmux(["kill-session", "-t", session.tmuxName]).catch(() => {});
+      try { session.process?.kill("SIGTERM"); } catch { /* Revocation still closes the session capability. */ }
+      sessions.delete(session.id);
+    }
+    let metadataUpdated = true;
+    if (affected.some(session => session.persistent) && sessionStore && storeLoaded) {
+      try {
+        await persistSessions();
+      } catch {
+        metadataUpdated = false;
+      }
+    }
+    if (metadataUnavailable && !storeLoaded && sessionStore) {
+      try {
+        const { stdout = "" } = await callTmux(["list-sessions", "-F", "#{session_name}"]);
+        const managedNames = String(stdout).split(/\r?\n/).filter(name => /^devmoter-[a-f0-9]{24}$/.test(name));
+        for (const name of managedNames) await callTmux(["kill-session", "-t", name]).catch(() => {});
+      } catch {
+        // The unavailable private state cannot authorize keeping orphaned managed PTYs alive.
+      }
+    }
+    for (const [ticket, grant] of socketTickets) {
+      if (grant.deviceId === id) socketTickets.delete(ticket);
+    }
+    return { terminated: affected.length, metadataUpdated };
   }
 
   async function sweepIdle() {
@@ -840,6 +977,7 @@ export function createTerminalManager(options = {}) {
     stream,
     listSessions,
     claimSession,
+    revokeDeviceSessions,
     issueSocketTicket,
     authorizeSocket,
     attachSocket,
