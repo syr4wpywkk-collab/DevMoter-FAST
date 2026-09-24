@@ -35,6 +35,8 @@ import { MULTI_API_PRESETS, assertVaultProviderDestination, createMultiApiStore,
 import { createMultiApiAttachmentStore } from "./server/multi-api-attachments.mjs";
 import { createSecretStore } from "./server/secret-store.mjs";
 import { createSecretVaultApi } from "./server/secret-vault-api.mjs";
+import { createSetupStatus } from "./server/setup/engine.mjs";
+import { executeInstallPlan, previewInstallPlan, SetupPlanError } from "./server/setup/plan.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -2153,6 +2155,20 @@ async function serveStatic(req, res) {
   }
 }
 
+function isLoopbackAddress(address) {
+  const value = String(address || "").toLowerCase();
+  return value === "127.0.0.1" || value === "::1" || value.startsWith("127.") || value === "::ffff:127.0.0.1";
+}
+
+function isLoopbackHost(hostHeader) {
+  try {
+    const hostname = new URL(`http://${hostHeader || ""}`).hostname.toLowerCase().replace(/^\\[|\\]$/g, "");
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
@@ -2210,6 +2226,101 @@ const server = http.createServer(async (req, res) => {
         json(res, 401, { error: "Passkey authentication required" });
         return;
       }
+    }
+
+    if (url.pathname === "/api/setup/status") {
+      if (req.method !== "GET") {
+        json(res, 405, { error: "Method not allowed" });
+        return;
+      }
+      if (!isLoopbackAddress(req.socket.remoteAddress) || !isLoopbackHost(req.headers.host)) {
+        json(res, 403, { error: "Setup status is available only from localhost" });
+        return;
+      }
+      json(res, 200, await createSetupStatus());
+      return;
+    }
+
+    if (url.pathname === "/api/setup/plan") {
+      if (req.method !== "POST") {
+        json(res, 405, { error: "Method not allowed" });
+        return;
+      }
+      if (!isLoopbackAddress(req.socket.remoteAddress) || !isLoopbackHost(req.headers.host)) {
+        json(res, 403, { error: "Setup planning is available only from localhost" });
+        return;
+      }
+      const contentType = String(req.headers["content-type"] || "").split(";", 1)[0].trim().toLowerCase();
+      if (contentType !== "application/json") {
+        json(res, 415, { error: "Expected a JSON plan request" });
+        return;
+      }
+      let payload;
+      try {
+        payload = await readJson(req, 16 * 1024);
+      } catch (error) {
+        const tooLarge = error instanceof Error && error.message === "Request body too large";
+        json(res, tooLarge ? 413 : 400, { error: tooLarge ? "Plan request is too large" : "Invalid plan request" });
+        return;
+      }
+      try {
+        json(res, 200, await previewInstallPlan(payload));
+      } catch (error) {
+        if (!(error instanceof SetupPlanError)) throw error;
+        const messages = {
+          invalid_request: "Invalid plan request.",
+          invalid_selections: "Selections must contain between one and six tools.",
+          invalid_selection: "Each selection must contain only a tool ID and action.",
+          unknown_tool: "Unknown setup tool.",
+          unknown_action: "Unknown setup action.",
+          duplicate_tool: "A tool may be selected only once.",
+          unsupported_tool: "This tool cannot be installed on the detected platform.",
+          machine_state_unavailable: "Machine setup state is unavailable. Rescan and try again."
+        };
+        const errorCode = Object.hasOwn(messages, error.code) ? error.code : "invalid_request";
+        json(res, error.status, { error: messages[errorCode], code: errorCode });
+      }
+      return;
+    }
+
+    if (url.pathname === "/api/setup/execute") {
+      if (req.method !== "POST") {
+        json(res, 405, { error: "Method not allowed" });
+        return;
+      }
+      if (!isLoopbackAddress(req.socket.remoteAddress) || !isLoopbackHost(req.headers.host)) {
+        json(res, 403, { error: "Setup execution is available only from localhost" });
+        return;
+      }
+      const contentType = String(req.headers["content-type"] || "").split(";", 1)[0].trim().toLowerCase();
+      if (contentType !== "application/json") {
+        json(res, 415, { error: "Expected a JSON execution request" });
+        return;
+      }
+      let payload;
+      try {
+        payload = await readJson(req, 8 * 1024);
+      } catch (error) {
+        const tooLarge = error instanceof Error && error.message === "Request body too large";
+        json(res, tooLarge ? 413 : 400, { error: tooLarge ? "Execution request is too large" : "Invalid execution request" });
+        return;
+      }
+      try {
+        json(res, 200, await executeInstallPlan(payload));
+      } catch (error) {
+        if (!(error instanceof SetupPlanError)) throw error;
+        const messages = {
+          invalid_execute_request: "Execution accepts only a plan ID and confirmed tool actions.",
+          invalid_plan: "Invalid install plan.",
+          invalid_confirmation: "Confirmation does not match the selected plan.",
+          stale_plan: "This plan expired or changed. Rescan and review a new plan.",
+          confirmation_required: "Explicit confirmation is required for every install action.",
+          unsupported_action: "This install action is not supported by the local executor."
+        };
+        const errorCode = Object.hasOwn(messages, error.code) ? error.code : "invalid_execute_request";
+        json(res, error.status, { error: messages[errorCode], code: errorCode });
+      }
+      return;
     }
 
     if (url.pathname === "/api/workspace-control" || url.pathname.startsWith("/api/workspace-control/")) {
