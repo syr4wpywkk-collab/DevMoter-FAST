@@ -12,6 +12,10 @@ type ProjectSummary = {
 
 type TerminalSession = {
   id: string;
+  name?: string;
+  persistent?: boolean;
+  expiresAt?: number | null;
+  status?: "attached" | "detached" | "exited";
   projectId: string;
   projectName: string;
   cwd: string;
@@ -69,7 +73,7 @@ function button(label: string, ariaLabel = label) {
 function loadTerminalRecord(): TerminalRecord | null {
   try {
     const parsed = JSON.parse(sessionStorage.getItem(TERMINAL_RECORD_KEY) || "null") as TerminalRecord | null;
-    if (!parsed?.session?.id || !parsed?.token) return null;
+    if (!parsed?.session?.id || (!parsed?.token && !parsed?.session?.persistent)) return null;
     return parsed;
   } catch {
     return null;
@@ -104,7 +108,8 @@ async function terminalFetch(
   let response = await fetch(path, {
     ...init,
     headers,
-    cache: "no-store"
+    cache: "no-store",
+    credentials: "same-origin"
   });
 
   if (response.status === 401 && retryAuth) {
@@ -115,7 +120,8 @@ async function terminalFetch(
       response = await fetch(path, {
         ...init,
         headers,
-        cache: "no-store"
+        cache: "no-store",
+        credentials: "same-origin"
       });
     }
   }
@@ -178,11 +184,15 @@ export function mountControlCenter() {
   document.body.append(launcher, panel);
 
   let projects: ProjectSummary[] = [];
+  let savedTerminalSessions: TerminalSession[] = [];
   let activeProjectId = localStorage.getItem("opencode-pocket-project") || "";
   let terminalRecord = loadTerminalRecord();
   let terminalShell: HTMLDivElement;
   let terminalStatus: HTMLDivElement;
   let projectSelect: HTMLSelectElement;
+  let savedSessionSelect: HTMLSelectElement;
+  let sessionNameInput: HTMLInputElement;
+  let persistentSessionToggle: HTMLInputElement;
   let terminalView: XTerm | null = null;
   let terminalFit: FitAddon | null = null;
   let rendererPromise: Promise<void> | null = null;
@@ -214,6 +224,8 @@ export function mountControlCenter() {
     void loadProjects().then(() => {
       renderProjectOptions();
       if (terminalRecord) void reattachTerminal();
+    }).catch(error => {
+      terminalStatus.textContent = `Could not load terminal state · ${error instanceof Error ? error.message : String(error)}`;
     });
   });
   close.addEventListener("click", () => {
@@ -230,6 +242,27 @@ export function mountControlCenter() {
     projects = (payload.projects || []).filter(project => project.available !== false);
     if (!activeProjectId || !projects.some(project => project.id === activeProjectId)) {
       activeProjectId = projects[0]?.id || "";
+    }
+    await refreshTerminalSessions();
+  }
+
+  async function refreshTerminalSessions() {
+    const response = await terminalFetch("/api/terminal/sessions");
+    const payload = await jsonOrError<{ sessions?: TerminalSession[] }>(response);
+    savedTerminalSessions = payload.sessions || [];
+    if (!savedSessionSelect) return;
+    const selectedId = terminalRecord?.session.id || savedSessionSelect.value;
+    savedSessionSelect.replaceChildren();
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Select saved session…";
+    savedSessionSelect.append(placeholder);
+    for (const session of savedTerminalSessions.filter(item => item.persistent && !item.closed)) {
+      const option = document.createElement("option");
+      option.value = session.id;
+      option.textContent = `${session.name || "Terminal"} · ${session.projectName} · ${session.status || "detached"}`;
+      option.selected = session.id === selectedId;
+      savedSessionSelect.append(option);
     }
   }
 
@@ -255,6 +288,27 @@ export function mountControlCenter() {
     projectSelect = document.createElement("select");
     projectLabel.append(projectSelect);
     projectRow.append(projectLabel);
+
+    const sessionLabel = document.createElement("label");
+    sessionLabel.textContent = "Saved sessions";
+    savedSessionSelect = document.createElement("select");
+    sessionLabel.append(savedSessionSelect);
+    const refreshSessions = button("Refresh");
+    projectRow.append(sessionLabel, refreshSessions);
+
+    const persistenceRow = document.createElement("div");
+    persistenceRow.className = "dm-tools-row";
+    const persistLabel = document.createElement("label");
+    persistentSessionToggle = document.createElement("input");
+    persistentSessionToggle.type = "checkbox";
+    persistLabel.append(persistentSessionToggle, document.createTextNode("Keep running after DevMoter restarts (tmux)"));
+    const nameLabel = document.createElement("label");
+    nameLabel.textContent = "Session name";
+    sessionNameInput = document.createElement("input");
+    sessionNameInput.maxLength = 48;
+    sessionNameInput.placeholder = "e.g. api-dev";
+    nameLabel.append(sessionNameInput);
+    persistenceRow.append(persistLabel, nameLabel);
 
     const actions = document.createElement("div");
     actions.className = "dm-terminal-actions";
@@ -299,12 +353,24 @@ export function mountControlCenter() {
     note.textContent =
       "PTY cwd is resolved from the registered Project ID. The terminal stays active when this panel closes; the page reconnects through a short-lived single-use ticket.";
 
-    terminalSection.append(projectRow, actions, terminalStatus, terminalShell, keyRow, note);
+    terminalSection.append(projectRow, persistenceRow, actions, terminalStatus, terminalShell, keyRow, note);
 
     projectSelect.addEventListener("change", () => {
       activeProjectId = projectSelect.value;
       localStorage.setItem("opencode-pocket-project", activeProjectId);
     });
+    refreshSessions.addEventListener("click", () => {
+      void refreshTerminalSessions().catch(error => {
+        terminalStatus.textContent = `Could not load sessions · ${error instanceof Error ? error.message : String(error)}`;
+      });
+    });
+    savedSessionSelect.addEventListener("change", () => {
+      if (savedSessionSelect.value) void claimAndAttachSession(savedSessionSelect.value);
+    });
+    persistentSessionToggle.addEventListener("change", () => {
+      sessionNameInput.disabled = !persistentSessionToggle.checked;
+    });
+    sessionNameInput.disabled = true;
     start.addEventListener("click", () => void startOrReattachTerminal());
     kill.addEventListener("click", () => void killTerminal());
     clearAuth.addEventListener("click", () => {
@@ -481,16 +547,50 @@ export function mountControlCenter() {
         "x-devmoter-terminal-entry": "explicit",
         "x-pocket-operation-id": `terminal-create-${uid()}`
       },
-      body: JSON.stringify({ projectId: activeProjectId })
+      body: JSON.stringify({
+        projectId: activeProjectId,
+        persistent: persistentSessionToggle.checked,
+        name: persistentSessionToggle.checked ? sessionNameInput.value : undefined
+      })
     });
-    const payload = await jsonOrError<{ session: TerminalSession; token: string }>(response);
-    terminalRecord = { session: payload.session, token: payload.token };
+    const payload = await jsonOrError<{ session: TerminalSession; token?: string }>(response);
+    terminalRecord = { session: payload.session, token: payload.token || "" };
     saveTerminalRecord(terminalRecord);
     lastSeq = 0;
     terminalStatus.textContent = `Starting · ${payload.session.projectName} · ${payload.session.cwd}`;
     await ensureTerminalRenderer();
     terminalView?.reset();
     void connectTerminalSocket();
+  }
+
+  async function claimAndAttachSession(sessionId: string) {
+    const session = savedTerminalSessions.find(item => item.id === sessionId);
+    if (!session) return;
+    terminalStatus.textContent = `Claiming ${session.name || "terminal session"}…`;
+    try {
+      const response = await terminalFetch(
+        `/api/terminal/sessions/${encodeURIComponent(session.id)}/claim`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-devmoter-terminal-entry": "explicit",
+            "x-pocket-operation-id": `terminal-claim-${uid()}`
+          },
+          body: "{}"
+        }
+      );
+      const payload = await jsonOrError<{ session: TerminalSession }>(response);
+      terminalRecord = { session: payload.session, token: "" };
+      saveTerminalRecord(terminalRecord);
+      lastSeq = 0;
+      await ensureTerminalRenderer();
+      terminalView?.reset();
+      void connectTerminalSocket();
+      await refreshTerminalSessions();
+    } catch (error) {
+      terminalStatus.textContent = `Could not attach session · ${error instanceof Error ? error.message : String(error)}`;
+    }
   }
 
   async function reattachTerminal() {
@@ -517,6 +617,9 @@ export function mountControlCenter() {
   async function killTerminal() {
     if (!terminalRecord) {
       terminalStatus.textContent = "No terminal session to kill.";
+      return;
+    }
+    if (terminalRecord.session.persistent && !window.confirm(`Terminate persistent session “${terminalRecord.session.name || "Terminal"}”? Its background process will stop.`)) {
       return;
     }
     const response = await terminalFetch(

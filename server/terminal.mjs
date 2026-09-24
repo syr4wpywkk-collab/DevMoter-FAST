@@ -1,6 +1,9 @@
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { execFile } from "node:child_process";
 import { isAbsolute } from "node:path";
+import { promisify } from "node:util";
 import { spawn as spawnPty } from "node-pty";
+import { TerminalSessionStore } from "./terminal-session-store.mjs";
 
 const OUTPUT_LIMIT_BYTES = 512 * 1024;
 const OUTPUT_LIMIT_CHUNKS = 4000;
@@ -13,6 +16,9 @@ const MAX_PENDING_SOCKET_TICKETS = 32;
 const SOCKET_TICKET_TTL_MS = 20_000;
 const MAX_TERMINAL_COLS = 500;
 const MAX_TERMINAL_ROWS = 300;
+const MAX_SESSION_NAME_LENGTH = 48;
+const PERSISTENT_SESSION_TTL_MS = SESSION_IDLE_LIMIT_MS;
+const execFileAsync = promisify(execFile);
 
 function json(res, status, body) {
   res.writeHead(status, {
@@ -86,8 +92,43 @@ function resolveShell(value) {
   return shell;
 }
 
-function sessionTokenFrom(req) {
-  return String(req.headers["x-devmoter-terminal-token"] || "").trim();
+function terminalCookieName(id) {
+  return `devmoter_terminal_${id}`;
+}
+
+function cookieValue(req, name) {
+  for (const item of String(req.headers.cookie || "").split(";")) {
+    const separator = item.indexOf("=");
+    if (separator < 0 || item.slice(0, separator).trim() !== name) continue;
+    try { return decodeURIComponent(item.slice(separator + 1).trim()); } catch { return ""; }
+  }
+  return "";
+}
+
+function sessionTokenFrom(req, id) {
+  const header = String(req.headers["x-devmoter-terminal-token"] || "").trim();
+  return header || cookieValue(req, terminalCookieName(id));
+}
+
+function setSessionCookie(req, res, id, token, maxAge) {
+  const origin = String(req.headers.origin || "");
+  const secure = origin.startsWith("https://") ? "; Secure" : "";
+  const value = `${terminalCookieName(id)}=${encodeURIComponent(token)}; Path=/api/terminal/sessions/${id}; HttpOnly; SameSite=Strict${secure}; Max-Age=${maxAge}`;
+  const current = typeof res.getHeader === "function" ? res.getHeader("set-cookie") : null;
+  const cookies = Array.isArray(current) ? [...current, value] : current ? [String(current), value] : [value];
+  res.setHeader("set-cookie", cookies);
+}
+
+function tokenHash(token) {
+  return createHash("sha256").update(String(token || "")).digest("hex");
+}
+
+function normalizeSessionName(value) {
+  const name = String(value || "").trim();
+  if (!name || name.length > MAX_SESSION_NAME_LENGTH || !/^[\p{L}\p{N}][\p{L}\p{N} ._-]*$/u.test(name)) {
+    throw new Error("Session name must be 1-48 letters, numbers, spaces, dots, underscores, or hyphens.");
+  }
+  return name;
 }
 
 function appendOutput(session, stream, data) {
@@ -139,6 +180,9 @@ function appendOutputChunk(session, stream, text) {
 function publicSession(session) {
   return {
     id: session.id,
+    name: session.name,
+    persistent: Boolean(session.persistent),
+    expiresAt: session.expiresAt || null,
     projectId: session.projectId,
     projectName: session.projectName,
     cwd: session.cwd,
@@ -158,12 +202,150 @@ export function createTerminalManager(options = {}) {
   const spawnPtyImpl = options.spawnPty || spawnPty;
   const maxSessions = Math.max(1, Math.min(16, Math.floor(Number(options.maxSessions) || DEFAULT_MAX_SESSIONS)));
   const shell = resolveShell(options.shell || process.env.SHELL);
+  const sessionStore = options.sessionStoreFile ? new TerminalSessionStore(options.sessionStoreFile) : null;
+  const runTmux = options.runTmux || (args => execFileAsync("tmux", args, {
+    timeout: 5000,
+    maxBuffer: 64 * 1024,
+    windowsHide: true
+  }));
+  const tmuxArgs = Array.isArray(options.tmuxArgs) && options.tmuxArgs.every(value => typeof value === "string")
+    ? [...options.tmuxArgs]
+    : ["-L", "devmoter-fast", "-f", "/dev/null"];
+  const callTmux = args => runTmux([...tmuxArgs, ...args]);
   if (typeof resolveProject !== "function") {
     throw new Error("Terminal manager requires resolveProject.");
   }
 
   const sessions = new Map();
   const socketTickets = new Map();
+  let storeLoaded = false;
+  let storeLoadPromise = null;
+
+  async function ensureStoreLoaded() {
+    if (storeLoaded || !sessionStore) return;
+    if (!storeLoadPromise) {
+      storeLoadPromise = sessionStore.load().then(async records => {
+        const now = Date.now();
+        let expired = false;
+        for (const record of records) {
+          if (record.expiresAt <= now) {
+            expired = true;
+            await callTmux(["kill-session", "-t", record.tmuxName]).catch(() => {});
+            continue;
+          }
+          sessions.set(record.id, {
+            ...record,
+            token: null,
+            persistent: true,
+            process: null,
+            closed: false,
+            exitCode: null,
+            signal: null,
+            lastAttachedAt: null,
+            seq: 0,
+            output: [],
+            outputBytes: 0,
+            listeners: new Set(),
+            sockets: new Set(),
+            cleanupTimer: null,
+            detaching: false
+          });
+        }
+        storeLoaded = true;
+        if (expired) await persistSessions();
+      });
+    }
+    await storeLoadPromise;
+  }
+
+  async function persistSessions() {
+    if (!sessionStore) throw new Error("Persistent terminal storage is unavailable.");
+    const records = [...sessions.values()]
+      .filter(session => session.persistent && !session.closed)
+      .map(session => ({
+        id: session.id,
+        name: session.name,
+        projectId: session.projectId,
+        projectName: session.projectName,
+        cwd: session.cwd,
+        tmuxName: session.tmuxName,
+        tokenHash: session.tokenHash,
+        createdAt: session.createdAt,
+        lastActivityAt: session.lastActivityAt,
+        expiresAt: session.expiresAt
+      }));
+    await sessionStore.save(records);
+  }
+
+  async function removePersistedSession(session) {
+    sessions.delete(session.id);
+    if (session.persistent && sessionStore && storeLoaded) await persistSessions();
+  }
+
+  function bindProcess(session, child) {
+    session.process = child;
+    session.detaching = false;
+    child.onData(chunk => {
+      session.lastActivityAt = Date.now();
+      appendOutput(session, "stdout", chunk);
+    });
+    child.onExit(({ exitCode, signal }) => {
+      session.process = null;
+      if (session.detaching && session.persistent) {
+        session.detaching = false;
+        return;
+      }
+      if (session.closed) return;
+      session.closed = true;
+      session.exitCode = exitCode;
+      session.signal = signal ? String(signal) : null;
+      session.lastActivityAt = Date.now();
+      appendOutput(
+        session,
+        "system",
+        `\r\n[terminal exited${exitCode === null ? "" : ` with code ${exitCode}`}${signal ? `, signal ${signal}` : ""}]\r\n`
+      );
+      closeSockets(session, 1000, "Terminal process exited.");
+      session.cleanupTimer = setTimeout(() => void removePersistedSession(session), SESSION_RETENTION_MS);
+      session.cleanupTimer.unref?.();
+      if (session.persistent) void persistSessions().catch(() => {});
+    });
+  }
+
+  async function attachPersistentProcess(session) {
+    if (!session.persistent || session.process || session.closed) return Boolean(session.process);
+    if (session.expiresAt <= Date.now()) {
+      session.closed = true;
+      await callTmux(["kill-session", "-t", session.tmuxName]).catch(() => {});
+      await removePersistedSession(session).catch(() => {});
+      return false;
+    }
+    try {
+      const project = await resolveProject(session.projectId);
+      if (project.path !== session.cwd) return false;
+      await callTmux(["has-session", "-t", session.tmuxName]);
+      const child = spawnPtyImpl("tmux", [...tmuxArgs, "attach-session", "-t", session.tmuxName], {
+        name: "xterm-256color",
+        cols: 80,
+        rows: 24,
+        cwd: session.cwd,
+        env: {
+          ...process.env,
+          TERM: process.env.TERM || "xterm-256color",
+          COLORTERM: process.env.COLORTERM || "truecolor"
+        }
+      });
+      bindProcess(session, child);
+      return true;
+    } catch {
+      session.closed = true;
+      session.exitCode = null;
+      session.signal = null;
+      appendOutput(session, "system", "\r\n[terminal session unavailable]\r\n");
+      await removePersistedSession(session).catch(() => {});
+      return false;
+    }
+  }
 
   function auth(req, res) {
     const result = authenticateTerminalRequest(req, password);
@@ -177,13 +359,20 @@ export function createTerminalManager(options = {}) {
 
   async function getAuthorizedSession(req, res, id, { allowClosed = true } = {}) {
     if (!auth(req, res)) return null;
+    try {
+      await ensureStoreLoaded();
+    } catch {
+      json(res, 503, { error: "Persistent terminal state is unavailable." });
+      return null;
+    }
     const session = sessions.get(id);
     if (!session) {
       json(res, 404, { error: "Terminal session not found." });
       return null;
     }
-    const supplied = sessionTokenFrom(req);
-    if (!supplied || !safeEqualText(supplied, session.token)) {
+    const supplied = sessionTokenFrom(req, id);
+    const expected = session.tokenHash || tokenHash(session.token);
+    if (!supplied || !safeEqualText(tokenHash(supplied), expected)) {
       json(res, 403, { error: "Terminal session capability is invalid." });
       return null;
     }
@@ -202,12 +391,20 @@ export function createTerminalManager(options = {}) {
       json(res, 409, { error: "Project is no longer registered; terminal re-attach denied." });
       return null;
     }
+    if (session.persistent && !session.closed && !session.process) {
+      const attached = await attachPersistentProcess(session);
+      if (!attached) {
+        json(res, 410, { error: "Persistent terminal session has expired or is unavailable." });
+        return null;
+      }
+    }
     return session;
   }
 
   async function create(req, res) {
     if (!auth(req, res)) return;
     try {
+      await ensureStoreLoaded();
       if (String(req.headers["x-devmoter-terminal-entry"] || "") !== "explicit") {
         json(res, 400, { error: "Terminal entry must be explicit." });
         return;
@@ -215,6 +412,18 @@ export function createTerminalManager(options = {}) {
       const payload = await readJson(req);
       const projectId = String(payload?.projectId || "").trim();
       if (!projectId) throw new Error("projectId is required.");
+      const persistent = payload?.persistent === true;
+      if (persistent && !sessionStore) {
+        json(res, 501, { error: "Persistent sessions require tmux and private terminal session storage on this host." });
+        return;
+      }
+      const name = payload?.name == null || payload.name === ""
+        ? `terminal-${Date.now().toString(36)}-${randomBytes(2).toString("hex")}`
+        : normalizeSessionName(payload.name);
+      if ([...sessions.values()].some(session => !session.closed && session.projectId === projectId && session.name.toLowerCase() === name.toLowerCase())) {
+        json(res, 409, { error: "A terminal session with that name already exists in this project." });
+        return;
+      }
       const project = await resolveProject(projectId);
 
       // No await occurs between this check and registering the new session, so
@@ -227,21 +436,44 @@ export function createTerminalManager(options = {}) {
 
       const id = randomBytes(18).toString("hex");
       const token = randomBytes(32).toString("hex");
-      const child = spawnPtyImpl(shell, ["-l"], {
-        name: "xterm-256color",
-        cols: 80,
-        rows: 24,
-        cwd: project.path,
-        env: {
-          ...process.env,
-          TERM: process.env.TERM || "xterm-256color",
-          COLORTERM: process.env.COLORTERM || "truecolor"
+      const tmuxName = persistent ? `devmoter-${randomBytes(12).toString("hex")}` : null;
+      if (persistent) {
+        try {
+          await callTmux(["new-session", "-d", "-s", tmuxName, "-c", project.path, shell, "-l"]);
+        } catch {
+          json(res, 503, { error: "Persistent terminal sessions require an available tmux installation." });
+          return;
         }
-      });
+      }
+      let child;
+      try {
+        child = spawnPtyImpl(
+          persistent ? "tmux" : shell,
+        persistent ? [...tmuxArgs, "attach-session", "-t", tmuxName] : ["-l"],
+          {
+            name: "xterm-256color",
+            cols: 80,
+            rows: 24,
+            cwd: project.path,
+            env: {
+              ...process.env,
+              TERM: process.env.TERM || "xterm-256color",
+              COLORTERM: process.env.COLORTERM || "truecolor"
+            }
+          }
+        );
+      } catch (error) {
+        if (persistent) await callTmux(["kill-session", "-t", tmuxName]).catch(() => {});
+        throw error;
+      }
 
       const session = {
         id,
-        token,
+        token: null,
+        tokenHash: tokenHash(token),
+        name,
+        persistent,
+        tmuxName,
         projectId: project.id,
         projectName: project.name,
         cwd: project.path,
@@ -249,6 +481,7 @@ export function createTerminalManager(options = {}) {
         createdAt: Date.now(),
         lastAttachedAt: null,
         lastActivityAt: Date.now(),
+        expiresAt: persistent ? Date.now() + PERSISTENT_SESSION_TTL_MS : null,
         closed: false,
         exitCode: null,
         signal: null,
@@ -260,31 +493,27 @@ export function createTerminalManager(options = {}) {
         cleanupTimer: null
       };
       sessions.set(id, session);
-
-      child.onData(chunk => {
-        session.lastActivityAt = Date.now();
-        appendOutput(session, "stdout", chunk);
-      });
-      child.onExit(({ exitCode, signal }) => {
-        if (session.closed) return;
-        session.closed = true;
-        session.exitCode = exitCode;
-        session.signal = signal ? String(signal) : null;
-        session.lastActivityAt = Date.now();
-        appendOutput(
-          session,
-          "system",
-          `\r\n[terminal exited${exitCode === null ? "" : ` with code ${exitCode}`}${signal ? `, signal ${signal}` : ""}]\r\n`
-        );
-        closeSockets(session, 1000, "Terminal process exited.");
-        session.cleanupTimer = setTimeout(() => sessions.delete(id), SESSION_RETENTION_MS);
-        session.cleanupTimer.unref?.();
-      });
+      bindProcess(session, child);
 
       appendOutput(session, "system", `[DevMoter terminal · ${project.name}]\r\n`);
+      if (persistent) {
+        try {
+          await persistSessions();
+        } catch (error) {
+          sessions.delete(id);
+          session.closed = true;
+          child.kill();
+          await callTmux(["kill-session", "-t", tmuxName]).catch(() => {});
+          json(res, 503, { error: "Persistent terminal metadata could not be stored safely." });
+          return;
+        }
+      }
+      if (persistent) {
+        setSessionCookie(req, res, id, token, Math.floor(PERSISTENT_SESSION_TTL_MS / 1000));
+      }
       json(res, 201, {
         session: publicSession(session),
-        token
+        ...(persistent ? {} : { token })
       });
     } catch (error) {
       json(res, 400, { error: error instanceof Error ? error.message : String(error) });
@@ -340,6 +569,77 @@ export function createTerminalManager(options = {}) {
     json(res, 201, { ticket, expiresInMs: SOCKET_TICKET_TTL_MS });
   }
 
+  async function listSessions(req, res) {
+    if (!auth(req, res)) return;
+    try {
+      await ensureStoreLoaded();
+      const result = [];
+      for (const session of sessions.values()) {
+        if (session.persistent && !session.process && !session.closed) {
+          if (session.expiresAt <= Date.now()) {
+            session.closed = true;
+            await callTmux(["kill-session", "-t", session.tmuxName]).catch(() => {});
+            await removePersistedSession(session).catch(() => {});
+          } else {
+            try {
+              await callTmux(["has-session", "-t", session.tmuxName]);
+            } catch {
+              session.closed = true;
+              await removePersistedSession(session).catch(() => {});
+            }
+          }
+        }
+        result.push({
+          ...publicSession(session),
+          status: session.closed ? "exited" : session.process ? "attached" : "detached"
+        });
+      }
+      json(res, 200, { sessions: result });
+    } catch {
+      json(res, 503, { error: "Persistent terminal state is unavailable." });
+    }
+  }
+
+  async function claimSession(req, res, id) {
+    if (!auth(req, res)) return;
+    try {
+      await ensureStoreLoaded();
+      const session = sessions.get(id);
+      if (!session || !session.persistent || session.closed || session.expiresAt <= Date.now()) {
+        json(res, 404, { error: "Persistent terminal session not found." });
+        return;
+      }
+      if (String(req.headers["x-devmoter-terminal-entry"] || "") !== "explicit") {
+        json(res, 400, { error: "Terminal session claim must be explicit." });
+        return;
+      }
+      const project = await resolveProject(session.projectId);
+      if (project.path !== session.cwd) {
+        json(res, 409, { error: "Project registration changed; terminal re-attach denied." });
+        return;
+      }
+      try {
+        await callTmux(["has-session", "-t", session.tmuxName]);
+      } catch {
+        json(res, 410, { error: "Persistent terminal session is no longer running." });
+        return;
+      }
+      const token = randomBytes(32).toString("hex");
+      const previousTokenHash = session.tokenHash;
+      session.tokenHash = tokenHash(token);
+      try {
+        await persistSessions();
+      } catch {
+        session.tokenHash = previousTokenHash;
+        throw new Error("Persistent terminal state could not be updated safely.");
+      }
+      setSessionCookie(req, res, id, token, Math.max(0, Math.floor((session.expiresAt - Date.now()) / 1000)));
+      json(res, 200, { session: publicSession(session) });
+    } catch {
+      json(res, 503, { error: "Persistent terminal state is unavailable." });
+    }
+  }
+
   async function authorizeSocket(req, id, ticket, origin) {
     const grant = socketTickets.get(ticket);
     if (!grant || grant.sessionId !== id || grant.origin !== origin || grant.expiresAt <= Date.now()) {
@@ -355,6 +655,7 @@ export function createTerminalManager(options = {}) {
     } catch {
       return null;
     }
+    if (session.persistent && !session.process && !(await attachPersistentProcess(session))) return null;
     return session;
   }
 
@@ -477,12 +778,21 @@ export function createTerminalManager(options = {}) {
     const session = await getAuthorizedSession(req, res, id);
     if (!session) return;
     if (!session.closed) {
-      session.process.kill("SIGTERM");
-      const force = setTimeout(() => {
-        if (!session.closed) session.process.kill("SIGKILL");
-      }, 2000);
-      force.unref?.();
+      if (session.persistent) {
+        await callTmux(["kill-session", "-t", session.tmuxName]).catch(() => {});
+        session.closed = true;
+        closeSockets(session, 1000, "Terminal session terminated.");
+        if (session.process) session.process.kill("SIGTERM");
+        await removePersistedSession(session).catch(() => {});
+      } else {
+        session.process.kill("SIGTERM");
+        const force = setTimeout(() => {
+          if (!session.closed) session.process?.kill("SIGKILL");
+        }, 2000);
+        force.unref?.();
+      }
     }
+    if (session.persistent) setSessionCookie(req, res, id, "", 0);
     json(res, 200, { ok: true, session: publicSession(session) });
   }
 
@@ -492,6 +802,14 @@ export function createTerminalManager(options = {}) {
       if (grant.expiresAt <= now) socketTickets.delete(ticket);
     }
     for (const session of sessions.values()) {
+      if (session.persistent && !session.closed && now >= session.expiresAt) {
+        await callTmux(["kill-session", "-t", session.tmuxName]).catch(() => {});
+        session.closed = true;
+        closeSockets(session, 1000, "Terminal session expired.");
+        if (session.process) session.process.kill("SIGTERM");
+        await removePersistedSession(session).catch(() => {});
+        continue;
+      }
       if (!session.closed && now - session.lastActivityAt > SESSION_IDLE_LIMIT_MS) {
         session.process.kill("SIGTERM");
       }
@@ -506,7 +824,10 @@ export function createTerminalManager(options = {}) {
     for (const session of sessions.values()) {
       if (session.cleanupTimer) clearTimeout(session.cleanupTimer);
       closeSockets(session, 1001, "DevMoter is shutting down.");
-      if (!session.closed) session.process.kill();
+      if (!session.closed && session.process) {
+        if (session.persistent) session.detaching = true;
+        session.process.kill();
+      }
     }
     socketTickets.clear();
   }
@@ -517,6 +838,8 @@ export function createTerminalManager(options = {}) {
     info,
     input,
     stream,
+    listSessions,
+    claimSession,
     issueSocketTicket,
     authorizeSocket,
     attachSocket,

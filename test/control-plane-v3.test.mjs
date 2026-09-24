@@ -223,7 +223,7 @@ test("autopilot reuses the same backend context across turns", async () => {
 
     const completed = await waitFor(async () => {
       const run = (await plane.listRuns()).find(item => item.id === started.id);
-      return run && !["queued", "running"].includes(run.status) ? run : null;
+      return run && !["queued", "running"].includes(run.status) && !plane.activeAutopilots.has(run.id) ? run : null;
     });
 
     assert.equal(completed.status, "completed");
@@ -254,7 +254,7 @@ test("autopilot stops at turn bounds and fails safe when cost telemetry is unava
 
     const completed = await waitFor(async () => {
       const run = (await plane.listRuns()).find(item => item.id === boundedTurns.id);
-      return run && !["queued", "running"].includes(run.status) ? run : null;
+      return run && !["queued", "running"].includes(run.status) && !plane.activeAutopilots.has(run.id) ? run : null;
     });
     assert.equal(completed.status, "completed");
     assert.equal(completed.turnsCompleted, 3);

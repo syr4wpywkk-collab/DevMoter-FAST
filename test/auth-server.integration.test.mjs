@@ -182,6 +182,37 @@ test("server requires auth and exact Origin for mutations", async () => {
     assert.equal(JSON.stringify(hostSnapshot).includes(process.env.HOME || "/home/"), false);
     assert.equal(Object.hasOwn(hostSnapshot.host, "hostname"), false);
 
+    const terminalSessionsUnauthorized = await fetch(`${origin}/api/terminal/sessions`);
+    assert.equal(terminalSessionsUnauthorized.status, 401);
+    const terminalSessions = await fetch(`${origin}/api/terminal/sessions`, { headers: { authorization } });
+    assert.equal(terminalSessions.status, 200);
+    assert.deepEqual((await terminalSessions.json()).sessions, []);
+
+    const terminalClaimMissingOrigin = await fetch(`${origin}/api/terminal/sessions/${"a".repeat(36)}/claim`, {
+      method: "POST",
+      headers: {
+        authorization,
+        "content-type": "application/json",
+        "x-devmoter-terminal-entry": "explicit",
+        "x-pocket-operation-id": "terminal-claim-missing-origin"
+      },
+      body: "{}"
+    });
+    assert.equal(terminalClaimMissingOrigin.status, 403);
+
+    const terminalClaimSameOrigin = await fetch(`${origin}/api/terminal/sessions/${"a".repeat(36)}/claim`, {
+      method: "POST",
+      headers: {
+        authorization,
+        origin,
+        "content-type": "application/json",
+        "x-devmoter-terminal-entry": "explicit",
+        "x-pocket-operation-id": "terminal-claim-same-origin"
+      },
+      body: "{}"
+    });
+    assert.equal(terminalClaimSameOrigin.status, 404);
+
     const automationUnauthenticated = await fetch(`${origin}/api/automation/projects`);
     assert.equal(automationUnauthenticated.status, 401);
 
