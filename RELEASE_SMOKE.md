@@ -93,3 +93,13 @@ On the target iPhone/mobile browser:
 - [ ] unsupported upstream response produces an explicit error rather than fake success
 
 Record commit, OS, Node, OpenCode, Codex, browser and device versions with release notes.
+
+## Installer v2 foundation (Experimental)
+
+- [ ] Open `/?setup=1` from the local DevMoter URL and confirm the environment and six tool rows render; confirm Rescan can be repeated.
+- [ ] Confirm missing tools, unsupported auth status, and broken version checks are shown without raw command output or executable paths.
+- [ ] Select a missing supported tool and confirm Review shows only server-owned source class, privilege, changes, verification, and notes.
+- [ ] Confirm installed/ready tools say Keep existing; broken and unsupported tools cannot be planned for install.
+- [ ] Confirm Class C is not silently selected and manual-review metadata stays blocked from execution.
+- [ ] Confirm unauthenticated, cross-origin, non-loopback, malformed, and oversized setup requests fail closed.
+- [ ] Confirm the current execution response remains non-installing / `needs_user_action`; no package installer, sudo, downloader, login, service, or Tailscale mutation runs.

@@ -58,7 +58,7 @@ The Antigravity and Claude Code launchers are treated as privileged host integra
 
 - integration endpoints are behind the same DevMoter authentication boundary as the rest of the UI/API;
 - mutation routes additionally require exact same-origin browser requests;
-- integration status discovery is an authenticated same-origin POST because status discovery invokes local executables; it is not exposed as a side-effecting GET;
+- integration action/status routes use authenticated same-origin POST because those routes launch integrations or perform stateful discovery. Installer v2 setup endpoints are a separate localhost-only surface: status is read-only GET, while plan/execute are mutation POSTs covered by the global exact-Origin boundary;
 - project working directories are resolved from the existing registered Project ID rather than accepting arbitrary paths from the browser;
 - launch commands use fixed executable/argument arrays and do not invoke a shell;
 - child processes deny secret-like environment variables by default; only narrowly scoped credentials for the matching provider may be inherited (for example Anthropic credentials for Claude Code, or Gemini/Google API keys for Antigravity);
@@ -106,3 +106,11 @@ A useful private report includes the affected commit/version, environment, secur
 ## Dependency and upstream security
 
 Keep Node.js, OpenCode, Codex CLI, GitHub CLI, Tailscale/reverse-proxy components, and the operating system updated according to their respective security guidance. Upstream vulnerabilities should also be reported to the relevant project when appropriate.
+
+## Installer v2 foundation (Experimental)
+
+The Setup status endpoint retains DevMoter owner authentication and optional passkey gating, and additionally requires a loopback peer and loopback Host. Tool probes use server-owned executable names and fixed argument arrays, `spawn` with `shell: false`, a filtered environment, bounded output and time, and do not expose executable paths or raw child output to the browser.
+
+`POST /api/setup/plan` is owner-authenticated, exact-Origin checked by the global mutation boundary, passkey-gated when enabled, and loopback-only. Its bounded schema accepts only known tool IDs and fixed desired actions. The planner projects source, privilege, expected changes, notes, and verification from server-owned adapter definitions rather than browser-supplied command data.
+
+`POST /api/setup/execute` is also owner-authenticated, exact-Origin checked, passkey-gated when enabled, and loopback-only. In this foundation phase it validates a reviewed plan and confirmations but does not execute installers. Provider login, sudo/privilege brokering, downloads, system service mutation, and Tailscale Serve mutation remain out of scope until separately implemented and reviewed.
