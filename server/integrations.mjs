@@ -237,14 +237,29 @@ async function antigravityRemoteStatus() {
   }
 }
 
-async function findExecutable(name) {
+export async function resolveExecutable(name, env = sanitizeChildEnv(process.env)) {
   const locator = process.platform === "win32" ? "where.exe" : "which";
   try {
-    const result = await run(locator, [name], { timeoutMs: 2_000 });
-    return Boolean(result.stdout);
+    const result = await run(locator, [name], { timeoutMs: 2_000, env });
+    const resolved = String(result.stdout || "")
+      .split(/\r?\n/)
+      .map(value => value.trim())
+      .find(Boolean);
+    return resolved || null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+export function desktopTerminalCandidates(platform, command, extraArgs = []) {
+  if (platform !== "linux") return [];
+  return [
+    { bin: "x-terminal-emulator", args: ["-e", command, ...extraArgs] },
+    { bin: "gnome-terminal", args: ["--", command, ...extraArgs] },
+    { bin: "konsole", args: ["-e", command, ...extraArgs] },
+    { bin: "kitty", args: [command, ...extraArgs] },
+    { bin: "wezterm", args: ["start", "--", command, ...extraArgs] }
+  ];
 }
 
 async function spawnDetached(bin, args, cwd, env) {
@@ -263,26 +278,30 @@ async function spawnDetached(bin, args, cwd, env) {
   });
 }
 
-async function launchInTerminal(command, cwd, extraArgs = [], env = sanitizeChildEnv(process.env)) {
-  if (process.platform === "linux") {
-    const candidates = [
-      { bin: "x-terminal-emulator", args: ["-e", command, ...extraArgs] },
-      { bin: "gnome-terminal", args: ["--", command, ...extraArgs] },
-      { bin: "konsole", args: ["-e", command, ...extraArgs] },
-      { bin: "kitty", args: [command, ...extraArgs] },
-      { bin: "wezterm", args: ["start", "--", command, ...extraArgs] }
-    ];
-
-    for (const candidate of candidates) {
-      if (!(await findExecutable(candidate.bin))) continue;
-      await spawnDetached(candidate.bin, candidate.args, cwd, env);
-      return { ok: true, terminal: candidate.bin };
-    }
-
-    throw new Error("No supported desktop terminal was found");
+export async function launchInTerminal(
+  command,
+  cwd,
+  extraArgs = [],
+  env = sanitizeChildEnv(process.env),
+  runtime = {}
+) {
+  const platform = runtime.platform ?? process.platform;
+  if (platform !== "linux") {
+    throw new Error(`Desktop launch is not implemented for ${platform} yet`);
   }
 
-  throw new Error(`Desktop launch is not implemented for ${process.platform} yet`);
+  const resolve = runtime.resolveExecutable || resolveExecutable;
+  const spawnTerminal = runtime.spawnDetached || spawnDetached;
+  const candidates = desktopTerminalCandidates(platform, command, extraArgs);
+
+  for (const candidate of candidates) {
+    const terminalBin = await resolve(candidate.bin, env);
+    if (!terminalBin) continue;
+    await spawnTerminal(terminalBin, candidate.args, cwd, env);
+    return { ok: true, terminal: candidate.bin };
+  }
+
+  throw new Error("No supported desktop terminal was found");
 }
 
 export function publicDefinition(definition) {
@@ -354,11 +373,16 @@ export async function launchIntegration(id, cwd) {
   }
 
   try {
+    const env = integrationChildEnv(definition.id);
+    const executable = await resolveExecutable(definition.bin, env);
+    if (!executable) {
+      throw new IntegrationError(`${definition.name} executable could not be resolved`);
+    }
     const result = await launchInTerminal(
-      definition.bin,
+      executable,
       cwd,
       [],
-      integrationChildEnv(definition.id)
+      env
     );
     return {
       ok: true,
