@@ -385,15 +385,31 @@ export function mountSettingsPanel() {
       scroll.innerHTML = `
         <section class="devmoter-settings-section">
           <h2>${status.initialized ? "Vaultはロック中" : "新しいVault"}</h2>
-          <div class="devmoter-settings-card devmoter-settings-form-card">
+          <form class="devmoter-settings-card devmoter-settings-form-card" data-vault-unlock-form>
             <label for="devmoterVaultPassphrase">Vault passphrase</label>
             <input id="devmoterVaultPassphrase" data-vault-passphrase type="password" autocomplete="current-password" minlength="12" maxlength="1024" required />
             <small>12文字以上。忘れると復元できないので、パスワードマネージャーへ保管してね。</small>
-            <button type="button" data-action="vault:${action}">${label}</button>
-          </div>
+            <button type="submit">${label}</button>
+          </form>
         </section>
         <p class="devmoter-settings-note">Passphraseはこの画面のメモリ上からAPIへ送られ、保存・表示されない。秘密値は暗号化してHostに保存される。</p>
       `;
+      scroll.querySelector<HTMLFormElement>("[data-vault-unlock-form]")?.addEventListener("submit", async event => {
+        event.preventDefault();
+        const input = scroll.querySelector<HTMLInputElement>("[data-vault-passphrase]");
+        const passphrase = input?.value || "";
+        if (input) input.value = "";
+        try {
+          await request(`/api/secrets/${action}`, {
+            method: "POST",
+            body: JSON.stringify({ passphrase })
+          }, true);
+          toast(action === "initialize" ? "Vaultを作成してロック解除したよ。" : "Vaultのロックを解除したよ。");
+          await renderVault();
+        } catch (error) {
+          toast(error instanceof Error ? error.message : String(error));
+        }
+      });
       wireRows();
       return;
     }
@@ -764,22 +780,6 @@ export function mountSettingsPanel() {
             if (result.revokedCurrentDevice) localStorage.removeItem(DEVICE_TOKEN_KEY);
             toast("端末の信頼を解除しました。");
             await renderDevices();
-          } catch (error) {
-            toast(error instanceof Error ? error.message : String(error));
-          }
-          return;
-        }
-        if (action === "vault:initialize" || action === "vault:unlock") {
-          const input = scroll.querySelector<HTMLInputElement>("[data-vault-passphrase]");
-          const passphrase = input?.value || "";
-          if (input) input.value = "";
-          try {
-            await request(`/api/secrets/${action === "vault:initialize" ? "initialize" : "unlock"}`, {
-              method: "POST",
-              body: JSON.stringify({ passphrase })
-            }, true);
-            toast(action === "vault:initialize" ? "Vaultを作成してロック解除したよ。" : "Vaultのロックを解除したよ。");
-            await renderVault();
           } catch (error) {
             toast(error instanceof Error ? error.message : String(error));
           }
