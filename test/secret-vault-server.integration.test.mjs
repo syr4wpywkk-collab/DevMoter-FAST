@@ -69,12 +69,12 @@ test("Secret Vault HTTP API requires trusted devices and never returns secret va
 
   await waitForReady(child);
   const endpoint = path => `${origin}/api/secrets${path}`;
-  const mutation = (deviceToken, operationId, extra = {}) => ({
+  const mutation = (cookie, operationId, extra = {}) => ({
     authorization,
     origin,
     "content-type": "application/json",
     "x-pocket-operation-id": operationId,
-    ...(deviceToken ? { "x-devmoter-device-token": deviceToken } : {}),
+    ...(cookie ? { cookie } : {}),
     ...extra
   });
 
@@ -95,13 +95,15 @@ test("Secret Vault HTTP API requires trusted devices and never returns secret va
   });
   assert.equal(bootstrap.status, 201);
   const paired = await bootstrap.json();
-  const token = paired.token;
+  const deviceCookie = String(bootstrap.headers.get("set-cookie") || "").split(";", 1)[0];
   const deviceId = paired.device.id;
-  assert.equal(typeof token, "string");
+  assert.match(deviceCookie, /^devmoter_device=/);
+  assert.equal(Object.hasOwn(paired, "token"), false);
+  assert.equal(Object.hasOwn(paired.device, "tokenHash"), false);
 
   const crossOrigin = await fetch(endpoint("/initialize"), {
     method: "POST",
-    headers: mutation(token, "vault-cross-origin", { origin: "https://attacker.example" }),
+    headers: mutation(deviceCookie, "vault-cross-origin", { origin: "https://attacker.example" }),
     body: JSON.stringify({ passphrase: "cross origin must not work" })
   });
   assert.equal(crossOrigin.status, 403);
@@ -113,7 +115,7 @@ test("Secret Vault HTTP API requires trusted devices and never returns secret va
 
   const initialized = await fetch(endpoint("/initialize"), {
     method: "POST",
-    headers: mutation(token, "vault-initialize"),
+    headers: mutation(deviceCookie, "vault-initialize"),
     body: JSON.stringify({ passphrase })
   });
   assert.equal(initialized.status, 200);
@@ -122,7 +124,7 @@ test("Secret Vault HTTP API requires trusted devices and never returns secret va
   const value = "sk-test-never-return-this-value";
   const saved = await fetch(endpoint(""), {
     method: "PUT",
-    headers: mutation(token, "vault-set"),
+    headers: mutation(deviceCookie, "vault-set"),
     body: JSON.stringify({
       provider: "openai",
       name: "integration",
@@ -138,14 +140,14 @@ test("Secret Vault HTTP API requires trusted devices and never returns secret va
 
   const overwriteWithoutConfirmation = await fetch(endpoint(""), {
     method: "PUT",
-    headers: mutation(token, "vault-overwrite-without-confirmation"),
+    headers: mutation(deviceCookie, "vault-overwrite-without-confirmation"),
     body: JSON.stringify({
       provider: "openai", name: "integration", value: "replacement-value", projectIds: [projectId]
     })
   });
   assert.equal(overwriteWithoutConfirmation.status, 409);
 
-  const listed = await fetch(endpoint(""), { headers: { authorization, "x-devmoter-device-token": token } });
+  const listed = await fetch(endpoint(""), { headers: { authorization, cookie: deviceCookie } });
   assert.equal(listed.status, 200);
   const listedPayload = await listed.json();
   assert.equal(listedPayload.secrets[0].projectIds[0], projectId);
@@ -153,14 +155,14 @@ test("Secret Vault HTTP API requires trusted devices and never returns secret va
 
   const unbound = await fetch(endpoint(""), {
     method: "PUT",
-    headers: mutation(token, "vault-set-unbound"),
+    headers: mutation(deviceCookie, "vault-set-unbound"),
     body: JSON.stringify({ provider: "openai", name: "unbound", value, projectIds: [] })
   });
   assert.equal(unbound.status, 400);
 
   const publicResolve = await fetch(endpoint("/resolve"), {
     method: "POST",
-    headers: mutation(token, "vault-no-resolve"),
+    headers: mutation(deviceCookie, "vault-no-resolve"),
     body: JSON.stringify({ reference: "secret://openai/integration", projectId, provider: "openai" })
   });
   assert.equal(publicResolve.status, 404);
@@ -170,23 +172,24 @@ test("Secret Vault HTTP API requires trusted devices and never returns secret va
 
   const deleteWithoutConfirmation = await fetch(endpoint("/openai/integration"), {
     method: "DELETE",
-    headers: mutation(token, "vault-delete-without-confirmation")
+    headers: mutation(deviceCookie, "vault-delete-without-confirmation")
   });
   assert.equal(deleteWithoutConfirmation.status, 400);
   const deleted = await fetch(endpoint("/openai/integration"), {
     method: "DELETE",
-    headers: mutation(token, "vault-delete-confirmed"),
+    headers: mutation(deviceCookie, "vault-delete-confirmed"),
     body: JSON.stringify({ confirmReference: "secret://openai/integration" })
   });
   assert.equal(deleted.status, 200);
 
   const revoked = await fetch(`${origin}/api/devices/${encodeURIComponent(deviceId)}`, {
     method: "DELETE",
-    headers: mutation(token, "vault-revoke-device")
+    headers: mutation(deviceCookie, "vault-revoke-device")
   });
   assert.equal(revoked.status, 200);
+  assert.match(String(revoked.headers.get("set-cookie") || ""), /Max-Age=0/);
   const afterRevoke = await fetch(endpoint("/status"), {
-    headers: { authorization, "x-devmoter-device-token": token }
+    headers: { authorization, cookie: deviceCookie }
   });
   assert.equal(afterRevoke.status, 401);
 });

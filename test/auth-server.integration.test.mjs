@@ -198,8 +198,12 @@ test("server requires auth and exact Origin for mutations", async () => {
     });
     assert.equal(bootstrappedDevice.status, 201);
     const devicePayload = await bootstrappedDevice.json();
+    const deviceCookie = String(bootstrappedDevice.headers.get("set-cookie") || "").split(";", 1)[0];
+    assert.match(deviceCookie, /^devmoter_device=/);
+    assert.equal(Object.hasOwn(devicePayload, "token"), false);
+    assert.equal(Object.hasOwn(devicePayload.device, "tokenHash"), false);
     const terminalSessions = await fetch(`${origin}/api/terminal/sessions`, {
-      headers: { authorization, "x-devmoter-device-token": devicePayload.token }
+      headers: { authorization, cookie: deviceCookie }
     });
     assert.equal(terminalSessions.status, 200);
     assert.deepEqual((await terminalSessions.json()).sessions, []);
@@ -208,7 +212,7 @@ test("server requires auth and exact Origin for mutations", async () => {
       method: "POST",
       headers: {
         authorization,
-        "x-devmoter-device-token": devicePayload.token,
+        cookie: deviceCookie,
         "content-type": "application/json",
         "x-devmoter-terminal-entry": "explicit",
         "x-pocket-operation-id": "terminal-claim-missing-origin"
@@ -221,7 +225,7 @@ test("server requires auth and exact Origin for mutations", async () => {
       method: "POST",
       headers: {
         authorization,
-        "x-devmoter-device-token": devicePayload.token,
+        cookie: deviceCookie,
         origin,
         "content-type": "application/json",
         "x-devmoter-terminal-entry": "explicit",
@@ -235,14 +239,15 @@ test("server requires auth and exact Origin for mutations", async () => {
       method: "DELETE",
       headers: {
         authorization,
-        "x-devmoter-device-token": devicePayload.token,
+        cookie: deviceCookie,
         origin,
         "x-pocket-operation-id": "terminal-device-revoke"
       }
     });
     assert.equal(revokeTrustedDevice.status, 200);
+    assert.match(String(revokeTrustedDevice.headers.get("set-cookie") || ""), /Max-Age=0/);
     const sessionsAfterDeviceRevoke = await fetch(`${origin}/api/terminal/sessions`, {
-      headers: { authorization, "x-devmoter-device-token": devicePayload.token }
+      headers: { authorization, cookie: deviceCookie }
     });
     assert.equal(sessionsAfterDeviceRevoke.status, 403);
 

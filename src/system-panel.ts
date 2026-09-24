@@ -1,4 +1,3 @@
-const DEVICE_TOKEN_KEY = "devmoter-device-token";
 const SETUP_DISMISSED_KEY = "devmoter-setup-dismissed-v1";
 function base64urlToBytes(value: string) {
   const padded = value.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - value.length % 4) % 4);
@@ -15,7 +14,6 @@ function escapeHtml(value: unknown) {
 }
 
 export function mountSystemPanel() {
-  const token = () => localStorage.getItem(DEVICE_TOKEN_KEY) || "";
   let activeSessionId = "";
   let activeBackend: "codex" | "opencode" = "opencode";
 
@@ -44,7 +42,6 @@ export function mountSystemPanel() {
     const headers = new Headers(init.headers || {});
     const method = String(init.method || "GET").toUpperCase();
     if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
-    if (auth && token()) headers.set("x-devmoter-device-token", token());
     if (method !== "GET" && method !== "HEAD" && !headers.has("x-pocket-operation-id")) {
       headers.set("x-pocket-operation-id", crypto.randomUUID());
     }
@@ -93,11 +90,9 @@ export function mountSystemPanel() {
   }
 
   async function devices() {
-    if (!token()) return null;
     try {
       return await request("/api/devices", {}, true);
     } catch {
-      localStorage.removeItem(DEVICE_TOKEN_KEY);
       return null;
     }
   }
@@ -127,7 +122,7 @@ export function mountSystemPanel() {
       request("/api/auth/status"),
       hostSnapshot()
     ]);
-    const trusted = Boolean(token());
+    const trusted = Boolean(deviceData);
     const identity = authStatus?.identity || null;
 
     body.innerHTML = `
@@ -216,11 +211,10 @@ export function mountSystemPanel() {
 
     body.querySelector("[data-bootstrap-device]")?.addEventListener("click", async () => {
       try {
-        const result = await request("/api/devices/bootstrap", {
+        await request("/api/devices/bootstrap", {
           method: "POST",
           body: JSON.stringify({ label: navigator.userAgent.includes("Mobile") ? "Mobile browser" : "Browser" })
         });
-        localStorage.setItem(DEVICE_TOKEN_KEY, result.token);
         await render();
         setMessage("This browser is now trusted.", "ok");
       } catch (error) {
@@ -240,11 +234,10 @@ export function mountSystemPanel() {
     body.querySelector("[data-claim-pairing]")?.addEventListener("click", async () => {
       const input = body.querySelector<HTMLInputElement>("[data-pairing-code]")!;
       try {
-        const result = await request("/api/pairings/claim", {
+        await request("/api/pairings/claim", {
           method: "POST",
           body: JSON.stringify({ code: input.value, label: navigator.userAgent.includes("Mobile") ? "Mobile browser" : "Browser" })
         });
-        localStorage.setItem(DEVICE_TOKEN_KEY, result.token);
         await render();
         setMessage("Device paired.", "ok");
       } catch (error) {
@@ -256,7 +249,6 @@ export function mountSystemPanel() {
       button.addEventListener("click", async () => {
         try {
           const result = await request(`/api/devices/${encodeURIComponent(button.dataset.revokeDevice || "")}`, { method: "DELETE" }, true);
-          if (result.revokedCurrentDevice) localStorage.removeItem(DEVICE_TOKEN_KEY);
           await render();
           setMessage(result.revokedCurrentDevice ? "This device was revoked." : "Device revoked.", "ok");
         } catch (error) {
@@ -276,7 +268,7 @@ export function mountSystemPanel() {
   }
 
   async function enablePush() {
-    if (!token()) {
+    if (!(await devices())) {
       setMessage("Trust or pair this device first.", "error");
       return;
     }
@@ -310,7 +302,6 @@ export function mountSystemPanel() {
   }
 
   async function disablePush() {
-    if (!token()) return;
     const subscription = await currentSubscription();
     if (subscription) {
       await request("/api/push/subscriptions", {
@@ -323,7 +314,6 @@ export function mountSystemPanel() {
   }
 
   async function syncVisibility() {
-    if (!token()) return;
     const subscription = await currentSubscription().catch(() => null);
     if (!subscription) return;
     await request("/api/push/visibility", {

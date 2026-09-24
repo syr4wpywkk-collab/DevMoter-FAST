@@ -112,13 +112,13 @@ test("API Chat resolves Vault-backed credentials only for the paired device and 
   });
   await waitForReady(child);
 
-  const json = async (path, { token = "", method = "GET", body, operationId = `vault-provider-${crypto.randomUUID()}` } = {}) => {
+  const json = async (path, { cookie = "", method = "GET", body, operationId = `vault-provider-${crypto.randomUUID()}` } = {}) => {
     const headers = {
       authorization,
       origin,
       ...(body !== undefined ? { "content-type": "application/json" } : {}),
       ...(method !== "GET" ? { "x-pocket-operation-id": operationId } : {}),
-      ...(token ? { "x-devmoter-device-token": token } : {})
+      ...(cookie ? { cookie } : {})
     };
     const response = await fetch(`${origin}${path}`, {
       method,
@@ -139,7 +139,10 @@ test("API Chat resolves Vault-backed credentials only for the paired device and 
     body: { label: "Vault API Chat integration" }
   });
   assert.equal(bootstrap.response.status, 201);
-  const token = bootstrap.payload.token;
+  const deviceCookie = String(bootstrap.response.headers.get("set-cookie") || "").split(";", 1)[0];
+  assert.match(deviceCookie, /^devmoter_device=/);
+  assert.equal(Object.hasOwn(bootstrap.payload, "token"), false);
+  assert.equal(Object.hasOwn(bootstrap.payload.device, "tokenHash"), false);
   const projects = await json("/api/projects");
   const projectId = projects.payload.projects[0].id;
   const legacyKey = "legacy-provider-key-to-migrate";
@@ -155,31 +158,26 @@ test("API Chat resolves Vault-backed credentials only for the paired device and 
     method: "POST", body: { projectId, confirm: true }
   });
   assert.equal(noDeviceMigration.response.status, 401);
-  const lockedMigration = await json("/api/llm/providers/legacy-openai/migrate-to-vault", {
-    token, method: "POST", body: { projectId, confirm: true }
+  const lockedMigration = await json("/api/llm/providers/legacy-openai/migrate-to-vault", { cookie: deviceCookie, method: "POST", body: { projectId, confirm: true }
   });
   assert.equal(lockedMigration.response.status, 409);
   const passphrase = "a correct and sufficiently long vault passphrase";
-  const initialize = await json("/api/secrets/initialize", { token, method: "POST", body: { passphrase } });
+  const initialize = await json("/api/secrets/initialize", { cookie: deviceCookie, method: "POST", body: { passphrase } });
   assert.equal(initialize.response.status, 200);
-  const wrongProjectMigration = await json("/api/llm/providers/legacy-openai/migrate-to-vault", {
-    token, method: "POST", body: { projectId: "not-a-project", confirm: true }
+  const wrongProjectMigration = await json("/api/llm/providers/legacy-openai/migrate-to-vault", { cookie: deviceCookie, method: "POST", body: { projectId: "not-a-project", confirm: true }
   });
   assert.equal(wrongProjectMigration.response.status, 400);
-  const unconfirmedMigration = await json("/api/llm/providers/legacy-openai/migrate-to-vault", {
-    token, method: "POST", body: { projectId, confirm: false }
+  const unconfirmedMigration = await json("/api/llm/providers/legacy-openai/migrate-to-vault", { cookie: deviceCookie, method: "POST", body: { projectId, confirm: false }
   });
   assert.equal(unconfirmedMigration.response.status, 400);
-  const migratedLegacy = await json("/api/llm/providers/legacy-openai/migrate-to-vault", {
-    token, method: "POST", body: { projectId, confirm: true }
+  const migratedLegacy = await json("/api/llm/providers/legacy-openai/migrate-to-vault", { cookie: deviceCookie, method: "POST", body: { projectId, confirm: true }
   });
   assert.equal(migratedLegacy.response.status, 200);
   assert.equal(migratedLegacy.payload.provider.credentialSource, "vault");
   assert.equal(migratedLegacy.payload.provider.projectId, projectId);
   assert.match(migratedLegacy.payload.provider.secretRef, /^secret:\/\/openai\/api-chat-[a-f0-9]{24}$/);
   assert.equal(JSON.stringify(migratedLegacy.payload).includes(legacyKey), false);
-  const repeatMigration = await json("/api/llm/providers/legacy-openai/migrate-to-vault", {
-    token, method: "POST", body: { projectId, confirm: true }
+  const repeatMigration = await json("/api/llm/providers/legacy-openai/migrate-to-vault", { cookie: deviceCookie, method: "POST", body: { projectId, confirm: true }
   });
   assert.equal(repeatMigration.response.status, 409);
   const providerConfigDirectory = join(home, ".config", "opencode-pocket");
@@ -187,21 +185,17 @@ test("API Chat resolves Vault-backed credentials only for the paired device and 
   assert.equal(migratedFile.includes(legacyKey), false);
   assert.equal(migratedFile.includes('"apiKey"'), false);
   assert.equal(migratedFile.includes(migratedLegacy.payload.provider.secretRef), true);
-  const vaultMetadata = await json("/api/secrets", { token });
+  const vaultMetadata = await json("/api/secrets", { cookie: deviceCookie });
   const migratedMetadata = vaultMetadata.payload.secrets.find(item => item.reference === migratedLegacy.payload.provider.secretRef);
   assert.ok(migratedMetadata);
   assert.deepEqual(migratedMetadata.projectIds, [projectId]);
 
-  const setSecret = await json("/api/secrets", {
-    token,
-    method: "PUT",
+  const setSecret = await json("/api/secrets", { cookie: deviceCookie, method: "PUT",
     body: { provider: "openai", name: "main", value: secretValue, projectIds: [projectId] }
   });
   assert.equal(setSecret.response.status, 200);
 
-  const wrongPreset = await json("/api/llm/providers", {
-    token,
-    method: "POST",
+  const wrongPreset = await json("/api/llm/providers", { cookie: deviceCookie, method: "POST",
     body: {
       credentialMode: "vault", presetId: "gemini", name: "Mismatched provider", protocol: "openai-compatible",
       baseUrl: `${upstreamOrigin}/v1`, secretRef: "secret://openai/main", projectId, models: ["vault-model"]
@@ -209,9 +203,7 @@ test("API Chat resolves Vault-backed credentials only for the paired device and 
   });
   assert.equal(wrongPreset.response.status, 403);
 
-  const customEndpoint = await json("/api/llm/providers", {
-    token,
-    method: "POST",
+  const customEndpoint = await json("/api/llm/providers", { cookie: deviceCookie, method: "POST",
     body: {
       credentialMode: "vault", presetId: "custom", name: "Custom endpoint", protocol: "openai-compatible",
       baseUrl: `${upstreamOrigin}/v1`, secretRef: "secret://openai/main", projectId, models: ["vault-model"]
@@ -219,9 +211,7 @@ test("API Chat resolves Vault-backed credentials only for the paired device and 
   });
   assert.equal(customEndpoint.response.status, 403);
 
-  const overriddenPresetEndpoint = await json("/api/llm/providers", {
-    token,
-    method: "POST",
+  const overriddenPresetEndpoint = await json("/api/llm/providers", { cookie: deviceCookie, method: "POST",
     body: {
       credentialMode: "vault", presetId: "openai", name: "Overridden endpoint", protocol: "openai-compatible",
       baseUrl: `${upstreamOrigin}/v1`, secretRef: "secret://openai/main", projectId, models: ["vault-model"]
@@ -229,9 +219,7 @@ test("API Chat resolves Vault-backed credentials only for the paired device and 
   });
   assert.equal(overriddenPresetEndpoint.response.status, 403);
 
-  const unknownReference = await json("/api/llm/providers", {
-    token,
-    method: "POST",
+  const unknownReference = await json("/api/llm/providers", { cookie: deviceCookie, method: "POST",
     body: {
       credentialMode: "vault", presetId: "openai", name: "Unknown reference", protocol: "openai-compatible",
       baseUrl: "https://api.openai.com/v1", secretRef: "secret://openai/missing", projectId, models: ["vault-model"]
@@ -239,9 +227,7 @@ test("API Chat resolves Vault-backed credentials only for the paired device and 
   });
   assert.equal(unknownReference.response.status, 403);
 
-  const saveProvider = await json("/api/llm/providers", {
-    token,
-    method: "POST",
+  const saveProvider = await json("/api/llm/providers", { cookie: deviceCookie, method: "POST",
     body: {
       credentialMode: "vault",
       presetId: "openai",
@@ -274,9 +260,7 @@ test("API Chat resolves Vault-backed credentials only for the paired device and 
   });
   assert.equal(noDeviceChat.response.status, 401);
 
-  const wrongProjectChat = await json("/api/llm/chat", {
-    token,
-    method: "POST",
+  const wrongProjectChat = await json("/api/llm/chat", { cookie: deviceCookie, method: "POST",
     body: { providerId, projectId: "another-project", model: "vault-model", messages: [{ role: "user", content: "hello" }] }
   });
   assert.equal(wrongProjectChat.response.status, 403);
@@ -290,9 +274,7 @@ test("API Chat resolves Vault-backed credentials only for the paired device and 
   });
   assert.equal(noDeviceTest.response.status, 401);
 
-  const arbitraryEndpointTest = await json("/api/llm/test", {
-    token,
-    method: "POST",
+  const arbitraryEndpointTest = await json("/api/llm/test", { cookie: deviceCookie, method: "POST",
     body: {
       presetId: "openai", name: "OpenAI", protocol: "openai-compatible", baseUrl: `${upstreamOrigin}/v1`,
       secretRef: "secret://openai/main", projectId, models: []
