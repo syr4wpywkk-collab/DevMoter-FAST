@@ -4,7 +4,6 @@ type Json = Record<string, any>;
 type SettingsPage = "root" | "appearance" | "account" | "devices" | "vault" | "notifications" | "diagnostics" | "guide";
 
 const THEME_KEY = "devmoter-theme";
-const DEVICE_TOKEN_KEY = "devmoter-device-token";
 const DENSITY_KEY = "devmoter-settings-density";
 
 function escapeHtml(value: unknown) {
@@ -25,14 +24,10 @@ async function request(path: string, init: RequestInit = {}, deviceAuth = false)
   const headers = new Headers(init.headers || {});
   const method = String(init.method || "GET").toUpperCase();
   if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
-  if (deviceAuth) {
-    const token = localStorage.getItem(DEVICE_TOKEN_KEY);
-    if (token) headers.set("x-devmoter-device-token", token);
-  }
   if (method !== "GET" && method !== "HEAD" && !headers.has("x-pocket-operation-id")) {
     headers.set("x-pocket-operation-id", crypto.randomUUID());
   }
-  const response = await fetch(path, { ...init, headers, cache: "no-store" });
+  const response = await fetch(path, { ...init, headers, cache: "no-store", credentials: "same-origin" });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload?.error || `HTTP ${response.status}`);
   return payload as Json;
@@ -304,25 +299,23 @@ export function mountSettingsPanel() {
 
   async function renderDevices() {
     setHeader("Trusted devices", "端末の信頼とペアリング");
-    const token = localStorage.getItem(DEVICE_TOKEN_KEY) || "";
     let deviceData: Json | null = null;
-    if (token) {
-      try {
-        deviceData = await request("/api/devices", {}, true);
-      } catch {
-        localStorage.removeItem(DEVICE_TOKEN_KEY);
-      }
+    try {
+      deviceData = await request("/api/devices", {}, true);
+    } catch {
+      deviceData = null;
     }
+    const trusted = Boolean(deviceData);
     const devices = Array.isArray(deviceData?.devices) ? deviceData!.devices : [];
     scroll.innerHTML = `
       <section class="devmoter-settings-section">
         <h2>この端末</h2>
         <div class="devmoter-settings-card devmoter-settings-detail-card">
           <div class="devmoter-settings-detail-row">
-            <span>状態</span><strong>${token ? "Trusted" : "未登録"}</strong>
+            <span>状態</span><strong>${trusted ? "Trusted" : "未登録"}</strong>
           </div>
           <div class="devmoter-settings-actions">
-            ${token
+            ${trusted
               ? '<button type="button" data-action="device:create-code">ペアリングコードを作成</button>'
               : '<button type="button" data-action="device:bootstrap">このブラウザを信頼する</button>'}
           </div>
@@ -355,8 +348,8 @@ export function mountSettingsPanel() {
 
   async function renderVault() {
     setHeader("API Vault", "Host側で暗号化する認証情報");
-    const token = localStorage.getItem(DEVICE_TOKEN_KEY) || "";
-    if (!token) {
+    const trusted = await request("/api/devices", {}, true).then(() => true).catch(() => false);
+    if (!trusted) {
       scroll.innerHTML = `
         <div class="devmoter-settings-note">Vaultを使うには、このブラウザをTrusted deviceとして登録してね。</div>
         <div class="devmoter-settings-card devmoter-settings-action-card">
@@ -533,11 +526,11 @@ export function mountSettingsPanel() {
   async function renderNotifications() {
     setHeader("通知", "完了・承認待ちをスマホへ");
     const subscription = await currentSubscription().catch(() => null);
-    const token = localStorage.getItem(DEVICE_TOKEN_KEY) || "";
+    const trusted = await request("/api/devices", {}, true).then(() => true).catch(() => false);
     scroll.innerHTML = `
       ${section("Push 通知",
         row("♢", "通知の状態", { value: subscription ? "有効" : "無効" }) +
-        row("▱", "Trusted device", { action: "page:devices", value: token ? "登録済み" : "先に登録が必要" })
+        row("▱", "Trusted device", { action: "page:devices", value: trusted ? "登録済み" : "先に登録が必要" })
       )}
       <div class="devmoter-settings-card devmoter-settings-action-card">
         <button type="button" data-action="push:enable">通知を有効にする</button>
@@ -656,8 +649,8 @@ export function mountSettingsPanel() {
   }
 
   async function enablePush() {
-    const token = localStorage.getItem(DEVICE_TOKEN_KEY);
-    if (!token) {
+    const trusted = await request("/api/devices", {}, true).then(() => true).catch(() => false);
+    if (!trusted) {
       toast("先にこの端末をTrusted deviceとして登録してください。");
       setPage("devices");
       return;
@@ -735,11 +728,10 @@ export function mountSettingsPanel() {
         }
         if (action === "device:bootstrap") {
           try {
-            const result = await request("/api/devices/bootstrap", {
+            await request("/api/devices/bootstrap", {
               method: "POST",
               body: JSON.stringify({ label: navigator.userAgent.includes("Mobile") ? "Mobile browser" : "Browser" })
             });
-            localStorage.setItem(DEVICE_TOKEN_KEY, result.token);
             toast("このブラウザをTrusted deviceに登録しました。");
             await renderDevices();
           } catch (error) {
@@ -759,14 +751,13 @@ export function mountSettingsPanel() {
         if (action === "device:claim") {
           const input = scroll.querySelector<HTMLInputElement>("[data-pair-code]");
           try {
-            const result = await request("/api/pairings/claim", {
+            await request("/api/pairings/claim", {
               method: "POST",
               body: JSON.stringify({
                 code: input?.value || "",
                 label: navigator.userAgent.includes("Mobile") ? "Mobile browser" : "Browser"
               })
             });
-            localStorage.setItem(DEVICE_TOKEN_KEY, result.token);
             toast("端末をペアリングしました。");
             await renderDevices();
           } catch (error) {
@@ -777,7 +768,6 @@ export function mountSettingsPanel() {
         if (action === "device:revoke") {
           try {
             const result = await request(`/api/devices/${encodeURIComponent(button.dataset.deviceId || "")}`, { method: "DELETE" }, true);
-            if (result.revokedCurrentDevice) localStorage.removeItem(DEVICE_TOKEN_KEY);
             toast("端末の信頼を解除しました。");
             await renderDevices();
           } catch (error) {
