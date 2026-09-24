@@ -35,6 +35,12 @@ export const MULTI_API_PRESETS = [
     baseUrl: "https://openrouter.ai/api/v1"
   },
   {
+    id: "ahefi",
+    name: "Ahefi",
+    protocol: "openai-compatible",
+    baseUrl: "https://ahefi.com/v1"
+  },
+  {
     id: "groq",
     name: "Groq",
     protocol: "openai-compatible",
