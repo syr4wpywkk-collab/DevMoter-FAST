@@ -3,6 +3,7 @@ import { speechRecognitionLanguage } from "./i18n";
 import { createDevWorkflowPanel } from "./dev-workflows-ui";
 import { isMcpToolItem, mcpToolSummary, normalizeStructuredMcpResult } from "./mcp-result";
 import { setWakeLockExecutionActive } from "./wake-lock";
+import { enrichInstalledPluginEntries, pluginEntries } from "./codex-plugin-metadata.mjs";
 import { applyReasoningToTurnStart, normalizeCodexModels, reasoningChoices, reconcileReasoningMode } from "./codex-reasoning.mjs";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
@@ -1882,39 +1883,6 @@ export function mountCodexRemote(
     }
   }
 
-  function pluginEntries(payload: Json) {
-    const entries: Array<{
-      id: string;
-      name: string;
-      marketplace: string;
-      installed: boolean;
-      enabled: boolean;
-    }> = [];
-
-    for (const marketplace of payload?.marketplaces ?? []) {
-      for (const plugin of Array.isArray(marketplace?.plugins) ? marketplace.plugins : []) {
-        const id = String(plugin?.id || plugin?.name || "");
-        if (!id) continue;
-        entries.push({
-          id,
-          name: String(
-            plugin?.interface?.displayName ||
-            plugin?.release?.interface?.displayName ||
-            plugin?.release?.displayName ||
-            plugin?.displayName ||
-            plugin?.name ||
-            id.split("@")[0]
-          ),
-          marketplace: String(marketplace?.name || ""),
-          installed: plugin?.installed !== false,
-          enabled: plugin?.enabled !== false
-        });
-      }
-    }
-
-    return entries;
-  }
-
   function appendPluginSection(
     titleText: string,
     entries: ReturnType<typeof pluginEntries>,
@@ -1969,8 +1937,12 @@ export function mountCodexRemote(
       cwds: activeProject?.path ? [activeProject.path] : []
     };
 
-    const [installedResult, mcpResult] = await Promise.allSettled([
+    const [installedResult, catalogResult, mcpResult] = await Promise.allSettled([
       rpc<Json>("plugin/installed", pluginParams),
+      rpc<Json>("plugin/list", {
+        ...pluginParams,
+        forceRefetch: false
+      }),
       rpc<Json>("mcpServerStatus/list", {
         detail: "toolsAndAuthOnly",
         ...(activeThreadId ? { threadId: activeThreadId } : {})
@@ -1979,28 +1951,23 @@ export function mountCodexRemote(
 
     modalBody.replaceChildren();
 
+    const catalogEntries = catalogResult.status === "fulfilled"
+      ? pluginEntries(catalogResult.value)
+      : [];
+
     if (installedResult.status === "fulfilled") {
+      const installedEntries = pluginEntries(installedResult.value);
       appendPluginSection(
         "Installed plugins",
-        pluginEntries(installedResult.value)
+        enrichInstalledPluginEntries(installedEntries, catalogEntries)
       );
     } else {
-      let fallbackEntries: ReturnType<typeof pluginEntries> = [];
-      let fallbackError = "";
-
-      try {
-        const catalog = await rpc<Json>("plugin/list", {
-          ...pluginParams,
-          forceRefetch: false
-        });
-        fallbackEntries = pluginEntries(catalog).filter(entry => entry.installed);
-      } catch (error) {
-        fallbackError =
-          error instanceof Error
-            ? `Plugin API: ${error.message}`
-            : "Plugin APIを読み込めませんでした。";
-      }
-
+      const fallbackEntries = catalogEntries.filter(entry => entry.installed);
+      const fallbackError = catalogResult.status === "rejected"
+        ? (catalogResult.reason instanceof Error
+            ? `Plugin API: ${catalogResult.reason.message}`
+            : "Plugin APIを読み込めませんでした。")
+        : "";
       appendPluginSection("Installed plugins", fallbackEntries, fallbackError);
     }
 
