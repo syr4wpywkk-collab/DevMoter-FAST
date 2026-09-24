@@ -72,3 +72,17 @@ exit 0
   assert.match(log, /\/api\/model/);
   assert.match(log, /\/api\/health/);
 });
+
+
+test("manual and systemd launchers keep the same readiness contract", async () => {
+  const manual = await readFile(resolve("scripts/start-pocket.sh"), "utf8");
+  const service = await readFile(resolve("scripts/systemd-entrypoint.sh"), "utf8");
+
+  for (const source of [manual, service]) {
+    assert.match(source, /\/api\/provider/);
+    assert.match(source, /\/api\/model/);
+    assert.match(source, /\/api\/health/);
+    assert.match(source, /backends.*opencode.*online/s);
+    assert.match(source, /backends.*codex.*online/s);
+  }
+});

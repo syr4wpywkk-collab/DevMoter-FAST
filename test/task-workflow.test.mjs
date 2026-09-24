@@ -262,3 +262,40 @@ test("porcelain -z parser preserves spaces and rename destinations", () => {
   );
   assert.deepEqual(parsed, ["weird file.txt", "new name.txt", "untracked space.txt"]);
 });
+
+
+test("agent proposal flows through hunk review, apply, and confirmed commit", async t => {
+  const f = await fixture();
+  t.after(f.cleanup);
+
+  const proposal = await f.workflow.createChange("p1", {
+    source: "integration-agent",
+    files: [{ path: "sample.txt", content: "ONE\ntwo\nthree\nFOUR\n" }]
+  });
+  assert.equal(proposal.files[0].hunks.length, 2);
+
+  await f.workflow.review("p1", proposal.id, {
+    files: [{
+      path: "sample.txt",
+      hunks: [
+        { id: proposal.files[0].hunks[0].id, decision: "accept" },
+        { id: proposal.files[0].hunks[1].id, decision: "reject" }
+      ]
+    }]
+  });
+
+  const applied = await f.workflow.applyChange("p1", proposal.id);
+  assert.deepEqual(applied.change.appliedFiles, ["sample.txt"]);
+  assert.equal(await readFile(join(f.project, "sample.txt"), "utf8"), "ONE\ntwo\nthree\nfour\n");
+
+  const committed = await f.workflow.commitChange("p1", proposal.id, {
+    message: "test: apply reviewed agent proposal",
+    confirm: true
+  });
+  assert.equal(committed.committed, true);
+  assert.match(committed.sha, /^[0-9a-f]{40}$/);
+
+  const head = (await git(f.project, ["show", "--format=%s", "--name-only", "--no-renames", "HEAD"])).stdout;
+  assert.match(head, /test: apply reviewed agent proposal/);
+  assert.match(head, /sample\.txt/);
+});
