@@ -1,6 +1,7 @@
 import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import { join } from "node:path";
+import { expectedRequestOrigin } from "./auth.mjs";
 import {
   createHash,
   createPrivateKey,
@@ -14,6 +15,8 @@ import {
 const PAIRING_TTL_MS = 5 * 60 * 1000;
 const VISIBLE_TTL_MS = 45 * 1000;
 const NOTIFY_DEDUPE_MS = 30 * 1000;
+const DEVICE_COOKIE_NAME = "devmoter_device";
+const DEVICE_COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 function base64url(buffer) {
   return Buffer.from(buffer).toString("base64url");
@@ -44,10 +47,37 @@ async function writeJsonFile(path, value) {
   await rename(tmp, path);
 }
 
+function parseCookies(req) {
+  const result = {};
+  for (const part of String(req?.headers?.cookie || "").split(";")) {
+    const index = part.indexOf("=");
+    if (index <= 0) continue;
+    const key = part.slice(0, index).trim();
+    const value = part.slice(index + 1).trim();
+    if (!key) continue;
+    try { result[key] = decodeURIComponent(value); }
+    catch { result[key] = value; }
+  }
+  return result;
+}
+
 function deviceToken(req) {
-  const value = req?.headers?.["x-devmoter-device-token"];
-  if (Array.isArray(value)) return String(value[0] || "").trim();
-  return String(value || "").trim();
+  const header = req?.headers?.["x-devmoter-device-token"];
+  const headerValue = Array.isArray(header) ? String(header[0] || "").trim() : String(header || "").trim();
+  if (headerValue) return headerValue;
+  return String(parseCookies(req)[DEVICE_COOKIE_NAME] || "").trim();
+}
+
+export function deviceSessionCookie(req, token, maxAgeSeconds = DEVICE_COOKIE_MAX_AGE_SECONDS) {
+  const secure = String(expectedRequestOrigin(req) || "").startsWith("https://");
+  return [
+    `${DEVICE_COOKIE_NAME}=${encodeURIComponent(String(token || ""))}`,
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Strict",
+    secure ? "Secure" : "",
+    `Max-Age=${Math.max(0, Number(maxAgeSeconds) || 0)}`
+  ].filter(Boolean).join("; ");
 }
 
 function requestHostname(req) {
@@ -534,4 +564,4 @@ export function createSystemFeatures({
 }
 
 
-export const systemFeatureInternals = { isLocalBootstrapRequest, requestHostname };
+export const systemFeatureInternals = { isLocalBootstrapRequest, requestHostname, parseCookies, deviceToken, DEVICE_COOKIE_NAME };
