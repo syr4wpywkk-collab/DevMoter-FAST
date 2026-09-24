@@ -10,7 +10,7 @@
     "lint": "node scripts/lint.mjs",
     "build": "tsc --noEmit && vite build",
     "start": "node server.mjs",
-    "test": "node --test test/**/*.test.mjs",
+    "test": "node --test test/*.test.mjs test/**/*.test.mjs",
     "test:coverage": "c8 --reporter=text --reporter=lcov npm test",
     "cli": "node cli/devmoter.mjs"
   },

@@ -6,6 +6,7 @@ const OUTPUT_LIMIT_BYTES = 512 * 1024;
 const OUTPUT_LIMIT_CHUNKS = 4000;
 const SESSION_RETENTION_MS = 15 * 60 * 1000;
 const SESSION_IDLE_LIMIT_MS = 12 * 60 * 60 * 1000;
+const DEFAULT_MAX_SESSIONS = 4;
 
 function json(res, status, body) {
   res.writeHead(status, {
@@ -132,6 +133,8 @@ function publicSession(session) {
 export function createTerminalManager(options = {}) {
   const resolveProject = options.resolveProject;
   const password = String(options.authPassword || "");
+  const spawnImpl = options.spawnImpl || spawn;
+  const maxSessions = Math.max(1, Math.min(16, Math.floor(Number(options.maxSessions) || DEFAULT_MAX_SESSIONS)));
   const shell = resolveShell(options.shell || process.env.SHELL);
   if (typeof resolveProject !== "function") {
     throw new Error("Terminal manager requires resolveProject.");
@@ -191,10 +194,18 @@ export function createTerminalManager(options = {}) {
       if (!projectId) throw new Error("projectId is required.");
       const project = await resolveProject(projectId);
 
+      // No await occurs between this check and registering the new session, so
+      // concurrent HTTP requests cannot race past the configured process cap.
+      const activeSessions = [...sessions.values()].filter(session => !session.closed).length;
+      if (activeSessions >= maxSessions) {
+        json(res, 429, { error: "Terminal session limit reached.", maxSessions });
+        return;
+      }
+
       const id = randomBytes(18).toString("hex");
       const token = randomBytes(32).toString("hex");
       const command = `exec ${shell} -l`;
-      const child = spawn("script", ["-qefc", command, "/dev/null"], {
+      const child = spawnImpl("script", ["-qefc", command, "/dev/null"], {
         cwd: project.path,
         env: {
           ...process.env,
@@ -234,10 +245,17 @@ export function createTerminalManager(options = {}) {
         appendOutput(session, "stderr", chunk);
       });
       child.on("error", error => {
+        if (session.closed) return;
         session.lastActivityAt = Date.now();
         appendOutput(session, "system", `\r\n[terminal error] ${error.message}\r\n`);
+        session.closed = true;
+        session.exitCode = null;
+        session.signal = null;
+        session.cleanupTimer = setTimeout(() => sessions.delete(id), SESSION_RETENTION_MS);
+        session.cleanupTimer.unref?.();
       });
       child.on("exit", (code, signal) => {
+        if (session.closed) return;
         session.closed = true;
         session.exitCode = code;
         session.signal = signal;
