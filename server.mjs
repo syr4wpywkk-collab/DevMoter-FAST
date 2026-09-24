@@ -18,6 +18,7 @@ import { createTerminalManager } from "./server/terminal.mjs";
 import { createProjectIndex } from "./server/project-index.mjs";
 import { createSafetyService } from "./server/safety.mjs";
 import { createSystemFeatures } from "./server/system-features.mjs";
+import { createHostAdapter } from "./server/host/adapters.mjs";
 import { createAutomationApi, AUTOMATION_API_VERSION } from "./server/automation-api.mjs";
 import { createUploadRegistry } from "./server/upload-registry.mjs";
 import { ControlPlane } from "./server/control-plane.mjs";
@@ -134,6 +135,21 @@ const terminal = createTerminalManager({
   resolveProject: getProjectById,
   authPassword: DEVMOTER_AUTH_PASSWORD,
   shell: process.env.SHELL
+});
+const hostRuntime = createHostAdapter({
+  platform: process.platform,
+  architecture: process.arch,
+  env: process.env,
+  capabilities: {
+    terminal: terminal.configured
+      ? { state: "available", features: ["pty", "ndjson-stream", "project-cwd"] }
+      : { state: "unavailable", reason: "terminal_auth_not_configured" },
+    files: { state: "available", features: ["registered-projects", "markdown-edit"] },
+    git: { state: "available", features: ["status", "diff", "reviewed-changes"] },
+    agents: { state: "available", features: ["codex", "opencode"] },
+    notifications: { state: "available", features: ["web-push", "agent-state"] },
+    secrets: { state: "unavailable", reason: "host_vault_not_implemented" }
+  }
 });
 const systemFeatures = createSystemFeatures({
   stateDir: PROJECT_CONFIG_DIR,
@@ -2273,6 +2289,11 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/api/system/diagnostics") {
       await featureJson(res, () => systemFeatures.diagnostics());
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/host") {
+      json(res, 200, await hostRuntime.snapshot());
       return;
     }
 

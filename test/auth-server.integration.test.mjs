@@ -165,6 +165,23 @@ test("server requires auth and exact Origin for mutations", async () => {
     assert.equal(authenticated.status, 200);
     assert.equal(authenticated.headers.get("cache-control"), "no-store");
 
+    const unauthenticatedHost = await fetch(`${origin}/api/host`);
+    assert.equal(unauthenticatedHost.status, 401);
+
+    const hostResponse = await fetch(`${origin}/api/host`, {
+      headers: { authorization }
+    });
+    assert.equal(hostResponse.status, 200);
+    const hostSnapshot = await hostResponse.json();
+    assert.equal(hostSnapshot.protocolVersion, "1.0");
+    assert.equal(typeof hostSnapshot.host.id, "string");
+    assert.equal(typeof hostSnapshot.host.platform, "string");
+    assert.deepEqual(Object.keys(hostSnapshot.capabilities).sort(), [
+      "agents", "browser", "files", "git", "notifications", "ports", "processes", "secrets", "services", "terminal"
+    ]);
+    assert.equal(JSON.stringify(hostSnapshot).includes(process.env.HOME || "/home/"), false);
+    assert.equal(Object.hasOwn(hostSnapshot.host, "hostname"), false);
+
     const automationUnauthenticated = await fetch(`${origin}/api/automation/projects`);
     assert.equal(automationUnauthenticated.status, 401);
 
