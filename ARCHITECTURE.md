@@ -89,3 +89,7 @@ One backend failing does not imply the other backend is unavailable. CLI/app-ser
 DevMoter protects the boundary **between a browser and privileged host tools**. It does not sandbox the coding agents themselves. Once an authenticated user authorizes an agent action, the underlying agent may have broader filesystem/shell permissions than the narrow browser editor.
 
 See [THREAT_MODEL.md](./THREAT_MODEL.md) and [SECURITY.md](./SECURITY.md).
+
+## Experimental Setup Wizard
+
+Installer v2 foundation adds a read-only Setup Engine under `server/setup/`. Its declarative adapters share one detector process policy, and the authenticated, loopback-only `GET /api/setup/status` endpoint returns normalized status plus sanitized server-owned install metadata for the six external tools. The plan endpoint validates fixed selections, rescans the machine, and returns deterministic non-executable plan data. A fail-closed execute endpoint validates a reviewed plan but does not run installers yet. The dashboard is available at `/?setup=1`. This foundation does not perform installation, downloads, provider login, sudo, service setup, or Tailscale configuration; see `docs/INSTALLER_V2_DESIGN.md`.
