@@ -11,7 +11,7 @@ import { dirname } from "node:path";
 const FORMAT_VERSION = 1;
 const CIPHER = "aes-256-gcm";
 const KDF = "scrypt";
-const SCRYPT_OPTIONS = { N: 1 << 14, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
+const SCRYPT_OPTIONS = { N: 1 << 17, r: 8, p: 1, maxmem: 256 * 1024 * 1024 };
 const MAX_STORE_BYTES = 4 * 1024 * 1024;
 const MAX_SECRET_BYTES = 16 * 1024;
 const AAD = Buffer.from("devmoter-secret-store:v1", "utf8");
