@@ -586,11 +586,21 @@ function sendJson(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-export async function handleWorkspaceControlRequest(req, res, url, control) {
+export async function handleWorkspaceControlRequest(req, res, url, control, { authenticateDevice } = {}) {
   const path = url.pathname;
   if (path !== "/api/workspace-control" && !path.startsWith("/api/workspace-control/")) return false;
 
   try {
+    // Workspace control mutates persistent host state and may launch deployment adapters.
+    // Require an active paired device for every route in this privileged namespace.
+    const device = typeof authenticateDevice === "function"
+      ? await authenticateDevice(req)
+      : null;
+    if (!device?.id) {
+      sendJson(res, 403, { error: "Trusted device required" });
+      return true;
+    }
+
     if (req.method === "GET" && path === "/api/workspace-control") {
       sendJson(res, 200, await control.getOverview());
       return true;
@@ -717,7 +727,9 @@ export async function handleWorkspaceControlRequest(req, res, url, control) {
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const status = message === "Request body too large" ? 413 : 400;
+    const status = Number.isInteger(error?.status) && error.status >= 400 && error.status < 600
+      ? error.status
+      : message === "Request body too large" ? 413 : 400;
     sendJson(res, status, { error: message });
     return true;
   }

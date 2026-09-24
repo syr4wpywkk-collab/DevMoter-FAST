@@ -20,7 +20,7 @@ The Host Protocol gives clients one OS-neutral way to identify the DevMoter runt
     "terminal": {
       "state": "available",
       "reason": null,
-      "features": ["pty", "ndjson-stream", "project-cwd"]
+      "features": ["pty", "ndjson-stream", "websocket", "resize", "project-cwd"]
     },
     "secrets": {
       "state": "available",

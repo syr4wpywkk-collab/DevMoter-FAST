@@ -1,6 +1,7 @@
 import http from "node:http";
+import { accessSync, constants as fsConstants } from "node:fs";
 import { mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
-import { basename, dirname, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
+import { basename, delimiter, dirname, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
 import { CodexBridge } from "./server/codex-bridge.mjs";
@@ -15,6 +16,7 @@ import { createUserAutomationService, userAutomationPolicy } from "./server/user
 import { createAdvancedApi } from "./server/advanced-api.mjs";
 import { assertExternalBackendExecutionAllowed, externalBackendSandboxPolicy } from "./server/advanced-features.mjs";
 import { createTerminalManager } from "./server/terminal.mjs";
+import { installTerminalWebSocketEndpoint } from "./server/terminal-websocket.mjs";
 import { createProjectIndex } from "./server/project-index.mjs";
 import { createSafetyService } from "./server/safety.mjs";
 import { createSystemFeatures } from "./server/system-features.mjs";
@@ -136,18 +138,37 @@ const projectIndex = createProjectIndex({
   stateDir: PROJECT_INDEX_DIR,
   resolveProject: getProjectById
 });
+function executableAvailable(name) {
+  if (process.platform === "win32") return false;
+  for (const directory of String(process.env.PATH || "").split(delimiter).filter(Boolean)) {
+    try {
+      accessSync(join(directory, name), fsConstants.X_OK);
+      return true;
+    } catch {
+      // Keep optional host tools from blocking server startup.
+    }
+  }
+  return false;
+}
+const tmuxAvailable = executableAvailable("tmux");
 const terminal = createTerminalManager({
   resolveProject: getProjectById,
   authPassword: DEVMOTER_AUTH_PASSWORD,
-  shell: process.env.SHELL
+  shell: process.env.SHELL,
+  sessionStoreFile: tmuxAvailable ? join(PROJECT_CONFIG_DIR, "terminal-sessions.json") : undefined,
+  authenticateDevice: req => systemFeatures.authenticate(req),
+  isDeviceActive: deviceId => systemFeatures.isDeviceActive(deviceId)
 });
 const hostRuntime = createHostAdapter({
   platform: process.platform,
   architecture: process.arch,
   env: process.env,
   capabilities: {
-    terminal: terminal.configured
-      ? { state: "available", features: ["pty", "ndjson-stream", "project-cwd"] }
+      terminal: terminal.configured
+      ? {
+          state: "available",
+          features: ["pty", "ndjson-stream", "websocket", "resize", "project-cwd", ...(tmuxAvailable ? ["named-persistent-sessions"] : [])]
+        }
       : { state: "unavailable", reason: "terminal_auth_not_configured" },
     files: { state: "available", features: ["registered-projects", "markdown-edit"] },
     git: { state: "available", features: ["status", "diff", "reviewed-changes"] },
@@ -165,7 +186,8 @@ const systemFeatures = createSystemFeatures({
     return { opencode: openCode, codex: codexHealth };
   },
   host: HOST,
-  version: process.env.DEVMOTER_VERSION || "0.2.0"
+  version: process.env.DEVMOTER_VERSION || "0.2.0",
+  onDeviceRevoked: deviceId => terminal.revokeDeviceSessions(deviceId)
 });
 const secretVaultApi = createSecretVaultApi({
   store: secretStore,
@@ -2196,7 +2218,9 @@ const server = http.createServer(async (req, res) => {
         req.method !== "HEAD" &&
         !claimOperation(req, res, `${req.method}:${url.pathname}`)
       ) return;
-      if (await handleWorkspaceControlRequest(req, res, url, workspaceControl)) return;
+      if (await handleWorkspaceControlRequest(req, res, url, workspaceControl, {
+        authenticateDevice: request => systemFeatures.authenticate(request)
+      })) return;
     }
 
     if (await controlRoute(req, res, url)) return;
@@ -2610,13 +2634,25 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/terminal/sessions") {
+      await terminal.listSessions(req, res);
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/terminal/sessions") {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
       await terminal.create(req, res);
       return;
     }
 
-    const terminalMatch = url.pathname.match(/^\/api\/terminal\/sessions\/([^/]+)(?:\/(input|stream))?$/);
+    const terminalClaimMatch = url.pathname.match(/^\/api\/terminal\/sessions\/([a-f0-9]{36})\/claim$/);
+    if (req.method === "POST" && terminalClaimMatch) {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await terminal.claimSession(req, res, terminalClaimMatch[1]);
+      return;
+    }
+
+    const terminalMatch = url.pathname.match(/^\/api\/terminal\/sessions\/([^/]+)(?:\/(input|stream|socket-ticket))?$/);
     if (terminalMatch) {
       const terminalId = decodeURIComponent(terminalMatch[1]);
       const terminalAction = terminalMatch[2] || "";
@@ -2631,6 +2667,11 @@ const server = http.createServer(async (req, res) => {
       if (req.method === "POST" && terminalAction === "input") {
         if (!claimOperation(req, res, `${req.method}:${url.pathname}:${operationId(req)}`)) return;
         await terminal.input(req, res, terminalId);
+        return;
+      }
+      if (req.method === "POST" && terminalAction === "socket-ticket") {
+        if (!claimOperation(req, res, `${req.method}:${url.pathname}:${operationId(req)}`)) return;
+        await terminal.issueSocketTicket(req, res, terminalId);
         return;
       }
       if (req.method === "DELETE" && terminalAction === "") {
@@ -2872,9 +2913,14 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+const terminalSockets = installTerminalWebSocketEndpoint(server, terminal, {
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN
+});
+
 server.on("close", () => {
   controlPlane.stop();
   terminal.shutdown();
+  terminalSockets.close();
 });
 
 server.listen(PORT, HOST, () => {

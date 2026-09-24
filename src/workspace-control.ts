@@ -4,11 +4,24 @@ type Json = Record<string, any>;
 const THEME_KEY = "devmoter-theme";
 const CONTEXT_THRESHOLD_KEY = "devmoter-context-threshold";
 const LAST_COMPACT_KEY = "devmoter-last-auto-compact";
+const DEVICE_TOKEN_KEY = "devmoter-device-token";
 const TRANSCRIPT_WINDOW = 180;
 const RAW_OUTPUT_LIMIT = 12_000;
 const RICH_SELECTOR =
   ".cx-message-row.assistant:not(.live) .cx-message-text, .ocx-message-row.assistant:not(.live) .ocx-assistant-text";
 const TRANSCRIPT_SELECTOR = ".cx-transcript, .ocx-transcript";
+
+function workspaceControlFetch(input: RequestInfo | URL, init: RequestInit = {}) {
+  const headers = new Headers(init.headers || {});
+  const deviceToken = localStorage.getItem(DEVICE_TOKEN_KEY);
+  if (deviceToken) headers.set("x-devmoter-device-token", deviceToken);
+  return fetch(input, {
+    ...init,
+    headers,
+    credentials: "same-origin",
+    cache: "no-store"
+  });
+}
 
 function escapeHtml(text: string) {
   return text.replace(/[&<>"']/g, char => (
@@ -298,7 +311,7 @@ function createToolbar() {
     if (compactInFlight) return;
     compactInFlight = true;
     try {
-      const res = await fetch("/api/workspace-control/events/compact", {
+      const res = await workspaceControlFetch("/api/workspace-control/events/compact", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ sessionId: activeSessionId(), mode })
@@ -364,7 +377,7 @@ function createToolbar() {
     panel.innerHTML = panelHead("Task checkpoints") + "<p>Loading current micro-task…</p>";
     wireClose();
     try {
-      const res = await fetch(
+      const res = await workspaceControlFetch(
         `/api/workspace-control/microtasks?parentId=${encodeURIComponent(parentId)}`
       );
       const payload = await res.json();
@@ -417,7 +430,7 @@ function createToolbar() {
           } else if (statusValue === "done") {
             status = "completed";
           }
-          const save = await fetch("/api/workspace-control/microtasks", {
+          const save = await workspaceControlFetch("/api/workspace-control/microtasks", {
             method: "PUT",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
@@ -445,7 +458,7 @@ function createToolbar() {
     panel.innerHTML = panelHead("Extensions") + "<p>Loading approved catalog…</p>";
     wireClose();
     try {
-      const res = await fetch("/api/workspace-control");
+      const res = await workspaceControlFetch("/api/workspace-control");
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Could not load extensions");
       const installed = data.extensions?.installed || {};
@@ -471,7 +484,7 @@ function createToolbar() {
         button.type = "button";
         button.textContent = active ? "Remove" : "Install";
         button.addEventListener("click", async () => {
-          const change = await fetch(
+          const change = await workspaceControlFetch(
             `/api/workspace-control/extensions/${encodeURIComponent(String(item.id))}`,
             { method: active ? "DELETE" : "POST" }
           );
