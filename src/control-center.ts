@@ -1,4 +1,7 @@
 import "./control-center.css";
+import type { Terminal as XTerm } from "@xterm/xterm";
+import type { FitAddon } from "@xterm/addon-fit";
+import "@xterm/xterm/css/xterm.css";
 
 type ProjectSummary = {
   id: string;
@@ -9,6 +12,10 @@ type ProjectSummary = {
 
 type TerminalSession = {
   id: string;
+  name?: string;
+  persistent?: boolean;
+  expiresAt?: number | null;
+  status?: "attached" | "detached" | "exited";
   projectId: string;
   projectName: string;
   cwd: string;
@@ -55,10 +62,6 @@ function uid() {
     : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function delay(ms: number) {
-  return new Promise<void>(resolve => window.setTimeout(resolve, ms));
-}
-
 function button(label: string, ariaLabel = label) {
   const el = document.createElement("button");
   el.type = "button";
@@ -70,7 +73,7 @@ function button(label: string, ariaLabel = label) {
 function loadTerminalRecord(): TerminalRecord | null {
   try {
     const parsed = JSON.parse(sessionStorage.getItem(TERMINAL_RECORD_KEY) || "null") as TerminalRecord | null;
-    if (!parsed?.session?.id || !parsed?.token) return null;
+    if (!parsed?.session?.id || (!parsed?.token && !parsed?.session?.persistent)) return null;
     return parsed;
   } catch {
     return null;
@@ -105,7 +108,8 @@ async function terminalFetch(
   let response = await fetch(path, {
     ...init,
     headers,
-    cache: "no-store"
+    cache: "no-store",
+    credentials: "same-origin"
   });
 
   if (response.status === 401 && retryAuth) {
@@ -116,7 +120,8 @@ async function terminalFetch(
       response = await fetch(path, {
         ...init,
         headers,
-        cache: "no-store"
+        cache: "no-store",
+        credentials: "same-origin"
       });
     }
   }
@@ -179,19 +184,24 @@ export function mountControlCenter() {
   document.body.append(launcher, panel);
 
   let projects: ProjectSummary[] = [];
+  let savedTerminalSessions: TerminalSession[] = [];
   let activeProjectId = localStorage.getItem("opencode-pocket-project") || "";
   let terminalRecord = loadTerminalRecord();
-  let terminalInput: HTMLInputElement;
-  let terminalFallback: HTMLPreElement | null = null;
   let terminalShell: HTMLDivElement;
   let terminalStatus: HTMLDivElement;
   let projectSelect: HTMLSelectElement;
-  let streamAbort: AbortController | null = null;
+  let savedSessionSelect: HTMLSelectElement;
+  let sessionNameInput: HTMLInputElement;
+  let persistentSessionToggle: HTMLInputElement;
+  let terminalView: XTerm | null = null;
+  let terminalFit: FitAddon | null = null;
+  let rendererPromise: Promise<void> | null = null;
+  let terminalSocket: WebSocket | null = null;
+  let socketRetryTimer: number | null = null;
+  let socketConnecting = false;
+  let socketGeneration = 0;
+  let terminalResizeObserver: ResizeObserver | null = null;
   let lastSeq = 0;
-  let inputQueue = "";
-  let inputTimer: number | null = null;
-  let ctrlArmed = false;
-  let ctrlButton: HTMLButtonElement | null = null;
 
   function setTab(next: "terminal" | "safety" | "index") {
     terminalTab.classList.toggle("active", next === "terminal");
@@ -205,6 +215,7 @@ export function mountControlCenter() {
       void renderSafety();
     } else {
       void renderIndex();
+      if (next === "terminal" && terminalView) fitTerminal();
     }
   }
 
@@ -213,12 +224,13 @@ export function mountControlCenter() {
     void loadProjects().then(() => {
       renderProjectOptions();
       if (terminalRecord) void reattachTerminal();
+    }).catch(error => {
+      terminalStatus.textContent = `Could not load terminal state · ${error instanceof Error ? error.message : String(error)}`;
     });
   });
   close.addEventListener("click", () => {
     panel.classList.add("hidden");
-    streamAbort?.abort();
-    streamAbort = null;
+    disconnectTerminalSocket();
   });
   terminalTab.addEventListener("click", () => setTab("terminal"));
   safetyTab.addEventListener("click", () => setTab("safety"));
@@ -230,6 +242,27 @@ export function mountControlCenter() {
     projects = (payload.projects || []).filter(project => project.available !== false);
     if (!activeProjectId || !projects.some(project => project.id === activeProjectId)) {
       activeProjectId = projects[0]?.id || "";
+    }
+    await refreshTerminalSessions();
+  }
+
+  async function refreshTerminalSessions() {
+    const response = await terminalFetch("/api/terminal/sessions");
+    const payload = await jsonOrError<{ sessions?: TerminalSession[] }>(response);
+    savedTerminalSessions = payload.sessions || [];
+    if (!savedSessionSelect) return;
+    const selectedId = terminalRecord?.session.id || savedSessionSelect.value;
+    savedSessionSelect.replaceChildren();
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Select saved session…";
+    savedSessionSelect.append(placeholder);
+    for (const session of savedTerminalSessions.filter(item => item.persistent && !item.closed)) {
+      const option = document.createElement("option");
+      option.value = session.id;
+      option.textContent = `${session.name || "Terminal"} · ${session.projectName} · ${session.status || "detached"}`;
+      option.selected = session.id === selectedId;
+      savedSessionSelect.append(option);
     }
   }
 
@@ -256,6 +289,27 @@ export function mountControlCenter() {
     projectLabel.append(projectSelect);
     projectRow.append(projectLabel);
 
+    const sessionLabel = document.createElement("label");
+    sessionLabel.textContent = "Saved sessions";
+    savedSessionSelect = document.createElement("select");
+    sessionLabel.append(savedSessionSelect);
+    const refreshSessions = button("Refresh");
+    projectRow.append(sessionLabel, refreshSessions);
+
+    const persistenceRow = document.createElement("div");
+    persistenceRow.className = "dm-tools-row";
+    const persistLabel = document.createElement("label");
+    persistentSessionToggle = document.createElement("input");
+    persistentSessionToggle.type = "checkbox";
+    persistLabel.append(persistentSessionToggle, document.createTextNode("Keep running after DevMoter restarts (tmux)"));
+    const nameLabel = document.createElement("label");
+    nameLabel.textContent = "Session name";
+    sessionNameInput = document.createElement("input");
+    sessionNameInput.maxLength = 48;
+    sessionNameInput.placeholder = "e.g. api-dev";
+    nameLabel.append(sessionNameInput);
+    persistenceRow.append(persistLabel, nameLabel);
+
     const actions = document.createElement("div");
     actions.className = "dm-terminal-actions";
     const start = button("Start / Reattach");
@@ -276,7 +330,9 @@ export function mountControlCenter() {
     const keys: Array<[string, string, string]> = [
       ["Esc", "\u001b", "Escape"],
       ["Tab", "\t", "Tab"],
-      ["Ctrl", "", "Control modifier"],
+      ["Ctrl+C", "\u0003", "Send Ctrl+C"],
+      ["Ctrl+D", "\u0004", "Send Ctrl+D"],
+      ["Ctrl+Z", "\u001a", "Send Ctrl+Z"],
       ["←", "\u001b[D", "Left arrow"],
       ["↑", "\u001b[A", "Up arrow"],
       ["↓", "\u001b[B", "Down arrow"],
@@ -288,50 +344,33 @@ export function mountControlCenter() {
     ];
     for (const [label, sequence, aria] of keys) {
       const key = button(label, aria);
-      if (label === "Ctrl") {
-        ctrlButton = key;
-        key.addEventListener("click", () => {
-          ctrlArmed = !ctrlArmed;
-          key.classList.toggle("active", ctrlArmed);
-          terminalInput?.focus();
-        });
-      } else {
-        key.addEventListener("click", () => {
-          queueTerminalInput(sequence);
-          terminalInput?.focus();
-        });
-      }
+      key.addEventListener("click", () => terminalView?.input(sequence, true));
       keyRow.append(key);
     }
 
     const note = document.createElement("div");
     note.className = "dm-tools-note";
     note.textContent =
-      "PTY cwd is resolved from the registered Project ID on the server. The shell session survives panel close/reload until you kill it or the shell exits.";
+      "PTY cwd is resolved from the registered Project ID. The terminal stays active when this panel closes; the page reconnects through a short-lived single-use ticket.";
 
-    const inputRow = document.createElement("form");
-    inputRow.className = "dm-terminal-input";
-    terminalInput = document.createElement("input");
-    terminalInput.type = "text";
-    terminalInput.autocomplete = "off";
-    terminalInput.spellcheck = false;
-    terminalInput.placeholder = "Terminal input";
-    const sendInput = button("Send");
-    inputRow.append(terminalInput, sendInput);
-    inputRow.addEventListener("submit", event => {
-      event.preventDefault();
-      if (!terminalInput.value) return;
-      queueTerminalInput(terminalInput.value + "\n");
-      terminalInput.value = "";
-      terminalInput.focus();
-    });
-
-    terminalSection.append(projectRow, actions, terminalStatus, terminalShell, inputRow, keyRow, note);
+    terminalSection.append(projectRow, persistenceRow, actions, terminalStatus, terminalShell, keyRow, note);
 
     projectSelect.addEventListener("change", () => {
       activeProjectId = projectSelect.value;
       localStorage.setItem("opencode-pocket-project", activeProjectId);
     });
+    refreshSessions.addEventListener("click", () => {
+      void refreshTerminalSessions().catch(error => {
+        terminalStatus.textContent = `Could not load sessions · ${error instanceof Error ? error.message : String(error)}`;
+      });
+    });
+    savedSessionSelect.addEventListener("change", () => {
+      if (savedSessionSelect.value) void claimAndAttachSession(savedSessionSelect.value);
+    });
+    persistentSessionToggle.addEventListener("change", () => {
+      sessionNameInput.disabled = !persistentSessionToggle.checked;
+    });
+    sessionNameInput.disabled = true;
     start.addEventListener("click", () => void startOrReattachTerminal());
     kill.addEventListener("click", () => void killTerminal());
     clearAuth.addEventListener("click", () => {
@@ -342,52 +381,146 @@ export function mountControlCenter() {
   }
 
   async function ensureTerminalRenderer() {
-    if (terminalFallback) return;
-    terminalFallback = document.createElement("pre");
-    terminalFallback.className = "dm-terminal-fallback";
-    terminalFallback.textContent = "";
-    terminalShell.append(terminalFallback);
-  }
-
-  function writeTerminal(data: string) {
-    if (terminalFallback) {
-      terminalFallback.textContent += data;
-      if (terminalFallback.textContent.length > 200_000) {
-        terminalFallback.textContent = terminalFallback.textContent.slice(-160_000);
-      }
-      terminalFallback.scrollTop = terminalFallback.scrollHeight;
+    if (terminalView) return;
+    if (!rendererPromise) {
+      rendererPromise = (async () => {
+        const [{ Terminal }, { FitAddon }] = await Promise.all([
+          import("@xterm/xterm"),
+          import("@xterm/addon-fit")
+        ]);
+        if (terminalView) return;
+        const view = new Terminal({
+          cursorBlink: true,
+          scrollback: 5000,
+          fontSize: 13,
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+          theme: { background: "#070809", foreground: "#e7e7ea", cursor: "#e7e7ea" },
+          disableStdin: true
+        });
+        const fit = new FitAddon();
+        view.loadAddon(fit);
+        view.open(terminalShell);
+        view.onData(data => {
+          if (terminalSocket?.readyState === WebSocket.OPEN) {
+            terminalSocket.send(JSON.stringify({ type: "input", data }));
+          }
+        });
+        view.onResize(({ cols, rows }) => {
+          if (terminalSocket?.readyState === WebSocket.OPEN) {
+            terminalSocket.send(JSON.stringify({ type: "resize", cols, rows }));
+          }
+        });
+        terminalView = view;
+        terminalFit = fit;
+        terminalResizeObserver = new ResizeObserver(() => fitTerminal());
+        terminalResizeObserver.observe(terminalShell);
+      })().catch(error => {
+        rendererPromise = null;
+        throw error;
+      });
     }
+    await rendererPromise;
+    fitTerminal();
   }
 
-  function queueTerminalInput(data: string) {
-    if (!terminalRecord || terminalRecord.session.closed || !data) return;
-    inputQueue += data;
-    if (inputTimer !== null) return;
-    inputTimer = window.setTimeout(() => {
-      inputTimer = null;
-      void flushTerminalInput();
-    }, 24);
-  }
-
-  async function flushTerminalInput() {
-    if (!terminalRecord || !inputQueue) return;
-    const data = inputQueue;
-    inputQueue = "";
-    const response = await terminalFetch(
-      `/api/terminal/sessions/${encodeURIComponent(terminalRecord.session.id)}/input`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-devmoter-terminal-token": terminalRecord.token,
-          "x-pocket-operation-id": `terminal-input-${uid()}`
-        },
-        body: JSON.stringify({ data })
+  function fitTerminal() {
+    if (!terminalView || !terminalFit || panel.classList.contains("hidden")) return;
+    window.requestAnimationFrame(() => {
+      if (!terminalView || !terminalFit || panel.classList.contains("hidden")) return;
+      try { terminalFit.fit(); } catch { return; }
+      if (terminalSocket?.readyState === WebSocket.OPEN) {
+        terminalSocket.send(JSON.stringify({ type: "resize", cols: terminalView.cols, rows: terminalView.rows }));
       }
-    );
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({})) as { error?: string };
-      terminalStatus.textContent = payload.error || `Terminal input failed (HTTP ${response.status}).`;
+    });
+  }
+
+  function disconnectTerminalSocket() {
+    socketGeneration += 1;
+    if (socketRetryTimer !== null) window.clearTimeout(socketRetryTimer);
+    socketRetryTimer = null;
+    socketConnecting = false;
+    const socket = terminalSocket;
+    terminalSocket = null;
+    if (terminalView) terminalView.options.disableStdin = true;
+    if (socket && socket.readyState < WebSocket.CLOSING) socket.close(1000, "Client detached.");
+  }
+
+  function scheduleTerminalReconnect(generation: number) {
+    if (socketRetryTimer !== null) window.clearTimeout(socketRetryTimer);
+    if (!terminalRecord || terminalRecord.session.closed || panel.classList.contains("hidden")) return;
+    socketRetryTimer = window.setTimeout(() => {
+      socketRetryTimer = null;
+      if (generation === socketGeneration) void connectTerminalSocket();
+    }, 700);
+  }
+
+  async function connectTerminalSocket() {
+    if (!terminalRecord || panel.classList.contains("hidden") || terminalSocket || socketConnecting) return;
+    socketConnecting = true;
+    const generation = socketGeneration;
+    const record = terminalRecord;
+    try {
+      const ticketResponse = await terminalFetch(
+        `/api/terminal/sessions/${encodeURIComponent(record.session.id)}/socket-ticket`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-devmoter-terminal-token": record.token,
+            "x-pocket-operation-id": `terminal-ticket-${uid()}`
+          },
+          body: "{}"
+        }
+      );
+      const ticketPayload = await jsonOrError<{ ticket: string }>(ticketResponse);
+      if (generation !== socketGeneration || panel.classList.contains("hidden") || terminalRecord !== record) return;
+
+      const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+      const socketUrl = `${protocol}//${location.host}/api/terminal/sessions/${encodeURIComponent(record.session.id)}/socket?after=${lastSeq}`;
+      const socket = new WebSocket(socketUrl, ["devmoter-terminal.v1", `devmoter-ticket.${ticketPayload.ticket}`]);
+      terminalSocket = socket;
+      socket.onopen = () => {
+        if (generation !== socketGeneration || socket !== terminalSocket) {
+          socket.close(1000, "Stale connection.");
+          return;
+        }
+        socketConnecting = false;
+        if (terminalView) terminalView.options.disableStdin = false;
+        terminalStatus.textContent = `Connected · ${record.session.projectName} · ${record.session.cwd}`;
+        fitTerminal();
+      };
+      socket.onmessage = event => {
+        if (socket !== terminalSocket || typeof event.data !== "string") return;
+        try {
+          const chunk = JSON.parse(event.data) as TerminalChunk;
+          if (typeof chunk.seq === "number") lastSeq = Math.max(lastSeq, chunk.seq);
+          if (chunk.data) terminalView?.write(chunk.data);
+        } catch {
+          socket.close(1008, "Invalid terminal output.");
+        }
+      };
+      socket.onerror = () => socket.close();
+      socket.onclose = event => {
+        if (socket === terminalSocket) terminalSocket = null;
+        socketConnecting = false;
+        if (event.reason === "Terminal process exited.") {
+          record.session.closed = true;
+          terminalStatus.textContent = "Terminal process exited.";
+          saveTerminalRecord(record);
+        }
+        if (terminalView) terminalView.options.disableStdin = true;
+        if (generation !== socketGeneration || panel.classList.contains("hidden")) return;
+        if (record.session.closed) return;
+        terminalStatus.textContent = "Terminal disconnected. Reconnecting…";
+        scheduleTerminalReconnect(generation);
+      };
+    } catch (error) {
+      socketConnecting = false;
+      if (generation !== socketGeneration || panel.classList.contains("hidden")) return;
+      terminalStatus.textContent = `Terminal reconnecting… ${error instanceof Error ? error.message : String(error)}`;
+      scheduleTerminalReconnect(generation);
+    } finally {
+      if (!terminalSocket) socketConnecting = false;
     }
   }
 
@@ -397,7 +530,7 @@ export function mountControlCenter() {
       return;
     }
 
-    if (terminalRecord && !terminalRecord.session.closed) {
+    if (terminalRecord) {
       try {
         await reattachTerminal();
         return;
@@ -414,16 +547,50 @@ export function mountControlCenter() {
         "x-devmoter-terminal-entry": "explicit",
         "x-pocket-operation-id": `terminal-create-${uid()}`
       },
-      body: JSON.stringify({ projectId: activeProjectId })
+      body: JSON.stringify({
+        projectId: activeProjectId,
+        persistent: persistentSessionToggle.checked,
+        name: persistentSessionToggle.checked ? sessionNameInput.value : undefined
+      })
     });
-    const payload = await jsonOrError<{ session: TerminalSession; token: string }>(response);
-    terminalRecord = { session: payload.session, token: payload.token };
+    const payload = await jsonOrError<{ session: TerminalSession; token?: string }>(response);
+    terminalRecord = { session: payload.session, token: payload.token || "" };
     saveTerminalRecord(terminalRecord);
     lastSeq = 0;
-    terminalStatus.textContent = `Connected · ${payload.session.projectName} · ${payload.session.cwd}`;
+    terminalStatus.textContent = `Starting · ${payload.session.projectName} · ${payload.session.cwd}`;
     await ensureTerminalRenderer();
-    void attachTerminalStream();
-    terminalInput?.focus();
+    terminalView?.reset();
+    void connectTerminalSocket();
+  }
+
+  async function claimAndAttachSession(sessionId: string) {
+    const session = savedTerminalSessions.find(item => item.id === sessionId);
+    if (!session) return;
+    terminalStatus.textContent = `Claiming ${session.name || "terminal session"}…`;
+    try {
+      const response = await terminalFetch(
+        `/api/terminal/sessions/${encodeURIComponent(session.id)}/claim`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-devmoter-terminal-entry": "explicit",
+            "x-pocket-operation-id": `terminal-claim-${uid()}`
+          },
+          body: "{}"
+        }
+      );
+      const payload = await jsonOrError<{ session: TerminalSession }>(response);
+      terminalRecord = { session: payload.session, token: "" };
+      saveTerminalRecord(terminalRecord);
+      lastSeq = 0;
+      await ensureTerminalRenderer();
+      terminalView?.reset();
+      void connectTerminalSocket();
+      await refreshTerminalSessions();
+    } catch (error) {
+      terminalStatus.textContent = `Could not attach session · ${error instanceof Error ? error.message : String(error)}`;
+    }
   }
 
   async function reattachTerminal() {
@@ -444,73 +611,15 @@ export function mountControlCenter() {
       ? `Session closed · exit ${String(payload.session.exitCode ?? "")}`
       : `Reattached · ${payload.session.projectName} · ${payload.session.cwd}`;
     await ensureTerminalRenderer();
-    void attachTerminalStream();
-  }
-
-  async function attachTerminalStream() {
-    if (!terminalRecord) return;
-    streamAbort?.abort();
-    const controller = new AbortController();
-    streamAbort = controller;
-
-    let replayClosed = Boolean(terminalRecord.session.closed);
-    while (
-      terminalRecord &&
-      (replayClosed || !terminalRecord.session.closed) &&
-      !controller.signal.aborted &&
-      !panel.classList.contains("hidden")
-    ) {
-      replayClosed = false;
-      try {
-        const response = await terminalFetch(
-          `/api/terminal/sessions/${encodeURIComponent(terminalRecord.session.id)}/stream?after=${lastSeq}`,
-          {
-            headers: {
-              "x-devmoter-terminal-token": terminalRecord.token
-            },
-            signal: controller.signal
-          },
-          false
-        );
-        if (!response.ok || !response.body) {
-          if (response.status === 401) {
-            sessionStorage.removeItem(TERMINAL_AUTH_KEY);
-            terminalAuthorization(true);
-          }
-          throw new Error(`Stream HTTP ${response.status}`);
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        while (!controller.signal.aborted) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          let newline = buffer.indexOf("\n");
-          while (newline >= 0) {
-            const line = buffer.slice(0, newline).trim();
-            buffer = buffer.slice(newline + 1);
-            newline = buffer.indexOf("\n");
-            if (!line) continue;
-            const chunk = JSON.parse(line) as TerminalChunk;
-            if (typeof chunk.seq === "number") lastSeq = Math.max(lastSeq, chunk.seq);
-            if (chunk.data) writeTerminal(chunk.data);
-          }
-        }
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        terminalStatus.textContent =
-          `Terminal stream reconnecting… ${error instanceof Error ? error.message : String(error)}`;
-      }
-      if (!controller.signal.aborted) await delay(700);
-    }
+    void connectTerminalSocket();
   }
 
   async function killTerminal() {
     if (!terminalRecord) {
       terminalStatus.textContent = "No terminal session to kill.";
+      return;
+    }
+    if (terminalRecord.session.persistent && !window.confirm(`Terminate persistent session “${terminalRecord.session.name || "Terminal"}”? Its background process will stop.`)) {
       return;
     }
     const response = await terminalFetch(
@@ -524,7 +633,7 @@ export function mountControlCenter() {
       }
     );
     await jsonOrError(response);
-    streamAbort?.abort();
+    disconnectTerminalSocket();
     terminalStatus.textContent = "Terminal session killed.";
     saveTerminalRecord(null);
     terminalRecord = null;

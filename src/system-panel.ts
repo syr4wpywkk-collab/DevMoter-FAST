@@ -65,6 +65,33 @@ export function mountSystemPanel() {
     return request("/api/system/diagnostics");
   }
 
+  async function hostSnapshot() {
+    return request("/api/host");
+  }
+
+  function hostRows(data: any) {
+    const capabilities = data?.capabilities && typeof data.capabilities === "object"
+      ? Object.entries(data.capabilities) as Array<[string, any]>
+      : [];
+    const names: Record<string, string> = {
+      terminal: "Terminal", files: "Files", processes: "Processes", services: "Services",
+      ports: "Ports", git: "Git", browser: "Browser", secrets: "Secrets",
+      agents: "Agents", notifications: "Notifications"
+    };
+    const rows = capabilities.map(([id, capability]) => `
+      <span>${escapeHtml(names[id] || id)}</span>
+      <b>${escapeHtml(capability?.state || "unknown")}</b>
+    `).join("");
+    return `
+      <div class="devmoter-diagnostics-grid">
+        <span>Platform</span><b>${escapeHtml(data?.host?.platform || "unknown")}</b>
+        <span>Runtime</span><b>${escapeHtml(data?.host?.runtime || "unknown")}</b>
+        <span>Protocol</span><b>${escapeHtml(data?.protocolVersion || "unknown")}</b>
+        ${rows}
+      </div>
+    `;
+  }
+
   async function devices() {
     if (!token()) return null;
     try {
@@ -94,10 +121,11 @@ export function mountSystemPanel() {
   }
 
   async function render() {
-    const [diag, deviceData, authStatus] = await Promise.all([
+    const [diag, deviceData, authStatus, hostData] = await Promise.all([
       diagnostics(),
       devices(),
-      request("/api/auth/status")
+      request("/api/auth/status"),
+      hostSnapshot()
     ]);
     const trusted = Boolean(token());
     const identity = authStatus?.identity || null;
@@ -134,6 +162,12 @@ export function mountSystemPanel() {
           <span>Network</span><b>${diag?.network?.localhostFirst ? "localhost-first" : "custom bind"}</b>
         </div>
         <p class="devmoter-system-muted">${escapeHtml(diag?.network?.message)}</p>
+      </section>
+
+      <section class="devmoter-system-section">
+        <strong>Host capabilities</strong>
+        ${hostRows(hostData)}
+        <p class="devmoter-system-muted">Availability is reported by this Host. Unsupported capabilities stay unavailable.</p>
       </section>
 
       <section class="devmoter-system-section">

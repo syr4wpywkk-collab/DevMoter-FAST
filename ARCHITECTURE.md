@@ -25,6 +25,8 @@ Browser / installed PWA
 
 Tailscale Serve can provide private HTTPS transport to the DevMoter listener. It does not change the application trust model or make agent backends safe to expose publicly.
 
+The authenticated `GET /api/host` discovery endpoint returns a versioned Host Protocol snapshot: platform/runtime metadata and server-owned availability for terminal, files, processes, services, ports, Git, browser, secrets, agents, and notifications. The v1 snapshot does not replace capability-specific APIs. See [HOST_PROTOCOL.md](./docs/HOST_PROTOCOL.md) for the adapter/status contract and current platform limits.
+
 ## Browser boundary
 
 The browser is untrusted input. It sends identities and bounded requests; the server resolves privileged resources.
