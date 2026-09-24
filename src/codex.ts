@@ -3,6 +3,7 @@ import { speechRecognitionLanguage } from "./i18n";
 import { createDevWorkflowPanel } from "./dev-workflows-ui";
 import { isMcpToolItem, mcpToolSummary, normalizeStructuredMcpResult } from "./mcp-result";
 import { setWakeLockExecutionActive } from "./wake-lock";
+import { applyReasoningToTurnStart, normalizeCodexModels, reasoningChoices, reconcileReasoningMode } from "./codex-reasoning.mjs";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import {
@@ -493,10 +494,10 @@ export function mountCodexRemote(
 
   function syncReasoningLabels() {
     const model = selectedModelMetadata();
-    const supported = model?.supportedReasoningEfforts?.map(item => item.reasoningEffort) ?? [];
-    if (reasoningMode !== "auto" && supported.length && !supported.includes(reasoningMode)) {
-      reasoningMode = "auto";
-      localStorage.setItem("opencode-pocket-reasoning", "auto");
+    const reconciledMode = reconcileReasoningMode(reasoningMode, model);
+    if (reconciledMode !== reasoningMode) {
+      reasoningMode = reconciledMode;
+      localStorage.setItem("opencode-pocket-reasoning", reasoningMode);
     }
     const defaultEffort = model?.defaultReasoningEffort;
     const label = reasoningMode === "auto"
@@ -508,15 +509,13 @@ export function mountCodexRemote(
 
   function showReasoningPicker() {
     const model = selectedModelMetadata();
-    const advertised = model?.supportedReasoningEfforts ?? [];
-    const values = [
-      { value: "auto", label: "Auto", description: model?.defaultReasoningEffort ? `モデル既定: ${reasoningLabel(model.defaultReasoningEffort)}` : "Codexに自動選択させる" },
-      ...advertised.map(item => ({
-        value: item.reasoningEffort,
-        label: reasoningLabel(item.reasoningEffort),
-        description: item.description || `${reasoningLabel(item.reasoningEffort)} reasoning`
-      }))
-    ];
+    const values = reasoningChoices(model).map(item => ({
+      value: item.value,
+      label: item.value === "auto" ? "Auto" : reasoningLabel(item.value),
+      description: item.value === "auto"
+        ? (model?.defaultReasoningEffort ? `モデル既定: ${reasoningLabel(model.defaultReasoningEffort)}` : "Codexに自動選択させる")
+        : (item.description || `${reasoningLabel(item.value)} reasoning`)
+    }));
     openModal("推論量", model ? `${model.displayName || model.model} が対応している推論量` : "このモデルの思考量を選択");
     modalBody.innerHTML = `<div class="cx-choice-list"></div>`;
     const list = modalBody.querySelector<HTMLDivElement>(".cx-choice-list")!;
@@ -560,28 +559,7 @@ export function mountCodexRemote(
 
   async function loadModelCatalog() {
     const result = await rpc<Json>("model/list", { limit: 100 });
-    const raw = result?.data ?? result?.models ?? [];
-    modelCatalog = Array.isArray(raw)
-      ? raw
-          .map((model: Json) => ({
-            id: String(model?.id || ""),
-            model: String(model?.model || model?.id || ""),
-            displayName: String(model?.displayName || model?.name || model?.model || model?.id || ""),
-            description: String(model?.description || ""),
-            isDefault: Boolean(model?.isDefault),
-            hidden: Boolean(model?.hidden),
-            defaultReasoningEffort: String(model?.defaultReasoningEffort || ""),
-            supportedReasoningEfforts: Array.isArray(model?.supportedReasoningEfforts)
-              ? model.supportedReasoningEfforts
-                  .map((item: Json) => ({
-                    reasoningEffort: String(item?.reasoningEffort || ""),
-                    description: String(item?.description || "")
-                  }))
-                  .filter((item: { reasoningEffort: string }) => item.reasoningEffort)
-              : []
-          }))
-          .filter((model: CodexModel) => model.model)
-      : [];
+    modelCatalog = normalizeCodexModels(result) as CodexModel[];
 
     const migrated = modelCatalog.find(model => model.id === selectedModel && model.model !== selectedModel);
     if (migrated) persistSelectedModel(migrated.model);
@@ -1551,12 +1529,12 @@ export function mountCodexRemote(
     setExecutionState("running");
 
     const operationId = uid();
-    const params: Json = {
+    let params: Json = {
       threadId,
       input,
       clientUserMessageId: operationId
     };
-    if (reasoningMode !== "auto") params.effort = reasoningMode;
+    params = applyReasoningToTurnStart(params, reasoningMode);
     if (selectedModel) params.model = selectedModel;
 
     try {
