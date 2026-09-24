@@ -135,6 +135,17 @@ function normalizeBaseUrl(value) {
   return url.toString().replace(/\/$/, "");
 }
 
+export function assertVaultProviderDestination({ presetId, baseUrl, protocol, secretProvider }) {
+  const preset = MULTI_API_PRESETS.find(item => item.id === presetId && item.id !== "custom");
+  if (!preset || preset.id !== secretProvider) {
+    throw new Error("Vault Secret provider does not match the configured API provider");
+  }
+  if (normalizeProtocol(protocol || preset.protocol) !== preset.protocol || normalizeBaseUrl(baseUrl) !== normalizeBaseUrl(preset.baseUrl)) {
+    throw new Error("Vault-backed providers must use the verified provider endpoint");
+  }
+  return true;
+}
+
 function normalizeProtocol(value) {
   const protocol = String(value || "openai-compatible").trim();
   if (!["openai-compatible", "anthropic"].includes(protocol)) {
@@ -168,6 +179,15 @@ function normalizeProviderId(value) {
   return id;
 }
 
+function normalizeSecretReference(value) {
+  const reference = String(value || "").trim();
+  if (!reference) return "";
+  if (!/^secret:\/\/[A-Za-z0-9][A-Za-z0-9._-]{0,79}\/[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(reference)) {
+    throw new Error("Vault Secret reference is invalid");
+  }
+  return reference;
+}
+
 function normalizeProviderInput(input, { requireKey = false, allowEmptyModels = false } = {}) {
   const presetId = String(input?.presetId || "custom").trim().slice(0, 64);
   const preset = MULTI_API_PRESETS.find(item => item.id === presetId);
@@ -176,13 +196,17 @@ function normalizeProviderInput(input, { requireKey = false, allowEmptyModels = 
   const protocol = normalizeProtocol(input?.protocol || preset?.protocol || "openai-compatible");
   const baseUrl = normalizeBaseUrl(input?.baseUrl || preset?.baseUrl);
   const apiKey = String(input?.apiKey || "").trim();
+  const secretRef = normalizeSecretReference(input?.secretRef);
+  const projectId = String(input?.projectId || "").trim();
   const models = normalizeModels(input?.models, { allowEmpty: allowEmptyModels });
 
   if (!name) throw new Error("Provider name is required");
   if (presetId === "custom" && !String(input?.baseUrl || "").trim()) {
     throw new Error("Custom API requires a Base URL");
   }
-  if (requireKey && !apiKey) throw new Error("API key is required");
+  if (apiKey && secretRef) throw new Error("Choose either an API key or a Vault reference");
+  if (secretRef && !projectId) throw new Error("A registered project is required for a Vault reference");
+  if (requireKey && !apiKey && !secretRef) throw new Error("API key or Vault reference is required");
 
   return {
     id,
@@ -191,6 +215,8 @@ function normalizeProviderInput(input, { requireKey = false, allowEmptyModels = 
     protocol,
     baseUrl,
     apiKey,
+    secretRef,
+    projectId,
     models
   };
 }
@@ -282,7 +308,9 @@ function publicProvider(provider) {
     presetId: provider.presetId || "custom",
     protocol: provider.protocol,
     baseUrl: provider.baseUrl,
-    ready: Boolean(provider.apiKey),
+    ready: Boolean(provider.apiKey || provider.secretRef),
+    credentialSource: provider.secretRef ? "vault" : "api-key",
+    ...(provider.secretRef ? { secretRef: provider.secretRef, projectId: provider.projectId } : {}),
     models: provider.models,
     reasoningModes: reasoningModesForProvider(provider),
     source: provider.source || "file",
@@ -351,6 +379,8 @@ async function readProviderFile(filePath) {
         protocol: item?.protocol,
         baseUrl: item?.baseUrl,
         apiKey: item?.apiKey,
+        secretRef: item?.secretRef,
+        projectId: item?.projectId,
         models: item?.models
       }),
       createdAt: Number(item?.createdAt) || Date.now(),
@@ -376,7 +406,7 @@ async function writeProviderFile(filePath, providers) {
       presetId: provider.presetId,
       protocol: provider.protocol,
       baseUrl: provider.baseUrl,
-      apiKey: provider.apiKey,
+      ...(provider.secretRef ? { secretRef: provider.secretRef, projectId: provider.projectId } : { apiKey: provider.apiKey }),
       models: provider.models,
       createdAt: provider.createdAt,
       updatedAt: provider.updatedAt
@@ -417,13 +447,25 @@ export function createMultiApiStore({ filePath, env = process.env } = {}) {
       throw new Error("Too many API providers");
     }
 
+    const credentialMode = input?.credentialMode === "vault"
+      ? "vault"
+      : input?.credentialMode === "api-key"
+        ? "api-key"
+        : "legacy";
+    const requestedSecretRef = String(input?.secretRef || "").trim();
+    if (String(input?.apiKey || "").trim() && (credentialMode === "vault" || requestedSecretRef)) {
+      throw new Error("Choose either an API key or a Vault reference");
+    }
+    const useVault = credentialMode === "vault" || (credentialMode === "legacy" && Boolean(requestedSecretRef || existing?.secretRef));
     const normalized = normalizeProviderInput({
       ...input,
       id: existing?.id || input?.id,
-      apiKey: String(input?.apiKey || "").trim() || existing?.apiKey || ""
+      secretRef: useVault ? requestedSecretRef || existing?.secretRef : "",
+      projectId: useVault ? input?.projectId || existing?.projectId : "",
+      apiKey: useVault ? "" : String(input?.apiKey || "").trim() || (existing?.secretRef ? "" : existing?.apiKey || "")
     });
 
-    if (!normalized.apiKey) throw new Error("API key is required");
+    if (!normalized.apiKey && !normalized.secretRef) throw new Error("API key or Vault reference is required");
 
     const now = Date.now();
     const record = {
@@ -656,7 +698,7 @@ export async function runMultiApiChat(
   const provider = providers.find(item => item.id === providerId);
 
   if (!provider) throw new Error("Unknown API provider");
-  if (!provider.apiKey) throw new Error(`API key is not configured for ${provider.name}`);
+  if (!provider.apiKey) throw new Error(`API credential is not configured for ${provider.name}`);
   if (!provider.models.includes(model)) throw new Error("Model is not allowed for this provider");
   if (!reasoningModesForProvider(provider).includes(reasoning)) {
     throw new Error("Reasoning mode is not supported by this provider");

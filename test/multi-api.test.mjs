@@ -6,6 +6,7 @@ import { join } from "node:path";
 
 import {
   MULTI_API_PRESETS,
+  assertVaultProviderDestination,
   createMultiApiStore,
   loadMultiApiProviders,
   publicMultiApiProviders,
@@ -60,6 +61,7 @@ test("multi-api environment config keeps secrets server-side", () => {
     protocol: "openai-compatible",
     baseUrl: "https://example.test/v1",
     ready: true,
+    credentialSource: "api-key",
     models: ["demo-fast", "demo-pro"],
     reasoningModes: ["auto"],
     source: "env",
@@ -84,6 +86,18 @@ test("multi-api provider config rejects insecure remote HTTP", () => {
     }),
     /HTTPS/
   );
+});
+
+test("Vault provider destination is restricted to its exact named preset endpoint", () => {
+  assert.equal(assertVaultProviderDestination({
+    presetId: "openai", secretProvider: "openai", protocol: "openai-compatible", baseUrl: "https://api.openai.com/v1/"
+  }), true);
+  assert.throws(() => assertVaultProviderDestination({
+    presetId: "custom", secretProvider: "openai", protocol: "openai-compatible", baseUrl: "https://attacker.example/v1"
+  }), /does not match/);
+  assert.throws(() => assertVaultProviderDestination({
+    presetId: "openai", secretProvider: "openai", protocol: "openai-compatible", baseUrl: "https://attacker.example/v1"
+  }), /verified provider endpoint/);
 });
 
 test("file-backed provider store uses private permissions and never exposes keys", async () => {
@@ -129,6 +143,54 @@ test("file-backed provider store uses private permissions and never exposes keys
 
     await store.remove(saved.id);
     assert.deepEqual(await store.listResolved(), []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("Vault-backed providers persist only a secret reference and can be explicitly switched to an API key", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-api-vault-provider-"));
+  const filePath = join(dir, "llm-providers.json");
+  try {
+    const store = createMultiApiStore({ filePath, env: {} });
+    const saved = await store.upsert({
+      credentialMode: "vault",
+      presetId: "openai",
+      name: "OpenAI via Vault",
+      protocol: "openai-compatible",
+      baseUrl: "https://api.openai.com/v1",
+      secretRef: "secret://openai/main",
+      projectId: "project-one",
+      models: ["gpt-test"]
+    });
+    assert.equal(saved.ready, true);
+    assert.equal(saved.credentialSource, "vault");
+    assert.equal(saved.secretRef, "secret://openai/main");
+    assert.equal(JSON.stringify(saved).includes("apiKey"), false);
+
+    const disk = JSON.parse(await readFile(filePath, "utf8"));
+    assert.equal(disk.providers[0].secretRef, "secret://openai/main");
+    assert.equal(disk.providers[0].projectId, "project-one");
+    assert.equal("apiKey" in disk.providers[0], false);
+
+    const listed = await store.listResolved();
+    assert.equal(listed[0].secretRef, "secret://openai/main");
+    assert.equal(listed[0].apiKey, "");
+    assert.equal(JSON.stringify(publicMultiApiProviders(listed)).includes("apiKey"), false);
+
+    await assert.rejects(store.upsert({
+      credentialMode: "vault", presetId: "openai", name: "Invalid", baseUrl: "https://api.openai.com/v1",
+      apiKey: "inline-key", secretRef: "secret://openai/main", projectId: "project-one", models: ["gpt-test"]
+    }), /Choose either/);
+
+    const switched = await store.upsert({
+      id: saved.id, credentialMode: "api-key", presetId: "openai", name: "OpenAI via Key",
+      protocol: "openai-compatible", baseUrl: "https://api.openai.com/v1", apiKey: "new-inline-key", models: ["gpt-test"]
+    });
+    assert.equal(switched.credentialSource, "api-key");
+    const switchedDisk = JSON.parse(await readFile(filePath, "utf8"));
+    assert.equal(switchedDisk.providers[0].apiKey, "new-inline-key");
+    assert.equal("secretRef" in switchedDisk.providers[0], false);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

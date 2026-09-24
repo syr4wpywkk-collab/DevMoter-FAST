@@ -25,8 +25,8 @@ Audit baseline: `syr4wpywkk-collab/DevMoter-FAST` `main` at `711b08d` (2026-09-2
 |---|---|---|
 | MAR-11 Windows installer | Partial | Existing Linux fast installer and systemd setup. Windows/WSL detection, managed distro, resume/rollback, and GUI installer are new. Installer v2 is separate and has no executor yet. |
 | MAR-12 Mobile Terminal | Partial | This branch adds real `node-pty`, xterm.js ANSI rendering, WebSocket I/O and resize, mobile special keys, one-time Origin/session-bound socket tickets, replayable bounded scrollback, and regression/integration coverage. Remaining acceptance includes deployed TLS/private-network validation, iOS/Android browser/manual checks, and installer toolchain readiness for native PTY builds. |
-| MAR-13 API Vault | Partial | Host-side provider config and redacted public provider metadata. No encrypted-at-rest store, `secret://` references, project binding, re-auth reveal, or secret broker. |
-| MAR-14 Security model | Partial | Auth, exact-origin mutation gate, optional passkeys, operation dedupe, agent/workspace policies, local-preview browser isolation. No unified action permission model or device/resource ownership model across future Host/Terminal/Secrets/Browser APIs. |
+| MAR-13 API Vault | Partial | This branch adds an encrypted AES-256-GCM Host secret store, opaque `secret://` references, paired-device-gated management APIs, project-bound API Chat resolution, and explicit migration for eligible file-backed providers on verified named presets. Environment/custom raw keys still need a migration path; Agent/Browser use, re-auth, comprehensive audit, and end-to-end log/AI redaction remain. |
+| MAR-14 Security model | Partial | Auth, exact-origin mutation gate, optional passkeys, operation dedupe, agent/workspace policies, local-preview browser isolation, and active paired-device checks on Terminal, workspace-control, and Secret Vault management APIs. A unified action permission model and broader device/resource ownership across Host/Browser remain. |
 | MAR-15 Persistent terminal | Partial | Running process can survive client disconnect while server stays up. In-memory sessions do not survive server restart; no names, durable reattach token policy, or TTL metadata. |
 | MAR-16 Linux Control | Partial | Control center, integrations, service/system feature modules. No full process/service/log/port/system monitor dashboard contract. |
 | MAR-17 Workspace integration | Partial | Project files, terminal, Git/GitHub components exist separately. No single project-aware Files ↔ Terminal ↔ Git flow/mobile diff review. |
@@ -46,7 +46,7 @@ Audit baseline: `syr4wpywkk-collab/DevMoter-FAST` `main` at `711b08d` (2026-09-2
 1. Complete the cross-cutting MAR-14 threat model and enforceable policy boundaries.
 2. Stabilize MAR-12 terminal resource/ownership foundation; then implement MAR-15 persistence.
 3. Define MAR-21 Host protocol before OS control panels, vault, and installer integrations.
-4. Implement MAR-13 secret storage and redaction before passing provider credentials into more agents or tools.
+4. Integrate the MAR-13 encrypted secret-store primitive with existing providers and complete migration/redaction before passing credentials into more agents or tools.
 5. Build MAR-11 Windows work in its own stacked, reviewable installer PRs; do not merge the draft executor as if installation were complete.
 6. Add dashboard/workspace/agent integrations, then isolated browser and approved computer-use work.
 
@@ -56,5 +56,5 @@ Audit baseline: `syr4wpywkk-collab/DevMoter-FAST` `main` at `711b08d` (2026-09-2
 - Terminal uses a strong random per-session capability in addition to app authentication; that capability is bearer material and currently is not device-bound or replay-revocable.
 - PTY count was unbounded at this baseline. This branch adds a server-side cap of four live sessions and regression coverage for concurrent creates and capability ownership.
 - The application remains single-user: authenticated clients inherit the effective power of configured local agents and host tools. Do not expose the service as a hostile multi-tenant endpoint.
-- Provider credentials are not yet an encrypted vault. Do not describe the current provider config as encrypted-at-rest secret storage.
+- Existing API Chat provider credentials are still not in the encrypted vault. Only the new isolated secret-store primitive encrypts data at rest; do not describe current provider integration as encrypted.
 - The browser automation boundary is narrow and should not be widened to personal profiles, arbitrary URLs, or remote networks without a separate threat review.

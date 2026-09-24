@@ -1,7 +1,7 @@
 import "./settings.css";
 
 type Json = Record<string, any>;
-type SettingsPage = "root" | "appearance" | "account" | "devices" | "notifications" | "diagnostics" | "guide";
+type SettingsPage = "root" | "appearance" | "account" | "devices" | "vault" | "notifications" | "diagnostics" | "guide";
 
 const THEME_KEY = "devmoter-theme";
 const DEVICE_TOKEN_KEY = "devmoter-device-token";
@@ -99,6 +99,8 @@ export function mountSettingsPanel() {
   let page: SettingsPage = "root";
   let authStatus: Json = {};
   let diagnostics: Json = {};
+  let vaultFormElement: HTMLFormElement | null = null;
+  let vaultSecrets: Json[] = [];
 
   function toast(message: string) {
     let node = root.querySelector<HTMLDivElement>(".devmoter-settings-toast");
@@ -208,6 +210,7 @@ export function mountSettingsPanel() {
         row("▣", "ローカルログイン", { action: "page:account" }) +
         row("◆", "Passkeys", { action: "remote:passkeys" }) +
         row("▱", "Trusted devices", { action: "page:devices" }) +
+        row("◇", "API Vault", { action: "page:vault", value: "Hostで暗号化して管理" }) +
         row("G", "Google ログイン", { badge: "Coming soon", disabled: true }) +
         row("M", "Microsoft ログイン", { badge: "Coming soon", disabled: true }) +
         row("●", "Apple ログイン", { badge: "Coming soon", disabled: true })
@@ -350,6 +353,177 @@ export function mountSettingsPanel() {
     wireRows();
   }
 
+  async function renderVault() {
+    setHeader("API Vault", "Host側で暗号化する認証情報");
+    const token = localStorage.getItem(DEVICE_TOKEN_KEY) || "";
+    if (!token) {
+      scroll.innerHTML = `
+        <div class="devmoter-settings-note">Vaultを使うには、このブラウザをTrusted deviceとして登録してね。</div>
+        <div class="devmoter-settings-card devmoter-settings-action-card">
+          <button type="button" data-action="page:devices">端末の登録へ</button>
+        </div>
+      `;
+      wireRows();
+      return;
+    }
+
+    let status: Json;
+    try {
+      status = await request("/api/secrets/status", {}, true);
+    } catch (error) {
+      scroll.replaceChildren();
+      const message = document.createElement("p");
+      message.className = "devmoter-settings-note";
+      message.textContent = error instanceof Error ? error.message : String(error);
+      scroll.appendChild(message);
+      return;
+    }
+
+    if (!status.initialized || !status.unlocked) {
+      const action = status.initialized ? "unlock" : "initialize";
+      const label = status.initialized ? "Vaultを開く" : "Vaultを作成して開く";
+      scroll.innerHTML = `
+        <section class="devmoter-settings-section">
+          <h2>${status.initialized ? "Vaultはロック中" : "新しいVault"}</h2>
+          <form class="devmoter-settings-card devmoter-settings-form-card" data-vault-unlock-form>
+            <label for="devmoterVaultPassphrase">Vault passphrase</label>
+            <input id="devmoterVaultPassphrase" data-vault-passphrase type="password" autocomplete="current-password" minlength="12" maxlength="1024" required />
+            <small>12文字以上。忘れると復元できないので、パスワードマネージャーへ保管してね。</small>
+            <button type="submit">${label}</button>
+          </form>
+        </section>
+        <p class="devmoter-settings-note">Passphraseはこの画面のメモリ上からAPIへ送られ、保存・表示されない。秘密値は暗号化してHostに保存される。</p>
+      `;
+      scroll.querySelector<HTMLFormElement>("[data-vault-unlock-form]")?.addEventListener("submit", async event => {
+        event.preventDefault();
+        const input = scroll.querySelector<HTMLInputElement>("[data-vault-passphrase]");
+        const passphrase = input?.value || "";
+        if (input) input.value = "";
+        try {
+          await request(`/api/secrets/${action}`, {
+            method: "POST",
+            body: JSON.stringify({ passphrase })
+          }, true);
+          toast(action === "initialize" ? "Vaultを作成してロック解除したよ。" : "Vaultのロックを解除したよ。");
+          await renderVault();
+        } catch (error) {
+          toast(error instanceof Error ? error.message : String(error));
+        }
+      });
+      wireRows();
+      return;
+    }
+
+    let secrets: Json[] = [];
+    let projects: Json[] = [];
+    try {
+      const [vaultData, projectData] = await Promise.all([
+        request("/api/secrets", {}, true),
+        request("/api/projects")
+      ]);
+      secrets = Array.isArray(vaultData.secrets) ? vaultData.secrets : [];
+      vaultSecrets = secrets;
+      projects = Array.isArray(projectData.projects) ? projectData.projects.filter((project: Json) => project.available !== false) : [];
+    } catch (error) {
+      scroll.replaceChildren();
+      const message = document.createElement("p");
+      message.className = "devmoter-settings-note";
+      message.textContent = error instanceof Error ? error.message : String(error);
+      scroll.appendChild(message);
+      return;
+    }
+
+    const projectOptions = projects.map(project => `
+      <label class="devmoter-vault-project-option">
+        <input type="checkbox" data-vault-project value="${escapeHtml(project.id)}" />
+        <span>${escapeHtml(project.name || project.id)}</span>
+      </label>
+    `).join("");
+    const secretRows = secrets.length ? secrets.map(secret => `
+      <article class="devmoter-vault-secret">
+        <div class="devmoter-vault-secret-main">
+          <strong>${escapeHtml(secret.provider)}/${escapeHtml(secret.name)}</strong>
+          <small>•••••••• · ${escapeHtml(secret.purpose || "用途未設定")}</small>
+          <small>${Array.isArray(secret.projectIds) ? secret.projectIds.length : 0} Projects · 最終使用 ${escapeHtml(secret.lastUsedAt ? new Date(secret.lastUsedAt).toLocaleString() : "未使用")}</small>
+          ${secret.duplicate ? '<small class="devmoter-vault-warning">同じ値のSecretが他にも登録されている</small>' : ""}
+        </div>
+        <div class="devmoter-vault-secret-actions">
+          <button type="button" data-action="vault:edit" data-vault-reference="${escapeHtml(secret.reference)}">更新</button>
+          <button type="button" data-action="vault:delete" data-vault-reference="${escapeHtml(secret.reference)}">削除</button>
+        </div>
+      </article>
+    `).join("") : '<div class="devmoter-settings-empty">登録済みのSecretはありません。</div>';
+
+    scroll.innerHTML = `
+      <section class="devmoter-settings-section">
+        <h2>Vaultの状態</h2>
+        <div class="devmoter-settings-card devmoter-settings-detail-card">
+          <div class="devmoter-settings-detail-row"><span>状態</span><strong>Unlocked · ${escapeHtml(status.count ?? secrets.length)}件</strong></div>
+          <div class="devmoter-settings-actions"><button type="button" data-action="vault:lock">Vaultをロック</button></div>
+        </div>
+      </section>
+      <section class="devmoter-settings-section">
+        <h2>登録済み</h2>
+        <div class="devmoter-settings-card devmoter-vault-list">${secretRows}</div>
+      </section>
+      <section class="devmoter-settings-section">
+        <h2 data-vault-form-title>Secretを追加</h2>
+        <form class="devmoter-settings-card devmoter-settings-form-card" data-vault-form>
+          <label>Provider ID<input name="provider" autocomplete="off" maxlength="80" required placeholder="openai" /></label>
+          <label>Secret name<input name="name" autocomplete="off" maxlength="80" required placeholder="personal" /></label>
+          <label>Secret value<input name="value" type="password" autocomplete="new-password" maxlength="16384" required /></label>
+          <label>用途<input name="purpose" autocomplete="off" maxlength="200" placeholder="Build / API chat など" /></label>
+          <label>環境変数名（任意）<input name="envName" autocomplete="off" maxlength="128" placeholder="OPENAI_API_KEY" /></label>
+          <fieldset class="devmoter-vault-projects"><legend>利用できるProject（最低1つ）</legend>${projectOptions || '<small>登録済みProjectがないため、先にProjectを追加してね。</small>'}</fieldset>
+          <button type="submit" ${projects.length ? "" : "disabled"} data-vault-save>Vaultに保存</button>
+          <small>保存後、Secret valueは画面に戻らない。VaultはAES-256-GCMで暗号化してHostに保存する。</small>
+        </form>
+      </section>
+      <p class="devmoter-settings-note">Secret valueのReveal/CopyとAPI Chat・Agent連携は未対応。この画面は値を再表示しない。</p>
+    `;
+
+    vaultFormElement = scroll.querySelector<HTMLFormElement>("[data-vault-form]");
+    vaultFormElement?.addEventListener("submit", async event => {
+      event.preventDefault();
+      const form = event.currentTarget as HTMLFormElement;
+      const data = new FormData(form);
+      const projectIds = [...scroll.querySelectorAll<HTMLInputElement>("[data-vault-project]:checked")].map(input => input.value);
+      const provider = String(data.get("provider") || "").trim();
+      const name = String(data.get("name") || "").trim();
+      const reference = `secret://${provider}/${name}`;
+      const replacing = secrets.some(secret => secret.reference === reference);
+      if (!projectIds.length) {
+        toast("利用するProjectを1つ以上選んでね。");
+        return;
+      }
+      if (replacing && !window.confirm(`${reference} の値を置き換える？`)) return;
+      const saveButton = form.querySelector<HTMLButtonElement>("[data-vault-save]");
+      if (saveButton) saveButton.disabled = true;
+      try {
+        await request("/api/secrets", {
+          method: "PUT",
+          body: JSON.stringify({
+            provider,
+            name,
+            value: data.get("value"),
+            purpose: data.get("purpose"),
+            envName: data.get("envName"),
+            projectIds,
+            ...(replacing ? { confirmReplace: true } : {})
+          })
+        }, true);
+        form.reset();
+        toast("Secretを暗号化して保存したよ。");
+        await renderVault();
+      } catch (error) {
+        if (saveButton) saveButton.disabled = false;
+        toast(error instanceof Error ? error.message : String(error));
+      }
+    });
+
+    wireRows();
+  }
+
   async function currentSubscription() {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
     const registration = await navigator.serviceWorker.ready;
@@ -436,6 +610,7 @@ export function mountSettingsPanel() {
     if (page === "appearance") return renderAppearance();
     if (page === "account") return renderAccount();
     if (page === "devices") return void renderDevices();
+    if (page === "vault") return void renderVault();
     if (page === "notifications") return void renderNotifications();
     if (page === "diagnostics") return renderDiagnostics();
     return renderGuide();
@@ -608,6 +783,56 @@ export function mountSettingsPanel() {
           } catch (error) {
             toast(error instanceof Error ? error.message : String(error));
           }
+          return;
+        }
+        if (action === "vault:lock") {
+          try {
+            await request("/api/secrets/lock", { method: "POST", body: "{}" }, true);
+            toast("Vaultをロックしたよ。");
+            await renderVault();
+          } catch (error) {
+            toast(error instanceof Error ? error.message : String(error));
+          }
+          return;
+        }
+        if (action === "vault:delete") {
+          const reference = button.dataset.vaultReference || "";
+          if (window.prompt(`削除するには次の参照を入力してね:\n${reference}`) !== reference) return;
+          const match = reference.match(/^secret:\/\/([^/]+)\/([^/]+)$/);
+          if (!match) return;
+          try {
+            await request(`/api/secrets/${encodeURIComponent(match[1])}/${encodeURIComponent(match[2])}`, {
+              method: "DELETE",
+              body: JSON.stringify({ confirmReference: reference })
+            }, true);
+            toast("Secretを削除したよ。");
+            await renderVault();
+          } catch (error) {
+            toast(error instanceof Error ? error.message : String(error));
+          }
+          return;
+        }
+        if (action === "vault:edit") {
+          const reference = button.dataset.vaultReference || "";
+          const secret = vaultSecrets.find(item => item.reference === reference);
+          if (!secret || !vaultFormElement) return;
+          const providerInput = vaultFormElement.elements.namedItem("provider") as HTMLInputElement;
+          const nameInput = vaultFormElement.elements.namedItem("name") as HTMLInputElement;
+          const purposeInput = vaultFormElement.elements.namedItem("purpose") as HTMLInputElement;
+          const envInput = vaultFormElement.elements.namedItem("envName") as HTMLInputElement;
+          providerInput.value = secret.provider;
+          nameInput.value = secret.name;
+          purposeInput.value = secret.purpose || "";
+          envInput.value = secret.envName || "";
+          for (const projectInput of scroll.querySelectorAll<HTMLInputElement>("[data-vault-project]")) {
+            projectInput.checked = Array.isArray(secret.projectIds) && secret.projectIds.includes(projectInput.value);
+          }
+          const heading = scroll.querySelector<HTMLElement>("[data-vault-form-title]");
+          if (heading) heading.textContent = `更新: ${reference}`;
+          const valueInput = vaultFormElement.elements.namedItem("value") as HTMLInputElement;
+          valueInput.placeholder = "新しい値を入力（現在値は表示されません）";
+          valueInput.focus();
+          vaultFormElement.scrollIntoView({ behavior: "smooth", block: "start" });
           return;
         }
         if (action === "push:enable") {

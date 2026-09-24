@@ -3,7 +3,7 @@ import { accessSync, constants as fsConstants } from "node:fs";
 import { mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import { basename, delimiter, dirname, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { CodexBridge } from "./server/codex-bridge.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
@@ -31,8 +31,10 @@ import { assertAuthPassword, credentialsMatch, parseBasicAuthorization, requireS
 import { ExternalAuth } from "./server/external-auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
 import { antigravityRemoteAction, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
-import { MULTI_API_PRESETS, createMultiApiStore, publicMultiApiProviders, runMultiApiChat, testMultiApiProvider } from "./server/multi-api.mjs";
+import { MULTI_API_PRESETS, assertVaultProviderDestination, createMultiApiStore, publicMultiApiProviders, runMultiApiChat, testMultiApiProvider } from "./server/multi-api.mjs";
 import { createMultiApiAttachmentStore } from "./server/multi-api-attachments.mjs";
+import { createSecretStore } from "./server/secret-store.mjs";
+import { createSecretVaultApi } from "./server/secret-vault-api.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -63,6 +65,7 @@ const externalAuth = new ExternalAuth({
 });
 const PROJECTS_FILE = join(PROJECT_CONFIG_DIR, "projects.json");
 const MULTI_API_FILE = join(PROJECT_CONFIG_DIR, "llm-providers.json");
+const SECRET_VAULT_FILE = join(HOME_DIR, ".local", "share", "devmoter-fast", "secrets", "vault.json");
 const MULTI_API_IMAGE_DIR = join(HOME_DIR, ".local", "share", "devmoter", "api-chat-images");
 const PROJECT_FILE_LIMIT = 1024 * 1024;
 const PROJECT_SCAN_LIMIT = 200;
@@ -72,6 +75,7 @@ const operationRegistry = createOperationRegistry({
   ttlMs: OPERATION_TTL_MS,
   maxEntries: OPERATION_MAX_ENTRIES
 });
+const multiApiVaultMigrations = new Set();
 const uploadRegistry = createUploadRegistry();
 const openCodeSessionModes = new Map();
 const codex = new CodexBridge({
@@ -79,6 +83,7 @@ const codex = new CodexBridge({
   cwd: process.env.CODEX_CWD || process.cwd()
 });
 const multiApiStore = createMultiApiStore({ filePath: MULTI_API_FILE, env: process.env });
+const secretStore = createSecretStore({ filePath: SECRET_VAULT_FILE });
 const multiApiAttachments = createMultiApiAttachmentStore({ directory: MULTI_API_IMAGE_DIR });
 void multiApiAttachments.cleanup().catch(error => {
   console.warn("multi-api attachment cleanup failed", redactText(error instanceof Error ? error.message : String(error)));
@@ -169,7 +174,7 @@ const hostRuntime = createHostAdapter({
     git: { state: "available", features: ["status", "diff", "reviewed-changes"] },
     agents: { state: "available", features: ["codex", "opencode"] },
     notifications: { state: "available", features: ["web-push", "agent-state"] },
-    secrets: { state: "unavailable", reason: "host_vault_not_implemented" }
+    secrets: { state: "available", features: ["encrypted-at-rest", "project-bindings", "metadata-api"] }
   }
 });
 const systemFeatures = createSystemFeatures({
@@ -183,6 +188,11 @@ const systemFeatures = createSystemFeatures({
   host: HOST,
   version: process.env.DEVMOTER_VERSION || "0.2.0",
   onDeviceRevoked: deviceId => terminal.revokeDeviceSessions(deviceId)
+});
+const secretVaultApi = createSecretVaultApi({
+  store: secretStore,
+  authenticateDevice: req => systemFeatures.authenticate(req),
+  resolveProject: getProjectById
 });
 const automationApi = createAutomationApi({
   readProjectRegistry,
@@ -1891,6 +1901,44 @@ function multiApiErrorStatus(error) {
       : message === "Request body too large" ? 413 : 400;
 }
 
+function parseSecretProvider(reference) {
+  const match = String(reference || "").match(/^secret:\/\/([A-Za-z0-9][A-Za-z0-9._-]{0,79})\/[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/);
+  if (!match) throw Object.assign(new Error("Vault Secret reference is invalid"), { status: 400 });
+  return match[1];
+}
+
+async function requireVaultProviderDevice(req) {
+  const device = await systemFeatures.authenticate(req);
+  if (!device?.id) throw Object.assign(new Error("Trusted device required"), { status: 401 });
+  return device;
+}
+
+async function authorizeVaultProviderReference(req, { secretRef, projectId, presetId = "custom", baseUrl, protocol } = {}, { resolveValue = false } = {}) {
+  await requireVaultProviderDevice(req);
+  if (typeof projectId !== "string" || !projectId) {
+    throw Object.assign(new Error("A registered project is required for a Vault Secret"), { status: 400 });
+  }
+  let project;
+  try {
+    project = await getProjectById(projectId);
+  } catch {
+    throw Object.assign(new Error("Vault Secret project is unavailable"), { status: 400 });
+  }
+  const secretProvider = parseSecretProvider(secretRef);
+  try {
+    assertVaultProviderDestination({ presetId, baseUrl, protocol, secretProvider });
+  } catch (error) {
+    throw Object.assign(error, { status: 403 });
+  }
+  const metadata = (await secretStore.list()).find(item => item.reference === secretRef);
+  if (!metadata || !metadata.projectIds.includes(project.id)) {
+    throw Object.assign(new Error("Vault Secret is unavailable for this project"), { status: 403 });
+  }
+  if (!resolveValue) return { project, metadata };
+  const value = await secretStore.resolve(secretRef, { projectId: project.id, provider: secretProvider });
+  return { project, metadata, value };
+}
+
 async function multiApiProviderList(res) {
   const providers = await multiApiStore.listResolved();
   json(res, 200, { providers: publicMultiApiProviders(providers) });
@@ -1899,6 +1947,17 @@ async function multiApiProviderList(res) {
 async function multiApiProviderSave(req, res) {
   try {
     const payload = await readJson(req, 256 * 1024);
+    const currentProviders = await multiApiStore.listResolved();
+    const existing = currentProviders.find(item => item.id === payload.id);
+    if (payload.secretRef || payload.credentialMode === "vault" || existing?.secretRef) {
+      await authorizeVaultProviderReference(req, {
+        secretRef: payload.secretRef || existing?.secretRef,
+        projectId: payload.projectId || existing?.projectId,
+        presetId: payload.presetId || existing?.presetId,
+        baseUrl: payload.baseUrl || existing?.baseUrl,
+        protocol: payload.protocol || existing?.protocol
+      });
+    }
     const provider = await multiApiStore.upsert(payload);
     json(res, 200, { provider });
   } catch (error) {
@@ -1906,20 +1965,103 @@ async function multiApiProviderSave(req, res) {
   }
 }
 
-async function multiApiProviderDelete(providerId, res) {
+async function multiApiProviderDelete(req, providerId, res) {
   try {
+    const existing = (await multiApiStore.listResolved()).find(item => item.id === providerId);
+    if (existing?.secretRef) {
+      await requireVaultProviderDevice(req);
+    }
     json(res, 200, await multiApiStore.remove(providerId));
   } catch (error) {
     json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
   }
 }
 
+async function migrateMultiApiProviderToVault(req, providerId, res) {
+  let createdReference = "";
+  let migrationClaimed = false;
+  try {
+    await requireVaultProviderDevice(req);
+    const payload = await readJson(req, 64 * 1024);
+    if (payload.confirm !== true) {
+      throw Object.assign(new Error("Explicit confirmation is required to move this API key into the Vault"), { status: 400 });
+    }
+    if (multiApiVaultMigrations.has(providerId)) {
+      throw Object.assign(new Error("This provider is already being migrated"), { status: 409 });
+    }
+    multiApiVaultMigrations.add(providerId);
+    migrationClaimed = true;
+    const project = await getProjectById(String(payload.projectId || ""));
+    const status = await secretStore.status();
+    if (!status.initialized || !status.unlocked) {
+      throw Object.assign(new Error("Initialize and unlock API Vault before migrating provider keys"), { status: 409 });
+    }
+
+    const providers = await multiApiStore.listResolved();
+    const provider = providers.find(item => item.id === providerId);
+    if (!provider) throw Object.assign(new Error("Provider not found"), { status: 404 });
+    if (provider.source !== "file" || !provider.apiKey || provider.secretRef) {
+      throw Object.assign(new Error("Only editable file-backed API key providers can be migrated"), { status: 409 });
+    }
+    const presetId = provider.presetId || "custom";
+    const name = `api-chat-${createHash("sha256").update(provider.id).digest("hex").slice(0, 24)}`;
+    const secretRef = `secret://${presetId}/${name}`;
+    try {
+      assertVaultProviderDestination({
+        presetId,
+        secretProvider: presetId,
+        baseUrl: provider.baseUrl,
+        protocol: provider.protocol
+      });
+    } catch {
+      throw Object.assign(new Error("This provider must use a verified preset endpoint before its key can be migrated"), { status: 409 });
+    }
+    if ((await secretStore.list()).some(item => item.reference === secretRef)) {
+      throw Object.assign(new Error("A Vault entry already exists for this provider; select or review it in API Vault"), { status: 409 });
+    }
+
+    await secretStore.set({
+      provider: presetId,
+      name,
+      value: provider.apiKey,
+      purpose: `Migrated API Chat provider: ${provider.name}`,
+      projectIds: [project.id]
+    });
+    createdReference = secretRef;
+    const migrated = await multiApiStore.upsert({
+      ...provider,
+      apiKey: "",
+      credentialMode: "vault",
+      secretRef,
+      projectId: project.id
+    });
+    json(res, 200, { provider: migrated, migrated: true });
+  } catch (error) {
+    if (createdReference) await secretStore.remove(createdReference).catch(() => {});
+    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+  } finally {
+    if (migrationClaimed) multiApiVaultMigrations.delete(providerId);
+  }
+}
+
 async function multiApiProviderTest(req, res) {
+  let vaultSecretValue = "";
   try {
     const payload = await readJson(req, 256 * 1024);
+    if (payload.secretRef) {
+      const resolved = await authorizeVaultProviderReference(req, payload, { resolveValue: true });
+      vaultSecretValue = resolved.value;
+      const result = await testMultiApiProvider({ ...payload, apiKey: vaultSecretValue, secretRef: "", projectId: "" });
+      json(res, 200, {
+        ...result,
+        models: result.models.map(model => redactSecretsInText(model, [vaultSecretValue]))
+      });
+      return;
+    }
     json(res, 200, await testMultiApiProvider(payload));
   } catch (error) {
-    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+    const message = error instanceof Error ? error.message : String(error);
+    json(res, multiApiErrorStatus(error), { error: redactSecretsInText(message, [vaultSecretValue]) });
   }
 }
 
@@ -1947,13 +2089,34 @@ async function multiApiAttachmentDelete(attachmentId, res) {
 }
 
 async function multiApiChat(req, res) {
+  let vaultSecretValue = "";
   try {
     const payload = await readJson(req, 1024 * 1024);
-    const providers = await multiApiStore.listResolved();
+    let providers = await multiApiStore.listResolved();
+    const selectedProvider = providers.find(item => item.id === String(payload?.providerId || ""));
+    if (selectedProvider?.secretRef) {
+      if (!payload.projectId || payload.projectId !== selectedProvider.projectId) {
+        throw Object.assign(new Error("Select the project bound to this Vault-backed provider"), { status: 403 });
+      }
+      const resolved = await authorizeVaultProviderReference(req, {
+        secretRef: selectedProvider.secretRef,
+        projectId: payload.projectId,
+        presetId: selectedProvider.presetId,
+        baseUrl: selectedProvider.baseUrl,
+        protocol: selectedProvider.protocol
+      }, { resolveValue: true });
+      vaultSecretValue = resolved.value;
+      providers = providers.map(provider => provider.id === selectedProvider.id
+        ? { ...provider, apiKey: vaultSecretValue, secretRef: "" }
+        : provider);
+    }
     const result = await runMultiApiChat(providers, payload, fetch, { attachmentStore: multiApiAttachments });
-    json(res, 200, result);
+    json(res, 200, vaultSecretValue
+      ? { ...result, message: { ...result.message, content: redactSecretsInText(result.message.content, [vaultSecretValue]) } }
+      : result);
   } catch (error) {
-    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+    const message = error instanceof Error ? error.message : String(error);
+    json(res, multiApiErrorStatus(error), { error: redactSecretsInText(message, [vaultSecretValue]) });
   }
 }
 
@@ -2079,10 +2242,17 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    const providerMigrationMatch = url.pathname.match(/^\/api\/llm\/providers\/([^/]+)\/migrate-to-vault$/);
+    if (req.method === "POST" && providerMigrationMatch) {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await migrateMultiApiProviderToVault(req, decodeURIComponent(providerMigrationMatch[1]), res);
+      return;
+    }
+
     const llmProviderMatch = url.pathname.match(/^\/api\/llm\/providers\/([^/]+)$/);
     if (req.method === "DELETE" && llmProviderMatch) {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
-      await multiApiProviderDelete(decodeURIComponent(llmProviderMatch[1]), res);
+      await multiApiProviderDelete(req, decodeURIComponent(llmProviderMatch[1]), res);
       return;
     }
 
@@ -2319,6 +2489,15 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/host") {
       json(res, 200, await hostRuntime.snapshot());
       return;
+    }
+
+    if (url.pathname === "/api/secrets" || url.pathname.startsWith("/api/secrets/")) {
+      if (
+        req.method !== "GET" &&
+        req.method !== "HEAD" &&
+        !claimOperation(req, res, `${req.method}:${url.pathname}`)
+      ) return;
+      if (await secretVaultApi.handle(req, res, url)) return;
     }
 
     if (req.method === "POST" && url.pathname === "/api/devices/bootstrap") {

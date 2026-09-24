@@ -484,6 +484,106 @@ html[data-devmoter-theme="light"] .devmoter-settings-row-copy small {
   font-size: .82rem;
 }
 
+.devmoter-settings-form-card > label {
+  display: grid;
+  gap: 6px;
+  color: #b7b7bd;
+  font-size: .72rem;
+}
+
+.devmoter-settings-form-card > small {
+  color: #9b9ba1;
+  font-size: .68rem;
+  line-height: 1.5;
+}
+
+.devmoter-vault-list {
+  padding: 0 12px;
+}
+
+.devmoter-vault-secret {
+  min-width: 0;
+  padding: 13px 2px;
+  display: grid;
+  gap: 10px;
+}
+
+.devmoter-vault-secret + .devmoter-vault-secret {
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.devmoter-vault-secret-main {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.devmoter-vault-secret-main strong {
+  overflow-wrap: anywhere;
+  color: #f5f5f7;
+  font-size: .78rem;
+}
+
+.devmoter-vault-secret-main small {
+  color: #a0a0a6;
+  font-size: .66rem;
+  overflow-wrap: anywhere;
+}
+
+.devmoter-vault-secret-main .devmoter-vault-warning {
+  color: #ffc66d;
+}
+
+.devmoter-vault-secret-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.devmoter-vault-secret-actions button {
+  min-height: 40px;
+  flex: 1;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 11px;
+  background: #353538;
+  color: #f5f5f7;
+}
+
+.devmoter-vault-secret-actions button:last-child {
+  color: #ffaaa4;
+}
+
+.devmoter-vault-projects {
+  min-width: 0;
+  margin: 0;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+}
+
+.devmoter-vault-projects legend {
+  padding: 0 4px;
+  color: #b7b7bd;
+  font-size: .72rem;
+}
+
+.devmoter-vault-project-option {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #f5f5f7;
+  font-size: .76rem;
+}
+
+.devmoter-vault-project-option input {
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  accent-color: #8c8cff;
+}
+
 .devmoter-settings-device {
   min-height: 58px;
   padding: 10px 12px 10px 14px;
@@ -606,6 +706,34 @@ html[data-devmoter-theme="light"] .devmoter-settings-form-card input {
   border-color: rgba(0,0,0,.12);
   background: #f4f4f7;
   color: #111;
+}
+
+html[data-devmoter-theme="light"] .devmoter-vault-secret-main strong,
+html[data-devmoter-theme="light"] .devmoter-vault-project-option {
+  color: #161619;
+}
+
+html[data-devmoter-theme="light"] .devmoter-vault-secret + .devmoter-vault-secret {
+  border-color: rgba(0,0,0,.10);
+}
+
+html[data-devmoter-theme="light"] .devmoter-vault-projects {
+  border-color: rgba(0,0,0,.14);
+}
+
+html[data-devmoter-theme="light"] .devmoter-vault-projects legend,
+html[data-devmoter-theme="light"] .devmoter-settings-form-card > label {
+  color: #55555b;
+}
+
+html[data-devmoter-theme="light"] .devmoter-vault-secret-actions button {
+  border-color: rgba(0,0,0,.12);
+  background: #f1f1f4;
+  color: #222226;
+}
+
+html[data-devmoter-theme="light"] .devmoter-vault-secret-actions button:last-child {
+  color: #ad312a;
 }
 
 

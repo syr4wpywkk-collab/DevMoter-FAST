@@ -6163,6 +6163,32 @@ textarea:focus-visible,
   gap: 8px;
 }
 
+.api-provider-settings-item {
+  display: grid;
+  gap: 6px;
+}
+
+.api-provider-migrate {
+  justify-self: end;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--api-border);
+  border-radius: 12px;
+  color: var(--api-accent);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.api-provider-migrate:disabled {
+  opacity: 0.5;
+}
+
+.api-provider-migrate-error {
+  color: #c5221f;
+  font-size: 12px;
+}
+
 .api-provider-row {
   width: 100%;
   min-height: 70px;
@@ -6252,6 +6278,10 @@ textarea:focus-visible,
 .api-provider-form label {
   display: grid;
   gap: 7px;
+}
+
+.api-provider-form [hidden] {
+  display: none !important;
 }
 
 .api-provider-form label > span {
