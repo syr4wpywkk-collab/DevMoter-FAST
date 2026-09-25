@@ -1059,8 +1059,13 @@ export function mountCodexRemote(
         { threadId, includeTurns: false }
       );
       const thread = result?.thread;
-      if (!thread?.id) throw new Error("Saved thread is not available");
-      return await selectThread({ ...thread, id: threadId });
+      if (!thread) throw new Error("Saved thread is not available");
+      return await selectThread({
+        id: threadId,
+        name: thread.name,
+        preview: thread.preview,
+        cwd: thread.cwd
+      });
     } catch (error) {
       title.textContent = "会話を復元できません";
       transcript.innerHTML = `
@@ -1654,6 +1659,12 @@ export function mountCodexRemote(
     }
   }
 
+  function clearReplayedApproval() {
+    pendingApproval = null;
+    pendingApprovalSafety = "";
+    approval.classList.add("hidden");
+  }
+
   function applyReplayState(event: Json) {
     if (event?.backend && event.backend !== "codex") return;
     const type = String(event?.type || "");
@@ -1672,12 +1683,21 @@ export function mountCodexRemote(
       }
     }
     else if (type === "question") setExecutionState("waiting_for_input");
-    else if (type === "failure") setExecutionState("failed");
-    else if (type === "completion") setExecutionState("completed");
-    else {
+    else if (type === "failure") {
+      clearReplayedApproval();
+      setExecutionState("failed");
+    } else if (type === "completion") {
+      clearReplayedApproval();
+      setExecutionState("completed");
+    } else {
       const method = String(event?.payload?.method || "");
       if (method === "turn/started") setExecutionState("running");
+      if (method === "serverRequest/resolved") {
+        clearReplayedApproval();
+        if (executionState === "waiting_for_approval") setExecutionState("running");
+      }
       if (method === "turn/completed") {
+        clearReplayedApproval();
         setExecutionState(codexTurnStatusToExecutionState(event?.payload?.params?.turn?.status));
       }
     }
