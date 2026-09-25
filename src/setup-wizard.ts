@@ -29,6 +29,10 @@ type SetupStatus = {
   platform: {
     os: string;
     supported: boolean;
+    distro?: string;
+    distroVersion?: string | null;
+    packageManager?: string | null;
+    environment?: string;
     node: { available: boolean; version: string };
     git: { installed: boolean; version: string | null };
   };
@@ -54,10 +58,25 @@ type PlanItem = {
 
 type InstallPlan = {
   phase: string;
-  mode: "preview-only";
+  mode: string;
   executable: false;
+  planId: string;
+  expiresAt: string;
   items: PlanItem[];
   summary: { selected: number; keep: number; install: number; manualReview: number; unavailable: number };
+};
+
+type ExecutionResult = {
+  planId: string;
+  status: "running" | "verified" | "needs_user_action" | "failed";
+  items: Array<{
+    toolId: string;
+    status: string;
+    verification: string;
+    errorCode: string | null;
+    summary: string;
+    nextAction: string | null;
+  }>;
 };
 
 const groups = [
@@ -132,13 +151,13 @@ export function mountSetupWizard(root: HTMLDivElement) {
     <main class="dm-setup" aria-labelledby="dm-setup-title">
       <header class="dm-setup-header">
         <a href="/" class="dm-setup-back">← DevMoter FAST</a>
-        <span class="dm-setup-badge">EXPERIMENTAL · PHASE 2</span>
+        <span class="dm-setup-badge">EXPERIMENTAL · PHASE 3</span>
       </header>
       <section class="dm-setup-intro">
         <p class="dm-setup-eyebrow">DEV MOTER FAST SETUP</p>
         <h1 id="dm-setup-title">Your tools, one clear plan.</h1>
         <p class="dm-setup-lede">Installation should cost time, not expertise.</p>
-        <p class="dm-setup-note">Choose tools to preview. Nothing will be installed, downloaded, authenticated, or changed in this phase.</p>
+        <p class="dm-setup-note">Choose tools to review. This phase does not install, download, authenticate, or change anything.</p>
         <div class="dm-setup-actions" data-selection-actions>
           <button class="dm-setup-rescan" type="button" data-rescan>Rescan</button>
           <button class="dm-setup-review" type="button" data-review disabled>Review install plan</button>
@@ -151,18 +170,24 @@ export function mountSetupWizard(root: HTMLDivElement) {
       </section>
       <section class="dm-setup-selection" aria-labelledby="dm-setup-selection-title" data-selection-view>
         <h2 id="dm-setup-selection-title">Choose what to plan</h2>
-        <p class="dm-setup-section-note">Existing installs are kept. Class A/B candidates may be preselected; class C needs explicit confirmation in a later phase.</p>
+        <p class="dm-setup-section-note">Existing installs are kept. Selected install candidates need a separate confirmation before the wizard checks the current state.</p>
         <div class="dm-setup-groups" data-tool-groups></div>
       </section>
       <section class="dm-setup-plan-view" aria-labelledby="dm-setup-plan-title" data-plan-view hidden>
         <div class="dm-setup-plan-heading">
-          <div><p class="dm-setup-eyebrow">PREVIEW ONLY</p><h2 id="dm-setup-plan-title">Review install plan</h2></div>
-          <span class="dm-setup-plan-lock">Not executable</span>
+          <div><p class="dm-setup-eyebrow">REVIEW AND CONFIRM</p><h2 id="dm-setup-plan-title">Review install plan</h2></div>
+          <span class="dm-setup-plan-lock">No installer is enabled</span>
         </div>
+        <p class="dm-setup-note">Confirming records your choice and checks the machine again. No installation command will run in this phase.</p>
         <div class="dm-setup-plan-items" data-plan-items></div>
-        <button class="dm-setup-back-button" type="button" data-back>Back</button>
+        <p class="dm-setup-execution-status" role="status" aria-live="polite" data-execution-status></p>
+        <div class="dm-setup-execution-results" data-execution-results></div>
+        <div class="dm-setup-actions">
+          <button class="dm-setup-review" type="button" data-execute disabled>Confirm and check current state</button>
+          <button class="dm-setup-back-button" type="button" data-back>Back</button>
+        </div>
       </section>
-      <footer class="dm-setup-footer">No Install now action exists in Phase 2. Install execution and privilege handling are later phases.</footer>
+      <footer class="dm-setup-footer">Automatic installation and privilege handling are not enabled. Existing installations are only reported after a fresh detector scan.</footer>
     </main>
   `;
 
@@ -175,7 +200,11 @@ export function mountSetupWizard(root: HTMLDivElement) {
   const planView = root.querySelector<HTMLElement>("[data-plan-view]")!;
   const planItems = root.querySelector<HTMLElement>("[data-plan-items]")!;
   const back = root.querySelector<HTMLButtonElement>("[data-back]")!;
+  const execute = root.querySelector<HTMLButtonElement>("[data-execute]")!;
+  const executionStatus = root.querySelector<HTMLElement>("[data-execution-status]")!;
+  const executionResults = root.querySelector<HTMLElement>("[data-execution-results]")!;
   let currentStatus: SetupStatus | null = null;
+  let activePlan: InstallPlan | null = null;
 
   function renderEnvironment(status: SetupStatus) {
     const items = [
@@ -244,6 +273,9 @@ export function mountSetupWizard(root: HTMLDivElement) {
   }
 
   function renderPlan(plan: InstallPlan) {
+    activePlan = plan;
+    executionStatus.textContent = "";
+    executionResults.replaceChildren();
     planItems.replaceChildren(...plan.items.map(item => {
       const card = document.createElement("article");
       card.className = `dm-setup-plan-card dm-setup-plan-${item.status}`;
@@ -289,12 +321,90 @@ export function mountSetupWizard(root: HTMLDivElement) {
       appendList("Planned changes", item.changes);
       appendList("Verification", item.verification);
       appendList("Notes", item.notes);
+      if (item.action === "install") {
+        const label = document.createElement("label");
+        label.className = "dm-setup-confirmation";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.dataset.confirmTool = item.toolId;
+        checkbox.setAttribute("aria-label", `Confirm ${item.displayName} plan`);
+        const text = document.createElement("span");
+        text.textContent = "I reviewed this item and confirm the setup check.";
+        label.append(checkbox, text);
+        card.append(label);
+      }
       return card;
     }));
+    updateExecuteAvailability();
     selectionView.hidden = true;
     planView.hidden = false;
     rescan.hidden = true;
     review.hidden = true;
+  }
+
+  function updateExecuteAvailability() {
+    const confirmations = [...planItems.querySelectorAll<HTMLInputElement>("[data-confirm-tool]")];
+    execute.disabled = !activePlan || confirmations.some(input => !input.checked);
+  }
+
+  function renderExecutionResult(result: ExecutionResult) {
+    executionResults.replaceChildren(...result.items.map(item => {
+      const card = document.createElement("article");
+      card.className = `dm-setup-result dm-setup-result-${item.status}`;
+      const heading = document.createElement("strong");
+      heading.textContent = knownNames[item.toolId] || item.toolId;
+      const state = document.createElement("span");
+      state.textContent = item.status.replaceAll("_", " ");
+      const summary = document.createElement("p");
+      summary.textContent = item.summary;
+      card.append(heading, state, summary);
+      if (item.nextAction) {
+        const next = document.createElement("p");
+        next.textContent = item.nextAction;
+        card.append(next);
+      }
+      return card;
+    }));
+    executionStatus.textContent = result.status === "verified"
+      ? "Current state verified."
+      : result.status === "failed"
+        ? "The current state could not be fully verified."
+        : "Some items need a manual action. No installation command was run.";
+  }
+
+  async function confirmAndCheck() {
+    if (!activePlan || execute.disabled) return;
+    execute.disabled = true;
+    back.disabled = true;
+    executionStatus.textContent = "Checking current state…";
+    executionResults.replaceChildren();
+    const confirmedActions = [...planItems.querySelectorAll<HTMLInputElement>("[data-confirm-tool]")]
+      .filter(input => input.checked)
+      .map(input => ({ toolId: input.dataset.confirmTool!, actionId: "install", confirmed: true }));
+    try {
+      const response = await fetch("/api/setup/execute", {
+        method: "POST",
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ planId: activePlan.planId, confirmedActions })
+      });
+      if (!response.ok) {
+        if (response.status === 401) throw new Error("Sign in to confirm this plan.");
+        const error = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(error.error || `Setup check failed (${response.status}).`);
+      }
+      const result = await response.json() as ExecutionResult;
+      for (const input of planItems.querySelectorAll<HTMLInputElement>("[data-confirm-tool]")) input.disabled = true;
+      renderExecutionResult(result);
+      await scan();
+    } catch (error) {
+      executionStatus.textContent = error instanceof Error ? error.message : "Setup check failed.";
+      execute.disabled = false;
+      for (const input of planItems.querySelectorAll<HTMLInputElement>("[data-confirm-tool]")) input.disabled = false;
+    } finally {
+      back.disabled = false;
+    }
   }
 
   async function scan() {
@@ -357,6 +467,7 @@ export function mountSetupWizard(root: HTMLDivElement) {
   }
 
   back.addEventListener("click", () => {
+    activePlan = null;
     planView.hidden = true;
     selectionView.hidden = false;
     rescan.hidden = false;
@@ -364,6 +475,10 @@ export function mountSetupWizard(root: HTMLDivElement) {
     scanState.textContent = "Choose tools to update the preview.";
   });
   review.addEventListener("click", () => void reviewPlan());
+  execute.addEventListener("click", () => void confirmAndCheck());
+  planItems.addEventListener("change", event => {
+    if ((event.target as HTMLElement).matches("[data-confirm-tool]")) updateExecuteAvailability();
+  });
   rescan.addEventListener("click", () => void scan());
   void scan();
 }

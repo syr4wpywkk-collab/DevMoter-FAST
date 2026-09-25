@@ -1,8 +1,14 @@
 import { createSetupStatus, setupAdapters } from "./engine.mjs";
+import { getExecutor } from "./executors/registry.mjs";
+import { randomUUID, createHash } from "node:crypto";
 
 const REQUEST_ACTIONS = new Set(["install", "keep", "manual_review"]);
 const AUTOMATIC_SOURCE_CLASSES = new Set(["A", "B"]);
 const TOOL_BY_ID = new Map(setupAdapters.map(adapter => [adapter.id, adapter]));
+// Short lived, server-owned snapshots bind confirmation to the exact preview.
+const planSnapshots = new Map();
+const PLAN_TTL_MS = 5 * 60 * 1000;
+const MAX_PLAN_SNAPSHOTS = 100;
 
 export class SetupPlanError extends Error {
   constructor(code, status = 400) {
@@ -170,6 +176,7 @@ export function buildInstallPlan(payload, setupStatus) {
     phase: "experimental-phase-2",
     mode: "preview-only",
     executable: false,
+    platform: setupStatus.platform,
     items,
     summary: {
       selected: items.length,
@@ -181,7 +188,98 @@ export function buildInstallPlan(payload, setupStatus) {
   };
 }
 
-export async function previewInstallPlan(payload) {
-  const setupStatus = await createSetupStatus();
-  return buildInstallPlan(payload, setupStatus);
+export async function previewInstallPlan(payload, options = {}) {
+  const setupStatus = await createSetupStatus(options);
+  const plan = buildInstallPlan(payload, setupStatus);
+  const now = Date.now();
+  for (const [id, snapshot] of planSnapshots) if (snapshot.expiresAt <= now) planSnapshots.delete(id);
+  while (planSnapshots.size >= MAX_PLAN_SNAPSHOTS) planSnapshots.delete(planSnapshots.keys().next().value);
+  const planId = randomUUID();
+  const digest = createHash("sha256").update(JSON.stringify(plan)).digest("hex");
+  planSnapshots.set(planId, { plan, digest, expiresAt: now + PLAN_TTL_MS, state: "pending" });
+  return { ...plan, planId, expiresAt: new Date(now + PLAN_TTL_MS).toISOString() };
+}
+
+function parseExecuteRequest(payload) {
+  if (!isPlainRecord(payload) || !exactKeys(payload, ["planId", "confirmedActions"])) throw new SetupPlanError("invalid_execute_request");
+  if (typeof payload.planId !== "string" || !/^[0-9a-f-]{36}$/i.test(payload.planId)) throw new SetupPlanError("invalid_plan");
+  if (!Array.isArray(payload.confirmedActions) || payload.confirmedActions.length > setupAdapters.length) throw new SetupPlanError("invalid_confirmation");
+  const ids = new Set();
+  for (const action of payload.confirmedActions) {
+    if (!isPlainRecord(action) || !exactKeys(action, ["toolId", "actionId", "confirmed"]) || action.actionId !== "install" || action.confirmed !== true || typeof action.toolId !== "string" || !TOOL_BY_ID.has(action.toolId) || ids.has(action.toolId)) throw new SetupPlanError("invalid_confirmation");
+    ids.add(action.toolId);
+  }
+  return ids;
+}
+
+// The endpoint records explicit confirmation but remains fail-closed until a
+// reviewed executor and local privilege broker are available.
+export async function executeInstallPlan(payload, options = {}) {
+  const confirmations = parseExecuteRequest(payload);
+  const snapshot = planSnapshots.get(payload.planId);
+  if (!snapshot || snapshot.expiresAt <= Date.now()) throw new SetupPlanError("stale_plan", 409);
+  const currentDigest = createHash("sha256").update(JSON.stringify(snapshot.plan)).digest("hex");
+  if (currentDigest !== snapshot.digest) throw new SetupPlanError("stale_plan", 409);
+  if (snapshot.state !== "pending") return snapshot.result;
+  const installItems = snapshot.plan.items.filter(item => item.action === "install");
+  for (const item of installItems) if (!confirmations.has(item.toolId)) throw new SetupPlanError("confirmation_required", 403);
+  if (confirmations.size !== installItems.length) throw new SetupPlanError("invalid_confirmation");
+  for (const item of installItems) {
+    if (item.status !== "reviewable" && item.status !== "confirmation-required") throw new SetupPlanError("unsupported_action", 422);
+  }
+  // Claim synchronously before any asynchronous work so concurrent duplicate
+  // submissions cannot start a second executor.
+  snapshot.state = "running";
+  snapshot.result = { planId: payload.planId, status: "running", items: [] };
+  let before;
+  try {
+    before = await createSetupStatus(options);
+  } catch {
+    snapshot.state = "completed";
+    snapshot.result = {
+      planId: payload.planId,
+      status: "failed",
+      items: snapshot.plan.items.map(item => ({
+        toolId: item.toolId,
+        status: "failed",
+        verification: "unknown",
+        errorCode: "verification_unavailable",
+        summary: "The setup detector could not read the current state. No installation was attempted.",
+        nextAction: "Rescan and review a new plan."
+      }))
+    };
+    return snapshot.result;
+  }
+  const items = [];
+  for (const item of snapshot.plan.items) {
+    if (item.action === "keep") {
+      const detected = before.tools.find(tool => tool.id === item.toolId);
+      const kept = detected?.installed === true;
+      items.push({ toolId: item.toolId, status: kept ? "succeeded" : "failed", verification: kept ? "installed" : "failed", errorCode: kept ? null : "verification_failed", summary: kept ? "Existing installation detected and preserved." : "The existing installation was not confirmed by the detector.", nextAction: kept ? null : "Rescan and review this tool." });
+    } else if (item.action === "install") {
+      const detected = before.tools.find(tool => tool.id === item.toolId);
+      const executor = getExecutor(item.toolId, before.platform.distro);
+      if (detected?.installed) {
+        items.push({
+          toolId: item.toolId,
+          status: detected.authState === "required" ? "installed_login_required" : detected.authState === "unknown" ? "installed_auth_unknown" : "installed",
+          verification: detected.state,
+          errorCode: null,
+          summary: "Already detected when confirmation was checked. No installation command was run.",
+          nextAction: detected.authState === "required" ? "Sign in using the tool's official flow." : null
+        });
+      } else {
+        items.push({ toolId: item.toolId, status: "needs_user_action", verification: "not_installed", errorCode: executor ? "privilege_broker_unavailable" : "executor_unavailable", summary: executor ? "A fixed executor is registered, but no approved local privilege broker is available. No installation was attempted." : "No approved fixed executor is available for this tool and platform. No installation was attempted.", nextAction: "Use the official source shown in the plan, then rescan." });
+      }
+    } else {
+      items.push({ toolId: item.toolId, status: "needs_user_action", verification: "not_run", errorCode: "manual_review", summary: "This item requires manual review. No installation was attempted.", nextAction: "Review the official installation guidance before proceeding." });
+    }
+  }
+  snapshot.state = "completed";
+  snapshot.result = {
+    planId: payload.planId,
+    status: items.some(item => item.status === "failed") ? "failed" : items.some(item => item.status === "needs_user_action") ? "needs_user_action" : "verified",
+    items
+  };
+  return snapshot.result;
 }

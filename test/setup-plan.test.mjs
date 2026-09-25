@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { setupAdapters } from "../server/setup/engine.mjs";
-import { buildInstallPlan, installSourceDecision, SetupPlanError } from "../server/setup/plan.mjs";
+import { detectLinuxEnvironment, setupAdapters } from "../server/setup/engine.mjs";
+import { buildInstallPlan, executeInstallPlan, installSourceDecision, previewInstallPlan, SetupPlanError } from "../server/setup/plan.mjs";
 
 function statusFor(overrides = {}) {
   return {
@@ -39,6 +39,30 @@ test("missing supported tool creates only a preview candidate from adapter metad
   assert.equal(JSON.stringify(result).includes("argv"), false);
   assert.equal(JSON.stringify(result).includes("packageName"), false);
   assert.equal(JSON.stringify(result).includes("installerUrl"), false);
+});
+
+test("Linux environment detection supports Debian family and fails closed for other or unknown distros", async () => {
+  const read = contents => async () => contents;
+  const ubuntu = await detectLinuxEnvironment({ platform: "linux", readOsRelease: read('ID=ubuntu\nID_LIKE="debian"\nVERSION_ID="24.04"') });
+  assert.equal(ubuntu.distro, "ubuntu");
+  assert.equal(ubuntu.version, "24.04");
+  assert.equal(ubuntu.family, "debian");
+  assert.equal(ubuntu.packageManager, "apt");
+  assert.equal(ubuntu.supported, true);
+
+  const crostini = await detectLinuxEnvironment({ platform: "linux", environment: "crostini", readOsRelease: read("ID=debian\nVERSION_ID=12") });
+  assert.equal(crostini.supported, true);
+  assert.equal(crostini.environment, "crostini");
+
+  const fedora = await detectLinuxEnvironment({ platform: "linux", environment: "linux", readOsRelease: read("ID=fedora\nVERSION_ID=41") });
+  assert.equal(fedora.family, "rhel");
+  assert.equal(fedora.packageManager, "dnf");
+  assert.equal(fedora.supported, false);
+
+  const unknown = await detectLinuxEnvironment({ platform: "linux", readOsRelease: async () => { throw new Error("unavailable"); } });
+  assert.equal(unknown.distro, "unknown");
+  assert.equal(unknown.supported, false);
+  assert.equal((await detectLinuxEnvironment({ platform: "darwin" })).supported, false);
 });
 
 test("already installed and ready tools are always kept, even when install was selected", () => {
@@ -156,4 +180,32 @@ test("partial or duplicate selections fail closed", () => {
   expectPlanError(() => buildInstallPlan({ selections: [
     { toolId: "codex", action: "keep" }, { toolId: "codex", action: "install" }
   ] }, statusFor()), "duplicate_tool");
+});
+
+test("execution accepts only a server snapshot and rejects forged or injected requests", async () => {
+  await assert.rejects(executeInstallPlan({ planId: "0".repeat(36), confirmedActions: [], command: "id" }), error => error.code === "invalid_execute_request");
+  await assert.rejects(executeInstallPlan({ planId: "0".repeat(36), confirmedActions: [] }), error => error.code === "stale_plan");
+});
+
+test("executor requires exact explicit confirmations and never invents an installer", async () => {
+  const options = { env: { PATH: "", HOME: "/tmp" } };
+  const preview = await previewInstallPlan({ selections: [{ toolId: "codex", action: "install" }] }, options);
+  await assert.rejects(executeInstallPlan({ planId: preview.planId, confirmedActions: [] }), error => error.code === "confirmation_required");
+  await assert.rejects(executeInstallPlan({ planId: preview.planId, confirmedActions: [{ toolId: "codex", actionId: "install", confirmed: true, cwd: "/tmp/unsafe" }] }), error => error.code === "invalid_confirmation");
+  const request = { planId: preview.planId, confirmedActions: [{ toolId: "codex", actionId: "install", confirmed: true }] };
+  const result = await executeInstallPlan(request, options);
+  assert.equal(result.status, "needs_user_action");
+  assert.equal(result.items.length, 1);
+  assert.equal(result.items[0].status, "needs_user_action");
+  assert.equal(result.items[0].errorCode, "executor_unavailable");
+  assert.equal(JSON.stringify(result).includes("/home/"), false);
+  assert.deepEqual(await executeInstallPlan(request, options), result);
+});
+
+test("manual review and unsupported selections can never reach an executor", async () => {
+  const preview = await previewInstallPlan({ selections: [{ toolId: "github", action: "manual_review" }] }, { env: { PATH: "", HOME: "/tmp" } });
+  assert.equal(preview.items[0].status, "manual-review");
+  const result = await executeInstallPlan({ planId: preview.planId, confirmedActions: [] });
+  assert.equal(result.items.length, 1);
+  assert.equal(result.items[0].status, "needs_user_action");
 });
