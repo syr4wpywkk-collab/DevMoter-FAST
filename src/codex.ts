@@ -1612,10 +1612,65 @@ export function mountCodexRemote(
     }
   }
 
+  function renderApprovalRequest(
+    request: { id: string | number; method: string; params: Json },
+    safetyMessage = ""
+  ) {
+    pendingApprovalSafety = safetyMessage;
+    pendingApproval = request;
+    setExecutionState("waiting_for_approval");
+    approval.classList.remove("hidden");
+    const isFileChange = request.method === "item/fileChange/requestApproval";
+    approvalTitle.textContent = isFileChange
+      ? "ファイル変更を許可しますか？"
+      : "コマンド実行を許可しますか？";
+
+    const contextRows = [
+      ["Backend", "Codex"],
+      ["Thread", String(request.params?.threadId || activeThreadId || "unknown")],
+      ["Turn", String(request.params?.turnId || activeTurnId || "unknown")],
+      ["Action", isFileChange ? "File change" : "Command execution"]
+    ];
+    approvalMeta.replaceChildren(
+      ...contextRows.map(([label, value]) => {
+        const row = document.createElement("div");
+        const key = document.createElement("span");
+        const val = document.createElement("strong");
+        key.textContent = label;
+        val.textContent = value;
+        row.append(key, val);
+        return row;
+      })
+    );
+
+    approvalDetail.textContent = [
+      request.params?.reason ? `Reason: ${request.params.reason}` : "",
+      request.params?.command ? `Command:\n${request.params.command}` : "",
+      request.params?.cwd ? `Working directory:\n${request.params.cwd}` : "",
+      request.params?.grantRoot ? `Requested write root:\n${request.params.grantRoot}` : ""
+    ].filter(Boolean).join("\n\n") || "Codex is requesting permission to continue.";
+    if (pendingApprovalSafety) {
+      approvalDetail.textContent += `\n\nSafety pause:\n${pendingApprovalSafety}`;
+    }
+  }
+
   function applyReplayState(event: Json) {
     if (event?.backend && event.backend !== "codex") return;
     const type = String(event?.type || "");
-    if (type === "approval") setExecutionState("waiting_for_approval");
+    if (type === "approval") {
+      const payload = event?.payload || {};
+      const id = payload?.id;
+      const method = String(payload?.method || "");
+      const params = payload?.params && typeof payload.params === "object" ? payload.params : {};
+      if (
+        (typeof id === "string" || typeof id === "number") &&
+        (method === "item/commandExecution/requestApproval" || method === "item/fileChange/requestApproval")
+      ) {
+        renderApprovalRequest({ id, method, params });
+      } else {
+        setExecutionState("waiting_for_approval");
+      }
+    }
     else if (type === "question") setExecutionState("waiting_for_input");
     else if (type === "failure") setExecutionState("failed");
     else if (type === "completion") setExecutionState("completed");
@@ -1643,6 +1698,11 @@ export function mountCodexRemote(
       );
       if (!response.ok) throw new Error("Background event replay unavailable");
       const payload = await response.json().catch(() => ({}));
+      if (payload?.gap) {
+        cursor = String(payload?.latestCursor || payload?.cursor || cursor);
+        localStorage.setItem(storageKey, cursor);
+        throw new Error("Background replay gap detected");
+      }
       const items = Array.isArray(payload?.events) ? payload.events : [];
       for (const item of items) applyReplayState(item);
       const nextCursor = String(payload?.cursor || cursor);
@@ -1660,19 +1720,24 @@ export function mountCodexRemote(
     const threadId =
       activeThreadId || localStorage.getItem("opencode-pocket-codex-thread") || "";
 
+    let replayFallback = false;
     try {
       if (threadId) {
         setExecutionState("reconnecting");
-        await replayWorkspaceState(threadId).catch(() => {});
+        try {
+          await replayWorkspaceState(threadId);
+        } catch {
+          replayFallback = true;
+        }
       }
 
       events?.close();
       events = null;
-      connectEvents();
       await refresh();
+      connectEvents();
 
       if (threadId && activeThreadId === threadId) {
-        showToast("バックグラウンドの作業を同期しました");
+        showToast(replayFallback ? "会話履歴を再取得しました" : "バックグラウンドの作業を同期しました");
       }
     } finally {
       resumeSyncInFlight = false;
@@ -1857,42 +1922,10 @@ export function mountCodexRemote(
         // Fall back to the explicit approval UI.
       }
 
-      pendingApprovalSafety = loopState?.paused ? loopMessage(loopState) : "";
-      pendingApproval = request;
-      setExecutionState("waiting_for_approval");
-      approval.classList.remove("hidden");
-      const isFileChange = request.method === "item/fileChange/requestApproval";
-      approvalTitle.textContent = isFileChange
-        ? "ファイル変更を許可しますか？"
-        : "コマンド実行を許可しますか？";
-
-      const contextRows = [
-        ["Backend", "Codex"],
-        ["Thread", String(request.params?.threadId || activeThreadId || "unknown")],
-        ["Turn", String(request.params?.turnId || activeTurnId || "unknown")],
-        ["Action", isFileChange ? "File change" : "Command execution"]
-      ];
-      approvalMeta.replaceChildren(
-        ...contextRows.map(([label, value]) => {
-          const row = document.createElement("div");
-          const key = document.createElement("span");
-          const val = document.createElement("strong");
-          key.textContent = label;
-          val.textContent = value;
-          row.append(key, val);
-          return row;
-        })
+      renderApprovalRequest(
+        request,
+        loopState?.paused ? loopMessage(loopState) : ""
       );
-
-      approvalDetail.textContent = [
-        request.params?.reason ? `Reason: ${request.params.reason}` : "",
-        request.params?.command ? `Command:\n${request.params.command}` : "",
-        request.params?.cwd ? `Working directory:\n${request.params.cwd}` : "",
-        request.params?.grantRoot ? `Requested write root:\n${request.params.grantRoot}` : ""
-      ].filter(Boolean).join("\n\n") || "Codex is requesting permission to continue.";
-      if (pendingApprovalSafety) {
-        approvalDetail.textContent += `\n\nSafety pause:\n${pendingApprovalSafety}`;
-      }
     });
 
     events.addEventListener("offline", () => {
