@@ -1,4 +1,5 @@
 import { createSetupStatus, setupAdapters } from "./engine.mjs";
+import { executeApprovedInstall } from "./executor.mjs";
 import { randomUUID, createHash } from "node:crypto";
 
 const REQUEST_ACTIONS = new Set(["install", "keep", "manual_review"]);
@@ -210,31 +211,69 @@ function parseExecuteRequest(payload) {
   return ids;
 }
 
-// Deliberately fail closed: no adapter currently has an approved noninteractive,
-// privilege-safe executor. In particular GH/Tailscale need distro-specific package
-// sources and a local OS privilege prompt, neither of which is exposed to browsers.
-export async function executeInstallPlan(payload) {
+export async function executeInstallPlan(payload, options = {}) {
   const confirmations = parseExecuteRequest(payload);
   const snapshot = planSnapshots.get(payload.planId);
   if (!snapshot || snapshot.expiresAt <= Date.now()) throw new SetupPlanError("stale_plan", 409);
+
   const currentDigest = createHash("sha256").update(JSON.stringify(snapshot.plan)).digest("hex");
   if (currentDigest !== snapshot.digest) throw new SetupPlanError("stale_plan", 409);
   if (snapshot.state !== "pending") return snapshot.result;
+
   const installItems = snapshot.plan.items.filter(item => item.action === "install");
-  for (const item of installItems) if (!confirmations.has(item.toolId)) throw new SetupPlanError("confirmation_required", 403);
-  if (confirmations.size !== installItems.length) throw new SetupPlanError("invalid_confirmation");
   for (const item of installItems) {
-    if (item.status !== "reviewable" && item.status !== "confirmation-required") throw new SetupPlanError("unsupported_action", 422);
+    if (!confirmations.has(item.toolId)) throw new SetupPlanError("confirmation_required", 403);
+    if (item.status !== "reviewable" && item.status !== "confirmation-required") {
+      throw new SetupPlanError("unsupported_action", 422);
+    }
   }
-  // Never infer execution support from preview metadata alone. No OS-specific
-  // broker is installed/configured yet, so report the required local action.
+  if (confirmations.size !== installItems.length) throw new SetupPlanError("invalid_confirmation");
+
+  const itemResults = [];
+  for (const item of snapshot.plan.items) {
+    if (item.action === "keep") {
+      itemResults.push({
+        toolId: item.toolId,
+        status: "succeeded",
+        errorCode: null,
+        summary: "Existing installation was preserved.",
+        nextAction: null
+      });
+      continue;
+    }
+
+    if (item.action !== "install") {
+      itemResults.push({
+        toolId: item.toolId,
+        status: "needs_user_action",
+        errorCode: null,
+        summary: "Review this tool manually.",
+        nextAction: null
+      });
+      continue;
+    }
+
+    let result;
+    try {
+      result = await executeApprovedInstall(item.toolId, options.executor || {});
+    } catch {
+      result = {
+        status: "failed",
+        errorCode: "executor_failed",
+        summary: "The reviewed installer could not complete safely.",
+        nextAction: "Rescan the machine and retry after reviewing the local setup."
+      };
+    }
+    itemResults.push({ toolId: item.toolId, ...result });
+  }
+
+  const hasFailure = itemResults.some(item => item.status === "failed");
+  const needsUserAction = itemResults.some(item => item.status === "needs_user_action");
   snapshot.state = "completed";
   snapshot.result = {
     planId: payload.planId,
-    status: "needs_user_action",
-    items: snapshot.plan.items.map(item => item.action === "install"
-      ? { toolId: item.toolId, status: "needs_user_action", errorCode: "executor_unavailable", summary: "A safe local installer is not configured for this tool and platform.", nextAction: "Install using the official source shown in the review, then rescan." }
-      : { toolId: item.toolId, status: item.action === "keep" ? "succeeded" : "needs_user_action", errorCode: null, summary: item.action === "keep" ? "Existing installation was preserved." : "Review this tool manually.", nextAction: null })
+    status: hasFailure ? "failed" : needsUserAction ? "needs_user_action" : "succeeded",
+    items: itemResults
   };
   return snapshot.result;
 }
