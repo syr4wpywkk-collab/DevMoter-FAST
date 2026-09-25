@@ -102,4 +102,4 @@ Record commit, OS, Node, OpenCode, Codex, browser and device versions with relea
 - [ ] Confirm installed/ready tools say Keep existing; broken and unsupported tools cannot be planned for install.
 - [ ] Confirm Class C is not silently selected and manual-review metadata stays blocked from execution.
 - [ ] Confirm unauthenticated, cross-origin, non-loopback, malformed, and oversized setup requests fail closed.
-- [ ] Confirm the current execution response remains non-installing / `needs_user_action`; no package installer, sudo, downloader, login, service, or Tailscale mutation runs.
+- [ ] With a user-owned writable npm global prefix, confirm a reviewed missing Codex/OpenCode candidate installs only its fixed official npm package and verifies the expected CLI binary.\n- [ ] Confirm a system/global or non-writable npm prefix fails closed with `needs_user_action`.\n- [ ] Confirm Claude, Antigravity, GitHub CLI and Tailscale remain manual; no sudo, arbitrary downloader, login, service, or Tailscale mutation runs.\n- [ ] Double-submit one plan and confirm only one execution proceeds.
