@@ -12,7 +12,7 @@
   left: 50%;
   bottom: max(10px, env(safe-area-inset-bottom));
   transform: translateX(-50%);
-  z-index: 2147482002;
+  z-index: 75;
   display: grid;
   grid-template-columns: repeat(5, minmax(56px, 72px));
   align-items: center;
@@ -53,7 +53,7 @@
   left: 50%;
   bottom: calc(max(10px, env(safe-area-inset-bottom)) + 67px);
   transform: translateX(-50%);
-  z-index: 2147482003;
+  z-index: 76;
   width: min(calc(100vw - 28px), 390px);
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -84,7 +84,7 @@
 .dm-shell-scrim {
   position: fixed;
   inset: 0;
-  z-index: 2147482003;
+  z-index: 76;
   background: rgba(4,7,12,.45);
   backdrop-filter: blur(2px);
 }
@@ -93,7 +93,7 @@
   position: fixed;
   left: 50%;
   bottom: 0;
-  z-index: 2147482004;
+  z-index: 950;
   width: min(100%, 720px);
   max-height: min(84vh, 760px);
   transform: translate(-50%, 105%);
@@ -174,7 +174,7 @@
   left: 50%;
   bottom: calc(max(10px, env(safe-area-inset-bottom)) + 76px);
   transform: translateX(-50%);
-  z-index: 2147482005;
+  z-index: 960;
   max-width: min(90vw, 440px);
   padding: 10px 13px;
   border: 1px solid var(--dm-shell-border);
