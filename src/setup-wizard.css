@@ -65,6 +65,15 @@
 .dm-setup-plan-detail { margin-top: 14px; font-size: 12px; line-height: 1.55; }
 .dm-setup-plan-detail strong { color: #dce3f0; }
 .dm-setup-plan-detail ul { margin: 5px 0 0; padding-left: 18px; color: var(--setup-muted); }
+.dm-setup-confirmation { display: flex; align-items: flex-start; gap: 10px; margin-top: 16px; padding-top: 13px; border-top: 1px solid var(--setup-border); color: #dce3f0; font-size: 13px; line-height: 1.5; cursor: pointer; }
+.dm-setup-confirmation input { width: 19px; height: 19px; flex: 0 0 auto; margin: 0; accent-color: #9bb8fa; }
+.dm-setup-execution-status { min-height: 1.5em; margin: 18px 0 8px; color: #bdc5d2; font-size: 13px; }
+.dm-setup-execution-results { display: grid; gap: 10px; }
+.dm-setup-result { padding: 14px; border: 1px solid var(--setup-border); border-radius: 12px; background: var(--setup-card); }
+.dm-setup-result strong { margin-right: 10px; }
+.dm-setup-result span { color: #c4e1a9; font-size: 12px; text-transform: capitalize; }
+.dm-setup-result p { margin: 8px 0 0; color: var(--setup-muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.dm-setup-result-needs_user_action span, .dm-setup-result-failed span { color: #e5cc83; }
 .dm-setup-back-button { margin-top: 18px; }
 .dm-setup [hidden] { display: none !important; }
 

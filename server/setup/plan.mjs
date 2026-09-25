@@ -1,4 +1,5 @@
 import { createSetupStatus, setupAdapters } from "./engine.mjs";
+import { getExecutor } from "./executors/registry.mjs";
 import { randomUUID, createHash } from "node:crypto";
 
 const REQUEST_ACTIONS = new Set(["install", "keep", "manual_review"]);
@@ -175,6 +176,7 @@ export function buildInstallPlan(payload, setupStatus) {
     phase: "experimental-phase-2",
     mode: "preview-only",
     executable: false,
+    platform: setupStatus.platform,
     items,
     summary: {
       selected: items.length,
@@ -210,10 +212,9 @@ function parseExecuteRequest(payload) {
   return ids;
 }
 
-// Deliberately fail closed: no adapter currently has an approved noninteractive,
-// privilege-safe executor. In particular GH/Tailscale need distro-specific package
-// sources and a local OS privilege prompt, neither of which is exposed to browsers.
-export async function executeInstallPlan(payload) {
+// The endpoint records explicit confirmation but remains fail-closed until a
+// reviewed executor and local privilege broker are available.
+export async function executeInstallPlan(payload, options = {}) {
   const confirmations = parseExecuteRequest(payload);
   const snapshot = planSnapshots.get(payload.planId);
   if (!snapshot || snapshot.expiresAt <= Date.now()) throw new SetupPlanError("stale_plan", 409);
@@ -226,15 +227,59 @@ export async function executeInstallPlan(payload) {
   for (const item of installItems) {
     if (item.status !== "reviewable" && item.status !== "confirmation-required") throw new SetupPlanError("unsupported_action", 422);
   }
-  // Never infer execution support from preview metadata alone. No OS-specific
-  // broker is installed/configured yet, so report the required local action.
+  // Claim synchronously before any asynchronous work so concurrent duplicate
+  // submissions cannot start a second executor.
+  snapshot.state = "running";
+  snapshot.result = { planId: payload.planId, status: "running", items: [] };
+  let before;
+  try {
+    before = await createSetupStatus(options);
+  } catch {
+    snapshot.state = "completed";
+    snapshot.result = {
+      planId: payload.planId,
+      status: "failed",
+      items: snapshot.plan.items.map(item => ({
+        toolId: item.toolId,
+        status: "failed",
+        verification: "unknown",
+        errorCode: "verification_unavailable",
+        summary: "The setup detector could not read the current state. No installation was attempted.",
+        nextAction: "Rescan and review a new plan."
+      }))
+    };
+    return snapshot.result;
+  }
+  const items = [];
+  for (const item of snapshot.plan.items) {
+    if (item.action === "keep") {
+      const detected = before.tools.find(tool => tool.id === item.toolId);
+      const kept = detected?.installed === true;
+      items.push({ toolId: item.toolId, status: kept ? "succeeded" : "failed", verification: kept ? "installed" : "failed", errorCode: kept ? null : "verification_failed", summary: kept ? "Existing installation detected and preserved." : "The existing installation was not confirmed by the detector.", nextAction: kept ? null : "Rescan and review this tool." });
+    } else if (item.action === "install") {
+      const detected = before.tools.find(tool => tool.id === item.toolId);
+      const executor = getExecutor(item.toolId, before.platform.distro);
+      if (detected?.installed) {
+        items.push({
+          toolId: item.toolId,
+          status: detected.authState === "required" ? "installed_login_required" : detected.authState === "unknown" ? "installed_auth_unknown" : "installed",
+          verification: detected.state,
+          errorCode: null,
+          summary: "Already detected when confirmation was checked. No installation command was run.",
+          nextAction: detected.authState === "required" ? "Sign in using the tool's official flow." : null
+        });
+      } else {
+        items.push({ toolId: item.toolId, status: "needs_user_action", verification: "not_installed", errorCode: executor ? "privilege_broker_unavailable" : "executor_unavailable", summary: executor ? "A fixed executor is registered, but no approved local privilege broker is available. No installation was attempted." : "No approved fixed executor is available for this tool and platform. No installation was attempted.", nextAction: "Use the official source shown in the plan, then rescan." });
+      }
+    } else {
+      items.push({ toolId: item.toolId, status: "needs_user_action", verification: "not_run", errorCode: "manual_review", summary: "This item requires manual review. No installation was attempted.", nextAction: "Review the official installation guidance before proceeding." });
+    }
+  }
   snapshot.state = "completed";
   snapshot.result = {
     planId: payload.planId,
-    status: "needs_user_action",
-    items: snapshot.plan.items.map(item => item.action === "install"
-      ? { toolId: item.toolId, status: "needs_user_action", errorCode: "executor_unavailable", summary: "A safe local installer is not configured for this tool and platform.", nextAction: "Install using the official source shown in the review, then rescan." }
-      : { toolId: item.toolId, status: item.action === "keep" ? "succeeded" : "needs_user_action", errorCode: null, summary: item.action === "keep" ? "Existing installation was preserved." : "Review this tool manually.", nextAction: null })
+    status: items.some(item => item.status === "failed") ? "failed" : items.some(item => item.status === "needs_user_action") ? "needs_user_action" : "verified",
+    items
   };
   return snapshot.result;
 }
