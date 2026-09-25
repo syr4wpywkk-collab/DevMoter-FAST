@@ -60,6 +60,11 @@ function densityLabel(value: string) {
   return value === "compact" ? "コンパクト" : "標準";
 }
 
+function isLoopbackBrowser() {
+  const host = location.hostname.toLowerCase();
+  return host === "localhost" || host === "127.0.0.1" || host === "::1";
+}
+
 export function mountSettingsPanel() {
   const root = document.createElement("div");
   root.className = "devmoter-settings-root";
@@ -307,6 +312,13 @@ export function mountSettingsPanel() {
     }
     const trusted = Boolean(deviceData);
     const devices = Array.isArray(deviceData?.devices) ? deviceData!.devices : [];
+    const localBootstrap = isLoopbackBrowser();
+    const trustedDeviceCount = Number(diagnostics?.deviceSecurity?.trustedDevices || 0);
+    const untrustedGuidance = localBootstrap
+      ? "このlocalhostブラウザを最初のTrusted deviceとして登録できます。"
+      : trustedDeviceCount > 0
+        ? "この端末はリモート接続中です。既存のTrusted deviceでペアリングコードを作成し、下に入力してください。"
+        : "最初のTrusted deviceはセキュリティ上localhost / 127.0.0.1から作成する必要があります。その後、この端末を6桁コードでペアリングできます。";
     scroll.innerHTML = `
       <section class="devmoter-settings-section">
         <h2>この端末</h2>
@@ -317,8 +329,11 @@ export function mountSettingsPanel() {
           <div class="devmoter-settings-actions">
             ${trusted
               ? '<button type="button" data-action="device:create-code">ペアリングコードを作成</button>'
-              : '<button type="button" data-action="device:bootstrap">このブラウザを信頼する</button>'}
+              : localBootstrap
+                ? '<button type="button" data-action="device:bootstrap">このlocalhostブラウザを信頼する</button>'
+                : ''}
           </div>
+          ${trusted ? "" : `<div class="devmoter-settings-note">${escapeHtml(untrustedGuidance)}</div>`}
         </div>
       </section>
 

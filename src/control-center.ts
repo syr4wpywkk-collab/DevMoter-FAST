@@ -223,9 +223,11 @@ export function mountControlCenter() {
     panel.classList.remove("hidden");
     void loadProjects().then(() => {
       renderProjectOptions();
+      return refreshTerminalSessions();
+    }).then(() => {
       if (terminalRecord) void reattachTerminal();
     }).catch(error => {
-      terminalStatus.textContent = `Could not load terminal state · ${error instanceof Error ? error.message : String(error)}`;
+      showTerminalLoadError(error);
     });
   });
   close.addEventListener("click", () => {
@@ -243,12 +245,46 @@ export function mountControlCenter() {
     if (!activeProjectId || !projects.some(project => project.id === activeProjectId)) {
       activeProjectId = projects[0]?.id || "";
     }
-    await refreshTerminalSessions();
+  }
+
+  function clearTrustedDeviceGate() {
+    terminalSection.querySelector("[data-terminal-device-gate]")?.remove();
+  }
+
+  function showTerminalLoadError(error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    terminalStatus.textContent = `Could not load sessions · ${message}`;
+    clearTrustedDeviceGate();
+    if (!/trusted device/i.test(message)) return;
+
+    const gate = document.createElement("div");
+    gate.className = "dm-tools-card";
+    gate.dataset.terminalDeviceGate = "true";
+
+    const title = document.createElement("strong");
+    title.textContent = "This browser is not a Trusted device";
+
+    const copy = document.createElement("small");
+    copy.textContent =
+      "Terminal access is device-bound. Pair this browser first, then reopen Terminal.";
+
+    const openDevices = button("Open Trusted devices");
+    openDevices.addEventListener("click", () => {
+      panel.classList.add("hidden");
+      disconnectTerminalSocket();
+      window.dispatchEvent(new CustomEvent("devmoter:open-settings", {
+        detail: { page: "devices" }
+      }));
+    });
+
+    gate.append(title, copy, openDevices);
+    terminalStatus.after(gate);
   }
 
   async function refreshTerminalSessions() {
     const response = await terminalFetch("/api/terminal/sessions");
     const payload = await jsonOrError<{ sessions?: TerminalSession[] }>(response);
+    clearTrustedDeviceGate();
     savedTerminalSessions = payload.sessions || [];
     if (!savedSessionSelect) return;
     const selectedId = terminalRecord?.session.id || savedSessionSelect.value;
@@ -360,9 +396,7 @@ export function mountControlCenter() {
       localStorage.setItem("opencode-pocket-project", activeProjectId);
     });
     refreshSessions.addEventListener("click", () => {
-      void refreshTerminalSessions().catch(error => {
-        terminalStatus.textContent = `Could not load sessions · ${error instanceof Error ? error.message : String(error)}`;
-      });
+      void refreshTerminalSessions().catch(showTerminalLoadError);
     });
     savedSessionSelect.addEventListener("change", () => {
       if (savedSessionSelect.value) void claimAndAttachSession(savedSessionSelect.value);
@@ -907,5 +941,8 @@ export function mountControlCenter() {
   }
 
   renderTerminalShell();
-  void loadProjects().then(renderProjectOptions).catch(() => {});
+  void loadProjects().then(() => {
+    renderProjectOptions();
+    return refreshTerminalSessions();
+  }).catch(showTerminalLoadError);
 }
