@@ -1,5 +1,5 @@
 import { createSetupStatus, setupAdapters } from "./engine.mjs";
-import { executeApprovedInstall } from "./executor.mjs";
+import { executeApprovedInstall, supportedAutomaticInstaller } from "./executor.mjs";
 import { randomUUID, createHash } from "node:crypto";
 
 const REQUEST_ACTIONS = new Set(["install", "keep", "manual_review"]);
@@ -153,7 +153,8 @@ function makePlanItem(adapter, current, requestedAction) {
     source: metadata.source,
     changes,
     verification,
-    notes
+    notes,
+    automaticInstall: supportedAutomaticInstaller(adapter.id)
   };
 }
 
@@ -218,7 +219,9 @@ export async function executeInstallPlan(payload, options = {}) {
 
   const currentDigest = createHash("sha256").update(JSON.stringify(snapshot.plan)).digest("hex");
   if (currentDigest !== snapshot.digest) throw new SetupPlanError("stale_plan", 409);
-  if (snapshot.state !== "pending") return snapshot.result;
+  if (snapshot.state === "completed") return snapshot.result;
+  if (snapshot.state === "executing") throw new SetupPlanError("execution_in_progress", 409);
+  if (snapshot.state !== "pending") throw new SetupPlanError("stale_plan", 409);
 
   const installItems = snapshot.plan.items.filter(item => item.action === "install");
   for (const item of installItems) {
@@ -229,7 +232,9 @@ export async function executeInstallPlan(payload, options = {}) {
   }
   if (confirmations.size !== installItems.length) throw new SetupPlanError("invalid_confirmation");
 
+  snapshot.state = "executing";
   const itemResults = [];
+  try {
   for (const item of snapshot.plan.items) {
     if (item.action === "keep") {
       itemResults.push({
@@ -269,11 +274,15 @@ export async function executeInstallPlan(payload, options = {}) {
 
   const hasFailure = itemResults.some(item => item.status === "failed");
   const needsUserAction = itemResults.some(item => item.status === "needs_user_action");
-  snapshot.state = "completed";
   snapshot.result = {
     planId: payload.planId,
     status: hasFailure ? "failed" : needsUserAction ? "needs_user_action" : "succeeded",
     items: itemResults
   };
+  snapshot.state = "completed";
   return snapshot.result;
+  } catch (error) {
+    snapshot.state = "pending";
+    throw error;
+  }
 }
