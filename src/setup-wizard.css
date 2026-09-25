@@ -49,8 +49,8 @@
 .dm-setup-planned { border-color: #3a3e48; color: #aeb4c0; font-size: 9px; letter-spacing: .04em; }
 .dm-setup-skeleton { grid-column: 1 / -1; padding: 16px; color: var(--setup-muted); }
 .dm-setup-footer { padding-top: 30px; }
-.dm-setup-review, .dm-setup-back-button { min-height: 42px; padding: 0 17px; border: 1px solid #3c4a61; border-radius: 11px; color: var(--setup-text); background: #202938; font: inherit; font-weight: 700; cursor: pointer; }
-.dm-setup-review:disabled { opacity: .55; cursor: not-allowed; }
+.dm-setup-review, .dm-setup-back-button, .dm-setup-execute-button { min-height: 42px; padding: 0 17px; border: 1px solid #3c4a61; border-radius: 11px; color: var(--setup-text); background: #202938; font: inherit; font-weight: 700; cursor: pointer; }
+.dm-setup-review:disabled, .dm-setup-execute-button:disabled, .dm-setup-back-button:disabled { opacity: .55; cursor: not-allowed; }
 .dm-setup-plan-view { margin-top: 28px; }
 .dm-setup-plan-heading, .dm-setup-plan-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .dm-setup-plan-heading h2 { margin-top: 4px; font-size: 24px; }
@@ -65,7 +65,17 @@
 .dm-setup-plan-detail { margin-top: 14px; font-size: 12px; line-height: 1.55; }
 .dm-setup-plan-detail strong { color: #dce3f0; }
 .dm-setup-plan-detail ul { margin: 5px 0 0; padding-left: 18px; color: var(--setup-muted); }
-.dm-setup-back-button { margin-top: 18px; }
+.dm-setup-plan-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.dm-setup-back-button { margin-top: 0; }
+.dm-setup-execute-button { border-color: #5b6f91; background: #dce7ff; color: #101216; }
+.dm-setup-execution-result { margin-top: 14px; }
+.dm-setup-execution { padding: 14px; border: 1px solid var(--setup-border); border-radius: 14px; background: color-mix(in srgb, var(--setup-card) 88%, transparent); }
+.dm-setup-execution > strong { display: block; margin-bottom: 10px; font-size: 14px; }
+.dm-setup-execution-list { display: grid; gap: 8px; }
+.dm-setup-execution-row { display: grid; gap: 2px; padding-top: 8px; border-top: 1px solid var(--setup-border); }
+.dm-setup-execution-row:first-child { padding-top: 0; border-top: 0; }
+.dm-setup-execution-row span { font-size: 13px; font-weight: 700; }
+.dm-setup-execution-row small { color: var(--setup-muted); font-size: 12px; line-height: 1.5; }
 .dm-setup [hidden] { display: none !important; }
 
 @media (max-width: 620px) {
