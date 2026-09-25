@@ -84,7 +84,7 @@
 .dm-shell-scrim {
   position: fixed;
   inset: 0;
-  z-index: 76;
+  z-index: 940;
   background: rgba(4,7,12,.45);
   backdrop-filter: blur(2px);
 }
