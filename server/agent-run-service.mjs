@@ -124,17 +124,27 @@ export function createAgentRunService({
     };
   }
 
+  function persistNow() {
+    if (persistTimer) {
+      clearTimeout(persistTimer);
+      persistTimer = null;
+    }
+    persistChain = persistChain
+      .then(() => atomicWriteJson(filePath, runtime.exportState()))
+      .catch(error => {
+        console.error("Agent run state persistence failed", error instanceof Error ? error.message : String(error));
+      });
+    return persistChain;
+  }
+
   function schedulePersistAndBroadcast() {
-    if (disposed || persistTimer) return;
+    if (disposed) return;
+    events.emit("state", publicState());
+    if (persistTimer) return;
     persistTimer = setTimeout(() => {
       persistTimer = null;
-      persistChain = persistChain
-        .then(() => atomicWriteJson(filePath, runtime.exportState()))
-        .catch(error => {
-          console.error("Agent run state persistence failed", error instanceof Error ? error.message : String(error));
-        });
-      events.emit("state", publicState());
-    }, 0);
+      void persistNow();
+    }, 150);
     persistTimer.unref?.();
   }
 
@@ -274,7 +284,7 @@ export function createAgentRunService({
     spawn(spec) {
       return withReady(async () => {
         const run = await runtime.spawn(spec);
-        await persistChain;
+        await persistNow();
         return run;
       });
     },
@@ -282,7 +292,7 @@ export function createAgentRunService({
     runFleet(specs, options) {
       return withReady(async () => {
         const fleet = await runtime.runFleet(specs, options);
-        schedulePersistAndBroadcast();
+        await persistNow();
         return fleet;
       });
     },
@@ -290,7 +300,7 @@ export function createAgentRunService({
     spawnSecondOpinion(parentRunId, options) {
       return withReady(async () => {
         const run = await runtime.spawnSecondOpinion(parentRunId, options);
-        schedulePersistAndBroadcast();
+        await persistNow();
         return run;
       });
     },
@@ -298,7 +308,7 @@ export function createAgentRunService({
     cancel(id) {
       return withReady(async () => {
         const run = await runtime.cancel(id);
-        schedulePersistAndBroadcast();
+        await persistNow();
         return run;
       });
     },
@@ -306,7 +316,7 @@ export function createAgentRunService({
     cancelFleet(id) {
       return withReady(async () => {
         const fleet = await runtime.cancelFleet(id);
-        schedulePersistAndBroadcast();
+        await persistNow();
         return fleet;
       });
     },
@@ -314,7 +324,7 @@ export function createAgentRunService({
     respondApproval(id, decision) {
       return withReady(async () => {
         const run = await runtime.respondApproval(id, decision);
-        schedulePersistAndBroadcast();
+        await persistNow();
         return run;
       });
     },
@@ -326,7 +336,11 @@ export function createAgentRunService({
 
     async dispose() {
       disposed = true;
-      if (persistTimer) clearTimeout(persistTimer);
+      if (persistTimer) {
+        clearTimeout(persistTimer);
+        persistTimer = null;
+        await persistNow();
+      }
       await persistChain.catch(() => {});
       codex.off("notification", onNotification);
       codex.off("server-request", onServerRequest);
