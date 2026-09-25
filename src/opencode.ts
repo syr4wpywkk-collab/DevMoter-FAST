@@ -2791,6 +2791,73 @@ export function mountOpenCodeRemote(
     }
   }
 
+  function applyReplayState(event: Json) {
+    if (event?.backend && event.backend !== "opencode") return;
+    const type = String(event?.type || "");
+    const state = String(event?.payload?.state || "");
+
+    if (state === "running") setExecutionState("running");
+    else if (state === "waiting_for_approval") setExecutionState("waiting_for_approval");
+    else if (state === "waiting_for_input") setExecutionState("waiting_for_input");
+    else if (state === "failed") setExecutionState("failed");
+    else if (state === "completed") setExecutionState("completed");
+    else if (state === "interrupted") setExecutionState("interrupted");
+    else if (type === "approval") setExecutionState("waiting_for_approval");
+    else if (type === "question") setExecutionState("waiting_for_input");
+    else if (type === "failure") setExecutionState("failed");
+    else if (type === "completion") setExecutionState("completed");
+  }
+
+  async function replayWorkspaceState(sessionId: string) {
+    const storageKey = `devmoter-chat-cursor:opencode:${sessionId}`;
+    let cursor = localStorage.getItem(storageKey) || "0";
+
+    for (let page = 0; page < 4; page += 1) {
+      const response = await fetch(
+        "/api/workspace-control/events?sessionId=" +
+          encodeURIComponent(sessionId) +
+          "&after=" +
+          encodeURIComponent(cursor) +
+          "&limit=500",
+        { cache: "no-store" }
+      );
+      if (!response.ok) throw new Error("Background event replay unavailable");
+      const payload = await response.json().catch(() => ({}));
+      const items = Array.isArray(payload?.events) ? payload.events : [];
+      for (const item of items) applyReplayState(item);
+      const nextCursor = String(payload?.cursor || cursor);
+      if (nextCursor === cursor || items.length === 0) break;
+      cursor = nextCursor;
+      if (items.length < 500) break;
+    }
+
+    localStorage.setItem(storageKey, cursor);
+  }
+
+  async function resumeFromBackground() {
+    if (!online || resumeSyncInFlight) return;
+    resumeSyncInFlight = true;
+    const sessionId =
+      activeSession?.id || localStorage.getItem("opencode-pocket-opencode-session") || "";
+
+    try {
+      if (sessionId) {
+        setExecutionState("reconnecting");
+        await replayWorkspaceState(sessionId).catch(() => {});
+      }
+
+      disconnectEvents();
+      connectEvents();
+      await refresh();
+
+      if (sessionId && activeSession?.id === sessionId) {
+        showToast("Background work synchronized");
+      }
+    } finally {
+      resumeSyncInFlight = false;
+    }
+  }
+
   function scheduleEventReconnect() {
     if (!shouldScheduleReconnect(online, reconnectTimer !== null)) return;
 
@@ -3414,6 +3481,12 @@ export function mountOpenCodeRemote(
   }
 
   menu.addEventListener("click", openSidebar);
+  window.addEventListener("devmoter:close-chat-history", closeSidebar);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") void resumeFromBackground();
+  });
+  window.addEventListener("pageshow", () => void resumeFromBackground());
+  window.addEventListener("online", () => void resumeFromBackground());
   agentSwitchButton.addEventListener("click", () => {
     const open = agentSwitchMenu.classList.toggle("hidden") === false;
     agentSwitchButton.setAttribute("aria-expanded", String(open));
