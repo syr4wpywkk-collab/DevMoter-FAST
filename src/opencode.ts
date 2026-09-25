@@ -227,7 +227,7 @@ export function mountOpenCodeRemote(
       </aside>
 
       <header class="ocx-topbar">
-        <button id="ocxMenu" class="ocx-icon" type="button" aria-label="メニュー">☰</button>
+        <button id="ocxMenu" class="ocx-icon" type="button" aria-label="セッション履歴を開く" title="セッション履歴">☰</button>
 
         <button id="ocxSessionTitleButton" class="ocx-session-title" type="button">
           <strong id="ocxSessionTitle">OpenCode</strong>
@@ -474,6 +474,8 @@ export function mountOpenCodeRemote(
   let pendingQuestion: PendingQuestion | null = null;
   let questionAnswers: Array<Set<string>> = [];
   let contextExecutionState: ExecutionState | null = null;
+  let submitInFlight = false;
+  let resumeSyncInFlight = false;
   const liveText = new Map<string, HTMLElement>();
   const liveReasoning = new Map<string, HTMLElement>();
   const livePartKinds = new Map<string, "text" | "reasoning">();
@@ -505,6 +507,7 @@ export function mountOpenCodeRemote(
   }
 
   function openSidebar() {
+    window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
     sidebar.classList.add("open");
     sidebar.setAttribute("aria-hidden", "false");
     scrim.classList.remove("hidden");
@@ -1372,6 +1375,22 @@ export function mountOpenCodeRemote(
     }
   }
 
+  async function restoreSavedSession(sessionId: string) {
+    try {
+      const raw = await api<Json>("/session/" + encodeURIComponent(sessionId));
+      const session = (raw?.data && typeof raw.data === "object" ? raw.data : raw) as OpenCodeSession;
+      if (!session?.id) throw new Error("Saved session is not available");
+      if (!sessions.some(item => item.id === session.id)) sessions.unshift(session);
+      await selectSession(session);
+      return true;
+    } catch (error) {
+      sessionTitle.textContent = "Session recovery needed";
+      setActivity("reconnecting", "reconnecting");
+      showToast(error instanceof Error ? error.message : "Saved session could not be restored");
+      return false;
+    }
+  }
+
   async function loadSessions() {
     const data = await api<OpenCodeSession[]>("/session?limit=80&order=desc");
     sessions = Array.isArray(data) ? data : [];
@@ -1416,10 +1435,10 @@ export function mountOpenCodeRemote(
         sessionTitle.textContent = fresh.title || "Untitled session";
         updateContextUI();
       } else {
-        activeSession = null;
-        pendingPermission = null;
-        pendingQuestion = null;
-        localStorage.removeItem("opencode-pocket-opencode-session");
+        // The session list may lag a just-created or long-running session.
+        // Keep the identity and try the canonical session endpoint before
+        // treating it as unavailable.
+        await restoreSavedSession(activeSession.id);
       }
     }
 
@@ -1430,7 +1449,7 @@ export function mountOpenCodeRemote(
       const saved = localStorage.getItem("opencode-pocket-opencode-session");
       const target = sessions.find(session => session.id === saved);
       if (target) await selectSession(target);
-      else if (saved) localStorage.removeItem("opencode-pocket-opencode-session");
+      else if (saved) await restoreSavedSession(saved);
     }
   }
 
@@ -1910,6 +1929,18 @@ export function mountOpenCodeRemote(
   }
 
   async function sendMessage() {
+    if (submitInFlight) return;
+    submitInFlight = true;
+    send.disabled = true;
+    try {
+      await sendMessageUnlocked();
+    } finally {
+      submitInFlight = false;
+      send.disabled = !online || executionState === "reconnecting";
+    }
+  }
+
+  async function sendMessageUnlocked() {
     const text = promptInput.value.trim();
     if (!text && !pendingAttachments.length) return;
 
@@ -2760,6 +2791,83 @@ export function mountOpenCodeRemote(
     }
   }
 
+  function applyReplayState(event: Json) {
+    if (event?.backend && event.backend !== "opencode") return;
+    const type = String(event?.type || "");
+    const state = String(event?.payload?.state || "");
+
+    if (state === "running") setExecutionState("running");
+    else if (state === "waiting_for_approval") setExecutionState("waiting_for_approval");
+    else if (state === "waiting_for_input") setExecutionState("waiting_for_input");
+    else if (state === "failed") setExecutionState("failed");
+    else if (state === "completed") setExecutionState("completed");
+    else if (state === "interrupted") setExecutionState("interrupted");
+    else if (type === "approval") setExecutionState("waiting_for_approval");
+    else if (type === "question") setExecutionState("waiting_for_input");
+    else if (type === "failure") setExecutionState("failed");
+    else if (type === "completion") setExecutionState("completed");
+  }
+
+  async function replayWorkspaceState(sessionId: string) {
+    const storageKey = `devmoter-chat-cursor:opencode:${sessionId}`;
+    let cursor = localStorage.getItem(storageKey) || "0";
+
+    for (let page = 0; page < 4; page += 1) {
+      const response = await fetch(
+        "/api/workspace-control/events?sessionId=" +
+          encodeURIComponent(sessionId) +
+          "&after=" +
+          encodeURIComponent(cursor) +
+          "&limit=500",
+        { cache: "no-store" }
+      );
+      if (!response.ok) throw new Error("Background event replay unavailable");
+      const payload = await response.json().catch(() => ({}));
+      if (payload?.gap) {
+        cursor = String(payload?.latestCursor || payload?.cursor || cursor);
+        localStorage.setItem(storageKey, cursor);
+        throw new Error("Background replay gap detected");
+      }
+      const items = Array.isArray(payload?.events) ? payload.events : [];
+      for (const item of items) applyReplayState(item);
+      const nextCursor = String(payload?.cursor || cursor);
+      if (nextCursor === cursor || items.length === 0) break;
+      cursor = nextCursor;
+      if (items.length < 500) break;
+    }
+
+    localStorage.setItem(storageKey, cursor);
+  }
+
+  async function resumeFromBackground() {
+    if (!online || resumeSyncInFlight) return;
+    resumeSyncInFlight = true;
+    const sessionId =
+      activeSession?.id || localStorage.getItem("opencode-pocket-opencode-session") || "";
+
+    let replayFallback = false;
+    try {
+      if (sessionId) {
+        setExecutionState("reconnecting");
+        try {
+          await replayWorkspaceState(sessionId);
+        } catch {
+          replayFallback = true;
+        }
+      }
+
+      disconnectEvents();
+      await refresh();
+      connectEvents();
+
+      if (sessionId && activeSession?.id === sessionId) {
+        showToast(replayFallback ? "Session history refreshed" : "Background work synchronized");
+      }
+    } finally {
+      resumeSyncInFlight = false;
+    }
+  }
+
   function scheduleEventReconnect() {
     if (!shouldScheduleReconnect(online, reconnectTimer !== null)) return;
 
@@ -3383,6 +3491,12 @@ export function mountOpenCodeRemote(
   }
 
   menu.addEventListener("click", openSidebar);
+  window.addEventListener("devmoter:close-chat-history", closeSidebar);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") void resumeFromBackground();
+  });
+  window.addEventListener("pageshow", () => void resumeFromBackground());
+  window.addEventListener("online", () => void resumeFromBackground());
   agentSwitchButton.addEventListener("click", () => {
     const open = agentSwitchMenu.classList.toggle("hidden") === false;
     agentSwitchButton.setAttribute("aria-expanded", String(open));

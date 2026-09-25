@@ -161,7 +161,7 @@ export function mountCodexRemote(
       </aside>
 
       <header class="cx-topbar">
-        <button id="cxMenu" class="cx-icon-button" type="button" aria-label="メニュー">☰</button>
+        <button id="cxMenu" class="cx-icon-button" type="button" aria-label="会話履歴を開く" title="会話履歴">☰</button>
         <button id="cxTitleButton" class="cx-title-button" type="button">
           <span id="cxTitle">Codex</span>
           <small id="cxModelLabel">DevMoter agent</small>
@@ -352,10 +352,26 @@ export function mountCodexRemote(
   let toastTimer: number | null = null;
   let reasoningMode = localStorage.getItem("opencode-pocket-reasoning") || "auto";
   let usageTokens = 0;
+  let submitInFlight = false;
+  let resumeSyncInFlight = false;
 
   function uid() {
     return globalThis.crypto?.randomUUID?.() ??
       `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  }
+
+  function eventThreadId(params: Json) {
+    const value =
+      params?.threadId ??
+      params?.turn?.threadId ??
+      params?.item?.threadId ??
+      params?.thread?.id;
+    return typeof value === "string" ? value : "";
+  }
+
+  function eventBelongsToActiveThread(params: Json) {
+    const threadId = eventThreadId(params);
+    return !threadId || threadId === activeThreadId;
   }
 
   function modelDisplayName(value: string) {
@@ -639,6 +655,7 @@ export function mountCodexRemote(
   }
 
   function openSidebar() {
+    window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
     sidebar.classList.add("open");
     sidebar.setAttribute("aria-hidden", "false");
     scrim.classList.remove("hidden");
@@ -1035,23 +1052,46 @@ export function mountCodexRemote(
     }
   }
 
+  async function restoreSavedThread(threadId: string) {
+    try {
+      const result = await rpc<{ thread?: ThreadSummary }>(
+        "thread/read",
+        { threadId, includeTurns: false }
+      );
+      const thread = result?.thread;
+      if (!thread) throw new Error("Saved thread is not available");
+      return await selectThread({
+        id: threadId,
+        name: thread.name,
+        preview: thread.preview,
+        cwd: thread.cwd
+      });
+    } catch (error) {
+      title.textContent = "会話を復元できません";
+      transcript.innerHTML = `
+        <div class="cx-welcome">
+          <div class="cx-welcome-mark">↻</div>
+          <h2>保存済みの会話を復元できませんでした</h2>
+          <p>新しいチャットには切り替えず、接続復帰時にもう一度この会話を探します。</p>
+        </div>
+      `;
+      showToast(error instanceof Error ? error.message : "会話の復元に失敗しました");
+      return false;
+    }
+  }
+
   async function loadThreads() {
     const result = await rpc<{ data?: ThreadSummary[] }>("thread/list", { limit: 100 });
     allThreads = result?.data ?? [];
     renderThreads();
 
-    if (activeThreadId && !allThreads.some(thread => thread.id === activeThreadId)) {
-      activeThreadId = null;
-      activeTurnId = null;
-      activeAssistantBubble = null;
-      localStorage.removeItem("opencode-pocket-codex-thread");
-    }
-
+    // thread/list can briefly lag a just-created or just-resumed thread.
+    // Preserve the current identity instead of silently falling back to a new chat.
     if (!activeThreadId) {
       const saved = localStorage.getItem("opencode-pocket-codex-thread");
       const target = allThreads.find(thread => thread.id === saved);
       if (target) await selectThread(target);
-      else if (saved) localStorage.removeItem("opencode-pocket-codex-thread");
+      else if (saved) await restoreSavedThread(saved);
     }
   }
 
@@ -1140,7 +1180,7 @@ export function mountCodexRemote(
     followLatest();
   }
 
-  async function selectThread(thread: ThreadSummary) {
+  async function selectThread(thread: ThreadSummary): Promise<boolean> {
     try {
       const resumed = await rpc<{ model?: string; cwd?: string }>(
         "thread/resume",
@@ -1163,8 +1203,10 @@ export function mountCodexRemote(
       followsBottom = true;
       await loadThreadHistory(thread.id);
       renderThreads();
+      return true;
     } catch (error) {
       addMessage("system", error instanceof Error ? error.message : "チャットを開けませんでした");
+      return false;
     }
   }
 
@@ -1449,6 +1491,18 @@ export function mountCodexRemote(
   }
 
   async function sendMessage() {
+    if (submitInFlight) return;
+    submitInFlight = true;
+    send.disabled = true;
+    try {
+      await sendMessageUnlocked();
+    } finally {
+      submitInFlight = false;
+      send.disabled = !online || executionState === "reconnecting";
+    }
+  }
+
+  async function sendMessageUnlocked() {
     const text = promptInput.value.trim();
     if (!text && pendingAttachments.length === 0) return;
 
@@ -1563,6 +1617,153 @@ export function mountCodexRemote(
     }
   }
 
+  function renderApprovalRequest(
+    request: { id: string | number; method: string; params: Json },
+    safetyMessage = ""
+  ) {
+    pendingApprovalSafety = safetyMessage;
+    pendingApproval = request;
+    setExecutionState("waiting_for_approval");
+    approval.classList.remove("hidden");
+    const isFileChange = request.method === "item/fileChange/requestApproval";
+    approvalTitle.textContent = isFileChange
+      ? "ファイル変更を許可しますか？"
+      : "コマンド実行を許可しますか？";
+
+    const contextRows = [
+      ["Backend", "Codex"],
+      ["Thread", String(request.params?.threadId || activeThreadId || "unknown")],
+      ["Turn", String(request.params?.turnId || activeTurnId || "unknown")],
+      ["Action", isFileChange ? "File change" : "Command execution"]
+    ];
+    approvalMeta.replaceChildren(
+      ...contextRows.map(([label, value]) => {
+        const row = document.createElement("div");
+        const key = document.createElement("span");
+        const val = document.createElement("strong");
+        key.textContent = label;
+        val.textContent = value;
+        row.append(key, val);
+        return row;
+      })
+    );
+
+    approvalDetail.textContent = [
+      request.params?.reason ? `Reason: ${request.params.reason}` : "",
+      request.params?.command ? `Command:\n${request.params.command}` : "",
+      request.params?.cwd ? `Working directory:\n${request.params.cwd}` : "",
+      request.params?.grantRoot ? `Requested write root:\n${request.params.grantRoot}` : ""
+    ].filter(Boolean).join("\n\n") || "Codex is requesting permission to continue.";
+    if (pendingApprovalSafety) {
+      approvalDetail.textContent += `\n\nSafety pause:\n${pendingApprovalSafety}`;
+    }
+  }
+
+  function clearReplayedApproval() {
+    pendingApproval = null;
+    pendingApprovalSafety = "";
+    approval.classList.add("hidden");
+  }
+
+  function applyReplayState(event: Json) {
+    if (event?.backend && event.backend !== "codex") return;
+    const type = String(event?.type || "");
+    if (type === "approval") {
+      const payload = event?.payload || {};
+      const id = payload?.id;
+      const method = String(payload?.method || "");
+      const params = payload?.params && typeof payload.params === "object" ? payload.params : {};
+      if (
+        (typeof id === "string" || typeof id === "number") &&
+        (method === "item/commandExecution/requestApproval" || method === "item/fileChange/requestApproval")
+      ) {
+        renderApprovalRequest({ id, method, params });
+      } else {
+        setExecutionState("waiting_for_approval");
+      }
+    }
+    else if (type === "question") setExecutionState("waiting_for_input");
+    else if (type === "failure") {
+      clearReplayedApproval();
+      setExecutionState("failed");
+    } else if (type === "completion") {
+      clearReplayedApproval();
+      setExecutionState("completed");
+    } else {
+      const method = String(event?.payload?.method || "");
+      if (method === "turn/started") setExecutionState("running");
+      if (method === "serverRequest/resolved") {
+        clearReplayedApproval();
+        if (executionState === "waiting_for_approval") setExecutionState("running");
+      }
+      if (method === "turn/completed") {
+        clearReplayedApproval();
+        setExecutionState(codexTurnStatusToExecutionState(event?.payload?.params?.turn?.status));
+      }
+    }
+  }
+
+  async function replayWorkspaceState(threadId: string) {
+    const storageKey = `devmoter-chat-cursor:codex:${threadId}`;
+    let cursor = localStorage.getItem(storageKey) || "0";
+
+    for (let page = 0; page < 4; page += 1) {
+      const response = await fetch(
+        "/api/workspace-control/events?sessionId=" +
+          encodeURIComponent(threadId) +
+          "&after=" +
+          encodeURIComponent(cursor) +
+          "&limit=500",
+        { cache: "no-store" }
+      );
+      if (!response.ok) throw new Error("Background event replay unavailable");
+      const payload = await response.json().catch(() => ({}));
+      if (payload?.gap) {
+        cursor = String(payload?.latestCursor || payload?.cursor || cursor);
+        localStorage.setItem(storageKey, cursor);
+        throw new Error("Background replay gap detected");
+      }
+      const items = Array.isArray(payload?.events) ? payload.events : [];
+      for (const item of items) applyReplayState(item);
+      const nextCursor = String(payload?.cursor || cursor);
+      if (nextCursor === cursor || items.length === 0) break;
+      cursor = nextCursor;
+      if (items.length < 500) break;
+    }
+
+    localStorage.setItem(storageKey, cursor);
+  }
+
+  async function resumeFromBackground() {
+    if (!online || resumeSyncInFlight) return;
+    resumeSyncInFlight = true;
+    const threadId =
+      activeThreadId || localStorage.getItem("opencode-pocket-codex-thread") || "";
+
+    let replayFallback = false;
+    try {
+      if (threadId) {
+        setExecutionState("reconnecting");
+        try {
+          await replayWorkspaceState(threadId);
+        } catch {
+          replayFallback = true;
+        }
+      }
+
+      events?.close();
+      events = null;
+      await refresh();
+      connectEvents();
+
+      if (threadId && activeThreadId === threadId) {
+        showToast(replayFallback ? "会話履歴を再取得しました" : "バックグラウンドの作業を同期しました");
+      }
+    } finally {
+      resumeSyncInFlight = false;
+    }
+  }
+
   function scheduleEventReconnect() {
     if (!shouldScheduleReconnect(online, reconnectTimer !== null)) return;
 
@@ -1618,6 +1819,11 @@ export function mountCodexRemote(
           persistSelectedModel(toModel);
           showToast(`Codexが ${modelDisplayName(toModel)} に切り替えました`);
         }
+        return;
+      }
+
+      if (!eventBelongsToActiveThread(params)) {
+        if (method === "turn/completed") void loadThreads();
         return;
       }
 
@@ -1687,6 +1893,9 @@ export function mountCodexRemote(
         params: Json;
       };
 
+      const requestThreadId = eventThreadId(request.params);
+      if (requestThreadId && requestThreadId !== activeThreadId) return;
+
       if (
         request.method !== "item/commandExecution/requestApproval" &&
         request.method !== "item/fileChange/requestApproval"
@@ -1733,42 +1942,10 @@ export function mountCodexRemote(
         // Fall back to the explicit approval UI.
       }
 
-      pendingApprovalSafety = loopState?.paused ? loopMessage(loopState) : "";
-      pendingApproval = request;
-      setExecutionState("waiting_for_approval");
-      approval.classList.remove("hidden");
-      const isFileChange = request.method === "item/fileChange/requestApproval";
-      approvalTitle.textContent = isFileChange
-        ? "ファイル変更を許可しますか？"
-        : "コマンド実行を許可しますか？";
-
-      const contextRows = [
-        ["Backend", "Codex"],
-        ["Thread", String(request.params?.threadId || activeThreadId || "unknown")],
-        ["Turn", String(request.params?.turnId || activeTurnId || "unknown")],
-        ["Action", isFileChange ? "File change" : "Command execution"]
-      ];
-      approvalMeta.replaceChildren(
-        ...contextRows.map(([label, value]) => {
-          const row = document.createElement("div");
-          const key = document.createElement("span");
-          const val = document.createElement("strong");
-          key.textContent = label;
-          val.textContent = value;
-          row.append(key, val);
-          return row;
-        })
+      renderApprovalRequest(
+        request,
+        loopState?.paused ? loopMessage(loopState) : ""
       );
-
-      approvalDetail.textContent = [
-        request.params?.reason ? `Reason: ${request.params.reason}` : "",
-        request.params?.command ? `Command:\n${request.params.command}` : "",
-        request.params?.cwd ? `Working directory:\n${request.params.cwd}` : "",
-        request.params?.grantRoot ? `Requested write root:\n${request.params.grantRoot}` : ""
-      ].filter(Boolean).join("\n\n") || "Codex is requesting permission to continue.";
-      if (pendingApprovalSafety) {
-        approvalDetail.textContent += `\n\nSafety pause:\n${pendingApprovalSafety}`;
-      }
     });
 
     events.addEventListener("offline", () => {
@@ -2781,6 +2958,12 @@ export function mountCodexRemote(
   }
 
   menu.addEventListener("click", openSidebar);
+  window.addEventListener("devmoter:close-chat-history", closeSidebar);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") void resumeFromBackground();
+  });
+  window.addEventListener("pageshow", () => void resumeFromBackground());
+  window.addEventListener("online", () => void resumeFromBackground());
   agentSwitchButton.addEventListener("click", () => {
     const open = agentSwitchMenu.classList.toggle("hidden") === false;
     agentSwitchButton.setAttribute("aria-expanded", String(open));

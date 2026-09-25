@@ -104,6 +104,29 @@ test("concurrent first event appends receive unique monotonic cursors", async t 
   assert.deepEqual(rows.map(item => item.seq), Array.from({ length: 30 }, (_, index) => index + 1));
 });
 
+test("event replay reports bounded cursor metadata and detects impossible future cursors", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-workspace-replay-gap-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const events = createEventStore({ stateDir: dir });
+
+  await events.append("session-a", { type: "assistant", payload: { index: 1 } });
+  await events.append("session-a", { type: "completion", payload: { state: "completed" } });
+
+  const current = await events.after("session-a", "session-a:1", 100);
+  assert.equal(current.gap, false);
+  assert.equal(current.firstCursor, "session-a:1");
+  assert.equal(current.latestCursor, "session-a:2");
+  assert.equal(current.cursor, "session-a:2");
+  assert.deepEqual(current.events.map(item => item.seq), [2]);
+
+  const impossible = await events.after("session-a", "session-a:99", 100);
+  assert.equal(impossible.gap, true);
+  assert.equal(impossible.firstCursor, "session-a:1");
+  assert.equal(impossible.latestCursor, "session-a:2");
+  assert.equal(impossible.cursor, "session-a:2");
+  assert.deepEqual(impossible.events, []);
+});
+
 test("event compaction is non-destructive and records source/retained counts", async t => {
   const dir = await mkdtemp(join(tmpdir(), "devmoter-workspace-compact-"));
   t.after(() => rm(dir, { recursive: true, force: true }));

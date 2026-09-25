@@ -277,13 +277,23 @@ body:has(
   .adv-drawer:not(.hidden),
   .dm-control-modal:not(.hidden),
   .devmoter-settings-modal:not(.hidden),
-  .devmoter-system-modal:not(.hidden)
+  .devmoter-system-modal:not(.hidden),
+  .cx-sidebar.open,
+  .ocx-sidebar.open
 ) .dm-shell-menu-trigger {
   opacity: 0;
   pointer-events: none;
 }
 
 @media (max-width: 899px) {
+  /* Keep provider-local history menus reachable beside the global Tools launcher. */
+  .devmoter-unified-shell .cx-topbar {
+    padding-left: calc(max(8px, env(safe-area-inset-left)) + 58px);
+  }
+  .devmoter-unified-shell .ocx-topbar {
+    padding-left: calc(max(12px, env(safe-area-inset-left)) + 58px);
+  }
+
   body:has(textarea:focus) .dm-shell-menu-trigger,
   body:has(input:focus) .dm-shell-menu-trigger {
     opacity: 0;

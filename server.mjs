@@ -289,7 +289,7 @@ codex.on("server-request", request => {
   void workspaceControl.events.append(sessionId, {
     type,
     backend: "codex",
-    payload: { method, params: request?.params ?? null }
+    payload: { id: request?.id ?? null, method, params: request?.params ?? null }
   }).catch(error => {
     console.error("Workspace request event append failed", redactText(error instanceof Error ? error.message : String(error)));
   });

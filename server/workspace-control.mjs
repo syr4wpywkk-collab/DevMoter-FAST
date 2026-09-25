@@ -212,14 +212,23 @@ export function createEventStore({ stateDir }) {
       await waitQueue(sessionId);
       await hydrate(sessionId);
       const seq = Number(String(after).includes(":") ? String(after).split(":").at(-1) : after) || 0;
-      const events = memory.get(sessionId)
+      const source = memory.get(sessionId);
+      const firstSeq = Number(source.at(0)?.seq || 0);
+      const latestSeq = Number(source.at(-1)?.seq || 0);
+      const gap =
+        seq > latestSeq ||
+        (seq > 0 && firstSeq > 0 && firstSeq > seq + 1);
+      const events = source
         .filter(item => item.seq > seq)
         .slice(0, Math.max(1, Math.min(Number(limit) || 500, 2000)));
       return {
         sessionId,
         after: seq,
         events,
-        cursor: events.at(-1)?.cursor || `${sessionId}:${seq}`
+        cursor: events.at(-1)?.cursor || `${sessionId}:${Math.min(seq, latestSeq)}`,
+        firstCursor: `${sessionId}:${firstSeq}`,
+        latestCursor: `${sessionId}:${latestSeq}`,
+        gap
       };
     },
 
