@@ -65,9 +65,12 @@ test("mobile navigation is sidebar-first and no bottom dock remains", async () =
   ]);
   assert.ok(shell.includes("dm-shell-menu-trigger"));
   assert.ok(shell.includes("dm-shell-sidebar"));
-  assert.ok(shell.includes('data-shell-action="terminal"'));
-  assert.ok(shell.includes('data-shell-action="git"'));
-  assert.ok(shell.includes('data-shell-action="review"'));
+  assert.ok(shell.includes('actionButton("⌘", "Terminal"'));
+  assert.ok(shell.includes('actionButton("⑂", "Git"'));
+  assert.ok(shell.includes('actionButton("⌁", "Review"'));
+  assert.ok(shell.includes('terminal: () => openToolsTab("terminal")'));
+  assert.ok(shell.includes('git: () => clickExisting(".pocket-git-trigger")'));
+  assert.ok(shell.includes('review: () => clickExisting("#wfLaunch")'));
   assert.ok(shell.includes('data-backend="opencode"'));
   assert.ok(!shell.includes("dm-shell-dock"));
   assert.ok(!css.includes(".dm-shell-dock"));
