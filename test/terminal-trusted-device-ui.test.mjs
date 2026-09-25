@@ -1,1 +1,37 @@
-import test from "node:test";\nimport assert from "node:assert/strict";\nimport { readFile } from "node:fs/promises";\n\nasync function source(path) {\n  return readFile(new URL("../" + path, import.meta.url), "utf8");\n}\n\ntest("terminal project loading is independent from trusted-device session loading", async () => {\n  const control = await source("src/control-center.ts");\n  const start = control.indexOf("async function loadProjects()");\n  const end = control.indexOf("function clearTrustedDeviceGate()", start);\n  assert.ok(start >= 0 && end > start);\n  const loadProjects = control.slice(start, end);\n  assert.ok(loadProjects.includes('fetch("/api/projects"'));\n  assert.ok(!loadProjects.includes("refreshTerminalSessions()"));\n  assert.ok(control.includes("renderProjectOptions();\n      return refreshTerminalSessions();"));\n});\n\ntest("terminal trusted-device failure exposes direct recovery navigation", async () => {\n  const control = await source("src/control-center.ts");\n  assert.ok(control.includes("This browser is not a Trusted device"));\n  assert.ok(control.includes('button("Open Trusted devices")'));\n  assert.ok(control.includes('detail: { page: "devices" }'));\n  assert.ok(control.includes("/trusted device/i"));\n});\n\ntest("remote browsers are not offered localhost-only trusted-device bootstrap", async () => {\n  const settings = await source("src/settings.ts");\n  assert.ok(settings.includes("function isLoopbackBrowser()"));\n  assert.ok(settings.includes('host === "localhost"'));\n  assert.ok(settings.includes('host === "127.0.0.1"'));\n  assert.ok(settings.includes("localBootstrap"));\n  assert.ok(settings.includes("既存のTrusted deviceでペアリングコードを作成"));\n  assert.ok(settings.includes("最初のTrusted deviceはセキュリティ上localhost / 127.0.0.1から作成"));\n});\n
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+
+async function source(path) {
+  return readFile(new URL("../" + path, import.meta.url), "utf8");
+}
+
+test("terminal project loading is independent from trusted-device session loading", async () => {
+  const control = await source("src/control-center.ts");
+  const start = control.indexOf("async function loadProjects()");
+  const end = control.indexOf("function clearTrustedDeviceGate()", start);
+  assert.ok(start >= 0 && end > start);
+  const loadProjects = control.slice(start, end);
+  assert.ok(loadProjects.includes('fetch("/api/projects"'));
+  assert.ok(!loadProjects.includes("refreshTerminalSessions()"));
+  assert.ok(control.includes("renderProjectOptions();
+      return refreshTerminalSessions();"));
+});
+
+test("terminal trusted-device failure exposes direct recovery navigation", async () => {
+  const control = await source("src/control-center.ts");
+  assert.ok(control.includes("This browser is not a Trusted device"));
+  assert.ok(control.includes('button("Open Trusted devices")'));
+  assert.ok(control.includes('detail: { page: "devices" }'));
+  assert.ok(control.includes("/trusted device/i"));
+});
+
+test("remote browsers are not offered localhost-only trusted-device bootstrap", async () => {
+  const settings = await source("src/settings.ts");
+  assert.ok(settings.includes("function isLoopbackBrowser()"));
+  assert.ok(settings.includes('host === "localhost"'));
+  assert.ok(settings.includes('host === "127.0.0.1"'));
+  assert.ok(settings.includes("localBootstrap"));
+  assert.ok(settings.includes("既存のTrusted deviceでペアリングコードを作成"));
+  assert.ok(settings.includes("最初のTrusted deviceはセキュリティ上localhost / 127.0.0.1から作成"));
+});
