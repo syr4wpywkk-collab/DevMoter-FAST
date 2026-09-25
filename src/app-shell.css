@@ -1,0 +1,275 @@
+.dm-shell {
+  --dm-shell-bg: color-mix(in srgb, #151922 92%, transparent);
+  --dm-shell-border: rgba(255,255,255,.11);
+  --dm-shell-text: #f5f7fb;
+  --dm-shell-muted: #9da7b7;
+  position: relative;
+  z-index: 2147482000;
+}
+
+.dm-shell-dock {
+  position: fixed;
+  left: 50%;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 300;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(56px, 72px));
+  align-items: center;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--dm-shell-border);
+  border-radius: 20px;
+  background: var(--dm-shell-bg);
+  box-shadow: 0 18px 60px rgba(0,0,0,.35);
+  backdrop-filter: blur(24px) saturate(1.25);
+  -webkit-backdrop-filter: blur(24px) saturate(1.25);
+}
+
+.dm-shell-dock button {
+  min-width: 0;
+  min-height: 48px;
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  border: 0;
+  border-radius: 14px;
+  color: var(--dm-shell-muted);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.dm-shell-dock button:active { transform: scale(.96); }
+.dm-shell-dock button:hover,
+.dm-shell-dock button:focus-visible { color: var(--dm-shell-text); background: rgba(255,255,255,.08); outline: none; }
+.dm-shell-dock span { font-size: 17px; line-height: 1; font-weight: 750; }
+.dm-shell-dock small { font-size: 9px; line-height: 1.2; font-weight: 700; letter-spacing: .01em; }
+.dm-shell-dock [data-dock="ai"][data-backend="codex"] { color: #d5e3ff; }
+.dm-shell-dock [data-dock="ai"][data-backend="api"] { color: #d7cdfc; }
+.dm-shell-dock [data-dock="ai"][data-backend="integrations"] { color: #ccebd9; }
+
+.dm-shell-popover {
+  position: fixed;
+  left: 50%;
+  bottom: calc(max(10px, env(safe-area-inset-bottom)) + 67px);
+  transform: translateX(-50%);
+  z-index: 310;
+  width: min(calc(100vw - 28px), 390px);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--dm-shell-border);
+  border-radius: 17px;
+  background: var(--dm-shell-bg);
+  box-shadow: 0 18px 50px rgba(0,0,0,.35);
+  backdrop-filter: blur(24px);
+}
+.dm-shell-popover button {
+  min-width: 0;
+  min-height: 58px;
+  display: grid;
+  place-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 12px;
+  color: var(--dm-shell-muted);
+  background: transparent;
+  font: inherit;
+}
+.dm-shell-popover button.active { color: var(--dm-shell-text); background: rgba(255,255,255,.1); }
+.dm-shell-popover span { font-size: 10px; opacity: .8; }
+.dm-shell-popover strong { font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+
+.dm-shell-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 940;
+  background: rgba(4,7,12,.45);
+  backdrop-filter: blur(2px);
+}
+
+.dm-shell-sheet {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  z-index: 950;
+  width: min(100%, 720px);
+  max-height: min(84vh, 760px);
+  transform: translate(-50%, 105%);
+  border: 1px solid var(--dm-shell-border);
+  border-bottom: 0;
+  border-radius: 24px 24px 0 0;
+  color: var(--dm-shell-text);
+  background: #151922;
+  box-shadow: 0 -22px 70px rgba(0,0,0,.42);
+  transition: transform 180ms ease;
+  overflow: hidden;
+}
+.dm-shell-sheet.open { transform: translate(-50%, 0); }
+.dm-shell-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 17px 18px 14px;
+  border-bottom: 1px solid var(--dm-shell-border);
+}
+.dm-shell-sheet-head div { display: grid; gap: 3px; }
+.dm-shell-sheet-head strong { font-size: 16px; }
+.dm-shell-sheet-head small { color: var(--dm-shell-muted); font-size: 11px; }
+.dm-shell-sheet-head button {
+  width: 38px; height: 38px; border: 0; border-radius: 12px;
+  color: var(--dm-shell-text); background: rgba(255,255,255,.07); font-size: 22px;
+}
+.dm-shell-sheet-scroll {
+  max-height: calc(min(84vh, 760px) - 70px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 14px calc(24px + env(safe-area-inset-bottom));
+}
+.dm-shell-sheet section + section { margin-top: 20px; }
+.dm-shell-sheet h2 {
+  margin: 0 7px 8px;
+  color: var(--dm-shell-muted);
+  font-size: 10px;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.dm-shell-action {
+  width: 100%;
+  min-height: 61px;
+  display: grid;
+  grid-template-columns: 38px minmax(0,1fr) auto 18px;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 0;
+  border-top: 1px solid rgba(255,255,255,.065);
+  color: var(--dm-shell-text);
+  background: rgba(255,255,255,.025);
+  text-align: left;
+  font: inherit;
+}
+.dm-shell-action:first-of-type { border-radius: 14px 14px 0 0; border-top: 0; }
+.dm-shell-action:last-of-type { border-radius: 0 0 14px 14px; }
+.dm-shell-action:only-of-type { border-radius: 14px; }
+.dm-shell-action:hover, .dm-shell-action:focus-visible { background: rgba(255,255,255,.075); outline: none; }
+.dm-shell-action-icon {
+  width: 36px; height: 36px; display: grid; place-items: center;
+  border-radius: 10px; background: rgba(255,255,255,.07); font-size: 16px;
+}
+.dm-shell-action-copy { min-width: 0; display: grid; gap: 3px; }
+.dm-shell-action-copy strong { font-size: 13px; }
+.dm-shell-action-copy small { color: var(--dm-shell-muted); font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+.dm-shell-action-badge {
+  padding: 4px 6px; border: 1px solid #645931; border-radius: 999px;
+  color: #dac57d; font-size: 8px; font-weight: 800; letter-spacing: .05em;
+}
+.dm-shell-chevron { color: #707989; font-size: 20px; }
+
+.dm-shell-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(max(10px, env(safe-area-inset-bottom)) + 76px);
+  transform: translateX(-50%);
+  z-index: 960;
+  max-width: min(90vw, 440px);
+  padding: 10px 13px;
+  border: 1px solid var(--dm-shell-border);
+  border-radius: 12px;
+  color: var(--dm-shell-text);
+  background: #202632;
+  box-shadow: 0 14px 40px rgba(0,0,0,.3);
+  font-size: 12px;
+  text-align: center;
+}
+
+.dm-shell .hidden { display: none !important; }
+
+/* Legacy launchers remain mounted for compatibility, but the unified shell owns discovery/navigation. */
+.devmoter-unified-shell .dm-tools-launcher,
+.devmoter-unified-shell .pocket-git-trigger,
+.devmoter-unified-shell #wfLaunch,
+.devmoter-unified-shell #devmoterAgentLauncher,
+.devmoter-unified-shell .sc-fab,
+.devmoter-unified-shell .adv-fab,
+.devmoter-unified-shell .dm-control-trigger,
+.devmoter-unified-shell .devmoter-settings-trigger,
+.devmoter-unified-shell .devmoter-system-button {
+  display: none !important;
+}
+
+
+body:has(
+  .dm-tools-panel:not(.hidden),
+  .pocket-git-overlay:not(.hidden),
+  .wf-modal:not(.hidden),
+  .devmoter-agent-panel:not(.hidden),
+  .sc-panel.open,
+  .adv-drawer:not(.hidden),
+  .dm-control-modal:not(.hidden),
+  .devmoter-settings-modal:not(.hidden),
+  .devmoter-system-modal:not(.hidden)
+) .dm-shell-dock,
+body:has(
+  .dm-tools-panel:not(.hidden),
+  .pocket-git-overlay:not(.hidden),
+  .wf-modal:not(.hidden),
+  .devmoter-agent-panel:not(.hidden),
+  .sc-panel.open,
+  .adv-drawer:not(.hidden),
+  .dm-control-modal:not(.hidden),
+  .devmoter-settings-modal:not(.hidden),
+  .devmoter-system-modal:not(.hidden)
+) .dm-shell-popover {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-height: 520px) {
+  .dm-shell-dock { opacity: .22; transition: opacity 120ms ease; }
+  .dm-shell-dock:hover, .dm-shell-dock:focus-within { opacity: 1; }
+}
+
+@media (min-width: 900px) {
+  .dm-shell-dock {
+    left: 14px;
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+    grid-template-columns: 66px;
+    border-radius: 18px;
+  }
+  .dm-shell-popover {
+    left: 92px;
+    bottom: auto;
+    top: 50%;
+    transform: translateY(-50%);
+    grid-template-columns: repeat(2, 100px);
+    width: auto;
+  }
+  .dm-shell-sheet {
+    left: auto;
+    right: 0;
+    bottom: 0;
+    top: 0;
+    width: min(520px, 44vw);
+    max-height: 100vh;
+    border-radius: 22px 0 0 22px;
+    border-bottom: 1px solid var(--dm-shell-border);
+    transform: translateX(105%);
+  }
+  .dm-shell-sheet.open { transform: translateX(0); }
+  .dm-shell-sheet-scroll { max-height: calc(100vh - 70px); }
+}
+
+@media (max-width: 899px) {
+  body:has(textarea:focus) .dm-shell-dock,
+  body:has(input:focus) .dm-shell-dock {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 12px);
+  }
+}

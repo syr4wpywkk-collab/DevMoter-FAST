@@ -15,6 +15,7 @@ import { mountRemoteControlCenter } from "./remote-control";
 import { startWorkspaceControl } from "./workspace-control";
 import { mountSettingsPanel } from "./settings";
 import { mountSetupWizard } from "./setup-wizard";
+import { mountUnifiedFeatureShell } from "./app-shell";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const startupParams = new URLSearchParams(window.location.search);
@@ -87,6 +88,7 @@ function setBackend(next: Backend) {
   document.body.classList.toggle("integrations-mode", next === "integrations");
   if (next === "api") void apiRemote.refresh();
   if (next === "integrations") void integrationsRemote.refresh();
+  window.dispatchEvent(new CustomEvent("devmoter:backend-changed", { detail: { backend: next } }));
 }
 
 const openCodeRemote = mountOpenCodeRemote(openCodeMount, {
@@ -114,12 +116,18 @@ mountAgentConsole();
 mountSessionControl({ switchBackend: backend => setBackend(backend) });
 mountWorkspaceTools();
 mountAdvancedTools();
-void import("./control-center").then(({ mountControlCenter }) => mountControlCenter());
+const controlCenterReady = import("./control-center").then(({ mountControlCenter }) => mountControlCenter());
 mountTaskWorkflow(workflowMount);
 mountSystemPanel();
 mountRemoteControlCenter();
 mountSettingsPanel();
 startWorkspaceControl();
+void controlCenterReady.then(() => {
+  mountUnifiedFeatureShell({
+    switchBackend: backend => setBackend(backend),
+    initialBackend: activeBackend
+  });
+});
 
 let healthCheckInFlight = false;
 async function checkHealth() {
