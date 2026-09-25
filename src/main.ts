@@ -17,6 +17,7 @@ import { mountSettingsPanel } from "./settings";
 import { mountSetupWizard } from "./setup-wizard";
 import { mountUnifiedFeatureShell } from "./app-shell";
 import { mountHomeSurface } from "./home";
+import { getAppDefinition, isAppId, type AppId } from "./app-registry";
 import { createSurfaceNavigation, type MainSurface } from "./surface-navigation.mjs";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -130,13 +131,24 @@ function applySurface(surface: MainSurface) {
 }
 
 mountHomeSurface(homeView, {
-  onOpenChat: () => {
-    const lastBackend = localStorage.getItem("opencode-pocket-backend");
-    setBackend(lastBackend === "codex" || lastBackend === "api" ? lastBackend : "opencode");
+  onPreviewApp: (id, message) => {
+    window.dispatchEvent(new CustomEvent("devmoter:app-preview", { detail: { id, message } }));
   },
-  onOpenProjects: () => {
-    setBackend("codex");
-    window.setTimeout(() => document.querySelector<HTMLElement>("#cxProjectsNav")?.click(), 0);
+  onLaunchApp: (id: AppId) => {
+    if (!isAppId(id)) return;
+    switch (id) {
+      case "chat": {
+        const lastBackend = localStorage.getItem("opencode-pocket-backend");
+        setBackend(lastBackend === "codex" || lastBackend === "api" ? lastBackend : "opencode");
+        break;
+      }
+      case "projects":
+        setBackend("codex");
+        window.setTimeout(() => document.querySelector<HTMLElement>("#cxProjectsNav")?.click(), 0);
+        break;
+      default:
+        window.dispatchEvent(new CustomEvent("devmoter:app-preview", { detail: { id, message: getAppDefinition(id).previewMessage || `${getAppDefinition(id).title} is not available yet.` } }));
+    }
   }
 });
 
