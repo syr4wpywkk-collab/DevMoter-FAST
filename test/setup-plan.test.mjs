@@ -163,15 +163,15 @@ test("execution accepts only a server snapshot and rejects forged or injected re
   await assert.rejects(executeInstallPlan({ planId: "0".repeat(36), confirmedActions: [] }), error => error.code === "stale_plan");
 });
 
-test("executor requires exact explicit confirmations and never invents an installer", async () => {
+test("executor requires exact explicit confirmations and fails closed without a user npm prefix", async () => {
   const preview = await previewInstallPlan({ selections: [{ toolId: "codex", action: "install" }] }, { env: { PATH: "", HOME: "/tmp" } });
   await assert.rejects(executeInstallPlan({ planId: preview.planId, confirmedActions: [] }), error => error.code === "confirmation_required");
   await assert.rejects(executeInstallPlan({ planId: preview.planId, confirmedActions: [{ toolId: "codex", actionId: "install", confirmed: true, cwd: "/tmp/unsafe" }] }), error => error.code === "invalid_confirmation");
-  const result = await executeInstallPlan({ planId: preview.planId, confirmedActions: [{ toolId: "codex", actionId: "install", confirmed: true }] });
+  const result = await executeInstallPlan({ planId: preview.planId, confirmedActions: [{ toolId: "codex", actionId: "install", confirmed: true }] }, { executor: { env: { PATH: "", HOME: "/tmp" } } });
   assert.equal(result.status, "needs_user_action");
   assert.equal(result.items[0].status, "needs_user_action");
   assert.equal(JSON.stringify(result).includes("/home/"), false);
-  assert.deepEqual(await executeInstallPlan({ planId: preview.planId, confirmedActions: [{ toolId: "codex", actionId: "install", confirmed: true }] }), result);
+  assert.deepEqual(await executeInstallPlan({ planId: preview.planId, confirmedActions: [{ toolId: "codex", actionId: "install", confirmed: true }] }, { executor: { env: { PATH: "", HOME: "/tmp" } } }), result);
 });
 
 test("manual review and unsupported selections can never reach an executor", async () => {
