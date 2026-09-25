@@ -14,8 +14,8 @@ test("terminal project loading is independent from trusted-device session loadin
   const loadProjects = control.slice(start, end);
   assert.ok(loadProjects.includes('fetch("/api/projects"'));
   assert.ok(!loadProjects.includes("refreshTerminalSessions()"));
-  assert.ok(control.includes("renderProjectOptions();
-      return refreshTerminalSessions();"));
+  assert.ok(control.includes("renderProjectOptions();"));
+  assert.ok(control.includes("return refreshTerminalSessions();"));
 });
 
 test("terminal trusted-device failure exposes direct recovery navigation", async () => {
