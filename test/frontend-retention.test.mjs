@@ -22,7 +22,8 @@ test("frontends cap rendered transcript nodes and keep EventSource singleton gua
 test("explicit sends restore transcript following", async () => {
   for (const file of ["../src/opencode.ts", "../src/codex.ts"]) {
     const source = await readFile(new URL(file, import.meta.url), "utf8");
-    const start = source.indexOf("async function sendMessage()");
+    const unlockedStart = source.indexOf("async function sendMessageUnlocked()");
+    const start = unlockedStart >= 0 ? unlockedStart : source.indexOf("async function sendMessage()");
     const end = source.indexOf("\n  async function ", start + 1);
     const block = source.slice(start, end > start ? end : undefined);
     assert.match(block, /followsBottom = true/);
