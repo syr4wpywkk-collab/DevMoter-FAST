@@ -2823,6 +2823,11 @@ export function mountOpenCodeRemote(
       );
       if (!response.ok) throw new Error("Background event replay unavailable");
       const payload = await response.json().catch(() => ({}));
+      if (payload?.gap) {
+        cursor = String(payload?.latestCursor || payload?.cursor || cursor);
+        localStorage.setItem(storageKey, cursor);
+        throw new Error("Background replay gap detected");
+      }
       const items = Array.isArray(payload?.events) ? payload.events : [];
       for (const item of items) applyReplayState(item);
       const nextCursor = String(payload?.cursor || cursor);
@@ -2840,18 +2845,23 @@ export function mountOpenCodeRemote(
     const sessionId =
       activeSession?.id || localStorage.getItem("opencode-pocket-opencode-session") || "";
 
+    let replayFallback = false;
     try {
       if (sessionId) {
         setExecutionState("reconnecting");
-        await replayWorkspaceState(sessionId).catch(() => {});
+        try {
+          await replayWorkspaceState(sessionId);
+        } catch {
+          replayFallback = true;
+        }
       }
 
       disconnectEvents();
-      connectEvents();
       await refresh();
+      connectEvents();
 
       if (sessionId && activeSession?.id === sessionId) {
-        showToast("Background work synchronized");
+        showToast(replayFallback ? "Session history refreshed" : "Background work synchronized");
       }
     } finally {
       resumeSyncInFlight = false;
