@@ -155,6 +155,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   }
 
   function openSidebar() {
+    window.dispatchEvent(new CustomEvent("devmoter:close-chat-history"));
     sidebar.classList.add("open");
     sidebar.setAttribute("aria-hidden", "false");
     trigger.setAttribute("aria-expanded", "true");
@@ -270,6 +271,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     closeSidebar();
     if (next) updateSurface(next);
   });
+  window.addEventListener("devmoter:close-global-nav", closeSidebar);
 
   updateBackend(backend);
   updateSurface(surface);
