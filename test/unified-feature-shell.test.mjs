@@ -57,3 +57,28 @@ test("legacy floating launchers are visually retired but remain mounted for comp
     ".sc-fab", ".adv-fab", ".dm-control-trigger", ".devmoter-settings-trigger", ".devmoter-system-button"
   ]) assert.ok(css.includes(selector), selector);
 });
+
+test("mobile navigation is sidebar-first and no bottom dock remains", async () => {
+  const [shell, css] = await Promise.all([
+    source("src/app-shell.ts"),
+    source("src/app-shell.css")
+  ]);
+  assert.ok(shell.includes("dm-shell-menu-trigger"));
+  assert.ok(shell.includes("dm-shell-sidebar"));
+  assert.ok(shell.includes('data-shell-action="terminal"'));
+  assert.ok(shell.includes('data-shell-action="git"'));
+  assert.ok(shell.includes('data-shell-action="review"'));
+  assert.ok(shell.includes('data-backend="opencode"'));
+  assert.ok(!shell.includes("dm-shell-dock"));
+  assert.ok(!css.includes(".dm-shell-dock"));
+  assert.ok(css.includes("transform: translateX(-105%)"));
+  assert.ok(css.includes(".dm-shell-sidebar.open"));
+});
+
+test("sidebar remains keyboard dismissible and reports expanded state", async () => {
+  const shell = await source("src/app-shell.ts");
+  assert.ok(shell.includes('aria-expanded="false"'));
+  assert.ok(shell.includes('trigger.setAttribute("aria-expanded", "true")'));
+  assert.ok(shell.includes('trigger.setAttribute("aria-expanded", "false")'));
+  assert.ok(shell.includes('if (event.key === "Escape") closeSidebar()'));
+});
