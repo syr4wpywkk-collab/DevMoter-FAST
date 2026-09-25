@@ -161,7 +161,7 @@ export function mountCodexRemote(
       </aside>
 
       <header class="cx-topbar">
-        <button id="cxMenu" class="cx-icon-button" type="button" aria-label="メニュー">☰</button>
+        <button id="cxMenu" class="cx-icon-button" type="button" aria-label="会話履歴を開く" title="会話履歴">☰</button>
         <button id="cxTitleButton" class="cx-title-button" type="button">
           <span id="cxTitle">Codex</span>
           <small id="cxModelLabel">DevMoter agent</small>
@@ -352,10 +352,26 @@ export function mountCodexRemote(
   let toastTimer: number | null = null;
   let reasoningMode = localStorage.getItem("opencode-pocket-reasoning") || "auto";
   let usageTokens = 0;
+  let submitInFlight = false;
+  let resumeSyncInFlight = false;
 
   function uid() {
     return globalThis.crypto?.randomUUID?.() ??
       `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  }
+
+  function eventThreadId(params: Json) {
+    const value =
+      params?.threadId ??
+      params?.turn?.threadId ??
+      params?.item?.threadId ??
+      params?.thread?.id;
+    return typeof value === "string" ? value : "";
+  }
+
+  function eventBelongsToActiveThread(params: Json) {
+    const threadId = eventThreadId(params);
+    return !threadId || threadId === activeThreadId;
   }
 
   function modelDisplayName(value: string) {
@@ -639,6 +655,7 @@ export function mountCodexRemote(
   }
 
   function openSidebar() {
+    window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
     sidebar.classList.add("open");
     sidebar.setAttribute("aria-hidden", "false");
     scrim.classList.remove("hidden");
