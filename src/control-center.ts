@@ -230,10 +230,12 @@ export function mountControlCenter() {
       showTerminalLoadError(error);
     });
   });
-  close.addEventListener("click", () => {
+  function closePanel() {
     panel.classList.add("hidden");
     disconnectTerminalSocket();
-  });
+  }
+  close.addEventListener("click", closePanel);
+  window.addEventListener("devmoter:surface-changed", closePanel);
   terminalTab.addEventListener("click", () => setTab("terminal"));
   safetyTab.addEventListener("click", () => setTab("safety"));
   indexTab.addEventListener("click", () => setTab("index"));

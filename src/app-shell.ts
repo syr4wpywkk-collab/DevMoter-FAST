@@ -1,4 +1,5 @@
 import "./app-shell.css";
+import type { MainSurface } from "./surface-navigation.mjs";
 
 type Backend = "opencode" | "codex" | "api" | "integrations";
 type SettingsPage = "root" | "appearance" | "account" | "devices" | "vault" | "notifications" | "diagnostics" | "guide";
@@ -6,6 +7,8 @@ type SettingsPage = "root" | "appearance" | "account" | "devices" | "vault" | "n
 type ShellOptions = {
   switchBackend: (backend: Backend) => void;
   initialBackend?: Backend;
+  initialSurface?: MainSurface;
+  openHome: () => void;
 };
 
 function bySelector<T extends HTMLElement>(selector: string) {
@@ -75,6 +78,9 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
 
       <div class="dm-shell-sidebar-scroll">
         <section class="dm-shell-primary">
+          <button class="dm-shell-home-link" type="button" data-home-nav>
+            <span aria-hidden="true">⌂</span><strong>Home</strong><span class="dm-shell-home-arrow" aria-hidden="true">↗</span>
+          </button>
           <h2>AI</h2>
           <div class="dm-shell-ai-grid" role="group" aria-label="AI surfaces">
             <button type="button" data-backend="opencode"><span>OC</span><strong>OpenCode</strong></button>
@@ -136,7 +142,9 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   const sidebar = root.querySelector<HTMLElement>(".dm-shell-sidebar")!;
   const scrim = root.querySelector<HTMLElement>("[data-shell-scrim]")!;
   const toast = root.querySelector<HTMLElement>(".dm-shell-toast")!;
+  const homeLink = root.querySelector<HTMLButtonElement>("[data-home-nav]")!;
   let backend: Backend = options.initialBackend || "opencode";
+  let surface: MainSurface = options.initialSurface || "home";
   let toastTimer = 0;
 
   function notify(message: string) {
@@ -164,10 +172,20 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
 
   function updateBackend(next: Backend) {
     backend = next;
-    for (const button of root.querySelectorAll<HTMLButtonElement>("[data-backend]")) {
+    for (const button of root.querySelectorAll<HTMLButtonElement>(".dm-shell-ai-grid [data-backend]")) {
       button.classList.toggle("active", button.dataset.backend === backend);
     }
     trigger.dataset.backend = backend;
+  }
+
+  function updateSurface(next: MainSurface) {
+    surface = next;
+    homeLink.classList.toggle("active", surface === "home");
+    if (surface === "home") homeLink.setAttribute("aria-current", "page");
+    else homeLink.removeAttribute("aria-current");
+    for (const button of root.querySelectorAll<HTMLButtonElement>(".dm-shell-ai-grid [data-backend]")) {
+      button.setAttribute("aria-pressed", String(button.dataset.backend === surface));
+    }
   }
 
   function run(action: () => void) {
@@ -182,6 +200,12 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   trigger.addEventListener("click", () => {
     if (sidebar.classList.contains("open")) closeSidebar();
     else openSidebar();
+  });
+
+  homeLink.addEventListener("click", () => {
+    closeSidebar();
+    options.openHome();
+    window.requestAnimationFrame(() => document.querySelector<HTMLElement>("#devmoterHomeTitle")?.focus({ preventScroll: true }));
   });
 
   for (const button of root.querySelectorAll<HTMLButtonElement>("[data-backend]")) {
@@ -239,5 +263,12 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     if (next) updateBackend(next);
   });
 
+  window.addEventListener("devmoter:surface-changed", event => {
+    const next = (event as CustomEvent<{ surface?: MainSurface }>).detail?.surface;
+    closeSidebar();
+    if (next) updateSurface(next);
+  });
+
   updateBackend(backend);
+  updateSurface(surface);
 }

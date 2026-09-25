@@ -511,7 +511,9 @@ export function mountAdvancedTools() {
     drawer.classList.remove("hidden");
     await Promise.all([loadProjects(), loadModels(), loadGrants(), loadSandbox()]);
   });
-  q<HTMLButtonElement>("[data-close]").addEventListener("click", () => drawer.classList.add("hidden"));
+  const closeDrawer = () => drawer.classList.add("hidden");
+  q<HTMLButtonElement>("[data-close]").addEventListener("click", closeDrawer);
+  window.addEventListener("devmoter:surface-changed", closeDrawer);
   projectSelect.addEventListener("change", () => {
     currentBrowserPath = "";
     void Promise.all([loadArtifacts(), loadLivePreview(), loadFileBrowser(""), loadAgentBrowser()]);

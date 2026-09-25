@@ -16,11 +16,14 @@ import { startWorkspaceControl } from "./workspace-control";
 import { mountSettingsPanel } from "./settings";
 import { mountSetupWizard } from "./setup-wizard";
 import { mountUnifiedFeatureShell } from "./app-shell";
+import { mountHomeSurface } from "./home";
+import { createSurfaceNavigation, type MainSurface } from "./surface-navigation.mjs";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const startupParams = new URLSearchParams(window.location.search);
 
 const requestedProject = startupParams.get("project");
+const hasProjectDeepLink = Boolean(requestedProject);
 if (requestedProject) {
   localStorage.setItem("opencode-pocket-project", requestedProject);
   startupParams.delete("project");
@@ -38,6 +41,7 @@ if (startupParams.get("demo") === "1") {
   mountSetupWizard(app);
 } else {
 app.innerHTML = `
+  <main id="devmoterHomeView" class="dm-home-view hidden" aria-labelledby="devmoterHomeTitle"></main>
   <div id="openCodeView" class="pocket-view"><div id="openCodeMount"></div></div>
   <div id="codexView" class="pocket-view hidden"><div id="codexMount"></div></div>
   <div id="apiView" class="pocket-view hidden"><div id="apiMount"></div></div>
@@ -46,6 +50,7 @@ app.innerHTML = `
 `;
 
 const openCodeView = document.querySelector<HTMLDivElement>("#openCodeView")!;
+const homeView = document.querySelector<HTMLElement>("#devmoterHomeView")!;
 const codexView = document.querySelector<HTMLDivElement>("#codexView")!;
 const apiView = document.querySelector<HTMLDivElement>("#apiView")!;
 const integrationsView = document.querySelector<HTMLDivElement>("#integrationsView")!;
@@ -75,9 +80,14 @@ let activeBackend: Backend =
     ? savedBackend
     : "opencode";
 
-function setBackend(next: Backend) {
+let surfaceNavigation: ReturnType<typeof createSurfaceNavigation> | null = null;
+let initialSurfaceApplied = false;
+
+function applyBackend(next: Backend) {
   activeBackend = next;
   localStorage.setItem("opencode-pocket-backend", next);
+  homeView.classList.add("hidden");
+  document.body.classList.remove("devmoter-home-mode");
   openCodeView.classList.toggle("hidden", next !== "opencode");
   codexView.classList.toggle("hidden", next !== "codex");
   apiView.classList.toggle("hidden", next !== "api");
@@ -90,6 +100,52 @@ function setBackend(next: Backend) {
   if (next === "integrations") void integrationsRemote.refresh();
   window.dispatchEvent(new CustomEvent("devmoter:backend-changed", { detail: { backend: next } }));
 }
+
+function setBackend(next: Backend) {
+  if (surfaceNavigation && surfaceNavigation.current() !== next) {
+    surfaceNavigation.navigate(next);
+    return;
+  }
+  applyBackend(next);
+}
+
+function applySurface(surface: MainSurface) {
+  const restoreHomeFocus = initialSurfaceApplied && surface === "home";
+  initialSurfaceApplied = true;
+  window.dispatchEvent(new CustomEvent("devmoter:surface-changed", { detail: { surface } }));
+  if (surface === "home") {
+    homeView.classList.remove("hidden");
+    openCodeView.classList.add("hidden");
+    codexView.classList.add("hidden");
+    apiView.classList.add("hidden");
+    integrationsView.classList.add("hidden");
+    workflowMount.classList.add("hidden");
+    document.body.classList.remove("codex-mode", "opencode-mode", "api-mode", "integrations-mode");
+    document.body.classList.add("devmoter-home-mode");
+    if (restoreHomeFocus) window.requestAnimationFrame(() => homeView.querySelector<HTMLElement>("#devmoterHomeTitle")?.focus({ preventScroll: true }));
+    return;
+  }
+  workflowMount.classList.remove("hidden");
+  applyBackend(surface);
+}
+
+mountHomeSurface(homeView, {
+  onOpenChat: () => {
+    const lastBackend = localStorage.getItem("opencode-pocket-backend");
+    setBackend(lastBackend === "codex" || lastBackend === "api" ? lastBackend : "opencode");
+  },
+  onOpenProjects: () => {
+    setBackend("codex");
+    window.setTimeout(() => document.querySelector<HTMLElement>("#cxProjectsNav")?.click(), 0);
+  }
+});
+
+surfaceNavigation = createSurfaceNavigation({
+  window,
+  hasProjectDeepLink,
+  savedBackend: activeBackend,
+  onSurface: applySurface
+});
 
 const openCodeRemote = mountOpenCodeRemote(openCodeMount, {
   onCodex: () => setBackend("codex"),
@@ -125,7 +181,9 @@ startWorkspaceControl();
 void controlCenterReady.then(() => {
   mountUnifiedFeatureShell({
     switchBackend: backend => setBackend(backend),
-    initialBackend: activeBackend
+    initialBackend: activeBackend,
+    initialSurface: surfaceNavigation?.current() || "home",
+    openHome: () => surfaceNavigation?.navigate("home")
   });
 });
 
@@ -146,7 +204,7 @@ async function checkHealth() {
   }
 }
 
-setBackend(activeBackend);
+applySurface(surfaceNavigation.current());
 void checkHealth();
 window.setInterval(() => void checkHealth(), 15000);
 window.addEventListener("offline", () => {
