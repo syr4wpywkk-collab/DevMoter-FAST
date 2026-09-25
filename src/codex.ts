@@ -1612,6 +1612,73 @@ export function mountCodexRemote(
     }
   }
 
+  function applyReplayState(event: Json) {
+    if (event?.backend && event.backend !== "codex") return;
+    const type = String(event?.type || "");
+    if (type === "approval") setExecutionState("waiting_for_approval");
+    else if (type === "question") setExecutionState("waiting_for_input");
+    else if (type === "failure") setExecutionState("failed");
+    else if (type === "completion") setExecutionState("completed");
+    else {
+      const method = String(event?.payload?.method || "");
+      if (method === "turn/started") setExecutionState("running");
+      if (method === "turn/completed") {
+        setExecutionState(codexTurnStatusToExecutionState(event?.payload?.params?.turn?.status));
+      }
+    }
+  }
+
+  async function replayWorkspaceState(threadId: string) {
+    const storageKey = `devmoter-chat-cursor:codex:${threadId}`;
+    let cursor = localStorage.getItem(storageKey) || "0";
+
+    for (let page = 0; page < 4; page += 1) {
+      const response = await fetch(
+        "/api/workspace-control/events?sessionId=" +
+          encodeURIComponent(threadId) +
+          "&after=" +
+          encodeURIComponent(cursor) +
+          "&limit=500",
+        { cache: "no-store" }
+      );
+      if (!response.ok) throw new Error("Background event replay unavailable");
+      const payload = await response.json().catch(() => ({}));
+      const items = Array.isArray(payload?.events) ? payload.events : [];
+      for (const item of items) applyReplayState(item);
+      const nextCursor = String(payload?.cursor || cursor);
+      if (nextCursor === cursor || items.length === 0) break;
+      cursor = nextCursor;
+      if (items.length < 500) break;
+    }
+
+    localStorage.setItem(storageKey, cursor);
+  }
+
+  async function resumeFromBackground() {
+    if (!online || resumeSyncInFlight) return;
+    resumeSyncInFlight = true;
+    const threadId =
+      activeThreadId || localStorage.getItem("opencode-pocket-codex-thread") || "";
+
+    try {
+      if (threadId) {
+        setExecutionState("reconnecting");
+        await replayWorkspaceState(threadId).catch(() => {});
+      }
+
+      events?.close();
+      events = null;
+      connectEvents();
+      await refresh();
+
+      if (threadId && activeThreadId === threadId) {
+        showToast("バックグラウンドの作業を同期しました");
+      }
+    } finally {
+      resumeSyncInFlight = false;
+    }
+  }
+
   function scheduleEventReconnect() {
     if (!shouldScheduleReconnect(online, reconnectTimer !== null)) return;
 
@@ -1667,6 +1734,11 @@ export function mountCodexRemote(
           persistSelectedModel(toModel);
           showToast(`Codexが ${modelDisplayName(toModel)} に切り替えました`);
         }
+        return;
+      }
+
+      if (!eventBelongsToActiveThread(params)) {
+        if (method === "turn/completed") void loadThreads();
         return;
       }
 
@@ -1735,6 +1807,9 @@ export function mountCodexRemote(
         method: string;
         params: Json;
       };
+
+      const requestThreadId = eventThreadId(request.params);
+      if (requestThreadId && requestThreadId !== activeThreadId) return;
 
       if (
         request.method !== "item/commandExecution/requestApproval" &&
@@ -2830,6 +2905,12 @@ export function mountCodexRemote(
   }
 
   menu.addEventListener("click", openSidebar);
+  window.addEventListener("devmoter:close-chat-history", closeSidebar);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") void resumeFromBackground();
+  });
+  window.addEventListener("pageshow", () => void resumeFromBackground());
+  window.addEventListener("online", () => void resumeFromBackground());
   agentSwitchButton.addEventListener("click", () => {
     const open = agentSwitchMenu.classList.toggle("hidden") === false;
     agentSwitchButton.setAttribute("aria-expanded", String(open));
