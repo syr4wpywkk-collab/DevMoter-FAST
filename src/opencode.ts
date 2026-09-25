@@ -227,7 +227,7 @@ export function mountOpenCodeRemote(
       </aside>
 
       <header class="ocx-topbar">
-        <button id="ocxMenu" class="ocx-icon" type="button" aria-label="メニュー">☰</button>
+        <button id="ocxMenu" class="ocx-icon" type="button" aria-label="セッション履歴を開く" title="セッション履歴">☰</button>
 
         <button id="ocxSessionTitleButton" class="ocx-session-title" type="button">
           <strong id="ocxSessionTitle">OpenCode</strong>
@@ -474,6 +474,8 @@ export function mountOpenCodeRemote(
   let pendingQuestion: PendingQuestion | null = null;
   let questionAnswers: Array<Set<string>> = [];
   let contextExecutionState: ExecutionState | null = null;
+  let submitInFlight = false;
+  let resumeSyncInFlight = false;
   const liveText = new Map<string, HTMLElement>();
   const liveReasoning = new Map<string, HTMLElement>();
   const livePartKinds = new Map<string, "text" | "reasoning">();
@@ -505,6 +507,7 @@ export function mountOpenCodeRemote(
   }
 
   function openSidebar() {
+    window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
     sidebar.classList.add("open");
     sidebar.setAttribute("aria-hidden", "false");
     scrim.classList.remove("hidden");
