@@ -1375,6 +1375,22 @@ export function mountOpenCodeRemote(
     }
   }
 
+  async function restoreSavedSession(sessionId: string) {
+    try {
+      const raw = await api<Json>("/session/" + encodeURIComponent(sessionId));
+      const session = (raw?.data && typeof raw.data === "object" ? raw.data : raw) as OpenCodeSession;
+      if (!session?.id) throw new Error("Saved session is not available");
+      if (!sessions.some(item => item.id === session.id)) sessions.unshift(session);
+      await selectSession(session);
+      return true;
+    } catch (error) {
+      sessionTitle.textContent = "Session recovery needed";
+      setActivity("reconnecting", "reconnecting");
+      showToast(error instanceof Error ? error.message : "Saved session could not be restored");
+      return false;
+    }
+  }
+
   async function loadSessions() {
     const data = await api<OpenCodeSession[]>("/session?limit=80&order=desc");
     sessions = Array.isArray(data) ? data : [];
@@ -1419,10 +1435,10 @@ export function mountOpenCodeRemote(
         sessionTitle.textContent = fresh.title || "Untitled session";
         updateContextUI();
       } else {
-        activeSession = null;
-        pendingPermission = null;
-        pendingQuestion = null;
-        localStorage.removeItem("opencode-pocket-opencode-session");
+        // The session list may lag a just-created or long-running session.
+        // Keep the identity and try the canonical session endpoint before
+        // treating it as unavailable.
+        await restoreSavedSession(activeSession.id);
       }
     }
 
@@ -1433,7 +1449,7 @@ export function mountOpenCodeRemote(
       const saved = localStorage.getItem("opencode-pocket-opencode-session");
       const target = sessions.find(session => session.id === saved);
       if (target) await selectSession(target);
-      else if (saved) localStorage.removeItem("opencode-pocket-opencode-session");
+      else if (saved) await restoreSavedSession(saved);
     }
   }
 
