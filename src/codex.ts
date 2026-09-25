@@ -1052,23 +1052,41 @@ export function mountCodexRemote(
     }
   }
 
+  async function restoreSavedThread(threadId: string) {
+    try {
+      const result = await rpc<{ thread?: ThreadSummary }>(
+        "thread/read",
+        { threadId, includeTurns: false }
+      );
+      const thread = result?.thread;
+      if (!thread?.id) throw new Error("Saved thread is not available");
+      return await selectThread({ ...thread, id: threadId });
+    } catch (error) {
+      title.textContent = "会話を復元できません";
+      transcript.innerHTML = `
+        <div class="cx-welcome">
+          <div class="cx-welcome-mark">↻</div>
+          <h2>保存済みの会話を復元できませんでした</h2>
+          <p>新しいチャットには切り替えず、接続復帰時にもう一度この会話を探します。</p>
+        </div>
+      `;
+      showToast(error instanceof Error ? error.message : "会話の復元に失敗しました");
+      return false;
+    }
+  }
+
   async function loadThreads() {
     const result = await rpc<{ data?: ThreadSummary[] }>("thread/list", { limit: 100 });
     allThreads = result?.data ?? [];
     renderThreads();
 
-    if (activeThreadId && !allThreads.some(thread => thread.id === activeThreadId)) {
-      activeThreadId = null;
-      activeTurnId = null;
-      activeAssistantBubble = null;
-      localStorage.removeItem("opencode-pocket-codex-thread");
-    }
-
+    // thread/list can briefly lag a just-created or just-resumed thread.
+    // Preserve the current identity instead of silently falling back to a new chat.
     if (!activeThreadId) {
       const saved = localStorage.getItem("opencode-pocket-codex-thread");
       const target = allThreads.find(thread => thread.id === saved);
       if (target) await selectThread(target);
-      else if (saved) localStorage.removeItem("opencode-pocket-codex-thread");
+      else if (saved) await restoreSavedThread(saved);
     }
   }
 
@@ -1157,7 +1175,7 @@ export function mountCodexRemote(
     followLatest();
   }
 
-  async function selectThread(thread: ThreadSummary) {
+  async function selectThread(thread: ThreadSummary): Promise<boolean> {
     try {
       const resumed = await rpc<{ model?: string; cwd?: string }>(
         "thread/resume",
@@ -1180,8 +1198,10 @@ export function mountCodexRemote(
       followsBottom = true;
       await loadThreadHistory(thread.id);
       renderThreads();
+      return true;
     } catch (error) {
       addMessage("system", error instanceof Error ? error.message : "チャットを開けませんでした");
+      return false;
     }
   }
 
