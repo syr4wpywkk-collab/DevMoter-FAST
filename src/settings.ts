@@ -862,15 +862,18 @@ export function mountSettingsPanel() {
     await renderPage();
   }
 
-  function open() {
-    page = "root";
+  function open(targetPage: SettingsPage = "root") {
+    page = targetPage;
     modal.classList.remove("hidden");
     document.body.classList.add("devmoter-settings-open");
     void refresh();
   }
 
-  trigger.addEventListener("click", open);
-  window.addEventListener("devmoter:open-settings", open);
+  trigger.addEventListener("click", () => open("root"));
+  window.addEventListener("devmoter:open-settings", event => {
+    const requested = (event as CustomEvent<{ page?: SettingsPage }>).detail?.page;
+    open(requested || "root");
+  });
   closeButton.addEventListener("click", close);
   backButton.addEventListener("click", () => setPage("root"));
   modal.addEventListener("click", event => {
