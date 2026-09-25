@@ -13,11 +13,8 @@ import {
   renderOrchestrationPrompt,
   type OrchestrationPlan
 } from "./orchestrator-core.mjs";
-import {
-  SubagentRuntime,
-  createCodexSubagentAdapter,
-  type SubagentRun
-} from "./subagent-runtime.mjs";
+import { type SubagentRun } from "./subagent-runtime.mjs";
+import { HostAgentRuntime } from "./host-agent-runtime";
 import {
   AGENT_ROLES,
   describeModelRoutes,
@@ -108,10 +105,7 @@ export function mountAgentConsole() {
   let activeModeId = "debug";
   let orchestrationPlan: OrchestrationPlan | null = null;
   let secondOpinionTargetId: string | null = null;
-  const subagents = new SubagentRuntime({
-    adapters: { codex: createCodexSubagentAdapter() },
-    policy: { maxDepth: 3, tokenBudget: 12000, turnBudget: 8 }
-  });
+  const subagents = new HostAgentRuntime();
 
   const launcher = document.createElement("button");
   launcher.id = "devmoterAgentLauncher";
@@ -464,6 +458,9 @@ export function mountAgentConsole() {
   }
 
   subagents.subscribe(renderSubagentRun);
+  void subagents.refresh().catch(error =>
+    setStatus(error instanceof Error ? error.message : String(error), true)
+  );
 
   opinionClose.addEventListener("click", () => {
     secondOpinionTargetId = null;
