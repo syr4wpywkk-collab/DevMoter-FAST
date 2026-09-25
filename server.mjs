@@ -2315,7 +2315,8 @@ const server = http.createServer(async (req, res) => {
           invalid_confirmation: "Confirmation does not match the selected plan.",
           stale_plan: "This plan expired or changed. Rescan and review a new plan.",
           confirmation_required: "Explicit confirmation is required for every install action.",
-          unsupported_action: "This install action is not supported by the local executor."
+          unsupported_action: "This install action is not supported by the local executor.",
+          execution_in_progress: "This install plan is already executing."
         };
         const errorCode = Object.hasOwn(messages, error.code) ? error.code : "invalid_execute_request";
         json(res, error.status, { error: messages[errorCode], code: errorCode });

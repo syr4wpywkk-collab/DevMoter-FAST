@@ -163,15 +163,15 @@ test("execution accepts only a server snapshot and rejects forged or injected re
   await assert.rejects(executeInstallPlan({ planId: "0".repeat(36), confirmedActions: [] }), error => error.code === "stale_plan");
 });
 
-test("executor requires exact explicit confirmations and never invents an installer", async () => {
+test("executor requires exact explicit confirmations and fails closed without a user npm prefix", async () => {
   const preview = await previewInstallPlan({ selections: [{ toolId: "codex", action: "install" }] }, { env: { PATH: "", HOME: "/tmp" } });
   await assert.rejects(executeInstallPlan({ planId: preview.planId, confirmedActions: [] }), error => error.code === "confirmation_required");
   await assert.rejects(executeInstallPlan({ planId: preview.planId, confirmedActions: [{ toolId: "codex", actionId: "install", confirmed: true, cwd: "/tmp/unsafe" }] }), error => error.code === "invalid_confirmation");
-  const result = await executeInstallPlan({ planId: preview.planId, confirmedActions: [{ toolId: "codex", actionId: "install", confirmed: true }] });
+  const result = await executeInstallPlan({ planId: preview.planId, confirmedActions: [{ toolId: "codex", actionId: "install", confirmed: true }] }, { executor: { env: { PATH: "", HOME: "/tmp" } } });
   assert.equal(result.status, "needs_user_action");
   assert.equal(result.items[0].status, "needs_user_action");
   assert.equal(JSON.stringify(result).includes("/home/"), false);
-  assert.deepEqual(await executeInstallPlan({ planId: preview.planId, confirmedActions: [{ toolId: "codex", actionId: "install", confirmed: true }] }), result);
+  assert.deepEqual(await executeInstallPlan({ planId: preview.planId, confirmedActions: [{ toolId: "codex", actionId: "install", confirmed: true }] }, { executor: { env: { PATH: "", HOME: "/tmp" } } }), result);
 });
 
 test("manual review and unsupported selections can never reach an executor", async () => {
@@ -179,4 +179,54 @@ test("manual review and unsupported selections can never reach an executor", asy
   assert.equal(preview.items[0].status, "manual-review");
   const result = await executeInstallPlan({ planId: preview.planId, confirmedActions: [] });
   assert.equal(result.items[0].status, "needs_user_action");
+});
+
+
+test("concurrent execution of the same reviewed plan is rejected", async () => {
+  const preview = await previewInstallPlan(
+    { selections: [{ toolId: "codex", action: "install" }] },
+    { env: { PATH: "", HOME: "/tmp" } }
+  );
+
+  let releaseInstall;
+  const installGate = new Promise(resolve => { releaseInstall = resolve; });
+  let installStarted;
+  const started = new Promise(resolve => { installStarted = resolve; });
+  const runtime = {
+    resolveExecutable: async name => name === "npm" ? { resolvedPath: "/usr/bin/npm", binary: "npm" } : null,
+    realpath: async value => value,
+    access: async () => {},
+    runSetupCommand: async (executable, argv) => {
+      if (executable === "/usr/bin/npm" && argv.join(" ") === "prefix -g") {
+        return { code: 0, stdout: "/home/test/.local/npm\n", stderr: "" };
+      }
+      if (executable === "/usr/bin/npm" && argv[0] === "install") {
+        installStarted();
+        await installGate;
+        return { code: 0, stdout: "", stderr: "" };
+      }
+      return { code: 0, stdout: "1.2.3\n", stderr: "" };
+    }
+  };
+  const request = {
+    planId: preview.planId,
+    confirmedActions: [{ toolId: "codex", actionId: "install", confirmed: true }]
+  };
+  const options = {
+    executor: {
+      env: { HOME: "/home/test", PATH: "/usr/bin" },
+      runtime
+    }
+  };
+
+  const first = executeInstallPlan(request, options);
+  await started;
+  await assert.rejects(
+    executeInstallPlan(request, options),
+    error => error instanceof SetupPlanError && error.code === "execution_in_progress" && error.status === 409
+  );
+  releaseInstall();
+  const result = await first;
+  assert.equal(result.status, "succeeded");
+  assert.deepEqual(await executeInstallPlan(request, options), result);
 });

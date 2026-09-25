@@ -50,14 +50,29 @@ type PlanItem = {
   changes: string[];
   verification: string[];
   notes: string[];
+  automaticInstall: boolean;
 };
 
 type InstallPlan = {
   phase: string;
   mode: "preview-only";
   executable: false;
+  planId: string;
+  expiresAt: string;
   items: PlanItem[];
   summary: { selected: number; keep: number; install: number; manualReview: number; unavailable: number };
+};
+
+type InstallExecution = {
+  planId: string;
+  status: "succeeded" | "failed" | "needs_user_action";
+  items: Array<{
+    toolId: string;
+    status: "succeeded" | "failed" | "needs_user_action";
+    errorCode: string | null;
+    summary: string;
+    nextAction: string | null;
+  }>;
 };
 
 const groups = [
@@ -112,8 +127,9 @@ function actionFor(tool: Tool): { action: PlanAction | null; label: string; disa
 }
 
 function planStatusLabel(item: PlanItem) {
-  if (item.status === "reviewable") return "Ready for human review · not executable";
-  if (item.status === "confirmation-required") return "Class C · explicit confirmation required in a later phase";
+  if (item.status === "reviewable" && item.automaticInstall) return "Ready · reviewed automatic install";
+  if (item.status === "reviewable") return "Ready for review · manual execution";
+  if (item.status === "confirmation-required") return "Class C · manual install remains required";
   if (item.status === "manual-review") return "Needs manual review";
   if (item.status === "blocked") return "Blocked · not an install candidate";
   if (item.status === "unsupported") return "Unavailable on this platform";
@@ -132,13 +148,13 @@ export function mountSetupWizard(root: HTMLDivElement) {
     <main class="dm-setup" aria-labelledby="dm-setup-title">
       <header class="dm-setup-header">
         <a href="/" class="dm-setup-back">← DevMoter FAST</a>
-        <span class="dm-setup-badge">EXPERIMENTAL · PHASE 2</span>
+        <span class="dm-setup-badge">EXPERIMENTAL · INSTALL</span>
       </header>
       <section class="dm-setup-intro">
         <p class="dm-setup-eyebrow">DEV MOTER FAST SETUP</p>
         <h1 id="dm-setup-title">Your tools, one clear plan.</h1>
         <p class="dm-setup-lede">Installation should cost time, not expertise.</p>
-        <p class="dm-setup-note">Choose tools to preview. Nothing will be installed, downloaded, authenticated, or changed in this phase.</p>
+        <p class="dm-setup-note">Review first. Only approved Codex/OpenCode npm candidates can be installed automatically, and only into a writable user-owned npm prefix. Other tools remain manual.</p>
         <div class="dm-setup-actions" data-selection-actions>
           <button class="dm-setup-rescan" type="button" data-rescan>Rescan</button>
           <button class="dm-setup-review" type="button" data-review disabled>Review install plan</button>
@@ -151,18 +167,22 @@ export function mountSetupWizard(root: HTMLDivElement) {
       </section>
       <section class="dm-setup-selection" aria-labelledby="dm-setup-selection-title" data-selection-view>
         <h2 id="dm-setup-selection-title">Choose what to plan</h2>
-        <p class="dm-setup-section-note">Existing installs are kept. Class A/B candidates may be preselected; class C needs explicit confirmation in a later phase.</p>
+        <p class="dm-setup-section-note">Existing installs are kept. Reviewed Codex/OpenCode candidates can run without sudo; Class C and administrator installs remain manual.</p>
         <div class="dm-setup-groups" data-tool-groups></div>
       </section>
       <section class="dm-setup-plan-view" aria-labelledby="dm-setup-plan-title" data-plan-view hidden>
         <div class="dm-setup-plan-heading">
-          <div><p class="dm-setup-eyebrow">PREVIEW ONLY</p><h2 id="dm-setup-plan-title">Review install plan</h2></div>
-          <span class="dm-setup-plan-lock">Not executable</span>
+          <div><p class="dm-setup-eyebrow">REVIEW & EXECUTE</p><h2 id="dm-setup-plan-title">Review install plan</h2></div>
+          <span class="dm-setup-plan-lock">Explicit confirmation</span>
         </div>
         <div class="dm-setup-plan-items" data-plan-items></div>
-        <button class="dm-setup-back-button" type="button" data-back>Back</button>
+        <div class="dm-setup-plan-actions">
+          <button class="dm-setup-back-button" type="button" data-back>Back</button>
+          <button class="dm-setup-execute-button" type="button" data-execute disabled>Install reviewed tools</button>
+        </div>
+        <div class="dm-setup-execution-result" data-execution-result aria-live="polite"></div>
       </section>
-      <footer class="dm-setup-footer">No Install now action exists in Phase 2. Install execution and privilege handling are later phases.</footer>
+      <footer class="dm-setup-footer">Automatic execution is intentionally narrow: reviewed Codex/OpenCode user-level npm installs only. No sudo, arbitrary shell, browser-supplied package, or automatic Tailscale/service mutation.</footer>
     </main>
   `;
 
@@ -175,7 +195,10 @@ export function mountSetupWizard(root: HTMLDivElement) {
   const planView = root.querySelector<HTMLElement>("[data-plan-view]")!;
   const planItems = root.querySelector<HTMLElement>("[data-plan-items]")!;
   const back = root.querySelector<HTMLButtonElement>("[data-back]")!;
+  const execute = root.querySelector<HTMLButtonElement>("[data-execute]")!;
+  const executionResult = root.querySelector<HTMLElement>("[data-execution-result]")!;
   let currentStatus: SetupStatus | null = null;
+  let currentPlan: InstallPlan | null = null;
 
   function renderEnvironment(status: SetupStatus) {
     const items = [
@@ -244,6 +267,8 @@ export function mountSetupWizard(root: HTMLDivElement) {
   }
 
   function renderPlan(plan: InstallPlan) {
+    currentPlan = plan;
+    executionResult.replaceChildren();
     planItems.replaceChildren(...plan.items.map(item => {
       const card = document.createElement("article");
       card.className = `dm-setup-plan-card dm-setup-plan-${item.status}`;
@@ -295,6 +320,34 @@ export function mountSetupWizard(root: HTMLDivElement) {
     planView.hidden = false;
     rescan.hidden = true;
     review.hidden = true;
+    execute.disabled = !plan.items.some(item => item.action === "install" && item.automaticInstall);
+  }
+
+  function renderExecution(result: InstallExecution) {
+    const section = document.createElement("section");
+    section.className = `dm-setup-execution dm-setup-execution-${result.status}`;
+    const heading = document.createElement("strong");
+    heading.textContent = result.status === "succeeded"
+      ? "Installation complete"
+      : result.status === "failed"
+        ? "Installation needs attention"
+        : "Some tools still need local action";
+    section.append(heading);
+
+    const list = document.createElement("div");
+    list.className = "dm-setup-execution-list";
+    for (const item of result.items) {
+      const row = document.createElement("div");
+      row.className = "dm-setup-execution-row";
+      const name = document.createElement("span");
+      name.textContent = knownNames[item.toolId] || item.toolId;
+      const detail = document.createElement("small");
+      detail.textContent = item.nextAction ? `${item.summary} ${item.nextAction}` : item.summary;
+      row.append(name, detail);
+      list.append(row);
+    }
+    section.append(list);
+    executionResult.replaceChildren(section);
   }
 
   async function scan() {
@@ -356,14 +409,58 @@ export function mountSetupWizard(root: HTMLDivElement) {
     }
   }
 
+  async function executePlan() {
+    if (!currentPlan) return;
+    const installItems = currentPlan.items.filter(item => item.action === "install");
+    if (!installItems.some(item => item.automaticInstall)) return;
+
+    execute.disabled = true;
+    back.disabled = true;
+    scanState.textContent = "Installing reviewed tools…";
+    try {
+      const response = await fetch("/api/setup/execute", {
+        method: "POST",
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: {
+          "content-type": "application/json",
+          "x-pocket-operation-id": crypto.randomUUID()
+        },
+        body: JSON.stringify({
+          planId: currentPlan.planId,
+          confirmedActions: installItems.map(item => ({
+            toolId: item.toolId,
+            actionId: "install",
+            confirmed: true
+          }))
+        })
+      });
+      const payload = await response.json().catch(() => ({})) as InstallExecution & { error?: string };
+      if (!response.ok) throw new Error(payload.error || `Installation failed (${response.status}).`);
+      renderExecution(payload);
+      scanState.textContent = payload.status === "succeeded"
+        ? "Installation complete · rescan to refresh status"
+        : "Installation finished with follow-up actions";
+    } catch (error) {
+      scanState.textContent = error instanceof Error ? error.message : "Installation failed.";
+      execute.disabled = false;
+    } finally {
+      back.disabled = false;
+    }
+  }
+
   back.addEventListener("click", () => {
     planView.hidden = true;
     selectionView.hidden = false;
     rescan.hidden = false;
     review.hidden = false;
+    currentPlan = null;
+    executionResult.replaceChildren();
+    execute.disabled = true;
     scanState.textContent = "Choose tools to update the preview.";
   });
   review.addEventListener("click", () => void reviewPlan());
+  execute.addEventListener("click", () => void executePlan());
   rescan.addEventListener("click", () => void scan());
   void scan();
 }

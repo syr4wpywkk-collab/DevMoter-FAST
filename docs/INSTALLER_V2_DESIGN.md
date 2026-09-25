@@ -1,6 +1,6 @@
 # DevMoter FAST Installer v2 — Design
 
-Status: **Experimental / Phase 2 install plan preview (read-only; no installation)**
+Status: **Experimental / Phase 2.5 limited execution (Codex/OpenCode user npm only)**
 Target: DevMoter FAST Alpha
 Primary goal: **installation should cost time, not expertise.**
 
@@ -720,3 +720,14 @@ Current install source decisions were checked against official sources on 2026-0
 - [Tailscale Linux installation](https://tailscale.com/docs/install/linux) documents signed distribution packages as an alternative to its official bootstrap script (Class A). A later phase must identify the distribution and preserve existing daemon, login, and Serve configuration.
 
 These definitions are display-only reviewed metadata. Phase 2 does not perform package-manager or installer actions; distribution support and exact install commands must be revalidated when a future install executor is designed.
+
+
+## 25. Phase 2.5 limited execution contract
+
+The first automatic executor remains deliberately narrow. Only Codex and OpenCode are eligible, and only through server-owned official npm package identities. The browser never supplies a package name, executable, argv, cwd, environment map, installer URL, or shell text.
+
+Before execution, DevMoter resolves the local npm executable, reads the configured global prefix, canonicalizes both HOME and the prefix, requires the prefix to remain inside the current user's HOME, and requires it to be writable without sudo. Installation uses fixed argv with `shell: false`. After npm returns success, DevMoter verifies the expected binary from the same prefix before reporting success.
+
+If npm is unavailable, the prefix is outside HOME, the prefix is not writable, installation fails, or verification fails, execution fails closed and returns only a bounded public status. Child stdout/stderr and resolved host paths are not returned.
+
+Claude Code, Antigravity, GitHub CLI, Tailscale, provider authentication, privilege brokering, service installation, and Tailscale Serve remain manual/out of scope. A plan snapshot transitions `pending -> executing -> completed`; concurrent execution of the same plan is rejected to prevent duplicate installers.
