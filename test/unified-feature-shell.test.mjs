@@ -35,6 +35,48 @@ test("unified feature shell targets real mounted launchers and navigation IDs", 
   assert.ok(shell.includes("#cxDevWorkflowsNav") && codex.includes('id="cxDevWorkflowsNav"'));
 });
 
+test("Home is a first-class surface and sidebar entry without replacing existing launchers", async () => {
+  const [main, home, shell, css] = await Promise.all([
+    source("src/main.ts"), source("src/home.ts"), source("src/app-shell.ts"), source("src/home.css")
+  ]);
+  assert.ok(main.includes('id="devmoterHomeView"'));
+  assert.ok(main.includes("createSurfaceNavigation"));
+  assert.ok(main.includes("mountHomeSurface"));
+  assert.ok(home.includes('data-home-app-grid'));
+  assert.ok(home.includes('data-home-continue'));
+  assert.ok(shell.includes('data-home-nav'));
+  assert.ok(shell.includes('homeLink.setAttribute("aria-current", "page")'));
+  assert.ok(shell.includes('button.classList.toggle("active", active)'));
+  assert.ok(shell.includes('button.setAttribute("aria-pressed", String(active))'));
+  assert.ok(shell.includes('options.openHome()'));
+  assert.ok(css.includes("env(safe-area-inset-top)"));
+  assert.ok(css.includes("env(safe-area-inset-bottom)"));
+  assert.ok(css.includes("100svh") && css.includes("100dvh"));
+  assert.ok(css.includes("prefers-reduced-motion"));
+});
+
+test("Settings remains a temporary overlay and closes if main surface history changes", async () => {
+  const [settings, main] = await Promise.all([source("src/settings.ts"), source("src/main.ts")]);
+  assert.ok(settings.includes('window.addEventListener("devmoter:surface-changed", close)'));
+  assert.ok(main.includes('new CustomEvent("devmoter:surface-changed"'));
+  assert.ok(!settings.includes("history.pushState"));
+});
+
+test("main surface changes dismiss transient overlays and terminal sockets", async () => {
+  const files = ["src/control-center.ts", "src/workspace-tools.ts", "src/advanced.ts", "src/remote-control.ts", "src/agent-console.ts", "src/session-control.ts", "src/system-panel.ts"];
+  const contents = await Promise.all(files.map(source));
+  for (const content of contents) assert.ok(content.includes('"devmoter:surface-changed"'));
+  assert.ok(contents[0].includes("disconnectTerminalSocket()"));
+});
+
+test("Home and existing backend surfaces are connected through URL history state", async () => {
+  const main = await source("src/main.ts");
+  assert.ok(main.includes("surfaceNavigation.navigate(next)"));
+  assert.ok(main.includes('onSurface: applySurface'));
+  assert.ok(main.includes("window.dispatchEvent(new CustomEvent(\"devmoter:backend-changed\""));
+  assert.ok(main.includes("applySurface(surfaceNavigation.current())"));
+});
+
 test("settings deep-link event accepts a target page", async () => {
   const settings = await source("src/settings.ts");
   assert.ok(settings.includes("CustomEvent<{ page?: SettingsPage }>"));

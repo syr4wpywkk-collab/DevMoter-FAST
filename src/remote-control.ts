@@ -171,14 +171,15 @@ export function mountRemoteControlCenter() {
     body.focus();
   }
 
-  function closeModal() {
+  function closeModal(restoreFocus = true) {
     trigger.setAttribute("aria-expanded", "false");
     modal.classList.add("hidden");
-    lastFocus?.focus?.();
+    if (restoreFocus) lastFocus?.focus?.();
   }
 
   trigger.addEventListener("click", () => void open());
-  close.addEventListener("click", closeModal);
+  close.addEventListener("click", () => closeModal());
+  window.addEventListener("devmoter:surface-changed", () => closeModal(false));
   modal.addEventListener("click", event => {
     if (event.target === modal) closeModal();
   });

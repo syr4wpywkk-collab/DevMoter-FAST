@@ -889,6 +889,7 @@ export function mountSettingsPanel() {
     const requested = (event as CustomEvent<{ page?: SettingsPage }>).detail?.page;
     open(requested || "root");
   });
+  window.addEventListener("devmoter:surface-changed", close);
   closeButton.addEventListener("click", close);
   backButton.addEventListener("click", () => setPage("root"));
   modal.addEventListener("click", event => {

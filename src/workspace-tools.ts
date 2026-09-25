@@ -507,6 +507,7 @@ export function mountWorkspaceTools() {
   window.addEventListener("keydown", event => {
     if (event.key === "Escape" && !overlay.classList.contains("hidden")) closePanel();
   });
+  window.addEventListener("devmoter:surface-changed", closePanel);
 
   return { open: openPanel, close: closePanel };
 }

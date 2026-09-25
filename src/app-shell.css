@@ -103,6 +103,33 @@
     calc(12px + env(safe-area-inset-left));
 }
 .dm-shell-sidebar section + section { margin-top: 20px; }
+.dm-shell-home-link {
+  width: 100%;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 13px;
+  color: var(--dm-shell-muted);
+  background: rgba(255,255,255,.035);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.dm-shell-home-link > span:first-child { font-size: 20px; text-align: center; }
+.dm-shell-home-link strong { font-size: 13px; }
+.dm-shell-home-arrow { opacity: 0; color: #b8c4ff; }
+.dm-shell-home-link:hover, .dm-shell-home-link:focus-visible, .dm-shell-home-link.active {
+  border-color: rgba(172,186,255,.22);
+  color: var(--dm-shell-text);
+  background: rgba(127,145,226,.14);
+  outline: none;
+}
+.dm-shell-home-link.active .dm-shell-home-arrow { opacity: 1; }
 .dm-shell-sidebar h2 {
   margin: 0 7px 8px;
   color: var(--dm-shell-muted);
@@ -222,6 +249,11 @@
 }
 
 .dm-shell .hidden { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dm-shell-sidebar { transition: none; }
+  .dm-shell-menu-trigger { transition: none; }
+}
 
 /* Existing launchers stay mounted as compatibility hooks; the sidebar owns discovery. */
 .devmoter-unified-shell .dm-tools-launcher,

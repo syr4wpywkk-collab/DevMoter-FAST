@@ -348,6 +348,7 @@ export function mountSystemPanel() {
 
   openButton.addEventListener("click", open);
   closeButton.addEventListener("click", close);
+  window.addEventListener("devmoter:surface-changed", close);
   modal.addEventListener("click", event => {
     if (event.target === modal) close();
   });

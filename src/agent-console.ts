@@ -528,6 +528,7 @@ export function mountAgentConsole() {
     if (!panel.classList.contains("hidden")) task.focus();
   });
   close.addEventListener("click", () => panel.classList.add("hidden"));
+  window.addEventListener("devmoter:surface-changed", () => panel.classList.add("hidden"));
   select.addEventListener("change", () => {
     activeModeId = select.value;
     renderMode();
