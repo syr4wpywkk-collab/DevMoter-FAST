@@ -7,14 +7,14 @@ async function source(path) {
 }
 
 test("unified feature shell exposes the major implemented surfaces", async () => {
-  const shell = await source("src/app-shell.ts");
+  const [shell, registry] = await Promise.all([source("src/app-shell.ts"), source("src/app-registry.ts")]);
   for (const label of [
-    "Terminal", "Git", "Review", "Agent mode", "Session Control",
-    "Projects & GitHub", "Developer workflows", "Files & Preview",
+    "getAppDefinition(appId)", "Terminal", "Git", "Review", "Agents", "Sessions / Activity",
+    "Projects", "Developer Workflows", "Files & Preview",
     "Safety", "Project Index", "Hosts", "Automation", "Passkeys",
     "API Vault", "Trusted devices", "Notifications", "Diagnostics",
     "Settings", "Setup Wizard"
-  ]) assert.ok(shell.includes(label), label);
+  ]) assert.ok(shell.includes(label) || registry.includes(label), label);
 });
 
 test("unified feature shell targets real mounted launchers and navigation IDs", async () => {
@@ -107,12 +107,10 @@ test("mobile navigation is sidebar-first and no bottom dock remains", async () =
   ]);
   assert.ok(shell.includes("dm-shell-menu-trigger"));
   assert.ok(shell.includes("dm-shell-sidebar"));
-  assert.ok(shell.includes('actionButton("⌘", "Terminal"'));
-  assert.ok(shell.includes('actionButton("⑂", "Git"'));
-  assert.ok(shell.includes('actionButton("⌁", "Review"'));
-  assert.ok(shell.includes('terminal: () => openToolsTab("terminal")'));
-  assert.ok(shell.includes('git: () => clickExisting(".pocket-git-trigger")'));
-  assert.ok(shell.includes('review: () => clickExisting("#wfLaunch")'));
+  assert.ok(shell.includes('appActionButtons(["terminal", "git", "review"])'));
+  assert.ok(shell.includes('case "terminal": openToolsTab("terminal")'));
+  assert.ok(shell.includes('case "git": clickExisting(".pocket-git-trigger")'));
+  assert.ok(shell.includes('case "review": clickExisting("#wfLaunch")'));
   assert.ok(shell.includes('data-backend="opencode"'));
   assert.ok(!shell.includes("dm-shell-dock"));
   assert.ok(!css.includes(".dm-shell-dock"));

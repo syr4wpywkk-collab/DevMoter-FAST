@@ -1,5 +1,6 @@
 import "./app-shell.css";
 import type { MainSurface } from "./surface-navigation.mjs";
+import { getAppDefinition, getAppsByIds, isAppId, type AppId } from "./app-registry";
 
 type Backend = "opencode" | "codex" | "api" | "integrations";
 type SettingsPage = "root" | "appearance" | "account" | "devices" | "vault" | "notifications" | "diagnostics" | "guide";
@@ -41,7 +42,19 @@ function openSettings(page: SettingsPage = "root") {
   window.dispatchEvent(new CustomEvent("devmoter:open-settings", { detail: { page } }));
 }
 
-function actionButton(icon: string, title: string, detail: string, action: string, badge = "") {
+function actionButton(appId: AppId) {
+  const { icon, title, shortDescription, availability } = getAppDefinition(appId);
+  return `
+    <button type="button" class="dm-shell-action" data-shell-app="${appId}" aria-label="${title}${availability === "preview" ? ", Preview" : ""}"${availability === "preview" ? " aria-disabled=\"true\"" : availability === "unavailable" ? " disabled aria-disabled=\"true\"" : ""}>
+      <span class="dm-shell-action-icon" aria-hidden="true">${icon}</span>
+      <span class="dm-shell-action-copy"><strong>${title}</strong><small>${shortDescription}</small></span>
+      ${availability === "preview" ? '<span class="dm-shell-action-badge">PREVIEW</span>' : ""}
+      <span class="dm-shell-chevron" aria-hidden="true">${availability === "available" ? "›" : "·"}</span>
+    </button>
+  `;
+}
+
+function systemActionButton(icon: string, title: string, detail: string, action: string, badge = "") {
   return `
     <button type="button" class="dm-shell-action" data-shell-action="${action}">
       <span class="dm-shell-action-icon" aria-hidden="true">${icon}</span>
@@ -50,6 +63,10 @@ function actionButton(icon: string, title: string, detail: string, action: strin
       <span class="dm-shell-chevron" aria-hidden="true">›</span>
     </button>
   `;
+}
+
+function appActionButtons(ids: readonly AppId[]) {
+  return getAppsByIds(ids).map(app => actionButton(app.id)).join("");
 }
 
 export function mountUnifiedFeatureShell(options: ShellOptions) {
@@ -90,45 +107,41 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
           </div>
 
           <h2>Quick access</h2>
-          ${actionButton("⌘", "Terminal", "Persistent project terminal / tmux sessions", "terminal")}
-          ${actionButton("⑂", "Git", "Working tree, changed files and bounded diff viewer", "git")}
-          ${actionButton("⌁", "Review", "Changes, worktrees and GitHub task workflow", "review")}
+          ${appActionButtons(["terminal", "git", "review"])}
         </section>
 
         <section>
           <h2>Agents & sessions</h2>
-          ${actionButton("◎", "Agent mode", "Plan / Ask / Debug / Review / orchestration / subagents", "agent")}
-          ${actionButton("✦", "Session Control", "Activity, queue, checkpoints, search and handoff", "sessions")}
+          ${appActionButtons(["agents", "sessions"])}
         </section>
 
         <section>
           <h2>Workspace</h2>
-          ${actionButton("▱", "Projects & GitHub", "Browse repositories, branches and registered project workspaces", "projects")}
-          ${actionButton("◇", "Developer workflows", "MCP, Skills, Rules, ACP, review, CI and verification", "dev-workflows")}
-          ${actionButton("▦", "Files & Preview", "Project files, outputs, live preview, browser automation and models", "advanced")}
-          ${actionButton("⚑", "Safety", "High-risk command scan and remembered approvals", "safety")}
-          ${actionButton("⌕", "Project Index", "Local full-text and structural project search", "index")}
+          ${appActionButtons(["projects", "developer-workflows"])}
+          ${systemActionButton("▦", "Files & Preview", "Project files, outputs, live preview, browser automation and models", "advanced")}
+          ${systemActionButton("⚑", "Safety", "High-risk command scan and remembered approvals", "safety")}
+          ${systemActionButton("⌕", "Project Index", "Local full-text and structural project search", "index")}
         </section>
 
         <section>
           <h2>Remote & automation</h2>
-          ${actionButton("◉", "Hosts", "Host registry, capabilities and connectivity", "hosts")}
-          ${actionButton("⏱", "Automation", "Schedules, triggers, runs and bounded autopilot", "automation")}
-          ${actionButton("◇", "Passkeys", "WebAuthn registration, login and host-origin state", "passkeys")}
+          ${systemActionButton("◉", "Hosts", "Host registry, capabilities and connectivity", "hosts")}
+          ${actionButton("automation")}
+          ${systemActionButton("◇", "Passkeys", "WebAuthn registration, login and host-origin state", "passkeys")}
         </section>
 
         <section>
           <h2>Security & settings</h2>
-          ${actionButton("🔐", "API Vault", "Encrypted project-bound secrets without reveal", "vault")}
-          ${actionButton("▣", "Trusted devices", "Pair, inspect and revoke browser devices", "devices")}
-          ${actionButton("●", "Notifications", "Push notification controls", "notifications")}
-          ${actionButton("◇", "Diagnostics", "Backends, network and capability health", "diagnostics")}
-          ${actionButton("⚙", "Settings", "Account, appearance, guide and all settings", "settings")}
+          ${systemActionButton("🔐", "API Vault", "Encrypted project-bound secrets without reveal", "vault")}
+          ${systemActionButton("▣", "Trusted devices", "Pair, inspect and revoke browser devices", "devices")}
+          ${systemActionButton("●", "Notifications", "Push notification controls", "notifications")}
+          ${systemActionButton("◇", "Diagnostics", "Backends, network and capability health", "diagnostics")}
+          ${systemActionButton("⚙", "Settings", "Account, appearance, guide and all settings", "settings")}
         </section>
 
         <section>
           <h2>Experimental</h2>
-          ${actionButton("⇩", "Setup Wizard", "Installer v2 foundation — currently paused for further expansion", "setup", "EXPERIMENTAL")}
+          ${systemActionButton("⇩", "Setup Wizard", "Installer v2 foundation — currently paused for further expansion", "setup", "EXPERIMENTAL")}
         </section>
       </div>
     </aside>
@@ -219,20 +232,36 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     });
   }
 
-  const openCodexSurface = (selector: string) => {
-    options.switchBackend("codex");
-    updateBackend("codex");
-    window.setTimeout(() => clickExisting(selector), 0);
+  const launchApp = (id: unknown) => {
+    if (!isAppId(id)) throw new Error("This app is not registered.");
+    const app = getAppDefinition(id);
+    if (app.availability !== "available") {
+      if (id === "browser") clickExisting(".adv-fab");
+      else notify(app.previewMessage || `${app.title} is not available yet.`);
+      return;
+    }
+    switch (id) {
+      case "chat": {
+        const lastBackend = localStorage.getItem("opencode-pocket-backend");
+        options.switchBackend(lastBackend === "codex" || lastBackend === "api" ? lastBackend : "opencode");
+        break;
+      }
+      case "projects": options.switchBackend("codex"); updateBackend("codex"); window.setTimeout(() => clickExisting("#cxProjectsNav"), 0); break;
+      case "terminal": openToolsTab("terminal"); break;
+      case "git": clickExisting(".pocket-git-trigger"); break;
+      case "review": clickExisting("#wfLaunch"); break;
+      case "agents": clickExisting("#devmoterAgentLauncher"); break;
+      case "sessions": clickExisting(".sc-fab"); break;
+      case "automation": openRemoteTab("automation"); break;
+      case "developer-workflows": options.switchBackend("codex"); updateBackend("codex"); window.setTimeout(() => clickExisting("#cxDevWorkflowsNav"), 0); break;
+      case "knowledge":
+      case "browser":
+        notify(app.previewMessage || `${app.title} is not available yet.`);
+        break;
+    }
   };
 
   const actions: Record<string, () => void> = {
-    terminal: () => openToolsTab("terminal"),
-    git: () => clickExisting(".pocket-git-trigger"),
-    review: () => clickExisting("#wfLaunch"),
-    agent: () => clickExisting("#devmoterAgentLauncher"),
-    projects: () => openCodexSurface("#cxProjectsNav"),
-    "dev-workflows": () => openCodexSurface("#cxDevWorkflowsNav"),
-    sessions: () => clickExisting(".sc-fab"),
     advanced: () => clickExisting(".adv-fab"),
     safety: () => openToolsTab("safety"),
     index: () => openToolsTab("index"),
@@ -246,6 +275,10 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     settings: () => openSettings("root"),
     setup: () => { window.location.assign("/?setup=1"); }
   };
+
+  root.querySelectorAll<HTMLButtonElement>("[data-shell-app]").forEach(button => {
+    button.addEventListener("click", () => run(() => launchApp(button.dataset.shellApp)));
+  });
 
   for (const button of root.querySelectorAll<HTMLButtonElement>("[data-shell-action]")) {
     button.addEventListener("click", () => {
@@ -263,6 +296,14 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   window.addEventListener("devmoter:backend-changed", event => {
     const next = (event as CustomEvent<{ backend?: Backend }>).detail?.backend;
     if (next) updateBackend(next);
+  });
+
+  window.addEventListener("devmoter:app-preview", event => {
+    const detail = (event as CustomEvent<{ id?: unknown; message?: unknown }>).detail;
+    if (!isAppId(detail?.id)) return;
+    const app = getAppDefinition(detail.id);
+    if (app.availability === "available") return;
+    notify(typeof detail.message === "string" ? detail.message : app.previewMessage || `${app.title} is not available yet.`);
   });
 
   window.addEventListener("devmoter:surface-changed", event => {
