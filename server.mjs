@@ -35,6 +35,8 @@ import { MULTI_API_PRESETS, assertVaultProviderDestination, createMultiApiStore,
 import { createMultiApiAttachmentStore } from "./server/multi-api-attachments.mjs";
 import { createSecretStore } from "./server/secret-store.mjs";
 import { createSecretVaultApi } from "./server/secret-vault-api.mjs";
+import { createKnowledgeStore } from "./server/knowledge-store.mjs";
+import { createKnowledgeApi } from "./server/knowledge-api.mjs";
 import { createSetupStatus } from "./server/setup/engine.mjs";
 import { executeInstallPlan, previewInstallPlan, SetupPlanError } from "./server/setup/plan.mjs";
 
@@ -195,6 +197,15 @@ const secretVaultApi = createSecretVaultApi({
   store: secretStore,
   authenticateDevice: req => systemFeatures.authenticate(req),
   resolveProject: getProjectById
+});
+const knowledgeStore = createKnowledgeStore({
+  rootDir: join(HOME_DIR, ".local", "share", "devmoter-fast", "knowledge"),
+  getProjectById
+});
+const knowledgeApi = createKnowledgeApi({
+  store: knowledgeStore,
+  authenticateDevice: req => systemFeatures.authenticate(req),
+  claimOperation
 });
 const automationApi = createAutomationApi({
   readProjectRegistry,
@@ -2610,6 +2621,10 @@ const server = http.createServer(async (req, res) => {
         !claimOperation(req, res, `${req.method}:${url.pathname}`)
       ) return;
       if (await secretVaultApi.handle(req, res, url)) return;
+    }
+
+    if (url.pathname === "/api/knowledge/notes" || url.pathname.startsWith("/api/knowledge/notes/")) {
+      if (await knowledgeApi.handle(req, res, url)) return;
     }
 
     if (req.method === "POST" && url.pathname === "/api/devices/bootstrap") {

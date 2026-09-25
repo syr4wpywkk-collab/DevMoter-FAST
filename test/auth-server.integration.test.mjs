@@ -68,6 +68,14 @@ test("server requires auth and exact Origin for mutations", async () => {
     assert.equal(unauthenticated.headers.get("cache-control"), "no-store");
     const unauthenticatedPayload = await unauthenticated.json();
     assert.equal(unauthenticatedPayload.login, "/login.html");
+    const unauthenticatedKnowledge = await fetch(`${origin}/api/knowledge/notes`);
+    assert.equal(unauthenticatedKnowledge.status, 401);
+    const knowledgeCrossOrigin = await fetch(`${origin}/api/knowledge/notes`, {
+      method: "POST",
+      headers: { authorization, origin: "https://evil.example", "content-type": "application/json" },
+      body: JSON.stringify({ title: "blocked" })
+    });
+    assert.equal(knowledgeCrossOrigin.status, 403);
 
     const rootRedirect = await fetch(origin + "/", { redirect: "manual" });
     assert.equal(rootRedirect.status, 302);
@@ -207,6 +215,22 @@ test("server requires auth and exact Origin for mutations", async () => {
     });
     assert.equal(terminalSessions.status, 200);
     assert.deepEqual((await terminalSessions.json()).sessions, []);
+    const knowledgeUntrusted = await fetch(`${origin}/api/knowledge/notes`, { headers: { authorization } });
+    assert.equal(knowledgeUntrusted.status, 401);
+    const knowledgeCreated = await fetch(`${origin}/api/knowledge/notes`, {
+      method: "POST",
+      headers: { authorization, cookie: deviceCookie, origin, "content-type": "application/json", "x-pocket-operation-id": "knowledge-create-test" },
+      body: JSON.stringify({ title: "Auth boundary", content: "private note" })
+    });
+    assert.equal(knowledgeCreated.status, 201);
+    const knowledgeNote = (await knowledgeCreated.json()).note;
+    const knowledgeRead = await fetch(`${origin}/api/knowledge/notes/${encodeURIComponent(knowledgeNote.id)}`, { headers: { authorization, cookie: deviceCookie } });
+    assert.equal(knowledgeRead.status, 200);
+    assert.equal((await knowledgeRead.json()).note.content, "private note");
+    const knowledgeDeleted = await fetch(`${origin}/api/knowledge/notes/${encodeURIComponent(knowledgeNote.id)}`, {
+      method: "DELETE", headers: { authorization, cookie: deviceCookie, origin, "x-pocket-operation-id": "knowledge-delete-test" }
+    });
+    assert.equal(knowledgeDeleted.status, 200);
 
     const terminalClaimMissingOrigin = await fetch(`${origin}/api/terminal/sessions/${"a".repeat(36)}/claim`, {
       method: "POST",
