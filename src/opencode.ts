@@ -1929,6 +1929,18 @@ export function mountOpenCodeRemote(
   }
 
   async function sendMessage() {
+    if (submitInFlight) return;
+    submitInFlight = true;
+    send.disabled = true;
+    try {
+      await sendMessageUnlocked();
+    } finally {
+      submitInFlight = false;
+      send.disabled = !online || executionState === "reconnecting";
+    }
+  }
+
+  async function sendMessageUnlocked() {
     const text = promptInput.value.trim();
     if (!text && !pendingAttachments.length) return;
 
