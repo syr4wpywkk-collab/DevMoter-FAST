@@ -46,6 +46,8 @@ test("Home is a first-class surface and sidebar entry without replacing existing
   assert.ok(home.includes('data-home-continue'));
   assert.ok(shell.includes('data-home-nav'));
   assert.ok(shell.includes('homeLink.setAttribute("aria-current", "page")'));
+  assert.ok(shell.includes('button.classList.toggle("active", active)'));
+  assert.ok(shell.includes('button.setAttribute("aria-pressed", String(active))'));
   assert.ok(shell.includes('options.openHome()'));
   assert.ok(css.includes("env(safe-area-inset-top)"));
   assert.ok(css.includes("env(safe-area-inset-bottom)"));
