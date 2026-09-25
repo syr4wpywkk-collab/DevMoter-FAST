@@ -184,7 +184,9 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     if (surface === "home") homeLink.setAttribute("aria-current", "page");
     else homeLink.removeAttribute("aria-current");
     for (const button of root.querySelectorAll<HTMLButtonElement>(".dm-shell-ai-grid [data-backend]")) {
-      button.setAttribute("aria-pressed", String(button.dataset.backend === surface));
+      const active = button.dataset.backend === surface;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
     }
   }
 
