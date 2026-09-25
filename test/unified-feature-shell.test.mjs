@@ -44,7 +44,7 @@ test("settings deep-link event accepts a target page", async () => {
 test("main mounts unified shell only after the terminal control center exists", async () => {
   const main = await source("src/main.ts");
   const control = main.indexOf("const controlCenterReady");
-  const shell = main.indexOf("mountUnifiedFeatureShell");
+  const shell = main.lastIndexOf("mountUnifiedFeatureShell");
   assert.ok(control >= 0);
   assert.ok(shell > control);
   assert.ok(main.includes("controlCenterReady.then"));
