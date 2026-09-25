@@ -26,6 +26,7 @@ export class HostAgentRuntime {
   private fleets = new Map<string, FleetSnapshot>();
   private listeners = new Set<(run: SubagentRun) => void>();
   private events: EventSource | null = null;
+  private reconnectTimer: number | null = null;
   private refreshInFlight: Promise<AgentState> | null = null;
 
   constructor() {
@@ -73,6 +74,12 @@ export class HostAgentRuntime {
     source.onerror = () => {
       source.close();
       if (this.events === source) this.events = null;
+      if (this.reconnectTimer !== null || !navigator.onLine) return;
+      this.reconnectTimer = window.setTimeout(() => {
+        this.reconnectTimer = null;
+        this.connectEvents();
+        void this.refresh().catch(() => {});
+      }, 1500);
     };
   }
 
@@ -183,6 +190,10 @@ export class HostAgentRuntime {
   dispose() {
     this.events?.close();
     this.events = null;
+    if (this.reconnectTimer !== null) {
+      window.clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     this.listeners.clear();
   }
 }
