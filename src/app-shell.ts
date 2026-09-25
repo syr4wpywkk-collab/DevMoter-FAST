@@ -88,6 +88,8 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
 
         <section>
           <h2>Workspace</h2>
+          ${actionButton("▱", "Projects & GitHub", "Browse repositories, branches and registered project workspaces", "projects")}
+          ${actionButton("◇", "Developer workflows", "MCP, Skills, Rules, ACP, review, CI and verification", "dev-workflows")}
           ${actionButton("▦", "Files & Preview", "Project files, outputs, live preview, browser automation and models", "advanced")}
           ${actionButton("⚑", "Safety", "High-risk command scan and remembered approvals", "safety")}
           ${actionButton("⌕", "Project Index", "Local full-text and structural project search", "index")}
@@ -198,8 +200,16 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     });
   }
 
+  const openCodexSurface = (selector: string) => {
+    options.switchBackend("codex");
+    updateBackend("codex");
+    window.setTimeout(() => clickExisting(selector), 0);
+  };
+
   const actions: Record<string, () => void> = {
     agent: () => clickExisting("#devmoterAgentLauncher"),
+    projects: () => openCodexSurface("#cxProjectsNav"),
+    "dev-workflows": () => openCodexSurface("#cxDevWorkflowsNav"),
     sessions: () => clickExisting(".sc-fab"),
     advanced: () => clickExisting(".adv-fab"),
     safety: () => openToolsTab("safety"),
