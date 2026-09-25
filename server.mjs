@@ -2639,7 +2639,13 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === "/api/knowledge/notes" || url.pathname.startsWith("/api/knowledge/notes/")) {
       if (await knowledgeApi.handle(req, res, url)) return;
-    if (await agentRunApi.handle(req, res, url)) return;
+    }
+
+    if (
+      url.pathname.startsWith("/api/agent-runs") ||
+      url.pathname.startsWith("/api/agent-fleets")
+    ) {
+      if (await agentRunApi.handle(req, res, url)) return;
     }
 
     if (req.method === "POST" && url.pathname === "/api/devices/bootstrap") {
