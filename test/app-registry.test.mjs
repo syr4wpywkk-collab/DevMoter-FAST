@@ -56,17 +56,20 @@ test("Sidebar app-like labels come from Registry and launches are fixed allowlis
   assert.ok(!shell.includes('projects: () =>'));
 });
 
-test("Existing Chat, Projects, Home active-state and History API contracts remain intact", async () => {
-  const [main, navigationTests, shellTests] = await Promise.all([
+test("Home delegates all available App launches to the fixed shell allowlist", async () => {
+  const [main, shell, navigationTests, shellTests] = await Promise.all([
     readFile(new URL("../src/main.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/app-shell.ts", import.meta.url), "utf8"),
     readFile(new URL("surface-navigation.test.mjs", import.meta.url), "utf8"),
     readFile(new URL("unified-feature-shell.test.mjs", import.meta.url), "utf8")
   ]);
-  assert.ok(main.includes('case "chat":'));
-  assert.ok(main.includes('lastBackend === "codex" || lastBackend === "api" ? lastBackend : "opencode"'));
-  assert.ok(main.includes('case "projects":'));
-  assert.ok(main.includes('setBackend("codex")'));
-  assert.ok(main.includes('"#cxProjectsNav"'));
+  assert.ok(main.includes('new CustomEvent("devmoter:launch-app", { detail: { id } })'));
+  assert.ok(shell.includes('window.addEventListener("devmoter:launch-app"'));
+  for (const launched of [
+    'case "chat":', 'case "projects":', 'case "terminal":', 'case "git":',
+    'case "review":', 'case "agents":', 'case "sessions":',
+    'case "automation":', 'case "developer-workflows":'
+  ]) assert.ok(shell.includes(launched), launched);
   assert.ok(shellTests.includes('homeLink.setAttribute("aria-current", "page")'));
   assert.ok(navigationTests.includes("Home to surface to Home updates Back and Forward"));
 });
