@@ -9,7 +9,7 @@ async function source(path) {
 test("unified feature shell exposes the major implemented surfaces", async () => {
   const [shell, registry] = await Promise.all([source("src/app-shell.ts"), source("src/app-registry.ts")]);
   for (const label of [
-    "getAppDefinition(appId)", "Terminal", "Git", "Review", "Agents", "Sessions / Activity",
+    "getAppDefinition(appId)", "Mission Control", "Terminal", "Git", "Review", "Agents", "Sessions / Activity",
     "Projects", "Developer Workflows", "Files & Preview",
     "Safety", "Project Index", "Hosts", "Automation", "Passkeys",
     "API Vault", "Trusted devices", "Notifications", "Diagnostics",
@@ -107,7 +107,8 @@ test("mobile navigation is sidebar-first and no bottom dock remains", async () =
   ]);
   assert.ok(shell.includes("dm-shell-menu-trigger"));
   assert.ok(shell.includes("dm-shell-sidebar"));
-  assert.ok(shell.includes('appActionButtons(["terminal", "git", "review"])'));
+  assert.ok(shell.includes('appActionButtons(["mission-control", "terminal", "git", "review"])'));
+  assert.ok(shell.includes('case "mission-control": window.dispatchEvent(new CustomEvent("devmoter:open-mission-control"))'));
   assert.ok(shell.includes('case "terminal": openToolsTab("terminal")'));
   assert.ok(shell.includes('case "git": clickExisting(".pocket-git-trigger")'));
   assert.ok(shell.includes('case "review": clickExisting("#wfLaunch")'));
