@@ -2611,8 +2611,9 @@ body.opencode-mode #app {
   z-index: 80;
   top: 0;
   left: 0;
-  bottom: 0;
+  bottom: auto;
   width: min(88vw, 360px);
+  height: var(--ocx-history-viewport-height, 100dvh);
   padding:
     calc(11px + env(safe-area-inset-top))
     12px
@@ -2640,6 +2641,28 @@ body.opencode-mode #app {
 }
 
 .ocx-sidebar-head > div {
+  min-width: 0;
+}
+
+.ocx-history-identity {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+}
+
+.ocx-history-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #2e2018;
+  color: #e6aa84;
+}
+
+.ocx-history-copy {
   min-width: 0;
   display: grid;
   gap: 2px;
@@ -2766,7 +2789,8 @@ body.opencode-mode #app {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--oc-line-soft);
 }
 
 .ocx-side-label {
@@ -2779,12 +2803,15 @@ body.opencode-mode #app {
 .ocx-sessions {
   min-height: 0;
   overflow-y: auto;
+  padding-right: 2px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .ocx-session-row {
   width: 100%;
-  min-height: 47px;
-  padding: 6px 7px;
+  min-height: 54px;
+  padding: 8px 9px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 18px;
   align-items: center;
@@ -2841,6 +2868,7 @@ body.opencode-mode #app {
 }
 
 .ocx-sidebar-foot {
+  flex: 0 0 auto;
   padding-top: 9px;
   display: flex;
   align-items: center;
@@ -3650,7 +3678,7 @@ body.integrations-mode {
 /* Issues #41-#50: session controls + read-only project Git/diff tools */
 .ocx-session-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   margin: 8px 0 10px;
 }
