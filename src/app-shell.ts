@@ -299,6 +299,11 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     if (next) updateBackend(next);
   });
 
+  window.addEventListener("devmoter:launch-app", event => {
+    const detail = (event as CustomEvent<{ id?: unknown }>).detail;
+    run(() => launchApp(detail?.id));
+  });
+
   window.addEventListener("devmoter:app-preview", event => {
     const detail = (event as CustomEvent<{ id?: unknown; message?: unknown }>).detail;
     if (!isAppId(detail?.id)) return;
