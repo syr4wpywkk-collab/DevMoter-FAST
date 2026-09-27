@@ -134,38 +134,26 @@ type PendingQuestion = {
   questions: QuestionInfo[];
 };
 
-type OpenCodeRemoteOptions = {
-  onCodex?: () => void;
-  onApi?: () => void;
-  onIntegrations?: () => void;
-};
-
 export type OpenCodeController = {
   setOnline(online: boolean): void;
   refresh(): Promise<void>;
 };
 
 export function mountOpenCodeRemote(
-  root: HTMLElement,
-  options: OpenCodeRemoteOptions = {}
+  root: HTMLElement
 ): OpenCodeController {
   root.innerHTML = `
     <div class="ocx-app">
       <div id="ocxScrim" class="ocx-scrim hidden"></div>
 
       <aside id="ocxSidebar" class="ocx-sidebar" aria-hidden="true">
-        <div class="ocx-sidebar-head dm-agent-head">
-          <div class="dm-agent-switch-shell">
-            <button id="ocxAgentSwitchButton" class="dm-agent-switch-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
-              <span class="dm-agent-switch-icon">◈</span>
-              <span class="dm-agent-switch-copy"><strong>OpenCode</strong><small id="ocxSidebarDirectory">workspace</small></span>
-              <span class="dm-agent-switch-chevron">⌄</span>
-            </button>
-            <div id="ocxAgentSwitchMenu" class="dm-agent-switch-menu hidden" role="listbox" aria-label="エージェントを選択">
-              <button id="ocxBackendOpenCode" class="active" type="button" data-agent="opencode"><span>◈</span><span><strong>OpenCode</strong><small>エージェント実行</small></span><span>✓</span></button>
-              <button id="ocxBackendCodex" type="button" data-agent="codex"><span>⌘</span><span><strong>Codex</strong><small>実装・修正</small></span><span></span></button>
-              <button id="ocxBackendApi" type="button" data-agent="api"><span>✦</span><span><strong>API Chat</strong><small>マルチプロバイダー</small></span><span></span></button>
-            </div>
+        <div class="ocx-sidebar-head">
+          <div class="ocx-history-identity">
+            <span class="ocx-history-icon" aria-hidden="true">◈</span>
+            <span class="ocx-history-copy">
+              <strong>OpenCode</strong>
+              <small id="ocxSidebarDirectory">workspace</small>
+            </span>
           </div>
           <button id="ocxSidebarClose" class="ocx-icon" type="button" aria-label="閉じる">×</button>
         </div>
@@ -177,36 +165,24 @@ export function mountOpenCodeRemote(
 
         <label class="ocx-search">
           <span>⌕</span>
-          <input id="ocxSessionSearch" type="search" placeholder="Search sessions" />
+          <input id="ocxSessionSearch" type="search" placeholder="Search conversation history" />
         </label>
 
         <div class="ocx-session-toolbar">
           <label>
-            <span>Sort</span>
-            <select id="ocxSessionSort" aria-label="Sort sessions">
+            <span>Sort history</span>
+            <select id="ocxSessionSort" aria-label="Sort conversation history">
               <option value="recent">Recent activity</option>
               <option value="created">Created time</option>
               <option value="messages">Message count</option>
             </select>
           </label>
-          <button id="ocxSessionToolsNav" type="button">Session tools</button>
         </div>
 
         <div id="ocxAttention" class="ocx-attention hidden" aria-label="Session attention overview"></div>
 
-        <nav class="ocx-side-nav">
-          <button id="ocxAgentsNav" type="button"><span>◈</span><span>Agents</span></button>
-          <button id="ocxCommandsNav" type="button"><span>／</span><span>Commands</span></button>
-          <button id="ocxSkillsNav" type="button"><span>✦</span><span>Skills</span></button>
-          <button id="ocxModelsNav" type="button"><span>◇</span><span>Models</span></button>
-          <button id="ocxCodexNav" type="button"><span>⌘</span><span>Codex UI</span></button>
-          <button id="ocxApiNav" type="button"><span>✦</span><span>API Chat</span></button>
-          <button id="ocxIntegrationsNav" type="button"><span>⌁</span><span>Integrations</span></button>
-          <button id="ocxSettingsNav" type="button"><span>⚙</span><span>Settings</span></button>
-        </nav>
-
         <div class="ocx-side-section">
-          <div class="ocx-side-label">SESSIONS</div>
+          <div class="ocx-side-label">CONVERSATION HISTORY</div>
           <div id="ocxSessions" class="ocx-sessions">
             <div class="ocx-empty">Connecting…</div>
           </div>
@@ -343,31 +319,28 @@ export function mountOpenCodeRemote(
     </div>
   `;
 
+  const syncHistoryViewportHeight = () => {
+    const height = window.visualViewport?.height ?? window.innerHeight;
+    if (!Number.isFinite(height) || height <= 0) return;
+    root.style.setProperty("--ocx-history-viewport-height", `${Math.max(1, Math.floor(height))}px`);
+  };
+  syncHistoryViewportHeight();
+  window.visualViewport?.addEventListener("resize", syncHistoryViewportHeight, { passive: true });
+  window.visualViewport?.addEventListener("scroll", syncHistoryViewportHeight, { passive: true });
+  window.addEventListener("resize", syncHistoryViewportHeight, { passive: true });
+  window.addEventListener("orientationchange", syncHistoryViewportHeight);
+
   const sidebar = root.querySelector<HTMLElement>("#ocxSidebar")!;
   const scrim = root.querySelector<HTMLElement>("#ocxScrim")!;
   const sidebarDirectory = root.querySelector<HTMLElement>("#ocxSidebarDirectory")!;
   const sidebarClose = root.querySelector<HTMLButtonElement>("#ocxSidebarClose")!;
   const menu = root.querySelector<HTMLButtonElement>("#ocxMenu")!;
-  const agentSwitchButton = root.querySelector<HTMLButtonElement>("#ocxAgentSwitchButton")!;
-  const agentSwitchMenu = root.querySelector<HTMLDivElement>("#ocxAgentSwitchMenu")!;
-  const backendOpenCode = root.querySelector<HTMLButtonElement>("#ocxBackendOpenCode")!;
-  const backendCodex = root.querySelector<HTMLButtonElement>("#ocxBackendCodex")!;
-  const backendApi = root.querySelector<HTMLButtonElement>("#ocxBackendApi")!;
   const newSessionSide = root.querySelector<HTMLButtonElement>("#ocxNewSessionSide")!;
   const newSessionTop = root.querySelector<HTMLButtonElement>("#ocxNewSessionTop")!;
   const sessionSearch = root.querySelector<HTMLInputElement>("#ocxSessionSearch")!;
   const sessionsEl = root.querySelector<HTMLDivElement>("#ocxSessions")!;
   const sessionSort = root.querySelector<HTMLSelectElement>("#ocxSessionSort")!;
-  const sessionToolsNav = root.querySelector<HTMLButtonElement>("#ocxSessionToolsNav")!;
   const attention = root.querySelector<HTMLDivElement>("#ocxAttention")!;
-  const agentsNav = root.querySelector<HTMLButtonElement>("#ocxAgentsNav")!;
-  const commandsNav = root.querySelector<HTMLButtonElement>("#ocxCommandsNav")!;
-  const skillsNav = root.querySelector<HTMLButtonElement>("#ocxSkillsNav")!;
-  const modelsNav = root.querySelector<HTMLButtonElement>("#ocxModelsNav")!;
-  const codexNav = root.querySelector<HTMLButtonElement>("#ocxCodexNav")!;
-  const apiNav = root.querySelector<HTMLButtonElement>("#ocxApiNav")!;
-  const integrationsNav = root.querySelector<HTMLButtonElement>("#ocxIntegrationsNav")!;
-  const settingsNav = root.querySelector<HTMLButtonElement>("#ocxSettingsNav")!;
   const refreshButton = root.querySelector<HTMLButtonElement>("#ocxRefresh")!;
   const sideStatus = root.querySelector<HTMLElement>("#ocxSideStatus")!;
   const sessionTitleButton = root.querySelector<HTMLButtonElement>("#ocxSessionTitleButton")!;
@@ -514,8 +487,6 @@ export function mountOpenCodeRemote(
   }
 
   function closeSidebar() {
-    agentSwitchMenu.classList.add("hidden");
-    agentSwitchButton.setAttribute("aria-expanded", "false");
     sidebar.classList.remove("open");
     sidebar.setAttribute("aria-hidden", "true");
     scrim.classList.add("hidden");
@@ -897,10 +868,19 @@ export function mountOpenCodeRemote(
         session.messagesCount ??
         session.message_count ??
         0;
+      const historyTime = Number(session.time?.updated ?? session.time?.created ?? 0);
+      const historyLabel = historyTime
+        ? new Intl.DateTimeFormat(undefined, {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          }).format(new Date(historyTime))
+        : "";
       meta.textContent = [
         stateLabel(state),
-        session.agent || "session",
-        count ? String(count) + " msgs" : ""
+        count ? String(count) + " msgs" : "",
+        historyLabel
       ].filter(Boolean).join(" · ");
 
       copy.append(title, meta);
@@ -3497,14 +3477,6 @@ export function mountOpenCodeRemote(
   });
   window.addEventListener("pageshow", () => void resumeFromBackground());
   window.addEventListener("online", () => void resumeFromBackground());
-  agentSwitchButton.addEventListener("click", () => {
-    const open = agentSwitchMenu.classList.toggle("hidden") === false;
-    agentSwitchButton.setAttribute("aria-expanded", String(open));
-  });
-  backendOpenCode.addEventListener("click", () => {
-    agentSwitchMenu.classList.add("hidden");
-    agentSwitchButton.setAttribute("aria-expanded", "false");
-  });
   sidebarClose.addEventListener("click", closeSidebar);
   scrim.addEventListener("click", closeSidebar);
   sessionSearch.addEventListener("input", renderSessions);
@@ -3513,52 +3485,9 @@ export function mountOpenCodeRemote(
     localStorage.setItem("opencode-pocket-session-sort", sessionSortMode);
     renderSessions();
   });
-  sessionToolsNav.addEventListener("click", showSessionTools);
-
-  backendCodex.addEventListener("click", () => {
-    closeSidebar();
-    options.onCodex?.();
-  });
-  backendApi.addEventListener("click", () => {
-    closeSidebar();
-    options.onApi?.();
-  });
 
   newSessionSide.addEventListener("click", () => void createSession());
   newSessionTop.addEventListener("click", () => void createSession());
-
-  agentsNav.addEventListener("click", () => {
-    closeSidebar();
-    void showRuntimePicker();
-  });
-  commandsNav.addEventListener("click", () => {
-    closeSidebar();
-    showCommands();
-  });
-  skillsNav.addEventListener("click", () => {
-    closeSidebar();
-    showSkills();
-  });
-  modelsNav.addEventListener("click", () => {
-    closeSidebar();
-    void showRuntimePicker();
-  });
-  codexNav.addEventListener("click", () => {
-    closeSidebar();
-    options.onCodex?.();
-  });
-  apiNav.addEventListener("click", () => {
-    closeSidebar();
-    options.onApi?.();
-  });
-  integrationsNav.addEventListener("click", () => {
-    closeSidebar();
-    options.onIntegrations?.();
-  });
-  settingsNav.addEventListener("click", () => {
-    closeSidebar();
-    window.dispatchEvent(new CustomEvent("devmoter:open-settings"));
-  });
   refreshButton.addEventListener("click", () => void refresh());
 
   sessionTitleButton.addEventListener("click", showSessionDetails);
