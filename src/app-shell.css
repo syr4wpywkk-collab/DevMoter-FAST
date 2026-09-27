@@ -203,6 +203,10 @@
 .dm-shell-action:only-of-type { border-radius: 14px; }
 .dm-shell-action:hover,
 .dm-shell-action:focus-visible { background: rgba(255,255,255,.075); outline: none; }
+.dm-shell-action[aria-disabled="true"] { color: #b9ac7b; }
+.dm-shell-action[aria-disabled="true"] .dm-shell-action-badge { color: #dac57d; }
+.dm-shell-action:disabled { cursor: not-allowed; opacity: .65; }
+.dm-shell-action:disabled:hover { background: rgba(255,255,255,.025); }
 .dm-shell-action-icon {
   width: 36px;
   height: 36px;
