@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const EXPECTED_APPS = [
-  "chat", "projects", "knowledge", "terminal", "git", "review", "agents",
+  "chat", "projects", "mission-control", "knowledge", "terminal", "git", "review", "agents",
   "sessions", "browser", "automation", "developer-workflows"
 ];
 
@@ -66,7 +66,7 @@ test("Home delegates all available App launches to the fixed shell allowlist", a
   assert.ok(main.includes('new CustomEvent("devmoter:launch-app", { detail: { id } })'));
   assert.ok(shell.includes('window.addEventListener("devmoter:launch-app"'));
   for (const launched of [
-    'case "chat":', 'case "projects":', 'case "terminal":', 'case "git":',
+    'case "chat":', 'case "projects":', 'case "mission-control":', 'case "terminal":', 'case "git":',
     'case "review":', 'case "agents":', 'case "sessions":',
     'case "automation":', 'case "developer-workflows":'
   ]) assert.ok(shell.includes(launched), launched);
