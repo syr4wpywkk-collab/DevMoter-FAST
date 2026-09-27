@@ -17,7 +17,6 @@ import { mountSettingsPanel } from "./settings";
 import { mountSetupWizard } from "./setup-wizard";
 import { mountUnifiedFeatureShell } from "./app-shell";
 import { mountHomeSurface } from "./home";
-import { getAppDefinition, isAppId, type AppId } from "./app-registry";
 import { createSurfaceNavigation, type MainSurface } from "./surface-navigation.mjs";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -134,21 +133,8 @@ mountHomeSurface(homeView, {
   onPreviewApp: (id, message) => {
     window.dispatchEvent(new CustomEvent("devmoter:app-preview", { detail: { id, message } }));
   },
-  onLaunchApp: (id: AppId) => {
-    if (!isAppId(id)) return;
-    switch (id) {
-      case "chat": {
-        const lastBackend = localStorage.getItem("opencode-pocket-backend");
-        setBackend(lastBackend === "codex" || lastBackend === "api" ? lastBackend : "opencode");
-        break;
-      }
-      case "projects":
-        setBackend("codex");
-        window.setTimeout(() => document.querySelector<HTMLElement>("#cxProjectsNav")?.click(), 0);
-        break;
-      default:
-        window.dispatchEvent(new CustomEvent("devmoter:app-preview", { detail: { id, message: getAppDefinition(id).previewMessage || `${getAppDefinition(id).title} is not available yet.` } }));
-    }
+  onLaunchApp: id => {
+    window.dispatchEvent(new CustomEvent("devmoter:launch-app", { detail: { id } }));
   }
 });
 
@@ -184,19 +170,17 @@ mountAgentConsole();
 mountSessionControl({ switchBackend: backend => setBackend(backend) });
 mountWorkspaceTools();
 mountAdvancedTools();
-const controlCenterReady = import("./control-center").then(({ mountControlCenter }) => mountControlCenter());
+void import("./control-center").then(({ mountControlCenter }) => mountControlCenter());
 mountTaskWorkflow(workflowMount);
 mountSystemPanel();
 mountRemoteControlCenter();
 mountSettingsPanel();
 startWorkspaceControl();
-void controlCenterReady.then(() => {
-  mountUnifiedFeatureShell({
-    switchBackend: backend => setBackend(backend),
-    initialBackend: activeBackend,
-    initialSurface: surfaceNavigation?.current() || "home",
-    openHome: () => surfaceNavigation?.navigate("home")
-  });
+mountUnifiedFeatureShell({
+  switchBackend: backend => setBackend(backend),
+  initialBackend: activeBackend,
+  initialSurface: surfaceNavigation?.current() || "home",
+  openHome: () => surfaceNavigation?.navigate("home")
 });
 
 let healthCheckInFlight = false;
