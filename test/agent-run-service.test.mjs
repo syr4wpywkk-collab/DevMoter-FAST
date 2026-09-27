@@ -76,12 +76,12 @@ test("host agent service owns run lifecycle and persists authoritative capabilit
     method: "turn/completed",
     params: { threadId: run.sessionId, turn: { id: run.turnId, status: "completed" } }
   });
-  await new Promise(resolve => setTimeout(resolve, 10));
 
   const completed = await service.getRun(run.id);
   assert.equal(completed.output, "hello");
   assert.equal(completed.state, "completed");
 
+  await service.flushPersistence();
   const persisted = JSON.parse(await readFile(filePath, "utf8"));
   const stored = persisted.runs.find(item => item.id === run.id);
   assert.deepEqual(stored.capabilityPolicy.allow, ["read", "git"]);
