@@ -151,6 +151,17 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
 
   document.body.appendChild(root);
 
+  const syncVisualViewportHeight = () => {
+    const height = window.visualViewport?.height ?? window.innerHeight;
+    if (!Number.isFinite(height) || height <= 0) return;
+    root.style.setProperty("--dm-shell-viewport-height", `${Math.max(1, Math.floor(height))}px`);
+  };
+  syncVisualViewportHeight();
+  window.visualViewport?.addEventListener("resize", syncVisualViewportHeight, { passive: true });
+  window.visualViewport?.addEventListener("scroll", syncVisualViewportHeight, { passive: true });
+  window.addEventListener("resize", syncVisualViewportHeight, { passive: true });
+  window.addEventListener("orientationchange", syncVisualViewportHeight);
+
   const trigger = root.querySelector<HTMLButtonElement>(".dm-shell-menu-trigger")!;
   const sidebar = root.querySelector<HTMLElement>(".dm-shell-sidebar")!;
   const scrim = root.querySelector<HTMLElement>("[data-shell-scrim]")!;
