@@ -17,6 +17,7 @@ import { mountSettingsPanel } from "./settings";
 import { mountSetupWizard } from "./setup-wizard";
 import { mountUnifiedFeatureShell } from "./app-shell";
 import { mountHomeSurface } from "./home";
+import { mountMissionControl } from "./mission-control";
 import { createSurfaceNavigation, type MainSurface } from "./surface-navigation.mjs";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -168,6 +169,7 @@ const integrationsRemote = mountIntegrations(integrationsMount, {
 });
 
 startI18n();
+mountMissionControl();
 mountAgentConsole();
 mountSessionControl({ switchBackend: backend => setBackend(backend) });
 mountWorkspaceTools();

@@ -107,7 +107,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
           </div>
 
           <h2>Quick access</h2>
-          ${appActionButtons(["terminal", "git", "review"])}
+          ${appActionButtons(["mission-control", "terminal", "git", "review"])}
         </section>
 
         <section>
@@ -248,6 +248,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
         break;
       }
       case "projects": options.switchBackend("codex"); updateBackend("codex"); window.setTimeout(() => clickExisting("#cxProjectsNav"), 0); break;
+      case "mission-control": window.dispatchEvent(new CustomEvent("devmoter:open-mission-control")); break;
       case "terminal": openToolsTab("terminal"); break;
       case "git": clickExisting(".pocket-git-trigger"); break;
       case "review": clickExisting("#wfLaunch"); break;

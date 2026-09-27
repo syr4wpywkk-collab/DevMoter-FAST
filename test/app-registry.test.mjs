@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const EXPECTED_APPS = [
-  "chat", "projects", "knowledge", "terminal", "git", "review", "agents",
+  "chat", "projects", "mission-control", "knowledge", "terminal", "git", "review", "agents",
   "sessions", "browser", "automation", "developer-workflows"
 ];
 
@@ -47,7 +47,7 @@ test("Sidebar app-like labels come from Registry and launches are fixed allowlis
   const shell = await source("app-shell.ts");
   assert.ok(shell.includes("getAppDefinition(appId)"));
   assert.ok(shell.includes('data-shell-app="${appId}"'));
-  assert.ok(shell.includes("appActionButtons([\"terminal\", \"git\", \"review\"] )") || shell.includes('appActionButtons(["terminal", "git", "review"])'));
+  assert.ok(shell.includes('appActionButtons(["mission-control", "terminal", "git", "review"])'));
   assert.ok(shell.includes('if (!isAppId(id)) throw new Error("This app is not registered.")'));
   assert.ok(shell.includes('case "terminal": openToolsTab("terminal")'));
   assert.ok(shell.includes('case "git": clickExisting(".pocket-git-trigger")'));
@@ -66,7 +66,7 @@ test("Home delegates all available App launches to the fixed shell allowlist", a
   assert.ok(main.includes('new CustomEvent("devmoter:launch-app", { detail: { id } })'));
   assert.ok(shell.includes('window.addEventListener("devmoter:launch-app"'));
   for (const launched of [
-    'case "chat":', 'case "projects":', 'case "terminal":', 'case "git":',
+    'case "chat":', 'case "projects":', 'case "mission-control":', 'case "terminal":', 'case "git":',
     'case "review":', 'case "agents":', 'case "sessions":',
     'case "automation":', 'case "developer-workflows":'
   ]) assert.ok(shell.includes(launched), launched);

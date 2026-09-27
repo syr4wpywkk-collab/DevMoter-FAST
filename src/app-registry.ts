@@ -1,6 +1,7 @@
 export const APP_IDS = [
   "chat",
   "projects",
+  "mission-control",
   "knowledge",
   "terminal",
   "git",
@@ -31,6 +32,7 @@ export type AppDefinition = Readonly<{
 const APP_DEFINITIONS: AppDefinition[] = [
   { id: "chat", title: "Chat", shortDescription: "Open your AI workspace", icon: "✳", category: "Workspace", availability: "available", launchKind: "surface" },
   { id: "projects", title: "Projects", shortDescription: "Browse registered workspaces", icon: "▱", category: "Workspace", availability: "available", launchKind: "feature" },
+  { id: "mission-control", title: "Mission Control", shortDescription: "Agents, sessions, host and projects at a glance", icon: "◫", category: "Activity", availability: "available", launchKind: "feature" },
   { id: "knowledge", title: "Knowledge", shortDescription: "Notes and project knowledge", icon: "▤", category: "Workspace", availability: "preview", launchKind: "placeholder", previewMessage: "Knowledge is not available yet. Its app shell is planned separately." },
   { id: "terminal", title: "Terminal", shortDescription: "Persistent project terminal sessions", icon: "⌘", category: "Development", availability: "available", launchKind: "feature" },
   { id: "git", title: "Git", shortDescription: "Working tree and bounded diff viewer", icon: "⑂", category: "Development", availability: "available", launchKind: "feature" },
