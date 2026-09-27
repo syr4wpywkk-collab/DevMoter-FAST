@@ -47,7 +47,7 @@ test("Sidebar app-like labels come from Registry and launches are fixed allowlis
   const shell = await source("app-shell.ts");
   assert.ok(shell.includes("getAppDefinition(appId)"));
   assert.ok(shell.includes('data-shell-app="${appId}"'));
-  assert.ok(shell.includes("appActionButtons([\"terminal\", \"git\", \"review\"] )") || shell.includes('appActionButtons(["terminal", "git", "review"])'));
+  assert.ok(shell.includes('appActionButtons(["mission-control", "terminal", "git", "review"])'));
   assert.ok(shell.includes('if (!isAppId(id)) throw new Error("This app is not registered.")'));
   assert.ok(shell.includes('case "terminal": openToolsTab("terminal")'));
   assert.ok(shell.includes('case "git": clickExisting(".pocket-git-trigger")'));
