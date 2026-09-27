@@ -137,9 +137,18 @@ export function createAgentRunService({
     return persistChain;
   }
 
-  function schedulePersistAndBroadcast() {
+  function schedulePersistAndBroadcast(run) {
     if (disposed) return;
     events.emit("state", publicState());
+
+    // Terminal transitions are durability boundaries. Keep noisy streaming
+    // updates debounced, but do not leave a completed/failed/cancelled run
+    // represented as active on disk if the host exits immediately after.
+    if (run && TERMINAL_STATES.has(run.state)) {
+      void persistNow();
+      return;
+    }
+
     if (persistTimer) return;
     persistTimer = setTimeout(() => {
       persistTimer = null;
@@ -329,6 +338,10 @@ export function createAgentRunService({
       });
     },
 
+    flushPersistence() {
+      return withReady(() => persistNow());
+    },
+
     subscribe(listener) {
       events.on("state", listener);
       return () => events.off("state", listener);
@@ -336,11 +349,7 @@ export function createAgentRunService({
 
     async dispose() {
       disposed = true;
-      if (persistTimer) {
-        clearTimeout(persistTimer);
-        persistTimer = null;
-        await persistNow();
-      }
+      await persistNow();
       await persistChain.catch(() => {});
       codex.off("notification", onNotification);
       codex.off("server-request", onServerRequest);
