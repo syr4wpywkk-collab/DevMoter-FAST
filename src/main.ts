@@ -134,7 +134,9 @@ mountHomeSurface(homeView, {
     window.dispatchEvent(new CustomEvent("devmoter:app-preview", { detail: { id, message } }));
   },
   onLaunchApp: id => {
-    window.dispatchEvent(new CustomEvent("devmoter:launch-app", { detail: { id } }));
+    void controlCenterReady.then(() => {
+      window.dispatchEvent(new CustomEvent("devmoter:launch-app", { detail: { id } }));
+    });
   }
 });
 
@@ -170,17 +172,19 @@ mountAgentConsole();
 mountSessionControl({ switchBackend: backend => setBackend(backend) });
 mountWorkspaceTools();
 mountAdvancedTools();
-void import("./control-center").then(({ mountControlCenter }) => mountControlCenter());
+const controlCenterReady = import("./control-center").then(({ mountControlCenter }) => mountControlCenter());
 mountTaskWorkflow(workflowMount);
 mountSystemPanel();
 mountRemoteControlCenter();
 mountSettingsPanel();
 startWorkspaceControl();
-mountUnifiedFeatureShell({
-  switchBackend: backend => setBackend(backend),
-  initialBackend: activeBackend,
-  initialSurface: surfaceNavigation?.current() || "home",
-  openHome: () => surfaceNavigation?.navigate("home")
+void controlCenterReady.then(() => {
+  mountUnifiedFeatureShell({
+    switchBackend: backend => setBackend(backend),
+    initialBackend: activeBackend,
+    initialSurface: surfaceNavigation?.current() || "home",
+    openHome: () => surfaceNavigation?.navigate("home")
+  });
 });
 
 let healthCheckInFlight = false;
