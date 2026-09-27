@@ -58,14 +58,18 @@
   cursor: pointer;
   transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
 }
+.dm-home-app-card[aria-disabled="true"], .dm-home-app-card:disabled { cursor: not-allowed; opacity: .78; }
+.dm-home-app-card[aria-disabled="true"]:hover, .dm-home-app-card:disabled:hover { border-color: rgba(178, 190, 215, .12); background: rgba(255, 255, 255, .035); }
 .dm-home-app-card:hover { border-color: rgba(166, 181, 255, .31); background: rgba(255, 255, 255, .065); }
 .dm-home-app-card:active { transform: scale(.99); }
 .dm-home-app-card:focus-visible, .dm-home-text-action:focus-visible { outline: 2px solid #aab8ff; outline-offset: 3px; }
 .dm-home-card-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 14px; color: #d0d8ff; background: rgba(131, 148, 234, .15); font-size: 21px; }
 .dm-home-project-icon { color: #aad8d0; background: rgba(99, 178, 163, .13); }
+.dm-home-card-copy { min-width: 0; }
 .dm-home-app-card strong, .dm-home-app-card small { display: block; }
 .dm-home-app-card strong { font-size: 15px; font-weight: 630; }
 .dm-home-app-card small { margin-top: 5px; color: #929daf; font-size: 12px; }
+.dm-home-app-state { display: inline-block; margin-top: 6px; padding: 2px 6px; border: 1px solid rgba(218,197,125,.4); border-radius: 999px; color: #dac57d; font-size: 9px; font-style: normal; font-weight: 700; letter-spacing: .04em; }
 .dm-home-card-arrow { color: #8792ac; font-size: 16px; }
 .dm-home-continue { min-height: 148px; padding: 22px; border: 1px solid rgba(178, 190, 215, .1); border-radius: 19px; background: rgba(255, 255, 255, .022); }
 .dm-home-continue .dm-home-section-heading { margin-bottom: 10px; }
