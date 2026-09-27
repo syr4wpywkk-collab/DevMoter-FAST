@@ -1,5 +1,6 @@
 .dm-shell {
   --dm-shell-bg: color-mix(in srgb, #151922 94%, transparent);
+  --dm-shell-viewport-height: 100dvh;
   --dm-shell-border: rgba(255,255,255,.11);
   --dm-shell-text: #f5f7fb;
   --dm-shell-muted: #9da7b7;
@@ -44,7 +45,8 @@
 
 .dm-shell-scrim {
   position: fixed;
-  inset: 0;
+  inset: 0 0 auto 0;
+  height: var(--dm-shell-viewport-height, 100dvh);
   z-index: 940;
   background: rgba(4,7,12,.48);
   backdrop-filter: blur(2px);
@@ -52,9 +54,10 @@
 
 .dm-shell-sidebar {
   position: fixed;
-  inset: 0 auto 0 0;
+  inset: 0 auto auto 0;
   z-index: 950;
   width: min(88vw, 390px);
+  height: var(--dm-shell-viewport-height, 100dvh);
   transform: translateX(-105%);
   display: grid;
   grid-template-rows: auto minmax(0,1fr);
@@ -96,6 +99,7 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding:
     14px
     12px

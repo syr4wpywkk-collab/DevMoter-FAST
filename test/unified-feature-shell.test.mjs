@@ -119,6 +119,22 @@ test("mobile navigation is sidebar-first and no bottom dock remains", async () =
   assert.ok(css.includes(".dm-shell-sidebar.open"));
 });
 
+
+test("global sidebar follows the visual viewport on mobile Safari", async () => {
+  const [shell, css] = await Promise.all([
+    source("src/app-shell.ts"),
+    source("src/app-shell.css")
+  ]);
+  assert.ok(shell.includes("window.visualViewport?.height ?? window.innerHeight"));
+  assert.ok(shell.includes('root.style.setProperty("--dm-shell-viewport-height"'));
+  assert.ok(shell.includes('window.visualViewport?.addEventListener("resize", syncVisualViewportHeight'));
+  assert.ok(shell.includes('window.visualViewport?.addEventListener("scroll", syncVisualViewportHeight'));
+  assert.ok(shell.includes('window.addEventListener("orientationchange", syncVisualViewportHeight)'));
+  assert.ok(css.includes("--dm-shell-viewport-height: 100dvh"));
+  assert.ok(css.includes("height: var(--dm-shell-viewport-height, 100dvh)"));
+  assert.ok(css.includes("-webkit-overflow-scrolling: touch"));
+});
+
 test("sidebar remains keyboard dismissible and reports expanded state", async () => {
   const shell = await source("src/app-shell.ts");
   assert.ok(shell.includes('aria-expanded="false"'));
