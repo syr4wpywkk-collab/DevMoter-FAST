@@ -37,6 +37,8 @@ import { createSecretStore } from "./server/secret-store.mjs";
 import { createSecretVaultApi } from "./server/secret-vault-api.mjs";
 import { createKnowledgeStore } from "./server/knowledge-store.mjs";
 import { createKnowledgeApi } from "./server/knowledge-api.mjs";
+import { createAgentRunService } from "./server/agent-run-service.mjs";
+import { createAgentRunApi } from "./server/agent-run-api.mjs";
 import { createSetupStatus } from "./server/setup/engine.mjs";
 import { executeInstallPlan, previewInstallPlan, SetupPlanError } from "./server/setup/plan.mjs";
 
@@ -85,6 +87,13 @@ const openCodeSessionModes = new Map();
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
+});
+const agentRunService = createAgentRunService({
+  filePath: join(PROJECT_CONFIG_DIR, "agent-runs.json"),
+  codex
+});
+void agentRunService.ready().catch(error => {
+  console.error("Agent run service initialization failed", redactText(error instanceof Error ? error.message : String(error)));
 });
 const multiApiStore = createMultiApiStore({ filePath: MULTI_API_FILE, env: process.env });
 const secretStore = createSecretStore({ filePath: SECRET_VAULT_FILE });
@@ -204,6 +213,11 @@ const knowledgeStore = createKnowledgeStore({
 });
 const knowledgeApi = createKnowledgeApi({
   store: knowledgeStore,
+  authenticateDevice: req => systemFeatures.authenticate(req),
+  claimOperation
+});
+const agentRunApi = createAgentRunApi({
+  service: agentRunService,
   authenticateDevice: req => systemFeatures.authenticate(req),
   claimOperation
 });
@@ -2627,6 +2641,13 @@ const server = http.createServer(async (req, res) => {
       if (await knowledgeApi.handle(req, res, url)) return;
     }
 
+    if (
+      url.pathname.startsWith("/api/agent-runs") ||
+      url.pathname.startsWith("/api/agent-fleets")
+    ) {
+      if (await agentRunApi.handle(req, res, url)) return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/devices/bootstrap") {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
       try {
@@ -3075,6 +3096,7 @@ const terminalSockets = installTerminalWebSocketEndpoint(server, terminal, {
 server.on("close", () => {
   controlPlane.stop();
   terminal.shutdown();
+  void agentRunService.dispose();
   terminalSockets.close();
 });
 

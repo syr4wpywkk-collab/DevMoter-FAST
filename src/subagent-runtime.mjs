@@ -175,6 +175,65 @@ export class SubagentRuntime {
     return fleet ? fleetSnapshot(fleet) : null;
   }
 
+  exportState() {
+    return {
+      version: 1,
+      runs: [...this.runs.values()].map(run => structuredClone(run)),
+      fleets: [...this.fleets.values()].map(fleet => ({
+        ...structuredClone(fleet),
+        pumping: false
+      }))
+    };
+  }
+
+  restoreState(state = {}) {
+    if (!state || typeof state !== "object" || Array.isArray(state)) {
+      throw new Error("Invalid subagent runtime state");
+    }
+
+    const nextRuns = new Map();
+    for (const raw of Array.isArray(state.runs) ? state.runs : []) {
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+      const id = String(raw.id || "").trim();
+      if (!id || nextRuns.has(id)) continue;
+      const stateValue = String(raw.state || "");
+      if (!RUN_STATES.has(stateValue)) continue;
+      const capabilityPolicy = normalizeCapabilityPolicy(raw.capabilityPolicy);
+      nextRuns.set(id, {
+        ...structuredClone(raw),
+        id,
+        backend: String(raw.backend || "codex"),
+        capabilityPolicy,
+        pendingApproval: raw.pendingApproval && typeof raw.pendingApproval === "object"
+          ? structuredClone(raw.pendingApproval)
+          : null
+      });
+    }
+
+    const nextFleets = new Map();
+    for (const raw of Array.isArray(state.fleets) ? state.fleets : []) {
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+      const id = String(raw.id || "").trim();
+      if (!id || nextFleets.has(id)) continue;
+      const concurrency = Math.max(1, Math.min(8, positiveInt(raw.concurrency, 2)));
+      nextFleets.set(id, {
+        id,
+        concurrency,
+        state: String(raw.state || "cancelled"),
+        queue: Array.isArray(raw.queue) ? structuredClone(raw.queue).slice(0, 24) : [],
+        runIds: Array.isArray(raw.runIds) ? raw.runIds.map(String).slice(0, 24) : [],
+        errors: Array.isArray(raw.errors) ? structuredClone(raw.errors).slice(0, 24) : [],
+        pumping: false,
+        createdAt: Number(raw.createdAt) || Date.now(),
+        updatedAt: Number(raw.updatedAt) || Date.now()
+      });
+    }
+
+    this.runs = nextRuns;
+    this.fleets = nextFleets;
+    return this.exportState();
+  }
+
   async runFleet(specs, { id, concurrency = 2 } = {}) {
     if (!Array.isArray(specs) || specs.length === 0) throw new Error("Fleet requires at least one agent spec");
     if (specs.length > 24) throw new Error("Fleet is limited to 24 agents");
