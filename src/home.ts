@@ -1,8 +1,9 @@
 import "./home.css";
+import { APP_REGISTRY, type AppId } from "./app-registry";
 
 type HomeOptions = {
-  onOpenChat: () => void;
-  onOpenProjects: () => void;
+  onLaunchApp: (id: AppId) => void;
+  onPreviewApp: (id: AppId, message: string) => void;
 };
 
 export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
@@ -23,16 +24,15 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
           <span class="dm-home-section-note">Choose a place to work</span>
         </div>
         <div class="dm-home-app-grid" data-home-app-grid>
-          <button class="dm-home-app-card" type="button" data-home-open-chat>
-            <span class="dm-home-card-icon" aria-hidden="true">✳</span>
-            <span><strong>Chat</strong><small>Open your AI workspace</small></span>
-            <span class="dm-home-card-arrow" aria-hidden="true">↗</span>
-          </button>
-          <button class="dm-home-app-card" type="button" data-home-open-projects>
-            <span class="dm-home-card-icon dm-home-project-icon" aria-hidden="true">▱</span>
-            <span><strong>Projects</strong><small>Browse registered workspaces</small></span>
-            <span class="dm-home-card-arrow" aria-hidden="true">↗</span>
-          </button>
+          ${APP_REGISTRY.map(app => {
+            const disabled = app.availability === "unavailable";
+            const state = app.availability === "preview" ? "Preview" : app.availability === "unavailable" ? "Unavailable" : "";
+            return `<button class="dm-home-app-card" type="button" data-home-app="${app.id}" aria-label="${app.title}${state ? `, ${state}` : ""}"${disabled ? " disabled aria-disabled=\"true\"" : app.availability === "preview" ? " aria-disabled=\"true\"" : ""}>
+              <span class="dm-home-card-icon" aria-hidden="true">${app.icon}</span>
+              <span class="dm-home-card-copy"><strong>${app.title}</strong><small>${app.shortDescription}</small>${state ? `<em class="dm-home-app-state">${state}</em>` : ""}</span>
+              <span class="dm-home-card-arrow" aria-hidden="true">${app.availability === "available" ? "↗" : "·"}</span>
+            </button>`;
+          }).join("")}
         </div>
       </section>
 
@@ -47,6 +47,15 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       <footer class="dm-home-footer">DevMoter FAST <span>·</span> Your local AI workspace</footer>
     </div>
   `;
-  target.querySelectorAll<HTMLButtonElement>("[data-home-open-chat]").forEach(button => button.addEventListener("click", options.onOpenChat));
-  target.querySelector<HTMLButtonElement>("[data-home-open-projects]")?.addEventListener("click", options.onOpenProjects);
+  target.querySelectorAll<HTMLButtonElement>("[data-home-app]").forEach(button => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.homeApp;
+      if (!id) return;
+      const app = APP_REGISTRY.find(entry => entry.id === id);
+      if (!app) return;
+      if (app.availability === "preview" || app.availability === "unavailable") {
+        options.onPreviewApp(app.id, app.previewMessage || `${app.title} is not available yet.`);
+      } else options.onLaunchApp(app.id);
+    });
+  });
 }

@@ -130,13 +130,13 @@ function applySurface(surface: MainSurface) {
 }
 
 mountHomeSurface(homeView, {
-  onOpenChat: () => {
-    const lastBackend = localStorage.getItem("opencode-pocket-backend");
-    setBackend(lastBackend === "codex" || lastBackend === "api" ? lastBackend : "opencode");
+  onPreviewApp: (id, message) => {
+    window.dispatchEvent(new CustomEvent("devmoter:app-preview", { detail: { id, message } }));
   },
-  onOpenProjects: () => {
-    setBackend("codex");
-    window.setTimeout(() => document.querySelector<HTMLElement>("#cxProjectsNav")?.click(), 0);
+  onLaunchApp: id => {
+    void controlCenterReady.then(() => {
+      window.dispatchEvent(new CustomEvent("devmoter:launch-app", { detail: { id } }));
+    });
   }
 });
 
