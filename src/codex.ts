@@ -162,6 +162,8 @@ export function mountCodexRemote(
 
         </div>
 
+        <div id="cxWorkspaceControlsMount"></div>
+
         <div class="cx-sidebar-foot">
           <label class="pocket-language-setting" title="Language">
             <span aria-hidden="true">◎</span>

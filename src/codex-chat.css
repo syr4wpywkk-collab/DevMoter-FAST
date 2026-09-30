@@ -356,6 +356,103 @@ body.codex-mode {
 .cx-app .cx-side-label { color: var(--cx-muted); font-weight: 500; }
 .cx-app .cx-sidebar-foot,
 .cx-app .cx-side-nav { border-color: #303030; }
+
+/* Keep the existing workspace controls reachable in the history drawer. */
+.cx-app #cxWorkspaceControlsMount {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 8px 0;
+  border-top: 1px solid #303030;
+}
+.cx-app #cxWorkspaceControlsMount .dm-controlbar {
+  position: relative;
+  inset: auto;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--cx-text);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.cx-app #cxWorkspaceControlsMount .dm-controlbar > .dm-theme,
+.cx-app #cxWorkspaceControlsMount .dm-controlbar > .dm-context,
+.cx-app #cxWorkspaceControlsMount .dm-controlbar > .dm-tasks,
+.cx-app #cxWorkspaceControlsMount .dm-controlbar > .dm-extensions {
+  display: flex;
+  flex: 1 1 calc(50% - 3px);
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  width: auto;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: #292929;
+  color: inherit;
+  font-size: .75rem;
+  line-height: 1.3;
+}
+.cx-app #cxWorkspaceControlsMount .dm-controlbar > button span {
+  display: inline;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: inherit;
+  line-height: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cx-app #cxWorkspaceControlsMount .dm-controlbar > .dm-mobile-menu-toggle,
+.cx-app #cxWorkspaceControlsMount .dm-controlbar > .dm-mobile-shortcut { display: none; }
+.cx-app #cxWorkspaceControlsMount .dm-panel {
+  right: 0;
+  bottom: calc(100% + 8px);
+  width: 100%;
+  max-width: 100%;
+  max-height: max(88px, min(calc(var(--dm-viewport-height, 100dvh) * .5), calc(var(--dm-viewport-height, 100dvh) - 240px)));
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 12px;
+  border-color: #484848;
+  border-radius: 14px;
+  background: #262626;
+  color: var(--cx-text);
+  font-size: .8rem;
+  overflow-wrap: anywhere;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+}
+.cx-app #cxWorkspaceControlsMount .dm-panel button {
+  min-height: 44px;
+  padding: 7px 10px;
+  border: 1px solid #505050;
+  border-radius: 8px;
+  background: #393939;
+  color: var(--cx-text);
+}
+.cx-app #cxWorkspaceControlsMount .dm-panel-head {
+  position: sticky;
+  top: 0;
+  background: #262626;
+}
+.cx-app #cxWorkspaceControlsMount .dm-panel-head button {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.cx-app #cxWorkspaceControlsMount .dm-panel input:not([type="checkbox"]):not([type="radio"]),
+.cx-app #cxWorkspaceControlsMount .dm-panel select { max-width: 100%; min-height: 44px; }
+
 .cx-app .cx-modal-card { max-height: min(720px, calc(var(--dm-viewport-height, 100dvh) - 32px)); background: #262626; border-color: #464646; }
 .cx-app .cx-modal-head { border-bottom-color: #404040; }
 .cx-app .cx-choice-row.selected { background: #3a3a3a; border-color: #777; }

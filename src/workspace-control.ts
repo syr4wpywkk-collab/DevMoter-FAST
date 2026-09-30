@@ -237,6 +237,21 @@ function createToolbar() {
   `;
   document.body.appendChild(host);
 
+  // Keep the existing controls and panel state while Codex houses them in its drawer.
+  const placeToolbar = (surface?: string) => {
+    const codexActive = surface ? surface === "codex" : document.body.classList.contains("codex-mode");
+    const drawerMount = codexActive ? document.querySelector<HTMLElement>("#cxWorkspaceControlsMount") : null;
+    const parent = drawerMount || document.body;
+    if (host.parentElement !== parent) parent.appendChild(host);
+  };
+  const onSurfaceChanged = (event: Event) => {
+    placeToolbar((event as CustomEvent<{ surface?: string }>).detail?.surface);
+  };
+  const onBackendChanged = () => placeToolbar();
+  placeToolbar();
+  window.addEventListener("devmoter:surface-changed", onSurfaceChanged);
+  window.addEventListener("devmoter:backend-changed", onBackendChanged);
+
   const mobileMenuToggle = host.querySelector<HTMLButtonElement>(".dm-mobile-menu-toggle")!;
   const reviewShortcut = host.querySelector<HTMLButtonElement>(".dm-review-shortcut")!;
   const agentShortcut = host.querySelector<HTMLButtonElement>(".dm-agent-shortcut")!;
@@ -511,6 +526,10 @@ function createToolbar() {
       applyTheme("system");
     }
   });
+  return () => {
+    window.removeEventListener("devmoter:surface-changed", onSurfaceChanged);
+    window.removeEventListener("devmoter:backend-changed", onBackendChanged);
+  };
 }
 
 function injectStyles() {
@@ -653,7 +672,7 @@ function enhanceNow(root: ParentNode = document) {
 
 export function startWorkspaceControl() {
   injectStyles();
-  createToolbar();
+  const stopToolbarPlacement = createToolbar();
   let queued = false;
   const queue = () => {
     if (queued) return;
@@ -670,5 +689,8 @@ export function startWorkspaceControl() {
     characterData: true
   });
   enhanceNow();
-  return () => observer.disconnect();
+  return () => {
+    observer.disconnect();
+    stopToolbarPlacement();
+  };
 }

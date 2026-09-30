@@ -71,3 +71,75 @@ test("workspace enhancer preserves Codex Markdown and source copy while enhancin
   updatedCopy.click();
   assert.deepEqual(copied, [code]);
 });
+
+test("workspace controls dock only on Codex and retain their existing handlers and panel", async t => {
+  const dom = new JSDOM('<!doctype html><aside><div id="cxWorkspaceControlsMount"></div></aside>', {
+    url: "https://devmoter.example/chat",
+    runScripts: "outside-only"
+  });
+  t.after(() => dom.window.close());
+  const { document, CustomEvent } = dom.window;
+  const requests = [];
+  dom.window.matchMedia = () => ({ matches: false, addEventListener() {} });
+  dom.window.setInterval = () => 1;
+  dom.window.setTimeout = () => 1;
+  dom.window.Headers = Headers;
+  dom.window.fetch = async input => {
+    requests.push(String(input));
+    return {
+      ok: true,
+      json: async () => String(input).includes("microtasks")
+        ? { plan: null }
+        : { extensions: { installed: {}, catalog: [{ id: "existing", name: "Existing extension" }] } }
+    };
+  };
+  dom.window.localStorage.setItem("opencode-pocket-backend", "codex");
+  dom.window.localStorage.setItem("opencode-pocket-codex-thread", "preserved-thread");
+  document.body.classList.add("codex-mode");
+  dom.window.exports = {};
+  dom.window.eval(compiledWorkspace);
+  const stop = dom.window.exports.startWorkspaceControl();
+  t.after(stop);
+
+  const mount = document.querySelector("#cxWorkspaceControlsMount");
+  const host = document.querySelector(".dm-controlbar");
+  const panel = host.querySelector(".dm-panel");
+  const buttons = [".dm-theme", ".dm-context", ".dm-tasks", ".dm-extensions"]
+    .map(selector => host.querySelector(selector));
+  assert.equal(host.parentElement, mount, "initial Codex surface docks the actual toolbar");
+
+  buttons[0].click();
+  assert.equal(dom.window.localStorage.getItem("devmoter-theme"), "light");
+  buttons[1].click();
+  assert.ok(panel.querySelector("[data-threshold]"), "existing Context panel remains functional");
+  panel.querySelector("[data-close]").click();
+  assert.equal(panel.classList.contains("hidden"), true);
+  buttons[2].click();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.ok(panel.textContent.includes("No checkpoint plan"));
+  assert.ok(requests.some(path => path.includes("microtasks?parentId=preserved-thread")));
+  buttons[3].click();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(panel.querySelector(".dm-extension-row strong").textContent, "Existing extension");
+  const existingPanel = panel.innerHTML;
+
+  const surface = value => dom.window.dispatchEvent(new CustomEvent("devmoter:surface-changed", { detail: { surface: value } }));
+  for (const value of ["opencode", "api", "home", "integrations"]) {
+    // The real surface event precedes body class updates; its detail must win.
+    surface(value);
+    assert.equal(host.parentElement, document.body, value);
+    document.body.classList.remove("codex-mode");
+    dom.window.dispatchEvent(new CustomEvent("devmoter:backend-changed"));
+    assert.equal(host.parentElement, document.body, `${value} backend update`);
+    surface("codex");
+    assert.equal(host.parentElement, mount, "Codex event docks before its body class updates");
+    document.body.classList.add("codex-mode");
+    dom.window.dispatchEvent(new CustomEvent("devmoter:backend-changed"));
+    assert.equal(host.parentElement, mount);
+  }
+  assert.equal(document.querySelectorAll(".dm-controlbar").length, 1);
+  assert.equal(host.querySelector(".dm-panel"), panel);
+  assert.equal(panel.innerHTML, existingPanel);
+  assert.equal(panel.classList.contains("hidden"), false);
+  assert.deepEqual([".dm-theme", ".dm-context", ".dm-tasks", ".dm-extensions"].map(selector => host.querySelector(selector)), buttons);
+});
