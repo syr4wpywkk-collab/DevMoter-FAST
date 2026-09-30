@@ -96,6 +96,7 @@
 .dm-tools-row button,
 .dm-terminal-actions button,
 .dm-key-row button,
+.dm-tools-card button,
 .dm-tools-panel select,
 .dm-tools-panel input,
 .dm-tools-panel textarea {
@@ -112,7 +113,9 @@
 .dm-tools-tabs button,
 .dm-tools-row button,
 .dm-terminal-actions button,
-.dm-key-row button {
+.dm-key-row button,
+.dm-tools-card button {
+  min-width: 44px;
   padding: 0 14px;
   cursor: pointer;
   touch-action: manipulation;
@@ -255,7 +258,7 @@
   flex-wrap: wrap;
 }
 
-.dm-terminal-actions .primary {
+.dm-tools-panel button.primary {
   border-color: #88aef0;
   background: #dce8ff;
   color: #101827;

@@ -274,6 +274,7 @@ export function mountControlCenter() {
   let refreshIndexView: (() => Promise<void>) | null = null;
 
   function setTab(next: "terminal" | "safety" | "index") {
+    body.scrollTop = 0;
     for (const [tab, name] of tabEntries) {
       const selected = name === next;
       tab.classList.toggle("active", selected);
