@@ -100,8 +100,10 @@ body.codex-mode .dm-shell-menu-trigger { display: none; }
 }
 
 .dm-shell-sidebar-scroll {
+  min-width: 0;
   min-height: 0;
   display: grid;
+  grid-template-columns: minmax(0,1fr);
   grid-template-rows: auto minmax(0,1fr);
   overflow: hidden;
   overscroll-behavior: contain;
@@ -252,6 +254,7 @@ body.codex-mode .dm-shell-menu-trigger { display: none; }
 .dm-shell-chevron { color: #707989; font-size: 20px; }
 
 .dm-shell-tools-controls {
+  min-width: 0;
   padding: 8px 2px 10px;
   border-top: 1px solid var(--dm-shell-border);
   background: #151922;
@@ -291,7 +294,7 @@ body.codex-mode .dm-shell-menu-trigger { display: none; }
 }
 .dm-shell-results-count { margin: 6px 2px 0; color: var(--dm-shell-muted); font-size: 11px; }
 .dm-shell-tool-results {
-  min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch; padding: 4px 0 10px;
 }
 .dm-shell-tool-results section {
