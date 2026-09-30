@@ -230,9 +230,11 @@ function createToolbar() {
   // Keep the existing controls and panel state while chat surfaces house them in their drawers.
   const placeToolbar = (surface?: string) => {
     const active = surface || (document.body.classList.contains("codex-mode") ? "codex"
-      : document.body.classList.contains("opencode-mode") ? "opencode" : "");
+      : document.body.classList.contains("opencode-mode") ? "opencode"
+      : document.body.classList.contains("api-mode") ? "api" : "");
     const selector = active === "codex" ? "#cxWorkspaceControlsMount"
-      : active === "opencode" ? "#ocxWorkspaceControlsMount" : null;
+      : active === "opencode" ? "#ocxWorkspaceControlsMount"
+      : active === "api" ? "#apiWorkspaceControlsMount" : null;
     const drawerMount = selector ? document.querySelector<HTMLElement>(selector) : null;
     const parent = drawerMount || document.body;
     if (host.parentElement !== parent) parent.appendChild(host);
