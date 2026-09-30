@@ -358,6 +358,7 @@ body.codex-mode {
 .cx-app .cx-side-nav { border-color: #303030; }
 
 /* Keep the existing workspace controls reachable in the history drawer. */
+/* Scoped !important rules override settings.css's mobile toolbar hiding. */
 .cx-app #cxWorkspaceControlsMount {
   flex: 0 0 auto;
   min-width: 0;
@@ -368,8 +369,9 @@ body.codex-mode {
   position: relative;
   inset: auto;
   z-index: 1;
-  width: 100%;
+  width: 100% !important;
   display: flex;
+  pointer-events: auto;
   flex-wrap: wrap;
   gap: 6px;
   padding: 0;
@@ -384,7 +386,7 @@ body.codex-mode {
 .cx-app #cxWorkspaceControlsMount .dm-controlbar > .dm-context,
 .cx-app #cxWorkspaceControlsMount .dm-controlbar > .dm-tasks,
 .cx-app #cxWorkspaceControlsMount .dm-controlbar > .dm-extensions {
-  display: flex;
+  display: flex !important;
   flex: 1 1 calc(50% - 3px);
   flex-direction: row;
   align-items: center;
