@@ -185,6 +185,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
 
   function openSidebar() {
     if (sidebar.classList.contains("open")) return;
+    window.dispatchEvent(new CustomEvent("devmoter:global-nav-opened"));
     window.dispatchEvent(new CustomEvent("devmoter:close-chat-history"));
     sidebarReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     sidebar.classList.add("open");

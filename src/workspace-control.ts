@@ -6,8 +6,7 @@ const CONTEXT_THRESHOLD_KEY = "devmoter-context-threshold";
 const LAST_COMPACT_KEY = "devmoter-last-auto-compact";
 const TRANSCRIPT_WINDOW = 180;
 const RAW_OUTPUT_LIMIT = 12_000;
-// Codex owns its Markdown renderer and raw text state; never rehydrate it from DOM.
-const RICH_SELECTOR = ".ocx-message-row.assistant:not(.live) .ocx-assistant-text";
+// Chat surfaces own Markdown and raw text state; never rehydrate them from DOM.
 const TRANSCRIPT_SELECTOR = ".cx-transcript, .ocx-transcript";
 
 function workspaceControlFetch(input: RequestInfo | URL, init: RequestInit = {}) {
@@ -141,15 +140,6 @@ export function renderSafeMarkdown(source: string) {
   return html.join("\n");
 }
 
-function enhanceAssistantText(node: HTMLElement) {
-  if (node.dataset.dmRich === "1") return;
-  const source = node.textContent || "";
-  if (!source.trim()) return;
-  node.dataset.dmSource = source;
-  node.innerHTML = renderSafeMarkdown(source);
-  node.dataset.dmRich = "1";
-}
-
 function enhanceToolOutput(details: HTMLElement) {
   if (details.dataset.dmTool === "1") return;
   details.dataset.dmTool = "1";
@@ -237,10 +227,13 @@ function createToolbar() {
   `;
   document.body.appendChild(host);
 
-  // Keep the existing controls and panel state while Codex houses them in its drawer.
+  // Keep the existing controls and panel state while chat surfaces house them in their drawers.
   const placeToolbar = (surface?: string) => {
-    const codexActive = surface ? surface === "codex" : document.body.classList.contains("codex-mode");
-    const drawerMount = codexActive ? document.querySelector<HTMLElement>("#cxWorkspaceControlsMount") : null;
+    const active = surface || (document.body.classList.contains("codex-mode") ? "codex"
+      : document.body.classList.contains("opencode-mode") ? "opencode" : "");
+    const selector = active === "codex" ? "#cxWorkspaceControlsMount"
+      : active === "opencode" ? "#ocxWorkspaceControlsMount" : null;
+    const drawerMount = selector ? document.querySelector<HTMLElement>(selector) : null;
     const parent = drawerMount || document.body;
     if (host.parentElement !== parent) parent.appendChild(host);
   };
@@ -663,7 +656,6 @@ function injectStyles() {
 }
 
 function enhanceNow(root: ParentNode = document) {
-  root.querySelectorAll<HTMLElement>(RICH_SELECTOR).forEach(enhanceAssistantText);
   root
     .querySelectorAll<HTMLElement>(".ocx-tool-card, details[data-tool], .tool-call details")
     .forEach(enhanceToolOutput);
