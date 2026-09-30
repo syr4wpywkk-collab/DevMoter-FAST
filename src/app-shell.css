@@ -43,6 +43,9 @@
 .dm-shell-menu-trigger[data-backend="api"] { color: #d7cdfc; }
 .dm-shell-menu-trigger[data-backend="integrations"] { color: #ccebd9; }
 
+/* Codex exposes the same Tools menu from its conversation drawer. */
+body.codex-mode .dm-shell-menu-trigger { display: none; }
+
 .dm-shell-scrim {
   position: fixed;
   inset: 0 0 auto 0;
@@ -294,10 +297,7 @@ body:has(
 }
 
 @media (max-width: 899px) {
-  /* Keep provider-local history menus reachable beside the global Tools launcher. */
-  .devmoter-unified-shell .cx-topbar {
-    padding-left: calc(max(8px, env(safe-area-inset-left)) + 58px);
-  }
+  /* OpenCode retains its existing launcher beside provider-local history. */
   .devmoter-unified-shell .ocx-topbar {
     padding-left: calc(max(12px, env(safe-area-inset-left)) + 58px);
   }

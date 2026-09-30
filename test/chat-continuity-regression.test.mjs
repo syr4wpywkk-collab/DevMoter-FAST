@@ -16,6 +16,7 @@ test("global Tools navigation leaves provider-local history controls reachable",
 
   assert.ok(shell.includes('new CustomEvent("devmoter:close-chat-history")'));
   assert.ok(shell.includes('window.addEventListener("devmoter:close-global-nav", closeSidebar)'));
+  assert.ok(shell.includes('window.addEventListener("devmoter:open-global-nav", openSidebar)'));
   assert.ok(codex.includes('aria-label="会話履歴を開く"'));
   assert.ok(opencode.includes('aria-label="セッション履歴を開く"'));
   assert.ok(codex.includes('new CustomEvent("devmoter:close-global-nav")'));
@@ -24,7 +25,8 @@ test("global Tools navigation leaves provider-local history controls reachable",
   assert.ok(opencode.includes('window.addEventListener("devmoter:close-chat-history", closeSidebar)'));
   assert.ok(shellCss.includes(".cx-sidebar.open"));
   assert.ok(shellCss.includes(".ocx-sidebar.open"));
-  assert.ok(shellCss.includes("padding-left: calc(max(8px, env(safe-area-inset-left)) + 58px)"));
+  assert.ok(shellCss.includes("body.codex-mode .dm-shell-menu-trigger { display: none; }"));
+  assert.ok(!shellCss.includes(".devmoter-unified-shell .cx-topbar"));
   assert.ok(shellCss.includes("padding-left: calc(max(12px, env(safe-area-inset-left)) + 58px)"));
 });
 

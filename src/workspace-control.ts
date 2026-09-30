@@ -6,8 +6,8 @@ const CONTEXT_THRESHOLD_KEY = "devmoter-context-threshold";
 const LAST_COMPACT_KEY = "devmoter-last-auto-compact";
 const TRANSCRIPT_WINDOW = 180;
 const RAW_OUTPUT_LIMIT = 12_000;
-const RICH_SELECTOR =
-  ".cx-message-row.assistant:not(.live) .cx-message-text, .ocx-message-row.assistant:not(.live) .ocx-assistant-text";
+// Codex owns its Markdown renderer and raw text state; never rehydrate it from DOM.
+const RICH_SELECTOR = ".ocx-message-row.assistant:not(.live) .ocx-assistant-text";
 const TRANSCRIPT_SELECTOR = ".cx-transcript, .ocx-transcript";
 
 function workspaceControlFetch(input: RequestInfo | URL, init: RequestInit = {}) {
@@ -236,6 +236,21 @@ function createToolbar() {
     <div class="dm-panel hidden" role="dialog" aria-label="DevMoter controls"></div>
   `;
   document.body.appendChild(host);
+
+  // Keep the existing controls and panel state while Codex houses them in its drawer.
+  const placeToolbar = (surface?: string) => {
+    const codexActive = surface ? surface === "codex" : document.body.classList.contains("codex-mode");
+    const drawerMount = codexActive ? document.querySelector<HTMLElement>("#cxWorkspaceControlsMount") : null;
+    const parent = drawerMount || document.body;
+    if (host.parentElement !== parent) parent.appendChild(host);
+  };
+  const onSurfaceChanged = (event: Event) => {
+    placeToolbar((event as CustomEvent<{ surface?: string }>).detail?.surface);
+  };
+  const onBackendChanged = () => placeToolbar();
+  placeToolbar();
+  window.addEventListener("devmoter:surface-changed", onSurfaceChanged);
+  window.addEventListener("devmoter:backend-changed", onBackendChanged);
 
   const mobileMenuToggle = host.querySelector<HTMLButtonElement>(".dm-mobile-menu-toggle")!;
   const reviewShortcut = host.querySelector<HTMLButtonElement>(".dm-review-shortcut")!;
@@ -511,6 +526,10 @@ function createToolbar() {
       applyTheme("system");
     }
   });
+  return () => {
+    window.removeEventListener("devmoter:surface-changed", onSurfaceChanged);
+    window.removeEventListener("devmoter:backend-changed", onBackendChanged);
+  };
 }
 
 function injectStyles() {
@@ -536,8 +555,8 @@ function injectStyles() {
     .dm-task-row.current { outline:1px solid color-mix(in srgb,currentColor 35%,transparent); }
     .dm-task-actions { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0; }
     .dm-task-actions button { min-height:38px; border:0; border-radius:9px; padding:0 10px; }
-    .cx-message-text p,.ocx-assistant-text p { margin:.35em 0; white-space:normal; }
-    .cx-message-text h1,.cx-message-text h2,.cx-message-text h3,.ocx-assistant-text h1,.ocx-assistant-text h2,.ocx-assistant-text h3 { margin:.7em 0 .35em; }
+    .ocx-assistant-text p { margin:.35em 0; white-space:normal; }
+    .ocx-assistant-text h1,.ocx-assistant-text h2,.ocx-assistant-text h3 { margin:.7em 0 .35em; }
     .dm-code { overflow:auto; max-height:50vh; padding:12px; border-radius:10px; background:color-mix(in srgb,currentColor 8%,transparent); }
     .dm-token-keyword { font-weight:700; }
     .dm-token-string { opacity:.82; }
@@ -653,7 +672,7 @@ function enhanceNow(root: ParentNode = document) {
 
 export function startWorkspaceControl() {
   injectStyles();
-  createToolbar();
+  const stopToolbarPlacement = createToolbar();
   let queued = false;
   const queue = () => {
     if (queued) return;
@@ -670,5 +689,8 @@ export function startWorkspaceControl() {
     characterData: true
   });
   enhanceNow();
-  return () => observer.disconnect();
+  return () => {
+    observer.disconnect();
+    stopToolbarPlacement();
+  };
 }

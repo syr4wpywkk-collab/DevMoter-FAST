@@ -44,14 +44,14 @@ test("Codex canonical events are persisted once at the global bridge, not per SS
   assert.doesNotMatch(sseBody, /workspaceControl\.events\.append/);
 });
 
-test("workspace UI uses actual OpenCode active session key and skips live Codex Markdown", async () => {
+test("workspace UI uses actual OpenCode active session key and leaves Codex Markdown to its renderer", async () => {
   const [ui, codex] = await Promise.all([
     readFile(new URL("../src/workspace-control.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/codex.ts", import.meta.url), "utf8")
   ]);
   assert.match(ui, /opencode-pocket-opencode-session/);
   assert.doesNotMatch(ui, /opencode-pocket-session/);
-  assert.match(ui, /\.cx-message-row\.assistant:not\(\.live\)/);
+  assert.doesNotMatch(ui, /\.cx-message-row\.assistant/);
   assert.match(codex, /classList\.add\("live"\)/);
   assert.match(codex, /classList\.remove\("live"\)/);
 });
