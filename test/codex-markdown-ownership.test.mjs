@@ -10,7 +10,7 @@ const compiledWorkspace = ts.transpileModule(workspaceSource, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
 }).outputText;
 
-test("workspace enhancer preserves Codex Markdown and source copy while enhancing OpenCode", async t => {
+test("workspace enhancer preserves each chat renderer and source-backed code copy", async t => {
   const dom = new JSDOM(`<!doctype html>
     <section class="cx-transcript"><article class="cx-message-row assistant">
       <div class="cx-message-text"></div>
@@ -28,10 +28,12 @@ test("workspace enhancer preserves Codex Markdown and source copy while enhancin
   const copied = [];
   const code = "  const result = '<unsafe>';  \n\nreturn result;\n";
   renderChatMarkdown(codex, `## Codex\n\n**Answer**\n\n\`\`\`js\n${code}\`\`\``, text => copied.push(text));
-  opencode.textContent = "## OpenCode\n\n**Legacy answer**";
+  renderChatMarkdown(opencode, `## OpenCode\n\n**Answer**\n\n\`\`\`js\n${code}\`\`\``, text => copied.push(text));
 
   const initialMarkup = codex.innerHTML;
   const initialCopy = codex.querySelector(".dm-code-copy");
+  const initialOpenCodeMarkup = opencode.innerHTML;
+  const initialOpenCodeCopy = opencode.querySelector(".dm-code-copy");
   const timers = [];
   dom.window.matchMedia = () => ({ matches: false, addEventListener() {} });
   dom.window.setInterval = () => 1;
@@ -45,9 +47,10 @@ test("workspace enhancer preserves Codex Markdown and source copy while enhancin
   assert.equal(codex.querySelector(".dm-code-copy"), initialCopy);
   assert.equal(codex.dataset.dmSource, undefined);
   assert.equal(codex.dataset.dmRich, undefined);
-  assert.equal(opencode.querySelector("h2").textContent, "OpenCode");
-  assert.equal(opencode.querySelector("strong").textContent, "Legacy answer");
-  assert.equal(opencode.dataset.dmSource, "## OpenCode\n\n**Legacy answer**");
+  assert.equal(opencode.innerHTML, initialOpenCodeMarkup);
+  assert.equal(opencode.querySelector(".dm-code-copy"), initialOpenCodeCopy);
+  assert.equal(opencode.dataset.dmSource, undefined);
+  assert.equal(opencode.dataset.dmRich, undefined);
 
   // Exercise the real observer path after another Codex stream update and an
   // OpenCode response arriving after workspace control has mounted.
@@ -57,7 +60,9 @@ test("workspace enhancer preserves Codex Markdown and source copy while enhancin
   const newResponse = document.createElement("article");
   newResponse.className = "ocx-message-row assistant";
   newResponse.innerHTML = '<div class="ocx-assistant-text"></div>';
-  newResponse.firstElementChild.textContent = "**New legacy response**";
+  renderChatMarkdown(newResponse.firstElementChild, `**New response**\n\n\`\`\`js\n${code}\`\`\``, text => copied.push(text));
+  const newOpenCodeMarkup = newResponse.firstElementChild.innerHTML;
+  const newOpenCodeCopy = newResponse.querySelector(".dm-code-copy");
   document.querySelector(".ocx-transcript").append(newResponse);
   await Promise.resolve();
   assert.ok(timers.length > 0, "real MutationObserver schedules enhancement");
@@ -67,9 +72,14 @@ test("workspace enhancer preserves Codex Markdown and source copy while enhancin
   assert.equal(codex.querySelector(".dm-code-copy"), updatedCopy);
   assert.equal(codex.dataset.dmSource, undefined);
   assert.equal(codex.dataset.dmRich, undefined);
-  assert.equal(newResponse.querySelector("strong").textContent, "New legacy response");
+  assert.equal(newResponse.firstElementChild.innerHTML, newOpenCodeMarkup);
+  assert.equal(newResponse.querySelector(".dm-code-copy"), newOpenCodeCopy);
+  assert.equal(newResponse.firstElementChild.dataset.dmSource, undefined);
+  assert.equal(newResponse.firstElementChild.dataset.dmRich, undefined);
   updatedCopy.click();
-  assert.deepEqual(copied, [code]);
+  initialOpenCodeCopy.click();
+  newOpenCodeCopy.click();
+  assert.deepEqual(copied, [code, code, code]);
 });
 
 test("workspace controls dock only on Codex and retain their existing handlers and panel", async t => {

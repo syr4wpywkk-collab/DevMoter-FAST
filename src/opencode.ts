@@ -5,6 +5,8 @@ import { countTranscriptMessages, normalizeExternalThread, sessionContextToMarkd
 import { setWakeLockEnabled, setWakeLockExecutionActive, wakeLockEnabled, wakeLockSupported } from "./wake-lock";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
+import { renderChatMarkdown } from "./chat-markdown.mjs";
+import "./opencode-chat.css";
 import {
   continueAgentRun,
   guardMessage,
@@ -146,7 +148,7 @@ export function mountOpenCodeRemote(
     <div class="ocx-app">
       <div id="ocxScrim" class="ocx-scrim hidden"></div>
 
-      <aside id="ocxSidebar" class="ocx-sidebar" aria-hidden="true">
+      <aside id="ocxSidebar" class="ocx-sidebar" aria-hidden="true" aria-label="OpenCode conversation history" inert>
         <div class="ocx-sidebar-head">
           <div class="ocx-history-identity">
             <span class="ocx-history-icon" aria-hidden="true">◈</span>
@@ -158,6 +160,7 @@ export function mountOpenCodeRemote(
           <button id="ocxSidebarClose" class="ocx-icon" type="button" aria-label="閉じる">×</button>
         </div>
 
+        <div class="ocx-sidebar-scroll">
         <button id="ocxNewSessionSide" class="ocx-new-session" type="button">
           <span>＋</span>
           <span>New session</span>
@@ -187,6 +190,9 @@ export function mountOpenCodeRemote(
             <div class="ocx-empty">Connecting…</div>
           </div>
         </div>
+
+        </div>
+        <div id="ocxWorkspaceControlsMount" class="ocx-workspace-controls"></div>
 
         <div class="ocx-sidebar-foot">
           <label class="pocket-language-setting ocx-language-setting" title="Language">
@@ -218,7 +224,7 @@ export function mountOpenCodeRemote(
           <div class="ocx-welcome">
             <div class="ocx-mark">></div>
             <h2>What do you want to build?</h2>
-            <p>OpenCode is running on your Chromebook.</p>
+            <p>Plan, ask, and build in your workspace.</p>
             <div class="ocx-welcome-hints">
               <button type="button" data-hint="plan">Plan first</button>
               <button type="button" data-hint="build">Start building</button>
@@ -259,19 +265,6 @@ export function mountOpenCodeRemote(
         <div id="ocxSlashPalette" class="ocx-slash-palette hidden"></div>
         <div id="ocxContextPalette" class="ocx-slash-palette hidden" role="listbox" aria-label="Project context suggestions"></div>
 
-        <div class="ocx-context-row">
-          <div class="ocx-mode-switch" role="group" aria-label="agent mode">
-            <button id="ocxPlanMode" type="button">Plan</button>
-            <button id="ocxAskMode" type="button">Ask</button>
-            <button id="ocxBuildMode" type="button" class="active">Build</button>
-          </div>
-
-          <div class="ocx-context-buttons">
-            <button id="ocxAgentButton" type="button" class="ocx-context-button">agent</button>
-            <button id="ocxModelButton" type="button" class="ocx-context-button">model</button>
-          </div>
-        </div>
-
         <form id="ocxPromptForm" class="ocx-composer">
           <div id="ocxAttachmentStrip" class="ocx-attachment-strip hidden"></div>
           <textarea
@@ -282,6 +275,18 @@ export function mountOpenCodeRemote(
             disabled
           ></textarea>
 
+          <div class="ocx-context-row">
+            <div class="ocx-mode-switch" role="group" aria-label="agent mode">
+              <button id="ocxPlanMode" type="button">Plan</button>
+              <button id="ocxAskMode" type="button">Ask</button>
+              <button id="ocxBuildMode" type="button" class="active">Build</button>
+            </div>
+            <div class="ocx-context-buttons">
+              <button id="ocxAgentButton" type="button" class="ocx-context-button">agent</button>
+              <button id="ocxModelButton" type="button" class="ocx-context-button">model</button>
+            </div>
+          </div>
+
           <div class="ocx-composer-foot">
             <div class="ocx-composer-left">
               <button id="ocxPlus" type="button" class="ocx-mini-button" aria-label="添付">＋</button>
@@ -290,7 +295,7 @@ export function mountOpenCodeRemote(
             </div>
             <div class="ocx-composer-actions">
               <button id="ocxVoice" type="button" class="ocx-mini-button" aria-label="音声入力">♩</button>
-              <button id="ocxSend" class="ocx-send" type="submit" disabled>↵</button>
+              <button id="ocxSend" class="ocx-send" type="submit" disabled aria-label="Send">↑</button>
             </div>
           </div>
         </form>
@@ -304,14 +309,14 @@ export function mountOpenCodeRemote(
 
       <div id="ocxToast" class="ocx-toast hidden" role="status" aria-live="polite"></div>
 
-      <div id="ocxModal" class="ocx-modal hidden" role="dialog" aria-modal="true">
+      <div id="ocxModal" class="ocx-modal hidden" role="dialog" aria-modal="true" aria-labelledby="ocxModalTitle" aria-describedby="ocxModalSubtitle">
         <div class="ocx-modal-card">
           <div class="ocx-modal-head">
             <div>
               <strong id="ocxModalTitle">OpenCode</strong>
               <p id="ocxModalSubtitle"></p>
             </div>
-            <button id="ocxModalClose" class="ocx-icon" type="button">×</button>
+            <button id="ocxModalClose" class="ocx-icon" type="button" aria-label="閉じる">×</button>
           </div>
           <div id="ocxModalBody" class="ocx-modal-body"></div>
         </div>
@@ -412,6 +417,48 @@ export function mountOpenCodeRemote(
   const modalSubtitle = root.querySelector<HTMLElement>("#ocxModalSubtitle")!;
   const modalBody = root.querySelector<HTMLDivElement>("#ocxModalBody")!;
   const modalClose = root.querySelector<HTMLButtonElement>("#ocxModalClose")!;
+  const backgroundRegions = [".ocx-topbar", ".ocx-main", ".ocx-composer-wrap", "#ocxPermission", "#ocxQuestion"]
+    .map(selector => root.querySelector<HTMLElement>(selector)!);
+  let sidebarReturnFocus: HTMLElement | null = null;
+  let modalReturnFocus: HTMLElement | null = null;
+
+  function syncOverlayState() {
+    const historyOpen = sidebar.classList.contains("open");
+    const modalOpen = !modal.classList.contains("hidden");
+    sidebar.inert = !historyOpen;
+    modal.inert = !modalOpen;
+    for (const region of backgroundRegions) region.inert = historyOpen || modalOpen;
+    menu.setAttribute("aria-expanded", String(historyOpen));
+  }
+  syncOverlayState();
+  plus.setAttribute("aria-expanded", "false");
+
+  function isVisibleFocusTarget(target: HTMLElement | null): target is HTMLElement {
+    return Boolean(target?.isConnected && !target.closest('[inert], [aria-hidden="true"]') && target.getClientRects().length);
+  }
+
+  function restoreOverlayFocus(target: HTMLElement | null) {
+    if (isVisibleFocusTarget(target)) target.focus({ preventScroll: true });
+    else if (isVisibleFocusTarget(menu)) menu.focus({ preventScroll: true });
+  }
+  const composerWrap = root.querySelector<HTMLElement>(".ocx-composer-wrap")!;
+  const app = root.querySelector<HTMLElement>(".ocx-app")!;
+  const measureDocks = () => {
+    const permissionHeight = permission.classList.contains("hidden") ? 0 : permission.getBoundingClientRect().height;
+    const questionHeight = questionDock.classList.contains("hidden") ? 0 : questionDock.getBoundingClientRect().height;
+    app.style.setProperty("--ocx-composer-height", `${composerWrap.getBoundingClientRect().height}px`);
+    app.style.setProperty("--ocx-permission-height", `${permissionHeight}px`);
+    app.style.setProperty("--ocx-question-height", `${questionHeight}px`);
+    app.style.setProperty("--ocx-dock-height", `${permissionHeight + questionHeight + (permissionHeight ? 8 : 0) + (questionHeight ? 8 : 0)}px`);
+    app.classList.toggle("ocx-multiple-docks", permissionHeight > 0 && questionHeight > 0);
+    followLatest();
+  };
+  if (typeof ResizeObserver !== "undefined") {
+    const dockObserver = new ResizeObserver(measureDocks);
+    dockObserver.observe(composerWrap);
+    dockObserver.observe(permission);
+    dockObserver.observe(questionDock);
+  }
 
   let online = false;
   let executionState: ExecutionState = "offline";
@@ -450,6 +497,8 @@ export function mountOpenCodeRemote(
   let submitInFlight = false;
   let resumeSyncInFlight = false;
   const liveText = new Map<string, HTMLElement>();
+  // Raw assistant text is canonical; rendered Markdown never supplies stream state.
+  const assistantText = new WeakMap<HTMLElement, string>();
   const liveReasoning = new Map<string, HTMLElement>();
   const livePartKinds = new Map<string, "text" | "reasoning">();
   let directory = "";
@@ -479,27 +528,65 @@ export function mountOpenCodeRemote(
     selectedModel = null;
   }
 
+  function closeAttachmentMenu() {
+    attachmentMenu.classList.add("hidden");
+    plus.setAttribute("aria-expanded", "false");
+  }
+
+  function closeComposerMenus() {
+    closeAttachmentMenu();
+    slashPalette.classList.add("hidden");
+    contextRequestSerial += 1;
+    hideProjectContextPalette();
+  }
+
   function openSidebar() {
+    if (!modal.classList.contains("hidden") || sidebar.classList.contains("open")) return;
+    sidebarReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : menu;
+    closeComposerMenus();
     window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
     sidebar.classList.add("open");
     sidebar.setAttribute("aria-hidden", "false");
+    sidebar.setAttribute("role", "dialog");
+    sidebar.setAttribute("aria-modal", "true");
     scrim.classList.remove("hidden");
+    syncOverlayState();
+    sidebarClose.focus({ preventScroll: true });
   }
 
   function closeSidebar() {
+    const restoreFocus = sidebar.contains(document.activeElement);
     sidebar.classList.remove("open");
     sidebar.setAttribute("aria-hidden", "true");
     scrim.classList.add("hidden");
+    sidebar.removeAttribute("role");
+    sidebar.removeAttribute("aria-modal");
+    syncOverlayState();
+    if (restoreFocus) restoreOverlayFocus(sidebarReturnFocus);
+    sidebarReturnFocus = null;
   }
 
   function openModal(title: string, subtitle = "") {
+    if (modal.classList.contains("hidden")) {
+      modalReturnFocus = sidebar.contains(document.activeElement) ? menu
+        : document.activeElement instanceof HTMLElement ? document.activeElement : menu;
+    }
+    closeSidebar();
+    closeComposerMenus();
+    window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
     modalTitle.textContent = title;
     modalSubtitle.textContent = subtitle;
     modal.classList.remove("hidden");
+    syncOverlayState();
+    modalClose.focus({ preventScroll: true });
   }
 
   function closeModal() {
+    const restoreFocus = modal.contains(document.activeElement);
     modal.classList.add("hidden");
+    syncOverlayState();
+    if (restoreFocus) restoreOverlayFocus(modalReturnFocus);
+    modalReturnFocus = null;
   }
 
   function showToast(message: string) {
@@ -541,7 +628,7 @@ export function mountOpenCodeRemote(
     if (activeSession) sessionStates.set(activeSession.id, next);
     renderAttention();
 
-    send.textContent = active ? "■" : "↵";
+    send.textContent = active ? "■" : "↑";
     send.classList.toggle("stop", active);
     send.setAttribute("aria-label", active ? "Stop" : "Send");
     send.disabled = !online || next === "reconnecting";
@@ -724,16 +811,28 @@ export function mountOpenCodeRemote(
   function updateContextUI() {
     agentButton.textContent = currentAgentName();
     modelButton.textContent = currentModelName();
+    agentButton.title = `Agent: ${currentAgentName()}`;
+    agentButton.setAttribute("aria-label", agentButton.title);
+    modelButton.title = selectedModel
+      ? `${selectedModel.providerID} / ${selectedModel.modelID}`
+      : "Default provider / model";
+    modelButton.setAttribute("aria-label", `Model: ${modelButton.title}`);
 
     planMode.classList.toggle("active", selectedMode === "plan");
     askMode.classList.toggle("active", selectedMode === "ask");
     buildMode.classList.toggle("active", selectedMode === "build");
+    planMode.setAttribute("aria-pressed", String(selectedMode === "plan"));
+    askMode.setAttribute("aria-pressed", String(selectedMode === "ask"));
+    buildMode.setAttribute("aria-pressed", String(selectedMode === "build"));
 
     const meta = [
       activeSession?.agent || selectedAgent || "build",
       activeSession?.model?.modelID || activeSession?.model?.id || selectedModel?.modelID || "default"
     ].filter(Boolean);
     sessionMeta.textContent = activeSession ? meta.join(" · ") : "No session";
+    const workspace = sessionDirectory(activeSession) || directory;
+    if (workspace) sessionMeta.textContent = `${workspace} · ${sessionMeta.textContent}`;
+    sessionMeta.title = sessionMeta.textContent;
   }
 
   function resizeComposer() {
@@ -925,6 +1024,40 @@ export function mountOpenCodeRemote(
     trimTranscript();
   }
 
+  async function copyAssistantCode(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const helper = document.createElement("textarea");
+      helper.value = text;
+      helper.style.position = "fixed";
+      helper.style.opacity = "0";
+      document.body.appendChild(helper);
+      try {
+        helper.select();
+        if (!document.execCommand("copy")) {
+          showToast("Could not copy code");
+          return;
+        }
+      } catch {
+        showToast("Could not copy code");
+        return;
+      } finally {
+        helper.remove();
+      }
+    }
+    showToast("Code copied");
+  }
+
+  function setAssistantText(body: HTMLElement, text: string) {
+    assistantText.set(body, text);
+    renderChatMarkdown(body, text, source => void copyAssistantCode(source));
+  }
+
+  function mergeAssistantText(body: HTMLElement, event: { text?: unknown; delta?: unknown }) {
+    setAssistantText(body, mergeOpenCodeStreamText(assistantText.get(body), event));
+  }
+
   function addAssistantText(text: string) {
     if (!text.trim()) return;
     transcript.querySelector(".ocx-welcome")?.remove();
@@ -934,7 +1067,7 @@ export function mountOpenCodeRemote(
 
     const body = document.createElement("div");
     body.className = "ocx-assistant-text";
-    body.textContent = text;
+    setAssistantText(body, text);
 
     row.appendChild(body);
     transcript.appendChild(row);
@@ -944,8 +1077,11 @@ export function mountOpenCodeRemote(
   function toolStateSummary(part: Json) {
     const state = part?.state ?? {};
     const status = String(state?.status || "tool");
-    const name = String(part?.name || "tool");
-    return `${status === "completed" ? "✓" : status === "error" ? "!" : status === "running" ? "●" : "·"} ${name}`;
+    const name = String(part?.tool || part?.name || "tool");
+    const input = state?.input;
+    const target = input?.command ?? input?.filePath ?? input?.path;
+    const hint = typeof target === "string" ? target.replace(/\s+/g, " ").slice(0, 100) : "";
+    return `${status === "completed" ? "✓" : status === "error" ? "!" : status === "running" ? "●" : "·"} ${name} · ${status}${hint ? ` — ${hint}` : ""}`;
   }
 
   function addToolPart(part: Json) {
@@ -1100,7 +1236,7 @@ export function mountOpenCodeRemote(
 
     const body = document.createElement("div");
     body.className = "ocx-assistant-text";
-    body.textContent = "";
+    setAssistantText(body, "");
 
     row.appendChild(body);
     transcript.appendChild(row);
@@ -1254,10 +1390,11 @@ export function mountOpenCodeRemote(
       transcript.innerHTML = `
         <div class="ocx-welcome compact">
           <div class="ocx-mark">></div>
-          <h2>${activeSession.title || "New session"}</h2>
+          <h2></h2>
           <p>Send a prompt to start working.</p>
         </div>
       `;
+      transcript.querySelector("h2")!.textContent = activeSession.title || "New session";
     }
 
     followLatest();
@@ -2525,7 +2662,7 @@ export function mountOpenCodeRemote(
           messageID: part.messageID,
           partID: part.id
         });
-        body.textContent = mergeOpenCodeStreamText(body.textContent, {
+        mergeAssistantText(body, {
           text: part.text,
           delta: props?.delta
         });
@@ -2577,7 +2714,11 @@ export function mountOpenCodeRemote(
         kind === "reasoning"
           ? ensureLiveReasoning(data)
           : ensureLiveText(data);
-      body.textContent = mergeOpenCodeStreamText(body.textContent, normalized);
+      if (kind === "reasoning") {
+        body.textContent = mergeOpenCodeStreamText(body.textContent, normalized);
+      } else {
+        mergeAssistantText(body, normalized);
+      }
       followLatest();
       lastLiveEventAt = Date.now();
       setExecutionState("running");
@@ -2616,7 +2757,7 @@ export function mountOpenCodeRemote(
 
     if (type === "session.text.delta") {
       const body = ensureLiveText(props);
-      body.textContent = mergeOpenCodeStreamText(body.textContent, normalized);
+      mergeAssistantText(body, normalized);
       followLatest();
       setExecutionState("running");
       return;
@@ -2625,7 +2766,7 @@ export function mountOpenCodeRemote(
     if (type === "session.text.ended") {
       const key = streamKey(props);
       const body = ensureLiveText(props);
-      body.textContent = mergeOpenCodeStreamText(body.textContent, normalized);
+      mergeAssistantText(body, normalized);
       retireLiveStream(key);
       trimTranscript();
       followLatest();
@@ -3331,19 +3472,29 @@ export function mountOpenCodeRemote(
 
     openModal(activeSession.title || "Session", activeSession.id);
     modalBody.innerHTML = `
-      <div class="ocx-detail-grid">
-        <div><span>Agent</span><strong>${activeSession.agent || selectedAgent}</strong></div>
-        <div><span>Model</span><strong>${activeSession.model?.modelID || activeSession.model?.id || selectedModel?.modelID || "default"}</strong></div>
-        <div><span>Directory</span><strong>${sessionDirectory(activeSession) || "workspace"}</strong></div>
-        <div><span>Input tokens</span><strong>${activeSession.tokens?.input ?? 0}</strong></div>
-        <div><span>Output tokens</span><strong>${activeSession.tokens?.output ?? 0}</strong></div>
-        <div><span>Cost</span><strong>${Number(activeSession.cost || 0).toFixed(4)}</strong></div>
-      </div>
+      <div class="ocx-detail-grid"></div>
       <div class="ocx-detail-actions">
         <button id="ocxExportSession" type="button" class="ocx-modal-button primary">Export Markdown</button>
         <button id="ocxOpenSessionTools" type="button" class="ocx-modal-button">Session tools</button>
       </div>
     `;
+    const detailGrid = modalBody.querySelector(".ocx-detail-grid")!;
+    for (const [label, value] of [
+      ["Agent", activeSession.agent || selectedAgent],
+      ["Model", activeSession.model?.modelID || activeSession.model?.id || selectedModel?.modelID || "default"],
+      ["Directory", sessionDirectory(activeSession) || "workspace"],
+      ["Input tokens", activeSession.tokens?.input ?? 0],
+      ["Output tokens", activeSession.tokens?.output ?? 0],
+      ["Cost", Number(activeSession.cost || 0).toFixed(4)]
+    ]) {
+      const cell = document.createElement("div");
+      const name = document.createElement("span");
+      const detail = document.createElement("strong");
+      name.textContent = String(label);
+      detail.textContent = String(value);
+      cell.append(name, detail);
+      detailGrid.appendChild(cell);
+    }
     root.querySelector<HTMLButtonElement>("#ocxExportSession")?.addEventListener("click", () => {
       void exportActiveSession().catch(error => showToast(error instanceof Error ? error.message : String(error)));
     });
@@ -3402,6 +3553,13 @@ export function mountOpenCodeRemote(
 
   menu.addEventListener("click", openSidebar);
   window.addEventListener("devmoter:close-chat-history", closeSidebar);
+  const closeLocalOverlays = () => {
+    closeSidebar();
+    closeModal();
+    closeComposerMenus();
+  };
+  window.addEventListener("devmoter:global-nav-opened", closeLocalOverlays);
+  window.addEventListener("devmoter:surface-changed", closeLocalOverlays);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") void resumeFromBackground();
   });
@@ -3428,18 +3586,21 @@ export function mountOpenCodeRemote(
   askMode.addEventListener("click", () => void setMode("ask"));
   buildMode.addEventListener("click", () => void setMode("build"));
 
-  plus.addEventListener("click", () => attachmentMenu.classList.toggle("hidden"));
+  plus.addEventListener("click", () => {
+    attachmentMenu.classList.toggle("hidden");
+    plus.setAttribute("aria-expanded", String(!attachmentMenu.classList.contains("hidden")));
+  });
   imageButton.addEventListener("click", () => imageInput.click());
   fileButton.addEventListener("click", () => fileInput.click());
   imageInput.addEventListener("change", () => {
     if (imageInput.files) void addAttachments(imageInput.files, true);
     imageInput.value = "";
-    attachmentMenu.classList.add("hidden");
+    closeAttachmentMenu();
   });
   fileInput.addEventListener("change", () => {
     if (fileInput.files) void addAttachments(fileInput.files);
     fileInput.value = "";
-    attachmentMenu.classList.add("hidden");
+    closeAttachmentMenu();
   });
 
   let composerDragDepth = 0;
@@ -3466,7 +3627,7 @@ export function mountOpenCodeRemote(
     event.preventDefault();
     composerDragDepth = 0;
     promptForm.classList.remove("dragging");
-    attachmentMenu.classList.add("hidden");
+    closeAttachmentMenu();
     void addAttachments(event.dataTransfer.files);
   });
   voice.addEventListener("click", () => {
@@ -3552,6 +3713,37 @@ export function mountOpenCodeRemote(
   modalClose.addEventListener("click", closeModal);
   modal.addEventListener("click", event => {
     if (event.target === modal) closeModal();
+  });
+  document.addEventListener("keydown", event => {
+    if (!document.body.classList.contains("opencode-mode")) return;
+    const overlay = !modal.classList.contains("hidden") ? modal
+      : sidebar.classList.contains("open") ? sidebar : null;
+    if (!overlay) {
+      if (event.key === "Escape" && !attachmentMenu.classList.contains("hidden")) {
+        event.preventDefault();
+        closeAttachmentMenu();
+        plus.focus({ preventScroll: true });
+      }
+      return;
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (overlay === modal) closeModal();
+      else closeSidebar();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const controls = Array.from(overlay.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex="0"]'
+    )).filter(isVisibleFocusTarget);
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (!first || !last) return;
+    const active = document.activeElement;
+    if (!overlay.contains(active) || (event.shiftKey ? active === first : active === last)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus({ preventScroll: true });
+    }
   });
 
   root.querySelectorAll<HTMLButtonElement>("[data-hint]").forEach(button => {
