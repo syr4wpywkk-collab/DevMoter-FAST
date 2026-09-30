@@ -1,0 +1,228 @@
+/* API Chat presentation; native provider capabilities and form actions stay intact. */
+body.api-mode { padding: 0; overflow: hidden; background: #fff; }
+/* Closed global drawers must not cast a shadow across the conversation. */
+body.api-mode .dm-shell-sidebar:not(.open),
+body.api-mode .sc-panel:not(.open) { box-shadow: none; }
+
+.api-app {
+  --api-bg: #fff;
+  --api-surface: #fff;
+  --api-text: #1f1f1f;
+  --api-muted: #5f6368;
+  --api-border: #d9e0e8;
+  --api-accent: #1967d2;
+  --api-composer-surface: #f0f4f9;
+  --api-content-width: 760px;
+  --api-header-height: calc(64px + env(safe-area-inset-top));
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: block;
+  grid-template-columns: none;
+  grid-template-rows: none;
+  min-height: 0;
+  height: var(--dm-viewport-height, 100dvh);
+  max-height: var(--dm-viewport-height, 100dvh);
+  overflow: hidden;
+  background: var(--api-bg);
+  color: var(--api-text);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color-scheme: light;
+}
+.api-app button:focus-visible,
+.api-app a:focus-visible,
+.api-app input:focus-visible,
+.api-app select:focus-visible { outline: 2px solid var(--api-accent); outline-offset: 3px; }
+.api-app button > svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.api-app .api-icon-button svg,
+.api-app .api-composer-foot button svg { width: 22px; height: 22px; }
+
+.api-app .api-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  height: var(--api-header-height);
+  min-height: var(--api-header-height);
+  gap: 8px;
+  padding: calc(10px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left));
+  border: 0;
+  background: var(--api-bg);
+  backdrop-filter: none;
+}
+.api-app .api-icon-button,
+.api-app .api-sidebar-head > button { width: 44px; height: 44px; min-height: 44px; flex: 0 0 44px; border: 0; background: transparent; color: var(--api-text); }
+.api-app .api-brand { display: grid; min-width: 0; }
+.api-app .api-brand strong { font-size: 1.05rem; font-weight: 500; }
+.api-app .api-brand small { display: block; color: var(--api-muted); font-size: .7rem; }
+.api-app #apiSettingsTop { grid-area: auto; align-self: center; height: 44px; }
+.api-app .api-main { position: absolute; top: var(--api-header-height); right: 0; bottom: 0; left: 0; display: block; overflow: hidden; }
+.api-app .api-transcript {
+  width: 100%;
+  height: 100%;
+  padding: 24px max(16px, env(safe-area-inset-right)) calc(var(--api-composer-height, 250px) + 24px) max(16px, env(safe-area-inset-left));
+  overscroll-behavior: contain;
+  scroll-padding-bottom: calc(var(--api-composer-height, 250px) + 24px);
+  scroll-behavior: auto;
+  scrollbar-color: #c7d0da transparent;
+}
+.api-app .api-welcome { width: min(100%, var(--api-content-width)); margin: 0 auto; min-height: max(180px, calc((var(--dm-viewport-height, 100dvh) - var(--api-header-height) - var(--api-composer-height, 250px)) * .75)); padding: 28px 4px; }
+.api-app .api-spark { font-size: 28px; }
+.api-app .api-welcome h1 { margin: 10px 0 8px; font-size: clamp(2rem, 5vw, 3rem); font-weight: 500; line-height: 1.3; background-image: linear-gradient(90deg, #1a73e8, #7662c4 60%, #a966a5); }
+.api-app .api-welcome p { color: var(--api-muted); font-size: clamp(1.4rem, 3.5vw, 2rem); font-weight: 400; line-height: 1.4; }
+.api-app .api-message { width: min(100%, var(--api-content-width)); min-width: 0; margin: 0 auto 28px; }
+.api-app .api-message-bubble { min-width: 0; max-width: 100%; color: var(--api-text); font-size: 1rem; line-height: 1.75; }
+.api-app .api-message.user .api-message-bubble { max-width: min(85%, 640px); padding: 10px 18px; border-radius: 24px; background: #e9eef6; color: var(--api-text); }
+.api-app .api-message.assistant .api-message-bubble { width: 100%; padding: 0; background: transparent; color: var(--api-text); white-space: normal; }
+.api-app .api-message.assistant { display: block; }
+.api-app .api-message-copy { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; margin-top: 6px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: var(--api-muted); font-size: .8rem; }
+.api-app .api-message-copy:hover { background: #edf2f8; }
+
+/* Explicit text colors keep the shared safe renderer independent of dark surfaces. */
+.api-app .cx-markdown { color: var(--api-text); white-space: normal; overflow-wrap: anywhere; }
+.api-app .cx-markdown p,
+.api-app .cx-markdown li,
+.api-app .cx-markdown strong,
+.api-app .cx-markdown em { color: var(--api-text); }
+.api-app .cx-markdown > :first-child { margin-top: 0; }
+.api-app .cx-markdown > :last-child { margin-bottom: 0; }
+.api-app .cx-markdown p { margin: 0 0 1em; }
+.api-app .cx-markdown h1,
+.api-app .cx-markdown h2,
+.api-app .cx-markdown h3,
+.api-app .cx-markdown h4,
+.api-app .cx-markdown h5,
+.api-app .cx-markdown h6 { margin: 1.3em 0 .6em; color: var(--api-text); font-weight: 600; line-height: 1.4; }
+.api-app .cx-markdown h1 { font-size: 1.5em; }
+.api-app .cx-markdown h2 { font-size: 1.25em; }
+.api-app .cx-markdown h3 { font-size: 1.1em; }
+.api-app .cx-markdown ul,
+.api-app .cx-markdown ol { padding-left: 1.6em; margin: .7em 0 1em; }
+.api-app .cx-markdown li { margin: .3em 0; }
+.api-app .cx-markdown li > p { margin: .5em 0; }
+.api-app .cx-markdown blockquote { margin: 1em 0; padding-left: 1em; border-left: 3px solid #aebccd; color: var(--api-muted); }
+.api-app .cx-markdown a { color: #185abc; text-underline-offset: 3px; }
+.api-app .cx-markdown hr { border: 0; border-top: 1px solid var(--api-border); margin: 1.5em 0; }
+.api-app .cx-markdown code { padding: .15em .35em; border-radius: 5px; background: #eaf0f7; color: #273343; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .875em; }
+.api-app .dm-code-block { max-width: 100%; min-width: 0; margin: 1em 0; overflow: hidden; border: 1px solid var(--api-border); border-radius: 14px; background: #f6f8fc; }
+.api-app .dm-code-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 0 8px 0 16px; background: #e9eef6; color: var(--api-muted); font-size: .75rem; }
+.api-app .dm-code-language { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.api-app .dm-code-copy { flex: 0 0 auto; min-height: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--api-text); font-size: .75rem; }
+.api-app .dm-code-copy:hover { background: #dbe5f2; }
+.api-app .cx-markdown pre { max-width: 100%; margin: 0; padding: 16px; overflow-x: auto; overscroll-behavior-x: contain; white-space: pre; overflow-wrap: normal; line-height: 1.6; color: #273343; }
+.api-app .cx-markdown pre code { padding: 0; background: transparent; color: #273343; white-space: pre; }
+.api-app .dm-markdown-table { max-width: 100%; margin: 1em 0; overflow-x: auto; overscroll-behavior-x: contain; }
+.api-app .cx-markdown table { border-collapse: collapse; font-size: .9em; color: var(--api-text); }
+.api-app .cx-markdown th,
+.api-app .cx-markdown td { padding: 8px 12px; border: 1px solid var(--api-border); text-align: left; color: var(--api-text); }
+.api-app .cx-markdown th { background: #eef3f9; font-weight: 600; }
+
+.api-app .api-composer-wrap { position: absolute; z-index: 35; padding: 12px max(12px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--api-bg) 22px); }
+.api-app .api-composer { width: min(100%, var(--api-content-width)); padding: 12px 12px 8px; border: 1px solid transparent; border-radius: 30px; background: var(--api-composer-surface); box-shadow: none; backdrop-filter: none; }
+.api-app .api-composer:focus-within { border-color: #c7d5e8; }
+.api-app .api-composer textarea { min-height: 44px; max-height: min(160px, calc(var(--dm-viewport-height, 100dvh) * .25)); padding: 6px 8px 8px; font-size: 16px; line-height: 1.5; }
+.api-app .api-composer textarea::placeholder { color: var(--api-muted); }
+.api-app .api-picker-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, .75fr); grid-template-areas: none; width: 100%; margin: 4px 0; gap: 6px; }
+.api-app .api-picker-row select { grid-area: auto; min-width: 0; width: 100%; max-width: none; height: 44px; min-height: 44px; padding: 0 28px 0 12px; border: 1px solid #d4deeb; border-radius: 16px; background: #f9fbff; color: var(--api-text); font-size: .8rem; text-overflow: ellipsis; color-scheme: light; }
+.api-app #apiProvider,
+.api-app #apiModel,
+.api-app #apiReasoning { grid-area: auto; min-width: 0; }
+.api-app select option,
+.api-app select optgroup { background: #fff; color: var(--api-text); }
+.api-app .api-composer-foot { min-height: 48px; margin-top: 4px; gap: 8px; }
+.api-app .api-composer-foot button { width: 44px; height: 44px; min-height: 44px; flex: 0 0 44px; }
+.api-app #apiAttachImage { border: 0; background: transparent; color: var(--api-text); }
+.api-app #apiAttachImage:hover:not(:disabled) { background: #dfe7f3; }
+.api-app #apiSend { background: #d3e3fd; color: #1b385e; }
+.api-app .api-composer-foot span { font-size: .75rem; }
+.api-app .api-attachment-chip { height: 60px; max-width: 250px; border-color: #d2ddeb; background: #fff; }
+.api-app .api-attachment-chip button { width: 44px; height: 44px; min-height: 44px; }
+.api-app .api-attachment-chip span { font-size: .75rem; }
+.api-app .api-message-attachments span { font-size: .75rem; background: rgba(255, 255, 255, .6); }
+
+.api-app .api-scrim { position: absolute; inset: 0; z-index: 70; background: rgba(24, 35, 50, .3); }
+.api-app .api-sidebar { position: absolute; inset: 0 auto auto 0; z-index: 80; width: min(88vw, 350px); height: var(--dm-viewport-height, 100dvh); padding: calc(12px + env(safe-area-inset-top)) 14px calc(12px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); background: #f0f4f9; color: var(--api-text); box-shadow: 12px 0 40px rgba(30, 47, 72, .12); transform: translateX(-110%); }
+.api-app .api-sidebar.open { transform: translateX(0); }
+.api-app .api-sidebar-head,
+.api-app .api-new-chat { flex: 0 0 auto; }
+.api-app .api-sidebar-scroll { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+.api-app .api-new-chat { width: 100%; min-height: 44px; background: #e1e8f2; font-size: .85rem; font-weight: 500; }
+.api-app .api-nav-label { margin: 18px 8px 6px; color: var(--api-muted); font-size: .7rem; font-weight: 500; letter-spacing: .04em; }
+.api-app #apiHistory { display: grid; gap: 2px; }
+.api-app .api-history-row { display: block; width: 100%; min-height: 44px; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--api-text); text-align: left; font-size: .85rem; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.api-app .api-history-row:hover,
+.api-app .api-history-row.active { background: #dfe8f5; }
+.api-app .api-history-row strong,
+.api-app .api-history-row small { display: block; overflow: hidden; text-overflow: ellipsis; }
+.api-app .api-history-row strong { font-weight: 500; }
+.api-app .api-history-row small { color: var(--api-muted); font-size: .7rem; }
+.api-app .api-history-empty { padding: 0 8px; color: var(--api-muted); font-size: .8rem; }
+.api-app .api-agent-nav button { min-height: 44px; font-size: .85rem; }
+.api-app .api-sidebar-note { margin-top: 16px; color: var(--api-muted); font-size: .75rem; }
+.api-app .dm-agent-switch-menu { background: #fff; border-color: #d5deeb; color: var(--api-text); }
+.api-app .dm-agent-switch-menu > button { color: var(--api-text); }
+.api-app .dm-agent-switch-menu > button:hover,
+.api-app .dm-agent-switch-menu > button.active { background: #e7eef8; }
+.api-app .dm-agent-switch-menu small { color: var(--api-muted); }
+
+.api-app .api-settings-modal { position: absolute; z-index: 100; padding: max(14px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); background: rgba(24, 35, 50, .32); color-scheme: light; }
+.api-app .api-settings-card { max-height: min(820px, calc(var(--dm-viewport-height, 100dvh) - 28px)); border-radius: 24px; background: #fff; color: var(--api-text); }
+.api-app .api-settings-head { min-height: 68px; padding: 12px 14px 12px 18px; }
+.api-app .api-settings-head button { width: 44px; height: 44px; min-height: 44px; flex: 0 0 44px; }
+.api-app .api-settings-body { overscroll-behavior: contain; }
+.api-app .api-settings-toolbar { flex-wrap: wrap; gap: 10px; }
+.api-app .api-settings-toolbar button,
+.api-app .api-settings-back,
+.api-app .api-provider-migrate,
+.api-app .api-provider-form-actions button,
+.api-app .api-provider-danger button { min-height: 44px; }
+.api-app .api-provider-row { background: #f7f9fd; }
+.api-app .api-provider-protocol { color: #356ac3; }
+.api-app .api-provider-form input,
+.api-app .api-provider-form select,
+.api-app .api-provider-form textarea { min-height: 44px; background: #f5f8fc; color: var(--api-text); font-size: 16px; color-scheme: light; }
+.api-app .api-provider-form select option,
+.api-app .api-provider-form select optgroup { background: #fff; color: var(--api-text); }
+.api-app .api-preset-button { min-height: 48px; background: #f5f8fc; color: var(--api-text); }
+.api-app .api-form-message[data-state="success"] { color: #188038; }
+.api-app .api-form-message[data-state="error"],
+.api-app .api-provider-danger button { color: #b3261e; }
+
+/* Keep the same workspace controls visible without a floating composer collision. */
+.api-app #apiWorkspaceControlsMount { flex: 0 0 auto; min-width: 0; padding-block: 8px; border-top: 1px solid var(--api-border); }
+.api-app #apiWorkspaceControlsMount .dm-controlbar { position: relative; inset: auto; z-index: 1; width: 100% !important; pointer-events: auto; display: flex; flex-wrap: wrap; gap: 6px; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--api-text); box-shadow: none; backdrop-filter: none; }
+.api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-theme,
+.api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-context,
+.api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-tasks,
+.api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-extensions { display: flex !important; flex: 1 1 calc(50% - 3px); flex-direction: row; align-items: center; justify-content: flex-start; gap: 6px; width: auto; min-width: 0; min-height: 44px; padding: 0 10px; border-radius: 10px; background: #e1e8f2; color: inherit; font-size: .75rem; line-height: 1.3; }
+.api-app #apiWorkspaceControlsMount .dm-controlbar > button span { display: inline; min-width: 0; max-width: 100%; overflow: hidden; font-size: inherit; line-height: inherit; text-overflow: ellipsis; white-space: nowrap; }
+.api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-mobile-menu-toggle,
+.api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-mobile-shortcut { display: none; }
+.api-app #apiWorkspaceControlsMount .dm-panel { right: 0; bottom: calc(100% + 8px); width: 100%; max-width: 100%; max-height: max(88px, min(calc(var(--dm-viewport-height, 100dvh) * .5), calc(var(--dm-viewport-height, 100dvh) - 240px))); padding: 12px; overflow: auto; overscroll-behavior: contain; border-color: var(--api-border); border-radius: 14px; background: #fff; color: var(--api-text); font-size: .8rem; overflow-wrap: anywhere; box-shadow: 0 8px 24px rgba(30, 47, 72, .15); }
+.api-app #apiWorkspaceControlsMount .dm-panel button { min-height: 44px; padding: 7px 10px; border: 1px solid var(--api-border); border-radius: 8px; background: #edf2f8; color: var(--api-text); }
+.api-app #apiWorkspaceControlsMount .dm-panel-head { position: sticky; top: 0; background: #fff; }
+.api-app #apiWorkspaceControlsMount .dm-panel-head button { flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; }
+.api-app #apiWorkspaceControlsMount .dm-panel input:not([type="checkbox"]):not([type="radio"]),
+.api-app #apiWorkspaceControlsMount .dm-panel select { max-width: 100%; min-height: 44px; }
+
+@media (max-width: 899px) {
+  body.api-mode .api-app .api-topbar { padding-left: calc(max(12px, env(safe-area-inset-left)) + 58px); }
+}
+@media (min-width: 760px) {
+  .api-app .api-transcript { padding-inline: max(24px, calc((100% - var(--api-content-width)) / 2)); }
+}
+@media (max-width: 640px) {
+  .api-app .api-picker-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .api-app #apiReasoning { grid-column: 1 / -1; }
+  .api-app .api-settings-modal { place-items: end center; }
+  .api-app .api-settings-body { padding: 14px; }
+  .api-app .api-message.user .api-message-bubble { max-width: 90%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .api-app .api-sidebar { transition: none; }
+}

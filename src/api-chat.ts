@@ -1,4 +1,6 @@
 import { getLanguage } from "./i18n";
+import { renderChatMarkdown } from "./chat-markdown.mjs";
+import "./api-chat-surface.css";
 
 type ApiProvider = {
   id: string;
@@ -37,7 +39,17 @@ type ChatMessage = {
   attachments?: ApiAttachment[];
 };
 
+type ChatConversation = {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  providerId: string;
+  model: string;
+  reasoning: string;
+};
+
 const API_CHAT_HISTORY_LIMIT = 100;
+const API_CHAT_SESSION_LIMIT = 20;
 const DEVICE_TOKEN_KEY = "devmoter-device-token";
 const PROJECT_KEY = "opencode-pocket-project";
 
@@ -86,7 +98,8 @@ export function mountApiChat(
 ): ApiChatController {
   root.innerHTML = `
     <div class="api-app">
-      <aside id="apiSidebar" class="api-sidebar">
+      <div id="apiScrim" class="api-scrim hidden"></div>
+      <aside id="apiSidebar" class="api-sidebar" aria-hidden="true" aria-label="API Chat conversation history" tabindex="-1" inert>
         <div class="api-sidebar-head dm-agent-head">
           <div class="dm-agent-switch-shell">
             <button id="apiAgentSwitchButton" class="dm-agent-switch-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
@@ -103,6 +116,11 @@ export function mountApiChat(
           <button id="apiSidebarClose" type="button" aria-label="閉じる">×</button>
         </div>
         <button id="apiNewChat" class="api-new-chat" type="button">＋ 新しいチャット</button>
+        <div class="api-sidebar-scroll">
+        <section class="api-history" aria-label="${apiLocale("Chats in this tab", "このタブの会話", "此标签页的会话")}">
+          <div class="api-nav-label">${apiLocale("Chats in this tab", "このタブの会話", "此标签页的会话")}</div>
+          <div id="apiHistory"></div>
+        </section>
         <div class="api-nav-label">SETTINGS</div>
         <nav class="api-agent-nav">
           <button id="apiSettingsSide" type="button"><span>⚙</span><span>API Providers</span></button>
@@ -110,6 +128,8 @@ export function mountApiChat(
         <div class="api-sidebar-note">
           APIキーはDevMoterサーバー側だけに保存され、保存後ブラウザへ返されません。
         </div>
+        </div>
+        <div id="apiWorkspaceControlsMount"></div>
       </aside>
 
       <header class="api-topbar">
@@ -118,12 +138,7 @@ export function mountApiChat(
           <strong>API Chat</strong>
           <small>Multi-provider</small>
         </div>
-        <div class="api-picker-row">
-          <select id="apiProvider" aria-label="API provider"></select>
-          <select id="apiModel" aria-label="Model"></select>
-          <select id="apiReasoning" aria-label="推論モード"></select>
-          <button id="apiSettingsTop" class="api-icon-button api-settings-button" type="button" aria-label="API設定">⚙</button>
-        </div>
+        <button id="apiSettingsTop" class="api-icon-button api-settings-button" type="button" aria-label="API設定">⚙</button>
       </header>
 
       <main class="api-main">
@@ -140,6 +155,11 @@ export function mountApiChat(
         <form id="apiForm" class="api-composer">
           <div id="apiAttachments" class="api-attachment-tray hidden"></div>
           <textarea id="apiPrompt" rows="1" placeholder="メッセージを入力" aria-label="メッセージ"></textarea>
+          <div class="api-picker-row">
+            <select id="apiProvider" aria-label="API provider"></select>
+            <select id="apiModel" aria-label="Model"></select>
+            <select id="apiReasoning" aria-label="推論モード"></select>
+          </div>
           <input id="apiImageInput" class="hidden" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple />
           <div class="api-composer-foot">
             <button id="apiAttachImage" class="api-attach-button" type="button" aria-label="画像を添付">＋</button>
@@ -165,6 +185,7 @@ export function mountApiChat(
   `;
 
   const sidebar = root.querySelector<HTMLElement>("#apiSidebar")!;
+  const scrim = root.querySelector<HTMLElement>("#apiScrim")!;
   const menu = root.querySelector<HTMLButtonElement>("#apiMenu")!;
   const sidebarClose = root.querySelector<HTMLButtonElement>("#apiSidebarClose")!;
   const agentSwitchButton = root.querySelector<HTMLButtonElement>("#apiAgentSwitchButton")!;
@@ -190,6 +211,43 @@ export function mountApiChat(
   const settingsModal = root.querySelector<HTMLDivElement>("#apiSettingsModal")!;
   const settingsClose = root.querySelector<HTMLButtonElement>("#apiSettingsClose")!;
   const settingsBody = root.querySelector<HTMLDivElement>("#apiSettingsBody")!;
+  const backgroundRegions = [".api-topbar", ".api-main", ".api-composer-wrap"]
+    .map(selector => root.querySelector<HTMLElement>(selector)!);
+  let sidebarReturnFocus: HTMLElement | null = null;
+  let settingsReturnFocus: HTMLElement | null = null;
+  let settingsOpenSerial = 0;
+
+  function syncOverlayState() {
+    const sidebarOpen = sidebar.classList.contains("open");
+    const settingsOpen = !settingsModal.classList.contains("hidden");
+    sidebar.inert = !sidebarOpen;
+    settingsModal.inert = !settingsOpen;
+    for (const region of backgroundRegions) region.inert = sidebarOpen || settingsOpen;
+    menu.setAttribute("aria-expanded", String(sidebarOpen));
+  }
+  syncOverlayState();
+
+  function isVisibleFocusTarget(target: HTMLElement | null): target is HTMLElement {
+    return Boolean(target?.isConnected && !target.closest('[inert], [aria-hidden="true"]') && target.getClientRects().length);
+  }
+
+  function restoreOverlayFocus(target: HTMLElement | null) {
+    if (isVisibleFocusTarget(target)) target.focus({ preventScroll: true });
+    else if (isVisibleFocusTarget(menu)) menu.focus({ preventScroll: true });
+  }
+
+  function closeAgentSwitch() {
+    agentSwitchMenu.classList.add("hidden");
+    agentSwitchButton.setAttribute("aria-expanded", "false");
+  }
+  const history = root.querySelector<HTMLElement>("#apiHistory")!;
+  const app = root.querySelector<HTMLElement>(".api-app")!;
+  const composerWrap = root.querySelector<HTMLElement>(".api-composer-wrap")!;
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(() => {
+      app.style.setProperty("--api-composer-height", `${composerWrap.getBoundingClientRect().height}px`);
+    }).observe(composerWrap);
+  }
 
   let providers: ApiProvider[] = [];
   let presets: ApiPreset[] = [];
@@ -199,6 +257,8 @@ export function mountApiChat(
   let sending = false;
   let conversationGeneration = 0;
   let activeChatController: AbortController | null = null;
+  let activeConversationId: string = operationId();
+  let conversations: ChatConversation[] = [];
 
   function trimHistory() {
     if (messages.length > API_CHAT_HISTORY_LIMIT) {
@@ -206,18 +266,180 @@ export function mountApiChat(
     }
   }
 
+  function cloneMessages(value: ChatMessage[]) {
+    return value.map(message => ({
+      ...message,
+      attachments: message.attachments?.map(attachment => ({ ...attachment }))
+    }));
+  }
+
+  function renderHistory() {
+    const focusedId = document.activeElement instanceof HTMLElement
+      ? document.activeElement.closest<HTMLElement>(".api-history-row")?.dataset.conversationId : undefined;
+    history.replaceChildren();
+    if (!conversations.length) {
+      const empty = document.createElement("p");
+      empty.className = "api-history-empty";
+      empty.textContent = apiLocale("Chats appear here until this tab is reloaded.", "会話はこのタブを再読み込みするまで残ります。", "会话会保留到重新加载此标签页为止。");
+      history.appendChild(empty);
+    }
+    for (const conversation of conversations) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `api-history-row${conversation.id === activeConversationId ? " active" : ""}`;
+      button.dataset.conversationId = conversation.id;
+      button.disabled = uploadingCount > 0;
+      if (conversation.id === activeConversationId) button.setAttribute("aria-current", "true");
+      const title = document.createElement("strong");
+      title.textContent = conversation.title;
+      const detail = document.createElement("small");
+      const provider = providers.find(item => item.id === conversation.providerId);
+      detail.textContent = `${provider?.name || conversation.providerId} · ${conversation.model}`;
+      button.title = `${conversation.title}\n${detail.textContent}`;
+      button.append(title, detail);
+      button.addEventListener("click", () => selectConversation(conversation.id));
+      history.appendChild(button);
+      if (focusedId === conversation.id && !sidebar.inert) button.focus({ preventScroll: true });
+    }
+  }
+
+  function archiveConversation() {
+    if (messages.length) {
+      const title = (messages.find(message => message.role === "user")?.content || "Chat").replace(/\s+/g, " ");
+      const conversation: ChatConversation = {
+        id: activeConversationId,
+        title: Array.from(title).slice(0, 60).join(""),
+        messages: cloneMessages(messages),
+        providerId: providerSelect.value,
+        model: modelSelect.value,
+        reasoning: reasoningSelect.value || "auto"
+      };
+      conversations = [conversation, ...conversations.filter(item => item.id !== activeConversationId)].slice(0, API_CHAT_SESSION_LIMIT);
+    }
+    renderHistory();
+  }
+
+  function cancelActiveRequest() {
+    conversationGeneration += 1;
+    activeChatController?.abort();
+    activeChatController = null;
+    sending = false;
+  }
+
+  function discardPendingAttachments() {
+    for (const attachment of pendingAttachments) {
+      if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
+      void apiJson(`/api/llm/attachments/${encodeURIComponent(attachment.id)}`, {
+        method: "DELETE"
+      }).catch(() => {});
+    }
+    pendingAttachments = [];
+    renderPendingAttachments();
+  }
+
+  function selectConversation(id: string) {
+    if (uploadingCount > 0) return;
+    if (id === activeConversationId) {
+      closeSidebar();
+      prompt.focus();
+      return;
+    }
+    const conversation = conversations.find(item => item.id === id);
+    if (!conversation) return;
+    archiveConversation();
+    cancelActiveRequest();
+    discardPendingAttachments();
+    activeConversationId = conversation.id;
+    messages = cloneMessages(conversation.messages);
+    providerSelect.value = conversation.providerId;
+    updateModels();
+    if (currentProvider()) {
+      localStorage.setItem("devmoter-api-provider", providerSelect.value);
+      modelSelect.value = conversation.model;
+      if (modelSelect.value) localStorage.setItem(`devmoter-api-model:${providerSelect.value}`, modelSelect.value);
+      updateReasoning();
+      if (Array.from(reasoningSelect.options).some(option => option.value === conversation.reasoning)) {
+        reasoningSelect.value = conversation.reasoning;
+        localStorage.setItem(`devmoter-api-reasoning:${providerSelect.value}:${modelSelect.value}`, conversation.reasoning);
+      }
+    }
+    updateAvailability();
+    renderMessages();
+    closeSidebar();
+    prompt.focus();
+  }
+
+  function updateAvailability() {
+    const provider = currentProvider();
+    const busy = sending || uploadingCount > 0;
+    providerSelect.disabled = busy;
+    modelSelect.disabled = busy || !provider?.models.length;
+    reasoningSelect.disabled = busy || reasoningSelect.options.length <= 1;
+    send.disabled = !provider?.ready || !modelSelect.value || busy;
+    attachImage.disabled = busy;
+    newChat.disabled = uploadingCount > 0;
+    history.querySelectorAll<HTMLButtonElement>("button").forEach(button => { button.disabled = uploadingCount > 0; });
+    for (const select of [providerSelect, modelSelect, reasoningSelect]) {
+      select.title = select.selectedOptions[0]?.textContent || select.getAttribute("aria-label") || "";
+    }
+    send.textContent = sending ? "…" : "↑";
+    send.setAttribute("aria-label", sending ? apiLocale("Waiting for response", "応答待ち", "等待响应") : apiLocale("Send", "送信", "发送"));
+    form.setAttribute("aria-busy", String(sending));
+    status.title = status.textContent || "";
+  }
+
+  async function copyMessage(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const helper = document.createElement("textarea");
+      helper.value = text;
+      helper.style.position = "fixed";
+      helper.style.opacity = "0";
+      document.body.appendChild(helper);
+      try {
+        helper.select();
+        if (!document.execCommand("copy")) throw new Error("Copy failed");
+      } finally {
+        helper.remove();
+      }
+    }
+  }
+
   function openSidebar() {
+    if (!settingsModal.classList.contains("hidden") || sidebar.classList.contains("open")) return;
+    sidebarReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : menu;
+    closeAgentSwitch();
+    window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
     sidebar.classList.add("open");
+    sidebar.setAttribute("aria-hidden", "false");
+    sidebar.setAttribute("role", "dialog");
+    sidebar.setAttribute("aria-modal", "true");
+    scrim.classList.remove("hidden");
+    syncOverlayState();
+    sidebarClose.focus({ preventScroll: true });
   }
 
   function closeSidebar() {
-    agentSwitchMenu.classList.add("hidden");
-    agentSwitchButton.setAttribute("aria-expanded", "false");
+    const restoreFocus = sidebar.contains(document.activeElement);
+    closeAgentSwitch();
     sidebar.classList.remove("open");
+    sidebar.setAttribute("aria-hidden", "true");
+    sidebar.removeAttribute("role");
+    sidebar.removeAttribute("aria-modal");
+    scrim.classList.add("hidden");
+    syncOverlayState();
+    if (restoreFocus) restoreOverlayFocus(sidebarReturnFocus);
+    sidebarReturnFocus = null;
   }
 
   function closeSettings() {
+    const restoreFocus = settingsModal.contains(document.activeElement);
+    settingsOpenSerial += 1;
     settingsModal.classList.add("hidden");
+    syncOverlayState();
+    if (restoreFocus) restoreOverlayFocus(settingsReturnFocus);
+    settingsReturnFocus = null;
   }
 
   function currentProvider() {
@@ -274,8 +496,7 @@ export function mountApiChat(
       : provider.ready
         ? `${provider.name} · Ready`
         : `${provider.name} · ${apiLocale("API key missing", "APIキー未設定", "未设置 API 密钥")}`;
-    send.disabled = !provider?.ready || !modelSelect.value || sending || uploadingCount > 0;
-    attachImage.disabled = sending || uploadingCount > 0;
+    updateAvailability();
   }
 
   function resizePrompt() {
@@ -290,9 +511,15 @@ export function mountApiChat(
     for (const message of messages) {
       const row = document.createElement("article");
       row.className = `api-message ${message.role}`;
+      row.setAttribute("aria-label", message.role === "user"
+        ? apiLocale("You", "あなた", "你") : apiLocale("Assistant", "アシスタント", "助手"));
       const bubble = document.createElement("div");
       bubble.className = "api-message-bubble";
-      bubble.textContent = message.content;
+      if (message.role === "assistant") {
+        renderChatMarkdown(bubble, message.content, copyMessage);
+      } else {
+        bubble.textContent = message.content;
+      }
 
       if (message.attachments?.length) {
         const attachments = document.createElement("div");
@@ -306,10 +533,24 @@ export function mountApiChat(
       }
 
       row.appendChild(bubble);
+      if (message.role === "assistant") {
+        const copy = document.createElement("button");
+        copy.type = "button";
+        copy.className = "api-message-copy";
+        copy.textContent = apiLocale("Copy", "コピー", "复制");
+        copy.setAttribute("aria-label", apiLocale("Copy answer", "回答をコピー", "复制回答"));
+        copy.addEventListener("click", () => {
+          void copyMessage(message.content).then(() => {
+            copy.textContent = apiLocale("Copied", "コピーしました", "已复制");
+          }).catch(() => { copy.textContent = apiLocale("Copy failed", "コピーできませんでした", "复制失败"); });
+        });
+        row.appendChild(copy);
+      }
       transcript.appendChild(row);
     }
 
     transcript.scrollTop = transcript.scrollHeight;
+    archiveConversation();
   }
 
   function renderPendingAttachments() {
@@ -553,13 +794,26 @@ export function mountApiChat(
   }
 
   async function openSettings() {
+    if (!settingsModal.classList.contains("hidden")) {
+      settingsClose.focus({ preventScroll: true });
+      return;
+    }
+    settingsReturnFocus = sidebar.contains(document.activeElement) ? menu
+      : document.activeElement instanceof HTMLElement ? document.activeElement : menu;
     closeSidebar();
+    closeAgentSwitch();
+    window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
     settingsModal.classList.remove("hidden");
+    syncOverlayState();
+    settingsClose.focus({ preventScroll: true });
     settingsBody.innerHTML = '<div class="api-settings-loading">読み込み中…</div>';
+    const serial = ++settingsOpenSerial;
     try {
       await Promise.all([refresh(), loadPresets()]);
+      if (serial !== settingsOpenSerial || settingsModal.classList.contains("hidden")) return;
       await renderSettingsList();
     } catch (error) {
+      if (serial !== settingsOpenSerial || settingsModal.classList.contains("hidden")) return;
       settingsBody.textContent = error instanceof Error ? error.message : String(error);
     }
   }
@@ -947,9 +1201,10 @@ export function mountApiChat(
     resizePrompt();
     renderMessages();
     sending = true;
-    send.disabled = true;
-    attachImage.disabled = true;
+    updateAvailability();
     status.textContent = `${provider.name} · 考え中…`;
+    status.title = status.textContent;
+    let responseFailed = false;
 
     try {
       const payload = await apiJson<{ message?: { content?: string } }>("/api/llm/chat", {
@@ -968,14 +1223,15 @@ export function mountApiChat(
         signal: controller.signal
       });
       if (generation !== conversationGeneration) return;
-      const content = String(payload?.message?.content || "").trim();
-      if (!content) throw new Error(apiLocale("The provider returned an empty response", "空の応答が返されました", "Provider 返回了空响应"));
+      const content = String(payload?.message?.content || "");
+      if (!content.trim()) throw new Error(apiLocale("The provider returned an empty response", "空の応答が返されました", "Provider 返回了空响应"));
       messages.push({ role: "assistant", content });
       trimHistory();
       renderMessages();
       status.textContent = `${provider.name} · Ready`;
     } catch (error) {
       if (generation !== conversationGeneration || controller.signal.aborted) return;
+      responseFailed = true;
       messages.push({
         role: "assistant",
         content: `${apiLocale("Error", "エラー", "错误")}: ${error instanceof Error ? error.message : String(error)}`
@@ -988,21 +1244,33 @@ export function mountApiChat(
       if (generation === conversationGeneration) {
         sending = false;
         updateModels();
+        if (responseFailed) {
+          status.textContent = `${provider.name} · Error`;
+          status.title = status.textContent;
+        }
         prompt.focus();
       }
     }
   }
 
   menu.addEventListener("click", openSidebar);
+  window.addEventListener("devmoter:close-chat-history", closeSidebar);
+  const closeLocalOverlays = () => {
+    closeSidebar();
+    closeSettings();
+  };
+  window.addEventListener("devmoter:global-nav-opened", closeLocalOverlays);
+  window.addEventListener("devmoter:surface-changed", closeLocalOverlays);
   agentSwitchButton.addEventListener("click", () => {
     const open = agentSwitchMenu.classList.toggle("hidden") === false;
     agentSwitchButton.setAttribute("aria-expanded", String(open));
   });
   agentCurrent.addEventListener("click", () => {
-    agentSwitchMenu.classList.add("hidden");
-    agentSwitchButton.setAttribute("aria-expanded", "false");
+    closeAgentSwitch();
+    agentSwitchButton.focus({ preventScroll: true });
   });
   sidebarClose.addEventListener("click", closeSidebar);
+  scrim.addEventListener("click", closeSidebar);
   goCodex.addEventListener("click", () => {
     closeSidebar();
     options.onCodex?.();
@@ -1017,19 +1285,40 @@ export function mountApiChat(
   settingsModal.addEventListener("click", event => {
     if (event.target === settingsModal) closeSettings();
   });
-  newChat.addEventListener("click", () => {
-    conversationGeneration += 1;
-    activeChatController?.abort();
-    activeChatController = null;
-    sending = false;
-    for (const attachment of pendingAttachments) {
-      if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
-      void apiJson(`/api/llm/attachments/${encodeURIComponent(attachment.id)}`, {
-        method: "DELETE"
-      }).catch(() => {});
+  document.addEventListener("keydown", event => {
+    if (!document.body.classList.contains("api-mode")) return;
+    const overlay = !settingsModal.classList.contains("hidden") ? settingsModal
+      : sidebar.classList.contains("open") ? sidebar : null;
+    if (!overlay) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (overlay === sidebar && !agentSwitchMenu.classList.contains("hidden")) {
+        closeAgentSwitch();
+        agentSwitchButton.focus({ preventScroll: true });
+      } else if (overlay === settingsModal) closeSettings();
+      else closeSidebar();
+      return;
     }
-    pendingAttachments = [];
+    if (event.key !== "Tab") return;
+    const controls = Array.from(overlay.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex="0"]'
+    )).filter(isVisibleFocusTarget);
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (!first || !last) return;
+    const active = document.activeElement;
+    if (!overlay.contains(active) || (event.shiftKey ? active === first : active === last)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus({ preventScroll: true });
+    }
+  });
+  newChat.addEventListener("click", () => {
+    if (uploadingCount > 0) return;
+    archiveConversation();
+    cancelActiveRequest();
+    discardPendingAttachments();
     messages = [];
+    activeConversationId = operationId();
     renderPendingAttachments();
     renderMessages();
     updateModels();
@@ -1043,11 +1332,14 @@ export function mountApiChat(
     }
     localStorage.setItem("devmoter-api-provider", providerSelect.value);
     updateModels();
+    archiveConversation();
   });
   modelSelect.addEventListener("change", () => {
     const provider = currentProvider();
     if (provider) localStorage.setItem(`devmoter-api-model:${provider.id}`, modelSelect.value);
     updateReasoning();
+    updateAvailability();
+    archiveConversation();
   });
   reasoningSelect.addEventListener("change", () => {
     const provider = currentProvider();
@@ -1056,6 +1348,8 @@ export function mountApiChat(
       `devmoter-api-reasoning:${provider.id}:${modelSelect.value}`,
       reasoningSelect.value
     );
+    updateAvailability();
+    archiveConversation();
   });
   attachImage.addEventListener("click", () => imageInput.click());
   imageInput.addEventListener("change", () => {
@@ -1075,6 +1369,7 @@ export function mountApiChat(
 
   void refresh();
   resizePrompt();
+  renderHistory();
 
   return { refresh };
 }
