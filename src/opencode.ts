@@ -160,6 +160,7 @@ export function mountOpenCodeRemote(
           <button id="ocxSidebarClose" class="ocx-icon" type="button" aria-label="閉じる">×</button>
         </div>
 
+        <div class="ocx-sidebar-scroll">
         <button id="ocxNewSessionSide" class="ocx-new-session" type="button">
           <span>＋</span>
           <span>New session</span>
@@ -190,6 +191,7 @@ export function mountOpenCodeRemote(
           </div>
         </div>
 
+        </div>
         <div id="ocxWorkspaceControlsMount" class="ocx-workspace-controls"></div>
 
         <div class="ocx-sidebar-foot">

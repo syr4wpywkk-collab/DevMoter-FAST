@@ -172,6 +172,12 @@ body.opencode-mode { background: #faf9f5; }
 .ocx-app .ocx-command-row span { font-size: .75rem; }
 
 .ocx-app .ocx-sidebar { background: #f3f0e8; box-shadow: 12px 0 40px rgba(61, 48, 26, .12); }
+.ocx-app .ocx-sidebar-head,
+.ocx-app .ocx-sidebar-foot { flex: 0 0 auto; }
+.ocx-app .ocx-sidebar-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.ocx-app .ocx-sidebar-scroll .ocx-new-session { width: 100%; }
+.ocx-app .ocx-sidebar-scroll .ocx-side-section { flex: 0 0 auto; min-height: 0; }
+.ocx-app .ocx-sidebar-scroll .ocx-sessions { overflow: visible; }
 .ocx-app .ocx-history-icon { background: #eadecf; color: var(--oc-accent); }
 .ocx-app .ocx-sidebar-head small { font-size: .7rem; }
 .ocx-app .ocx-new-session { background: var(--oc-panel); border-color: var(--oc-line); color: var(--oc-text); border-radius: 10px; }
