@@ -7,6 +7,8 @@ import { enrichInstalledPluginEntries, pluginEntries } from "./codex-plugin-meta
 import { applyReasoningToTurnStart, normalizeCodexModels, reasoningChoices, reconcileReasoningMode } from "./codex-reasoning.mjs";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
+import { renderChatMarkdown } from "./chat-markdown.mjs";
+import "./codex-chat.css";
 import {
   continueAgentRun,
   guardMessage,
@@ -22,6 +24,18 @@ import {
 } from "./safety-client";
 
 const FOLLOW_BOTTOM_THRESHOLD = 48;
+
+// Fixed SVG markup keeps control shapes consistent across platforms.
+const cxIcons = {
+  menu: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+  newChat: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-7M16 3l5 5M10 14l2-6 5-5 4 4-5 5-6 2Z"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  chevron: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>',
+  voice: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11v1a7 7 0 0 0 14 0v-1M12 19v3M8 22h8"/></svg>',
+  send: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg>',
+  stop: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/></svg>',
+  usage: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9h-9V3Z"/><path d="M16 3.9a9 9 0 0 1 4.1 4.1H16V3.9Z"/></svg>'
+};
 
 type Json = Record<string, any>;
 
@@ -103,7 +117,7 @@ export function mountCodexRemote(
     <div class="cx-app">
       <div id="cxScrim" class="cx-scrim hidden"></div>
 
-      <aside id="cxSidebar" class="cx-sidebar" aria-hidden="true">
+      <aside id="cxSidebar" class="cx-sidebar" aria-hidden="true" aria-label="会話履歴" tabindex="-1">
         <div class="cx-sidebar-head dm-agent-head">
           <div class="dm-agent-switch-shell">
             <button id="cxAgentSwitchButton" class="dm-agent-switch-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
@@ -136,6 +150,7 @@ export function mountCodexRemote(
           <button id="cxIntegrationsNav" class="cx-nav-item" type="button"><span>⌁</span><span>Integrations</span></button>
           <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button"><span>◇</span><span>Developer workflows</span></button>
           <button id="cxSettingsNav" class="cx-nav-item" type="button"><span>⚙</span><span>Settings</span></button>
+          <button id="cxToolsNav" class="cx-nav-item" type="button"><span>☷</span><span>DevMoter tools</span></button>
         </nav>
 
         <div class="cx-side-section">
@@ -161,16 +176,14 @@ export function mountCodexRemote(
       </aside>
 
       <header class="cx-topbar">
-        <button id="cxMenu" class="cx-icon-button" type="button" aria-label="会話履歴を開く" title="会話履歴">☰</button>
+        <button id="cxMenu" class="cx-icon-button" type="button" aria-label="会話履歴を開く" title="会話履歴">${cxIcons.menu}</button>
         <button id="cxTitleButton" class="cx-title-button" type="button">
           <span id="cxTitle">Codex</span>
           <small id="cxModelLabel">DevMoter agent</small>
         </button>
         <div class="cx-topbar-controls">
-          <button id="cxModelTop" class="cx-topbar-pill" type="button" aria-label="モデルを選択"><span>◉</span><small id="cxModelTopLabel">default</small></button>
-          <button id="cxReasoningTop" class="cx-topbar-pill" type="button" aria-label="推論性能を選択"><span>◌</span><small>Auto</small></button>
-          <button id="cxUsageTop" class="cx-topbar-pill cx-usage-pill" type="button" aria-label="使用量"><span>◒</span><small id="cxUsageLabel">Usage</small></button>
-          <button id="cxNewChatTop" class="cx-icon-button" type="button" aria-label="新しいチャット">✎</button>
+          <button id="cxUsageTop" class="cx-topbar-pill cx-usage-pill" type="button" aria-label="使用量" title="Usage">${cxIcons.usage}<small id="cxUsageLabel">Usage</small></button>
+          <button id="cxNewChatTop" class="cx-icon-button" type="button" aria-label="新しいチャット">${cxIcons.newChat}</button>
         </div>
       </header>
 
@@ -215,14 +228,13 @@ export function mountCodexRemote(
 
           <div class="cx-composer-row">
             <div class="cx-composer-left">
-              <button id="cxPlus" class="cx-round-button" type="button" aria-label="追加">＋</button>
-              <button id="cxThink" class="cx-think-button" type="button" aria-label="推論量を選択">
-                <span>◌</span><span id="cxThinkLabel">推論量</span>
-              </button>
+              <button id="cxPlus" class="cx-round-button" type="button" aria-label="追加" aria-expanded="false" aria-controls="cxPlusMenu">${cxIcons.plus}</button>
+              <button id="cxModelTop" class="cx-topbar-pill" type="button" aria-label="モデルを選択" aria-haspopup="dialog"><small id="cxModelTopLabel">default</small>${cxIcons.chevron}</button>
+              <button id="cxReasoningTop" class="cx-topbar-pill" type="button" aria-label="推論性能を選択" aria-haspopup="dialog"><small id="cxReasoningTopLabel">Auto</small>${cxIcons.chevron}</button>
             </div>
             <div class="cx-composer-right">
-              <button id="cxVoice" class="cx-round-button cx-voice-button" type="button" aria-label="音声入力">♩</button>
-              <button id="cxSend" class="cx-send-button" type="submit" aria-label="送信">↑</button>
+              <button id="cxVoice" class="cx-round-button cx-voice-button" type="button" aria-label="音声入力">${cxIcons.voice}</button>
+              <button id="cxSend" class="cx-send-button" type="submit" aria-label="送信">${cxIcons.send}</button>
             </div>
           </div>
         </form>
@@ -239,7 +251,7 @@ export function mountCodexRemote(
 
       <div id="cxToast" class="cx-toast hidden" role="status" aria-live="polite"></div>
 
-      <div id="cxModal" class="cx-modal hidden" role="dialog" aria-modal="true">
+      <div id="cxModal" class="cx-modal hidden" role="dialog" aria-modal="true" aria-labelledby="cxModalTitle" aria-describedby="cxModalSubtitle">
         <div class="cx-modal-card">
           <div class="cx-modal-head">
             <div>
@@ -260,6 +272,7 @@ export function mountCodexRemote(
   const agentSwitchButton = root.querySelector<HTMLButtonElement>("#cxAgentSwitchButton")!;
   const agentSwitchMenu = root.querySelector<HTMLDivElement>("#cxAgentSwitchMenu")!;
   const settingsNav = root.querySelector<HTMLButtonElement>("#cxSettingsNav")!;
+  const toolsNav = root.querySelector<HTMLButtonElement>("#cxToolsNav")!;
   const menu = root.querySelector<HTMLButtonElement>("#cxMenu")!;
   const newChatSide = root.querySelector<HTMLButtonElement>("#cxNewChatSide")!;
   const newChatTop = root.querySelector<HTMLButtonElement>("#cxNewChatTop")!;
@@ -274,6 +287,7 @@ export function mountCodexRemote(
   const usageTop = root.querySelector<HTMLButtonElement>("#cxUsageTop")!;
   const modelTop = root.querySelector<HTMLButtonElement>("#cxModelTop")!;
   const modelTopLabel = root.querySelector<HTMLElement>("#cxModelTopLabel")!;
+  const reasoningTopLabel = root.querySelector<HTMLElement>("#cxReasoningTopLabel")!;
   const usageLabel = root.querySelector<HTMLElement>("#cxUsageLabel")!;
   const sideStatus = root.querySelector<HTMLElement>("#cxSideStatus")!;
   const title = root.querySelector<HTMLElement>("#cxTitle")!;
@@ -312,8 +326,6 @@ export function mountCodexRemote(
   const promptInput = root.querySelector<HTMLTextAreaElement>("#cxPromptInput")!;
   const send = root.querySelector<HTMLButtonElement>("#cxSend")!;
   const plus = root.querySelector<HTMLButtonElement>("#cxPlus")!;
-  const think = root.querySelector<HTMLButtonElement>("#cxThink")!;
-  const thinkLabel = root.querySelector<HTMLElement>("#cxThinkLabel")!;
   const plusMenu = root.querySelector<HTMLDivElement>("#cxPlusMenu")!;
   const executionStatus = root.querySelector<HTMLDivElement>("#cxExecutionStatus")!;
   const attachmentStrip = root.querySelector<HTMLDivElement>("#cxAttachmentStrip")!;
@@ -329,6 +341,59 @@ export function mountCodexRemote(
   const modalSubtitle = root.querySelector<HTMLElement>("#cxModalSubtitle")!;
   const modalBody = root.querySelector<HTMLDivElement>("#cxModalBody")!;
   const modalClose = root.querySelector<HTMLButtonElement>("#cxModalClose")!;
+  const appFrame = root.querySelector<HTMLElement>(".cx-app")!;
+  const composerWrap = root.querySelector<HTMLElement>(".cx-composer-wrap")!;
+  const backgroundRegions = [".cx-topbar", ".cx-main", ".cx-composer-wrap", ".cx-approval"]
+    .map(selector => root.querySelector<HTMLElement>(selector)!);
+  let sidebarReturnFocus: HTMLElement | null = null;
+  let modalReturnFocus: HTMLElement | null = null;
+
+  function syncOverlayState() {
+    const blocking = sidebar.classList.contains("open") || !modal.classList.contains("hidden");
+    sidebar.inert = !sidebar.classList.contains("open");
+    for (const region of backgroundRegions) region.inert = blocking;
+  }
+  syncOverlayState();
+
+  // Measure local chrome; attachments, multiline input and approvals change its height.
+  if (typeof ResizeObserver !== "undefined") {
+    const resizeObserver = new ResizeObserver(() => {
+      const composerHeight = Math.ceil(composerWrap.getBoundingClientRect().height);
+      if (composerHeight > 0) appFrame.style.setProperty("--cx-composer-height", `${composerHeight}px`);
+      appFrame.style.setProperty("--cx-approval-height", `${Math.ceil(approval.getBoundingClientRect().height)}px`);
+      followLatest();
+    });
+    resizeObserver.observe(composerWrap);
+    resizeObserver.observe(approval);
+  }
+
+  // Raw assistant text is state. Markdown and action buttons only project that state.
+  const assistantText = new WeakMap<HTMLDivElement, string>();
+  const pendingMarkdown = new Set<HTMLDivElement>();
+  let markdownFrame: number | null = null;
+
+  function renderAssistantText(bubble: HTMLDivElement) {
+    let body = bubble.querySelector<HTMLElement>(".cx-message-text");
+    if (!body) {
+      body = document.createElement("div");
+      body.className = "cx-message-text";
+      bubble.prepend(body);
+    }
+    renderChatMarkdown(body, assistantText.get(bubble) ?? "", text => void copyText(text));
+  }
+
+  function queueAssistantRender(bubble: HTMLDivElement) {
+    pendingMarkdown.add(bubble);
+    if (markdownFrame !== null) return;
+    markdownFrame = window.requestAnimationFrame(() => {
+      markdownFrame = null;
+      for (const pending of pendingMarkdown) {
+        if (pending.isConnected) renderAssistantText(pending);
+      }
+      pendingMarkdown.clear();
+      followLatest();
+    });
+  }
 
   let online = false;
   let activeThreadId: string | null = null;
@@ -384,8 +449,10 @@ export function mountCodexRemote(
   function updateContextLabel() {
     const project = activeProject?.name || "No project";
     const model = selectedModel ? modelDisplayName(selectedModel) : "default";
-    modelLabel.textContent = `${project} · ${model}`;
+    modelLabel.textContent = project;
     modelTopLabel.textContent = model;
+    modelTop.title = model;
+    modelTop.setAttribute("aria-label", `モデルを選択: ${model}`);
   }
 
   function updateUsage(tokens = 0) {
@@ -520,8 +587,9 @@ export function mountCodexRemote(
     const label = reasoningMode === "auto"
       ? `Auto${defaultEffort ? ` · ${reasoningLabel(defaultEffort)}` : ""}`
       : reasoningLabel(reasoningMode);
-    reasoningTop.querySelector("small")!.textContent = label;
-    thinkLabel.textContent = label;
+    reasoningTopLabel.textContent = label;
+    reasoningTop.title = label;
+    reasoningTop.setAttribute("aria-label", `推論性能を選択: ${label}`);
   }
 
   function showReasoningPicker() {
@@ -654,32 +722,58 @@ export function mountCodexRemote(
     updateContextLabel();
   }
 
+  function closePlusMenu() {
+    plusMenu.classList.add("hidden");
+    plus.setAttribute("aria-expanded", "false");
+  }
+
   function openSidebar() {
+    if (!modal.classList.contains("hidden")) return;
+    sidebarReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : menu;
+    closePlusMenu();
     window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
     sidebar.classList.add("open");
     sidebar.setAttribute("aria-hidden", "false");
     scrim.classList.remove("hidden");
+    sidebar.setAttribute("role", "dialog");
+    sidebar.setAttribute("aria-modal", "true");
+    syncOverlayState();
+    sidebarClose.focus({ preventScroll: true });
   }
 
   function closeSidebar() {
+    const restoreFocus = sidebar.contains(document.activeElement);
     agentSwitchMenu.classList.add("hidden");
     agentSwitchButton.setAttribute("aria-expanded", "false");
     sidebar.classList.remove("open");
     sidebar.setAttribute("aria-hidden", "true");
     scrim.classList.add("hidden");
+    sidebar.removeAttribute("role");
+    sidebar.removeAttribute("aria-modal");
+    syncOverlayState();
+    if (restoreFocus) (sidebarReturnFocus?.isConnected ? sidebarReturnFocus : menu)?.focus({ preventScroll: true });
   }
 
   function openModal(titleText: string, subtitleText = "") {
+    modalReturnFocus = sidebar.contains(document.activeElement) ? menu
+      : document.activeElement instanceof HTMLElement ? document.activeElement : menu;
+    closeSidebar();
+    closePlusMenu();
+    window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
     modalCloseGuard = null;
     modalTitle.textContent = titleText;
     modalSubtitle.textContent = subtitleText;
     modal.classList.remove("hidden");
+    syncOverlayState();
+    modalClose.focus({ preventScroll: true });
   }
 
   function closeModal() {
     if (modalCloseGuard && !modalCloseGuard()) return;
     modalCloseGuard = null;
     modal.classList.add("hidden");
+    syncOverlayState();
+    if (modalReturnFocus?.isConnected) modalReturnFocus.focus({ preventScroll: true });
   }
 
   async function rpc<T = Json>(
@@ -755,7 +849,7 @@ export function mountCodexRemote(
     executionStatus.querySelector("span")!.textContent = executionLabel(next);
 
     send.classList.toggle("stop", active);
-    send.textContent = active ? "■" : "↑";
+    send.innerHTML = active ? cxIcons.stop : cxIcons.send;
     send.setAttribute("aria-label", active ? "停止" : "送信");
     send.disabled = !online || next === "reconnecting";
 
@@ -834,8 +928,8 @@ export function mountCodexRemote(
   function addAssistantActions(bubble: HTMLDivElement) {
     if (bubble.querySelector(".cx-message-actions")) return;
 
-    const text = bubble.querySelector<HTMLElement>(".cx-message-text")?.textContent?.trim() || "";
-    if (!text) return;
+    const text = assistantText.get(bubble) ?? "";
+    if (!text.trim()) return;
 
     const actions = document.createElement("div");
     actions.className = "cx-message-actions";
@@ -955,7 +1049,10 @@ export function mountCodexRemote(
     const bubble = document.createElement("div");
     bubble.className = `cx-message ${role}`;
 
-    if (text) {
+    if (role === "assistant") {
+      assistantText.set(bubble, text);
+      renderAssistantText(bubble);
+    } else if (text) {
       const body = document.createElement("div");
       body.className = "cx-message-text";
       body.textContent = text;
@@ -1579,7 +1676,7 @@ export function mountCodexRemote(
     hideContextPalette();
     renderAttachments();
     resizeComposer();
-    plusMenu.classList.add("hidden");
+    closePlusMenu();
     activeAssistantBubble = null;
     setExecutionState("running");
 
@@ -1839,6 +1936,7 @@ export function mountCodexRemote(
         activeTurnId = null;
         if (activeAssistantBubble) {
           activeAssistantBubble.closest(".cx-message-row")?.classList.remove("live");
+          renderAssistantText(activeAssistantBubble);
           addAssistantActions(activeAssistantBubble);
         }
         activeAssistantBubble = null;
@@ -1864,14 +1962,8 @@ export function mountCodexRemote(
           activeAssistantBubble = addMessage("assistant", "", [], false);
           activeAssistantBubble.closest(".cx-message-row")?.classList.add("live");
         }
-        let textNode = activeAssistantBubble.querySelector<HTMLElement>(".cx-message-text");
-        if (!textNode) {
-          textNode = document.createElement("div");
-          textNode.className = "cx-message-text";
-          activeAssistantBubble.appendChild(textNode);
-        }
-        textNode.textContent += delta;
-        followLatest();
+        assistantText.set(activeAssistantBubble, (assistantText.get(activeAssistantBubble) ?? "") + delta);
+        queueAssistantRender(activeAssistantBubble);
         return;
       }
 
@@ -2995,6 +3087,10 @@ export function mountCodexRemote(
     closeSidebar();
     window.dispatchEvent(new CustomEvent("devmoter:open-settings"));
   });
+  toolsNav.addEventListener("click", () => {
+    closeSidebar();
+    window.dispatchEvent(new CustomEvent("devmoter:open-global-nav"));
+  });
 
   libraryNav.addEventListener("click", showLibrary);
   root.querySelectorAll<HTMLButtonElement>(".cx-agent-option").forEach(button => {
@@ -3020,16 +3116,50 @@ export function mountCodexRemote(
   modal.addEventListener("click", event => {
     if (event.target === modal) closeModal();
   });
+  document.addEventListener("keydown", event => {
+    const overlay = !modal.classList.contains("hidden") ? modal
+      : sidebar.classList.contains("open") ? sidebar : null;
+    if (!document.body.classList.contains("codex-mode")) return;
+    if (!overlay) {
+      if (event.key === "Escape" && !plusMenu.classList.contains("hidden")) {
+        closePlusMenu();
+        plus.focus();
+      }
+      return;
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (overlay === modal) closeModal();
+      else closeSidebar();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const controls = Array.from(overlay.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex="0"]'
+    )).filter(control => control.getClientRects().length && !control.closest('[inert], [aria-hidden="true"]'));
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (!first || !last) return;
+    if (!overlay.contains(document.activeElement) || (event.shiftKey && document.activeElement === first)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
 
-  plus.addEventListener("click", () => plusMenu.classList.toggle("hidden"));
+  plus.addEventListener("click", () => {
+    plusMenu.classList.toggle("hidden");
+    plus.setAttribute("aria-expanded", String(!plusMenu.classList.contains("hidden")));
+  });
   photo.addEventListener("click", () => photoInput.click());
   file.addEventListener("click", () => fileInput.click());
   pluginsQuick.addEventListener("click", () => {
-    plusMenu.classList.add("hidden");
+    closePlusMenu();
     void showPlugins();
   });
   reasoningTop.addEventListener("click", showReasoningPicker);
-  think.addEventListener("click", showReasoningPicker);
   usageTop.addEventListener("click", () => void showUsage());
   voice.addEventListener("click", () => {
     const SpeechRecognition = (window as Window & { SpeechRecognition?: new () => any; webkitSpeechRecognition?: new () => any }).SpeechRecognition ||
@@ -3056,12 +3186,12 @@ export function mountCodexRemote(
   photoInput.addEventListener("change", () => {
     if (photoInput.files) void addFiles(photoInput.files, true);
     photoInput.value = "";
-    plusMenu.classList.add("hidden");
+    closePlusMenu();
   });
   fileInput.addEventListener("change", () => {
     if (fileInput.files) void addFiles(fileInput.files);
     fileInput.value = "";
-    plusMenu.classList.add("hidden");
+    closePlusMenu();
   });
 
   let composerDragDepth = 0;
@@ -3088,7 +3218,7 @@ export function mountCodexRemote(
     event.preventDefault();
     composerDragDepth = 0;
     promptForm.classList.remove("dragging");
-    plusMenu.classList.add("hidden");
+    closePlusMenu();
     void addFiles(event.dataTransfer.files);
   });
 

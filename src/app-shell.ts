@@ -84,7 +84,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
 
     <div class="dm-shell-scrim hidden" data-shell-scrim></div>
 
-    <aside class="dm-shell-sidebar" aria-hidden="true" aria-label="DevMoter feature sidebar">
+    <aside class="dm-shell-sidebar" aria-hidden="true" aria-label="DevMoter feature sidebar" inert>
       <header class="dm-shell-sidebar-head">
         <div>
           <strong>DevMoter FAST</strong>
@@ -170,6 +170,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   let backend: Backend = options.initialBackend || "opencode";
   let surface: MainSurface = options.initialSurface || "home";
   let toastTimer = 0;
+  let sidebarReturnFocus: HTMLElement | null = null;
 
   function notify(message: string) {
     if (toastTimer) window.clearTimeout(toastTimer);
@@ -178,21 +179,45 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     toastTimer = window.setTimeout(() => toast.classList.add("hidden"), 2600);
   }
 
+  function isVisibleFocusTarget(target: HTMLElement | null): target is HTMLElement {
+    return Boolean(target?.isConnected && !target.closest('[inert], [aria-hidden="true"]') && target.getClientRects().length);
+  }
+
   function openSidebar() {
+    if (sidebar.classList.contains("open")) return;
     window.dispatchEvent(new CustomEvent("devmoter:close-chat-history"));
+    sidebarReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     sidebar.classList.add("open");
+    sidebar.inert = false;
     sidebar.setAttribute("aria-hidden", "false");
+    sidebar.setAttribute("role", "dialog");
+    sidebar.setAttribute("aria-modal", "true");
     trigger.setAttribute("aria-expanded", "true");
     scrim.classList.remove("hidden");
     document.body.classList.add("devmoter-shell-menu-open");
+    root.querySelector<HTMLButtonElement>("[data-shell-close]")!.focus({ preventScroll: true });
   }
 
   function closeSidebar() {
+    const wasOpen = sidebar.classList.contains("open");
     sidebar.classList.remove("open");
+    sidebar.inert = true;
     sidebar.setAttribute("aria-hidden", "true");
+    sidebar.removeAttribute("role");
+    sidebar.removeAttribute("aria-modal");
     trigger.setAttribute("aria-expanded", "false");
     scrim.classList.add("hidden");
     document.body.classList.remove("devmoter-shell-menu-open");
+    if (wasOpen) {
+      const fallback = document.body.classList.contains("codex-mode")
+        ? document.querySelector<HTMLElement>("#cxMenu")
+        : trigger;
+      const target = isVisibleFocusTarget(sidebarReturnFocus)
+        ? sidebarReturnFocus
+        : fallback;
+      if (isVisibleFocusTarget(target)) target.focus({ preventScroll: true });
+    }
+    sidebarReturnFocus = null;
   }
 
   function updateBackend(next: Backend) {
@@ -304,6 +329,17 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   scrim.addEventListener("click", closeSidebar);
   document.addEventListener("keydown", event => {
     if (event.key === "Escape") closeSidebar();
+    if (event.key !== "Tab" || !sidebar.classList.contains("open")) return;
+    const controls = Array.from(sidebar.querySelectorAll<HTMLElement>('button:not(:disabled), [href], [tabindex]:not([tabindex="-1"])'))
+      .filter(control => control.tabIndex >= 0 && isVisibleFocusTarget(control));
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (!first || !last) return;
+    const active = document.activeElement;
+    if (!sidebar.contains(active) || (event.shiftKey ? active === first : active === last)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus({ preventScroll: true });
+    }
   });
 
   window.addEventListener("devmoter:backend-changed", event => {
@@ -330,6 +366,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     if (next) updateSurface(next);
   });
   window.addEventListener("devmoter:close-global-nav", closeSidebar);
+  window.addEventListener("devmoter:open-global-nav", openSidebar);
 
   updateBackend(backend);
   updateSurface(surface);

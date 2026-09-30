@@ -6,8 +6,8 @@ const CONTEXT_THRESHOLD_KEY = "devmoter-context-threshold";
 const LAST_COMPACT_KEY = "devmoter-last-auto-compact";
 const TRANSCRIPT_WINDOW = 180;
 const RAW_OUTPUT_LIMIT = 12_000;
-const RICH_SELECTOR =
-  ".cx-message-row.assistant:not(.live) .cx-message-text, .ocx-message-row.assistant:not(.live) .ocx-assistant-text";
+// Codex owns its Markdown renderer and raw text state; never rehydrate it from DOM.
+const RICH_SELECTOR = ".ocx-message-row.assistant:not(.live) .ocx-assistant-text";
 const TRANSCRIPT_SELECTOR = ".cx-transcript, .ocx-transcript";
 
 function workspaceControlFetch(input: RequestInfo | URL, init: RequestInit = {}) {
@@ -536,8 +536,8 @@ function injectStyles() {
     .dm-task-row.current { outline:1px solid color-mix(in srgb,currentColor 35%,transparent); }
     .dm-task-actions { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0; }
     .dm-task-actions button { min-height:38px; border:0; border-radius:9px; padding:0 10px; }
-    .cx-message-text p,.ocx-assistant-text p { margin:.35em 0; white-space:normal; }
-    .cx-message-text h1,.cx-message-text h2,.cx-message-text h3,.ocx-assistant-text h1,.ocx-assistant-text h2,.ocx-assistant-text h3 { margin:.7em 0 .35em; }
+    .ocx-assistant-text p { margin:.35em 0; white-space:normal; }
+    .ocx-assistant-text h1,.ocx-assistant-text h2,.ocx-assistant-text h3 { margin:.7em 0 .35em; }
     .dm-code { overflow:auto; max-height:50vh; padding:12px; border-radius:10px; background:color-mix(in srgb,currentColor 8%,transparent); }
     .dm-token-keyword { font-weight:700; }
     .dm-token-string { opacity:.82; }
