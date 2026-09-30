@@ -44,8 +44,10 @@ function openSettings(page: SettingsPage = "root") {
 
 function actionButton(appId: AppId) {
   const { icon, title, shortDescription, availability } = getAppDefinition(appId);
+  const category = appCategories[appId];
+  const keywords = appKeywords[appId] || "";
   return `
-    <button type="button" class="dm-shell-action" data-shell-app="${appId}" aria-label="${title}${availability === "preview" ? ", Preview" : ""}"${availability === "preview" ? " aria-disabled=\"true\"" : availability === "unavailable" ? " disabled aria-disabled=\"true\"" : ""}>
+    <button type="button" class="dm-shell-action" data-tools-item data-tools-category="${category}" data-tools-search="${title} ${shortDescription} ${category} ${keywords}" data-shell-app="${appId}" aria-label="${title}${availability === "preview" ? ", Preview" : ""}"${availability === "preview" ? " aria-disabled=\"true\"" : availability === "unavailable" ? " disabled aria-disabled=\"true\"" : ""}>
       <span class="dm-shell-action-icon" aria-hidden="true">${icon}</span>
       <span class="dm-shell-action-copy"><strong>${title}</strong><small>${shortDescription}</small></span>
       ${availability === "preview" ? '<span class="dm-shell-action-badge">PREVIEW</span>' : ""}
@@ -55,8 +57,10 @@ function actionButton(appId: AppId) {
 }
 
 function systemActionButton(icon: string, title: string, detail: string, action: string, badge = "") {
+  const category = systemCategories[action] || "Settings";
+  const keywords = systemKeywords[action] || "";
   return `
-    <button type="button" class="dm-shell-action" data-shell-action="${action}">
+    <button type="button" class="dm-shell-action" data-tools-item data-tools-category="${category}" data-tools-search="${title} ${detail} ${category} ${keywords}" data-shell-action="${action}">
       <span class="dm-shell-action-icon" aria-hidden="true">${icon}</span>
       <span class="dm-shell-action-copy"><strong>${title}</strong><small>${detail}</small></span>
       ${badge ? `<span class="dm-shell-action-badge">${badge}</span>` : ""}
@@ -64,6 +68,44 @@ function systemActionButton(icon: string, title: string, detail: string, action:
     </button>
   `;
 }
+
+const appCategories: Record<AppId, string> = {
+  chat: "Workspace", projects: "Workspace", "mission-control": "Workspace", knowledge: "Workspace",
+  terminal: "Workspace", git: "Workspace", review: "Workspace", agents: "Sessions", sessions: "Sessions",
+  browser: "Workspace", automation: "Remote", "developer-workflows": "Workspace"
+};
+
+const appKeywords: Partial<Record<AppId, string>> = {
+  terminal: "shell command console ターミナル",
+  git: "changes diff commit branch",
+  review: "review code changes",
+  agents: "agent runs subagents",
+  sessions: "activity history runs stop",
+  automation: "scheduled jobs automation",
+  projects: "repositories workspace",
+  "developer-workflows": "extensions workflows"
+};
+
+const systemCategories: Record<string, string> = {
+  advanced: "Workspace", safety: "Workspace", index: "Workspace",
+  hosts: "Remote", automation: "Remote", passkeys: "Remote",
+  vault: "Settings", devices: "Settings", notifications: "Settings", diagnostics: "Settings", settings: "Settings", setup: "Settings"
+};
+
+const systemKeywords: Record<string, string> = {
+  advanced: "files preview browser models",
+  safety: "risk command scan remembered approvals permissions revoke 安全",
+  index: "search code symbols project index 検索",
+  hosts: "remote connection capabilities",
+  automation: "scheduled tasks",
+  passkeys: "webauthn authentication",
+  vault: "secrets credentials api keys",
+  devices: "trusted pairing revoke",
+  notifications: "push alerts",
+  diagnostics: "health network backend",
+  settings: "preferences account appearance",
+  setup: "installer paused experimental"
+};
 
 function appActionButtons(ids: readonly AppId[]) {
   return getAppsByIds(ids).map(app => actionButton(app.id)).join("");
@@ -87,13 +129,30 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     <aside class="dm-shell-sidebar" aria-hidden="true" aria-label="DevMoter feature sidebar" inert>
       <header class="dm-shell-sidebar-head">
         <div>
-          <strong>DevMoter FAST</strong>
-          <small>Control Center</small>
+          <strong>Tools</strong>
+          <small>DevMoter control center</small>
         </div>
         <button type="button" data-shell-close aria-label="Close sidebar">×</button>
       </header>
 
       <div class="dm-shell-sidebar-scroll">
+        <div class="dm-shell-tools-controls" aria-label="Find tools">
+          <label class="dm-shell-search-label" for="dmShellToolSearch">Search tools</label>
+          <div class="dm-shell-search-row">
+            <input id="dmShellToolSearch" type="search" autocomplete="off" placeholder="Search tools…" aria-controls="dmShellToolResults">
+            <button type="button" data-tools-clear aria-label="Clear search" title="Clear search">×</button>
+          </div>
+          <div class="dm-shell-category-filters" role="group" aria-label="Filter tools by category">
+            <button type="button" data-tools-filter="All" aria-pressed="true">All</button>
+            <button type="button" data-tools-filter="Workspace" aria-pressed="false">Workspace</button>
+            <button type="button" data-tools-filter="Sessions" aria-pressed="false">Sessions</button>
+            <button type="button" data-tools-filter="Remote" aria-pressed="false">Remote</button>
+            <button type="button" data-tools-filter="Settings" aria-pressed="false">Settings</button>
+          </div>
+          <p class="dm-shell-results-count" data-tools-count role="status" aria-live="polite"></p>
+        </div>
+
+        <div class="dm-shell-tool-results" id="dmShellToolResults" aria-label="Available tools">
         <section class="dm-shell-primary">
           <button class="dm-shell-home-link" type="button" data-home-nav>
             <span aria-hidden="true">⌂</span><strong>Home</strong><span class="dm-shell-home-arrow" aria-hidden="true">↗</span>
@@ -106,43 +165,41 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
             <button type="button" data-backend="integrations"><span>INT</span><strong>Integrations</strong></button>
           </div>
 
-          <h2>Quick access</h2>
-          ${appActionButtons(["mission-control", "terminal", "git", "review"])}
+          <h2>Current surface</h2>
+          <p class="dm-shell-surface-label" data-current-surface>OpenCode</p>
         </section>
-
-        <section>
-          <h2>Agents & sessions</h2>
-          ${appActionButtons(["agents", "sessions"])}
-        </section>
-
-        <section>
+        <section data-tools-group="Workspace">
           <h2>Workspace</h2>
+          ${appActionButtons(["mission-control", "terminal", "git", "review"])}
           ${appActionButtons(["projects", "developer-workflows"])}
           ${systemActionButton("▦", "Files & Preview", "Project files, outputs, live preview, browser automation and models", "advanced")}
           ${systemActionButton("⚑", "Safety", "High-risk command scan and remembered approvals", "safety")}
           ${systemActionButton("⌕", "Project Index", "Local full-text and structural project search", "index")}
         </section>
 
-        <section>
+        <section data-tools-group="Sessions">
+          <h2>Sessions</h2>
+          ${appActionButtons(["agents", "sessions"])}
+        </section>
+
+        <section data-tools-group="Remote">
           <h2>Remote & automation</h2>
           ${systemActionButton("◉", "Hosts", "Host registry, capabilities and connectivity", "hosts")}
           ${actionButton("automation")}
           ${systemActionButton("◇", "Passkeys", "WebAuthn registration, login and host-origin state", "passkeys")}
         </section>
 
-        <section>
+        <section data-tools-group="Settings">
           <h2>Security & settings</h2>
           ${systemActionButton("🔐", "API Vault", "Encrypted project-bound secrets without reveal", "vault")}
           ${systemActionButton("▣", "Trusted devices", "Pair, inspect and revoke browser devices", "devices")}
           ${systemActionButton("●", "Notifications", "Push notification controls", "notifications")}
           ${systemActionButton("◇", "Diagnostics", "Backends, network and capability health", "diagnostics")}
           ${systemActionButton("⚙", "Settings", "Account, appearance, guide and all settings", "settings")}
-        </section>
-
-        <section>
-          <h2>Experimental</h2>
           ${systemActionButton("⇩", "Setup Wizard", "Installer v2 foundation — currently paused for further expansion", "setup", "EXPERIMENTAL")}
         </section>
+        </div>
+        <p class="dm-shell-empty hidden" data-tools-empty>No tools match your search.</p>
       </div>
     </aside>
 
@@ -167,10 +224,18 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   const scrim = root.querySelector<HTMLElement>("[data-shell-scrim]")!;
   const toast = root.querySelector<HTMLElement>(".dm-shell-toast")!;
   const homeLink = root.querySelector<HTMLButtonElement>("[data-home-nav]")!;
+  const searchInput = root.querySelector<HTMLInputElement>("#dmShellToolSearch")!;
+  const clearSearch = root.querySelector<HTMLButtonElement>("[data-tools-clear]")!;
+  const resultCount = root.querySelector<HTMLElement>("[data-tools-count]")!;
+  const emptyMessage = root.querySelector<HTMLElement>("[data-tools-empty]")!;
+  const filterButtons = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-tools-filter]"));
+  const toolItems = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-tools-item]"));
+  const toolGroups = Array.from(root.querySelectorAll<HTMLElement>("[data-tools-group]"));
   let backend: Backend = options.initialBackend || "opencode";
   let surface: MainSurface = options.initialSurface || "home";
   let toastTimer = 0;
   let sidebarReturnFocus: HTMLElement | null = null;
+  let activeCategory = "All";
 
   function notify(message: string) {
     if (toastTimer) window.clearTimeout(toastTimer);
@@ -180,7 +245,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   }
 
   function isVisibleFocusTarget(target: HTMLElement | null): target is HTMLElement {
-    return Boolean(target?.isConnected && !target.closest('[inert], [aria-hidden="true"]') && target.getClientRects().length);
+    return Boolean(target?.isConnected && !target.closest('[inert], [aria-hidden="true"], [hidden]') && target.getClientRects().length);
   }
 
   function openSidebar() {
@@ -232,6 +297,8 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   function updateSurface(next: MainSurface) {
     surface = next;
     homeLink.classList.toggle("active", surface === "home");
+    const surfaceLabels: Record<string, string> = { home: "Home", opencode: "OpenCode", codex: "Codex", api: "API Chat", integrations: "Integrations" };
+    root.querySelector<HTMLElement>("[data-current-surface]")!.textContent = surfaceLabels[surface] || String(surface);
     if (surface === "home") homeLink.setAttribute("aria-current", "page");
     else homeLink.removeAttribute("aria-current");
     for (const button of root.querySelectorAll<HTMLButtonElement>(".dm-shell-ai-grid [data-backend]")) {
@@ -239,6 +306,41 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
       button.classList.toggle("active", active);
       button.setAttribute("aria-pressed", String(active));
     }
+  }
+
+  function filterTools() {
+    const terms = searchInput.value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    root.querySelector<HTMLElement>(".dm-shell-primary")!.hidden = terms.length > 0 || activeCategory !== "All";
+    root.querySelector<HTMLElement>("#dmShellToolResults")!.scrollTop = 0;
+    let visibleCount = 0;
+    for (const item of toolItems) {
+      const matchesCategory = activeCategory === "All" || item.dataset.toolsCategory === activeCategory;
+      const haystack = `${item.dataset.toolsSearch || ""} ${item.textContent || ""}`.toLocaleLowerCase();
+      const matchesSearch = terms.every(term => haystack.includes(term));
+      const visible = matchesCategory && matchesSearch;
+      item.hidden = !visible;
+      if (visible) visibleCount += 1;
+    }
+    for (const group of toolGroups) {
+      group.hidden = !group.querySelector('[data-tools-item]:not([hidden])');
+    }
+    resultCount.textContent = `${visibleCount} ${visibleCount === 1 ? "tool" : "tools"}`;
+    emptyMessage.classList.toggle("hidden", visibleCount > 0);
+    clearSearch.disabled = searchInput.value.length === 0;
+  }
+
+  searchInput.addEventListener("input", filterTools);
+  clearSearch.addEventListener("click", () => {
+    searchInput.value = "";
+    filterTools();
+    searchInput.focus({ preventScroll: true });
+  });
+  for (const button of filterButtons) {
+    button.addEventListener("click", () => {
+      activeCategory = button.dataset.toolsFilter || "All";
+      for (const filter of filterButtons) filter.setAttribute("aria-pressed", String(filter === button));
+      filterTools();
+    });
   }
 
   function run(action: () => void) {
@@ -331,7 +433,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   document.addEventListener("keydown", event => {
     if (event.key === "Escape") closeSidebar();
     if (event.key !== "Tab" || !sidebar.classList.contains("open")) return;
-    const controls = Array.from(sidebar.querySelectorAll<HTMLElement>('button:not(:disabled), [href], [tabindex]:not([tabindex="-1"])'))
+    const controls = Array.from(sidebar.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), [href], [tabindex]:not([tabindex="-1"])'))
       .filter(control => control.tabIndex >= 0 && isVisibleFocusTarget(control));
     const first = controls[0];
     const last = controls[controls.length - 1];
@@ -371,4 +473,5 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
 
   updateBackend(backend);
   updateSurface(surface);
+  filterTools();
 }
