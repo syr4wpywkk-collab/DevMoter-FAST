@@ -9,24 +9,28 @@ type Run = { runId: string; rawGoal: string; status: string; updatedAt: number; 
 const RUN_KEY = "devmoter-tools-ai-run";
 const PENDING_KEY = "devmoter-tools-ai-pending-request";
 const terminal = (run: Run) => ["completed", "failed", "stopped", "unknown"].includes(run.status);
-const statuses: Record<string, string> = { planning: "AIが操作を選択中", running: "読み取り・説明を処理中", completed: "完了", failed: "失敗", stop_requested: "停止要求済み・終了待ち", stopped: "作業の継続を停止", unknown: "結果不明・自動再開なし" };
+const statuses: Record<string, string> = { planning: "AIが操作を選択中です…", running: "内容を確認して、結果をまとめています…", completed: "完了", failed: "失敗", stop_requested: "停止要求済み・終了待ち", stopped: "作業の継続を停止", unknown: "結果不明・自動再開なし" };
 const string = (value: unknown) => typeof value === "string" ? value : JSON.stringify(value) ?? "";
 const objects = (value: unknown): Data[] => Array.isArray(value) ? value as Data[] : [];
 
 export function mountToolsAi(root: HTMLElement, options: { openSettings: () => void; openManual: () => void }) {
   root.className = "tools-ai";
   root.innerHTML = `
-    <div class="tools-ai-toolbar"><strong>Tools AI · 読み取り v1</strong><button type="button" data-ai-stop disabled>Stop</button></div>
-    <h2 id="toolsAiTitle">何をしたいですか？</h2>
+    <div class="tools-ai-toolbar"><button type="button" data-ai-stop disabled>Stop</button></div>
+    <div class="tools-ai-welcome"><span class="tools-ai-spark" aria-hidden="true">✦</span><h2 id="toolsAiTitle">何をしたいですか？</h2><p>変更の確認、コード検索、README確認、診断などをAIに頼めます。</p></div>
     <form data-ai-form>
-      <label>対象Project（次の依頼）<select data-ai-project aria-label="対象Project"></select></label>
-      <div class="tools-ai-models"><label>Planner provider<select data-ai-provider aria-label="Planner provider"></select></label><label>Planner model<select data-ai-model aria-label="Planner model"></select></label></div>
-      <p class="tools-ai-sharing">実行先: このDevMoterサーバーの読み取り操作。入力した目的と、必要なProject内容の一部を選択したAIへ共有します。件数・byte制限と秘密情報の除外を適用します。</p>
-      <label for="toolsAiGoal">依頼内容</label><textarea id="toolsAiGoal" data-ai-goal rows="3" maxlength="8000" placeholder="今の変更を調べて"></textarea>
-      <button type="submit" data-ai-submit disabled>AIに依頼する</button>
+      <div class="tools-ai-composer"><label class="tools-ai-goal-label" for="toolsAiGoal">AIへの依頼</label><textarea id="toolsAiGoal" data-ai-goal rows="3" maxlength="8000" placeholder="今の変更を調べて"></textarea><div class="tools-ai-composer-actions"><span>読む・調べるお手伝い</span><button type="submit" data-ai-submit disabled>送信 <span aria-hidden="true">↑</span></button></div></div>
+      <div class="tools-ai-suggestions" aria-label="依頼の例">${["今の変更を調べて", "認証処理を探して", "プロジェクト構成を教えて", "READMEから起動方法を教えて", "接続できない理由を調べて"].map(text => `<button type="button" data-ai-suggestion>${text}</button>`).join("")}</div>
+      <p class="tools-ai-sharing">依頼と必要なProject内容の一部を、選択したAIへ共有します。</p>
+      <details class="tools-ai-settings"><summary>使用する対象とAIを変更</summary>
+        <label>対象Project（次の依頼）<select data-ai-project aria-label="対象Project"></select></label>
+        <div class="tools-ai-models"><label>Planner provider<select data-ai-provider aria-label="Planner provider"></select></label><label>Planner model<select data-ai-model aria-label="Planner model"></select></label></div>
+        <p class="tools-ai-sharing">実行先はこのDevMoterサーバーです。読み取り操作のみを行い、共有内容には件数・byte制限と秘密情報の除外を適用します。</p>
+        <p data-ai-availability role="status"></p><button type="button" data-ai-settings>Provider / modelを設定</button>
+      </details>
     </form>
-    <p data-ai-availability role="status"></p>
-    <div class="tools-ai-links"><button type="button" data-ai-settings>Provider / modelを設定</button><button type="button" data-ai-manual>ツールを直接開く</button></div>
+    <p data-ai-setup-notice role="status" hidden>AIの設定を確認してください。上の「使用する対象とAIを変更」から設定できます。</p>
+    <div class="tools-ai-links"><button type="button" data-ai-manual>ツールを直接開く</button></div>
     <p data-ai-error role="alert" hidden></p>
     <div data-ai-progress data-i18n-skip role="status" aria-live="polite"></div>
     <div data-ai-results data-i18n-skip></div>`;
@@ -70,6 +74,7 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
     const bindingOk = !provider?.projectId || provider.projectId === projectSelect.value;
     const ready = Boolean(provider?.ready && modelSelect.value && bindingOk);
     submit.disabled = !ready || pendingSubmit || Boolean(run && !terminal(run));
+    get("[data-ai-setup-notice]").hidden = ready;
     availability.textContent = !provider ? "Planner provider / modelが未設定のためAI操作は使えません。下の設定または手動Toolsを開いてください。" : !provider.ready ? "このproviderのcredentialが未設定です。既存のAPI Chat設定を確認してください。" : !bindingOk ? "このVault providerに紐付いたProjectを選んでください。" : `Planner: ${provider.name} / ${modelSelect.value || "model未設定"}`;
   }
   function fillModels() {
@@ -84,8 +89,9 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
     const card = element("section", "", "tools-ai-card");
     const titles: Record<string, string> = { git: "Git状態・変更・差分", search: "検索結果", map: "Project構造", document: "Markdown文書", diagnostics: "Diagnostics · 固定host観測" };
     card.append(element("h3", result.unavailable ? "取得不可" : titles[result.type] || "結果"));
-    paragraph(card, `Source: ${result.source}`);
-    if (result.builtAt !== null) paragraph(card, `保存済みindex · builtAt: ${result.builtAt} (${new Date(result.builtAt).toLocaleString()})。現在のファイル状態は未確認です。`);
+    const details = element("details", "", "tools-ai-result-details"); details.append(element("summary", "詳細を見る"));
+    paragraph(details, `Source: ${result.source}`);
+    if (result.builtAt !== null) { paragraph(card, "保存済みindexに基づく結果です。現在のファイル状態は未確認です。"); paragraph(details, `保存済みindex · builtAt: ${result.builtAt} (${new Date(result.builtAt).toLocaleString()})。現在のファイル状態は未確認です。`); }
     if (result.sharing.excluded) paragraph(card, "安全上、一部内容をAIへの共有対象から除外した");
     if (result.sharing.truncated) paragraph(card, "件数・byte上限により内容の一部を省略しました。");
     const data = result.data;
@@ -93,14 +99,14 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
     else if (result.type === "git") {
       const status = data.status as Data; const files = data.files as Data;
       paragraph(card, `Branch: ${string(status.branch)} · changed files: ${string(files.total)}`);
-      pre(card, JSON.stringify(status, null, 2));
+      pre(details, JSON.stringify(status, null, 2));
       const list = element("ul");
       for (const file of objects(files.files)) list.append(element("li", `${string(file.path)} · ${string(file.status)}`));
       card.append(list);
       for (const diff of objects(data.diffs)) {
-        const details = element("details"); details.append(element("summary", string(diff.path))); pre(details, string(diff.diff));
-        if (diff.truncated) paragraph(details, "元のGit helperで差分が切り詰められています。");
-        card.append(details);
+        const diffDetails = element("details"); diffDetails.append(element("summary", string(diff.path))); pre(diffDetails, string(diff.diff));
+        if (diff.truncated) paragraph(diffDetails, "元のGit helperで差分が切り詰められています。");
+        details.append(diffDetails);
       }
     } else if (result.type === "search") {
       paragraph(card, `Query: ${string(data.query)}`);
@@ -108,12 +114,12 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
       for (const hit of objects(data.results)) { paragraph(card, `${string(hit.path)}:${string(hit.line)}`); pre(card, string(hit.snippet)); }
     } else if (result.type === "map") {
       paragraph(card, `Index内のファイル総数: ${string(data.totalFiles)}`);
-      pre(card, JSON.stringify({ directories: data.directories, files: data.files, symbols: data.symbols }, null, 2));
+      pre(details, JSON.stringify({ directories: data.directories, files: data.files, symbols: data.symbols }, null, 2));
     } else if (result.type === "document") {
       paragraph(card, `${string(data.path)} · 元のbyte数: ${string(data.size)}`);
-      const document = element("div"); renderChatMarkdown(document, string(data.content), copy); card.append(document);
-    } else if (result.type === "diagnostics") pre(card, JSON.stringify(data, null, 2));
-    results.append(card);
+      const document = element("div"); renderChatMarkdown(document, string(data.content), copy); details.append(document);
+    } else if (result.type === "diagnostics") { paragraph(card, "接続・実行環境の診断結果を取得しました。詳細から確認できます。"); pre(details, JSON.stringify(data, null, 2)); }
+    card.append(details); results.append(card);
   }
   function renderRun() {
     stop.disabled = !run || terminal(run) || run.status === "stop_requested";
@@ -124,17 +130,19 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
     signature = nextSignature;
     progress.replaceChildren(); results.replaceChildren();
     progress.append(element("h3", statuses[run.status] || run.status));
-    paragraph(progress, `今回の対象: ${run.context.project?.name || "Projectなし"} / ${run.context.hostId} / ${run.context.backend}`);
-    paragraph(progress, `今回のPlanner: ${run.planner.providerName} / ${run.planner.model}`);
+    const runDetails = element("details", "", "tools-ai-run-details"); runDetails.append(element("summary", "実行の詳細"));
+    paragraph(runDetails, `今回の対象: ${run.context.project?.name || "Projectなし"} / ${run.context.hostId} / ${run.context.backend}`);
+    paragraph(runDetails, `今回のPlanner: ${run.planner.providerName} / ${run.planner.model}`);
     paragraph(progress, `依頼: ${run.rawGoal}`);
     if (run.cancellation.requested) paragraph(progress, "新しい操作は開始しません。開始済みの読み取りやprovider内部処理が即時停止したことは保証しません。");
     for (const step of run.steps) {
-      paragraph(progress, `${step.operationId}: ${step.status}`);
+      paragraph(runDetails, `${step.operationId}: ${step.status}`);
       if (step.result) renderCard(step.result);
       if (step.failure) paragraph(results, step.failure);
     }
+    progress.append(runDetails);
     if (run.failure) { const card = element("section", "", "tools-ai-card"); card.append(element("h3", "Error / unavailable")); paragraph(card, run.failure); results.append(card); }
-    if (run.explanation) { const explanation = element("section", "", "tools-ai-card tools-ai-explanation"); explanation.append(element("h3", "実結果に基づくAI説明")); const body = element("div"); renderChatMarkdown(body, run.explanation.rawText, copy); explanation.append(body); results.append(explanation); }
+    if (run.explanation) { const explanation = element("section", "", "tools-ai-card tools-ai-explanation"); explanation.append(element("h3", "わかったこと")); const body = element("div"); renderChatMarkdown(body, run.explanation.rawText, copy); explanation.append(body); results.prepend(explanation); }
   }
   async function refreshRun() {
     const id = run?.runId || localStorage.getItem(RUN_KEY);
@@ -179,6 +187,7 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
   projectSelect.addEventListener("change", () => { localStorage.setItem("devmoter-tools-ai-project", projectSelect.value); updateAvailability(); });
   providerSelect.addEventListener("change", () => { localStorage.setItem("devmoter-tools-ai-provider", providerSelect.value); fillModels(); });
   modelSelect.addEventListener("change", () => { localStorage.setItem(`devmoter-tools-ai-model:${providerSelect.value}`, modelSelect.value); updateAvailability(); });
+  root.querySelectorAll<HTMLButtonElement>("[data-ai-suggestion]").forEach(chip => chip.addEventListener("click", () => { goal.value = chip.textContent || ""; goal.focus(); }));
   get("[data-ai-settings]").addEventListener("click", options.openSettings);
   get("[data-ai-manual]").addEventListener("click", options.openManual);
   stop.addEventListener("click", async () => {

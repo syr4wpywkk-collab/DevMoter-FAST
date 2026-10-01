@@ -442,3 +442,35 @@ body:has(
 .tools-ai-card .cx-markdown { font-size: 13px; overflow-wrap: anywhere; }
 .tools-ai-card .dm-markdown-table { overflow-x: auto; }
 @media (max-width: 360px) { .tools-ai-models { grid-template-columns: minmax(0,1fr); } }
+
+/* Tools AI conversation entry; the shared chat surfaces keep their styles. */
+.tools-ai { font-size: 14px; }
+.tools-ai-toolbar:empty { display: none; }
+.tools-ai-welcome { padding: 32px 4px 24px; text-align: center; }
+.tools-ai-spark { display: inline-block; margin-bottom: 12px; color: #b7baff; font-size: 34px; }
+.tools-ai .tools-ai-welcome h2 { margin: 0 0 12px; font-size: clamp(26px, 6vw, 32px); line-height: 1.35; letter-spacing: -.04em; }
+.tools-ai-welcome p { color: var(--dm-shell-muted); font-size: 14px; }
+.tools-ai-composer { overflow: hidden; padding: 12px; border: 1px solid var(--dm-shell-border); border-radius: 26px; background: linear-gradient(145deg, #252a36, #202534); box-shadow: 0 8px 24px #0002; transition: border-color .15s, box-shadow .15s; }
+.tools-ai-composer:focus-within { border-color: #a9b6ef; box-shadow: 0 0 0 2px #a9b6ef20; }
+.tools-ai .tools-ai-goal-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.tools-ai .tools-ai-composer textarea { min-height: 100px; padding: 6px 8px; border: 0; outline: none; background: transparent; line-height: 1.6; }
+.tools-ai .tools-ai-composer textarea:focus-visible { outline: none; }
+.tools-ai-composer-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.tools-ai-composer-actions > span { color: var(--dm-shell-muted); font-size: 12px; padding-left: 8px; }
+.tools-ai .tools-ai-composer-actions button { border-radius: 24px; background: #b8c4ff; color: #161e39; font-weight: 600; }
+.tools-ai-suggestions { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
+.tools-ai .tools-ai-suggestions button { border-radius: 22px; padding: 8px 12px; background: #ffffff05; font-size: 12px; text-align: left; }
+.tools-ai .tools-ai-suggestions button:hover { background: #ffffff0d; border-color: #a9b6ef; }
+.tools-ai-settings { border-top: 1px solid var(--dm-shell-border); padding-top: 4px; color: var(--dm-shell-muted); }
+.tools-ai-settings > summary, .tools-ai-run-details > summary { min-height: 44px; align-content: center; cursor: pointer; }
+.tools-ai-settings > label, .tools-ai-settings > div { margin: 8px 0; }
+.tools-ai summary:focus-visible { outline: 2px solid #b8c4ff; outline-offset: 2px; border-radius: 8px; }
+.tools-ai .tools-ai-links { margin: 8px 0 16px; }
+.tools-ai .tools-ai-links button { border: 0; background: transparent; color: var(--dm-shell-muted); padding-left: 0; }
+.tools-ai [data-ai-progress]:not(:empty) { border: 0; padding: 8px 0; }
+.tools-ai-card { padding: 16px; border-radius: 20px; background: #ffffff04; }
+.tools-ai-explanation { border: 0; background: transparent; padding: 8px 0 16px; }
+.tools-ai-card .cx-markdown { font-size: 14px; line-height: 1.75; }
+.tools-ai-result-details { margin-top: 8px; color: var(--dm-shell-muted); border-top: 1px solid var(--dm-shell-border); }
+.tools-ai-result-details pre, .tools-ai-result-details .cx-markdown { color: var(--dm-shell-text); }
+@media (max-width: 360px) { .tools-ai-welcome { padding: 24px 0 18px; } .tools-ai .tools-ai-suggestions button { font-size: 12px; } }
