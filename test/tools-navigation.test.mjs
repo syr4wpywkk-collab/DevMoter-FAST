@@ -158,3 +158,16 @@ test("Every original tool destination remains reachable and filtered controls st
   assert.equal(dom.window.document.activeElement, dom.window.document.querySelector(".dm-shell-menu-trigger"));
   dom.window.close();
 });
+
+test("API history keeps an in-flow Tools entry while the floating trigger yields to history", async t => {
+  const dom = makeDom();
+  dom.window.document.body.insertAdjacentHTML('beforeend', '<aside id="apiSidebar"><nav class="api-agent-nav"></nav></aside>');
+  t.after(() => dom.window.close());
+  const calls = [];
+  mount(dom, calls);
+  const entry = dom.window.document.querySelector('#apiSidebar [data-open-tools]');
+  assert.ok(entry);
+  entry.click();
+  assert.equal(dom.window.document.querySelector('.dm-shell-sidebar').classList.contains('open'), true);
+  dom.window.document.querySelector('[data-shell-close]').click();
+});

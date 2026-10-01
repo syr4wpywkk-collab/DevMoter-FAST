@@ -159,7 +159,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
         <div class="dm-shell-tool-results" id="dmShellToolResults" aria-label="Available tools">
         <section class="dm-shell-primary">
           <button class="dm-shell-home-link" type="button" data-home-nav>
-            <span aria-hidden="true">⌂</span><strong>Home</strong><span class="dm-shell-home-arrow" aria-hidden="true">↗</span>
+            <span aria-hidden="true">⌂</span><strong>Home</strong><svg class="dm-shell-home-arrow" aria-hidden="true" viewBox="0 0 20 20" focusable="false"><path d="M4 10h11M10 5l5 5-5 5" /></svg>
           </button>
           <h2>AI</h2>
           <div class="dm-shell-ai-grid" role="group" aria-label="AI surfaces">
@@ -482,6 +482,17 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     closeSidebar();
     if (next) updateSurface(next);
   });
+  // History owns its header area. Offer an in-flow Tools entry while the
+  // floating launcher is hidden, without adding another overlay layer.
+  const apiNavigation = document.querySelector<HTMLElement>("#apiSidebar .api-agent-nav");
+  if (apiNavigation && !apiNavigation.querySelector("[data-open-tools]")) {
+    const toolsLink = document.createElement("button");
+    toolsLink.type = "button";
+    toolsLink.dataset.openTools = "";
+    toolsLink.textContent = "Tools · AIに依頼 / ツールを直接開く";
+    toolsLink.addEventListener("click", openSidebar);
+    apiNavigation.prepend(toolsLink);
+  }
   window.addEventListener("devmoter:close-global-nav", closeSidebar);
   window.addEventListener("devmoter:open-global-nav", openSidebar);
 

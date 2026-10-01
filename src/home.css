@@ -15,7 +15,7 @@
   min-height: 100svh;
   min-height: 100dvh;
   margin-inline: auto;
-  padding: calc(40px + env(safe-area-inset-top)) max(22px, env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) max(22px, env(safe-area-inset-left));
+  padding: calc(40px + env(safe-area-inset-top)) max(22px, env(safe-area-inset-right)) calc(88px + env(safe-area-inset-bottom)) max(22px, env(safe-area-inset-left));
   display: flex;
   flex-direction: column;
 }
@@ -71,6 +71,7 @@
 .dm-home-app-card small { margin-top: 5px; color: #929daf; font-size: 12px; }
 .dm-home-app-state { display: inline-block; margin-top: 6px; padding: 2px 6px; border: 1px solid rgba(218,197,125,.4); border-radius: 999px; color: #dac57d; font-size: 9px; font-style: normal; font-weight: 700; letter-spacing: .04em; }
 .dm-home-card-arrow { color: #8792ac; font-size: 16px; }
+.dm-home-card-arrow svg { display: block; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .dm-home-continue { min-height: 148px; padding: 22px; border: 1px solid rgba(178, 190, 215, .1); border-radius: 19px; background: rgba(255, 255, 255, .022); }
 .dm-home-continue .dm-home-section-heading { margin-bottom: 10px; }
 .dm-home-continue > p { margin: 0; color: #9ba4b5; font-size: 13px; line-height: 1.6; }
@@ -83,7 +84,7 @@ body.devmoter-home-mode { min-height: 100%; padding: 0; overflow: auto; backgrou
 body.devmoter-home-mode #app { min-height: 100svh; min-height: 100dvh; }
 
 @media (max-width: 600px) {
-  .dm-home-shell { padding-top: calc(28px + env(safe-area-inset-top)); }
+  .dm-home-shell { padding-top: calc(76px + env(safe-area-inset-top)); }
   .dm-home-header { align-items: flex-start; margin-bottom: 46px; }
   .dm-home-brand-mark { width: 44px; height: 44px; border-radius: 14px; }
   .dm-home-app-grid { grid-template-columns: 1fr; gap: 9px; }
@@ -92,7 +93,7 @@ body.devmoter-home-mode #app { min-height: 100svh; min-height: 100dvh; }
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
-  .dm-home-shell { padding-top: calc(18px + env(safe-area-inset-top)); }
+  .dm-home-shell { padding-top: calc(76px + env(safe-area-inset-top)); }
   .dm-home-header { margin-bottom: 28px; }
   .dm-home-section { margin-bottom: 22px; }
   .dm-home-app-card { min-height: 78px; }

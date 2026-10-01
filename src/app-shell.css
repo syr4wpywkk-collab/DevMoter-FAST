@@ -142,6 +142,7 @@ body.codex-mode .dm-shell-menu-trigger { display: none; }
   outline: none;
 }
 .dm-shell-home-link.active .dm-shell-home-arrow { opacity: 1; }
+.dm-shell-home-arrow { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .dm-shell-sidebar h2 {
   margin: 0 7px 8px;
   color: var(--dm-shell-muted);
@@ -362,6 +363,7 @@ body:has(
   .dm-control-modal:not(.hidden),
   .devmoter-settings-modal:not(.hidden),
   .devmoter-system-modal:not(.hidden),
+  .api-sidebar.open,
   .cx-sidebar.open,
   .ocx-sidebar.open
 ) .dm-shell-menu-trigger {
@@ -375,12 +377,12 @@ body:has(
     padding-left: calc(max(12px, env(safe-area-inset-left)) + 58px);
   }
 
-  body:has(textarea:focus) .dm-shell-menu-trigger,
-  body:has(input:focus) .dm-shell-menu-trigger {
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(-8px);
+  /* API Chat owns the upper-left header button for history. Keep Tools below its header. */
+  body.api-mode .dm-shell-menu-trigger {
+    top: calc(64px + env(safe-area-inset-top) + 8px);
+    left: max(10px, env(safe-area-inset-left));
   }
+  body.api-mode .api-app .api-transcript { padding-top: 80px; }
 }
 
 @media (min-width: 900px) {
@@ -473,4 +475,157 @@ body:has(
 .tools-ai-card .cx-markdown { font-size: 14px; line-height: 1.75; }
 .tools-ai-result-details { margin-top: 8px; color: var(--dm-shell-muted); border-top: 1px solid var(--dm-shell-border); }
 .tools-ai-result-details pre, .tools-ai-result-details .cx-markdown { color: var(--dm-shell-text); }
+
+/* The shared shell follows the app's selected theme, including controls in Git/first-run contexts. */
+html[data-devmoter-theme="light"] .dm-shell {
+  --dm-shell-bg: rgba(255,255,255,.96);
+  --dm-shell-border: rgba(31,41,55,.16);
+  --dm-shell-text: #172033;
+  --dm-shell-muted: #566276;
+}
+html[data-devmoter-theme="light"] .dm-shell-sidebar,
+html[data-devmoter-theme="light"] .dm-shell-tools-controls { background: #f7f9fc; }
+html[data-devmoter-theme="light"] .dm-shell-menu-trigger { box-shadow: 0 10px 28px rgba(31,41,55,.18); }
+html[data-devmoter-theme="light"] .dm-shell-menu-trigger[data-backend="codex"] { color: #254d9b; }
+html[data-devmoter-theme="light"] .dm-shell-menu-trigger[data-backend="api"] { color: #6542a8; }
+html[data-devmoter-theme="light"] .dm-shell-menu-trigger[data-backend="integrations"] { color: #246b48; }
+html[data-devmoter-theme="light"] .dm-shell-sidebar-head button,
+html[data-devmoter-theme="light"] .dm-shell-home-link,
+html[data-devmoter-theme="light"] .dm-shell-ai-grid button,
+html[data-devmoter-theme="light"] .dm-shell-ai-grid span,
+html[data-devmoter-theme="light"] .dm-shell-action,
+html[data-devmoter-theme="light"] .dm-shell-tool-results .dm-shell-action,
+html[data-devmoter-theme="light"] .dm-shell-search-row input,
+html[data-devmoter-theme="light"] .dm-shell-search-row button,
+html[data-devmoter-theme="light"] .dm-shell-category-filters button {
+  border-color: rgba(31,41,55,.14);
+  color: var(--dm-shell-text);
+  background-color: rgba(31,41,55,.045);
+}
+html[data-devmoter-theme="light"] .dm-shell-home-link:hover,
+html[data-devmoter-theme="light"] .dm-shell-home-link:focus-visible,
+html[data-devmoter-theme="light"] .dm-shell-home-link.active,
+html[data-devmoter-theme="light"] .dm-shell-ai-grid button:hover,
+html[data-devmoter-theme="light"] .dm-shell-ai-grid button:focus-visible,
+html[data-devmoter-theme="light"] .dm-shell-ai-grid button.active,
+html[data-devmoter-theme="light"] .dm-shell-action:hover,
+html[data-devmoter-theme="light"] .dm-shell-action:focus-visible { background-color: rgba(64,91,171,.11); }
+html[data-devmoter-theme="light"] .dm-shell-action-copy small,
+html[data-devmoter-theme="light"] .dm-shell-results-count { color: #566276; }
+html[data-devmoter-theme="light"] .dm-shell-action-badge,
+html[data-devmoter-theme="light"] .dm-shell-action[aria-disabled="true"],
+html[data-devmoter-theme="light"] .dm-shell-action[aria-disabled="true"] .dm-shell-action-badge { color: #725700; border-color: #bca65b; }
+html[data-devmoter-theme="light"] .dm-shell-search-row input::placeholder { color: #667085; }
+html[data-devmoter-theme="light"] .dm-shell-tool-results .dm-shell-action { background: #fff; }
+html[data-devmoter-theme="light"] .tools-ai input,
+html[data-devmoter-theme="light"] .tools-ai select,
+html[data-devmoter-theme="light"] .tools-ai textarea,
+html[data-devmoter-theme="light"] .tools-ai-card { background-color: #fff; color: var(--dm-shell-text); }
+html[data-devmoter-theme="light"] .tools-ai button { background: #e8edf8; color: #172033; }
+html[data-devmoter-theme="light"] .tools-ai-composer { background: linear-gradient(145deg,#fff,#f1f4fa); }
+
+/* Git and first-run panels are mounted outside .dm-shell; give them their own scoped theme tokens. */
+.pocket-git-panel,
+.devmoter-system-card {
+  --dm-shared-panel-bg: #151922;
+  --dm-shared-panel-surface: #1d2430;
+  --dm-shared-panel-text: #f1f4f8;
+  --dm-shared-panel-muted: #a1aaba;
+  --dm-shared-panel-border: rgba(255,255,255,.13);
+  color: var(--dm-shared-panel-text);
+}
+.pocket-git-panel { color: var(--dm-shared-panel-text); }
+.devmoter-system-card { background: var(--dm-shared-panel-bg); border-color: var(--dm-shared-panel-border); }
+.devmoter-system-section { background: var(--dm-shared-panel-surface); border-color: var(--dm-shared-panel-border); }
+.devmoter-system-head { border-color: var(--dm-shared-panel-border); }
+.devmoter-system-head small, .devmoter-system-muted { color: var(--dm-shared-panel-muted); }
+.devmoter-system-title button,
+.devmoter-system-actions button,
+.devmoter-pairing-claim button,
+.devmoter-device-row button,
+.devmoter-system-link { color: var(--dm-shared-panel-text); border-color: var(--dm-shared-panel-border); }
+.devmoter-system-card .devmoter-checklist li > strong,
+.devmoter-system-card .devmoter-checklist li > small,
+.devmoter-system-card .devmoter-diagnostics-grid span { color: var(--dm-shared-panel-muted); }
+.pocket-git-panel .pocket-git-head small,
+.pocket-git-panel .pocket-git-status > small,
+.pocket-git-panel .pocket-git-file-copy small,
+.pocket-git-panel .pocket-git-pager span,
+.pocket-git-panel .pocket-diff-wrap-toggle { color: var(--dm-shared-panel-muted); }
+html[data-devmoter-theme="light"] .pocket-git-panel,
+html[data-devmoter-theme="light"] .devmoter-system-card {
+  --dm-shared-panel-bg: #fff;
+  --dm-shared-panel-surface: #f5f7fb;
+  --dm-shared-panel-text: #182230;
+  --dm-shared-panel-muted: #536174;
+  --dm-shared-panel-border: rgba(25,39,58,.16);
+}
+html[data-devmoter-theme="light"] .pocket-git-panel { background: var(--dm-shared-panel-bg); border-color: var(--dm-shared-panel-border); }
+html[data-devmoter-theme="light"] .pocket-git-head,
+html[data-devmoter-theme="light"] .pocket-diff-toolbar { border-color: var(--dm-shared-panel-border); background: #f5f7fb; color: var(--dm-shared-panel-text); }
+html[data-devmoter-theme="light"] .pocket-git-head small,
+html[data-devmoter-theme="light"] .pocket-git-status > small,
+html[data-devmoter-theme="light"] .pocket-git-file-copy small,
+html[data-devmoter-theme="light"] .pocket-git-pager span,
+html[data-devmoter-theme="light"] .pocket-diff-wrap-toggle { color: var(--dm-shared-panel-muted); }
+html[data-devmoter-theme="light"] .pocket-git-head button,
+html[data-devmoter-theme="light"] .pocket-git-pager button,
+html[data-devmoter-theme="light"] .pocket-diff-toolbar button,
+html[data-devmoter-theme="light"] .pocket-diff-mode button { color: var(--dm-shared-panel-text); border-color: var(--dm-shared-panel-border); background: #fff; }
+html[data-devmoter-theme="light"] .pocket-git-status,
+html[data-devmoter-theme="light"] .pocket-git-file,
+html[data-devmoter-theme="light"] .pocket-git-empty,
+html[data-devmoter-theme="light"] .pocket-git-note { color: var(--dm-shared-panel-text); border-color: var(--dm-shared-panel-border); background: #f7f9fc; }
+html[data-devmoter-theme="light"] .pocket-git-badge { color: #465266; border-color: #c9d1dd; background: #fff; }
+html[data-devmoter-theme="light"] .pocket-git-badge.staged { color: #17643b; border-color: #93c5a5; }
+html[data-devmoter-theme="light"] .pocket-git-badge.modified { color: #765600; border-color: #d5bd70; }
+html[data-devmoter-theme="light"] .pocket-git-badge.untracked { color: #145c8a; border-color: #8ac0df; }
+html[data-devmoter-theme="light"] .pocket-git-badge.conflict { color: #9b2929; border-color: #dfa0a0; }
+html[data-devmoter-theme="light"] .pocket-git-note { color: #684d00; border-color: #dbc46e; background: #fff9df; }
+html[data-devmoter-theme="light"] .pocket-diff-file { border-color: var(--dm-shared-panel-border); background: #fff; }
+html[data-devmoter-theme="light"] .pocket-diff-file > summary { color: var(--dm-shared-panel-text); border-color: var(--dm-shared-panel-border); }
+html[data-devmoter-theme="light"] .pocket-diff-hunk > summary { color: #285b87; background: #edf3fa; }
+html[data-devmoter-theme="light"] .pocket-diff-line .old,
+html[data-devmoter-theme="light"] .pocket-diff-line .new,
+html[data-devmoter-theme="light"] .pocket-split-cell .num { color: #5b6675; border-color: #dce2ea; }
+html[data-devmoter-theme="light"] .pocket-diff-line.meta { color: #566276; }
+html[data-devmoter-theme="light"] .pocket-split-row,
+html[data-devmoter-theme="light"] .pocket-split-cell.left { border-color: #dce2ea; }
+html[data-devmoter-theme="light"] .devmoter-system-modal { background: rgba(17,25,38,.42); }
+html[data-devmoter-theme="light"] .devmoter-system-close,
+html[data-devmoter-theme="light"] .devmoter-system-title button,
+html[data-devmoter-theme="light"] .devmoter-system-actions button,
+html[data-devmoter-theme="light"] .devmoter-pairing-claim button,
+html[data-devmoter-theme="light"] .devmoter-device-row button,
+html[data-devmoter-theme="light"] .devmoter-system-link { color: var(--dm-shared-panel-text); border-color: var(--dm-shared-panel-border); background: #fff; }
+html[data-devmoter-theme="light"] .devmoter-pairing-claim input { color: var(--dm-shared-panel-text); border-color: var(--dm-shared-panel-border); background: #fff; }
+html[data-devmoter-theme="light"] .devmoter-system-message:not(:empty) { color: #39465a; border-color: var(--dm-shared-panel-border); background: #fff; }
+html[data-devmoter-theme="light"] .devmoter-system-message[data-tone="ok"] { color: #17643b; }
+html[data-devmoter-theme="light"] .devmoter-system-message[data-tone="error"],
+html[data-devmoter-theme="light"] .devmoter-system-error { color: #a52e2e; }
+
+/* Shared mobile touch targets for close, paging, preview and first-run actions. */
+@media (max-width: 899px) {
+  .sc-close, .adv-head button, .devmoter-system-close,
+  .devmoter-system-title button, .devmoter-system-actions button,
+  .devmoter-pairing-claim button, .devmoter-device-row button,
+  .pocket-git-head button, .pocket-git-pager button,
+  .pocket-diff-toolbar button, .pocket-diff-mode button,
+  .devmoter-vault-secret-actions button { min-width: 44px; min-height: 44px; }
+  .sc-close, .devmoter-system-close, .pocket-git-head button { width: 44px; height: 44px; }
+}
 @media (max-width: 360px) { .tools-ai-welcome { padding: 24px 0 18px; } .tools-ai .tools-ai-suggestions button { font-size: 12px; } }
+
+/* Shared panel controls keep compact desktop styling and usable mobile hit areas. */
+@media (max-width: 899px) {
+  :is(.adv-drawer,.sc-panel,.devmoter-settings-modal,.dm-control-modal,.wf-modal,.devmoter-agent-panel) :is(button,select,input:not([type=checkbox]):not([type=radio])) { min-height:44px; }
+  :is(.adv-drawer,.sc-panel,.devmoter-settings-modal,.dm-control-modal,.wf-modal,.devmoter-agent-panel) button { min-width:44px; }
+  :is(.adv-drawer,.devmoter-agent-panel,.wf-modal) summary { min-height:44px; padding-block:10px; }
+  #apiSidebar [data-open-tools] { min-height:44px; }
+}
+:is(.adv-drawer,.sc-panel,.devmoter-settings-modal,.dm-control-modal,.wf-modal,.devmoter-agent-panel,.devmoter-system-modal,.pocket-git-panel) :is(button,a,input,select,textarea,summary):focus-visible { outline:2px solid #7d9edc; outline-offset:3px; }
+.pocket-git-empty button { display:block; min-height:44px; margin:14px auto 0; padding:8px 14px; border:1px solid var(--dm-shared-panel-border); border-radius:10px; background:var(--dm-shared-panel-surface); color:var(--dm-shared-panel-text); }
+.pocket-git-panel .pocket-diff-line.meta,
+.pocket-git-panel .pocket-diff-line .old,
+.pocket-git-panel .pocket-diff-line .new,
+.pocket-git-panel .pocket-split-cell .num { color:var(--dm-shared-panel-muted); }
