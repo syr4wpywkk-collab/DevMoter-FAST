@@ -158,3 +158,58 @@ test("Stop during initial persistence prevents a planner from starting after rec
     gate.release(); assert.equal((await starting).status, "unknown"); assert.equal(calls, 0);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+
+test("run store publishes only durable state and terminal outcomes cannot be rolled back", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tools-ai-durable-publish-"));
+  try {
+    const store = createRunStore({ filePath: join(root, "runs.json") });
+    const context = { project: null, deviceId: null, permissions, planner: { providerId: "p", model: "m" } };
+    const run = await store.create({ requestId: "durable-request", ownerId: "owner", goal: "x", context, catalogVersion: "v1" });
+    const completing = store.update(run.runId, { status: "completed", explanation: { rawText: "done" } });
+    assert.equal(store.get(run.runId).status, "planning", "unpersisted completion must not be observable");
+    assert.equal((await completing).status, "completed");
+    assert.equal(store.get(run.runId).status, "completed");
+
+    const lateStop = await store.update(run.runId, { status: "stop_requested", cancellation: { requested: true, stage: "late", providerMayContinue: true } });
+    assert.equal(lateStop.status, "completed");
+    assert.equal(store.get(run.runId).status, "completed");
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("Stop stays stopped when durable cancellation persistence lags the provider abort", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tools-ai-stop-durable-race-"));
+  try {
+    const underlying = createRunStore({ filePath: join(root, "runs.json") });
+    const stopWriteGate = deferred();
+    const store = {
+      ...underlying,
+      update(id, patch) {
+        if (patch?.status === "stop_requested") return stopWriteGate.promise.then(() => underlying.update(id, patch));
+        return underlying.update(id, patch);
+      }
+    };
+    const context = { project: null, deviceId: null, permissions, planner: { providerId: "p", model: "m" } };
+    const service = createToolsAiService({
+      store,
+      authorize: async () => {},
+      prepareChat: async () => ({
+        context,
+        secrets: [],
+        chat: async (_messages, signal) => new Promise((resolve, reject) => {
+          const abort = () => reject(signal.reason || new DOMException("Stopped", "AbortError"));
+          if (signal.aborted) return abort();
+          signal.addEventListener("abort", abort, { once: true });
+        })
+      }),
+      dispatch: () => assert.fail("must not execute")
+    });
+    const run = await service.start({ goal: "x", requestId: "durable-stop-request" }, identity);
+    await waitFor(() => underlying.get(run.runId).status === "planning");
+    const stopping = service.stop(run.runId, identity);
+    await waitFor(() => underlying.get(run.runId).status === "stopped");
+    stopWriteGate.release();
+    assert.equal((await stopping).status, "stopped");
+    assert.equal(underlying.get(run.runId).status, "stopped");
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
