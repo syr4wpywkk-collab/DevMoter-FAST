@@ -1,6 +1,7 @@
 import "./app-shell.css";
 import type { MainSurface } from "./surface-navigation.mjs";
 import { getAppDefinition, getAppsByIds, isAppId, type AppId } from "./app-registry";
+import { mountToolsAi } from "./tools-ai";
 
 type Backend = "opencode" | "codex" | "api" | "integrations";
 type SettingsPage = "root" | "appearance" | "account" | "devices" | "vault" | "notifications" | "diagnostics" | "guide";
@@ -136,6 +137,9 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
       </header>
 
       <div class="dm-shell-sidebar-scroll">
+        <div data-tools-ai-root></div>
+        <details class="dm-shell-manual-tools" data-manual-tools>
+        <summary>ツールを直接開く · 20 tools</summary>
         <div class="dm-shell-tools-controls" aria-label="Find tools">
           <label class="dm-shell-search-label" for="dmShellToolSearch">Search tools</label>
           <div class="dm-shell-search-row">
@@ -200,6 +204,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
         </section>
         </div>
         <p class="dm-shell-empty hidden" data-tools-empty>No tools match your search.</p>
+        </details>
       </div>
     </aside>
 
@@ -236,6 +241,13 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   let toastTimer = 0;
   let sidebarReturnFocus: HTMLElement | null = null;
   let activeCategory = "All";
+  const manualTools = root.querySelector<HTMLDetailsElement>("[data-manual-tools]")!;
+  const toolsAi = mountToolsAi(root.querySelector<HTMLElement>("[data-tools-ai-root]")!, {
+    openManual: () => { manualTools.open = true; manualTools.querySelector("summary")?.scrollIntoView?.({ block: "nearest" }); },
+    openSettings: () => { closeSidebar(); options.switchBackend("api"); window.requestAnimationFrame(() => document.querySelector<HTMLButtonElement>("#apiSettingsTop")?.click()); }
+  });
+  // Keep the SAME Stop control outside the scrolling content, including while browsing manual tools.
+  root.querySelector(".dm-shell-sidebar-head")!.insertBefore(toolsAi.stopButton, root.querySelector("[data-shell-close]"));
 
   function notify(message: string) {
     if (toastTimer) window.clearTimeout(toastTimer);
@@ -262,6 +274,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     scrim.classList.remove("hidden");
     document.body.classList.add("devmoter-shell-menu-open");
     root.querySelector<HTMLButtonElement>("[data-shell-close]")!.focus({ preventScroll: true });
+    void toolsAi.refresh();
   }
 
   function closeSidebar() {
