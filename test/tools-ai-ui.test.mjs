@@ -109,3 +109,28 @@ test("an old reconnect response cannot replace a newly submitted run", async () 
     assert.match($("[data-ai-progress]").textContent, /操作を選択中/);
   } finally { dom.window.close(); }
 });
+
+test("conversation entry keeps settings quiet, chips only fill input, and summary precedes collapsed source data", async () => {
+  let posts = 0;
+  const current = { ...structuredClone(baseRun), status: "completed", updatedAt: 5,
+    steps: [{ operationId: "git.inspect", status: "completed", result: { type: "git", source: "actual-git", builtAt: null, sharing: { excluded: false, truncated: false }, data: { status: { branch: "main" }, files: { total: 1, files: [{ path: "README.md", status: "modified" }] }, diffs: [{ path: "README.md", diff: "+ npm start" }] } } }],
+    explanation: { rawText: "README.md に変更があります。" } };
+  const { dom, $ } = setup(async (url, options) => { if (options.method === "POST") posts++; return response(url.endsWith("/context") ? context : current); });
+  try {
+    localStorage.setItem("opencode-pocket-project", "p2"); localStorage.setItem("devmoter-api-provider", "planner"); localStorage.setItem("devmoter-api-model:planner", "configured-model");
+    localStorage.setItem("devmoter-tools-ai-run", current.runId);
+    $(".dm-shell-menu-trigger").click(); await tick();
+    assert.equal($(".tools-ai-settings").open, false);
+    assert.equal($("[data-ai-project]").value, "p2");
+    assert.equal($("[data-ai-provider]").value, "planner");
+    assert.equal($("[data-ai-model]").value, "configured-model");
+    const chips = [...document.querySelectorAll("[data-ai-suggestion]")]; assert.equal(chips.length, 5);
+    for (const chip of chips) { chip.click(); assert.equal($("[data-ai-goal]").value, chip.textContent); }
+    assert.equal(posts, 0); assert.equal(document.activeElement, $("[data-ai-goal]"));
+    assert.equal($("[data-ai-results]").firstElementChild.classList.contains("tools-ai-explanation"), true);
+    assert.equal($(".tools-ai-result-details").open, false);
+    assert.match($(".tools-ai-result-details").textContent, /actual-git.*main/s);
+    assert.match($(".tools-ai-result-details").textContent, /npm start/);
+    assert.equal($(".tools-ai-run-details").open, false);
+  } finally { dom.window.close(); }
+});

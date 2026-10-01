@@ -131,7 +131,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
       <header class="dm-shell-sidebar-head">
         <div>
           <strong>Tools</strong>
-          <small>DevMoter control center</small>
+          <small>AIに相談・ツール</small>
         </div>
         <button type="button" data-shell-close aria-label="Close sidebar">×</button>
       </header>
