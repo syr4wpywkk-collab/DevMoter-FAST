@@ -120,13 +120,11 @@ function applySurface(surface: MainSurface) {
     codexView.classList.add("hidden");
     apiView.classList.add("hidden");
     integrationsView.classList.add("hidden");
-    workflowMount.classList.add("hidden");
     document.body.classList.remove("codex-mode", "opencode-mode", "api-mode", "integrations-mode");
     document.body.classList.add("devmoter-home-mode");
     if (restoreHomeFocus) window.requestAnimationFrame(() => homeView.querySelector<HTMLElement>("#devmoterHomeTitle")?.focus({ preventScroll: true }));
     return;
   }
-  workflowMount.classList.remove("hidden");
   applyBackend(surface);
 }
 
@@ -171,6 +169,8 @@ mountSessionControl({ switchBackend: backend => setBackend(backend) });
 mountWorkspaceTools();
 mountAdvancedTools();
 const controlCenterReady = import("./control-center").then(({ mountControlCenter }) => mountControlCenter());
+// Review is a temporary overlay shared by Home and all chat surfaces.
+// Its mount stays available; the workflow owns modal visibility.
 mountTaskWorkflow(workflowMount);
 mountSystemPanel();
 mountRemoteControlCenter();
