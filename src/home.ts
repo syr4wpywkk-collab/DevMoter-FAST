@@ -30,7 +30,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
             return `<button class="dm-home-app-card" type="button" data-home-app="${app.id}" aria-label="${app.title}${state ? `, ${state}` : ""}"${disabled ? " disabled aria-disabled=\"true\"" : app.availability === "preview" ? " aria-disabled=\"true\"" : ""}>
               <span class="dm-home-card-icon" aria-hidden="true">${app.icon}</span>
               <span class="dm-home-card-copy"><strong>${app.title}</strong><small>${app.shortDescription}</small>${state ? `<em class="dm-home-app-state">${state}</em>` : ""}</span>
-              <span class="dm-home-card-arrow" aria-hidden="true">${app.availability === "available" ? "↗" : "·"}</span>
+              <span class="dm-home-card-arrow" aria-hidden="true">${app.availability === "available" ? '<svg viewBox="0 0 20 20" focusable="false"><path d="M5 15 15 5M6 5h9v9" /></svg>' : "·"}</span>
             </button>`;
           }).join("")}
         </div>

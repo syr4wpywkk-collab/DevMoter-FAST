@@ -86,8 +86,10 @@ export function mountAdvancedTools() {
 
   const drawer = element("aside", "adv-drawer hidden");
   drawer.setAttribute("aria-label", "DevMoter advanced tools");
+  drawer.setAttribute("role", "dialog");
+  drawer.setAttribute("aria-modal", "true");
   drawer.innerHTML =
-    '<div class="adv-head"><div><strong>DevMoter Tools</strong><small>Preview · Models · Gallery · Sandbox</small></div><button type="button" data-close>×</button></div>' +
+    '<div class="adv-head"><div><strong>DevMoter Tools</strong><small>Preview · Models · Gallery · Sandbox</small></div><button type="button" data-close aria-label="Close Files & Preview">×</button></div>' +
     '<div class="adv-scroll">' +
     '<section class="adv-section"><label>Project<select data-project></select></label><div class="adv-status" data-project-status></div></section>' +
     '<section class="adv-section"><h3>Project files</h3><div class="adv-row"><button type="button" data-browser-up>↑ Up</button><code data-browser-path>/</code><button type="button" data-browser-refresh>Refresh</button></div><div class="adv-list" data-file-browser></div></section>' +
@@ -100,6 +102,32 @@ export function mountAdvancedTools() {
     '<section class="adv-section"><h3>Directory grants</h3><div class="adv-row"><input data-grant-path placeholder="/home/me/shared"/><select data-grant-mode><option value="read">Read</option><option value="read-write">Read/write</option></select><button type="button" data-grant-add>Grant</button></div><div class="adv-list" data-grants></div></section>' +
     '<section class="adv-section"><h3>OS sandbox</h3><div class="adv-status" data-sandbox>Checking…</div></section>' +
     "</div>";
+  const groups = [
+    { index: 1, id: "files", title: "Files & documents" },
+    { index: 4, id: "outputs", title: "Generated outputs" },
+    { index: 5, id: "preview", title: "Web preview & browser" },
+    { index: 7, id: "models", title: "Models & access" }
+  ];
+  const sections = drawer.querySelectorAll<HTMLElement>(".adv-section");
+  const jumpNav = element("nav", "adv-jump-nav");
+  jumpNav.setAttribute("aria-label", "Files & Preview sections");
+  for (const group of groups) {
+    const section = sections[group.index];
+    section.id = "adv-group-" + group.id;
+    const heading = element("h2", "adv-group-title");
+    heading.textContent = group.title;
+    heading.tabIndex = -1;
+    section.prepend(heading);
+    const jump = element("button");
+    jump.type = "button";
+    jump.textContent = group.title;
+    jump.addEventListener("click", () => {
+      section.scrollIntoView({ block: "start" });
+      heading.focus({ preventScroll: true });
+    });
+    jumpNav.append(jump);
+  }
+  drawer.querySelector(".adv-scroll")!.prepend(jumpNav);
   document.body.append(drawer);
 
   const q = <T extends Element>(selector: string) => drawer.querySelector<T>(selector)!;
@@ -507,11 +535,33 @@ export function mountAdvancedTools() {
     }
   }
 
+  let returnFocus: HTMLElement | null = null;
+  let previousOverflow = "";
   fab.addEventListener("click", async () => {
+    if (!drawer.classList.contains("hidden")) return;
+    returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     drawer.classList.remove("hidden");
+    q<HTMLButtonElement>("[data-close]").focus({ preventScroll: true });
     await Promise.all([loadProjects(), loadModels(), loadGrants(), loadSandbox()]);
   });
-  const closeDrawer = () => drawer.classList.add("hidden");
+  const closeDrawer = () => {
+    if (drawer.classList.contains("hidden")) return;
+    drawer.classList.add("hidden");
+    document.body.style.overflow = previousOverflow;
+    if (returnFocus?.isConnected && !returnFocus.closest(".hidden, [hidden]")) returnFocus.focus({ preventScroll: true });
+  };
+  drawer.addEventListener("keydown", event => {
+    if (event.key === "Escape") { event.preventDefault(); closeDrawer(); return; }
+    if (event.key !== "Tab") return;
+    const controls = Array.from(drawer.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href], summary'))
+      .filter(node => !node.closest(".hidden, [hidden]") && (!node.closest("details:not([open])") || node.tagName === "SUMMARY"));
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (event.shiftKey && document.activeElement === first && last) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last && first) { event.preventDefault(); first.focus(); }
+  });
   q<HTMLButtonElement>("[data-close]").addEventListener("click", closeDrawer);
   window.addEventListener("devmoter:surface-changed", closeDrawer);
   projectSelect.addEventListener("change", () => {

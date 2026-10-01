@@ -114,7 +114,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
     <button id="wfLaunch" class="wf-launch" type="button" aria-label="Review changes and tasks">
       <span>⌁</span><b>Review</b>
     </button>
-    <div id="wfModal" class="wf-modal hidden" aria-hidden="true">
+    <div id="wfModal" class="wf-modal hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Review & Tasks" tabindex="-1">
       <div class="wf-sheet">
         <header class="wf-header">
           <div>
@@ -481,14 +481,39 @@ export function mountTaskWorkflow(root: HTMLElement) {
     nextFile.classList.toggle("hidden", !payload.truncated);
   }
 
-  launch.addEventListener("click", () => {
-    modal.classList.remove("hidden");
-    modal.setAttribute("aria-hidden", "false");
-    void refreshAll();
-  });
-  root.querySelector<HTMLButtonElement>("#wfClose")!.addEventListener("click", () => {
+  const closeButton = root.querySelector<HTMLButtonElement>("#wfClose")!;
+  let returnFocus: HTMLElement | null = null;
+  let previousOverflow = "";
+  function closeReview() {
+    if (modal.classList.contains("hidden")) return;
     modal.classList.add("hidden");
     modal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = previousOverflow;
+    if (returnFocus?.isConnected && !returnFocus.closest(".hidden, [hidden]")) returnFocus.focus({ preventScroll: true });
+  }
+  launch.addEventListener("click", () => {
+    if (!modal.classList.contains("hidden")) return;
+    returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    closeButton.focus({ preventScroll: true });
+    void refreshAll();
+  });
+  closeButton.addEventListener("click", closeReview);
+  modal.addEventListener("click", event => { if (event.target === modal) closeReview(); });
+  window.addEventListener("devmoter:surface-changed", closeReview);
+  modal.addEventListener("keydown", event => {
+    if (event.key === "Escape") { event.preventDefault(); closeReview(); return; }
+    if (event.key !== "Tab") return;
+    const controls = Array.from(modal.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], summary, [tabindex="0"]'))
+      .filter(node => !node.closest(".hidden, [hidden]") && (!node.closest("details:not([open])") || node.tagName === "SUMMARY") && node.getAttribute("aria-hidden") !== "true");
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (!first || !last) { event.preventDefault(); modal.focus(); return; }
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === modal)) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   });
   root.querySelector<HTMLButtonElement>("#wfRefresh")!.addEventListener("click", () => void refreshAll());
 

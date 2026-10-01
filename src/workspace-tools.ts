@@ -124,6 +124,18 @@ function appendCell(row: HTMLElement, className: string, value: string) {
   return cell;
 }
 
+function appendDiffCode(row: HTMLElement, line: ParsedLine) {
+  const code = appendCell(row, "code", line.text);
+  if (line.kind === "add" || line.kind === "del") {
+    const marker = document.createElement("span");
+    marker.className = "pocket-diff-marker";
+    marker.textContent = line.kind === "add" ? "+ " : "− ";
+    marker.setAttribute("aria-hidden", "true");
+    code.prepend(marker);
+    row.setAttribute("aria-label", `${line.kind === "add" ? "Added" : "Deleted"} line: ${line.text}`);
+  }
+}
+
 function unifiedHunk(hunk: ParsedHunk) {
   const details = document.createElement("details");
   details.className = "pocket-diff-hunk";
@@ -140,7 +152,7 @@ function unifiedHunk(hunk: ParsedHunk) {
     row.className = "pocket-diff-line " + line.kind;
     appendCell(row, "old", line.oldLine === null ? "" : String(line.oldLine));
     appendCell(row, "new", line.newLine === null ? "" : String(line.newLine));
-    appendCell(row, "code", line.text);
+    appendDiffCode(row, line);
     body.appendChild(row);
   }
   details.appendChild(body);
@@ -196,7 +208,8 @@ function splitHunk(hunk: ParsedHunk) {
       const cell = document.createElement("div");
       cell.className = "pocket-split-cell " + side + " " + (line?.kind || "empty");
       appendCell(cell, "num", line ? String(side === "left" ? line.oldLine ?? "" : line.newLine ?? "") : "");
-      appendCell(cell, "code", line?.text || "");
+      if (line) appendDiffCode(cell, line);
+      else appendCell(cell, "code", "");
       row.appendChild(cell);
     }
     body.appendChild(row);
@@ -230,6 +243,8 @@ export function mountWorkspaceTools() {
   const projectLabel = overlay.querySelector<HTMLElement>("#pocketGitProject")!;
   const body = overlay.querySelector<HTMLDivElement>("#pocketGitBody")!;
 
+  let returnFocus: HTMLElement | null = null;
+  let previousOverflow = "";
   let project: ProjectSummary | null = null;
   let status: GitStatus | null = null;
   let files: GitFile[] = [];
@@ -245,6 +260,11 @@ export function mountWorkspaceTools() {
     const card = document.createElement("div");
     card.className = "pocket-git-empty";
     card.textContent = error instanceof Error ? error.message : String(error);
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.textContent = "Retry Git status";
+    retry.addEventListener("click", () => void openPanel());
+    card.appendChild(retry);
     body.appendChild(card);
   }
 
@@ -477,7 +497,13 @@ export function mountWorkspaceTools() {
   }
 
   async function openPanel() {
+    if (overlay.classList.contains("hidden")) {
+      returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+    }
     overlay.classList.remove("hidden");
+    close.focus({ preventScroll: true });
     body.replaceChildren();
     const loading = document.createElement("div");
     loading.className = "pocket-git-empty";
@@ -496,7 +522,10 @@ export function mountWorkspaceTools() {
   }
 
   function closePanel() {
+    if (overlay.classList.contains("hidden")) return;
     overlay.classList.add("hidden");
+    document.body.style.overflow = previousOverflow;
+    if (returnFocus?.isConnected && !returnFocus.closest(".hidden, [hidden]")) returnFocus.focus({ preventScroll: true });
   }
 
   trigger.addEventListener("click", () => void openPanel());

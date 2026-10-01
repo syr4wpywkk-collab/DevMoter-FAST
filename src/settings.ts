@@ -1,4 +1,5 @@
 import "./settings.css";
+import { boundedPushWait, inspectPushReadiness, type PushReadiness } from "./push-readiness.js";
 
 type Json = Record<string, any>;
 type SettingsPage = "root" | "appearance" | "account" | "devices" | "vault" | "notifications" | "diagnostics" | "guide";
@@ -101,6 +102,7 @@ export function mountSettingsPanel() {
   let diagnostics: Json = {};
   let vaultFormElement: HTMLFormElement | null = null;
   let vaultSecrets: Json[] = [];
+  let notificationRenderId = 0;
 
   function toast(message: string) {
     let node = root.querySelector<HTMLDivElement>(".devmoter-settings-toast");
@@ -532,30 +534,72 @@ export function mountSettingsPanel() {
     wireRows();
   }
 
-  async function currentSubscription() {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
-    const registration = await navigator.serviceWorker.ready;
-    return registration.pushManager.getSubscription();
+  async function currentSubscription(): Promise<{ readiness: PushReadiness; subscription: PushSubscription | null }> {
+    const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+    const readiness = await inspectPushReadiness(
+      supported ? navigator.serviceWorker : null,
+      supported ? Notification.permission : null
+    );
+    if (readiness.state !== "ready" || !readiness.registration) return { readiness, subscription: null };
+    try {
+      return { readiness, subscription: await boundedPushWait(readiness.registration.pushManager.getSubscription()) };
+    } catch {
+      return { readiness: { state: "error" }, subscription: null };
+    }
   }
 
   async function renderNotifications() {
+    const renderId = ++notificationRenderId;
     setHeader("通知", "完了・承認待ちをスマホへ");
-    const subscription = await currentSubscription().catch(() => null);
-    const trusted = await request("/api/devices", {}, true).then(() => true).catch(() => false);
-    scroll.innerHTML = `
+    const renderContent = (state: PushReadiness["state"] | "loading", subscription: PushSubscription | null, trusted: boolean) => {
+      const status = state === "loading" ? "確認中…"
+        : state === "ready" ? subscription ? "有効" : "無効"
+        : state === "unsupported" ? "未対応"
+        : state === "unregistered" ? "Service Worker未登録"
+        : state === "denied" ? "通知権限が拒否されています"
+        : "状態を確認できません";
+      const explanation = state === "loading" ? "通知とService Workerの状態を確認しています。"
+        : state === "ready" ? subscription ? "通知はこの端末で有効です。" : "この端末でPush通知を有効にできます。"
+        : state === "unsupported" ? "このブラウザではPush通知を利用できません。"
+        : state === "unregistered" ? "アプリを再読み込みして状態を再確認してください。Service Workerが登録されると通知を有効にできます。"
+        : state === "denied" ? "ブラウザのサイト設定で通知を許可してから「状態を再確認」を押してください。"
+        : "状態を確認できませんでした。少し待って「状態を再確認」してください。";
+      const canEnable = state === "ready" && !subscription;
+      const canDisable = state === "ready" && !!subscription;
+      scroll.innerHTML = `
       ${section("Push 通知",
-        row("♢", "通知の状態", { value: subscription ? "有効" : "無効" }) +
+        row("♢", "通知の状態", { value: status }) +
         row("▱", "Trusted device", { action: "page:devices", value: trusted ? "登録済み" : "先に登録が必要" })
       )}
+      <div class="devmoter-settings-note">${escapeHtml(explanation)}</div>
       <div class="devmoter-settings-card devmoter-settings-action-card">
-        <button type="button" data-action="push:enable">通知を有効にする</button>
-        <button type="button" data-action="push:disable">通知を無効にする</button>
+        <button type="button" data-action="push:retry">状態を再確認</button>
+        <button type="button" data-action="push:enable" ${canEnable ? "" : "disabled"}>通知を有効にする</button>
+        <button type="button" data-action="push:disable" ${canDisable ? "" : "disabled"}>通知を無効にする</button>
       </div>
       <div class="devmoter-settings-note">
         通知本文にはプロンプト、コード、ツール出力、認証情報を含めません。
       </div>
-    `;
-    wireRows();
+      `;
+      wireRows();
+    };
+    let state: PushReadiness["state"] | "loading" = "loading";
+    let subscription: PushSubscription | null = null;
+    let trusted = false;
+    renderContent(state, subscription, trusted);
+    void currentSubscription()
+      .catch(() => ({ readiness: { state: "error" as const }, subscription: null }))
+      .then(push => {
+        if (renderId !== notificationRenderId || page !== "notifications") return;
+        state = push.readiness.state;
+        subscription = push.subscription;
+        renderContent(state, subscription, trusted);
+      });
+    void request("/api/devices", {}, true).then(() => {
+      if (renderId !== notificationRenderId || page !== "notifications") return;
+      trusted = true;
+      renderContent(state, subscription, trusted);
+    }).catch(() => {});
   }
 
   function prerequisiteRows() {
@@ -674,14 +718,28 @@ export function mountSettingsPanel() {
       toast("このブラウザはPush通知に対応していません。");
       return;
     }
-    const permission = await Notification.requestPermission();
+    const readiness = await inspectPushReadiness(navigator.serviceWorker, Notification.permission);
+    if (readiness.state !== "ready" || !readiness.registration) {
+      const message = readiness.state === "unregistered"
+        ? "通知用Service Workerが登録されていません。アプリを再読み込みしてから再試行してください。"
+        : readiness.state === "unsupported"
+          ? "このブラウザはPush通知に対応していません。"
+          : readiness.state === "denied"
+            ? "ブラウザ設定で通知権限を許可してから再試行してください。"
+          : "Service Workerの準備を確認できませんでした。少し待って再試行してください。";
+      toast(message);
+      return;
+    }
+    const registration = readiness.registration;
+    const permission = Notification.permission === "granted"
+      ? Notification.permission
+      : await Notification.requestPermission();
     if (permission !== "granted") {
       toast("通知権限が許可されませんでした。");
       return;
     }
-    const registration = await navigator.serviceWorker.ready;
     const key = await request("/api/push/key");
-    let subscription = await registration.pushManager.getSubscription();
+    let subscription = await boundedPushWait(registration.pushManager.getSubscription());
     if (!subscription) {
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
@@ -697,7 +755,7 @@ export function mountSettingsPanel() {
   }
 
   async function disablePush() {
-    const subscription = await currentSubscription();
+    const { subscription } = await currentSubscription();
     if (subscription) {
       await request("/api/push/subscriptions", {
         method: "DELETE",
@@ -842,6 +900,10 @@ export function mountSettingsPanel() {
         }
         if (action === "push:enable") {
           try { await enablePush(); } catch (error) { toast(error instanceof Error ? error.message : String(error)); }
+          return;
+        }
+        if (action === "push:retry") {
+          await renderNotifications();
           return;
         }
         if (action === "push:disable") {
