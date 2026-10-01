@@ -5,6 +5,11 @@ import vm from "node:vm";
 import ts from "typescript";
 
 const source = await readFile(new URL("../src/system-panel.ts", import.meta.url), "utf8");
+const helperSource = await readFile(new URL("../src/push-readiness.ts", import.meta.url), "utf8");
+const pushReadiness = {};
+vm.runInNewContext(ts.transpileModule(helperSource, {
+  compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
+}).outputText, { exports: pushReadiness, setTimeout, clearTimeout });
 const compiled = ts.transpileModule(source, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
 }).outputText;
@@ -52,6 +57,7 @@ function panelHarness({ dismissed = false } = {}) {
   const exports = {};
   vm.runInNewContext(compiled, {
     exports,
+    require: name => name === "./push-readiness.js" ? pushReadiness : {},
     window,
     document: {
       createElement: () => root,

@@ -1,3 +1,5 @@
+import { boundedPushWait, inspectPushReadiness } from "./push-readiness.js";
+
 const SETUP_DISMISSED_KEY = "devmoter-setup-dismissed-v1";
 function base64urlToBytes(value: string) {
   const padded = value.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - value.length % 4) % 4);
@@ -264,14 +266,18 @@ export function mountSystemPanel() {
       });
     }
 
-    body.querySelector("[data-enable-push]")?.addEventListener("click", () => void enablePush());
-    body.querySelector("[data-disable-push]")?.addEventListener("click", () => void disablePush());
+    body.querySelector("[data-enable-push]")?.addEventListener("click", () => void enablePush().catch(() => setMessage("Push notifications could not be enabled. Retry from Settings.", "error")));
+    body.querySelector("[data-disable-push]")?.addEventListener("click", () => void disablePush().catch(() => setMessage("Push notifications could not be disabled. Please retry.", "error")));
   }
 
   async function currentSubscription() {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
-    const registration = await navigator.serviceWorker.ready;
-    return registration.pushManager.getSubscription();
+    const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+    const readiness = await inspectPushReadiness(
+      supported ? navigator.serviceWorker : null,
+      supported ? Notification.permission : null
+    );
+    if (readiness.state !== "ready" || !readiness.registration) return null;
+    return boundedPushWait(readiness.registration.pushManager.getSubscription());
   }
 
   async function enablePush() {
@@ -284,15 +290,29 @@ export function mountSystemPanel() {
       return;
     }
 
-    const permission = await Notification.requestPermission();
+    const readiness = await inspectPushReadiness(navigator.serviceWorker, Notification.permission);
+    if (readiness.state !== "ready" || !readiness.registration) {
+      const message = readiness.state === "unregistered"
+        ? "No notification service worker is registered. Reload the app and try again."
+        : readiness.state === "denied"
+          ? "Allow notifications in this browser's site settings, then try again."
+          : readiness.state === "unsupported"
+            ? "Push notifications are not supported in this browser."
+            : "The notification service worker is not ready. Wait a moment and try again.";
+      setMessage(message, "error");
+      return;
+    }
+    const registration = readiness.registration;
+    const permission = Notification.permission === "granted"
+      ? Notification.permission
+      : await Notification.requestPermission();
     if (permission !== "granted") {
       setMessage("Notification permission was not granted.", "error");
       return;
     }
 
-    const registration = await navigator.serviceWorker.ready;
     const key = await request("/api/push/key");
-    let subscription = await registration.pushManager.getSubscription();
+    let subscription = await boundedPushWait(registration.pushManager.getSubscription());
     if (!subscription) {
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
@@ -365,7 +385,7 @@ export function mountSystemPanel() {
     if (event.target === modal) close();
   });
 
-  void currentSubscription().then(() => void syncVisibility());
+  void currentSubscription().then(() => void syncVisibility()).catch(() => {});
 
   if (!localStorage.getItem(SETUP_DISMISSED_KEY)) {
     automaticSetupTimer = window.setTimeout(open, 250);
