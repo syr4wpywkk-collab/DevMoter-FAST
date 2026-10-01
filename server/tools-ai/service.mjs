@@ -37,7 +37,8 @@ export function createToolsAiService({ store, dispatch, prepareChat, authorize }
       await store.update(run.runId, { status: "completed", explanation });
     } catch (error) {
       const current = store.get(run.runId);
-      const stopped = current.cancellation.requested;
+      // Stop aborts immediately, while its durable cancellation record may still be committing.
+      const stopped = controller.signal.aborted || current.cancellation.requested;
       const failure = stopped && signal.aborted ? null : safeText(error.message || String(error), prepared.secrets);
       await store.update(run.runId, {
         status: stopped ? "stopped" : "failed", failure,
@@ -75,7 +76,7 @@ export function createToolsAiService({ store, dispatch, prepareChat, authorize }
       const controller = controllers.get(id);
       if (!controller) return publicRun(await store.update(id, { status: "unknown", failure: "実行状態を照合できません。開始待ちの処理は継続しません。",
         cancellation: { requested: true, stage: "unknown", providerMayContinue: true } }));
-      // Memory state changes synchronously in update, before abort resolves model promises.
+      // Abort immediately; the cancellation record becomes observable only after its atomic persistence commits.
       const pending = store.update(id, { status: "stop_requested", cancellation: { requested: true, stage: run.status === "running" ? "waiting-for-bounded-read-or-model" : "aborting-model-request", providerMayContinue: true } });
       controller.abort(); await pending;
       return publicRun(store.get(id));
