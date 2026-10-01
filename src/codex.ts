@@ -5,6 +5,7 @@ import { isMcpToolItem, mcpToolSummary, normalizeStructuredMcpResult } from "./m
 import { setWakeLockExecutionActive } from "./wake-lock";
 import { enrichInstalledPluginEntries, pluginEntries } from "./codex-plugin-metadata.mjs";
 import { applyReasoningToTurnStart, normalizeCodexModels, reasoningChoices, reconcileReasoningMode } from "./codex-reasoning.mjs";
+import { normalizeCodexSendError } from "./codex-send-error.mjs";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
@@ -96,6 +97,20 @@ type PendingAttachment = {
   dataUrl?: string;
   uploadId?: string;
   size: number;
+};
+
+type FailedCodexSendDraft = {
+  text: string;
+  attachments: PendingAttachment[];
+  contextRefs: Array<{ path: string; kind: "file" | "folder" }>;
+  threadId: string;
+};
+
+type FailedCodexTurn = {
+  threadId: string;
+  turnId: string;
+  error: unknown;
+  draft: FailedCodexSendDraft | null;
 };
 
 type CodexRemoteOptions = {
@@ -400,6 +415,8 @@ export function mountCodexRemote(
   let online = false;
   let activeThreadId: string | null = null;
   let activeTurnId: string | null = null;
+  let activeSendDraft: FailedCodexSendDraft | null = null;
+  const failedCodexTurns = new Map<string, FailedCodexTurn>();
   let activeAssistantBubble: HTMLDivElement | null = null;
   let pendingApproval: { id: string | number; method: string; params: Json } | null = null;
   let pendingApprovalSafety = "";
@@ -1083,6 +1100,85 @@ export function mountCodexRemote(
     return bubble;
   }
 
+  function addCodexSendFailure(
+    error: unknown,
+    diagnostics: { method: string; threadId?: string | null; turnId?: string | null },
+    retryDraft: FailedCodexSendDraft | null
+  ) {
+    const normalized = normalizeCodexSendError(error);
+    const bubble = addMessage("system", `${normalized.category}: ${normalized.reason}`);
+    const actions = document.createElement("div");
+    actions.className = "cx-send-error-actions";
+    if (retryDraft) {
+      const restore = document.createElement("button");
+      restore.type = "button";
+      restore.textContent = "入力に戻す";
+      restore.addEventListener("click", () => {
+        if (activeThreadId !== retryDraft.threadId) {
+          showToast("元の会話を開いてから入力に戻してください。");
+          return;
+        }
+        if (promptInput.value.trim() || pendingAttachments.length || selectedContextRefs.length) {
+          showToast("入力欄に内容があります。送信または削除してから復元してください。");
+          return;
+        }
+        promptInput.value = retryDraft.text;
+        pendingAttachments = retryDraft.attachments.map(item => ({ ...item }));
+        selectedContextRefs = retryDraft.contextRefs.map(item => ({ ...item }));
+        renderAttachments();
+        resizeComposer();
+        promptInput.focus();
+        promptInput.setSelectionRange(promptInput.value.length, promptInput.value.length);
+        failedDetails.open = false;
+      });
+      actions.appendChild(restore);
+    }
+    const diagnosticsButton = document.createElement("button");
+    diagnosticsButton.type = "button";
+    diagnosticsButton.textContent = "Diagnostics";
+    diagnosticsButton.addEventListener("click", () => {
+      window.dispatchEvent(new CustomEvent("devmoter:open-settings", { detail: { page: "diagnostics" } }));
+    });
+    actions.appendChild(diagnosticsButton);
+    const failedDetails = document.createElement("details");
+    failedDetails.className = "cx-send-error-diagnostics";
+    const summary = document.createElement("summary");
+    summary.textContent = "Error details";
+    const content = document.createElement("div");
+    content.textContent = [
+      `Category: ${normalized.category}`,
+      `Reason: ${normalized.reason}`,
+      normalized.code ? `Code: ${normalized.code}` : "",
+      "Backend: Codex",
+      `Method: ${diagnostics.method}`,
+      diagnostics.threadId ? `Thread: ${diagnostics.threadId}` : "",
+      diagnostics.turnId ? `Turn: ${diagnostics.turnId}` : ""
+    ].filter(Boolean).join("\n");
+    failedDetails.append(summary, content);
+    actions.appendChild(failedDetails);
+    bubble.appendChild(actions);
+  }
+
+  function failedCodexTurnKey(threadId: string, turnId: string) {
+    return `${threadId}\u0000${turnId}`;
+  }
+
+  function rememberFailedCodexTurn(threadId: string, turnId: string, failure: Omit<FailedCodexTurn, "threadId" | "turnId">) {
+    const key = failedCodexTurnKey(threadId, turnId);
+    if (failure.draft) {
+      for (const [previousKey, previous] of failedCodexTurns) {
+        if (previousKey !== key && previous.draft) failedCodexTurns.set(previousKey, { ...previous, draft: null });
+      }
+    }
+    failedCodexTurns.delete(key);
+    failedCodexTurns.set(key, { threadId, turnId, ...failure });
+    while (failedCodexTurns.size > 12) {
+      const oldest = failedCodexTurns.keys().next().value;
+      if (oldest === undefined) break;
+      failedCodexTurns.delete(oldest);
+    }
+  }
+
   function addMcpToolResult(item: Json) {
     const summary = mcpToolSummary(item);
     const normalized = normalizeStructuredMcpResult(summary.result);
@@ -1217,12 +1313,13 @@ export function mountCodexRemote(
     const result = await rpc<{
       thread?: {
         status?: Json;
-        turns?: Array<{ id?: string; status?: string; items?: Json[] }>;
+        turns?: Array<{ id?: string; status?: string; error?: unknown; items?: Json[] }>;
       };
     }>(
       "thread/read",
       { threadId, includeTurns: true }
     );
+    if (activeThreadId !== threadId) return;
 
     const turns = result?.thread?.turns ?? [];
     const threadState = codexThreadStatusToExecutionState(result?.thread?.status);
@@ -1247,6 +1344,7 @@ export function mountCodexRemote(
 
     transcript.replaceChildren();
 
+    const renderedFailedTurnIds = new Set<string>();
     for (const turn of turns) {
       for (const item of turn.items ?? []) {
         const user = parseUserMessage(item);
@@ -1264,6 +1362,34 @@ export function mountCodexRemote(
           addMessage("assistant", item.text, [], true);
         }
       }
+      if (codexTurnStatusToExecutionState(turn.status) === "failed" && turn.id) {
+        renderedFailedTurnIds.add(turn.id);
+        const previous = failedCodexTurns.get(failedCodexTurnKey(threadId, turn.id));
+        const failure = {
+          error: turn.error !== undefined ? normalizeCodexSendError(turn.error) : previous?.error ?? {},
+          draft: previous?.draft?.threadId === threadId ? previous.draft : null
+        };
+        rememberFailedCodexTurn(threadId, turn.id, failure);
+        addCodexSendFailure(
+          failure.error,
+          { method: "turn/start", threadId, turnId: turn.id },
+          failure.draft
+        );
+      }
+    }
+
+    const retainedFailures = [...failedCodexTurns.values()]
+      .filter(failure => failure.threadId === threadId && !renderedFailedTurnIds.has(failure.turnId));
+    for (const failure of retainedFailures) {
+      addCodexSendFailure(
+        failure.error,
+        { method: "turn/start", threadId, turnId: failure.turnId },
+        failure.draft
+      );
+    }
+    if (retainedFailures.some(failure => !latestTurn?.id || failure.turnId === latestTurn.id)) {
+      activeTurnId = null;
+      setExecutionState("failed");
     }
 
     if (!transcript.childElementCount) {
@@ -1365,7 +1491,7 @@ export function mountCodexRemote(
       closeSidebar();
       return thread.id;
     } catch (error) {
-      addMessage("system", error instanceof Error ? error.message : "新しいチャットを作れませんでした");
+      addCodexSendFailure(error, { method: "thread/start" }, null);
       return null;
     }
   }
@@ -1642,6 +1768,12 @@ export function mountCodexRemote(
       name: item.name,
       kind: item.kind
     }));
+    const sendDraft = {
+      text,
+      attachments: pendingAttachments.map(item => ({ ...item })),
+      contextRefs: selectedContextRefs.map(item => ({ ...item })),
+      threadId
+    };
 
     followsBottom = true;
     addMessage("user", text, displayAttachments);
@@ -1683,6 +1815,7 @@ export function mountCodexRemote(
     setExecutionState("running");
 
     const operationId = uid();
+      activeSendDraft = sendDraft;
     let params: Json = {
       threadId,
       input,
@@ -1697,10 +1830,11 @@ export function mountCodexRemote(
         params,
         { operationId }
       );
-      activeTurnId = result?.turn?.id ?? activeTurnId;
+      if (activeSendDraft === sendDraft) activeTurnId = result?.turn?.id ?? activeTurnId;
     } catch (error) {
       setExecutionState("failed");
-      addMessage("system", error instanceof Error ? error.message : "送信できませんでした");
+      addCodexSendFailure(error, { method: "turn/start", threadId }, sendDraft);
+      activeSendDraft = null;
     }
   }
 
@@ -1935,6 +2069,24 @@ export function mountCodexRemote(
       if (method === "turn/completed") {
         const finalState = codexTurnStatusToExecutionState(params?.turn?.status);
         setExecutionState(finalState);
+        let completedFailure: unknown = null;
+        let completedFailureDraft: FailedCodexSendDraft | null = null;
+        let completedTurnId = "";
+        if (finalState === "failed") {
+          const turn = params?.turn || {};
+          completedFailure = normalizeCodexSendError(turn.error ?? params?.error ?? {});
+          completedTurnId = String(turn.id || params?.turnId || activeTurnId || "");
+          const draftMatchesTurn = activeSendDraft?.threadId === activeThreadId &&
+            (!activeTurnId || !completedTurnId || completedTurnId === activeTurnId);
+          completedFailureDraft = draftMatchesTurn ? activeSendDraft : null;
+          if (activeThreadId && completedTurnId) {
+            rememberFailedCodexTurn(activeThreadId, completedTurnId, {
+              error: completedFailure,
+              draft: completedFailureDraft
+            });
+          }
+        }
+        activeSendDraft = null;
         activeTurnId = null;
         if (activeAssistantBubble) {
           activeAssistantBubble.closest(".cx-message-row")?.classList.remove("live");
@@ -1944,7 +2096,15 @@ export function mountCodexRemote(
         activeAssistantBubble = null;
         if (activeThreadId) {
           const threadId = activeThreadId;
-          void loadThreadHistory(threadId);
+          void loadThreadHistory(threadId).catch(() => {
+            if (finalState === "failed" && activeThreadId === threadId) {
+              addCodexSendFailure(
+                completedFailure,
+                { method: "turn/start", threadId, turnId: completedTurnId },
+                completedFailureDraft
+              );
+            }
+          });
           if (finalState === "completed") {
           }
         }

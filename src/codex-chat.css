@@ -188,6 +188,30 @@ body.codex-mode {
   color: var(--cx-muted);
 }
 
+.cx-app .cx-send-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: .82rem;
+}
+.cx-app .cx-send-error-actions button,
+.cx-app .cx-send-error-diagnostics summary {
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--cx-border);
+  border-radius: 9px;
+  color: var(--cx-text);
+  background: var(--cx-raised);
+  cursor: pointer;
+}
+.cx-app .cx-send-error-diagnostics > div {
+  padding: 8px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .cx-app .cx-message-text.cx-markdown {
   white-space: normal;
   overflow-wrap: anywhere;
