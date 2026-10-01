@@ -608,7 +608,7 @@ function anthropicMessages(messages) {
     });
 }
 
-async function runOpenAiCompatible(provider, model, messages, reasoningMode, fetchImpl) {
+async function runOpenAiCompatible(provider, model, messages, reasoningMode, fetchImpl, signal) {
   const body = {
     model,
     messages: openAiMessages(messages),
@@ -623,7 +623,7 @@ async function runOpenAiCompatible(provider, model, messages, reasoningMode, fet
     method: "POST",
     headers: providerHeaders(provider),
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(120_000)
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000)
   });
 
   const data = await upstream.json().catch(() => ({}));
@@ -644,7 +644,7 @@ async function runOpenAiCompatible(provider, model, messages, reasoningMode, fet
   };
 }
 
-async function runAnthropic(provider, model, messages, reasoningMode, fetchImpl) {
+async function runAnthropic(provider, model, messages, reasoningMode, fetchImpl, signal) {
   const systemMessages = messages.filter(message => message.role === "system");
   const body = {
     model,
@@ -665,7 +665,7 @@ async function runAnthropic(provider, model, messages, reasoningMode, fetchImpl)
     method: "POST",
     headers: providerHeaders(provider),
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(120_000)
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000)
   });
 
   const data = await upstream.json().catch(() => ({}));
@@ -696,8 +696,9 @@ export async function runMultiApiChat(
   providers,
   payload,
   fetchImpl = fetch,
-  { attachmentStore = null } = {}
+  { attachmentStore = null, signal } = {}
 ) {
+  signal?.throwIfAborted();
   const providerId = String(payload?.providerId || "").trim();
   const model = String(payload?.model || "").trim();
   const reasoning = normalizeReasoningMode(payload?.reasoning);
@@ -715,8 +716,9 @@ export async function runMultiApiChat(
     attachmentStore
   );
   const result = provider.protocol === "anthropic"
-    ? await runAnthropic(provider, model, messages, reasoning, fetchImpl)
-    : await runOpenAiCompatible(provider, model, messages, reasoning, fetchImpl);
+    ? await runAnthropic(provider, model, messages, reasoning, fetchImpl, signal)
+    : await runOpenAiCompatible(provider, model, messages, reasoning, fetchImpl, signal);
+  signal?.throwIfAborted();
 
   return {
     providerId,
