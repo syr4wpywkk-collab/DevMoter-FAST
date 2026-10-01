@@ -110,6 +110,7 @@ test("Every original tool destination remains reachable and filtered controls st
 
   const invoke = selector => {
     click(dom, ".dm-shell-menu-trigger");
+    dom.window.document.querySelector("[data-manual-tools]").open = true;
     click(dom, selector);
   };
   invoke('[data-shell-app="mission-control"]');

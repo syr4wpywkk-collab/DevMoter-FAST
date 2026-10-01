@@ -7,11 +7,12 @@ import { JSDOM } from "jsdom";
 const compile = source => ts.transpileModule(source, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
 }).outputText;
-const [apiSource, workspaceSource, shellSource, registrySource] = await Promise.all([
+const [apiSource, workspaceSource, shellSource, registrySource, toolsSource] = await Promise.all([
   readFile(new URL("../src/api-chat.ts", import.meta.url), "utf8"),
   readFile(new URL("../src/workspace-control.ts", import.meta.url), "utf8"),
   readFile(new URL("../src/app-shell.ts", import.meta.url), "utf8"),
-  readFile(new URL("../src/app-registry.ts", import.meta.url), "utf8")
+  readFile(new URL("../src/app-registry.ts", import.meta.url), "utf8"),
+  readFile(new URL("../src/tools-ai.ts", import.meta.url), "utf8")
 ]);
 const compiledApi = compile(apiSource);
 const modules = new Map(await Promise.all(ts.preProcessFile(apiSource).importedFiles
@@ -183,8 +184,11 @@ test("global Tools replaces API Settings and returns keyboard focus after dismis
   dom.window.exports = {};
   dom.window.eval(compile(registrySource));
   const registry = dom.window.exports;
+  dom.window.exports = {};
+  dom.window.eval(compile(toolsSource));
+  const tools = dom.window.exports;
   const require = dom.window.require;
-  dom.window.require = name => name === "./app-registry" ? registry : require(name);
+  dom.window.require = name => name === "./app-registry" ? registry : name === "./tools-ai" ? tools : require(name);
   dom.window.exports = {};
   dom.window.eval(compile(shellSource));
   dom.window.exports.mountUnifiedFeatureShell({
@@ -199,7 +203,7 @@ test("global Tools replaces API Settings and returns keyboard focus after dismis
   assert.equal(query(".dm-shell-sidebar").classList.contains("open"), true);
   assert.equal(document.activeElement, query("[data-shell-close]"));
   key("Tab", true);
-  assert.equal(document.activeElement, query('[data-shell-action="setup"]'));
+  assert.equal(document.activeElement, query('[data-manual-tools] > summary'));
   key("Escape");
   assert.equal(document.activeElement, opener);
 });
