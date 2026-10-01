@@ -56,6 +56,6 @@ export function validateProposal(value, context, catalog = catalogFor(context)) 
 }
 
 export const PROPOSAL_SCHEMA = {
-  type: "object", required: ["operationId", "input", "reason"], additionalProperties: false,
+  type: "object", required: ["operationId", "input"], additionalProperties: false,
   properties: { operationId: { enum: OPERATIONS.map(o => o.operationId) }, input: { type: "object" }, reason: { type: "string", maxLength: 500 } }
 };

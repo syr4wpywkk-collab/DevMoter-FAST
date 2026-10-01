@@ -41,6 +41,12 @@ import { createAgentRunService } from "./server/agent-run-service.mjs";
 import { createAgentRunApi } from "./server/agent-run-api.mjs";
 import { createSetupStatus } from "./server/setup/engine.mjs";
 import { executeInstallPlan, previewInstallPlan, SetupPlanError } from "./server/setup/plan.mjs";
+import { catalogFor, CATALOG_VERSION } from "./server/tools-ai/catalog.mjs";
+import { createDispatcher } from "./server/tools-ai/dispatcher.mjs";
+import { createRunStore } from "./server/tools-ai/run-store.mjs";
+import { createToolsAiService } from "./server/tools-ai/service.mjs";
+import { boundedProviderFetch, PLANNER_CANCELLATION } from "./server/tools-ai/planner.mjs";
+import { safeText } from "./server/tools-ai/projection.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -201,6 +207,44 @@ const systemFeatures = createSystemFeatures({
   host: HOST,
   version: process.env.DEVMOTER_VERSION || "0.2.0",
   onDeviceRevoked: deviceId => terminal.revokeDeviceSessions(deviceId)
+});
+const toolsAiStore = createRunStore({ filePath: join(PROJECT_CONFIG_DIR, "tools-ai-runs.json") });
+void toolsAiStore.ready().catch(error => console.error("Tools AI store initialization failed", safeText(error.message)));
+const toolsAiService = createToolsAiService({
+  store: toolsAiStore,
+  dispatch: createDispatcher({ resolveProject: getProjectById, gitStatus: getGitStatus,
+    changedFiles: listChangedFiles, fileDiff: getFileDiff, index: projectIndex,
+    readMarkdown: readProjectMarkdown, diagnostics: () => systemFeatures.diagnostics() }),
+  authorize: async (context, identity) => {
+    if (context.hostId !== (await hostRuntime.info()).id) throw new Error("Host scope changed");
+    if (context.deviceId && !await systemFeatures.isDeviceActive(context.deviceId)) throw Object.assign(new Error("Device authorization revoked"), { status: 403 });
+    if (identity.session && !await externalAuth.session(identity.req)) throw Object.assign(new Error("Owner session expired"), { status: 401 });
+    if (context.project) {
+      const current = await getProjectById(context.project.id);
+      if (current.path !== context.project.path) throw new Error("Project scope changed");
+    }
+  },
+  prepareChat: async (payload, identity) => {
+    const project = payload.projectId ? await getProjectById(payload.projectId) : null;
+    const providers = await multiApiStore.listResolved();
+    const selected = providers.find(p => p.id === payload.providerId);
+    if (!selected || !selected.models.includes(payload.model)) throw new Error("API Chatでplanner provider / modelを設定してください。");
+    let provider = selected;
+    if (selected.secretRef) {
+      if (!project || selected.projectId !== project.id) throw Object.assign(new Error("Vault provider project mismatch"), { status: 403 });
+      const resolved = await authorizeVaultProviderReference(identity.req, { ...selected, projectId: project.id }, { resolveValue: true });
+      provider = { ...selected, apiKey: resolved.value, secretRef: "" };
+    }
+    if (!provider.apiKey) throw new Error("Planner providerのcredentialが未設定です。API Chat設定を確認してください。");
+    const context = { project, hostId: (await hostRuntime.info()).id, deviceId: identity.deviceId,
+      backend: "tools-ai-read", permissions: ["project-read", "host-observation"],
+      planner: { providerId: provider.id, providerName: provider.name, model: payload.model, baseUrl: provider.baseUrl, cancellationCapability: PLANNER_CANCELLATION } };
+    const secrets = [...REDACTED_SECRETS, ...providers.map(p => p.apiKey).filter(Boolean), provider.apiKey];
+    return { context, secrets, chat: async (messages, signal) => {
+      const response = await runMultiApiChat([provider], { providerId: provider.id, model: payload.model, messages }, boundedProviderFetch, { signal });
+      return response.message.content;
+    } };
+  }
 });
 const secretVaultApi = createSecretVaultApi({
   store: secretStore,
@@ -658,20 +702,23 @@ async function projectDocs(id, res) {
   }
 }
 
-async function projectReadFile(id, path, res) {
-  try {
-    const project = await getProjectById(id);
-    const resolved = await resolveProjectMarkdownPath(project, path, { mustExist: true });
-    const info = await stat(resolved.target);
-    if (info.size > PROJECT_FILE_LIMIT) throw new Error("Markdown file is larger than 1MB");
-    const content = await readFile(resolved.target, "utf8");
-    json(res, 200, {
-      projectId: id,
+async function readProjectMarkdown(project, path) {
+  const resolved = await resolveProjectMarkdownPath(project, path, { mustExist: true });
+  const info = await stat(resolved.target);
+  if (info.size > PROJECT_FILE_LIMIT) throw new Error("Markdown file is larger than 1MB");
+  const content = await readFile(resolved.target, "utf8");
+  return {
+      projectId: project.id,
       path: resolved.relativePath,
       content,
       size: info.size,
       updatedAt: info.mtimeMs
-    });
+  };
+}
+
+async function projectReadFile(id, path, res) {
+  try {
+    json(res, 200, await readProjectMarkdown(await getProjectById(id), path));
   } catch (error) {
     json(res, 400, { error: error instanceof Error ? error.message : String(error) });
   }
@@ -2251,6 +2298,35 @@ const server = http.createServer(async (req, res) => {
         json(res, 401, { error: "Passkey authentication required" });
         return;
       }
+    }
+
+    if (url.pathname.startsWith("/api/tools-ai/")) {
+      try {
+        const device = await systemFeatures.authenticate(req, { optional: true });
+        if (req.headers["x-devmoter-device-token"] && !device) throw Object.assign(new Error("Invalid or revoked device token"), { status: 403 });
+        const identity = { req, session: basicAuthenticated ? null : ownerSession, deviceId: device?.id || null,
+          ownerId: basicAuthenticated ? `basic:${DEVMOTER_AUTH_USERNAME}` : `owner:${ownerSession.identity.provider}:${ownerSession.identity.subject}` };
+        if (req.method === "GET" && url.pathname === "/api/tools-ai/context") {
+          const projects = await readProjectRegistry();
+          const selectedId = url.searchParams.get("projectId");
+          const project = selectedId ? await getProjectById(selectedId) : null;
+          json(res, 200, { projects, providers: publicMultiApiProviders(await multiApiStore.listResolved()),
+            hostId: (await hostRuntime.info()).id, backend: "tools-ai-read", catalogVersion: CATALOG_VERSION,
+            plannerCancellationCapability: PLANNER_CANCELLATION,
+            catalog: catalogFor({ project, permissions: ["project-read", "host-observation"] }) });
+          return;
+        }
+        if (req.method === "POST" && url.pathname === "/api/tools-ai/runs") {
+          json(res, 202, await toolsAiService.start(await readJson(req, 12_000), identity)); return;
+        }
+        const match = url.pathname.match(/^\/api\/tools-ai\/runs\/([a-f0-9-]{36})(\/stop)?$/);
+        if (match && req.method === "GET" && !match[2]) { json(res, 200, await toolsAiService.get(match[1], identity)); return; }
+        if (match && req.method === "POST" && match[2]) { json(res, 200, await toolsAiService.stop(match[1], identity)); return; }
+        json(res, 404, { error: "Unknown Tools AI endpoint" });
+      } catch (error) {
+        json(res, error.status || 400, { error: safeText(error.message, REDACTED_SECRETS), ...(error.runId ? { runId: error.runId, outcome: error.outcome } : {}) });
+      }
+      return;
     }
 
     if (url.pathname === "/api/setup/status") {

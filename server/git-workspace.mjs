@@ -15,6 +15,7 @@ async function runGit(cwd, args, { allowFailure = false, maxBuffer = 4 * 1024 * 
       cwd,
       encoding: "utf8",
       maxBuffer,
+      timeout: 15_000,
       windowsHide: true
     });
     return { ok: true, stdout: result.stdout || "", stderr: result.stderr || "" };
@@ -261,7 +262,7 @@ export async function getFileDiff(projectPath, inputPath, { scope = "all" } = {}
   if (sets.untracked.has(path)) {
     text = await untrackedDiff(root, path);
   } else {
-    const args = ["diff", "--no-ext-diff", "--no-color", "--relative", "--unified=3"];
+    const args = ["diff", "--no-ext-diff", "--no-textconv", "--no-color", "--relative", "--unified=3"];
     if (scope === "staged") args.push("--cached");
     else args.push("HEAD");
     args.push("--", path);
