@@ -257,7 +257,8 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   }
 
   function isVisibleFocusTarget(target: HTMLElement | null): target is HTMLElement {
-    return Boolean(target?.isConnected && !target.closest('[inert], [aria-hidden="true"], [hidden]') && target.getClientRects().length);
+    const closedDetails = target?.closest("details:not([open])");
+    return Boolean(target?.isConnected && (!closedDetails || target === closedDetails.querySelector("summary")) && !target.closest('[inert], [aria-hidden="true"], [hidden]') && target.getClientRects().length);
   }
 
   function openSidebar() {
@@ -446,7 +447,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   document.addEventListener("keydown", event => {
     if (event.key === "Escape") closeSidebar();
     if (event.key !== "Tab" || !sidebar.classList.contains("open")) return;
-    const controls = Array.from(sidebar.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), [href], [tabindex]:not([tabindex="-1"])'))
+    const controls = Array.from(sidebar.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [href], [tabindex]:not([tabindex="-1"])'))
       .filter(control => control.tabIndex >= 0 && isVisibleFocusTarget(control));
     const first = controls[0];
     const last = controls[controls.length - 1];

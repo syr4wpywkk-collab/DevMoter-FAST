@@ -9,8 +9,9 @@ export function createToolsAiService({ store, dispatch, prepareChat, authorize }
   const owned = async (id, identity) => {
     await store.ready(); const run = store.get(id);
     if (run.ownerId !== identity.ownerId || run.context.deviceId !== identity.deviceId) throw Object.assign(new Error("Tools AI run scope denied"), { status: 403 });
-    await authorize(run.context, identity);
-    return run;
+    // Recorded results/cancellation remain accessible if a project was removed. Execution still revalidates its scope.
+    await authorize({ ...run.context, project: null }, identity);
+    return store.get(id);
   };
   const execute = async (run, prepared, controller, identity) => {
     const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(120_000)]);
@@ -53,6 +54,8 @@ export function createToolsAiService({ store, dispatch, prepareChat, authorize }
       const prepared = await prepareChat(payload, identity);
       const run = await store.create({ requestId: payload.requestId, ownerId: identity.ownerId, goal: payload.goal,
         context: prepared.context, catalogVersion: CATALOG_VERSION });
+      // Request-ID reconciliation can find and stop a run while its initial write is awaiting disk.
+      if (TERMINAL.has(run.status) || run.cancellation.requested) return publicRun(run);
       const controller = new AbortController(); controllers.set(run.runId, controller);
       void execute(run, prepared, controller, identity).catch(async error => {
         console.error("Tools AI persistence failure", safeText(error.message, prepared.secrets));
@@ -61,11 +64,17 @@ export function createToolsAiService({ store, dispatch, prepareChat, authorize }
       return publicRun(run);
     },
     async get(id, identity) { return publicRun(await owned(id, identity)); },
+    async findRequest(requestId, identity) {
+      await store.ready();
+      const run = store.findRequest(requestId, identity.ownerId, identity.deviceId);
+      return publicRun(await owned(run.runId, identity));
+    },
     async stop(id, identity) {
       const run = await owned(id, identity);
       if (TERMINAL.has(run.status)) return publicRun(run);
       const controller = controllers.get(id);
-      if (!controller) return publicRun(await store.update(id, { status: "unknown", failure: "実行状態を照合できません。" }));
+      if (!controller) return publicRun(await store.update(id, { status: "unknown", failure: "実行状態を照合できません。開始待ちの処理は継続しません。",
+        cancellation: { requested: true, stage: "unknown", providerMayContinue: true } }));
       // Memory state changes synchronously in update, before abort resolves model promises.
       const pending = store.update(id, { status: "stop_requested", cancellation: { requested: true, stage: run.status === "running" ? "waiting-for-bounded-read-or-model" : "aborting-model-request", providerMayContinue: true } });
       controller.abort(); await pending;

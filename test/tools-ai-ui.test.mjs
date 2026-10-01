@@ -69,3 +69,43 @@ test("result cards use safe source rendering, preserve builtAt/redaction, and sh
     assert.match($("[data-ai-progress]").textContent, /結果不明/);
   } finally { dom.window.close(); }
 });
+
+test("lost start response is reconciled by original request ID, never assumed successful", async () => {
+  let captured;
+  const { dom, $ } = setup(async (url, options) => {
+    if (url.endsWith("/context")) return response(context);
+    if (options.method === "POST") { captured = JSON.parse(options.body); throw new TypeError("Lost response"); }
+    return response(baseRun);
+  });
+  try {
+    $(".dm-shell-menu-trigger").click(); await tick(); $("[data-ai-goal]").value = "今の変更を調べて";
+    $("[data-ai-form]").dispatchEvent(new dom.window.Event("submit", { cancelable: true })); await tick();
+    assert.equal(JSON.parse(dom.window.localStorage.getItem("devmoter-tools-ai-pending-request")).requestId, captured.requestId);
+    assert.equal(dom.window.localStorage.getItem("devmoter-tools-ai-run"), null);
+    $("[data-shell-close]").click(); $(".dm-shell-menu-trigger").click(); await tick();
+    assert.equal(dom.window.localStorage.getItem("devmoter-tools-ai-run"), baseRun.runId);
+    assert.equal(dom.window.localStorage.getItem("devmoter-tools-ai-pending-request"), null);
+    assert.match($("[data-ai-progress]").textContent, /操作を選択中/);
+  } finally { dom.window.close(); }
+});
+
+test("an old reconnect response cannot replace a newly submitted run", async () => {
+  let release;
+  const newer = { ...structuredClone(baseRun), runId: "99999999-0123-0123-0123-012345678901", updatedAt: 10 };
+  const { dom, $ } = setup(async (url, options) => {
+    if (url.endsWith("/context")) return response(context);
+    if (options.method === "POST") return response(newer);
+    if (url.includes(baseRun.runId)) return new Promise(resolve => { release = () => resolve(response({ ...baseRun, status: "completed" })); });
+    return response(newer);
+  });
+  try {
+    dom.window.localStorage.setItem("devmoter-tools-ai-run", baseRun.runId);
+    $(".dm-shell-menu-trigger").click(); await tick();
+    $("[data-ai-goal]").value = "new task";
+    $("[data-ai-form]").dispatchEvent(new dom.window.Event("submit", { cancelable: true })); await tick();
+    release(); await tick();
+    assert.equal($("[data-ai-stop]").disabled, false);
+    assert.equal(dom.window.localStorage.getItem("devmoter-tools-ai-run"), newer.runId);
+    assert.match($("[data-ai-progress]").textContent, /操作を選択中/);
+  } finally { dom.window.close(); }
+});

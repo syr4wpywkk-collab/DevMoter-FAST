@@ -23,6 +23,7 @@ export function createRunStore({ filePath, maxRuns = 50 }) {
         run.status = "unknown"; run.updatedAt = Date.now();
         run.failure = "Host再起動後の実行状態は照合できません。自動再開していません。";
         run.cancellation = { ...run.cancellation, stage: "unknown" };
+        run.steps = run.steps.map(step => step.status === "running" ? { ...step, status: "unknown" } : step);
       }
       runs.set(run.runId, run);
     }
@@ -32,6 +33,11 @@ export function createRunStore({ filePath, maxRuns = 50 }) {
   return {
     ready: () => ready,
     get,
+    findRequest(requestId, ownerId, deviceId) {
+      const run = [...runs.values()].find(r => r.requestId === requestId && r.ownerId === ownerId && r.context.deviceId === deviceId);
+      if (!run) throw Object.assign(new Error("Request outcome not recorded; do not assume execution or success"), { status: 404 });
+      return get(run.runId);
+    },
     async create({ requestId, ownerId, goal, context, catalogVersion }) {
       await ready;
       const duplicate = [...runs.values()].find(r => r.requestId === requestId && r.ownerId === ownerId && r.context.deviceId === context.deviceId);
@@ -48,7 +54,7 @@ export function createRunStore({ filePath, maxRuns = 50 }) {
     },
     async update(id, patch) {
       const run = runs.get(id); if (!run) throw new Error("Tools AI run not found");
-      Object.assign(run, patch, { updatedAt: Date.now() }); await save(); return get(id);
+      Object.assign(run, patch, { updatedAt: Math.max(Date.now(), run.updatedAt + 1) }); await save(); return get(id);
     },
     async beginStep(id, proposal, stepOperationId = randomUUID()) {
       const run = get(id);

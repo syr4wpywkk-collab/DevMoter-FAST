@@ -57,6 +57,14 @@ test("projection excludes credential-like content BEFORE byte truncation, caps o
   const secret = "fixture-private-value";
   const document = projectResult("document", { source: "doc", path: "README.md", size: 50_000, content: "a".repeat(30_000) + `\napi_key = '${secret}'` });
   assert.equal(document.sharing.excluded, true); assert.ok(!JSON.stringify(document).includes(secret));
+  const mixed = projectResult("document", { source: "doc", path: "README.md", size: 80, content: `Run npm start\nAPI_KEY='${secret}'\nThen open localhost` });
+  assert.match(mixed.data.content, /npm start/); assert.ok(!mixed.data.content.includes(secret));
+  const multiline = projectResult("document", { source: "doc", path: "README.md", size: 80, content: `password =\n '${secret}'` });
+  assert.ok(!JSON.stringify(multiline).includes(secret));
+  for (const assignment of ["AWS_SECRET_ACCESS_KEY", "privateKey", "authToken"]) {
+    const result = projectResult("document", { source: "doc", path: "a.md", content: `${assignment}='${secret}'`, size: 50 });
+    assert.ok(!JSON.stringify(result).includes(secret), assignment);
+  }
   const snippet = projectResult("search", { source: "index", builtAt: 123, query: "token", results: [{ path: "auth.ts", line: 2, snippet: `const password = '${secret}';` }] });
   assert.equal(snippet.sharing.excluded, true); assert.ok(!JSON.stringify(snippet).includes(secret));
   const git = projectResult("git", { source: "git", status: { isGit: true, branch: "main" }, files: { total: 1, files: [{ path: "a.ts", status: ["modified"] }] }, diffs: [{ path: "a.ts", diff: "x".repeat(200_000) }] });
@@ -79,10 +87,12 @@ test("run completion, failure, durable reconnect, restart unknown, duplicate req
     await assert.rejects(service.start(payload, identity), error => error.status === 409 && error.runId === run.runId);
     const restored = createRunStore({ filePath }); await restored.ready(); assert.equal(restored.get(run.runId).status, "completed");
     await assert.rejects(service.get(run.runId, { ...identity, ownerId: "other" }), /scope denied/);
+    await assert.rejects(service.get(run.runId, { ...identity, deviceId: "other-device" }), /scope denied/);
     const active = await store.create({ requestId: "request-2", ownerId: "owner", goal: "pending", context, catalogVersion: "v1" });
     await store.beginStep(active.runId, { operationId: "diagnostics.read", input: {} }, "step-id");
     await assert.rejects(store.beginStep(active.runId, { operationId: "diagnostics.read", input: {} }, "step-id"), error => error.status === 409);
     const restarted = createRunStore({ filePath }); await restarted.ready(); assert.equal(restarted.get(active.runId).status, "unknown");
+    assert.equal(restarted.get(active.runId).steps[0].status, "unknown");
     const failedService = createToolsAiService({ store, authorize: async () => {}, prepareChat: async () => ({ context, secrets: [], chat: async () => "broken json" }), dispatch: () => assert.fail("must not dispatch") });
     const failed = await failedService.start({ goal: "x", requestId: "request-3" }, identity);
     await waitFor(() => store.get(failed.runId).status === "failed"); assert.equal(store.get(failed.runId).steps.length, 0);
@@ -114,4 +124,37 @@ test("Stop during git status suppresses later file/diff helper calls", async () 
   const dispatch = createDispatcher({ resolveProject: async () => project, gitStatus: async () => { controller.abort(); return {}; }, changedFiles: async () => { files++; return { files: [] }; } });
   await assert.rejects(dispatch({ operationId: "git.inspect", input: {} }, { project, permissions }, { signal: controller.signal }), /abort/i);
   assert.equal(files, 0);
+});
+
+test("completion wins a Stop authorization race without being overwritten as unknown", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tools-ai-stop-race-"));
+  try {
+    const store = createRunStore({ filePath: join(root, "runs.json") });
+    const readGate = deferred(), authorizationGate = deferred(); let entered = false;
+    const context = { project: null, deviceId: null, permissions, planner: { providerId: "p", model: "m" } };
+    const service = createToolsAiService({ store, authorize: async (_context, caller) => { if (caller.delay) { entered = true; await authorizationGate.promise; } },
+      prepareChat: async () => ({ context, secrets: [], chat: async messages => messages[0].content.includes("ONE") ? '{"operationId":"diagnostics.read","input":{}}' : '{"factIds":["f0"]}' }),
+      dispatch: async () => { await readGate.promise; return { facts: [{ id: "f0", text: "actual" }] }; } });
+    const run = await service.start({ goal: "x", requestId: "race-request" }, identity);
+    await waitFor(() => store.get(run.runId).status === "running");
+    const stopping = service.stop(run.runId, { ...identity, delay: true }); await waitFor(() => entered);
+    readGate.release(); await waitFor(() => store.get(run.runId).status === "completed");
+    authorizationGate.release(); assert.equal((await stopping).status, "completed"); assert.equal(store.get(run.runId).status, "completed");
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("Stop during initial persistence prevents a planner from starting after reconciliation", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tools-ai-initial-stop-"));
+  try {
+    const underlying = createRunStore({ filePath: join(root, "runs.json") });
+    const gate = deferred(); let allocated; let calls = 0;
+    const store = { ...underlying, create: async options => { allocated = await underlying.create(options); await gate.promise; return underlying.get(allocated.runId); } };
+    const context = { project: null, deviceId: null, permissions, planner: { providerId: "p", model: "m" } };
+    const service = createToolsAiService({ store, authorize: async () => {}, prepareChat: async () => ({ context, secrets: [], chat: async () => { calls++; return "{}"; } }), dispatch: () => assert.fail("must not execute") });
+    const starting = service.start({ goal: "x", requestId: "initial-stop-request" }, identity);
+    await waitFor(() => allocated);
+    const reconciled = await service.findRequest("initial-stop-request", identity);
+    assert.equal((await service.stop(reconciled.runId, identity)).status, "unknown");
+    gate.release(); assert.equal((await starting).status, "unknown"); assert.equal(calls, 0);
+  } finally { await rm(root, { recursive: true, force: true }); }
 });

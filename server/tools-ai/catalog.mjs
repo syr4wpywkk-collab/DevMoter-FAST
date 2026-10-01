@@ -7,7 +7,7 @@ const definitions = [
   ["git.inspect", object({ maxFiles: integer(10) }), "git", true, "project-read"],
   ["project.search", { ...object({ query: { type: "string", minLength: 1, maxLength: 200 }, limit: integer(20) }), required: ["query"] }, "search", true, "project-read"],
   ["project.map", object({}), "map", true, "project-read"],
-  ["doc.read", { ...object({ path: { type: "string", minLength: 1, maxLength: 300, pattern: "\\.md$" } }), required: ["path"] }, "document", true, "project-read"],
+  ["doc.read", { ...object({ path: { type: "string", minLength: 1, maxLength: 300, pattern: "\\.[mM][dD]$" } }), required: ["path"] }, "document", true, "project-read"],
   ["diagnostics.read", object({}), "diagnostics", false, "host-observation"]
 ];
 export const OPERATIONS = Object.freeze(definitions.map(([operationId, inputSchema, outputType, projectRequirement, permission]) => Object.freeze({

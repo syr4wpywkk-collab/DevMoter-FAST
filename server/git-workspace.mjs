@@ -11,7 +11,7 @@ const MAX_DIFF_LINES = 2400;
 
 async function runGit(cwd, args, { allowFailure = false, maxBuffer = 4 * 1024 * 1024 } = {}) {
   try {
-    const result = await execFileAsync("git", args, {
+    const result = await execFileAsync("git", ["-c", "core.fsmonitor=false", ...args], {
       cwd,
       encoding: "utf8",
       maxBuffer,
@@ -20,6 +20,7 @@ async function runGit(cwd, args, { allowFailure = false, maxBuffer = 4 * 1024 * 
     });
     return { ok: true, stdout: result.stdout || "", stderr: result.stderr || "" };
   } catch (error) {
+    if (error?.killed || error?.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER") throw error;
     if (allowFailure) {
       return {
         ok: false,
@@ -72,8 +73,8 @@ async function upstreamCounts(projectPath) {
 }
 
 async function nameSet(projectPath, args) {
-  const result = await runGit(projectPath, args, { allowFailure: true });
-  return new Set(result.ok ? splitZero(result.stdout) : []);
+  const result = await runGit(projectPath, args);
+  return new Set(splitZero(result.stdout));
 }
 
 function statusFor(path, sets) {
@@ -266,7 +267,7 @@ export async function getFileDiff(projectPath, inputPath, { scope = "all" } = {}
     if (scope === "staged") args.push("--cached");
     else args.push("HEAD");
     args.push("--", path);
-    const result = await runGit(root, args, { allowFailure: true, maxBuffer: 8 * 1024 * 1024 });
+    const result = await runGit(root, args, { maxBuffer: 8 * 1024 * 1024 });
     text = result.stdout || "";
   }
 

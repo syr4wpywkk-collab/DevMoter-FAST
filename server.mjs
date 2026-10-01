@@ -1,6 +1,6 @@
 import http from "node:http";
 import { accessSync, constants as fsConstants } from "node:fs";
-import { mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import { basename, delimiter, dirname, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
@@ -241,6 +241,7 @@ const toolsAiService = createToolsAiService({
       planner: { providerId: provider.id, providerName: provider.name, model: payload.model, baseUrl: provider.baseUrl, cancellationCapability: PLANNER_CANCELLATION } };
     const secrets = [...REDACTED_SECRETS, ...providers.map(p => p.apiKey).filter(Boolean), provider.apiKey];
     return { context, secrets, chat: async (messages, signal) => {
+      if (selected.secretRef) await authorizeVaultProviderReference(identity.req, { ...selected, projectId: project.id });
       const response = await runMultiApiChat([provider], { providerId: provider.id, model: payload.model, messages }, boundedProviderFetch, { signal });
       return response.message.content;
     } };
@@ -552,15 +553,18 @@ async function resolveProjectMarkdownPath(project, relativePath, { mustExist = f
     throw new Error("File parent escapes the project");
   }
 
+  let readTarget = target;
   if (mustExist) {
     const actualTarget = await realpath(target);
     const targetRel = relative(root, actualTarget);
     if (targetRel.startsWith("..") || isAbsolute(targetRel)) {
       throw new Error("File escapes the project");
     }
+    if (extname(actualTarget).toLowerCase() !== ".md") throw new Error("Markdown read target must also be .md");
+    readTarget = actualTarget;
   }
 
-  return { root, target, relativePath: safeRelative };
+  return { root, target: readTarget, relativePath: safeRelative };
 }
 
 async function scanMarkdownFiles(project) {
@@ -704,16 +708,27 @@ async function projectDocs(id, res) {
 
 async function readProjectMarkdown(project, path) {
   const resolved = await resolveProjectMarkdownPath(project, path, { mustExist: true });
-  const info = await stat(resolved.target);
-  if (info.size > PROJECT_FILE_LIMIT) throw new Error("Markdown file is larger than 1MB");
-  const content = await readFile(resolved.target, "utf8");
-  return {
+  const handle = await open(resolved.target, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW | fsConstants.O_NONBLOCK);
+  try {
+    const info = await handle.stat();
+    if (!info.isFile()) throw new Error("Markdown read requires a regular file");
+    if (info.size > PROJECT_FILE_LIMIT) throw new Error("Markdown file is larger than 1MB");
+    const buffer = Buffer.alloc(PROJECT_FILE_LIMIT + 1);
+    let size = 0;
+    while (size < buffer.length) {
+      const { bytesRead } = await handle.read(buffer, size, buffer.length - size, size);
+      if (!bytesRead) break;
+      size += bytesRead;
+    }
+    if (size > PROJECT_FILE_LIMIT) throw new Error("Markdown file is larger than 1MB");
+    return {
       projectId: project.id,
       path: resolved.relativePath,
-      content,
-      size: info.size,
+      content: buffer.subarray(0, size).toString("utf8"),
+      size,
       updatedAt: info.mtimeMs
-  };
+    };
+  } finally { await handle.close(); }
 }
 
 async function projectReadFile(id, path, res) {
@@ -2319,6 +2334,8 @@ const server = http.createServer(async (req, res) => {
         if (req.method === "POST" && url.pathname === "/api/tools-ai/runs") {
           json(res, 202, await toolsAiService.start(await readJson(req, 12_000), identity)); return;
         }
+        const requestMatch = url.pathname.match(/^\/api\/tools-ai\/requests\/([a-zA-Z0-9_-]{8,100})$/);
+        if (requestMatch && req.method === "GET") { json(res, 200, await toolsAiService.findRequest(requestMatch[1], identity)); return; }
         const match = url.pathname.match(/^\/api\/tools-ai\/runs\/([a-f0-9-]{36})(\/stop)?$/);
         if (match && req.method === "GET" && !match[2]) { json(res, 200, await toolsAiService.get(match[1], identity)); return; }
         if (match && req.method === "POST" && match[2]) { json(res, 200, await toolsAiService.stop(match[1], identity)); return; }

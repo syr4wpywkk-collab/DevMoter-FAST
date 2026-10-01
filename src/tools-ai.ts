@@ -7,6 +7,7 @@ type Result = { type: string; source: string; builtAt: number | string | null; u
 type Step = { stepOperationId: string; operationId: string; status: string; validatedInput: Data; result: Result | null; failure: string | null };
 type Run = { runId: string; rawGoal: string; status: string; updatedAt: number; context: { project: Project | null; hostId: string; backend: string }; planner: { providerId: string; providerName: string; model: string }; steps: Step[]; failure: string | null; cancellation: { requested: boolean; providerMayContinue: boolean }; explanation: { rawText: string } | null };
 const RUN_KEY = "devmoter-tools-ai-run";
+const PENDING_KEY = "devmoter-tools-ai-pending-request";
 const terminal = (run: Run) => ["completed", "failed", "stopped", "unknown"].includes(run.status);
 const statuses: Record<string, string> = { planning: "AIが操作を選択中", running: "読み取り・説明を処理中", completed: "完了", failed: "失敗", stop_requested: "停止要求済み・終了待ち", stopped: "作業の継続を停止", unknown: "結果不明・自動再開なし" };
 const string = (value: unknown) => typeof value === "string" ? value : JSON.stringify(value) ?? "";
@@ -27,8 +28,8 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
     <p data-ai-availability role="status"></p>
     <div class="tools-ai-links"><button type="button" data-ai-settings>Provider / modelを設定</button><button type="button" data-ai-manual>ツールを直接開く</button></div>
     <p data-ai-error role="alert" hidden></p>
-    <div data-ai-progress role="status" aria-live="polite"></div>
-    <div data-ai-results></div>`;
+    <div data-ai-progress data-i18n-skip role="status" aria-live="polite"></div>
+    <div data-ai-results data-i18n-skip></div>`;
   const get = <T extends HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
   const form = get<HTMLFormElement>("[data-ai-form]");
   const projectSelect = get<HTMLSelectElement>("[data-ai-project]");
@@ -54,7 +55,7 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
     if (body !== undefined) headers.set("content-type", "application/json");
     const response = await fetch(path, { method: body === undefined ? "GET" : "POST", headers, cache: "no-store", ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    if (!response.ok) throw Object.assign(new Error(data.error || `HTTP ${response.status}`), { status: response.status, runId: data.runId });
     return data as T;
   };
   const showError = (message: string) => { error.textContent = message; error.hidden = !message; };
@@ -139,7 +140,11 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
     const id = run?.runId || localStorage.getItem(RUN_KEY);
     if (!id || polling) return;
     polling = true;
-    try { run = await request<Run>(`/api/tools-ai/runs/${encodeURIComponent(id)}`); renderRun(); }
+    try {
+      const observed = await request<Run>(`/api/tools-ai/runs/${encodeURIComponent(id)}`);
+      if (run && run.runId !== id) return;
+      if (!run || observed.updatedAt >= run.updatedAt) { run = observed; renderRun(); }
+    }
     catch (failure) { showError(`再接続できません: ${failure instanceof Error ? failure.message : failure}。手動Toolsは引き続き利用できます。`); }
     finally { polling = false; }
   }
@@ -157,7 +162,18 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
       providerSelect.replaceChildren(option("Plannerを選択", ""));
       for (const provider of providers) providerSelect.append(option(provider.name + (provider.ready ? "" : "（未設定）"), provider.id));
       providerSelect.value = providers.some(p => p.id === selectedProvider) ? selectedProvider : providers.find(p => p.ready)?.id || "";
-      fillModels(); showError(""); await refreshRun();
+      fillModels(); showError("");
+      const pending = localStorage.getItem(PENDING_KEY);
+      if (pending) {
+        try {
+          const original = JSON.parse(pending) as { requestId: string; goal: string };
+          if (!goal.value) goal.value = original.goal;
+          const observed = await request<Run>(`/api/tools-ai/requests/${encodeURIComponent(original.requestId)}`);
+          if (currentGeneration !== generation) return;
+          run = observed; localStorage.setItem(RUN_KEY, observed.runId); localStorage.removeItem(PENDING_KEY); renderRun();
+        } catch { showError("前回の送信結果を照合できません。同じ依頼の再送信には元のrequest IDを使います。成功とは扱いません。"); }
+      }
+      await refreshRun();
     } catch (failure) { showError(failure instanceof Error ? failure.message : String(failure)); updateAvailability(); }
   }
   projectSelect.addEventListener("change", () => { localStorage.setItem("devmoter-tools-ai-project", projectSelect.value); updateAvailability(); });
@@ -168,17 +184,39 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
   stop.addEventListener("click", async () => {
     if (!run) return;
     stop.disabled = true;
-    try { run = await request<Run>(`/api/tools-ai/runs/${run.runId}/stop`, {}); showError(""); renderRun(); }
+    const stoppedId = run.runId;
+    try {
+      const observed = await request<Run>(`/api/tools-ai/runs/${stoppedId}/stop`, {});
+      if (run?.runId !== stoppedId) return;
+      if (observed.updatedAt >= run.updatedAt) run = observed;
+      showError(""); renderRun();
+    }
     catch (failure) { showError(`停止要求を確認できません: ${failure instanceof Error ? failure.message : failure}`); stop.disabled = false; }
   });
   form.addEventListener("submit", async event => {
     event.preventDefault(); if (submit.disabled || !goal.value.trim()) return;
     pendingSubmit = true; updateAvailability(); showError("");
     // Capture the chosen target/model before any network await; later UI switches affect only the next goal.
-    const payload = { goal: goal.value, projectId: projectSelect.value, providerId: providerSelect.value, model: modelSelect.value, requestId: crypto.randomUUID?.() || `request-${Date.now()}-${Math.random().toString(36).slice(2)}` };
+    const selection = { goal: goal.value, projectId: projectSelect.value, providerId: providerSelect.value, model: modelSelect.value };
+    let requestId = crypto.randomUUID?.() || `request-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     try {
-      run = await request<Run>("/api/tools-ai/runs", payload); localStorage.setItem(RUN_KEY, run.runId); signature = ""; renderRun(); await refreshRun();
-    } catch (failure) { showError(failure instanceof Error ? failure.message : String(failure)); }
+      const prior = JSON.parse(localStorage.getItem(PENDING_KEY) || "null");
+      if (prior && Object.entries(selection).every(([key, value]) => prior[key] === value)) requestId = prior.requestId;
+    } catch { /* A malformed local draft is never operation authority. */ }
+    const payload = { ...selection, requestId };
+    localStorage.setItem(PENDING_KEY, JSON.stringify(payload));
+    try {
+      run = await request<Run>("/api/tools-ai/runs", payload); localStorage.setItem(RUN_KEY, run.runId); localStorage.removeItem(PENDING_KEY); signature = ""; renderRun(); await refreshRun();
+    } catch (failure) {
+      const duplicate = failure as { status?: number; runId?: string };
+      if (duplicate.status === 409 && duplicate.runId) {
+        try { run = await request<Run>(`/api/tools-ai/runs/${encodeURIComponent(duplicate.runId)}`); localStorage.setItem(RUN_KEY, run.runId); localStorage.removeItem(PENDING_KEY); renderRun(); showError("重複送信を検出し、元のrunの実状態を再取得しました。"); }
+        catch { showError("元のrunを照合できません。結果不明です。"); }
+      } else {
+        if (duplicate.status && duplicate.status < 500) localStorage.removeItem(PENDING_KEY);
+        showError(failure instanceof Error ? failure.message : String(failure));
+      }
+    }
     finally { pendingSubmit = false; updateAvailability(); }
   });
   window.setInterval(() => { if (run && !terminal(run)) void refreshRun(); }, 800);

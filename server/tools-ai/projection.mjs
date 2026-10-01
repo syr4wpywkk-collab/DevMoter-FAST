@@ -2,7 +2,20 @@ import { redactSecretsInText } from "../secret-redaction.mjs";
 
 export const LIMITS = Object.freeze({ bytes: 24_000, textBytes: 12_000, items: 40, snippetBytes: 800, diffBytes: 4_000, documentBytes: 8_000 });
 export const sensitivePath = path => /(?:^|\/)(?:\.env(?:\..*)?|\.ssh|credentials?[^/]*|secrets?[^/]*|id_rsa|id_ed25519)(?:\/|$)|\.(?:pem|key|p12|pfx)$/i.test(path);
-const suspicious = /-----BEGIN .*PRIVATE KEY-----|(?:api[_-]?key|secret|password|passwd|access[_-]?token|refresh[_-]?token|client[_-]?secret)\s*["']?\s*[:=]\s*["']?[^\s"',;]{4,}|authorization\s*[:=]\s*["']?(?:bearer|basic)\s+\S+|\b(?:sk-[a-zA-Z0-9_-]{8,}|gh[pousr]_[a-zA-Z0-9]{10,}|github_pat_[a-zA-Z0-9_]+|AKIA[A-Z0-9]{16}|eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)\b|https?:\/\/[^\s/:]+:[^\s/@]+@/i;
+const suspicious = /-----BEGIN .*PRIVATE KEY-----|(?:api[_-]?key|secret(?:[_-]?(?:access)?[_-]?key)?|private[_-]?key|password|passwd|token|credential|access[_-]?token|refresh[_-]?token|client[_-]?secret)\s*["']?\s*[:=]\s*["']?[^\s"',;]{4,}|authorization\s*[:=]\s*["']?(?:bearer|basic)\s+\S+|\b(?:sk-[a-zA-Z0-9_-]{8,}|gh[pousr]_[a-zA-Z0-9]{10,}|github_pat_[a-zA-Z0-9_]+|AKIA[A-Z0-9]{16}|eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)\b|https?:\/\/[^\s/:]+:[^\s/@]+@/i;
+
+function excludeSuspiciousContent(value, secrets) {
+  const containsSecret = text => suspicious.test(text) || secrets.some(secret => secret && text.includes(secret));
+  if (!containsSecret(value)) return { text: value, excluded: false };
+  if (/-----BEGIN .*PRIVATE KEY-----/.test(value) || secrets.some(s => s?.includes("\n") && value.includes(s))) return { text: "[安全上、内容を除外]", excluded: true };
+  let excluded = false;
+  const text = value.split("\n").map(line => {
+    if (!containsSecret(line)) return line;
+    excluded = true; return "[安全上、内容を除外]";
+  }).join("\n");
+  // Multiline assignments that cannot be isolated safely exclude the entire field.
+  return excluded && !containsSecret(text) ? { text, excluded: true } : { text: "[安全上、内容を除外]", excluded: true };
+}
 
 export function clipBytes(text, limit) {
   const bytes = Buffer.from(String(text));
@@ -21,13 +34,15 @@ export function projectResult(type, raw, secrets = []) {
   const clean = (value, depth = 0, key = "") => {
     if (depth > 7) { sharing.truncated = true; return null; }
     if (typeof value === "string") {
-      // Scan BEFORE truncation: a credential outside the visible prefix excludes the entire field.
-      if (suspicious.test(value) || secrets.some(secret => secret && value.includes(secret)) || ((key === "path" || key === "name") && sensitivePath(value))) {
+      // Scan BEFORE truncation, so credentials outside the visible prefix cannot escape detection.
+      if ((key === "path" || key === "name") && sensitivePath(value)) {
         sharing.excluded = true; return "[安全上、内容を除外]";
       }
+      const safe = excludeSuspiciousContent(value, secrets);
+      sharing.excluded ||= safe.excluded;
       const cap = key === "diff" ? LIMITS.diffBytes : key === "content" ? LIMITS.documentBytes : LIMITS.snippetBytes;
-      const text = clipBytes(redactSecretsInText(value, secrets), Math.max(0, Math.min(cap, budget)));
-      budget -= Buffer.byteLength(text); sharing.truncated ||= text !== value;
+      const text = clipBytes(redactSecretsInText(safe.text, secrets), Math.max(0, Math.min(cap, budget)));
+      budget -= Buffer.byteLength(text); sharing.truncated ||= text !== safe.text;
       return text;
     }
     if (Array.isArray(value)) {
@@ -49,7 +64,7 @@ export function projectResult(type, raw, secrets = []) {
   const fact = text => { if (facts.length < 30) facts.push({ id: `f${facts.length}`, text: clipBytes(text, 800) }); };
   if (raw.unavailable) fact(data.message || "取得できませんでした。");
   else if (type === "git") {
-    fact(data.status.isGit ? `Git branch: ${data.status.branch}。変更ファイル数: ${data.files.total}。staged: ${data.status.staged} / modified: ${data.status.modified} / untracked: ${data.status.untracked} / conflicts: ${data.status.conflicts}。` : "選択したProjectはGitリポジトリではありません。");
+    fact(data.status.isGit ? `Git branch: ${data.status.branch}。変更ファイル数: ${data.files.total}。staged: ${data.status.staged} / modified: ${data.status.modified} / untracked: ${data.status.untracked} / conflicts: ${data.status.conflicts}。` : "Git helperでリポジトリとして確認できませんでした。");
     fact(`変更一覧は最大${data.files.files.length}件、差分は${data.diffs.length}件を取得しました。省略した内容を確認済みとは扱いません。`);
     for (const file of data.files.files) fact(`変更: ${JSON.stringify(file.path)} (${file.status.join(", ")})。`);
   } else if (type === "search") {
@@ -62,7 +77,8 @@ export function projectResult(type, raw, secrets = []) {
   } else if (type === "document") {
     fact(`取得したMarkdown: ${JSON.stringify(data.path)}。元のbyte数: ${data.size}。`);
     const lines = data.content.split("\n").map(s => s.trim()).filter(Boolean);
-    for (const line of lines.slice(0, 12)) fact(`文書内の記載: ${JSON.stringify(line)}`);
+    const relevant = lines.filter(line => /npm|pnpm|yarn|bun|start|install|起動|手順|^#/.test(line));
+    for (const line of [...new Set([...relevant, ...lines])].slice(0, 12)) fact(`文書内の記載: ${JSON.stringify(line)}`);
   } else if (type === "diagnostics") {
     fact(`診断: 必須ツールの不足 ${JSON.stringify(data.prerequisites.missing)}。これは固定されたhost観測です。設定変更は行っていません。`);
     for (const [name, health] of Object.entries(data.backends || {})) fact(`接続状態 ${name}: ${JSON.stringify(health)}`);

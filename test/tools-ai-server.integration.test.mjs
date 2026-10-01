@@ -26,7 +26,7 @@ test("authenticated Tools AI HTTP uses actual project helpers, bounded provider 
       let proposal = { operationId: "git.inspect", input: {} };
       if (goal.includes("認証")) proposal = { operationId: "project.search", input: { query: "authenticate" } };
       if (goal.includes("構成")) proposal = { operationId: "project.map", input: {} };
-      if (goal.includes("README")) proposal = { operationId: "doc.read", input: { path: goal.includes("escape") ? "../outside.md" : "README.md" } };
+      if (goal.includes("README")) proposal = { operationId: "doc.read", input: { path: goal.includes("escape") ? "../outside.md" : goal.includes("symlink") ? "outside.md" : goal.includes("alias") ? "alias.md" : goal.includes("fifo") ? "pipe.md" : "README.md" } };
       if (goal.includes("接続")) proposal = { operationId: "diagnostics.read", input: {} };
       content = goal.includes("malformed") ? "{broken" : JSON.stringify(proposal);
     } else content = JSON.stringify({ factIds: JSON.parse(goal).facts.slice(0, 4).map(f => f.id) });
@@ -49,6 +49,8 @@ test("authenticated Tools AI HTTP uses actual project helpers, bounded provider 
     const index = createProjectIndex({ stateDir: join(root, ".local", "state", "opencode-pocket", "project-indexes"), resolveProject: async () => project });
     const built = await index.rebuild(project.id);
     await writeFile(join(root, "outside.md"), "outside must not be read"); await symlink(join(root, "outside.md"), join(project.path, "outside.md"));
+    await symlink(join(project.path, "auth.ts"), join(project.path, "alias.md"));
+    await exec("mkfifo", [join(project.path, "pipe.md")]);
     child = spawn(process.execPath, ["server.mjs"], { cwd: repoRoot, env: { ...process.env,
       HOME: root, POCKET_HOST: "127.0.0.1", POCKET_PORT: String(port), DEVMOTER_AUTH_PASSWORD: password,
       CODEX_BIN: "__tools_ai_missing_codex__", OPENCODE_URL: "http://127.0.0.1:1",
@@ -86,8 +88,13 @@ test("authenticated Tools AI HTTP uses actual project helpers, bounded provider 
     }
     const bad = await observe("malformed", "bad-json-request"); assert.equal(bad.status, "failed"); assert.equal(bad.steps.length, 0);
     const escape = await observe("README escape", "escape-request"); assert.equal(escape.status, "failed"); assert.equal(escape.steps.length, 0);
+    const escapedLink = await observe("README symlink", "symlink-request"); assert.equal(escapedLink.status, "failed"); assert.match(escapedLink.failure, /escapes/);
+    const aliasedCode = await observe("README alias", "alias-request"); assert.equal(aliasedCode.status, "failed"); assert.match(aliasedCode.failure, /also be .md/);
+    const fifo = await observe("README fifo", "fifo-request"); assert.equal(fifo.status, "failed"); assert.match(fifo.failure, /regular file/);
     const duplicate = await request("/api/tools-ai/runs", { goal: "今の変更を調べて", projectId: project.id, providerId: "fixture", model: "fixture-model", requestId: "request-git" });
     assert.equal(duplicate.status, 409); assert.equal(duplicate.data.outcome, "completed");
+    const reconciled = await request("/api/tools-ai/requests/request-git"); assert.equal(reconciled.data.status, "completed");
+    assert.equal((await request("/api/tools-ai/requests/unknown-request")).status, 404);
     assert.ok(!JSON.stringify(requests).includes("fixture-hidden-credential"));
     const persisted = await readFile(join(root, ".config", "opencode-pocket", "tools-ai-runs.json"), "utf8");
     assert.ok(!persisted.includes("fixture-hidden-credential"));

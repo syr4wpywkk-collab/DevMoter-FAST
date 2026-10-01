@@ -15,9 +15,10 @@ const workspaceSource = await readFile(new URL("../src/workspace-control.ts", im
 const compiledWorkspace = ts.transpileModule(workspaceSource, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
 }).outputText;
-const [shellSource, registrySource] = await Promise.all([
+const [shellSource, registrySource, toolsSource] = await Promise.all([
   readFile(new URL("../src/app-shell.ts", import.meta.url), "utf8"),
-  readFile(new URL("../src/app-registry.ts", import.meta.url), "utf8")
+  readFile(new URL("../src/app-registry.ts", import.meta.url), "utf8"),
+  readFile(new URL("../src/tools-ai.ts", import.meta.url), "utf8")
 ]);
 const compile = value => ts.transpileModule(value, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
@@ -150,8 +151,11 @@ test("global Tools replaces the OpenCode modal and receives keyboard focus", t =
   dom.window.exports = {};
   dom.window.eval(compile(registrySource));
   const registry = dom.window.exports;
+  dom.window.exports = {};
+  dom.window.eval(compile(toolsSource));
+  const tools = dom.window.exports;
   const require = dom.window.require;
-  dom.window.require = name => name === "./app-registry" ? registry : require(name);
+  dom.window.require = name => name === "./app-registry" ? registry : name === "./tools-ai" ? tools : require(name);
   dom.window.exports = {};
   dom.window.eval(compile(shellSource));
   dom.window.exports.mountUnifiedFeatureShell({
@@ -168,7 +172,7 @@ test("global Tools replaces the OpenCode modal and receives keyboard focus", t =
   assert.equal(query(".dm-shell-sidebar").classList.contains("open"), true);
   assert.equal(document.activeElement, query("[data-shell-close]"));
   key("Tab", true);
-  assert.equal(document.activeElement, query('[data-shell-action="setup"]'));
+  assert.equal(document.activeElement, query('[data-manual-tools] > summary'));
   key("Tab");
   assert.equal(document.activeElement, query("[data-shell-close]"));
   key("Escape");

@@ -71,6 +71,12 @@ The browser is the controller, not the coding machine. Local paths, agent proces
 
 ## Core workflow
 
+### Tools AI v1
+
+Tools now opens with a natural-language goal input. Select an existing API Chat provider/model and a registered project to inspect Git changes, search a saved index, view its project map, read Markdown, or observe fixed host diagnostics. Results come from existing server helpers; saved-index timestamps and excluded/truncated content are shown. The original 20 manual destinations remain under **ツールを直接開く**.
+
+This version supports bounded observations only. Stop prevents later operations and aborts model requests; an already-running read helper or the provider's internal work may finish. Reconnect restores the same run, and unfinished runs become `unknown` after a host restart. See [Tools AI v1 contracts and validation](./docs/tools-ai-v1.md) for configuration, schemas, data sharing, cancellation, and limitations.
+
 A typical DevMoter workflow looks like this:
 
 **start work on the host → leave the desk → inspect progress → approve or interrupt → switch agent/model/project → review changes → continue from your phone.**
