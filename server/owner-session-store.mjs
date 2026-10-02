@@ -8,6 +8,7 @@ const DEFAULT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const MAX_SESSIONS = 32;
 const MAX_REGISTRY_BYTES = 256 * 1024;
+const LAST_USED_WRITE_INTERVAL_MS = 5 * 60 * 1000;
 const mutationsByPath = new Map();
 const IDENTITY_FIELDS = ["provider", "subject", "login", "email", "name", "avatarUrl", "issuer", "tenantId"];
 
@@ -88,7 +89,7 @@ export class OwnerSessionStore {
     await mkdir(this.configDir, { recursive: true, mode: 0o700 });
     const info = await lstat(this.configDir);
     if (!info.isDirectory() || info.isSymbolicLink() || !ownedByCurrentUser(info)) throw new Error("Auth session directory is unsafe.");
-    await chmod(this.configDir, 0o700);
+    if (process.platform !== "win32" && (info.mode & 0o077) !== 0) await chmod(this.configDir, 0o700);
   }
 
   async readState() {
@@ -141,24 +142,36 @@ export class OwnerSessionStore {
     }
   }
 
-  async mutate(fn) {
+  async transact(fn, { alwaysPersist = false } = {}) {
     await this.ready();
     const prior = mutationsByPath.get(this.file) || Promise.resolve();
     const task = prior.catch(() => {}).then(async () => {
-      // Reload under the process-wide path queue so separate service objects do not overwrite each other.
+      // Reload under the process-wide path queue so separate store instances observe
+      // revocation immediately without turning every authentication check into a write.
       const state = await this.readState();
       const sessions = state.sessions;
       const now = this.now();
+      let dirty = false;
       for (let index = sessions.length - 1; index >= 0; index -= 1) {
-        if (sessions[index].expiresAt <= now) sessions.splice(index, 1);
+        if (sessions[index].expiresAt <= now) {
+          sessions.splice(index, 1);
+          dirty = true;
+        }
       }
-      const result = await fn(sessions);
-      await this.persist(sessions);
+      const result = await fn(sessions, {
+        now,
+        markDirty() { dirty = true; }
+      });
+      if (alwaysPersist || dirty) await this.persist(sessions);
       this.state = { version: VERSION, sessions };
       return result;
     });
     mutationsByPath.set(this.file, task.catch(() => {}));
     return task;
+  }
+
+  async mutate(fn) {
+    return this.transact((sessions, context) => fn(sessions, context), { alwaysPersist: true });
   }
 
   async create({ ownerId, host, identity, provider = null, assurance = null }) {
@@ -186,14 +199,16 @@ export class OwnerSessionStore {
     if (!token) return null;
     const tokenHash = digest(token);
     const normalizedHost = validHost(host);
-    return this.mutate(sessions => {
-      const now = this.now();
-      const index = sessions.findIndex(item => item.tokenHash === tokenHash);
-      const session = index < 0 ? null : sessions[index];
-      const live = sessions.filter(item => item.expiresAt > now);
-      sessions.splice(0, sessions.length, ...live);
-      if (!session || session.expiresAt <= now || session.host !== normalizedHost) return null;
-      session.lastUsedAt = now;
+    return this.transact((sessions, { now, markDirty }) => {
+      const session = sessions.find(item => item.tokenHash === tokenHash) || null;
+      if (!session || session.host !== normalizedHost) return null;
+      // lastUsedAt is account metadata, not an authentication/expiry input. Persisting it
+      // on every API request caused an fsync+rename hot path. Coalesce those writes while
+      // keeping revocation and absolute expiry immediately durable.
+      if (now - session.lastUsedAt >= LAST_USED_WRITE_INTERVAL_MS) {
+        session.lastUsedAt = now;
+        markDirty();
+      }
       return publicSession(session);
     });
   }
@@ -210,9 +225,8 @@ export class OwnerSessionStore {
   }
 
   async list({ ownerId, currentToken = null } = {}) {
-    const now = this.now();
     const currentHash = currentToken ? digest(currentToken) : null;
-    return this.mutate(sessions => sessions.filter(session => session.ownerId === String(ownerId || "") && session.expiresAt > now)
+    return this.transact(sessions => sessions.filter(session => session.ownerId === String(ownerId || ""))
       .map(session => ({ ...publicSession(session), current: session.tokenHash === currentHash })));
   }
 
