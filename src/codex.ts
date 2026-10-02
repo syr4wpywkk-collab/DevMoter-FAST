@@ -3213,6 +3213,7 @@ export function mountCodexRemote(
 
   menu.addEventListener("click", openSidebar);
   window.addEventListener("devmoter:close-chat-history", closeSidebar);
+  window.addEventListener("devmoter:surface-changed", closeSidebar);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") void resumeFromBackground();
   });
