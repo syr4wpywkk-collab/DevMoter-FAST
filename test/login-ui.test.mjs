@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { JSDOM } from "jsdom";
 
 const source = await readFile(new URL("../public/login.html", import.meta.url), "utf8");
+const scriptSource = await readFile(new URL("../public/login.js", import.meta.url), "utf8");
 
 function makeDom(status, search = "") {
   const dom = new JSDOM(source, { url: "https://devmoter.test/login.html" + search, runScripts: "outside-only", pretendToBeVisual: true });
@@ -11,8 +12,8 @@ function makeDom(status, search = "") {
     ok: true,
     async json() { assert.equal(path, "/api/auth/status"); return status; }
   });
-  const script = [...dom.window.document.querySelectorAll("script")].map(node => node.textContent).join("\n");
-  dom.window.eval(script);
+  assert.equal(dom.window.document.querySelector('script[src="/login.js"]')?.getAttribute("defer"), "");
+  dom.window.eval(scriptSource);
   return dom;
 }
 
