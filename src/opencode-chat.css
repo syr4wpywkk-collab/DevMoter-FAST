@@ -326,6 +326,14 @@ html[data-devmoter-theme="dark"] .ocx-app .cx-markdown code,
 html[data-devmoter-theme="dark"] .ocx-app .dm-code-block,
 html[data-devmoter-theme="dark"] .ocx-app .dm-code-head,
 html[data-devmoter-theme="dark"] .ocx-app .ocx-dock-copy pre { background: var(--oc-panel-2); color: var(--oc-text); }
+html[data-devmoter-theme="dark"] .ocx-app #ocxWorkspaceControlsMount .dm-controlbar > .dm-theme,
+html[data-devmoter-theme="dark"] .ocx-app #ocxWorkspaceControlsMount .dm-controlbar > .dm-context,
+html[data-devmoter-theme="dark"] .ocx-app #ocxWorkspaceControlsMount .dm-controlbar > .dm-tasks,
+html[data-devmoter-theme="dark"] .ocx-app #ocxWorkspaceControlsMount .dm-controlbar > .dm-extensions {
+  background: var(--oc-panel-2);
+  color: var(--oc-text);
+  border: 1px solid var(--oc-line);
+}
 html[data-devmoter-theme="dark"] .ocx-app .cx-markdown a { color: #efb394; }
 html[data-devmoter-theme="dark"] .ocx-app .ocx-eyebrow { color: #efc58d; }
 .ocx-app .ocx-model-pricing { margin: 4px 10px; font-size: .75rem; line-height: 1.5; color: var(--oc-muted); overflow-wrap: anywhere; }
