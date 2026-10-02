@@ -46,12 +46,101 @@ test("AI is default, selected target is captured, close/reopen restores the SAME
   } finally { dom.window.close(); }
 });
 test("unconfigured planner keeps explicit settings/manual paths and no submission", async () => {
-  const { dom, $ } = setup(async () => response({ ...context, providers: [] }));
+  let posts = 0;
+  const { dom, $, calls } = setup(async (_url, options) => {
+    if (options.method === "POST") posts++;
+    return response({ ...context, providers: [] });
+  });
   try {
     $(".dm-shell-menu-trigger").click(); await tick();
-    assert.equal($("[data-ai-submit]").disabled, true); assert.match($("[data-ai-availability]").textContent, /未設定/);
+    assert.equal($("[data-ai-submit]").disabled, false);
+    assert.equal($("[data-ai-setup-notice]").hidden, false);
+    assert.match($("[data-ai-setup-message]").textContent, /API Chat.*設定.*Codex.*OpenCode/);
+    $("[data-ai-goal]").value = "今の変更を調べて";
+    $("[data-ai-submit]").click(); await tick();
+    assert.equal(posts, 0);
+    assert.equal($(".tools-ai-settings").open, true);
+    assert.equal($("[data-ai-error]").hidden, false);
+    $("[data-ai-configure]").click(); assert.equal(calls.at(-1), "api");
     $("[data-ai-manual]").click(); assert.equal($("[data-manual-tools]").open, true);
     assert.ok($("[data-ai-settings]"));
+  } finally { dom.window.close(); }
+});
+
+test("missing credential, model, and Vault project binding produce actionable preflight without a run", async () => {
+  for (const [provider, reason, recoverySelector, configureHidden] of [
+    [{ ...context.providers[0], ready: false }, /credentialが未設定/, "[data-ai-configure]", false],
+    [{ ...context.providers[0], models: [] }, /modelが未設定/, "[data-ai-model]", false],
+    [{ ...context.providers[0], projectId: "p2" }, /紐付いたProject/, "[data-ai-project]", true]
+  ]) {
+    let posts = 0;
+    const { dom, $ } = setup(async (_url, options) => { if (options.method === "POST") posts++; return response({ ...context, providers: [provider] }); });
+    try {
+      $(".dm-shell-menu-trigger").click(); await tick();
+      assert.match($("[data-ai-setup-message]").textContent, reason);
+      $("[data-ai-goal]").value = "今の変更を調べて"; $("[data-ai-submit]").click(); await tick();
+      assert.equal(posts, 0); assert.match($("[data-ai-error]").textContent, reason);
+      assert.equal($(".tools-ai-settings").open, true);
+      assert.equal($("[data-ai-configure]").hidden, configureHidden);
+      assert.equal(document.activeElement, $(recoverySelector));
+    } finally { dom.window.close(); }
+  }
+});
+
+test("failed context load can be retried; a configured send then reaches the run API", async () => {
+  let attempts = 0; let posts = 0;
+  const { dom, $ } = setup(async (url, options) => {
+    if (url.endsWith("/context")) { if (++attempts === 1) throw new TypeError("Network offline"); return response(context); }
+    if (options.method === "POST") posts++;
+    return response({ ...baseRun, status: "completed" });
+  });
+  try {
+    $(".dm-shell-menu-trigger").click(); await tick();
+    assert.equal($("[data-ai-retry]").hidden, false);
+    assert.match($("[data-ai-setup-message]").textContent, /取得できません/);
+    $("[data-ai-submit]").click(); assert.equal(posts, 0);
+    $("[data-ai-retry]").click(); await tick();
+    assert.equal($("[data-ai-setup-notice]").hidden, true);
+    $("[data-ai-goal]").value = "今の変更を調べて"; $("[data-ai-submit]").click(); await tick();
+    assert.equal(posts, 1); assert.equal($("[data-ai-submit]").disabled, false);
+  } finally { dom.window.close(); }
+});
+
+test("context timeout releases loading and exposes retry instead of leaving Send inert", async () => {
+  let timeout;
+  const { dom, $ } = setup((_url, options) => new Promise((_resolve, reject) => {
+    options.signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+  }));
+  const original = dom.window.setTimeout.bind(dom.window);
+  dom.window.setTimeout = (callback, ms, ...args) => { if (ms === 10000) timeout = callback; return original(callback, ms, ...args); };
+  try {
+    $(".dm-shell-menu-trigger").click(); assert.equal($("[data-ai-submit]").disabled, true);
+    timeout(); await tick();
+    assert.equal($("[data-ai-submit]").disabled, false);
+    assert.equal($("[data-ai-retry]").hidden, false);
+    assert.match($("[data-ai-error]").textContent, /タイムアウト/);
+  } finally { dom.window.close(); }
+});
+
+test("empty goal gets feedback and stale context errors cannot undo a newer ready context", async () => {
+  let rejectOld; let oldSignal; let attempts = 0; let posts = 0;
+  const { dom, $ } = setup((url, options) => {
+    if (url.endsWith("/context") && ++attempts === 1) {
+      oldSignal = options.signal;
+      return new Promise((_resolve, reject) => { rejectOld = reject; });
+    }
+    if (options.method === "POST") posts++;
+    return Promise.resolve(response(context));
+  });
+  try {
+    $(".dm-shell-menu-trigger").click(); $("[data-shell-close]").click(); $(".dm-shell-menu-trigger").click(); await tick();
+    assert.equal(oldSignal.aborted, true);
+    rejectOld(new TypeError("Old request failed")); await tick();
+    assert.equal($("[data-ai-submit]").disabled, false);
+    assert.equal($("[data-ai-setup-notice]").hidden, true);
+    $("[data-ai-submit]").click(); await tick();
+    assert.equal(posts, 0); assert.match($("[data-ai-error]").textContent, /入力してください/);
+    assert.equal(document.activeElement, $("[data-ai-goal]"));
   } finally { dom.window.close(); }
 });
 test("result cards use safe source rendering, preserve builtAt/redaction, and show restart unknown honestly", async () => {

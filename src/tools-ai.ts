@@ -20,6 +20,7 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
     <div class="tools-ai-welcome"><span class="tools-ai-spark" aria-hidden="true">✦</span><h2 id="toolsAiTitle">何をしたいですか？</h2><p>変更の確認、コード検索、README確認、診断などをAIに頼めます。</p></div>
     <form data-ai-form>
       <div class="tools-ai-composer"><label class="tools-ai-goal-label" for="toolsAiGoal">AIへの依頼</label><textarea id="toolsAiGoal" data-ai-goal rows="3" maxlength="8000" placeholder="今の変更を調べて"></textarea><div class="tools-ai-composer-actions"><span>読む・調べるお手伝い</span><button type="submit" data-ai-submit disabled>送信 <span aria-hidden="true">↑</span></button></div></div>
+      <div data-ai-setup-notice role="status"><p data-ai-setup-message>AIの設定を読み込んでいます…</p><button type="button" data-ai-configure hidden>API ChatのAI設定を開く</button><button type="button" data-ai-retry hidden>設定を再読み込み</button></div>
       <div class="tools-ai-suggestions" aria-label="依頼の例">${["今の変更を調べて", "認証処理を探して", "プロジェクト構成を教えて", "READMEから起動方法を教えて", "接続できない理由を調べて"].map(text => `<button type="button" data-ai-suggestion>${text}</button>`).join("")}</div>
       <p class="tools-ai-sharing">依頼と必要なProject内容の一部を、選択したAIへ共有します。</p>
       <details class="tools-ai-settings"><summary>使用する対象とAIを変更</summary>
@@ -29,7 +30,6 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
         <p data-ai-availability role="status"></p><button type="button" data-ai-settings>Provider / modelを設定</button>
       </details>
     </form>
-    <p data-ai-setup-notice role="status" hidden>AIの設定を確認してください。上の「使用する対象とAIを変更」から設定できます。</p>
     <div class="tools-ai-links"><button type="button" data-ai-manual>ツールを直接開く</button></div>
     <p data-ai-error role="alert" hidden></p>
     <div data-ai-progress data-i18n-skip role="status" aria-live="polite"></div>
@@ -52,12 +52,14 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
   let polling = false;
   let generation = 0;
   let signature = "";
-  const request = async <T>(path: string, body?: unknown): Promise<T> => {
+  let contextState: "loading" | "ready" | "error" = "loading";
+  let contextController: AbortController | null = null;
+  const request = async <T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> => {
     const headers = new Headers();
     const device = localStorage.getItem("devmoter-device-token");
     if (device) headers.set("x-devmoter-device-token", device);
     if (body !== undefined) headers.set("content-type", "application/json");
-    const response = await fetch(path, { method: body === undefined ? "GET" : "POST", headers, cache: "no-store", ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+    const response = await fetch(path, { method: body === undefined ? "GET" : "POST", headers, cache: "no-store", signal, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
     const data = await response.json();
     if (!response.ok) throw Object.assign(new Error(data.error || `HTTP ${response.status}`), { status: response.status, runId: data.runId });
     return data as T;
@@ -69,13 +71,32 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
   const pre = (parent: HTMLElement, text: string) => parent.append(element("pre", text));
   const copy = (text: string) => { void navigator.clipboard?.writeText(text).catch(() => showError("コピーできませんでした。")); };
 
-  function updateAvailability() {
+  function plannerProblem() {
+    if (contextState === "loading") return "AIの設定を読み込んでいます…";
+    if (contextState === "error") return "AIの設定を取得できません。設定を再読み込みしてください。";
     const provider = providers.find(p => p.id === providerSelect.value);
-    const bindingOk = !provider?.projectId || provider.projectId === projectSelect.value;
-    const ready = Boolean(provider?.ready && modelSelect.value && bindingOk);
-    submit.disabled = !ready || pendingSubmit || Boolean(run && !terminal(run));
-    get("[data-ai-setup-notice]").hidden = ready;
-    availability.textContent = !provider ? "Planner provider / modelが未設定のためAI操作は使えません。下の設定または手動Toolsを開いてください。" : !provider.ready ? "このproviderのcredentialが未設定です。既存のAPI Chat設定を確認してください。" : !bindingOk ? "このVault providerに紐付いたProjectを選んでください。" : `Planner: ${provider.name} / ${modelSelect.value || "model未設定"}`;
+    if (!provider) return "Tools AIにはAPI Chatのproviderとmodelの設定が必要です。Codex / OpenCodeへのログインだけでは利用できません。";
+    if (!provider.ready) return "選択したAIのcredentialが未設定です。API ChatのAI設定で確認してください。";
+    if (provider.projectId && provider.projectId !== projectSelect.value) return "このVault providerに紐付いたProjectを選んでください。";
+    if (!modelSelect.value || !provider.models.includes(modelSelect.value)) return "選択したAIのmodelが未設定です。API ChatのAI設定でmodelを登録してください。";
+    return "";
+  }
+  function updateAvailability() {
+    const problem = plannerProblem();
+    const provider = providers.find(p => p.id === providerSelect.value);
+    // Missing settings are actionable preflight feedback, not an inert Send control.
+    submit.disabled = contextState === "loading" || pendingSubmit || Boolean(run && !terminal(run));
+    get("[data-ai-setup-notice]").hidden = !problem;
+    get("[data-ai-setup-message]").textContent = problem;
+    const needsProviderConfiguration = contextState === "ready" && Boolean(problem) && (
+      !provider ||
+      !provider.ready ||
+      !modelSelect.value ||
+      !provider.models.includes(modelSelect.value)
+    );
+    get("[data-ai-configure]").hidden = !needsProviderConfiguration;
+    get("[data-ai-retry]").hidden = contextState !== "error";
+    availability.textContent = problem || `Planner: ${provider?.name} / ${modelSelect.value}`;
   }
   function fillModels() {
     const provider = providers.find(p => p.id === providerSelect.value);
@@ -158,9 +179,16 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
   }
   async function refresh() {
     const currentGeneration = ++generation;
+    contextController?.abort();
+    const controller = new AbortController();
+    contextController = controller;
+    const timeout = window.setTimeout(() => controller.abort(), 10000);
+    contextState = "loading"; updateAvailability();
     try {
-      const context = await request<{ projects: Project[]; providers: Provider[] }>("/api/tools-ai/context");
+      const context = await request<{ projects: Project[]; providers: Provider[] }>("/api/tools-ai/context", undefined, controller.signal);
+      window.clearTimeout(timeout);
       if (currentGeneration !== generation) return;
+      contextState = "ready";
       const selectedProject = projectSelect.value || localStorage.getItem("devmoter-tools-ai-project") || localStorage.getItem("opencode-pocket-project") || "";
       projectSelect.replaceChildren(option("Projectなし（診断のみ）", ""));
       for (const project of context.projects) projectSelect.append(option(project.name, project.id));
@@ -169,7 +197,7 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
       const selectedProvider = providerSelect.value || localStorage.getItem("devmoter-tools-ai-provider") || localStorage.getItem("devmoter-api-provider") || "";
       providerSelect.replaceChildren(option("Plannerを選択", ""));
       for (const provider of providers) providerSelect.append(option(provider.name + (provider.ready ? "" : "（未設定）"), provider.id));
-      providerSelect.value = providers.some(p => p.id === selectedProvider) ? selectedProvider : providers.find(p => p.ready)?.id || "";
+      providerSelect.value = providers.some(p => p.id === selectedProvider) ? selectedProvider : providers.find(p => p.ready && p.models.length)?.id || providers.find(p => p.ready)?.id || providers[0]?.id || "";
       fillModels(); showError("");
       const pending = localStorage.getItem(PENDING_KEY);
       if (pending) {
@@ -182,13 +210,23 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
         } catch { showError("前回の送信結果を照合できません。同じ依頼の再送信には元のrequest IDを使います。成功とは扱いません。"); }
       }
       await refreshRun();
-    } catch (failure) { showError(failure instanceof Error ? failure.message : String(failure)); updateAvailability(); }
+    } catch (failure) {
+      if (currentGeneration !== generation) return;
+      contextState = "error";
+      showError(controller.signal.aborted ? "AIの設定の読み込みがタイムアウトしました。再読み込みしてください。" : failure instanceof Error ? failure.message : String(failure));
+      updateAvailability();
+    } finally {
+      window.clearTimeout(timeout);
+      if (contextController === controller) contextController = null;
+    }
   }
   projectSelect.addEventListener("change", () => { localStorage.setItem("devmoter-tools-ai-project", projectSelect.value); updateAvailability(); });
   providerSelect.addEventListener("change", () => { localStorage.setItem("devmoter-tools-ai-provider", providerSelect.value); fillModels(); });
   modelSelect.addEventListener("change", () => { localStorage.setItem(`devmoter-tools-ai-model:${providerSelect.value}`, modelSelect.value); updateAvailability(); });
   root.querySelectorAll<HTMLButtonElement>("[data-ai-suggestion]").forEach(chip => chip.addEventListener("click", () => { goal.value = chip.textContent || ""; goal.focus(); }));
   get("[data-ai-settings]").addEventListener("click", options.openSettings);
+  get("[data-ai-configure]").addEventListener("click", options.openSettings);
+  get("[data-ai-retry]").addEventListener("click", () => { void refresh(); });
   get("[data-ai-manual]").addEventListener("click", options.openManual);
   stop.addEventListener("click", async () => {
     if (!run) return;
@@ -203,7 +241,24 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
     catch (failure) { showError(`停止要求を確認できません: ${failure instanceof Error ? failure.message : failure}`); stop.disabled = false; }
   });
   form.addEventListener("submit", async event => {
-    event.preventDefault(); if (submit.disabled || !goal.value.trim()) return;
+    event.preventDefault(); if (submit.disabled) return;
+    const problem = plannerProblem();
+    if (problem) {
+      showError(problem);
+      const settings = get<HTMLDetailsElement>(".tools-ai-settings"); settings.open = true;
+      settings.scrollIntoView?.({ block: "nearest" });
+      const provider = providers.find(p => p.id === providerSelect.value);
+      const recoveryTarget =
+        contextState === "error" ? get("[data-ai-retry]") :
+        !provider ? providerSelect :
+        !provider.ready ? get("[data-ai-configure]") :
+        provider.projectId && provider.projectId !== projectSelect.value ? projectSelect :
+        !modelSelect.value || !provider.models.includes(modelSelect.value) ? modelSelect :
+        get("[data-ai-settings]");
+      recoveryTarget.focus();
+      return;
+    }
+    if (!goal.value.trim()) { showError("何をしたいか入力してください。"); goal.focus(); return; }
     pendingSubmit = true; updateAvailability(); showError("");
     // Capture the chosen target/model before any network await; later UI switches affect only the next goal.
     const selection = { goal: goal.value, projectId: projectSelect.value, providerId: providerSelect.value, model: modelSelect.value };
