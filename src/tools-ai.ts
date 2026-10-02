@@ -53,6 +53,7 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
   let generation = 0;
   let signature = "";
   let contextState: "loading" | "ready" | "error" = "loading";
+  let contextController: AbortController | null = null;
   const request = async <T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> => {
     const headers = new Headers();
     const device = localStorage.getItem("devmoter-device-token");
@@ -87,7 +88,13 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
     submit.disabled = contextState === "loading" || pendingSubmit || Boolean(run && !terminal(run));
     get("[data-ai-setup-notice]").hidden = !problem;
     get("[data-ai-setup-message]").textContent = problem;
-    get("[data-ai-configure]").hidden = contextState !== "ready" || !problem;
+    const needsProviderConfiguration = contextState === "ready" && Boolean(problem) && (
+      !provider ||
+      !provider.ready ||
+      !modelSelect.value ||
+      !provider.models.includes(modelSelect.value)
+    );
+    get("[data-ai-configure]").hidden = !needsProviderConfiguration;
     get("[data-ai-retry]").hidden = contextState !== "error";
     availability.textContent = problem || `Planner: ${provider?.name} / ${modelSelect.value}`;
   }
@@ -172,7 +179,9 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
   }
   async function refresh() {
     const currentGeneration = ++generation;
+    contextController?.abort();
     const controller = new AbortController();
+    contextController = controller;
     const timeout = window.setTimeout(() => controller.abort(), 10000);
     contextState = "loading"; updateAvailability();
     try {
@@ -206,7 +215,10 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
       contextState = "error";
       showError(controller.signal.aborted ? "AIの設定の読み込みがタイムアウトしました。再読み込みしてください。" : failure instanceof Error ? failure.message : String(failure));
       updateAvailability();
-    } finally { window.clearTimeout(timeout); }
+    } finally {
+      window.clearTimeout(timeout);
+      if (contextController === controller) contextController = null;
+    }
   }
   projectSelect.addEventListener("change", () => { localStorage.setItem("devmoter-tools-ai-project", projectSelect.value); updateAvailability(); });
   providerSelect.addEventListener("change", () => { localStorage.setItem("devmoter-tools-ai-provider", providerSelect.value); fillModels(); });
@@ -235,7 +247,15 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
       showError(problem);
       const settings = get<HTMLDetailsElement>(".tools-ai-settings"); settings.open = true;
       settings.scrollIntoView?.({ block: "nearest" });
-      (contextState === "error" ? get("[data-ai-retry]") : !providerSelect.value ? providerSelect : !modelSelect.value ? modelSelect : get("[data-ai-settings]")).focus();
+      const provider = providers.find(p => p.id === providerSelect.value);
+      const recoveryTarget =
+        contextState === "error" ? get("[data-ai-retry]") :
+        !provider ? providerSelect :
+        !provider.ready ? get("[data-ai-configure]") :
+        provider.projectId && provider.projectId !== projectSelect.value ? projectSelect :
+        !modelSelect.value || !provider.models.includes(modelSelect.value) ? modelSelect :
+        get("[data-ai-settings]");
+      recoveryTarget.focus();
       return;
     }
     if (!goal.value.trim()) { showError("何をしたいか入力してください。"); goal.focus(); return; }
