@@ -68,6 +68,14 @@ test("health and OpenCode SSE proxy are live without a real OpenCode account", a
       res.end(JSON.stringify({ directory: home }));
       return;
     }
+    if (req.url === "/api/provider" || req.url === "/api/model") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ data: req.url === "/api/provider" ? [{ id: "fixture" }] : [
+        { id: "paid", providerID: "fixture", cost: { input: 2, output: 8, cache_read: 0.1, private: "excluded" } },
+        { id: "zero", providerID: "fixture", cost: { input: 0, output: 0 } },
+        { id: "unknown", providerID: "fixture" }
+      ] })); return;
+    }
     if (req.url === "/api/event") {
       res.writeHead(200, {
         "content-type": "text/event-stream",
@@ -109,6 +117,13 @@ test("health and OpenCode SSE proxy are live without a real OpenCode account", a
     const healthPayload = await health.json();
     assert.equal(healthPayload.backends.opencode.online, true);
     assert.equal(healthPayload.online, true);
+
+    const discovery = await fetch(`http://127.0.0.1:${appPort}/api/opencode/pocket/providers`, { headers: { authorization }, signal: AbortSignal.timeout(4000) });
+    assert.equal(discovery.status, 200);
+    const catalog = await discovery.json();
+    assert.deepEqual(catalog.all[0].models.paid.cost, { input: 2, output: 8, cache_read: 0.1 });
+    assert.deepEqual(catalog.all[0].models.zero.cost, { input: 0, output: 0 });
+    assert.equal(catalog.all[0].models.unknown.cost, null);
 
     const events = await fetch(`http://127.0.0.1:${appPort}/api/opencode/event`, {
       headers: { accept: "text/event-stream", authorization },

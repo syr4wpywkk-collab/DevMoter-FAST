@@ -2,6 +2,7 @@ import { isExecutionActive, openCodeIdleOutcomeToExecutionState, type ExecutionS
 import { speechRecognitionLanguage } from "./i18n";
 import { mergeOpenCodeStreamText, normalizeOpenCodeEvent } from "./opencode-event-compat.mjs";
 import { countTranscriptMessages, normalizeExternalThread, sessionContextToMarkdown, sortSessions, type ImportedThread, type SessionSortMode } from "./session-tools.mjs";
+import { describeModelPricing, normalizeModelPricing } from "./model-pricing.mjs";
 import { setWakeLockEnabled, setWakeLockExecutionActive, wakeLockEnabled, wakeLockSupported } from "./wake-lock";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
@@ -31,6 +32,7 @@ type OpenCodeModel = {
   enabled?: boolean;
   status?: string | null;
   capabilities?: Record<string, unknown> | null;
+  cost?: ReturnType<typeof normalizeModelPricing>;
 };
 
 type OpenCodeProvider = {
@@ -287,6 +289,7 @@ export function mountOpenCodeRemote(
             </div>
           </div>
 
+          <p id="ocxModelPricing" class="ocx-model-pricing" role="status"></p>
           <div class="ocx-composer-foot">
             <div class="ocx-composer-left">
               <button id="ocxPlus" type="button" class="ocx-mini-button" aria-label="添付">＋</button>
@@ -758,7 +761,8 @@ export function mountOpenCodeRemote(
       return raw
         .map((model: Json) => ({
           id: String(model.id ?? model.modelID ?? ""),
-          name: String(model.name ?? model.id ?? model.modelID ?? "")
+          name: String(model.name ?? model.id ?? model.modelID ?? ""),
+          cost: normalizeModelPricing(model.cost), enabled: model.enabled, status: model.status, capabilities: model.capabilities
         }))
         .filter(model => model.id);
     }
@@ -766,7 +770,8 @@ export function mountOpenCodeRemote(
     return Object.entries(raw)
       .map(([id, model]) => ({
         id,
-        name: String((model as Json)?.name ?? id)
+        name: String((model as Json)?.name ?? id),
+        cost: normalizeModelPricing(model?.cost), enabled: model?.enabled, status: model?.status, capabilities: model?.capabilities
       }))
       .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
   }
@@ -817,6 +822,13 @@ export function mountOpenCodeRemote(
       ? `${selectedModel.providerID} / ${selectedModel.modelID}`
       : "Default provider / model";
     modelButton.setAttribute("aria-label", `Model: ${modelButton.title}`);
+    const pricingProvider = providers.find(item => item.id === selectedModel?.providerID);
+    const pricingModel = pricingProvider ? normalizeModels(pricingProvider).find(item => item.id === selectedModel?.modelID) : null;
+    const pricing = describeModelPricing(pricingModel?.cost);
+    const pricingLabel = root.querySelector<HTMLElement>("#ocxModelPricing")!;
+    pricingLabel.textContent = pricing.label + " · 請求条件はproviderで確認";
+    pricingLabel.title = pricing.detail;
+    modelButton.title += " · " + pricing.detail;
 
     planMode.classList.toggle("active", selectedMode === "plan");
     askMode.classList.toggle("active", selectedMode === "ask");
@@ -3119,6 +3131,8 @@ export function mountOpenCodeRemote(
         copy.querySelector("strong")!.textContent = model.name || model.id;
         copy.querySelector("small")!.textContent =
           `${provider.id}/${model.id}`;
+        const pricing = document.createElement("small"); pricing.className = "ocx-picker-pricing";
+        pricing.textContent = describeModelPricing(model.cost).detail; copy.append(pricing);
 
         const mark = document.createElement("span");
         mark.textContent =
@@ -3236,6 +3250,8 @@ export function mountOpenCodeRemote(
         copy.querySelector("small")!.textContent = supported
           ? provider.id + "/" + model.id + (capabilities ? " · " + capabilities : "")
           : provider.id + "/" + model.id + " · unavailable";
+        const pricing = document.createElement("small"); pricing.className = "ocx-picker-pricing";
+        pricing.textContent = describeModelPricing(model.cost).detail; copy.append(pricing);
 
         const mark = document.createElement("span");
         mark.textContent =

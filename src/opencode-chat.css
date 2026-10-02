@@ -305,3 +305,28 @@ body.opencode-mode .sc-panel:not(.open) { box-shadow: none; }
   .ocx-app .ocx-tool-card > summary::before,
   .ocx-app .ocx-reasoning > summary::before { transition: none; }
 }
+
+/* Warm dark counterpart to OpenCode's existing light palette. */
+html[data-devmoter-theme="dark"] .ocx-app {
+  --oc-bg: #23211e; --oc-panel: #2c2925; --oc-panel-2: #36312b;
+  --oc-line: #62574b; --oc-line-soft: #464039; --oc-text: #f2ece3;
+  --oc-muted: #c2b8aa; --oc-dim: #b7ac9d; --oc-accent: #e49b77;
+  --oc-accent-soft: #48372c; --oc-green: #95cba0; --oc-red: #f1aaa4; --oc-yellow: #e6c17a;
+  color-scheme: dark;
+}
+html[data-devmoter-theme="dark"] .ocx-app .ocx-sidebar,
+html[data-devmoter-theme="dark"] .ocx-app .ocx-search,
+html[data-devmoter-theme="dark"] .ocx-app .ocx-toast,
+html[data-devmoter-theme="dark"] .ocx-app .ocx-dock { background: var(--oc-panel); color: var(--oc-text); }
+html[data-devmoter-theme="dark"] .ocx-app .ocx-history-icon,
+html[data-devmoter-theme="dark"] .ocx-app .ocx-session-row:hover,
+html[data-devmoter-theme="dark"] .ocx-app .ocx-mode-switch button.active,
+html[data-devmoter-theme="dark"] .ocx-app .ocx-tool-content pre,
+html[data-devmoter-theme="dark"] .ocx-app .cx-markdown code,
+html[data-devmoter-theme="dark"] .ocx-app .dm-code-block,
+html[data-devmoter-theme="dark"] .ocx-app .dm-code-head,
+html[data-devmoter-theme="dark"] .ocx-app .ocx-dock-copy pre { background: var(--oc-panel-2); color: var(--oc-text); }
+html[data-devmoter-theme="dark"] .ocx-app .cx-markdown a { color: #efb394; }
+html[data-devmoter-theme="dark"] .ocx-app .ocx-eyebrow { color: #efc58d; }
+.ocx-app .ocx-model-pricing { margin: 4px 10px; font-size: .75rem; line-height: 1.5; color: var(--oc-muted); overflow-wrap: anywhere; }
+.ocx-app .ocx-picker-pricing { display: block; font-size: .75rem; color: var(--oc-muted); overflow-wrap: anywhere; white-space: normal; }

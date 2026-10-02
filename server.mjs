@@ -5,6 +5,7 @@ import { basename, delimiter, dirname, extname, isAbsolute, join, normalize, rel
 import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
 import { CodexBridge } from "./server/codex-bridge.mjs";
+import { normalizeModelPricing } from "./src/model-pricing.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { createOperationRegistry } from "./server/operation-registry.mjs";
@@ -1160,6 +1161,7 @@ async function opencodeProviders(res) {
         status: model?.status ?? null,
         enabled: model?.enabled !== false,
         capabilities: model?.capabilities ?? null,
+        cost: normalizeModelPricing(model?.cost),
         variants: Array.isArray(model?.variants)
           ? model.variants.map(variant => ({
               id: String(variant?.id ?? ""),
