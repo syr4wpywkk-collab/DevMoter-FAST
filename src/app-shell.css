@@ -362,12 +362,12 @@ body:has(
   .adv-drawer:not(.hidden),
   .dm-control-modal:not(.hidden),
   .devmoter-settings-modal:not(.hidden),
-  .devmoter-system-modal:not(.hidden),
-  .api-sidebar.open,
-  .cx-sidebar.open,
-  .ocx-modal:not(.hidden),
-  .ocx-sidebar.open
-) .dm-shell-menu-trigger {
+  .devmoter-system-modal:not(.hidden)
+) .dm-shell-menu-trigger,
+body.api-mode:has(.api-sidebar.open) .dm-shell-menu-trigger,
+body.codex-mode:has(.cx-sidebar.open) .dm-shell-menu-trigger,
+body.opencode-mode:has(.ocx-modal:not(.hidden)) .dm-shell-menu-trigger,
+body.opencode-mode:has(.ocx-sidebar.open) .dm-shell-menu-trigger {
   opacity: 0;
   pointer-events: none;
 }
