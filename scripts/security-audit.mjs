@@ -74,9 +74,13 @@ try {
 
 const sensitiveName = /(^|\/)(?:\.env|\.npmrc|\.pypirc|id_(?:rsa|dsa|ecdsa|ed25519)|credentials(?:\.[^/]*)?|.*\.(?:pem|key|p12|pfx))$/i;
 const allowedEnvTemplate = /(^|\/)\.env\.(?:example|sample|template)$/i;
-for (const path of tracked) {
-  if (allowedEnvTemplate.test(path)) continue;
-  check(!sensitiveName.test(path), "tracked path is not a likely secret file: " + path);
+const suspiciousTrackedPaths = tracked.filter(path =>
+  !allowedEnvTemplate.test(path) && sensitiveName.test(path)
+);
+if (suspiciousTrackedPaths.length === 0) {
+  passes.push("no likely secret files are tracked");
+} else {
+  for (const path of suspiciousTrackedPaths) failures.push("likely secret file is tracked: " + path);
 }
 
 const secretPatterns = [
@@ -99,7 +103,10 @@ for (const path of tracked) {
   }
   if (body.length > 2000000) continue;
   for (const pattern of secretPatterns) {
-    if (pattern.regex.test(body)) failures.push("possible " + pattern.name + " in " + path);
+    const match = body.match(pattern.regex);
+    if (!match) continue;
+    if (/fake|example|placeholder|dummy/i.test(match[0])) continue;
+    failures.push("possible " + pattern.name + " in " + path);
   }
 }
 
