@@ -1,272 +1,191 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="light dark" />
   <title>Sign in · DevMoter FAST</title>
   <style>
-    :root {
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #171717;
-      background: #f6f5f2;
+    :root { color-scheme: light dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color:#171717; background:#f7f7f6; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; min-height:100dvh; display:grid; place-items:center; padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom)); background:#f7f7f6; }
+    main { width:min(100%,380px); }
+    .brand { text-align:center; margin-bottom:26px; }
+    .mark { display:grid; place-items:center; margin:0 auto 14px; width:42px; height:42px; border-radius:13px; background:#171717; color:white; font-size:22px; }
+    h1 { margin:0; font-size:23px; letter-spacing:-.045em; font-weight:680; }
+    .sub { margin:7px 0 0; color:#666; font-size:14px; }
+    .card { background:#fff; border:1px solid #e5e5e3; border-radius:18px; padding:18px; box-shadow:0 12px 36px #0000000a; }
+    .providers { display:grid; gap:10px; }
+    button, input, a.action { width:100%; min-height:48px; border-radius:11px; font:inherit; }
+    button { display:flex; align-items:center; justify-content:center; gap:11px; padding:0 14px; border:1px solid #dededc; background:#fff; color:#171717; font-size:14px; font-weight:620; cursor:pointer; }
+    button:hover { background:#f5f5f4; border-color:#c6c6c3; }
+    button:disabled { opacity:.58; cursor:wait; }
+    button.primary { color:#fff; background:#171717; border-color:#171717; }
+    button.primary:hover { background:#303030; }
+    .icon { width:18px; height:18px; flex:none; }
+    :focus-visible { outline:3px solid #7568f5; outline-offset:3px; }
+    .divider { display:flex; align-items:center; gap:12px; margin:18px 0; color:#777; font-size:12px; }
+    .divider::before,.divider::after { content:""; flex:1; height:1px; background:#e5e5e3; }
+    details { border-top:1px solid #ececea; padding-top:15px; }
+    summary { min-height:44px; display:flex; align-items:center; cursor:pointer; font-size:13px; font-weight:620; color:#444; border-radius:10px; }
+    label { display:block; margin:12px 0 6px; font-size:12px; font-weight:600; color:#555; }
+    input { padding:0 12px; border:1px solid #dededc; background:#fff; color:#171717; }
+    input:focus { outline:3px solid #7568f555; border-color:#7568f5; }
+    .recovery { margin-top:12px; }
+    .message { min-height:20px; margin:14px 2px 0; color:#656565; font-size:13px; line-height:1.45; text-align:center; }
+    .message.error { color:#b42318; }.message.ok { color:#067647; }
+    .device { margin-top:14px; padding:14px; border:1px solid #e5e5e3; border-radius:13px; background:#f8f8f7; }
+    .device[hidden], [hidden] { display:none!important; }
+    .device p { margin:0 0 10px; color:#555; font-size:13px; line-height:1.45; }
+    .code { padding:12px; border:1px dashed #aaa; border-radius:10px; background:#fff; font:750 25px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.1em; text-align:center; user-select:all; }
+    .device-actions { display:grid; grid-template-columns:1fr auto; gap:8px; margin-top:10px; }
+    a.action { display:grid; place-items:center; min-height:48px; padding:0 12px; background:#171717; color:white; text-decoration:none; font-weight:650; font-size:13px; }
+    .copy { width:auto; min-width:92px; }
+    .foot { margin:16px 0 0; color:#777; font-size:11px; line-height:1.55; text-align:center; }
+    @media (prefers-reduced-motion: no-preference) { button, a.action { transition:background-color .15s ease,border-color .15s ease; } }
+    @media (prefers-color-scheme:dark) {
+      :root { color:#f4f4f3; background:#101010; } body { background:#101010; }
+      .mark { background:#f4f4f3; color:#151515; }
+      .sub,.foot { color:#a4a4a2; }
+      .card { background:#181818; border-color:#303030; box-shadow:0 12px 36px #0005; }
+      button { color:#f3f3f3; background:#222; border-color:#3d3d3d; } button:hover { background:#2b2b2b; border-color:#565656; }
+      button.primary,a.action { color:#171717; background:#f4f4f3; border-color:#f4f4f3; } button.primary:hover { background:#ddd; }
+      .divider::before,.divider::after { background-color:#333; }
+      details { border-color:#333; }
+      summary,label { color:#c4c4c2; } input,.code { color:#f4f4f3; background:#222; border-color:#414141; }
+      .device { background:#202020; border-color:#393939; }.device p,.message { color:#b6b6b4; }
+      .message.error { color:#ff8b83; }.message.ok { color:#7ee0ad; }
     }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; min-height: 100dvh; display: grid; place-items: center;
-      padding: max(24px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
-      background:
-        radial-gradient(circle at 20% 0%, rgba(255,255,255,.95), transparent 42%),
-        #f6f5f2;
-    }
-    main { width: min(100%, 430px); }
-    .brand { text-align: center; margin-bottom: 20px; }
-    .mark {
-      width: 52px; height: 52px; margin: 0 auto 12px; border-radius: 16px;
-      display: grid; place-items: center; background: #171717; color: white;
-      font-size: 24px; box-shadow: 0 12px 32px rgba(0,0,0,.12);
-    }
-    h1 { margin: 0; font-size: 28px; letter-spacing: -.04em; }
-    .sub { margin: 7px 0 0; color: #707070; font-size: 14px; }
-    .card {
-      background: rgba(255,255,255,.88); backdrop-filter: blur(18px);
-      border: 1px solid rgba(0,0,0,.08); border-radius: 24px; padding: 18px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.08);
-    }
-    button, input, a.action {
-      width: 100%; min-height: 50px; border-radius: 14px; font: inherit;
-    }
-    button {
-      border: 1px solid #d8d8d8; background: white; color: #171717;
-      font-weight: 700; cursor: pointer; padding: 0 14px;
-    }
-    button:hover { border-color: #999; }
-    button:disabled { opacity: .48; cursor: not-allowed; }
-    .github { background: #171717; border-color: #171717; color: white; }
-    .provider-row { display: grid; gap: 10px; }
-    .provider small { float: right; font-weight: 600; opacity: .58; }
-    .divider { display: flex; align-items: center; gap: 10px; margin: 17px 0; color: #888; font-size: 12px; }
-    .divider::before, .divider::after { content: ""; height: 1px; background: #ddd; flex: 1; }
-    details { border-top: 1px solid #e4e4e4; padding-top: 14px; }
-    summary { cursor: pointer; font-weight: 700; font-size: 14px; }
-    label { display: block; font-size: 12px; font-weight: 700; margin: 12px 0 6px; color: #555; }
-    input {
-      border: 1px solid #d8d8d8; background: #fff; color: #171717; padding: 0 14px; outline: none;
-    }
-    input:focus { border-color: #777; box-shadow: 0 0 0 3px rgba(0,0,0,.06); }
-    .recovery { margin-top: 12px; }
-    .message { margin: 14px 2px 0; min-height: 20px; font-size: 13px; color: #666; }
-    .message.error { color: #b42318; }
-    .message.ok { color: #067647; }
-    .device {
-      margin-top: 14px; padding: 15px; border-radius: 16px; background: #f1f1ef;
-      border: 1px solid #dededb;
-    }
-    .device.hidden { display: none; }
-    .device p { margin: 0 0 10px; font-size: 13px; color: #555; }
-    .code {
-      font: 800 28px/1.1 ui-monospace, SFMono-Regular, Menlo, monospace;
-      letter-spacing: .08em; text-align: center; padding: 12px; border-radius: 12px;
-      background: white; border: 1px dashed #aaa; user-select: all;
-    }
-    .device-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 10px; }
-    a.action {
-      display: grid; place-items: center; text-decoration: none; color: white;
-      background: #171717; font-weight: 700; padding: 0 14px;
-    }
-    .copy { width: auto; min-width: 92px; }
-    .foot { text-align: center; margin-top: 14px; color: #888; font-size: 11px; line-height: 1.5; }
-    @media (prefers-color-scheme: dark) {
-      :root { color: #f6f6f6; background: #111; }
-      body { background: radial-gradient(circle at 20% 0%, #262626, transparent 42%), #111; }
-      .card { background: rgba(28,28,28,.9); border-color: #343434; }
-      button { background: #252525; color: #f5f5f5; border-color: #444; }
-      .github { background: #f4f4f4; color: #151515; border-color: #f4f4f4; }
-      input { background: #1d1d1d; color: white; border-color: #444; }
-      .divider::before, .divider::after, details { border-color: #3b3b3b; }
-      .device { background: #1b1b1b; border-color: #3b3b3b; }
-      .code { background: #111; border-color: #666; }
-      a.action { background: #f4f4f4; color: #151515; }
-      .sub, .message, .device p, .foot { color: #aaa; }
-    }
+    @media(max-width:340px) { body { padding-left:12px; padding-right:12px; } .card { padding:14px; } }
   </style>
 </head>
 <body>
   <main>
-    <div class="brand">
-      <div class="mark">✦</div>
-      <h1>DevMoter FAST</h1>
-      <p class="sub">Your AI coding agents, anywhere.</p>
-    </div>
-
-    <section class="card">
-      <div class="provider-row">
-        <button id="github" class="provider github" type="button">GitHubで続ける</button>
-        <button class="provider" type="button" disabled>Googleで続ける <small>Coming soon</small></button>
-        <button class="provider" type="button" disabled>Microsoftで続ける <small>Coming soon</small></button>
-        <button class="provider" type="button" disabled>Appleで続ける <small>Coming soon</small></button>
+    <header class="brand"><div class="mark" aria-hidden="true">✦</div><h1>DevMoter FAST</h1><p class="sub">Your AI coding agents, anywhere.</p></header>
+    <section class="card" aria-label="Sign in">
+      <div id="providers" class="providers" aria-live="polite"></div>
+      <div id="device" class="device" hidden>
+        <p>Enter this code on GitHub to finish signing in.</p><div id="userCode" class="code"></div>
+        <div class="device-actions"><a id="verifyLink" class="action" target="_blank" rel="noopener noreferrer">Open GitHub</a><button id="copyCode" class="copy" type="button">Copy code</button></div>
       </div>
-
-      <div id="device" class="device hidden">
-        <p>GitHubで次のコードを入力してください。認証が終わると自動でDevMoterに戻ります。</p>
-        <div id="userCode" class="code"></div>
-        <div class="device-actions">
-          <a id="verifyLink" class="action" target="_blank" rel="noopener noreferrer">GitHubを開く</a>
-          <button id="copyCode" class="copy" type="button">コピー</button>
-        </div>
-      </div>
-
-      <div class="divider">または</div>
-
-      <details id="recovery">
-        <summary>ローカル復旧ログイン</summary>
-        <label for="username">ユーザー名</label>
-        <input id="username" autocomplete="username" value="devmoter" />
-        <label for="password">パスワード</label>
-        <input id="password" type="password" autocomplete="current-password" />
-        <button id="localLogin" class="recovery" type="button">ローカルでログイン</button>
+      <div class="divider">Other options</div>
+      <details id="recovery"><summary>Use local recovery</summary>
+        <label for="username">Username</label><input id="username" autocomplete="username" value="devmoter" />
+        <label for="password">Recovery password</label><input id="password" type="password" autocomplete="current-password" />
+        <button id="localLogin" class="recovery" type="button">Continue with recovery</button>
       </details>
-
-      <p id="message" class="message" aria-live="polite"></p>
+      <p id="message" class="message" role="status" aria-live="polite"></p>
     </section>
-
-    <p class="foot">GitHubのOAuthトークンは本人確認にだけ使われ、DevMoterには保存されません。<br />Local recovery は初回接続・復旧用です。</p>
+    <p class="foot">Your session stays signed in securely on this device.</p>
   </main>
-
   <script>
-    const github = document.querySelector("#github");
-    const localLogin = document.querySelector("#localLogin");
-    const username = document.querySelector("#username");
-    const password = document.querySelector("#password");
-    const recovery = document.querySelector("#recovery");
-    const device = document.querySelector("#device");
-    const userCode = document.querySelector("#userCode");
-    const verifyLink = document.querySelector("#verifyLink");
-    const copyCode = document.querySelector("#copyCode");
-    const message = document.querySelector("#message");
-
-    let authStatus = null;
-    let activeFlow = "";
-    let pollTimer = 0;
-
-    function setMessage(text, tone = "") {
-      message.textContent = text || "";
-      message.className = "message" + (tone ? " " + tone : "");
+    const $ = selector => document.querySelector(selector);
+    const providerRoot = $("#providers"), localLogin = $("#localLogin"), username = $("#username"), password = $("#password");
+    const recovery = $("#recovery"), device = $("#device"), userCode = $("#userCode"), verifyLink = $("#verifyLink"), copyCode = $("#copyCode"), message = $("#message");
+    let authStatus = null, activeFlow = "", pollTimer = 0;
+    const icons = {
+      passkey:'<svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v10H5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="15" r="1.2" fill="currentColor"/></svg>',
+      github:'<svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.55.1.76-.24.76-.53v-2.07c-3.1.67-3.76-1.32-3.76-1.32-.5-1.28-1.23-1.62-1.23-1.62-1.01-.69.08-.68.08-.68 1.12.08 1.71 1.15 1.71 1.15 1 .1.74 2.1 3.2 1.54.1-.72.39-1.2.7-1.48-2.47-.28-5.07-1.24-5.07-5.5 0-1.21.43-2.2 1.15-2.98-.12-.28-.5-1.42.11-2.95 0 0 .94-.3 3.05 1.14a10.6 10.6 0 0 1 5.55 0c2.1-1.43 3.04-1.14 3.04-1.14.61 1.53.23 2.67.12 2.95.71.78 1.14 1.77 1.14 2.98 0 4.27-2.61 5.21-5.1 5.49.4.34.75 1.02.75 2.05V22c0 .29.2.64.77.53A11.1 11.1 0 0 0 12 .9Z"/></svg>',
+      google:'<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.38a4.6 4.6 0 0 1-2 3.02v2.52h3.24c1.9-1.75 2.98-4.32 2.98-7.37Z"/><path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.4l-3.24-2.52c-.9.6-2.05.96-3.38.96-2.6 0-4.8-1.75-5.6-4.1H3.05v2.6A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.4 13.94a6 6 0 0 1 0-3.88v-2.6H3.05a10 10 0 0 0 0 9.08l3.35-2.6Z"/><path fill="#EA4335" d="M12 5.96c1.47 0 2.78.5 3.82 1.5l2.86-2.86C16.95 2.97 14.7 2 12 2a10 10 0 0 0-8.95 5.46l3.35 2.6c.8-2.35 3-4.1 5.6-4.1Z"/></svg>',
+      microsoft:'<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#f25022" d="M2 2h9.5v9.5H2z"/><path fill="#7fba00" d="M12.5 2H22v9.5h-9.5z"/><path fill="#00a4ef" d="M2 12.5h9.5V22H2z"/><path fill="#ffb900" d="M12.5 12.5H22V22h-9.5z"/></svg>'
+    };
+    function setMessage(text, tone="") { message.textContent=text||""; message.className="message"+(tone?" "+tone:""); }
+    function humanError(error, provider="") {
+      const status=Number(error?.status||0), raw=String(error?.message||"").toLowerCase();
+      if(status===401) return "Those sign-in details weren’t accepted. Try again.";
+      if(status===403 && provider) return provider+" isn’t linked to this DevMoter owner yet. Sign in with recovery or a connected method first.";
+      if(status===404 || raw.includes("not configured") || raw.includes("unavailable")) return provider ? provider+" sign-in is not available on this host." : "That sign-in method is not available on this host.";
+      if(raw.includes("cancel")) return "Sign-in was cancelled. You can try again.";
+      return "We couldn’t sign you in. Please try again.";
     }
-
-    async function json(path, init = {}) {
-      const headers = new Headers(init.headers || {});
-      if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
-      const response = await fetch(path, { ...init, headers, cache: "no-store" });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        const error = new Error(payload?.error || ("HTTP " + response.status));
-        error.status = response.status;
-        throw error;
-      }
-      return payload;
+    async function json(path, init={}) {
+      const headers=new Headers(init.headers||{}); if(init.body&&!headers.has("content-type")) headers.set("content-type","application/json");
+      const response=await fetch(path,{...init,headers,cache:"no-store"}); const payload=await response.json().catch(()=>({}));
+      if(!response.ok) { const error=new Error(payload?.error||"Request failed"); error.status=response.status; throw error; } return payload;
     }
-
+    function providerInfo(name) {
+      const direct=authStatus?.providers?.[name] || authStatus?.[name] || {};
+      if(name==="github") return {configured:Boolean(direct.configured),linked:Boolean(direct.linked??direct.bound),available:Boolean(direct.available??direct.configured)};
+      return {configured:Boolean(direct.configured ?? (name==="passkey" && direct.enabled)),linked:Boolean(direct.linked??direct.bound??direct.enabled),available:Boolean(direct.available ?? direct.enabled ?? direct.configured)};
+    }
+    function makeButton(name,label,primary=false) {
+      const button=document.createElement("button"); button.type="button"; button.className="provider"+(primary?" primary":""); button.dataset.provider=name;
+      button.setAttribute("aria-label",label); button.innerHTML=icons[name]+"<span>"+label+"</span>"; button.addEventListener("click",()=>startProvider(name,button)); return button;
+    }
     async function loadStatus() {
-      authStatus = await json("/api/auth/status");
-      if (authStatus.authenticated) {
-        location.replace("/");
-        return;
+      authStatus=await json("/api/auth/status");
+      if(authStatus.authenticated&&!authStatus.stepUpRequired) { location.replace("/"); return; }
+      const passkey=providerInfo("passkey"), github=providerInfo("github"), google=providerInfo("google"), microsoft=providerInfo("microsoft");
+      const methods=[];
+      if(passkey.available) methods.push(["passkey",authStatus.stepUpRequired?"Verify with Passkey":"Continue with a passkey",true]);
+      if(!authStatus.stepUpRequired) {
+        if(github.configured) methods.push(["github","Continue with GitHub",!methods.length]);
+        if(google.configured) methods.push(["google","Continue with Google",!methods.length]);
+        if(microsoft.configured) methods.push(["microsoft","Continue with Microsoft",!methods.length]);
       }
-      if (!authStatus.github?.configured) {
-        github.disabled = true;
-        github.textContent = "GitHubログイン — 設定が必要";
-        setMessage("Chromebook側で DEVMOTER_GITHUB_CLIENT_ID を設定するとGitHubログインを有効化できます。");
-      } else if (!authStatus.github?.bound) {
-        github.textContent = "GitHubをオーナーとして接続";
-        recovery.open = true;
-        setMessage("初回のGitHub接続だけ、ローカル復旧パスワードで本人確認します。");
-      }
+      providerRoot.replaceChildren(...methods.map(item=>makeButton(...item)));
+      providerRoot.hidden=methods.length===0;
+      recovery.hidden=Boolean(authStatus.stepUpRequired);
+      if(authStatus.stepUpRequired) setMessage("This host requires an additional Passkey check.");
+      else if(!methods.length) { providerRoot.hidden=true; setMessage("Use local recovery to sign in and set up a sign-in method."); recovery.querySelector("summary").textContent="Set up a sign-in method with local recovery"; }
+      const params=new URLSearchParams(location.search);
+      const errors={google:"Google sign-in could not be completed.",microsoft:"Microsoft sign-in could not be completed.",account_not_linked:"That account is not connected to this DevMoter owner.",expired:"That sign-in link expired. Please try again.",access_denied:"Sign-in was cancelled.",oauth_error:"Sign-in could not be completed. Please try again.",state:"That sign-in attempt expired. Please try again.",link_conflict:"That account is already connected to another owner."};
+      if(errors[params.get("auth_error")]) setMessage(errors[params.get("auth_error")],"error");
     }
-
     async function signInLocal() {
-      localLogin.disabled = true;
-      setMessage("確認中…");
-      try {
-        await json("/api/auth/local/login", {
-          method: "POST",
-          body: JSON.stringify({ username: username.value, password: password.value })
-        });
-        setMessage("ログインしました。", "ok");
-        location.replace("/");
-      } catch (error) {
-        setMessage(error.message || String(error), "error");
-      } finally {
-        localLogin.disabled = false;
-      }
+      localLogin.disabled=true; setMessage("Checking your recovery details…");
+      try { await json("/api/auth/local/login",{method:"POST",body:JSON.stringify({username:username.value,password:password.value})}); password.value=""; await loadStatus(); }
+      catch(error) { setMessage(humanError(error),"error"); }
+      finally { localLogin.disabled=false; }
     }
-
-    async function startGithub() {
-      github.disabled = true;
-      setMessage("GitHub認証を準備中…");
-      try {
-        const body = authStatus?.github?.bound
-          ? {}
-          : { username: username.value, password: password.value };
-        const flow = await json("/api/auth/github/start", {
-          method: "POST",
-          body: JSON.stringify(body)
-        });
-        activeFlow = flow.flowId;
-        userCode.textContent = flow.userCode;
-        verifyLink.href = flow.verificationUri;
-        device.classList.remove("hidden");
-        setMessage("GitHubでコードを承認してください。");
-        window.open(flow.verificationUri, "_blank", "noopener,noreferrer");
-        schedulePoll(Math.max(1000, Number(flow.interval || 5) * 1000));
-      } catch (error) {
-        if (error.status === 403 && !authStatus?.github?.bound) recovery.open = true;
-        setMessage(error.message || String(error), "error");
-        github.disabled = false;
-      }
+    function decodeBase64url(value) { const normalized=String(value||"").replace(/-/g,"+").replace(/_/g,"/"); const raw=atob(normalized+"=".repeat((4-normalized.length%4)%4)); return Uint8Array.from(raw,c=>c.charCodeAt(0)); }
+    function encodeBase64url(value) { const bytes=new Uint8Array(value); let raw=""; bytes.forEach(byte=>raw+=String.fromCharCode(byte)); return btoa(raw).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,""); }
+    function credentialJSON(credential) {
+      const response={clientDataJSON:encodeBase64url(credential.response.clientDataJSON), authenticatorData:encodeBase64url(credential.response.authenticatorData), signature:encodeBase64url(credential.response.signature), userHandle:credential.response.userHandle?encodeBase64url(credential.response.userHandle):null};
+      return {id:credential.id,rawId:encodeBase64url(credential.rawId),type:credential.type,authenticatorAttachment:credential.authenticatorAttachment,response,clientExtensionResults:credential.getClientExtensionResults?.()||{}};
     }
-
-    function schedulePoll(delay) {
-      clearTimeout(pollTimer);
-      pollTimer = setTimeout(pollGithub, delay);
+    async function startPasskey(button) {
+      if(!window.PublicKeyCredential || !navigator.credentials) throw new Error("Passkeys aren’t supported in this browser.");
+      const options=await json("/api/auth/passkey/login/options",{method:"POST",body:"{}"});
+      const publicKey=options.publicKey||options; publicKey.challenge=decodeBase64url(publicKey.challenge);
+      if(publicKey.allowCredentials) publicKey.allowCredentials=publicKey.allowCredentials.map(item=>({...item,id:decodeBase64url(item.id)}));
+      const credential=await navigator.credentials.get({publicKey});
+      if(!credential) throw new Error("Sign-in was cancelled.");
+      await json("/api/auth/passkey/login/verify",{method:"POST",body:JSON.stringify({challengeId:options.challengeId,response:credentialJSON(credential)})});
+      setMessage("Signed in. Redirecting…","ok"); location.replace("/");
     }
-
+    async function startOAuth(provider) {
+      if(!providerInfo(provider).linked) { recovery.open=true; setMessage("Sign in with local recovery, then connect this method in Account settings."); return; }
+      const result=await json("/api/auth/"+provider+"/start",{method:"POST",body:"{}"});
+      const target=result.authorizationUrl||result.url;
+      if(!target) throw new Error("Provider unavailable");
+      const destination=new URL(target,location.href); if(destination.protocol!=="https:"&&destination.hostname!=="localhost"&&destination.hostname!=="127.0.0.1") throw new Error("Provider unavailable");
+      location.assign(destination.href);
+    }
+    async function startGithub(button) {
+      const info=providerInfo("github");
+      if(!info.linked&&!authStatus.authenticated) { recovery.open=true; setMessage("Use local recovery first to connect the first GitHub account."); return; }
+      const flow=await json("/api/auth/github/start",{method:"POST",body:"{}"}); activeFlow=flow.flowId;
+      userCode.textContent=flow.userCode; verifyLink.href=flow.verificationUri; device.hidden=false;
+      setMessage("Approve the code on GitHub. This page will finish automatically."); schedulePoll(Math.max(1000,Number(flow.interval||5)*1000));
+    }
+    async function startProvider(name,button) {
+      button.disabled=true; setMessage("Connecting securely…");
+      try { if(name==="passkey") await startPasskey(button); else if(name==="github") await startGithub(button); else await startOAuth(name); }
+      catch(error) { setMessage(error?.name==="NotAllowedError"?"Sign-in was cancelled or timed out.":humanError(error,name),"error"); }
+      finally { button.disabled=false; }
+    }
+    function schedulePoll(delay) { clearTimeout(pollTimer); pollTimer=setTimeout(pollGithub,delay); }
     async function pollGithub() {
-      if (!activeFlow) return;
-      try {
-        const result = await json("/api/auth/github/poll", {
-          method: "POST",
-          body: JSON.stringify({ flowId: activeFlow })
-        });
-        if (result.status === "complete") {
-          setMessage("GitHubでログインしました。", "ok");
-          location.replace("/");
-          return;
-        }
-        schedulePoll(Math.max(1000, Number(result.retryAfterMs || 5000)));
-      } catch (error) {
-        activeFlow = "";
-        github.disabled = false;
-        setMessage(error.message || String(error), "error");
-      }
+      if(!activeFlow) return;
+      try { const result=await json("/api/auth/github/poll",{method:"POST",body:JSON.stringify({flowId:activeFlow})});
+        if(result.status==="complete") { activeFlow=""; device.hidden=true; await loadStatus(); return; }
+        schedulePoll(Math.max(1000,Number(result.retryAfterMs||5000)));
+      } catch(error) { activeFlow=""; setMessage(humanError(error,"GitHub"),"error"); }
     }
-
-    copyCode.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(userCode.textContent || "");
-        copyCode.textContent = "コピー済み";
-        setTimeout(() => { copyCode.textContent = "コピー"; }, 1400);
-      } catch {
-        setMessage("コードを長押ししてコピーしてください。", "error");
-      }
-    });
-    github.addEventListener("click", startGithub);
-    localLogin.addEventListener("click", signInLocal);
-    password.addEventListener("keydown", event => {
-      if (event.key === "Enter") signInLocal();
-    });
-
-    loadStatus().catch(error => setMessage(error.message || String(error), "error"));
+    copyCode.addEventListener("click",async()=>{ try { await navigator.clipboard.writeText(userCode.textContent||""); copyCode.textContent="Copied"; setTimeout(()=>copyCode.textContent="Copy code",1400); } catch { setMessage("Select and copy the code above."); } });
+    localLogin.addEventListener("click",signInLocal); password.addEventListener("keydown",event=>{if(event.key==="Enter")signInLocal();});
+    loadStatus().catch(()=>setMessage("Sign-in options couldn’t be loaded. Refresh and try again.","error"));
   </script>
 </body>
 </html>

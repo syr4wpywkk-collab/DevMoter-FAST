@@ -104,6 +104,8 @@ export function mountSettingsPanel() {
   let vaultFormElement: HTMLFormElement | null = null;
   let vaultSecrets: Json[] = [];
   let notificationRenderId = 0;
+  let accountData: Json | null = null;
+  let githubLink: Json | null = null;
 
   function toast(message: string) {
     let node = root.querySelector<HTMLDivElement>(".devmoter-settings-toast");
@@ -166,12 +168,12 @@ export function mountSettingsPanel() {
   function renderRoot() {
     setHeader("設定");
     const identity = authStatus?.identity || {};
-    const github = authStatus?.github || {};
+    const github = authStatus?.providers?.github || authStatus?.github || {};
     const theme = currentTheme();
     const density = localStorage.getItem(DENSITY_KEY) || "comfortable";
     const provider = identity?.provider || "local";
     const login = identity?.login || "devmoter";
-    const githubValue = github?.bound
+    const githubValue = (github?.linked ?? github?.bound)
       ? "接続済み"
       : github?.configured
         ? "接続できます"
@@ -205,18 +207,15 @@ export function mountSettingsPanel() {
 
       ${section("アカウント",
         row("◎", "サインイン", { action: "page:account", value: `${provider} · ${login}` }) +
-        row("◈", "GitHub ログイン", { action: "page:account", value: githubValue }) +
+        row("◈", "サインイン方法", { action: "page:account", value: "アカウントとセッションを管理" }) +
         row("◌", "使用状況と制限", { action: "page:diagnostics", value: `${projectCount} Projects` })
       )}
 
       ${section("セキュリティとログイン",
-        row("▣", "ローカルログイン", { action: "page:account" }) +
+        row("◎", "サインイン方法", { action: "page:account" }) +
         row("◆", "Passkeys", { action: "remote:passkeys" }) +
         row("▱", "Trusted devices", { action: "page:devices" }) +
-        row("◇", "API Vault", { action: "page:vault", value: "Hostで暗号化して管理" }) +
-        row("G", "Google ログイン", { badge: "Coming soon", disabled: true }) +
-        row("M", "Microsoft ログイン", { badge: "Coming soon", disabled: true }) +
-        row("●", "Apple ログイン", { badge: "Coming soon", disabled: true })
+        row("◇", "API Vault", { action: "page:vault", value: "Hostで暗号化して管理" })
       )}
 
       ${section("リモートと自動化",
@@ -274,30 +273,71 @@ export function mountSettingsPanel() {
     wireRows();
   }
 
-  function renderAccount() {
+  function providerButton(provider: "github" | "google" | "microsoft", label: string, configured: boolean, linked: boolean, identity: Json | null = {}) {
+    const displayIdentity = identity?.login || identity?.email || identity?.name || "接続済み";
+    return '<div class="devmoter-settings-device"><span><strong>' + escapeHtml(label) + '</strong><small>' +
+      (linked ? escapeHtml(displayIdentity) : configured ? "未接続" : "このホストでは利用できません") +
+      '</small>' + (configured || linked ? "" : '<a href="https://github.com/syr4wpywkk-collab/DevMoter-FAST/blob/main/docs/auth-v2.md" target="_blank" rel="noopener noreferrer">管理者向けセットアップ案内</a>') +
+      '</span>' + (linked
+        ? '<button type="button" aria-label="' + escapeHtml(label) + 'の接続を解除" data-action="account:disconnect" data-provider="' + provider + '">接続解除</button>'
+        : '<button type="button" aria-label="' + escapeHtml(label) + 'を接続" data-action="account:connect" data-provider="' + provider + '"' + (configured ? "" : " disabled") + '>接続</button>') +
+      '</div>';
+  }
+
+  function renderSessions(sessions: Json[]) {
+    if (!sessions.length) return '<div class="devmoter-settings-empty">セッション情報はありません。</div>';
+    return sessions.map(session => {
+      const date = (value: unknown) => {
+        const parsed = new Date(typeof value === "number" ? value : String(value || ""));
+        return Number.isNaN(parsed.getTime()) ? "—" : parsed.toLocaleString();
+      };
+      const identity = session.identity?.login || session.identity?.email || session.identity?.name || "";
+      return '<div class="devmoter-settings-device"><span><strong>' +
+        escapeHtml((session.current ? "このセッション · " : "") + (session.provider || "Owner") + " · " + identity) +
+        '</strong><small>' + escapeHtml(session.host || "") + " · 作成 " + escapeHtml(date(session.createdAt)) +
+        " · 最終使用 " + escapeHtml(date(session.lastUsedAt)) + " · 期限 " + escapeHtml(date(session.expiresAt)) +
+        '</small></span>' + (session.current
+          ? '<span class="devmoter-settings-badge">現在</span>'
+          : '<button type="button" aria-label="セッションを解除: ' + escapeHtml(session.host || identity || session.id) + '" data-action="account:revoke-session" data-session-id="' + escapeHtml(session.id) + '">解除</button>') +
+        '</div>';
+    }).join("");
+  }
+
+  async function renderAccount() {
     setHeader("アカウント", "ログインとオーナーID");
     const identity = authStatus?.identity || {};
-    const github = authStatus?.github || {};
+    scroll.innerHTML = '<div class="devmoter-settings-loading">アカウントを読み込んでいます…</div>';
+    try {
+      accountData = await request("/api/auth/account");
+    } catch (error) {
+      scroll.innerHTML = '<div class="devmoter-settings-note">' +
+        escapeHtml(error instanceof Error ? error.message : "アカウント情報を読み込めませんでした。") + '</div>';
+      return;
+    }
+    const providers = accountData?.providers || {};
+    const sessions = Array.isArray(accountData?.sessions) ? accountData.sessions : [];
+    const providerRows = providerButton("github", "GitHub", Boolean(providers.github?.configured), Boolean(providers.github?.linked), providers.github?.identity) +
+      providerButton("google", "Google", Boolean(providers.google?.configured), Boolean(providers.google?.linked), providers.google?.identity) +
+      providerButton("microsoft", "Microsoft", Boolean(providers.microsoft?.configured), Boolean(providers.microsoft?.linked), providers.microsoft?.identity);
+    const passkey = accountData?.passkey || {};
     scroll.innerHTML = `
       <div class="devmoter-settings-profile detail">
         <span class="devmoter-settings-avatar">DM</span>
         <span>
           <strong>${escapeHtml(identity?.login || "devmoter")}</strong>
-          <small>${escapeHtml(identity?.provider || "local")} でサインイン中</small>
+          <small>DevMoter owner · ${escapeHtml(accountData?.ownerId || "")}</small>
         </span>
       </div>
-      ${section("現在のセッション",
-        row("◎", "サインイン方式", { value: identity?.provider || "local" }) +
-        row("◈", "GitHub", { value: github?.bound ? "接続済み" : github?.configured ? "接続できます" : "未設定" }) +
-        row("⌁", "Owner session", { value: authStatus?.authenticated ? "有効" : "未認証" })
-      )}
-      ${section("ログイン方法",
-        row("▣", "ローカル recovery", { value: "緊急時・初回接続用" }) +
-        row("◆", "Passkeys", { action: "remote:passkeys", value: "Face ID / Touch ID 対応" }) +
-        row("G", "Google", { badge: "Coming soon", disabled: true }) +
-        row("M", "Microsoft", { badge: "Coming soon", disabled: true }) +
-        row("●", "Apple", { badge: "Coming soon", disabled: true })
-      )}
+      <section class="devmoter-settings-section"><h2>サインイン方法</h2><div class="devmoter-settings-card">
+        ${providerRows}
+        <div class="devmoter-settings-device"><span><strong>Passkey</strong><small>${passkey.available ? "このホストで利用可能 · Face ID / Touch ID / Windows Hello" : "このホストでは登録済みPasskeyがありません"}</small></span><button type="button" data-action="remote:passkeys">管理</button></div>
+        <div class="devmoter-settings-device"><span><strong>ローカル復旧</strong><small>${accountData?.localRecovery ? "利用可能" : "利用できません"}</small></span><span class="devmoter-settings-badge">復旧用</span></div>
+      </div></section>
+      ${githubLink ? '<section class="devmoter-settings-section"><h2>GitHub接続</h2><div class="devmoter-settings-card devmoter-settings-detail-card"><p>GitHubでこのコードを入力してください。</p><strong>' +
+        escapeHtml(githubLink.userCode || "") + '</strong><div class="devmoter-settings-actions"><button type="button" data-action="account:github-open">GitHubを開く</button><button type="button" data-action="account:github-cancel">キャンセル</button></div><small>このコードはログイン情報です。共有しないでください。</small></div></section>' : ""}
+      <section class="devmoter-settings-section"><h2>Owner sessions</h2><div class="devmoter-settings-card">${renderSessions(sessions)}</div>
+        ${sessions.some((session: Json) => !session.current) ? '<div class="devmoter-settings-actions"><button type="button" data-action="account:revoke-others">他のセッションをすべて解除</button></div>' : ""}
+      </section>
       <div class="devmoter-settings-card devmoter-settings-logout-card">
         ${row("↪", "ログアウト", { action: "logout", danger: true })}
       </div>
@@ -669,6 +709,37 @@ export function mountSettingsPanel() {
     return renderGuide();
   }
 
+  async function pollGithubLink() {
+    const activeFlow = githubLink;
+    if (!activeFlow?.flowId) return;
+    if (Date.now() >= Number(activeFlow.expiresAt || 0)) {
+      githubLink = null;
+      toast("GitHub接続の有効期限が切れました。");
+      await renderAccount();
+      return;
+    }
+    try {
+      const result = await request("/api/auth/github/poll", {
+        method: "POST",
+        body: JSON.stringify({ flowId: activeFlow.flowId })
+      });
+      if (githubLink?.flowId !== activeFlow.flowId) return;
+      if (result.status === "complete" || result.complete === true) {
+        githubLink = null;
+        toast("GitHubを接続しました。");
+        await renderAccount();
+        return;
+      }
+      const delay = Math.max(1000, Number(result.retryAfterMs || Number(activeFlow.interval || 5) * 1000));
+      window.setTimeout(() => void pollGithubLink(), delay);
+    } catch (error) {
+      if (githubLink?.flowId !== activeFlow.flowId) return;
+      githubLink = null;
+      toast(error instanceof Error ? error.message : "GitHub接続を確認できませんでした。");
+      await renderAccount();
+    }
+  }
+
   function close() {
     modal.classList.add("hidden");
     document.body.classList.remove("devmoter-settings-open");
@@ -798,6 +869,86 @@ export function mountSettingsPanel() {
         }
         if (action.startsWith("existing:")) {
           openExisting(action.slice(9));
+          return;
+        }
+        if (action === "account:connect") {
+          const provider = button.dataset.provider || "";
+          try {
+            const result = await request(`/api/auth/${encodeURIComponent(provider)}/start`, {
+              method: "POST",
+              body: JSON.stringify({ intent: "link" })
+            });
+            if (provider === "github") {
+              githubLink = {
+                flowId: result.flowId,
+                userCode: result.userCode,
+                verificationUri: result.verificationUri,
+                interval: result.interval,
+                expiresAt: Date.now() + Number(result.expiresIn || 0) * 1000
+              };
+              await renderAccount();
+              const uri = new URL(String(result.verificationUri || ""));
+              if (uri.protocol === "https:") window.open(uri.href, "_blank", "noopener,noreferrer");
+              void pollGithubLink();
+            } else if (typeof result.authorizationUrl === "string") {
+              location.assign(result.authorizationUrl);
+            } else {
+              toast("接続を開始できませんでした。");
+            }
+          } catch (error) {
+            toast(error instanceof Error ? error.message : "接続を開始できませんでした。");
+          }
+          return;
+        }
+        if (action === "account:disconnect") {
+          const provider = button.dataset.provider || "";
+          if (!window.confirm(`${provider}との接続を解除しますか？`)) return;
+          try {
+            const result = await request(`/api/auth/providers/${encodeURIComponent(provider)}/disconnect`, {
+              method: "POST",
+              body: "{}"
+            });
+            if (result.reauthenticate) { location.replace("/login.html"); return; }
+            toast("接続を解除しました。");
+            await renderAccount();
+          } catch (error) {
+            toast(error instanceof Error ? error.message : "接続を解除できませんでした。");
+          }
+          return;
+        }
+        if (action === "account:github-open") {
+          try {
+            const uri = new URL(String(githubLink?.verificationUri || ""));
+            if (uri.protocol === "https:") window.open(uri.href, "_blank", "noopener,noreferrer");
+          } catch { toast("GitHubの確認ページを開けませんでした。"); }
+          return;
+        }
+        if (action === "account:github-cancel") {
+          githubLink = null;
+          await renderAccount();
+          return;
+        }
+        if (action === "account:revoke-session") {
+          const sessionId = button.dataset.sessionId || "";
+          if (!window.confirm("このセッションを解除しますか？")) return;
+          try {
+            await request(`/api/auth/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+            toast("セッションを解除しました。");
+            await renderAccount();
+          } catch (error) {
+            toast(error instanceof Error ? error.message : "セッションを解除できませんでした。");
+          }
+          return;
+        }
+        if (action === "account:revoke-others") {
+          if (!window.confirm("他のすべてのセッションを解除しますか？")) return;
+          try {
+            await request("/api/auth/sessions/revoke-others", { method: "POST", body: "{}" });
+            toast("他のセッションを解除しました。");
+            await renderAccount();
+          } catch (error) {
+            toast(error instanceof Error ? error.message : "セッションを解除できませんでした。");
+          }
           return;
         }
         if (action === "device:bootstrap") {
