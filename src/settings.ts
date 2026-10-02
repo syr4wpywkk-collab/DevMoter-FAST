@@ -49,6 +49,7 @@ function applyTheme(mode: "system" | "light" | "dark") {
       : mode;
   document.documentElement.dataset.devmoterTheme = resolved;
   document.documentElement.dataset.devmoterThemeMode = mode;
+  window.dispatchEvent(new CustomEvent("devmoter:theme-changed", { detail: { mode, resolved } }));
 }
 
 function themeLabel(mode: string) {
@@ -192,7 +193,7 @@ export function mountSettingsPanel() {
         row("✦", "Activity / Session Control", { action: "existing:.sc-fab", value: "実行中・Queue・Checkpoint・History" }) +
         row("⌁", "Review & Tasks", { action: "existing:#wfLaunch", value: "差分・Worktree・GitHub" }) +
         row("◇", "エージェントモード", { action: "existing:#devmoterAgentLauncher", value: "Mode・Subagent・Fleet" }) +
-        row("◒", "Context", { action: "existing:.dm-context", value: "使用量・Auto compact" }) +
+        row("◒", "Context", { action: "existing:.dm-context", value: "表示履歴の目安・イベント整理" }) +
         row("✓", "Task checkpoints", { action: "existing:.dm-tasks", value: "現在のmicro-task" })
       )}
 

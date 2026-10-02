@@ -6,6 +6,7 @@ import { JSDOM } from "jsdom";
 import * as execution from "../src/execution-state.mjs";
 import * as events from "../src/opencode-event-compat.mjs";
 import * as sessions from "../src/session-tools.mjs";
+import * as pricing from "../src/model-pricing.mjs";
 import * as reconnect from "../src/reconnect-policy.mjs";
 import { renderChatMarkdown } from "../src/chat-markdown.mjs";
 
@@ -67,6 +68,7 @@ async function harness(t, initialContext = []) {
     "./execution-state.mjs": execution,
     "./opencode-event-compat.mjs": events,
     "./session-tools.mjs": sessions,
+    "./model-pricing.mjs": pricing,
     "./reconnect-policy.mjs": reconnect,
     "./chat-markdown.mjs": { renderChatMarkdown },
     "./bounded-transcript": bounds,

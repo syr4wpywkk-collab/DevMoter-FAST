@@ -518,3 +518,50 @@ body.codex-mode {
   .cx-app .cx-sidebar,
   .cx-app .cx-toast { transition: none; }
 }
+
+/* Follow the selected theme while keeping Codex's neutral palette. */
+html[data-devmoter-theme="light"] .cx-app {
+  --cx-surface: #fff; --cx-raised: #f0f0f0; --cx-text: #202020; --cx-muted: #626262;
+  color-scheme: light;
+}
+html[data-devmoter-theme="dark"] .cx-app { color-scheme: dark; }
+.cx-app .cx-title-button { color: var(--cx-text); }
+body.codex-mode .dm-shell-sidebar:not(.open),
+body.codex-mode .sc-panel:not(.open),
+.cx-app .cx-sidebar:not(.open) { box-shadow: none; }
+html[data-devmoter-theme="light"] .cx-app button:focus-visible,
+html[data-devmoter-theme="light"] .cx-app a:focus-visible,
+html[data-devmoter-theme="light"] .cx-app input:focus-visible,
+html[data-devmoter-theme="light"] .cx-app select:focus-visible { outline-color: #505050; }
+html[data-devmoter-theme="light"] .cx-app .cx-sidebar,
+html[data-devmoter-theme="light"] .cx-app .cx-modal-card,
+html[data-devmoter-theme="light"] .cx-app .cx-feedback-menu,
+html[data-devmoter-theme="light"] .cx-app .dm-panel,
+html[data-devmoter-theme="light"] .cx-app .cx-tool-card { background: #f8f8f8; color: var(--cx-text); border-color: #d6d6d6; }
+html[data-devmoter-theme="light"] .cx-app #cxWorkspaceControlsMount .dm-panel-head { background: #f8f8f8; }
+html[data-devmoter-theme="light"] .cx-app #cxWorkspaceControlsMount .dm-panel button { background: #ededed; color: var(--cx-text); border-color: #ccc; }
+html[data-devmoter-theme="light"] .cx-app .cx-nav-item,
+html[data-devmoter-theme="light"] .cx-app .cx-thread-row,
+html[data-devmoter-theme="light"] .cx-app .cx-search input {
+  color: var(--cx-text);
+}
+html[data-devmoter-theme="light"] .cx-app .cx-nav-item:hover,
+html[data-devmoter-theme="light"] .cx-app .cx-thread-row:hover {
+  background: #e7e7e7;
+  color: var(--cx-text);
+}
+html[data-devmoter-theme="light"] .cx-app .cx-message.user,
+html[data-devmoter-theme="light"] .cx-app .cx-search,
+html[data-devmoter-theme="light"] .cx-app .cx-thread-row.active,
+html[data-devmoter-theme="light"] .cx-app .cx-attachment-chip,
+html[data-devmoter-theme="light"] .cx-app .cx-choice-row.selected { background: #ededed; color: var(--cx-text); border-color: #ccc; }
+html[data-devmoter-theme="light"] .cx-app .cx-markdown code,
+html[data-devmoter-theme="light"] .cx-app .dm-code-block,
+html[data-devmoter-theme="light"] .cx-app .dm-code-head,
+html[data-devmoter-theme="light"] .cx-app .cx-markdown th { background: #f2f2f2; color: var(--cx-text); border-color: #d6d6d6; }
+html[data-devmoter-theme="light"] .cx-app .cx-markdown a { color: #1763ab; }
+html[data-devmoter-theme="light"] .cx-app .cx-send-button { background: #202020; color: #fff; }
+html[data-devmoter-theme="light"] .cx-app .cx-approval { background: #fff8e8; border-color: #a37b37; color: #493814; }
+html[data-devmoter-theme="light"] .cx-app .cx-approval-eyebrow,
+html[data-devmoter-theme="light"] .cx-app .cx-approval-meta { color: #6b4f21; }
+html[data-devmoter-theme="light"] .cx-app .cx-approval pre { background: #f4ead2; color: #493814; }

@@ -201,11 +201,16 @@ function applyTheme(mode: ThemeMode) {
       : mode;
   document.documentElement.dataset.devmoterTheme = resolved;
   document.documentElement.dataset.devmoterThemeMode = mode;
+  window.dispatchEvent(new CustomEvent("devmoter:theme-changed", { detail: { mode, resolved } }));
 }
 
 function estimateTokens() {
-  const transcripts = Array.from(document.querySelectorAll<HTMLElement>(TRANSCRIPT_SELECTOR));
-  return Math.max(0, Math.ceil(transcripts.map(item => item.innerText).join("\n").length / 4));
+  const selector = document.body.classList.contains("codex-mode") ? ".cx-transcript"
+    : document.body.classList.contains("opencode-mode") ? ".ocx-transcript"
+    : document.body.classList.contains("api-mode") ? ".api-transcript" : null;
+  const text = selector ? document.querySelector<HTMLElement>(selector)?.innerText || "" : "";
+  // A display-length heuristic only. Never reconstruct a prompt or claim backend usage from it.
+  return Math.ceil(text.length / 4);
 }
 
 function createToolbar() {
@@ -292,7 +297,7 @@ function createToolbar() {
       return localStorage.getItem("opencode-pocket-opencode-session") || "browser";
     }
     return (
-      localStorage.getItem("opencode-pocket-opencode-session") ||
+      (backend === "api" ? "api-browser" : localStorage.getItem("opencode-pocket-opencode-session")) ||
       localStorage.getItem("opencode-pocket-codex-thread") ||
       "browser"
     );
@@ -343,13 +348,15 @@ function createToolbar() {
     const threshold = Number(localStorage.getItem(CONTEXT_THRESHOLD_KEY)) || 0.82;
     const ratio = Math.min(1, used / max);
     const lastCompactAt = Number(localStorage.getItem(LAST_COMPACT_KEY)) || 0;
-    contextButton.querySelector("span")!.textContent = `${Math.round(ratio * 100)}% ctx`;
+    const eventViewSupported = (document.body.classList.contains("codex-mode") || document.body.classList.contains("opencode-mode")) && activeSessionId() !== "browser";
+    contextButton.querySelector("span")!.textContent = "表示履歴";
+    contextButton.title = "表示中の履歴の目安・イベント表示の整理。モデルの実コンテキスト使用量ではありません。";
     contextButton.dataset.pressure =
       ratio >= threshold ? "high" : ratio >= threshold * 0.8 ? "medium" : "low";
-    if (ratio >= threshold && Date.now() - lastCompactAt > 5 * 60_000) {
+    if (eventViewSupported && ratio >= threshold && Date.now() - lastCompactAt > 5 * 60_000) {
       void requestCompaction("auto");
     }
-    return { used, max, threshold, ratio, lastCompactAt };
+    return { used, max, threshold, ratio, lastCompactAt, eventViewSupported };
   }
 
   contextButton.addEventListener("click", () => {
@@ -357,12 +364,13 @@ function createToolbar() {
     const state = renderContext();
     panel.classList.remove("hidden");
     panel.innerHTML =
-      panelHead("Context") +
-      `<p>Estimated usage: <strong>${state.used.toLocaleString()}</strong> / ${state.max.toLocaleString()} tokens (${Math.round(state.ratio * 100)}%). Estimates are approximate.</p>
-       <label>Auto-compact threshold <input data-threshold type="range" min="0.5" max="0.95" step="0.01" value="${state.threshold}"><span>${Math.round(state.threshold * 100)}%</span></label>
-       <button type="button" data-compact>Compact event view</button>
+      panelHead("表示履歴の目安") +
+      `<p>表示テキストからの概算: <strong>${state.used.toLocaleString()}</strong> token相当。実際にAIへ送信したtoken数やモデルの上限は、この画面では取得していません。</p>
+       <label>表示整理の基準（${state.max.toLocaleString()} token相当）の割合 <input data-threshold type="range" min="0.5" max="0.95" step="0.01" value="${state.threshold}" ${state.eventViewSupported ? "" : "disabled"}><span>${Math.round(state.threshold * 100)}%</span></label>
+       <button type="button" data-compact ${state.eventViewSupported ? "" : "disabled"}>イベント表示を整理</button>
+       ${state.eventViewSupported ? "" : "<p>イベント整理はCodex / OpenCodeの会話を選択した場合に利用できます。API Chatの会話履歴はこの機能の対象外です。</p>"}
        <small>Last compaction: ${state.lastCompactAt ? new Date(state.lastCompactAt).toLocaleString() : "not yet"}</small>
-       <small data-status>Canonical transcript remains server-side; compacting never deletes it.</small>`;
+       <small data-status>イベントの表示を整理する機能です。AIへ送る会話の圧縮、token削減、料金削減は行いません。元のイベント記録はサーバーに保持され、API Chatの会話履歴とは別です。</small>`;
     wireClose();
     const threshold = panel.querySelector<HTMLInputElement>("[data-threshold]")!;
     threshold.addEventListener("input", () => {
@@ -509,6 +517,11 @@ function createToolbar() {
     }
   });
 
+  const syncThemeLabel = () => {
+    const mode = localStorage.getItem(THEME_KEY) || "system";
+    themeButton.querySelector("span")!.textContent = mode[0].toUpperCase() + mode.slice(1);
+  };
+  window.addEventListener("devmoter:theme-changed", syncThemeLabel);
   const initialTheme =
     ((localStorage.getItem(THEME_KEY) as ThemeMode) || "system");
   applyTheme(initialTheme);
@@ -522,6 +535,7 @@ function createToolbar() {
     }
   });
   return () => {
+    window.removeEventListener("devmoter:theme-changed", syncThemeLabel);
     window.removeEventListener("devmoter:surface-changed", onSurfaceChanged);
     window.removeEventListener("devmoter:backend-changed", onBackendChanged);
   };
@@ -543,6 +557,7 @@ function injectStyles() {
     .dm-panel-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
     .dm-panel-head button { border:0; background:transparent; color:inherit; font-size:20px; }
     .dm-panel label,.dm-panel small { display:block; margin:8px 0; }
+    .dm-panel p,.dm-panel li,.dm-panel small { color:inherit; }
     .dm-extension-list,.dm-task-list { display:grid; gap:8px; margin:10px 0; }
     .dm-extension-row,.dm-task-row { display:flex; gap:10px; justify-content:space-between; align-items:flex-start; padding:10px; border:1px solid color-mix(in srgb,currentColor 14%,transparent); border-radius:12px; }
     .dm-extension-row div,.dm-task-row div { display:grid; gap:2px; min-width:0; }

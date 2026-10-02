@@ -136,7 +136,7 @@ export function mountApiChat(
         <button id="apiMenu" class="api-icon-button" type="button" aria-label="メニュー">☰</button>
         <div class="api-brand">
           <strong>API Chat</strong>
-          <small>Multi-provider</small>
+          <small id="apiModelTopLabel">Provider / model未設定</small>
         </div>
         <button id="apiSettingsTop" class="api-icon-button api-settings-button" type="button" aria-label="API設定">⚙</button>
       </header>
@@ -490,6 +490,7 @@ export function mountApiChat(
       modelSelect.value = savedModel;
     }
     updateReasoning();
+    updateHeader();
 
     status.textContent = !provider
       ? apiLocale("⚙ Add an API provider", "⚙ API Providerを追加してね", "⚙ 添加 API Provider")
@@ -497,6 +498,13 @@ export function mountApiChat(
         ? `${provider.name} · Ready`
         : `${provider.name} · ${apiLocale("API key missing", "APIキー未設定", "未设置 API 密钥")}`;
     updateAvailability();
+  }
+
+  function updateHeader() {
+    const label = root.querySelector<HTMLElement>("#apiModelTopLabel")!;
+    const provider = currentProvider();
+    label.textContent = provider ? `${provider.name} · ${modelSelect.value || "model未設定"}` : "Provider / model未設定";
+    label.title = label.textContent;
   }
 
   function resizePrompt() {
@@ -1338,6 +1346,7 @@ export function mountApiChat(
     const provider = currentProvider();
     if (provider) localStorage.setItem(`devmoter-api-model:${provider.id}`, modelSelect.value);
     updateReasoning();
+    updateHeader();
     updateAvailability();
     archiveConversation();
   });
