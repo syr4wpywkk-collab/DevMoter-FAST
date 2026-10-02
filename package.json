@@ -28,6 +28,7 @@
     "dompurify": "^3.4.16",
     "marked": "^18.0.14",
     "node-pty": "^1.1.0",
+    "oauth4webapi": "3.8.8",
     "ws": "^8.21.3"
   },
   "bin": {

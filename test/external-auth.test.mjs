@@ -103,18 +103,18 @@ test("first GitHub owner bind requires bootstrap and never persists the OAuth to
   assert.equal(JSON.stringify(start).includes("secret-device-code"), false);
 
   auth.githubFlows.get(start.flowId).nextPollAt = 0;
-  const result = await auth.pollGithub(request(), start.flowId);
+  const result = await auth.pollGithub(request({ cookie: start.flowCookie.split(";", 1)[0] }), start.flowId);
   assert.equal(result.status, "complete");
   assert.equal(result.identity.provider, "github");
   assert.equal(result.identity.login, "owner-login");
-  assert.match(result.cookie, /^devmoter_session=/);
+  assert.match(result.cookie[0], /^devmoter_session=/);
 
   const stored = await readFile(join(dir, "auth-identities.json"), "utf8");
   assert.match(stored, /owner-login/);
   assert.equal(stored.includes("gho_super_secret_token"), false);
   assert.equal(stored.includes("secret-device-code"), false);
 
-  const cookieHeader = result.cookie.split(";", 1)[0];
+  const cookieHeader = result.cookie[0].split(";", 1)[0];
   const status = await auth.status(request({ cookie: cookieHeader }));
   assert.equal(status.authenticated, true);
   assert.equal(status.github.bound, true);
@@ -147,14 +147,14 @@ test("GitHub login rejects an account different from the bound owner", async t =
   const first = new ExternalAuth({ configDir: dir, githubClientId: "client-id", fetchImpl });
   const firstStart = await first.startGithub(request(), { bootstrapAuthorized: true });
   first.githubFlows.get(firstStart.flowId).nextPollAt = 0;
-  await first.pollGithub(request(), firstStart.flowId);
+  await first.pollGithub(request({ cookie: firstStart.flowCookie.split(";", 1)[0] }), firstStart.flowId);
 
   identity = { id: 2, login: "someone-else", name: "Other" };
   const second = new ExternalAuth({ configDir: dir, githubClientId: "client-id", fetchImpl });
   const secondStart = await second.startGithub(request());
   second.githubFlows.get(secondStart.flowId).nextPollAt = 0;
   await assert.rejects(
-    () => second.pollGithub(request(), secondStart.flowId),
+    () => second.pollGithub(request({ cookie: secondStart.flowCookie.split(";", 1)[0] }), secondStart.flowId),
     error => error?.status === 403 && /bound DevMoter owner/.test(error.message)
   );
 });
@@ -189,13 +189,13 @@ test("GitHub polling obeys server interval and slow_down", async t => {
   const flow = auth.githubFlows.get(start.flowId);
   flow.nextPollAt = Date.now() + 20_000;
 
-  const early = await auth.pollGithub(request(), start.flowId);
+  const early = await auth.pollGithub(request({ cookie: start.flowCookie.split(";", 1)[0] }), start.flowId);
   assert.equal(early.status, "pending");
   assert.equal(tokenPolls, 0);
 
   flow.nextPollAt = 0;
   const before = flow.intervalMs;
-  const slowed = await auth.pollGithub(request(), start.flowId);
+  const slowed = await auth.pollGithub(request({ cookie: start.flowCookie.split(";", 1)[0] }), start.flowId);
   assert.equal(slowed.status, "pending");
   assert.equal(tokenPolls, 1);
   assert.equal(flow.intervalMs, before + 5_000);

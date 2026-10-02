@@ -86,6 +86,10 @@ test("run completion, failure, durable reconnect, restart unknown, duplicate req
     assert.match(store.get(run.runId).explanation.rawText, /actual observation/);
     await assert.rejects(service.start(payload, identity), error => error.status === 409 && error.runId === run.runId);
     const restored = createRunStore({ filePath }); await restored.ready(); assert.equal(restored.get(run.runId).status, "completed");
+    const migratedIdentity = { ownerId: "owner:new-uuid", legacyOwnerIds: ["owner"], deviceId: null };
+    assert.equal((await service.get(run.runId, migratedIdentity)).runId, run.runId, "owner migration preserves reconnect to existing runs");
+    await assert.rejects(service.start(payload, migratedIdentity), error => error.status === 409 && error.runId === run.runId);
+    await assert.rejects(service.get(run.runId, { ...migratedIdentity, deviceId: "other-device" }), /scope denied/);
     await assert.rejects(service.get(run.runId, { ...identity, ownerId: "other" }), /scope denied/);
     await assert.rejects(service.get(run.runId, { ...identity, deviceId: "other-device" }), /scope denied/);
     const active = await store.create({ requestId: "request-2", ownerId: "owner", goal: "pending", context, catalogVersion: "v1" });
