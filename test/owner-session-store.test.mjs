@@ -31,6 +31,30 @@ test("owner sessions persist only token hashes and survive store recreation", as
   assert.equal((await lstat(configDir)).mode & 0o777, 0o700);
 });
 
+test("routine authentication coalesces last-used writes while revocation remains durable", async t => {
+  const configDir = await fixture(t);
+  let time = 1_800_000_000_000;
+  const store = new OwnerSessionStore({ configDir, now: () => time });
+  const { token } = await store.create(options);
+  const file = join(configDir, "auth-sessions.json");
+  const initial = await readFile(file, "utf8");
+
+  time += 60_000;
+  assert.ok(await store.get(token, "devmoter.test"));
+  assert.equal((await store.list({ ownerId: "owner-1", currentToken: token })).length, 1);
+  assert.equal(await readFile(file, "utf8"), initial, "hot-path auth checks should not rewrite the session registry");
+
+  time += 5 * 60_000;
+  const touched = await store.get(token, "devmoter.test");
+  const afterTouch = await readFile(file, "utf8");
+  assert.notEqual(afterTouch, initial, "last-used metadata should eventually be checkpointed");
+  assert.equal(JSON.parse(afterTouch).sessions[0].lastUsedAt, time);
+  assert.equal(touched.lastUsedAt, time);
+
+  assert.equal(await store.revoke(token), true);
+  assert.equal(JSON.parse(await readFile(file, "utf8")).sessions.length, 0, "revocation must persist immediately");
+});
+
 test("logout revoke survives restart and sessions are host-bound", async t => {
   const configDir = await fixture(t);
   const store = new OwnerSessionStore({ configDir });
