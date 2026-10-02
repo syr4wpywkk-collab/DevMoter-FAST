@@ -189,6 +189,11 @@ test("public auth status and passkey login routes preserve auth, origin, and pro
 
   try {
     await waitForReady(child);
+    const loginScript = await fetch(`${origin}/login.js`, { redirect: "manual" });
+    assert.equal(loginScript.status, 200, "login script must be public before owner authentication");
+    assert.match(String(loginScript.headers.get("content-type") || ""), /javascript/);
+    assert.match(await loginScript.text(), /loadStatus/);
+
     const noOwner = await fetch(`${origin}/api/auth/account`);
     assert.equal(noOwner.status, 401);
     const basic = `Basic ${Buffer.from(`devmoter:${recoveryPassword}`).toString("base64")}`;
