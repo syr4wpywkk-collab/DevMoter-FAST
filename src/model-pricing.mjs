@@ -5,6 +5,11 @@ export function normalizeModelPricing(value) {
   for (const key of ["input", "output", "cache_read", "cache_write"]) {
     if (typeof value[key] === "number" && Number.isFinite(value[key]) && value[key] >= 0) cost[key] = value[key];
   }
+  const cache = value.cache;
+  if (cache && typeof cache === "object" && !Array.isArray(cache)) {
+    if (cost.cache_read === undefined && typeof cache.read === "number" && Number.isFinite(cache.read) && cache.read >= 0) cost.cache_read = cache.read;
+    if (cost.cache_write === undefined && typeof cache.write === "number" && Number.isFinite(cache.write) && cache.write >= 0) cost.cache_write = cache.write;
+  }
   return Object.keys(cost).length ? cost : null;
 }
 
