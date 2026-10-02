@@ -288,6 +288,10 @@
   transform: translate(-50%, 0);
 }
 
+html body.devmoter-settings-open {
+  overflow: hidden;
+}
+
 body.devmoter-settings-open .devmoter-settings-trigger {
   opacity: 0;
   pointer-events: none;
