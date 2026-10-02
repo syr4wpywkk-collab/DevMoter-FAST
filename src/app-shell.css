@@ -365,6 +365,7 @@ body:has(
   .devmoter-system-modal:not(.hidden),
   .api-sidebar.open,
   .cx-sidebar.open,
+  .ocx-modal:not(.hidden),
   .ocx-sidebar.open
 ) .dm-shell-menu-trigger {
   opacity: 0;
