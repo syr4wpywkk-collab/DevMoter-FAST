@@ -159,6 +159,21 @@ test("Every original tool destination remains reachable and filtered controls st
   dom.window.close();
 });
 
+test("OpenCode history keeps a direct Tools escape owned by the global shell", async t => {
+  const dom = makeDom();
+  dom.window.document.body.insertAdjacentHTML("beforeend", '<div class="ocx-app"><aside id="ocxSidebar"><div class="ocx-sidebar-head"><div>OpenCode</div><button id="ocxSidebarClose">×</button></div></aside></div>');
+  t.after(() => dom.window.close());
+  const calls = [];
+  mount(dom, calls);
+  const entry = dom.window.document.querySelector('#ocxSidebar [data-open-tools]');
+  assert.ok(entry);
+  assert.equal(entry.textContent, "Tools");
+  entry.click();
+  assert.equal(dom.window.document.querySelector(".dm-shell-sidebar").classList.contains("open"), true);
+  assert.equal(dom.window.document.querySelector(".dm-shell-menu-trigger").getAttribute("aria-expanded"), "true");
+  dom.window.document.querySelector("[data-shell-close]").click();
+});
+
 test("API history keeps an in-flow Tools entry while the floating trigger yields to history", async t => {
   const dom = makeDom();
   dom.window.document.body.insertAdjacentHTML('beforeend', '<aside id="apiSidebar"><nav class="api-agent-nav"></nav></aside>');
