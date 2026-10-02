@@ -2351,7 +2351,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if ((req.method === "GET" || req.method === "HEAD") && url.pathname === "/login.html") {
+    if ((req.method === "GET" || req.method === "HEAD") && ["/login.html", "/login.js"].includes(url.pathname)) {
       res.setHeader("cache-control", "no-store");
       await serveStatic(req, res);
       return;
