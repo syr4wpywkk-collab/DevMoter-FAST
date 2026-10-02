@@ -540,6 +540,16 @@ html[data-devmoter-theme="light"] .cx-app .dm-panel,
 html[data-devmoter-theme="light"] .cx-app .cx-tool-card { background: #f8f8f8; color: var(--cx-text); border-color: #d6d6d6; }
 html[data-devmoter-theme="light"] .cx-app #cxWorkspaceControlsMount .dm-panel-head { background: #f8f8f8; }
 html[data-devmoter-theme="light"] .cx-app #cxWorkspaceControlsMount .dm-panel button { background: #ededed; color: var(--cx-text); border-color: #ccc; }
+html[data-devmoter-theme="light"] .cx-app .cx-nav-item,
+html[data-devmoter-theme="light"] .cx-app .cx-thread-row,
+html[data-devmoter-theme="light"] .cx-app .cx-search input {
+  color: var(--cx-text);
+}
+html[data-devmoter-theme="light"] .cx-app .cx-nav-item:hover,
+html[data-devmoter-theme="light"] .cx-app .cx-thread-row:hover {
+  background: #e7e7e7;
+  color: var(--cx-text);
+}
 html[data-devmoter-theme="light"] .cx-app .cx-message.user,
 html[data-devmoter-theme="light"] .cx-app .cx-search,
 html[data-devmoter-theme="light"] .cx-app .cx-thread-row.active,
