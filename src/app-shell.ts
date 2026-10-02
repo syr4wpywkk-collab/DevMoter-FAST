@@ -484,6 +484,19 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   });
   // History owns its header area. Offer an in-flow Tools entry while the
   // floating launcher is hidden, without adding another overlay layer.
+  const openCodeNavigation = document.querySelector<HTMLElement>("#ocxSidebar .ocx-sidebar-head");
+  if (openCodeNavigation && !openCodeNavigation.querySelector("[data-open-tools]")) {
+    const toolsLink = document.createElement("button");
+    toolsLink.type = "button";
+    toolsLink.dataset.openTools = "";
+    toolsLink.className = "ocx-global-tools-entry";
+    toolsLink.textContent = "Tools";
+    toolsLink.setAttribute("aria-label", "Open DevMoter Tools and AI");
+    toolsLink.addEventListener("click", openSidebar);
+    const close = openCodeNavigation.querySelector("#ocxSidebarClose");
+    openCodeNavigation.insertBefore(toolsLink, close);
+  }
+
   const apiNavigation = document.querySelector<HTMLElement>("#apiSidebar .api-agent-nav");
   if (apiNavigation && !apiNavigation.querySelector("[data-open-tools]")) {
     const toolsLink = document.createElement("button");
