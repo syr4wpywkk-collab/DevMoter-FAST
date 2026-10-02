@@ -6,7 +6,7 @@ test("only the exact GitHub webhook bypasses owner auth outside explicit login r
   const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
   const handler = source.indexOf("const server = http.createServer");
   const webhook = source.indexOf('req.method === "POST" && url.pathname === "/api/control/events/github"', handler);
-  const login = source.indexOf('url.pathname === "/login.html"', handler);
+  const login = source.indexOf('"/login.html"', handler);
   const owner = source.indexOf("if (!basicAuthenticated && !ownerSession)", handler);
   const origin = source.indexOf("requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)", owner);
   const passkey = source.indexOf("if (await passkeyRoute(req, res, url)) return", handler);
