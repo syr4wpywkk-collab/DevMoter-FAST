@@ -183,6 +183,18 @@ body.opencode-mode .sc-panel:not(.open) { box-shadow: none; }
 .ocx-app .ocx-sidebar-scroll .ocx-sessions { overflow: visible; }
 .ocx-app .ocx-history-icon { background: #eadecf; color: var(--oc-accent); }
 .ocx-app .ocx-sidebar-head small { font-size: .7rem; }
+.ocx-app .ocx-global-tools-entry {
+  flex: 0 0 auto;
+  min-width: 58px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--oc-line);
+  border-radius: 10px;
+  background: var(--oc-panel);
+  color: var(--oc-text);
+  font-size: .72rem;
+  font-weight: 700;
+}
 .ocx-app .ocx-new-session { background: var(--oc-panel); border-color: var(--oc-line); color: var(--oc-text); border-radius: 10px; }
 .ocx-app .ocx-search { min-height: 44px; background: #fffdf8; border-radius: 10px; }
 .ocx-app .ocx-search input { min-height: 42px; font-size: .8rem; }
