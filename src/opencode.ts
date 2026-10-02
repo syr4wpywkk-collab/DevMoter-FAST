@@ -205,6 +205,7 @@ export function mountOpenCodeRemote(
               <option value="zh-CN">简体中文</option>
             </select>
           </label>
+          <button id="ocxToolsNav" type="button" class="ocx-refresh">☰ Tools / AI</button>
           <button id="ocxRefresh" type="button" class="ocx-refresh">↻ Refresh</button>
           <span id="ocxSideStatus" class="ocx-side-status offline"><i></i> Offline</span>
         </div>
@@ -349,6 +350,7 @@ export function mountOpenCodeRemote(
   const sessionsEl = root.querySelector<HTMLDivElement>("#ocxSessions")!;
   const sessionSort = root.querySelector<HTMLSelectElement>("#ocxSessionSort")!;
   const attention = root.querySelector<HTMLDivElement>("#ocxAttention")!;
+  const toolsNav = root.querySelector<HTMLButtonElement>("#ocxToolsNav")!;
   const refreshButton = root.querySelector<HTMLButtonElement>("#ocxRefresh")!;
   const sideStatus = root.querySelector<HTMLElement>("#ocxSideStatus")!;
   const sessionTitleButton = root.querySelector<HTMLButtonElement>("#ocxSessionTitleButton")!;
@@ -3568,6 +3570,10 @@ export function mountOpenCodeRemote(
   }
 
   menu.addEventListener("click", openSidebar);
+  toolsNav.addEventListener("click", () => {
+    closeSidebar();
+    window.dispatchEvent(new CustomEvent("devmoter:open-global-nav"));
+  });
   window.addEventListener("devmoter:close-chat-history", closeSidebar);
   const closeLocalOverlays = () => {
     closeSidebar();
