@@ -6,7 +6,7 @@ test("webhook and explicit login endpoints are routed before the owner auth boun
   const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
   const serverStart = source.indexOf("const server = http.createServer");
   const webhook = source.indexOf('url.pathname === "/api/control/events/github"', serverStart);
-  const login = source.indexOf('url.pathname === "/login.html"', serverStart);
+  const login = source.indexOf('"/login.html"', serverStart);
   const publicAuth = source.indexOf('url.pathname.startsWith("/api/auth/")', serverStart);
   const auth = source.indexOf("if (!basicAuthenticated && !ownerSession)", serverStart);
   const origin = source.indexOf("requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)", auth);
