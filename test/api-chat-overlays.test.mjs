@@ -235,3 +235,29 @@ test("one workspace toolbar moves between all three chat drawers and body", asyn
   assert.equal(panel.classList.contains("hidden"), false);
   assert.equal(document.querySelectorAll(".dm-controlbar").length, 1);
 });
+
+test("API header follows the actual selected provider/model", async t => {
+  const { dom, query } = mount(t); await settle();
+  assert.match(query('#apiModelTopLabel').textContent, /Existing provider.*existing-model/);
+  const select = query('#apiModel');
+  const option = dom.window.document.createElement('option'); option.value = 'another-model'; select.append(option);
+  select.value = 'another-model'; select.dispatchEvent(new dom.window.Event('change'));
+  assert.match(query('#apiModelTopLabel').textContent, /another-model/);
+});
+
+test("theme controls follow external Settings changes and Context describes display-only compaction", async t => {
+  const { dom, query } = mount(t); await settle();
+  dom.window.exports = {}; dom.window.eval(compile(workspaceSource));
+  const stop = dom.window.exports.startWorkspaceControl(); t.after(stop);
+  dom.window.localStorage.setItem('devmoter-theme','dark');
+  dom.window.dispatchEvent(new dom.window.CustomEvent('devmoter:theme-changed'));
+  assert.match(query('.dm-theme').textContent, /Dark/);
+  query('.dm-theme').click();
+  assert.equal(dom.window.document.documentElement.dataset.devmoterThemeMode,'system');
+  query('.dm-context').click();
+  assert.equal(query('.dm-panel [data-compact]').disabled, true);
+  assert.match(query('.dm-panel').textContent, /API Chatの会話履歴はこの機能の対象外/);
+  assert.match(query('.dm-panel').textContent, /モデルの上限.*取得していません/);
+  assert.match(query('.dm-panel').textContent, /料金削減は行いません/);
+  assert.doesNotMatch(query('.dm-context').textContent, /%/);
+});

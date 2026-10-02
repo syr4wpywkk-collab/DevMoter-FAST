@@ -49,6 +49,8 @@ function settingsHarness(getRegistration) {
     setTimeout,
     clearTimeout,
     crypto: { randomUUID: () => "test-operation" },
+    CustomEvent: window.CustomEvent,
+    matchMedia: () => ({ matches: true }),
     atob
   });
   exports.mountSettingsPanel();
@@ -60,6 +62,23 @@ async function flush() {
   await new Promise(resolve => setImmediate(resolve));
   await Promise.resolve();
 }
+
+test("appearance buttons apply light, dark and system preferences and announce the resolved palette", async () => {
+  const { dom, window, root } = settingsHarness(async () => undefined);
+  try {
+    window.dispatchEvent(new window.CustomEvent("devmoter:open-settings", { detail: { page: "appearance" } }));
+    await flush();
+    const observed = [];
+    window.addEventListener("devmoter:theme-changed", event => observed.push(event.detail.resolved));
+    for (const [mode, resolved] of [["light", "light"], ["dark", "dark"], ["system", "dark"]]) {
+      root.querySelector(`[data-action="theme:${mode}"]`).click();
+      assert.equal(window.localStorage.getItem("devmoter-theme"), mode);
+      assert.equal(window.document.documentElement.dataset.devmoterThemeMode, mode);
+      assert.equal(window.document.documentElement.dataset.devmoterTheme, resolved);
+    }
+    assert.deepEqual(observed, ["light", "dark", "dark"]);
+  } finally { dom.window.close(); }
+});
 
 test("notification settings show loading, explain missing worker, and allow retry", async () => {
   let attempts = 0;

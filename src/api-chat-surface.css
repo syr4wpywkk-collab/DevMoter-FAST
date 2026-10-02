@@ -57,9 +57,9 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 }
 .api-app .api-icon-button,
 .api-app .api-sidebar-head > button { width: 44px; height: 44px; min-height: 44px; flex: 0 0 44px; border: 0; background: transparent; color: var(--api-text); }
-.api-app .api-brand { display: grid; min-width: 0; }
+.api-app .api-brand { display: grid; min-width: 0; grid-column: 2; grid-row: 1; }
 .api-app .api-brand strong { font-size: 1.05rem; font-weight: 500; }
-.api-app .api-brand small { display: block; color: var(--api-muted); font-size: .7rem; }
+.api-app .api-brand small { display: block; color: var(--api-muted); font-size: .7rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .api-app #apiSettingsTop { grid-area: auto; align-self: center; height: 44px; }
 .api-app .api-main { position: absolute; top: var(--api-header-height); right: 0; bottom: 0; left: 0; display: block; overflow: hidden; }
 .api-app .api-transcript {
@@ -226,3 +226,36 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 @media (prefers-reduced-motion: reduce) {
   .api-app .api-sidebar { transition: none; }
 }
+
+/* Explicit app preference takes priority over the OS palette. */
+html[data-devmoter-theme="dark"] .api-app {
+  --api-bg: #13151a; --api-surface: #1e222b; --api-text: #e8eaf0; --api-muted: #b7bfcd;
+  --api-border: #485264; --api-accent: #adc6ff; --api-composer-surface: #242b38;
+  color-scheme: dark;
+}
+html[data-devmoter-theme="dark"] .api-app .api-sidebar,
+html[data-devmoter-theme="dark"] .api-app .api-settings-card,
+html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu,
+html[data-devmoter-theme="dark"] .api-app .dm-panel,
+html[data-devmoter-theme="dark"] .api-app .dm-panel-head { background: var(--api-surface); color: var(--api-text); }
+html[data-devmoter-theme="dark"] .api-app .api-picker-row select,
+html[data-devmoter-theme="dark"] .api-app .api-provider-form input,
+html[data-devmoter-theme="dark"] .api-app .api-provider-form textarea,
+html[data-devmoter-theme="dark"] .api-app .api-provider-form select,
+html[data-devmoter-theme="dark"] .api-app .api-provider-row,
+html[data-devmoter-theme="dark"] .api-app .api-preset-button,
+html[data-devmoter-theme="dark"] .api-app .api-attachment-chip,
+html[data-devmoter-theme="dark"] .api-app .api-new-chat,
+html[data-devmoter-theme="dark"] .api-app .api-message.user .api-message-bubble,
+html[data-devmoter-theme="dark"] .api-app .api-history-row.active,
+html[data-devmoter-theme="dark"] .api-app .dm-code-block,
+html[data-devmoter-theme="dark"] .api-app .dm-code-head,
+html[data-devmoter-theme="dark"] .api-app .dm-panel button { background: var(--api-composer-surface); color: var(--api-text); border-color: var(--api-border); color-scheme: dark; }
+html[data-devmoter-theme="dark"] .api-app select optgroup { background: var(--api-surface); color: var(--api-text); }
+html[data-devmoter-theme="dark"] .api-app .cx-markdown pre,
+html[data-devmoter-theme="dark"] .api-app .cx-markdown pre code { color: var(--api-text); }
+html[data-devmoter-theme="dark"] .api-app .cx-markdown a { color: var(--api-accent); }
+html[data-devmoter-theme="dark"] .api-app .cx-markdown th { background: var(--api-composer-surface); }
+html[data-devmoter-theme="light"] .api-app select,
+html[data-devmoter-theme="light"] .api-app select option,
+html[data-devmoter-theme="light"] .api-app select optgroup { color-scheme: light; background: #f9fbff; color: var(--api-text); }
