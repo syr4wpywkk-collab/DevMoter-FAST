@@ -103,7 +103,7 @@ test("once any passkey exists, an unrelated host cannot bypass the optional gate
       createdAt: Date.now(),
       lastUsedAt: 0
     }]
-  }));
+  }), { mode: 0o600 });
   const auth = new PasskeyAuth({ configDir: dir });
 
   try {

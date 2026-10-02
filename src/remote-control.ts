@@ -473,7 +473,7 @@ export function mountRemoteControlCenter() {
     const webauthnAvailable = "credentials" in navigator && typeof PublicKeyCredential !== "undefined";
     const intro = document.createElement("div");
     intro.className = "dm-section-title";
-    intro.innerHTML = "<strong>Passkeys</strong><span>Credentials are scoped to this DevMoter host origin. First registration is loopback-only; recovery uses another passkey or local bootstrap.</span>";
+    intro.innerHTML = "<strong>Passkeys</strong><span>Sign in directly with Face ID, Touch ID or Windows Hello. New passkeys can be registered after owner sign-in and are scoped to this DevMoter host.</span>";
     body.appendChild(intro);
 
     const card = document.createElement("div");
@@ -544,7 +544,7 @@ export function mountRemoteControlCenter() {
       const logout = button("Logout", "dm-mini");
       logout.addEventListener("click", async () => {
         await api("/api/auth/passkey/logout", { method: "POST" });
-        await render();
+        location.replace("/login.html");
       });
       card.appendChild(logout);
     }

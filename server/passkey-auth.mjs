@@ -1,4 +1,5 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, open, rename, unlink } from "node:fs/promises";
+import { constants } from "node:fs";
 import { join } from "node:path";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
@@ -12,6 +13,12 @@ const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const COOKIE_NAME = "devmoter_passkey";
 const SUPPORTED_ALGORITHMS = [-7, -257];
+const verificationQueues = new Map();
+function serializeVerification(file, operation) {
+  const task = (verificationQueues.get(file) || Promise.resolve()).catch(() => {}).then(operation);
+  const tail = task.catch(() => {}); verificationQueues.set(file, tail);
+  return task.finally(() => { if (verificationQueues.get(file) === tail) verificationQueues.delete(file); });
+}
 
 function b64url(buffer) {
   return Buffer.from(buffer).toString("base64url");
@@ -70,7 +77,7 @@ function parseCookies(req) {
   for (const part of String(req?.headers?.cookie || "").split(";")) {
     const index = part.indexOf("=");
     if (index < 0) continue;
-    result[part.slice(0, index).trim()] = decodeURIComponent(part.slice(index + 1).trim());
+    try { result[part.slice(0, index).trim()] = decodeURIComponent(part.slice(index + 1).trim()); } catch { /* Invalid cookies do not authenticate. */ }
   }
   return result;
 }
@@ -95,7 +102,11 @@ function validCredential(input) {
 }
 
 export class PasskeyAuth {
-  constructor({ configDir }) {
+  constructor({ configDir, publicOrigin = "", sessionResolver = null, sessionIssuer = null, ownerAuthorized = null }) {
+    this.publicOrigin = publicOrigin;
+    this.sessionResolver = sessionResolver;
+    this.sessionIssuer = sessionIssuer;
+    this.ownerAuthorized = ownerAuthorized;
     this.file = join(configDir, "passkeys.json");
     this.configDir = configDir;
     this.state = null;
@@ -103,13 +114,30 @@ export class PasskeyAuth {
     this.sessions = new Map();
   }
 
+  origin(req) {
+    if (this.publicOrigin) {
+      const expected = new URL(this.publicOrigin).origin;
+      const supplied = firstHeader(req, "origin");
+      if (supplied && new URL(supplied).origin !== expected) throw new Error("Passkey origin does not match this host");
+      return expected;
+    }
+    return requestOrigin(req);
+  }
+
+  host(req) { return new URL(this.origin(req)).hostname.replace(/^\[|\]$/g, "").toLowerCase(); }
+
   async load() {
     if (this.state) return this.state;
-    await mkdir(this.configDir, { recursive: true, mode: 0o700 });
+    await this.prepareDirectory();
 
     let parsed;
     try {
-      parsed = JSON.parse(await readFile(this.file, "utf8"));
+      const handle = await open(this.file, constants.O_RDONLY | (constants.O_NOFOLLOW || 0));
+      try {
+        const info = await handle.stat();
+        if (!info.isFile() || info.size > 1024 * 1024 || (process.platform !== "win32" && ((info.mode & 0o077) !== 0 || info.uid !== process.getuid()))) throw new Error("Unsafe passkey registry");
+        parsed = JSON.parse(await handle.readFile("utf8"));
+      } finally { await handle.close(); }
     } catch (error) {
       if (error?.code !== "ENOENT") {
         throw new Error("Passkey registry is unreadable or malformed; refusing to fail open");
@@ -151,12 +179,26 @@ export class PasskeyAuth {
     return this.state;
   }
 
+  async prepareDirectory() {
+    await mkdir(this.configDir, { recursive: true, mode: 0o700 });
+    const info = await lstat(this.configDir);
+    if (!info.isDirectory() || info.isSymbolicLink() || (process.platform !== "win32" && info.uid !== process.getuid())) throw new Error("Unsafe passkey directory; refusing to fail open");
+    if (process.platform !== "win32") await chmod(this.configDir, 0o700);
+  }
+
   async save() {
     if (!this.state) throw new Error("Passkey registry is not loaded");
-    await mkdir(this.configDir, { recursive: true, mode: 0o700 });
+    await this.prepareDirectory();
     const temp = this.file + "." + process.pid + "." + randomUUID() + ".tmp";
-    await writeFile(temp, JSON.stringify(this.state, null, 2), { mode: 0o600 });
-    await rename(temp, this.file);
+    let handle;
+    try {
+      handle = await open(temp, "wx", 0o600);
+      await handle.writeFile(JSON.stringify(this.state, null, 2)); await handle.sync();
+      await handle.close(); handle = null;
+      await rename(temp, this.file);
+    } catch (error) {
+      await handle?.close().catch(() => {}); await unlink(temp).catch(() => {}); throw error;
+    }
   }
 
   cleanup() {
@@ -171,16 +213,17 @@ export class PasskeyAuth {
 
   async credentialsFor(req) {
     const state = await this.load();
-    const rpId = requestHost(req);
+    const rpId = this.host(req);
     return state.credentials.filter(item => item.rpId === rpId);
   }
 
   async session(req) {
+    if (this.sessionResolver) return this.sessionResolver(req);
     this.cleanup();
     const token = parseCookies(req)[COOKIE_NAME];
     if (!token) return null;
     const session = this.sessions.get(sha256(Buffer.from(token)));
-    if (!session || session.expiresAt <= Date.now() || session.rpId !== requestHost(req)) return null;
+    if (!session || session.expiresAt <= Date.now() || session.rpId !== this.host(req)) return null;
     return session;
   }
 
@@ -193,11 +236,10 @@ export class PasskeyAuth {
       authenticated: Boolean(session),
       credentialCount: credentials.length,
       anyCredentialCount: state.credentials.length,
-      rpId: requestHost(req),
-      origin: requestOrigin(req),
-      canRegister:
-        Boolean(session) ||
-        (credentials.length === 0 && (isLoopback(req) || explicitBootstrapEnabled())),
+      rpId: this.host(req),
+      origin: this.origin(req),
+      canRegister: this.ownerAuthorized ? Boolean(await this.ownerAuthorized(req)) :
+        Boolean(session) || (credentials.length === 0 && (isLoopback(req) || explicitBootstrapEnabled())),
       bootstrapEnabled: explicitBootstrapEnabled(),
       recovery:
         "Use another registered passkey for this host. For a new/recovery origin, temporarily enable DEVMOTER_PASSKEY_BOOTSTRAP=1, register the passkey, then disable it."
@@ -211,8 +253,8 @@ export class PasskeyAuth {
       id,
       kind,
       value,
-      rpId: requestHost(req),
-      origin: requestOrigin(req),
+      rpId: this.host(req),
+      origin: this.origin(req),
       expiresAt: Date.now() + CHALLENGE_TTL_MS
     });
     return id;
@@ -226,7 +268,7 @@ export class PasskeyAuth {
     if (!record || record.kind !== kind || record.expiresAt <= Date.now()) {
       throw new Error("Passkey challenge expired or invalid");
     }
-    if (record.rpId !== requestHost(req) || record.origin !== requestOrigin(req)) {
+    if (record.rpId !== this.host(req) || record.origin !== this.origin(req)) {
       throw new Error("Passkey origin changed during the ceremony");
     }
     return record;
@@ -235,18 +277,19 @@ export class PasskeyAuth {
   async registrationOptions(req) {
     const state = await this.load();
     const existing = await this.credentialsFor(req);
-    const session = await this.session(req);
+    const session = this.ownerAuthorized ? await this.ownerAuthorized(req) : await this.session(req);
 
+    if (this.ownerAuthorized && !session) throw new Error("Owner authentication is required to register a passkey");
     if (existing.length > 0 && !session) {
       throw new Error("Authenticate with an existing passkey before registering another");
     }
-    if (existing.length === 0 && !isLoopback(req) && !explicitBootstrapEnabled()) {
+    if (existing.length === 0 && !session && !isLoopback(req) && !explicitBootstrapEnabled()) {
       throw new Error(
         "First passkey registration for this origin requires localhost or temporary DEVMOTER_PASSKEY_BOOTSTRAP=1"
       );
     }
 
-    const rpId = requestHost(req);
+    const rpId = this.host(req);
     const publicKey = await generateRegistrationOptions({
       rpName: "DevMoter FAST",
       rpID: rpId,
@@ -268,8 +311,13 @@ export class PasskeyAuth {
     return { challengeId, publicKey };
   }
 
-  async verifyRegistration(req, payload) {
+  verifyRegistration(req, payload) {
+    return serializeVerification(this.file, () => { this.state = null; return this.verifyRegistrationSerialized(req, payload); });
+  }
+
+  async verifyRegistrationSerialized(req, payload) {
     const record = this.takeChallenge(payload?.challengeId, "register", req);
+    if (this.ownerAuthorized && !await this.ownerAuthorized(req)) throw new Error("Owner authentication is required to register a passkey");
     const response = payload?.response;
     if (!response || typeof response !== "object") {
       throw new Error("A standards-compliant WebAuthn registration response is required");
@@ -317,7 +365,7 @@ export class PasskeyAuth {
     const credentials = await this.credentialsFor(req);
     if (!credentials.length) throw new Error("No passkeys are registered for this host");
 
-    const rpId = requestHost(req);
+    const rpId = this.host(req);
     const publicKey = await generateAuthenticationOptions({
       rpID: rpId,
       userVerification: "required",
@@ -330,7 +378,11 @@ export class PasskeyAuth {
     return { challengeId, publicKey };
   }
 
-  async verifyLogin(req, payload) {
+  verifyLogin(req, payload) {
+    return serializeVerification(this.file, () => { this.state = null; return this.verifyLoginSerialized(req, payload); });
+  }
+
+  async verifyLoginSerialized(req, payload) {
     const record = this.takeChallenge(payload?.challengeId, "login", req);
     const response = payload?.response;
     if (!response || typeof response !== "object") {
@@ -365,10 +417,11 @@ export class PasskeyAuth {
   }
 
   createSession(req) {
+    if (this.sessionIssuer) return this.sessionIssuer(req);
     const token = b64url(randomBytes(32));
     this.sessions.set(sha256(Buffer.from(token)), {
       id: randomUUID(),
-      rpId: requestHost(req),
+      rpId: this.host(req),
       createdAt: Date.now(),
       expiresAt: Date.now() + SESSION_TTL_MS
     });
@@ -381,14 +434,14 @@ export class PasskeyAuth {
   async logout(req) {
     const token = parseCookies(req)[COOKIE_NAME];
     if (token) this.sessions.delete(sha256(Buffer.from(token)));
-    return sessionCookie(req, "", 0);
+    return sessionCookie(this.publicOrigin ? { ...req, headers: { ...req.headers, origin: this.publicOrigin } } : req, "", 0);
   }
 
   async require(req) {
     const state = await this.load();
     if (!state.credentials.length) return { required: false, authenticated: true };
     const session = await this.session(req);
-    return { required: true, authenticated: Boolean(session) };
+    return { required: true, authenticated: this.sessionResolver ? session?.assurance === "passkey" : Boolean(session) };
   }
 }
 
