@@ -68,10 +68,10 @@ test("unconfigured planner keeps explicit settings/manual paths and no submissio
 });
 
 test("missing credential, model, and Vault project binding produce actionable preflight without a run", async () => {
-  for (const [provider, reason] of [
-    [{ ...context.providers[0], ready: false }, /credentialが未設定/],
-    [{ ...context.providers[0], models: [] }, /modelが未設定/],
-    [{ ...context.providers[0], projectId: "p2" }, /紐付いたProject/]
+  for (const [provider, reason, recoverySelector, configureHidden] of [
+    [{ ...context.providers[0], ready: false }, /credentialが未設定/, "[data-ai-configure]", false],
+    [{ ...context.providers[0], models: [] }, /modelが未設定/, "[data-ai-model]", false],
+    [{ ...context.providers[0], projectId: "p2" }, /紐付いたProject/, "[data-ai-project]", true]
   ]) {
     let posts = 0;
     const { dom, $ } = setup(async (_url, options) => { if (options.method === "POST") posts++; return response({ ...context, providers: [provider] }); });
@@ -81,7 +81,8 @@ test("missing credential, model, and Vault project binding produce actionable pr
       $("[data-ai-goal]").value = "今の変更を調べて"; $("[data-ai-submit]").click(); await tick();
       assert.equal(posts, 0); assert.match($("[data-ai-error]").textContent, reason);
       assert.equal($(".tools-ai-settings").open, true);
-      assert.equal($("[data-ai-configure]").hidden, false);
+      assert.equal($("[data-ai-configure]").hidden, configureHidden);
+      assert.equal(document.activeElement, $(recoverySelector));
     } finally { dom.window.close(); }
   }
 });
@@ -122,14 +123,18 @@ test("context timeout releases loading and exposes retry instead of leaving Send
 });
 
 test("empty goal gets feedback and stale context errors cannot undo a newer ready context", async () => {
-  let rejectOld; let attempts = 0; let posts = 0;
+  let rejectOld; let oldSignal; let attempts = 0; let posts = 0;
   const { dom, $ } = setup((url, options) => {
-    if (url.endsWith("/context") && ++attempts === 1) return new Promise((_resolve, reject) => { rejectOld = reject; });
+    if (url.endsWith("/context") && ++attempts === 1) {
+      oldSignal = options.signal;
+      return new Promise((_resolve, reject) => { rejectOld = reject; });
+    }
     if (options.method === "POST") posts++;
     return Promise.resolve(response(context));
   });
   try {
     $(".dm-shell-menu-trigger").click(); $("[data-shell-close]").click(); $(".dm-shell-menu-trigger").click(); await tick();
+    assert.equal(oldSignal.aborted, true);
     rejectOld(new TypeError("Old request failed")); await tick();
     assert.equal($("[data-ai-submit]").disabled, false);
     assert.equal($("[data-ai-setup-notice]").hidden, true);
