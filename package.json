@@ -12,7 +12,8 @@
     "start": "node server.mjs",
     "test": "node --test test/*.test.mjs test/**/*.test.mjs",
     "test:coverage": "c8 --reporter=text --reporter=lcov npm test",
-    "cli": "node cli/devmoter.mjs"
+    "cli": "node cli/devmoter.mjs",
+    "security:audit": "node scripts/security-audit.mjs"
   },
   "devDependencies": {
     "@xterm/addon-fit": "^0.11.0",
