@@ -251,6 +251,14 @@ html[data-devmoter-theme="dark"] .api-app .api-history-row.active,
 html[data-devmoter-theme="dark"] .api-app .dm-code-block,
 html[data-devmoter-theme="dark"] .api-app .dm-code-head,
 html[data-devmoter-theme="dark"] .api-app .dm-panel button { background: var(--api-composer-surface); color: var(--api-text); border-color: var(--api-border); color-scheme: dark; }
+html[data-devmoter-theme="dark"] .api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-theme,
+html[data-devmoter-theme="dark"] .api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-context,
+html[data-devmoter-theme="dark"] .api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-tasks,
+html[data-devmoter-theme="dark"] .api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-extensions {
+  background: var(--api-composer-surface);
+  color: var(--api-text);
+  border: 1px solid var(--api-border);
+}
 html[data-devmoter-theme="dark"] .api-app select optgroup { background: var(--api-surface); color: var(--api-text); }
 html[data-devmoter-theme="dark"] .api-app .cx-markdown pre,
 html[data-devmoter-theme="dark"] .api-app .cx-markdown pre code { color: var(--api-text); }
