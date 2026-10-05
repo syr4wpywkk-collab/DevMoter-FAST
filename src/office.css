@@ -1,0 +1,411 @@
+.dm-office {
+  --office-line: var(--border, #30323b);
+  box-sizing: border-box;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--text, #e7e8eb);
+  background: var(--bg, #101116);
+  overflow: hidden;
+}
+.dm-office *,
+.dm-office *::before {
+  box-sizing: border-box;
+}
+.dm-office[open] {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+.office-header {
+  grid-row: 1;
+}
+.office-toolbar {
+  grid-row: 2;
+}
+.office-error {
+  grid-row: 3;
+}
+.office-layout {
+  grid-row: 4;
+  height: auto !important;
+  min-height: 0;
+}
+.office-mobile-switch {
+  display: none;
+}
+.office-page p,
+.office-page h1,
+.office-page h2,
+.office-page h3,
+.office-page h4,
+.office-page h5,
+.office-page h6 {
+  color: inherit;
+}
+.dm-office p {
+  color: inherit;
+}
+.dm-office [data-note] {
+  opacity: 0.8;
+}
+.office-list-marker {
+  color: #666;
+}
+.office-edit {
+  position: absolute;
+  right: -54px;
+  top: 0;
+  opacity: 0 !important;
+}
+.office-block:hover .office-edit,
+.office-block:focus-within .office-edit {
+  opacity: 1 !important;
+}
+html[data-devmoter-theme="light"] .dm-office {
+  --office-line: #d6dae3;
+  background: #fafbfc;
+  color: #202530;
+}
+html[data-devmoter-theme="light"] .office-ai-actions {
+  background: #fafbfc;
+}
+.dm-office::backdrop {
+  background: #0009;
+}
+.office-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(12px, env(safe-area-inset-top)) 24px 12px;
+  border-bottom: 1px solid var(--office-line);
+}
+.office-header small {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  opacity: 0.6;
+}
+.office-header h1 {
+  margin: 4px 0 0;
+  font-size: 22px;
+}
+.office-header h1 span {
+  font-size: 14px;
+  font-weight: 400;
+  opacity: 0.7;
+  margin-left: 10px;
+}
+.dm-office button,
+.office-upload,
+.dm-office select {
+  min-height: 44px;
+  padding: 9px 14px;
+  border: 1px solid var(--office-line);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.dm-office button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.dm-office button:hover:not(:disabled),
+.office-upload:hover {
+  background: #8882;
+}
+.dm-office :focus-visible {
+  outline: 2px solid #829eff;
+  outline-offset: 3px;
+}
+.office-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--office-line);
+}
+.office-toolbar span {
+  font-size: 12px;
+  opacity: 0.7;
+}
+.office-layout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  height: calc(100dvh - 154px);
+}
+.office-assistant {
+  padding: 22px;
+  overflow: auto;
+  border-right: 1px solid var(--office-line);
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+.office-assistant h2 {
+  font-size: 18px;
+}
+.office-assistant p {
+  font-size: 13px;
+  line-height: 1.7;
+  opacity: 0.8;
+}
+.office-assistant label {
+  display: block;
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 12px 0;
+}
+.office-assistant select {
+  display: block;
+  width: 100%;
+}
+.office-assistant details {
+  margin: 16px 0;
+}
+.office-assistant summary {
+  min-height: 44px;
+  cursor: pointer;
+  padding: 12px 0;
+  font-size: 13px;
+}
+.office-consent {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 8px;
+}
+.office-consent input {
+  min-width: 22px;
+  height: 22px;
+}
+.office-ai-actions {
+  display: flex;
+  gap: 8px;
+}
+.office-ai-actions button:first-child {
+  background: #8eaaff;
+  color: #101426;
+  border-color: transparent;
+}
+.office-library button,
+[data-history] button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  overflow-wrap: anywhere;
+  margin: 5px 0;
+}
+.dm-office textarea {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  background: #8881;
+  color: inherit;
+  border: 1px solid var(--office-line);
+  border-radius: 12px;
+  font: inherit;
+  line-height: 1.7;
+  resize: vertical;
+}
+.dm-office [hidden] {
+  display: none !important;
+}
+.office-canvas {
+  overflow: auto;
+  min-width: 0;
+  padding: 24px 30px 60px;
+  background: #8881;
+}
+.office-doc-heading {
+  max-width: 820px;
+  margin: 0 auto 22px;
+}
+.office-doc-heading h2 {
+  margin: 0;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+.office-doc-heading p {
+  font-size: 12px;
+  opacity: 0.7;
+  line-height: 1.7;
+}
+.office-page {
+  max-width: 820px;
+  min-height: 850px;
+  margin: auto;
+  padding: 64px 72px;
+  background: #fff;
+  color: #222;
+  box-shadow: 0 4px 28px #0002;
+  border-radius: 3px;
+  overflow-wrap: anywhere;
+}
+.office-block {
+  position: relative;
+  margin: 0 0 18px;
+}
+.office-paragraph {
+  white-space: pre-wrap;
+  line-height: 1.8;
+  margin: 0;
+}
+.office-block textarea {
+  background: #fff;
+  color: #222;
+  border-color: #bbb;
+}
+.office-edit {
+  font-size: 11px !important;
+  padding: 4px 10px !important;
+  color: #555 !important;
+  border-color: #ddd !important;
+  opacity: 0.65;
+  margin-top: 4px;
+}
+.office-block img {
+  max-width: 100%;
+  height: auto;
+}
+.office-block small {
+  display: block;
+  font-size: 11px;
+  color: #707070;
+}
+.office-table-scroll {
+  overflow: auto;
+}
+.office-page table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.office-page td {
+  border: 1px solid #aaa;
+  padding: 10px;
+  white-space: pre-wrap;
+}
+.office-protected {
+  background: #f3f3f3;
+  border-radius: 8px;
+  padding: 14px;
+  white-space: pre-wrap;
+}
+.office-empty {
+  text-align: center;
+  padding: 120px 0;
+}
+.office-empty span {
+  font-size: 42px;
+  color: #8399d3;
+}
+.office-empty h2 {
+  font-size: 24px;
+}
+.office-empty p {
+  color: #666;
+  font-size: 14px;
+}
+.office-error {
+  background: #a0282822;
+  border: 1px solid #bc5555;
+  margin: 8px 16px;
+  padding: 10px;
+  overflow-wrap: anywhere;
+}
+.office-sharing-notice {
+  border-left: 2px solid #d9ad69;
+  padding-left: 10px;
+}
+[data-proposal] del,
+[data-proposal] ins {
+  display: block;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 10px;
+  margin: 6px 0;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+[data-proposal] del {
+  background: #ca454522;
+}
+[data-proposal] ins {
+  background: #44ae6b22;
+}
+@media (max-width: 760px) {
+  .office-header {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .office-toolbar {
+    padding: 8px 12px;
+    gap: 6px;
+  }
+  .office-toolbar button,
+  .office-upload {
+    font-size: 12px;
+    padding: 9px 10px;
+  }
+  .office-layout {
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 208px);
+    overflow: auto;
+  }
+  .office-assistant {
+    overflow: visible;
+    flex: none;
+    padding: 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--office-line);
+  }
+  .office-canvas {
+    overflow: visible;
+    padding: 18px 10px 50px;
+    flex: none;
+  }
+  .office-page {
+    min-height: 440px;
+    padding: 26px 20px;
+  }
+  .office-empty {
+    padding: 70px 0;
+  }
+  .office-empty h2 {
+    font-size: 19px;
+  }
+  .office-ai-actions {
+    position: sticky;
+    bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--bg, #101116);
+    padding: 8px 0;
+    z-index: 1;
+  }
+  .office-library {
+    margin-bottom: 0;
+  }
+}
+@media (max-width: 760px) {
+  .office-mobile-switch {
+    display: block;
+  }
+  .dm-office:not([data-mobile-ai="true"]) .office-assistant {
+    display: none;
+  }
+  .dm-office[data-mobile-ai="true"] .office-canvas {
+    display: none;
+  }
+  .office-page {
+    padding-bottom: max(26px, env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 760px) {
+  .office-edit {
+    position: static;
+    opacity: 1 !important;
+  }
+}

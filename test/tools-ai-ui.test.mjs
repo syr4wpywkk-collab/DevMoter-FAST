@@ -18,7 +18,7 @@ const context = { projects: [project, { id: "p2", name: "Project B", path: "/b" 
 const baseRun = { runId: "01234567-0123-0123-0123-012345678901", rawGoal: "今の変更を調べて", status: "planning", updatedAt: 1, context: { project, hostId: "local", backend: "tools-ai-read" }, planner: { providerId: "planner", providerName: "Configured provider", model: "configured-model" }, steps: [], failure: null, cancellation: { requested: false }, explanation: null };
 const response = body => new Response(JSON.stringify(body), { headers: { "content-type": "application/json" } });
 
-test("AI is default, selected target is captured, close/reopen restores the SAME run and manual 20 tools remain", async () => {
+test("AI is default, selected target is captured, close/reopen restores the SAME run and manual tools remain alongside Office", async () => {
   let current = structuredClone(baseRun); let sent;
   const { dom, $, calls } = setup(async (url, options) => {
     if (url.endsWith("/context")) return response(context);
@@ -29,7 +29,7 @@ test("AI is default, selected target is captured, close/reopen restores the SAME
   try {
     $(".dm-shell-menu-trigger").click(); await tick();
     assert.equal($("[data-manual-tools]").open, false);
-    assert.equal(dom.window.document.querySelectorAll("[data-tools-item]").length, 20);
+    assert.equal(dom.window.document.querySelectorAll("[data-tools-item]").length, 21);
     assert.match($("[data-ai-availability]").textContent, /Configured provider.*configured-model/);
     $("[data-ai-goal]").value = "今の変更を調べて";
     $("[data-ai-form]").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true })); await tick();

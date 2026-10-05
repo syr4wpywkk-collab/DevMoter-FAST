@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const EXPECTED_APPS = [
-  "chat", "projects", "mission-control", "knowledge", "terminal", "git", "review", "agents",
+  "office", "chat", "projects", "mission-control", "knowledge", "terminal", "git", "review", "agents",
   "sessions", "browser", "automation", "developer-workflows"
 ];
 

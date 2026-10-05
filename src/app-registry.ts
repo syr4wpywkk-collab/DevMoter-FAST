@@ -1,5 +1,6 @@
 export const APP_IDS = [
   "chat",
+  "office",
   "projects",
   "mission-control",
   "knowledge",
@@ -30,6 +31,7 @@ export type AppDefinition = Readonly<{
 
 // Identity and presentation only. Launch behavior stays in code-owned handlers.
 const APP_DEFINITIONS: AppDefinition[] = [
+  { id: "office", title: "Office", shortDescription: "DOCX editing, original files and AI proposals", icon: "▤", category: "Productivity", availability: "available", launchKind: "feature" },
   { id: "chat", title: "Chat", shortDescription: "Open your AI workspace", icon: "✳", category: "Workspace", availability: "available", launchKind: "surface" },
   { id: "projects", title: "Projects", shortDescription: "Browse registered workspaces", icon: "▱", category: "Workspace", availability: "available", launchKind: "feature" },
   { id: "mission-control", title: "Mission Control", shortDescription: "Agents, sessions, host and projects at a glance", icon: "◫", category: "Activity", availability: "available", launchKind: "feature" },
