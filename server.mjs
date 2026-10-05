@@ -1,3 +1,5 @@
+import { createOfficeStore, OFFICE_LIMITS } from "./server/office/store.mjs";
+import { createOfficeAi } from "./server/office/ai.mjs";
 import http from "node:http";
 import { accessSync, constants as fsConstants } from "node:fs";
 import { mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
@@ -231,21 +233,7 @@ const systemFeatures = createSystemFeatures({
 });
 const toolsAiStore = createRunStore({ filePath: join(PROJECT_CONFIG_DIR, "tools-ai-runs.json") });
 void toolsAiStore.ready().catch(error => console.error("Tools AI store initialization failed", safeText(error.message)));
-const toolsAiService = createToolsAiService({
-  store: toolsAiStore,
-  dispatch: createDispatcher({ resolveProject: getProjectById, gitStatus: getGitStatus,
-    changedFiles: listChangedFiles, fileDiff: getFileDiff, index: projectIndex,
-    readMarkdown: readProjectMarkdown, diagnostics: () => systemFeatures.diagnostics() }),
-  authorize: async (context, identity) => {
-    if (context.hostId !== (await hostRuntime.info()).id) throw new Error("Host scope changed");
-    if (context.deviceId && !await systemFeatures.isDeviceActive(context.deviceId)) throw Object.assign(new Error("Device authorization revoked"), { status: 403 });
-    if (identity.session && !await externalAuth.session(identity.req)) throw Object.assign(new Error("Owner session expired"), { status: 401 });
-    if (context.project) {
-      const current = await getProjectById(context.project.id);
-      if (current.path !== context.project.path) throw new Error("Project scope changed");
-    }
-  },
-  prepareChat: async (payload, identity) => {
+const prepareToolsAiChat = async (payload, identity) => {
     const project = payload.projectId ? await getProjectById(payload.projectId) : null;
     const providers = await multiApiStore.listResolved();
     const selected = providers.find(p => p.id === payload.providerId);
@@ -266,6 +254,28 @@ const toolsAiService = createToolsAiService({
       const response = await runMultiApiChat([provider], { providerId: provider.id, model: payload.model, messages }, boundedProviderFetch, { signal });
       return response.message.content;
     } };
+  };
+const toolsAiService = createToolsAiService({
+  store: toolsAiStore,
+  dispatch: createDispatcher({ resolveProject: getProjectById, gitStatus: getGitStatus,
+    changedFiles: listChangedFiles, fileDiff: getFileDiff, index: projectIndex,
+    readMarkdown: readProjectMarkdown, diagnostics: () => systemFeatures.diagnostics() }),
+  authorize: async (context, identity) => {
+    if (context.hostId !== (await hostRuntime.info()).id) throw new Error("Host scope changed");
+    if (context.deviceId && !await systemFeatures.isDeviceActive(context.deviceId)) throw Object.assign(new Error("Device authorization revoked"), { status: 403 });
+    if (identity.session && !await externalAuth.session(identity.req)) throw Object.assign(new Error("Owner session expired"), { status: 401 });
+    if (context.project) {
+      const current = await getProjectById(context.project.id);
+      if (current.path !== context.project.path) throw new Error("Project scope changed");
+    }
+  },
+  prepareChat: prepareToolsAiChat
+});
+const officeStore = createOfficeStore({ rootDir: join(PROJECT_CONFIG_DIR, "office") });
+const officeAi = createOfficeAi({ store: officeStore, prepareChat: prepareToolsAiChat,
+  authorize: async (context, identity) => {
+    if (identity.session && !await externalAuth.session(identity.req)) throw Object.assign(new Error("Owner session expired"), { status: 401 });
+    if (context.deviceId && !await systemFeatures.isDeviceActive(context.deviceId)) throw Object.assign(new Error("Device authorization revoked"), { status: 403 });
   }
 });
 const secretVaultApi = createSecretVaultApi({
@@ -2407,6 +2417,42 @@ const server = http.createServer(async (req, res) => {
         json(res, 401, { error: "Passkey authentication required" });
         return;
       }
+    }
+
+    if (url.pathname.startsWith("/api/office/")) {
+      try {
+        const device = await systemFeatures.authenticate(req, { optional: true });
+        if (req.headers["x-devmoter-device-token"] && !device) throw Object.assign(new Error("Invalid or revoked device token"), { status: 403 });
+        const identity = { req, session: basicAuthenticated ? null : ownerSession, deviceId: device?.id || null, ...await externalAuth.ownerScope(DEVMOTER_AUTH_USERNAME) };
+        const path = url.pathname;
+        if (path === "/api/office/documents" && req.method === "GET") { json(res, 200, await officeStore.list()); return; }
+        if (path === "/api/office/documents" && req.method === "POST") {
+          const payload = await readJson(req, OFFICE_LIMITS.uploadBytes * 1.4 + 1024);
+          if (payload.blank === true) json(res, 201, await officeStore.blank(payload.name));
+          else {
+            if (typeof payload.base64 !== "string" || !/^[A-Za-z0-9+/]*={0,2}$/.test(payload.base64)) throw new Error("DOCXのデータが不正です。");
+            json(res, 201, await officeStore.create(payload.name, Buffer.from(payload.base64, "base64")));
+          }
+          return;
+        }
+        const docMatch = path.match(/^\/api\/office\/documents\/([a-f0-9-]{36})(\/download)?$/);
+        if (docMatch && req.method === "GET") {
+          if (docMatch[2]) {
+            const { meta, bytes } = await officeStore.download(docMatch[1], url.searchParams.get("revision"));
+            res.writeHead(200, { "content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "content-disposition": `attachment; filename="document.docx"; filename*=UTF-8''${encodeURIComponent(meta.name)}`, "cache-control": "no-store", "x-content-type-options": "nosniff" }); res.end(bytes);
+          } else json(res, 200, await officeStore.get(docMatch[1]));
+          return;
+        }
+        if (docMatch && !docMatch[2] && req.method === "PATCH") { const payload = await readJson(req, 2 * 1024 * 1024); json(res, 200, await officeStore.save(docMatch[1], payload.revision, payload.edits)); return; }
+        const restoreMatch = path.match(/^\/api\/office\/documents\/([a-f0-9-]{36})\/restore$/);
+        if (restoreMatch && req.method === "POST") { const payload = await readJson(req, 1000); json(res, 200, await officeStore.restore(restoreMatch[1], payload.revision, payload.target)); return; }
+        if (path === "/api/office/ai/runs" && req.method === "POST") { json(res, 202, await officeAi.start(await readJson(req, 8000), identity)); return; }
+        const aiMatch = path.match(/^\/api\/office\/ai\/runs\/([a-f0-9-]{36})(\/stop)?$/);
+        if (aiMatch && req.method === "GET" && !aiMatch[2]) { json(res, 200, officeAi.get(aiMatch[1], identity)); return; }
+        if (aiMatch && req.method === "POST" && aiMatch[2]) { json(res, 200, officeAi.stop(aiMatch[1], identity)); return; }
+        json(res, 404, { error: "Unknown Office endpoint" });
+      } catch (error) { json(res, error.status || 400, { error: safeText(error.message, REDACTED_SECRETS) }); }
+      return;
     }
 
     if (url.pathname.startsWith("/api/tools-ai/")) {
