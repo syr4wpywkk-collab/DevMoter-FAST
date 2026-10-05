@@ -171,6 +171,8 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     if (!docs.length) list.append(node("p", "まだ文書はありません。"));
   };
   const showDoc = (data: Doc) => {
+    if (doc && draft.size)
+      sessionStorage.removeItem(`devmoter-office-draft:${doc.id}`);
     doc = data;
     draft = new Map();
     localStorage.setItem("devmoter-office-document", data.id);
@@ -339,6 +341,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       error("下書きを復元できませんでした。");
     }
     controls();
+    if (run) renderRun();
   };
   const download = (revision?: string) => {
     if (!doc) return;
@@ -367,6 +370,12 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       : "AIは未設定です。手動編集はそのまま利用できます。「使用するAIと共有対象」からAI設定を開いてください。";
   };
   provider.addEventListener("change", fillModels);
+  model.addEventListener("change", () => {
+    const selected = providers.find((p) => p.id === provider.value);
+    if (selected?.ready)
+      get("[data-provider-notice]").textContent =
+        `使用するAI: ${selected.name} / ${model.value}`;
+  });
   const renderRun = () => {
     const status = {
       planning: "AIが変更案を作っています…",

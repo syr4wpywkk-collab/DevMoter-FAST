@@ -29,11 +29,16 @@ const fail = (message, status = 400) =>
 const uuid = (value) =>
   typeof value === "string" && /^[a-f0-9-]{36}$/.test(value);
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
-const editable = (block) =>
+const editable = (block, parsed) =>
   ["paragraph", "heading", "listItem"].includes(block.type) &&
   block.docxIndex !== null &&
   !block.hidden &&
   typeof block.originalXml === "string" &&
+  parsed.extras.elements[block.docxIndex]?.name === "w:p" &&
+  parsed.internal.documentXml.slice(
+    parsed.extras.elements[block.docxIndex].start,
+    parsed.extras.elements[block.docxIndex].end,
+  ) === block.originalXml &&
   !/<w:(?:fldChar|instrText|drawing|pict|object|sdt|ins|del|sectPr)\b/.test(
     block.originalXml,
   );
@@ -55,7 +60,7 @@ export function validateEdits(parsed, edits) {
     )
       throw fail("本文の入力が不正です。");
     const block = parsed.blocks.find((item) => item.id === edit.blockId);
-    if (!block || !editable(block) || seen.has(edit.blockId))
+    if (!block || !editable(block, parsed) || seen.has(edit.blockId))
       throw fail("編集できない、または重複した本文です。");
     seen.add(edit.blockId);
     const escape = (text) =>
@@ -186,7 +191,7 @@ export function createOfficeStore({ rootDir }) {
         level: b.level,
         list: b.list,
         align: b.format?.align,
-        editable: editable(b),
+        editable: editable(b, parsed),
         text: (b.runs || []).map((r) => r.text).join(""),
         runs: (b.runs || []).map((r) => ({
           text: r.text,
@@ -216,7 +221,7 @@ export function createOfficeStore({ rootDir }) {
       })),
     warnings: [
       "表示は編集用のプレビューです。Wordの改ページ・印刷レイアウトと一致するとは限りません。",
-      ...(parsed.blocks.some((b) => !editable(b))
+      ...(parsed.blocks.some((b) => !b.hidden && !editable(b, parsed))
         ? [
             "表・画像・フィールド等は原本を保持します。この初版では直接編集できません。",
           ]

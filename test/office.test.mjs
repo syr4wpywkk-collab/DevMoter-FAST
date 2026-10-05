@@ -217,6 +217,32 @@ test("Office rejects document-defined DTD entities before XML parsing", async (t
     /DTD/,
   );
 });
+test("Office keeps content-control wrappers read-only rather than replacing their inner paragraph", async (t) => {
+  const { store } = await setup(t);
+  const zip = await JSZip.loadAsync(await buildBlankDocx());
+  const xml = await zip.file("word/document.xml").async("string");
+  zip.file(
+    "word/document.xml",
+    xml.replace(
+      "<w:p/>",
+      '<w:sdt><w:sdtPr><w:tag w:val="preserve-control"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>Protected content</w:t></w:r></w:p></w:sdtContent></w:sdt>',
+    ),
+  );
+  const doc = await store.create(
+    "Control.docx",
+    await zip.generateAsync({ type: "uint8array" }),
+  );
+  assert.equal(
+    doc.blocks.some((block) => block.editable),
+    false,
+  );
+  for (const block of doc.blocks)
+    await assert.rejects(
+      store.validate(doc.id, doc.revision, [
+        { blockId: block.id, text: "overwrite" },
+      ]),
+    );
+});
 test("Office AI excludes secret content and rejects malformed/out-of-scope proposals", async (t) => {
   const { store } = await setup(t);
   let doc = await store.create("Test.docx", await fixture());
