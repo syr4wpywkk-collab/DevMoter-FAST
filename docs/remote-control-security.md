@@ -22,7 +22,7 @@ Recovery policy:
 - sessions created before Auth v2 were kept only in memory and require one final sign-in after upgrade/restart; Auth v2 owner sessions survive later service restarts until expiry or revocation. See [Owner sign-in / Auth v2](./auth-v2.md);
 - deleting the passkey registry manually is an administrator recovery action and should only be done from the trusted host.
 
-GitHub webhook delivery is the only control-plane endpoint allowed before HTTP Basic authentication. It is narrowly scoped to the exact webhook path and separately authenticated with the per-trigger HMAC-SHA256 secret. All other control-plane and passkey endpoints remain behind DevMoter Basic authentication and the normal same-origin mutation boundary.
+GitHub webhook delivery is the only control-plane endpoint allowed before owner authentication. It is narrowly scoped to the exact webhook path and separately authenticated with the per-trigger HMAC-SHA256 secret. Other control-plane endpoints require the owner's session or compatible HTTP Basic authentication. Passkey status, sign-in and logout are available before owner sign-in; registration requires authenticated owner authorization. All Passkey mutations retain the same-origin guard. Pending Passkey ceremonies are capped at 128; a full pool returns 429 without discarding existing ceremonies, and expiry or consumption frees a slot.
 
 ## Multi-host registry
 

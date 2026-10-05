@@ -1598,7 +1598,7 @@ async function passkeyRoute(req, res, url) {
     }
     json(res, 404, { error: "Unknown passkey endpoint" });
   } catch (error) {
-    json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+    json(res, error?.status === 429 ? 429 : 400, { error: error instanceof Error ? error.message : String(error) });
   }
   return true;
 }

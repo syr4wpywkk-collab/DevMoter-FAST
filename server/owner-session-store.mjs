@@ -216,10 +216,11 @@ export class OwnerSessionStore {
   async revoke(token) {
     if (!token) return false;
     const tokenHash = digest(token);
-    return this.mutate(sessions => {
+    return this.transact((sessions, { markDirty }) => {
       const index = sessions.findIndex(item => item.tokenHash === tokenHash);
       if (index < 0) return false;
       sessions.splice(index, 1);
+      markDirty();
       return true;
     });
   }
