@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -365,6 +365,47 @@ test("passkey ceremony remains available before owner login while registration a
       method: "POST", headers: { origin, "content-type": "application/json" }, body: "{}"
     });
     assert.equal(registration.status, 401, "registration must remain unavailable before owner authentication");
+  } finally {
+    await stop(child);
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
+test("public auth requests avoid unknown-token writes and bound pending Passkey ceremonies", async () => {
+  const home = await mkdtemp(join(tmpdir(), "devmoter-auth-v2-limits-"));
+  await seedPasskey(home);
+  const port = await freePort();
+  const origin = `http://127.0.0.1:${port}`;
+  const child = startServer({ home, port });
+  try {
+    await waitForReady(child);
+    const ownerCookie = cookieFrom(await localLogin(origin));
+    const registry = join(home, ".config", "opencode-pocket", "auth-sessions.json");
+    const originalInode = (await stat(registry)).ino;
+    for (const path of ["/api/auth/logout", "/api/auth/passkey/logout"]) {
+      const response = await fetch(origin + path, {
+        method: "POST", headers: { origin, cookie: "devmoter_session=unknown-fixture-token" }
+      });
+      assert.equal(response.status, 200);
+      assert.equal((await stat(registry)).ino, originalInode, "unknown logout must not replace the registry");
+    }
+    const optionsPath = origin + "/api/auth/passkey/login/options";
+    const responses = await Promise.all(Array.from({ length: 140 }, () => fetch(optionsPath, {
+      method: "POST", headers: { origin, "content-type": "application/json" }, body: "{}"
+    })));
+    assert.equal(responses.filter(response => response.status === 200).length, 128);
+    assert.equal(responses.filter(response => response.status === 429).length, 12);
+    const rejected = await responses.find(response => response.status === 429).json();
+    assert.match(rejected.error, /try again/i);
+    const options = await responses.find(response => response.status === 200).json();
+    const consumed = await fetch(origin + "/api/auth/passkey/login/verify", {
+      method: "POST", headers: { origin, "content-type": "application/json" },
+      body: JSON.stringify({ challengeId: options.challengeId })
+    });
+    assert.equal(consumed.status, 400);
+    assert.equal((await fetch(optionsPath, { method: "POST", headers: { origin } })).status, 200);
+    const status = await fetch(origin + "/api/auth/status", { headers: { cookie: ownerCookie } });
+    assert.equal((await status.json()).authenticated, true);
   } finally {
     await stop(child);
     await rm(home, { recursive: true, force: true });

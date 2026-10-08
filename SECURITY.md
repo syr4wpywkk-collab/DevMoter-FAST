@@ -13,7 +13,8 @@ DevMoter FAST is designed for a **single-user private host** and a **trusted/pri
 Current protections include:
 
 - DevMoter binds to `127.0.0.1` by default.
-- DevMoter requires its own HTTP Basic login. `DEVMOTER_AUTH_PASSWORD` must be at least 16 characters or the server fails closed.
+- DevMoter APIs require the single owner's shared session or compatible HTTP Basic authentication. Passkey, linked GitHub/Google/Microsoft credentials, and local recovery issue the same owner session. `DEVMOTER_AUTH_PASSWORD` must be at least 16 characters or the server fails closed.
+- Owner sessions persist token hashes only, remain host-bound and expire; logout and revocation remove their records. Passkey ceremonies and GitHub login flows have bounded pending state, including in-flight GitHub starts. These bounds are not a general request rate limiter.
 - The normal launcher generates a strong DevMoter password and stores it at `~/.config/opencode-pocket/devmoter-auth-password` with owner-only permissions.
 - State-changing HTTP requests require an exact same-origin `Origin` header. This reduces cross-site request forgery risk for the browser-based control surface.
 - API JSON responses use `Cache-Control: no-store`. OpenCode proxy responses are also forced to `no-store` except live SSE streams, which use `no-cache, no-transform`.

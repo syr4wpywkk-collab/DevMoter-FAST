@@ -10,6 +10,7 @@ import {
 } from "@simplewebauthn/server";
 
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
+const MAX_PENDING_CHALLENGES = 128;
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const COOKIE_NAME = "devmoter_passkey";
 const SUPPORTED_ALGORITHMS = [-7, -257];
@@ -248,6 +249,11 @@ export class PasskeyAuth {
 
   rememberChallenge(kind, req, value) {
     this.cleanup();
+    // Login ceremonies are public. Bound retained state without evicting an
+    // owner's active ceremony; checking here is atomic with insertion.
+    if (this.challenges.size >= MAX_PENDING_CHALLENGES) {
+      throw Object.assign(new Error("Too many pending Passkey sign-ins; try again shortly"), { status: 429 });
+    }
     const id = randomUUID();
     this.challenges.set(id, {
       id,

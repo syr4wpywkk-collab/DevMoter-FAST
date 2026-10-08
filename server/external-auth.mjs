@@ -6,6 +6,7 @@ import { createOwnerIdentityStore } from "./owner-identity-store.mjs";
 const COOKIE_NAME = "devmoter_session";
 const FLOW_MAX_TTL_MS = 20 * 60 * 1000;
 const MIN_POLL_INTERVAL_MS = 5_000;
+const MAX_GITHUB_FLOWS = 128;
 const sha256 = value => createHash("sha256").update(value).digest("hex");
 const authError = (message, status = 400) => Object.assign(new Error(message), { status });
 const firstHeader = (req, name) => String(req?.headers?.[name] || "").split(",", 1)[0].trim();
@@ -49,6 +50,7 @@ export class ExternalAuth {
     this.identities = createOwnerIdentityStore({ configDir });
     this.sessions = new OwnerSessionStore({ configDir, ttlMs: sessionTtlMs });
     this.githubFlows = new Map();
+    this.githubStarts = 0;
   }
   async load() { return this.identities.load(); }
   token(req) { return parseCookies(req)[COOKIE_NAME] || ""; }
@@ -104,21 +106,25 @@ export class ExternalAuth {
     if (!["login", "link"].includes(intent)) throw authError("Invalid sign-in intent");
     if (intent === "login" && !state.providers.github) throw authError("First GitHub account binding requires local recovery authentication", 403);
     if (intent === "link" && !bootstrapAuthorized && !ownerSession) throw authError("Owner authentication is required to connect GitHub", 403);
-    if (this.githubFlows.size >= 128) throw authError("Too many sign-in attempts; try again shortly", 429);
-    const response = await this.fetchGithub("https://github.com/login/device/code", {
-      method: "POST", headers: { accept: "application/json", "content-type": "application/x-www-form-urlencoded", "user-agent": "DevMoter-FAST" },
-      body: new URLSearchParams({ client_id: this.githubClientId })
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok || !payload?.device_code || !payload?.user_code || payload.verification_uri !== "https://github.com/login/device") throw authError("GitHub device authorization could not be started", 502);
-    const id = randomUUID(); const binding = randomBytes(32).toString("base64url");
-    const expiresIn = Math.max(1, Math.min(Number(payload.expires_in) || 900, FLOW_MAX_TTL_MS / 1000));
-    const intervalMs = Math.max(MIN_POLL_INTERVAL_MS, (Number(payload.interval) || 5) * 1000);
-    const ownerId = intent === "link" ? await this.identities.ensureOwner() : state.ownerId;
-    this.githubFlows.set(id, { id, intent, ownerId, sessionId: ownerSession?.id || null, host: this.host(req), bindingHash: sha256(binding),
-      deviceCode: String(payload.device_code), expiresAt: Date.now() + expiresIn * 1000, intervalMs, nextPollAt: Date.now(), polling: false });
-    return { flowId: id, userCode: String(payload.user_code), verificationUri: payload.verification_uri, expiresIn, interval: Math.ceil(intervalMs / 1000),
-      flowCookie: cookie(req, binding, expiresIn, this.publicOrigin, `devmoter_github_${id}`) };
+    if (this.githubFlows.size + this.githubStarts >= MAX_GITHUB_FLOWS) throw authError("Too many sign-in attempts; try again shortly", 429);
+    // Reserve before provider I/O; concurrent starts must share the same bound.
+    this.githubStarts++;
+    try {
+      const response = await this.fetchGithub("https://github.com/login/device/code", {
+        method: "POST", headers: { accept: "application/json", "content-type": "application/x-www-form-urlencoded", "user-agent": "DevMoter-FAST" },
+        body: new URLSearchParams({ client_id: this.githubClientId })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.device_code || !payload?.user_code || payload.verification_uri !== "https://github.com/login/device") throw authError("GitHub device authorization could not be started", 502);
+      const id = randomUUID(); const binding = randomBytes(32).toString("base64url");
+      const expiresIn = Math.max(1, Math.min(Number(payload.expires_in) || 900, FLOW_MAX_TTL_MS / 1000));
+      const intervalMs = Math.max(MIN_POLL_INTERVAL_MS, (Number(payload.interval) || 5) * 1000);
+      const ownerId = intent === "link" ? await this.identities.ensureOwner() : state.ownerId;
+      this.githubFlows.set(id, { id, intent, ownerId, sessionId: ownerSession?.id || null, host: this.host(req), bindingHash: sha256(binding),
+        deviceCode: String(payload.device_code), expiresAt: Date.now() + expiresIn * 1000, intervalMs, nextPollAt: Date.now(), polling: false });
+      return { flowId: id, userCode: String(payload.user_code), verificationUri: payload.verification_uri, expiresIn, interval: Math.ceil(intervalMs / 1000),
+        flowCookie: cookie(req, binding, expiresIn, this.publicOrigin, `devmoter_github_${id}`) };
+    } finally { this.githubStarts--; }
   }
   async pollGithub(req, flowId) {
     this.cleanup(); const id = String(flowId || ""); const flow = this.githubFlows.get(id);
