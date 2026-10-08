@@ -1,5 +1,5 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, posix } from "node:path";
 import { randomUUID } from "node:crypto";
 
 const DEFAULT_LOOP_THRESHOLD = 3;
@@ -137,15 +137,27 @@ export function createLoopDetector(options = {}) {
   return { threshold, windowSize, record, inspect, continueRun, clear };
 }
 
-function normalizePath(value) {
-  return String(value || "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+$/, "");
+// This is a logical operation-scope check, not a filesystem containment check.
+// Fail closed on path ambiguity rather than letting ".." pass a string prefix.
+function normalizeScopePath(value) {
+  if (typeof value !== "string" || !value || value.includes("\0")) return null;
+  const raw = value.replace(/\\/g, "/");
+  // Windows drive and UNC paths must not be compared as POSIX-relative paths.
+  if (/^[a-z]:/i.test(raw) || raw.startsWith("//")) return null;
+  // Disallow traversal even if subsequent normalization would cancel it out.
+  if (raw.split("/").includes("..")) return null;
+  const normalized = posix.normalize(raw);
+  return normalized === "/" ? "/" : normalized.replace(/\/+$/, "");
 }
 
 function pathInScope(path, scope) {
-  const normalizedPath = normalizePath(path);
-  const normalizedScope = normalizePath(scope);
-  if (!normalizedScope || normalizedScope === ".") return true;
-  return normalizedPath === normalizedScope || normalizedPath.startsWith(`${normalizedScope}/`);
+  const normalizedPath = normalizeScopePath(path);
+  const normalizedScope = normalizeScopePath(scope);
+  if (!normalizedPath || !normalizedScope) return false;
+  // The explicit "." scope covers relative repository paths only.
+  if (normalizedScope === ".") return !posix.isAbsolute(normalizedPath);
+  if (posix.isAbsolute(normalizedPath) !== posix.isAbsolute(normalizedScope)) return false;
+  return normalizedPath === normalizedScope || normalizedPath.startsWith(`${normalizedScope === "/" ? "" : normalizedScope}/`);
 }
 
 export function evaluatePreExecutionGuard(input = {}, policy = {}) {
@@ -261,7 +273,10 @@ export class ScopedPermissionStore {
     if (!scope.backend || !scope.tool || !scope.action) {
       throw new Error("Remembered approval requires backend, tool, and exact action scope.");
     }
-    if (input.dangerous) {
+    // Never trust the browser's dangerous flag. Derive risk from the exact
+    // stored action and any submitted command before writing a durable grant.
+    if (input.dangerous || scanHighRiskCommand(scope.action).dangerous ||
+        (typeof input.command === "string" && scanHighRiskCommand(input.command).dangerous)) {
       throw new Error("High-risk approvals cannot be remembered.");
     }
 
@@ -291,7 +306,12 @@ export class ScopedPermissionStore {
 
   async match(input = {}) {
     const candidate = normalizedScope(input.scope);
-    const commandScan = input.command ? scanHighRiskCommand(input.command) : null;
+    // Also inspect the action recorded in a legacy grant. A caller can omit
+    // 'command' or supply a benign string, so it is not authoritative.
+    const actionScan = scanHighRiskCommand(candidate.action);
+    const suppliedScan = typeof input.command === "string" && input.command
+      ? scanHighRiskCommand(input.command) : null;
+    const commandScan = actionScan.dangerous ? actionScan : suppliedScan;
     if (commandScan?.dangerous) {
       return { matched: false, rule: null, blockedByRisk: true, commandScan };
     }
