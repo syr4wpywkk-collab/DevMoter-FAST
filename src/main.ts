@@ -129,6 +129,8 @@ function applySurface(surface: MainSurface) {
 }
 
 mountHomeSurface(homeView, {
+  // Home React shortcuts navigate through the existing surface controller.
+  onSwitchBackend: backend => setBackend(backend),
   onPreviewApp: (id, message) => {
     window.dispatchEvent(new CustomEvent("devmoter:app-preview", { detail: { id, message } }));
   },

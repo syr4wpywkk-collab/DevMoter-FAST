@@ -9,6 +9,7 @@ import * as sessions from "../src/session-tools.mjs";
 import * as pricing from "../src/model-pricing.mjs";
 import * as reconnect from "../src/reconnect-policy.mjs";
 import { renderChatMarkdown } from "../src/chat-markdown.mjs";
+import { loadPureTypeScript } from "./helpers/ts-pure-modules.mjs";
 
 const compile = source => ts.transpileModule(source, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
@@ -75,7 +76,9 @@ async function harness(t, initialContext = []) {
     "./opencode-chat.css": {},
     "./i18n": { speechRecognitionLanguage: () => "en-US" },
     "./wake-lock": { setWakeLockExecutionActive() {}, wakeLockEnabled: () => false, wakeLockSupported: () => false },
-    "./safety-client": {}
+    "./safety-client": {},
+    "./opencode/status": await loadPureTypeScript("opencode/status.ts"),
+    "./opencode/tools": await loadPureTypeScript("opencode/tools.ts")
   };
   const { mountOpenCodeRemote } = evaluate(compiled, name => {
     assert.ok(Object.hasOwn(modules, name), `unexpected module: ${name}`);

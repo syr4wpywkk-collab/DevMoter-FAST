@@ -78,6 +78,26 @@
 .dm-home-text-action { margin-top: 12px; min-height: 44px; display: inline-flex; align-items: center; gap: 4px; padding: 10px 12px 10px 0; border: 0; color: #becaff; background: transparent; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .dm-home-text-action:hover { color: #e0e7ff; }
 .dm-home-text-action span { padding-left: 5px; }
+
+/* React pilot: only this island uses React; never restyle legacy chat roots. */
+.dm-home-quick-switch { margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(178, 190, 215, .12); }
+.dm-home-quick-switch-label { margin: 0 0 12px; color: #94a0be; font-size: 10px; font-weight: 750; letter-spacing: .14em; }
+.dm-home-shortcut-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.dm-home-shortcut { min-width: 0; min-height: 58px; padding: 11px; display: grid; grid-template-columns: 1fr auto; column-gap: 6px; row-gap: 3px; align-items: center; text-align: left; border-radius: 12px; border: 1px solid rgba(178, 190, 215, .18); background: rgba(255, 255, 255, .032); color: #f0f3fc; transition: background 150ms ease, border-color 150ms ease; }
+.dm-home-shortcut strong { font-size: 13px; font-weight: 650; }
+.dm-home-shortcut small { grid-column: 1 / -1; color: #a2acc0; font-size: 11px; }
+.dm-home-shortcut span { grid-column: 2; grid-row: 1; color: #aebbf2; font-size: 16px; }
+.dm-home-shortcut:hover { border-color: rgba(166, 181, 255, .39); background: rgba(150, 166, 255, .075); }
+.dm-home-shortcut:focus-visible { outline: 2px solid #aab8ff; outline-offset: 3px; }
+@media (max-width: 600px) {
+  .dm-home-shortcut-grid { grid-template-columns: 1fr; }
+  .dm-home-shortcut { min-height: 48px; grid-template-columns: minmax(0, 1fr) auto; }
+  .dm-home-shortcut small { grid-column: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dm-home-shortcut { transition: none; }
+}
+
 .dm-home-footer { margin-top: auto; padding-top: 20px; color: #626c7e; font-size: 11px; }
 .dm-home-footer span { padding-inline: 5px; }
 

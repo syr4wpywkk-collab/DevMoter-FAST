@@ -1,12 +1,19 @@
 import "./home.css";
 import { APP_REGISTRY, type AppId } from "./app-registry";
+import { mountHomeBackendShortcuts, type ChatBackend } from "./react/home-backend-shortcuts";
 
 type HomeOptions = {
   onLaunchApp: (id: AppId) => void;
   onPreviewApp: (id: AppId, message: string) => void;
+  onSwitchBackend?: (backend: ChatBackend) => void;
 };
 
+const pilotDisposers = new WeakMap<HTMLElement, () => void>();
+
 export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
+  // Unmount any previous React island before the Vanilla TS renderer replaces it.
+  pilotDisposers.get(target)?.();
+  pilotDisposers.delete(target);
   target.innerHTML = `
     <div class="dm-home-shell">
       <header class="dm-home-header">
@@ -42,6 +49,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
         </div>
         <p>Your chats and project activity are still available in their workspaces.</p>
         <button type="button" class="dm-home-text-action" data-home-open-chat aria-label="Open your last chat workspace">Go to Chat <span aria-hidden="true">→</span></button>
+        <div data-home-react-pilot></div>
       </section>
 
       <footer class="dm-home-footer">DevMoter FAST <span>·</span> Your local AI workspace</footer>
@@ -53,6 +61,11 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
   target.querySelector<HTMLButtonElement>("[data-home-open-chat]")?.addEventListener("click", () => {
     options.onLaunchApp("chat");
   });
+
+  if (options.onSwitchBackend) {
+    const pilotHost = target.querySelector<HTMLElement>("[data-home-react-pilot]");
+    if (pilotHost) pilotDisposers.set(target, mountHomeBackendShortcuts(pilotHost, options.onSwitchBackend));
+  }
 
   target.querySelectorAll<HTMLButtonElement>("[data-home-app]").forEach(button => {
     button.addEventListener("click", () => {

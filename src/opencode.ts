@@ -1,3 +1,5 @@
+import { openCodeStateLabel as stateLabel, openCodeStateGlyph as stateGlyph } from "./opencode/status";
+import { openCodeToolStateSummary as toolStateSummary } from "./opencode/tools";
 import { isExecutionActive, openCodeIdleOutcomeToExecutionState, type ExecutionState } from "./execution-state.mjs";
 import { speechRecognitionLanguage } from "./i18n";
 import { mergeOpenCodeStreamText, normalizeOpenCodeEvent } from "./opencode-event-compat.mjs";
@@ -860,34 +862,6 @@ export function mountOpenCodeRemote(
     return session.location?.directory || directory;
   }
 
-  function stateLabel(state: ExecutionState) {
-    switch (state) {
-      case "running": return "running";
-      case "waiting_for_approval": return "approval";
-      case "waiting_for_input": return "question";
-      case "completed": return "done";
-      case "failed": return "failed";
-      case "interrupted": return "stopped";
-      case "offline": return "offline";
-      case "reconnecting": return "syncing";
-      default: return "idle";
-    }
-  }
-
-  function stateGlyph(state: ExecutionState) {
-    switch (state) {
-      case "running": return "●";
-      case "waiting_for_approval": return "!";
-      case "waiting_for_input": return "?";
-      case "completed": return "✓";
-      case "failed": return "×";
-      case "interrupted": return "■";
-      case "offline": return "○";
-      case "reconnecting": return "↻";
-      default: return "·";
-    }
-  }
-
   function renderAttention() {
     attention.replaceChildren();
     if (!sessions.length) {
@@ -1086,16 +1060,6 @@ export function mountOpenCodeRemote(
     row.appendChild(body);
     transcript.appendChild(row);
     trimTranscript();
-  }
-
-  function toolStateSummary(part: Json) {
-    const state = part?.state ?? {};
-    const status = String(state?.status || "tool");
-    const name = String(part?.tool || part?.name || "tool");
-    const input = state?.input;
-    const target = input?.command ?? input?.filePath ?? input?.path;
-    const hint = typeof target === "string" ? target.replace(/\s+/g, " ").slice(0, 100) : "";
-    return `${status === "completed" ? "✓" : status === "error" ? "!" : status === "running" ? "●" : "·"} ${name} · ${status}${hint ? ` — ${hint}` : ""}`;
   }
 
   function addToolPart(part: Json) {
