@@ -18,7 +18,7 @@ export function assertSafeMarkdownRelativePath(value) {
   // Reject ambiguous input *before* path normalization. Stripping leading
   // separators would silently turn an absolute path into a relative one.
   if (typeof value !== "string" || !value || value.includes("\\") ||
-      value.includes("\\0") || value.startsWith("/") || /^[A-Za-z]:/.test(value)) {
+      value.includes(String.fromCharCode(0)) || value.startsWith("/") || /^[A-Za-z]:/.test(value)) {
     throw new Error("Invalid Markdown path");
   }
   const path = normalize(value);
@@ -48,7 +48,7 @@ export function decodeUploadDataUrl(data, maxBytes = 15 * 1024 * 1024) {
   // this guard an oversized upload could allocate a much larger decoded Buffer.
   const maxEncodedLength = Math.ceil(maxBytes / 3) * 4;
   if (raw.length > maxEncodedLength + 512) throw new Error("File is larger than 15MB");
-  const match = raw.match(/^data:([^;,\\s]+)?(?:;charset=[^;,\\s]+)?;base64,([A-Za-z0-9+/]+={0,2})$/);
+  const match = raw.match(/^data:([^;,\s]+)?(?:;charset=[^;,\s]+)?;base64,([A-Za-z0-9+/]+={0,2})$/);
   if (!match) throw new Error("Expected a base64 data URL");
   const encoded = match[2];
   if (encoded.length > maxEncodedLength) throw new Error("File is larger than 15MB");
