@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -50,6 +50,47 @@ test("pre-execution guard blocks silent scope expansion", () => {
   assert.ok(result.findings.some(item => item.code === "scope-expansion"));
 });
 
+test("pre-execution scope guard rejects traversal, ambiguous paths, and mismatched roots", () => {
+  const base = { task: "Edit a scoped source file", requestedPaths: ["src"] };
+  const rejected = [
+    "src/../config/secrets.json",
+    "src\\..\\config\\secrets.json",
+    "src/nested/../../outside.txt",
+    "src2/app.ts",
+    "/src/app.ts",
+    "C:\\src\\app.ts",
+    "//host/share/src/app.ts",
+    "src/evil\0.md"
+  ];
+  for (const path of rejected) {
+    const result = evaluatePreExecutionGuard({ ...base, plannedMutations: [path] });
+    assert.equal(result.decision, "block", "Must reject: " + JSON.stringify(path));
+    assert.ok(result.findings.some(finding => finding.code === "scope-expansion"));
+  }
+
+  for (const path of ["src/app.ts", "./src/sub/../bad.ts"]) {
+    const result = evaluatePreExecutionGuard({ ...base, plannedMutations: [path] });
+    assert.equal(result.decision, path.includes("..") ? "block" : "allow");
+  }
+
+  assert.equal(evaluatePreExecutionGuard({
+    task: "Edit repo relative file",
+    requestedPaths: ["."], plannedMutations: ["/etc/passwd"]
+  }).decision, "block");
+  assert.equal(evaluatePreExecutionGuard({
+    task: "Edit src file",
+    requestedPaths: [""], plannedMutations: ["src/app.ts"]
+  }).decision, "block");
+  assert.equal(evaluatePreExecutionGuard({
+    task: "Edit source file",
+    requestedPaths: ["src"], plannedMutations: ["./src/nested/ok.ts"]
+  }).decision, "allow");
+  assert.equal(evaluatePreExecutionGuard({
+    task: "Edit absolute source file",
+    requestedPaths: ["/workspace/src"], plannedMutations: ["/workspace/src/ok.ts"]
+  }).decision, "allow");
+});
+
 test("remembered approvals are exact-scope, revocable, and reject dangerous grants", async () => {
   const root = await mkdtemp(join(tmpdir(), "devmoter-safety-"));
   try {
@@ -78,9 +119,46 @@ test("remembered approvals are exact-scope, revocable, and reject dangerous gran
       store.grant({ scope: { ...scope, action: "git reset --hard HEAD" }, dangerous: true }),
       /cannot be remembered/
     );
+    // False/omitted client danger flags must not override server-derived risk.
+    await assert.rejects(
+      store.grant({ scope: { ...scope, action: "git reset --hard HEAD" }, dangerous: false }),
+      /cannot be remembered/
+    );
+    await assert.rejects(
+      store.grant({ scope, command: "git reset --hard HEAD", dangerous: false }),
+      /cannot be remembered/
+    );
+    assert.equal((await store.list()).length, 1);
 
     assert.equal(await store.revoke(rule.id), true);
     assert.equal((await store.list()).length, 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("legacy remembered high-risk action cannot match when command is missing or benign", async () => {
+  const root = await mkdtemp(join(tmpdir(), "devmoter-legacy-approval-"));
+  try {
+    const path = join(root, "approvals.json");
+    const scope = {
+      backend: "codex",
+      tool: "item/commandExecution/requestApproval",
+      action: "git reset --hard HEAD",
+      projectId: "project-1",
+      sessionId: "thread-1"
+    };
+    await writeFile(path, JSON.stringify({
+      version: 1,
+      rules: [{ id: "legacy", scope, createdAt: Date.now(), expiresAt: Date.now() + 60000 }]
+    }));
+    const store = new ScopedPermissionStore(path);
+    for (const input of [{ scope }, { scope, command: "npm test" }]) {
+      const result = await store.match(input);
+      assert.equal(result.matched, false);
+      assert.equal(result.blockedByRisk, true);
+      assert.equal(result.rule, null);
+    }
   } finally {
     await rm(root, { recursive: true, force: true });
   }
