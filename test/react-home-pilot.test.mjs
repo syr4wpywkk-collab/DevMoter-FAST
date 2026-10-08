@@ -9,13 +9,16 @@ test("React Home pilot bundles, delegates navigation and unmounts its own root",
   const dom = new JSDOM("<main><div id='pilot'></div></main>", { url: "https://devmoter.test/", pretendToBeVisual: true });
   const original = {
     window: globalThis.window, document: globalThis.document,
-    HTMLElement: globalThis.HTMLElement, Node: globalThis.Node,
-    navigator: globalThis.navigator
+    HTMLElement: globalThis.HTMLElement, Node: globalThis.Node
   };
+  const originalNavigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
   Object.assign(globalThis, {
     window: dom.window, document: dom.window.document,
-    HTMLElement: dom.window.HTMLElement, Node: dom.window.Node,
-    navigator: dom.window.navigator
+    HTMLElement: dom.window.HTMLElement, Node: dom.window.Node
+  });
+  // Node.js 22/24 exposes navigator as a getter-only global.
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true, writable: true, value: dom.window.navigator
   });
   let dispose;
   try {
@@ -46,6 +49,11 @@ test("React Home pilot bundles, delegates navigation and unmounts its own root",
   } finally {
     if (dispose) dispose();
     Object.assign(globalThis, original);
+    if (originalNavigatorDescriptor) {
+      Object.defineProperty(globalThis, "navigator", originalNavigatorDescriptor);
+    } else {
+      delete globalThis.navigator;
+    }
     dom.window.close();
   }
 });
