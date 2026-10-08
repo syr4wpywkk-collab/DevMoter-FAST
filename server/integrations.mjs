@@ -323,7 +323,7 @@ async function terminalAcknowledgement(path, timeoutMs, pollMs) {
       const value = JSON.parse(await readFile(path, "utf8"));
       if (typeof value?.ok === "boolean") return value;
     } catch (error) {
-      if (error?.code !== "ENOENT") throw error;
+      if (error?.code !== "ENOENT" && !(error instanceof SyntaxError)) throw error;
     }
     await delay(pollMs);
   }
