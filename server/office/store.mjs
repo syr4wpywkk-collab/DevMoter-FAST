@@ -33,6 +33,7 @@ const editable = (block, parsed) =>
   ["paragraph", "heading", "listItem"].includes(block.type) &&
   block.docxIndex !== null &&
   !block.hidden &&
+  !(block.runs || []).some((run) => run.vanish) &&
   typeof block.originalXml === "string" &&
   parsed.extras.elements[block.docxIndex]?.name === "w:p" &&
   parsed.internal.documentXml.slice(
@@ -192,8 +193,8 @@ export function createOfficeStore({ rootDir }) {
         list: b.list,
         align: b.format?.align,
         editable: editable(b, parsed),
-        text: (b.runs || []).map((r) => r.text).join(""),
-        runs: (b.runs || []).map((r) => ({
+        text: (b.runs || []).filter((r) => !r.vanish).map((r) => r.text).join(""),
+        runs: (b.runs || []).filter((r) => !r.vanish).map((r) => ({
           text: r.text,
           bold: r.bold,
           italic: r.italic,
@@ -249,8 +250,8 @@ export function createOfficeStore({ rootDir }) {
       });
       if (
         parsed.blocks.length > OFFICE_LIMITS.blocks ||
-        parsed.protection ||
-        parsed.writeProtection?.enforcement
+        parsed.protection?.enforced ||
+        Boolean(parsed.writeProtection?.hash)
       )
         throw fail("文書が大きすぎるか、編集が制限されています。");
       const id = randomUUID();
