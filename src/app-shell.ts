@@ -71,7 +71,7 @@ function systemActionButton(icon: string, title: string, detail: string, action:
 }
 
 const appCategories: Record<AppId, string> = {
-  chat: "Workspace", projects: "Workspace", "mission-control": "Workspace", knowledge: "Workspace",
+  office: "Workspace", chat: "Workspace", projects: "Workspace", "mission-control": "Workspace", knowledge: "Workspace",
   terminal: "Workspace", git: "Workspace", review: "Workspace", agents: "Sessions", sessions: "Sessions",
   browser: "Workspace", automation: "Remote", "developer-workflows": "Workspace"
 };
@@ -139,7 +139,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
       <div class="dm-shell-sidebar-scroll">
         <div data-tools-ai-root></div>
         <details class="dm-shell-manual-tools" data-manual-tools>
-        <summary>ツールを直接開く · 20 tools</summary>
+        <summary>ツールを直接開く · 21 tools</summary>
         <div class="dm-shell-tools-controls" aria-label="Find tools">
           <label class="dm-shell-search-label" for="dmShellToolSearch">Search tools</label>
           <div class="dm-shell-search-row">
@@ -175,7 +175,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
         <section data-tools-group="Workspace">
           <h2>Workspace</h2>
           ${appActionButtons(["mission-control", "terminal", "git", "review"])}
-          ${appActionButtons(["projects", "developer-workflows"])}
+          ${appActionButtons(["projects", "office", "developer-workflows"])}
           ${systemActionButton("▦", "Files & Preview", "Project files, outputs, live preview, browser automation and models", "advanced")}
           ${systemActionButton("⚑", "Safety", "High-risk command scan and remembered approvals", "safety")}
           ${systemActionButton("⌕", "Project Index", "Local full-text and structural project search", "index")}
@@ -402,6 +402,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
       }
       case "projects": options.switchBackend("codex"); updateBackend("codex"); window.setTimeout(() => clickExisting("#cxProjectsNav"), 0); break;
       case "mission-control": window.dispatchEvent(new CustomEvent("devmoter:open-mission-control")); break;
+      case "office": void import("./office").then(module => module.openOffice({ configureAi: () => { options.switchBackend("api"); updateBackend("api"); window.setTimeout(() => clickExisting("#apiSettingsTop"), 0); } })).catch(() => notify("Officeを開けませんでした。再読み込みしてください。")); break;
       case "terminal": openToolsTab("terminal"); break;
       case "git": clickExisting(".pocket-git-trigger"); break;
       case "review": clickExisting("#wfLaunch"); break;
