@@ -9,6 +9,7 @@ import * as reasoning from "../src/codex-reasoning.mjs";
 import * as reconnect from "../src/reconnect-policy.mjs";
 import * as markdown from "../src/chat-markdown.mjs";
 import * as sendError from "../src/codex-send-error.mjs";
+import { loadPureTypeScript } from "./helpers/ts-pure-modules.mjs";
 
 const source = await readFile(new URL("../src/codex.ts", import.meta.url), "utf8");
 const compiled = ts.transpileModule(source, {
@@ -17,6 +18,8 @@ const compiled = ts.transpileModule(source, {
 const modules = new Map(await Promise.all(ts.preProcessFile(source).importedFiles
   .filter(({ fileName }) => fileName.endsWith(".mjs"))
   .map(async ({ fileName }) => [fileName, await import(new URL("../src/" + fileName.slice(2), import.meta.url))])));
+modules.set("./codex/presentation", await loadPureTypeScript("codex/presentation.ts"));
+modules.set("./codex/icons", await loadPureTypeScript("codex/icons.ts"));
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
 test("native failed turn reason reaches the Codex failure UI", () => {
