@@ -29,11 +29,25 @@ The DevMoter login is an **access boundary**, not a multi-user authorization mod
 
 Keep DevMoter bound to localhost and put an HTTPS private-network proxy in front of it, such as Tailscale Serve:
 
+First inspect the current Tailscale Serve configuration. **Do not reset it:**
+that would delete unrelated Serve settings on the same machine.
+
 ```bash
-tailscale serve reset
-tailscale serve --bg http://127.0.0.1:8787
 tailscale serve status
+tailscale serve get-config --all
 ```
+
+If there are no conflicting Serve/Funnel routes, explicitly configure a private
+Serve mapping for DevMoter after reviewing the host's current setup:
+
+```bash
+tailscale serve --bg http://127.0.0.1:8787
+tailscale serve status --json
+```
+
+The exact URL must come from the reported running configuration; never guess
+it, and never enable Funnel by default. If an existing route conflicts, stop
+and resolve the conflict with the owner instead of resetting Serve.
 
 Do not send the DevMoter Basic-auth password over cleartext HTTP on an untrusted network.
 

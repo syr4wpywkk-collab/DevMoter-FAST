@@ -54,6 +54,44 @@ check(headers.includes('"script-src \'self\'"'), "CSP restricts scripts to self"
 check(headers.includes('"frame-ancestors \'none\'"'), "CSP blocks framing");
 check(headers.includes('"x-content-type-options": "nosniff"'), "nosniff header is enabled");
 
+// Cross-surface guardrails: these checks cannot replace runtime tests or CodeQL,
+// but they prevent accidental removal of key security boundaries across modules.
+const socketEndpoint = await text("server/terminal-websocket.mjs");
+const setupDetector = await text("server/setup/detector.mjs");
+const setupExecutor = await text("server/setup/executor.mjs");
+const setupPlan = await text("server/setup/plan.mjs");
+const integration = await text("server/integrations.mjs");
+const fileHelpers = await text("server/security-helpers.mjs");
+const securityDocs = await text("SECURITY.md");
+const codeqlWorkflow = await text(".github/workflows/codeql.yml");
+const ciWorkflow = await text(".github/workflows/ci.yml");
+const auditWorkflow = await text(".github/workflows/security-audit.yml");
+
+check(socketEndpoint.includes("expectedRequestOrigin") && socketEndpoint.includes("authorizeSocket"),
+  "terminal WebSocket origin and ticket gates remain present");
+check(setupDetector.includes("shell: false") && setupDetector.includes("filteredEnvironment"),
+  "setup detector executes only argument-array commands with filtered environment");
+check(setupPlan.includes("parseExecuteRequest") && setupPlan.includes("planSnapshots"),
+  "setup execution remains bound to server-issued plans");
+check(setupExecutor.includes("supportedAutomaticInstaller") && setupExecutor.includes("userOwnedNpmPrefix"),
+  "setup automatic executors retain an allowlist and a user-owned npm prefix");
+check(integration.includes("validateAntigravityRemoteUrl") && integration.includes("spawn("),
+  "host integration URL validation and controlled spawning remain present");
+check(fileHelpers.includes("maxEncodedLength") && fileHelpers.indexOf("maxEncodedLength") < fileHelpers.indexOf("Buffer.from(encoded"),
+  "upload payload is size-bounded before base64 decoding");
+check(fileHelpers.includes("value.startsWith(\"/\")") && fileHelpers.includes("String.fromCharCode(0)"),
+  "Markdown filename guard rejects absolute paths and NULs");
+check(!/^tailscale serve reset\s*$/m.test(securityDocs),
+  "security documentation does not recommend destructive Tailscale Serve reset");
+check(codeqlWorkflow.includes("javascript-typescript") && codeqlWorkflow.includes("language: [javascript-typescript, actions]"),
+  "CodeQL scans JavaScript/TypeScript and GitHub Actions");
+for (const [name, workflow] of [["CI", ciWorkflow], ["Security Audit", auditWorkflow]]) {
+  check(/permissions:\n\s+contents: read/.test(workflow), name + " has a read-only repository token");
+  check(workflow.includes("persist-credentials: false"), name + " does not persist checkout credentials");
+  check(!/uses: (?:actions|github)\/[^@\s]+@v\d+\b/m.test(workflow),
+    name + " GitHub Actions are pinned to immutable commit SHAs");
+}
+
 for (const required of ["SECURITY.md", "THREAT_MODEL.md"]) {
   try {
     await readFile(required);
