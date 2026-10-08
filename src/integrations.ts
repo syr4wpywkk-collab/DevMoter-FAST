@@ -284,7 +284,7 @@ export function mountIntegrations(
           method: "POST",
           body: JSON.stringify({ projectId: project.id })
         });
-        showNotice(`${id === "claude" ? "Claude Code" : "Antigravity"}を${result.terminal || "terminal"}で開きました。`);
+        showNotice(id === "antigravity" ? `Antigravity CLIの起動を確認しました（${result.terminal || "terminal"}）。PC画面を確認してください。` : `Claude Codeを${result.terminal || "terminal"}で開くよう依頼しました。`);
       } catch (error) {
         showNotice(error instanceof Error ? error.message : String(error), "error");
       } finally {

@@ -1,5 +1,10 @@
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { setTimeout as delay } from "node:timers/promises";
 
 const execFileAsync = promisify(execFile);
 const COMMAND_TIMEOUT_MS = 8_000;
@@ -254,11 +259,13 @@ export async function resolveExecutable(name, env = sanitizeChildEnv(process.env
 export function desktopTerminalCandidates(platform, command, extraArgs = []) {
   if (platform !== "linux") return [];
   return [
-    { bin: "x-terminal-emulator", args: ["-e", command, ...extraArgs] },
+    // XFCE's -x accepts an argv vector; its -e option expects a single command string.
+    { bin: "xfce4-terminal", args: ["--disable-server", "-x", command, ...extraArgs] },
     { bin: "gnome-terminal", args: ["--", command, ...extraArgs] },
     { bin: "konsole", args: ["-e", command, ...extraArgs] },
     { bin: "kitty", args: [command, ...extraArgs] },
-    { bin: "wezterm", args: ["start", "--", command, ...extraArgs] }
+    { bin: "wezterm", args: ["start", "--", command, ...extraArgs] },
+    { bin: "x-terminal-emulator", args: ["-e", command, ...extraArgs] }
   ];
 }
 
@@ -302,6 +309,88 @@ export async function launchInTerminal(
   }
 
   throw new Error("No supported desktop terminal was found");
+}
+
+// The emulator starting does not prove the actual interactive CLI started.
+// A small, argv-only terminal entrypoint confirms that the child was spawned
+// and stayed alive long enough to enter interactive initialization.
+const TERMINAL_ENTRY = fileURLToPath(new URL("./integration-terminal-runner.mjs", import.meta.url));
+
+async function terminalAcknowledgement(path, timeoutMs, pollMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const value = JSON.parse(await readFile(path, "utf8"));
+      if (typeof value?.ok === "boolean") return value;
+    } catch (error) {
+      if (error?.code !== "ENOENT" && !(error instanceof SyntaxError)) throw error;
+    }
+    await delay(pollMs);
+  }
+  return null;
+}
+
+export async function launchCheckedInTerminal(
+  command,
+  cwd,
+  extraArgs = [],
+  env = sanitizeChildEnv(process.env),
+  runtime = {}
+) {
+  const platform = runtime.platform ?? process.platform;
+  if (platform !== "linux") {
+    throw new IntegrationError(`Desktop launch is not implemented for ${platform} yet`);
+  }
+  if (!env.DISPLAY && !env.WAYLAND_DISPLAY) {
+    throw new IntegrationError(
+      "No graphical session is available to the DevMoter service. Import DISPLAY, WAYLAND_DISPLAY and DBUS_SESSION_BUS_ADDRESS into the systemd user environment, then restart DevMoter.",
+      503
+    );
+  }
+  const resolve = runtime.resolveExecutable || resolveExecutable;
+  const spawnTerminal = runtime.spawnDetached || spawnDetached;
+  const timeoutMs = runtime.ackTimeoutMs ?? 6_000;
+  const pollMs = runtime.pollMs ?? 80;
+  const privateDir = await mkdtemp(join(tmpdir(), "devmoter-cli-launch-"));
+  try {
+    let detectedTerminal = false;
+    let launchError = null;
+    let index = 0;
+    for (const candidate of desktopTerminalCandidates(platform, process.execPath)) {
+      const terminal = await resolve(candidate.bin, env);
+      if (!terminal) continue;
+      detectedTerminal = true;
+      const ackPath = join(privateDir, `launch-${index++}.json`);
+      const candidates = desktopTerminalCandidates(platform, process.execPath, [
+        TERMINAL_ENTRY, ackPath, command, cwd, ...extraArgs
+      ]);
+      const args = candidates.find(item => item.bin === candidate.bin)?.args;
+      try {
+        await spawnTerminal(terminal, args, cwd, env);
+      } catch {
+        launchError = `Could not start ${candidate.bin} from the DevMoter service.`;
+        continue;
+      }
+      const ack = await terminalAcknowledgement(ackPath, timeoutMs, pollMs);
+      if (ack?.ok) return { ok: true, terminal: candidate.bin, cliSpawnConfirmed: true };
+      if (ack?.reason === "missing" || ack?.reason === "permission") {
+        throw new IntegrationError("Antigravity CLI cannot execute on this host. Check its installation and file permissions.", 503);
+      }
+      if (ack?.reason === "early-exit") {
+        throw new IntegrationError("Antigravity CLI exited immediately. Check the terminal window for its error or sign-in prompt.", 503);
+      }
+      throw new IntegrationError(
+        "Terminal launch was requested but Antigravity CLI did not confirm startup. Check the PC display and the DevMoter systemd GUI environment.",
+        503
+      );
+    }
+    if (!detectedTerminal) {
+      throw new IntegrationError("No supported graphical terminal is installed on the host.", 503);
+    }
+    throw new IntegrationError(launchError || "Unable to start a graphical terminal.", 503);
+  } finally {
+    await rm(privateDir, { recursive: true, force: true });
+  }
 }
 
 export function publicDefinition(definition) {
@@ -378,7 +467,7 @@ export async function launchIntegration(id, cwd) {
     if (!executable) {
       throw new IntegrationError(`${definition.name} executable could not be resolved`);
     }
-    const result = await launchInTerminal(
+    const result = await (id === "antigravity" ? launchCheckedInTerminal : launchInTerminal)(
       executable,
       cwd,
       [],
