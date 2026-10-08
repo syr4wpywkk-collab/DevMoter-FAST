@@ -41,12 +41,19 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
           <div><p class="dm-home-eyebrow">PICK UP WHERE YOU LEFT OFF</p><h2 id="dm-home-continue-title">Continue working</h2></div>
         </div>
         <p>Your chats and project activity are still available in their workspaces.</p>
-        <button type="button" class="dm-home-text-action" data-home-open-chat>Go to Chat <span aria-hidden="true">→</span></button>
+        <button type="button" class="dm-home-text-action" data-home-open-chat aria-label="Open your last chat workspace">Go to Chat <span aria-hidden="true">→</span></button>
       </section>
 
       <footer class="dm-home-footer">DevMoter FAST <span>·</span> Your local AI workspace</footer>
     </div>
   `;
+  // The Continue card previously looked interactive but had no click handler.
+  // Reuse the registered chat launch path so navigation keeps its existing
+  // backend selection and browser history semantics.
+  target.querySelector<HTMLButtonElement>("[data-home-open-chat]")?.addEventListener("click", () => {
+    options.onLaunchApp("chat");
+  });
+
   target.querySelectorAll<HTMLButtonElement>("[data-home-app]").forEach(button => {
     button.addEventListener("click", () => {
       const id = button.dataset.homeApp;

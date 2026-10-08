@@ -75,7 +75,8 @@
 .dm-home-continue { min-height: 148px; padding: 22px; border: 1px solid rgba(178, 190, 215, .1); border-radius: 19px; background: rgba(255, 255, 255, .022); }
 .dm-home-continue .dm-home-section-heading { margin-bottom: 10px; }
 .dm-home-continue > p { margin: 0; color: #9ba4b5; font-size: 13px; line-height: 1.6; }
-.dm-home-text-action { margin-top: 14px; padding: 7px 0; border: 0; color: #becaff; background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
+.dm-home-text-action { margin-top: 12px; min-height: 44px; display: inline-flex; align-items: center; gap: 4px; padding: 10px 12px 10px 0; border: 0; color: #becaff; background: transparent; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.dm-home-text-action:hover { color: #e0e7ff; }
 .dm-home-text-action span { padding-left: 5px; }
 .dm-home-footer { margin-top: auto; padding-top: 20px; color: #626c7e; font-size: 11px; }
 .dm-home-footer span { padding-inline: 5px; }
