@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
+import { loadPureTypeScript } from "./helpers/ts-pure-modules.mjs";
 
 const source = await readFile(new URL("../src/opencode.ts", import.meta.url), "utf8");
 const compiled = ts.transpileModule(source, {
@@ -11,6 +12,8 @@ const compiled = ts.transpileModule(source, {
 const modules = new Map(await Promise.all(ts.preProcessFile(source).importedFiles
   .filter(({ fileName }) => fileName.endsWith(".mjs"))
   .map(async ({ fileName }) => [fileName, await import(new URL("../src/" + fileName.slice(2), import.meta.url))])));
+modules.set("./opencode/status", await loadPureTypeScript("opencode/status.ts"));
+modules.set("./opencode/tools", await loadPureTypeScript("opencode/tools.ts"));
 const workspaceSource = await readFile(new URL("../src/workspace-control.ts", import.meta.url), "utf8");
 const compiledWorkspace = ts.transpileModule(workspaceSource, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
