@@ -49,7 +49,7 @@ test("Antigravity does not claim startup merely because an emulator starts", asy
 test("interactive CLI receipt proves process launch in selected project without a shell", async t => {
   const dir = await mkdtemp(join(tmpdir(), "devmoter-issue-210-"));
   t.after(async () => rm(dir, { recursive: true, force: true }));
-  const script = join(dir, "fake antigravity.js");
+  const script = join(dir, "fake antigravity.mjs");
   const observed = join(dir, "observed.json");
   await writeFile(script, `import { writeFileSync } from "node:fs";
 writeFileSync(process.argv[2], JSON.stringify({ cwd: process.cwd(), args: process.argv.slice(3) }));
