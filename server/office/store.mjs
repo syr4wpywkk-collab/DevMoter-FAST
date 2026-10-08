@@ -182,7 +182,17 @@ export function createOfficeStore({ rootDir }) {
       }),
     };
   };
-  const describe = ({ meta, parsed }) => ({
+  const describe = ({ meta, parsed }) => {
+    const emittedImages = new Set();
+    let imageBudget = 2 * 1024 * 1024;
+    const safeImage = (url) => {
+      if (!/^data:image\/(?:png|jpeg|gif|webp);base64,/.test(url || "")) return undefined;
+      if (emittedImages.has(url) || url.length > imageBudget) return undefined;
+      emittedImages.add(url);
+      imageBudget -= url.length;
+      return url;
+    };
+    return ({
     ...meta,
     blocks: parsed.blocks
       .filter((b) => !b.hidden)
@@ -204,11 +214,7 @@ export function createOfficeStore({ rootDir }) {
         })),
         label: b.label,
         previewText: b.previewText,
-        imageDataUrl: /^data:image\/(?:png|jpeg|gif|webp);base64,/.test(
-          b.imageDataUrl || "",
-        )
-          ? b.imageDataUrl
-          : undefined,
+        imageDataUrl: safeImage(b.imageDataUrl),
         table: b.table
           ? {
               rows: b.table.rows.map((row) => ({
@@ -228,7 +234,8 @@ export function createOfficeStore({ rootDir }) {
           ]
         : []),
     ],
-  });
+    });
+  };
   const create = (name, bytes) =>
     serial(async () => {
       await ensure();
