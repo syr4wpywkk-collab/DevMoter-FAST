@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, realpath, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { isInsideHome, normalizeNewProjectPath, sanitizeUploadName, createUploadPath, decodeUploadDataUrl, isAllowedCodexRpc } from "../server/security-helpers.mjs";
+import { isInsideHome, normalizeNewProjectPath, sanitizeUploadName, createUploadPath, decodeUploadDataUrl, assertSafeMarkdownRelativePath, isAllowedCodexRpc } from "../server/security-helpers.mjs";
 
 test("project paths stay inside HOME and exclude HOME itself", () => {
   const home = "/home/tester";
@@ -69,4 +69,23 @@ test("generated OpenCode operation ids take precedence over caller headers", asy
   assert.ok(block.indexOf("...(init.headers || {})") >= 0);
   assert.ok(block.indexOf("x-pocket-operation-id") > block.indexOf("...(init.headers || {})"));
   assert.match(source, /earlier outcome is unknown/);
+});
+
+test("Markdown paths fail closed on absolute, traversal, Windows, and NUL input", () => {
+  assert.equal(assertSafeMarkdownRelativePath("notes/readme.md"), "notes/readme.md");
+  assert.equal(assertSafeMarkdownRelativePath("./notes/readme.md"), "notes/readme.md");
+  for (const unsafe of ["/tmp/secret.md", "//host/file.md", "../escape.md", "notes/../../escape.md",
+    "..\\escape.md", "C:\\Users\\secret.md", "notes\\file.md", "notes/evil\u0000.md", ""]) {
+    assert.throws(() => assertSafeMarkdownRelativePath(unsafe), /Invalid Markdown path/);
+  }
+});
+
+test("upload decoder rejects oversized base64 before allocating decoded data", () => {
+  const raw = Buffer.alloc(256).toString("base64");
+  assert.throws(() => decodeUploadDataUrl("data:application/octet-stream;base64," + raw, 64), /larger/);
+  assert.throws(() => decodeUploadDataUrl("data:text/plain;base64,###", 64), /base64 data URL/);
+  assert.throws(() => decodeUploadDataUrl("data:text/plain;base64,A", 64), /base64 data URL/);
+  assert.throws(() => decodeUploadDataUrl("data:text/plain;base64,SGk= extra", 64), /base64 data URL/);
+  assert.throws(() => decodeUploadDataUrl("data:text/plain;base64,SGk=", -1), /Invalid upload size limit/);
+  assert.equal(decodeUploadDataUrl("data:text/plain;base64,SGk=", 2).buffer.toString(), "Hi");
 });
