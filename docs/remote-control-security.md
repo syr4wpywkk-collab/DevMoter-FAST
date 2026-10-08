@@ -4,15 +4,9 @@
 
 Passkeys are optional. Credentials are scoped to the exact DevMoter RP ID (host name) and are never reused as backend credentials.
 
-By default, the first passkey for an origin can only be registered through a true local loopback browser origin. A reverse proxy that merely connects to DevMoter over 127.0.0.1 does not count as local bootstrap because the browser host name is also checked.
+Auth v2 requires authenticated owner sign-in before passkey registration. Use local recovery or another linked sign-in method, then register from Account > Passkey. Remote origins must use HTTPS and should set the canonical `DEVMOTER_PUBLIC_ORIGIN`. A reverse proxy connecting over 127.0.0.1 does not make the browser origin local.
 
-For a new remote origin or recovery flow, temporarily start DevMoter with:
-
-```bash
-DEVMOTER_PASSKEY_BOOTSTRAP=1
-```
-
-Register the passkey for the intended HTTPS origin, then remove/disable that variable and restart DevMoter.
+The legacy `DEVMOTER_PASSKEY_BOOTSTRAP=1` setting is retained for the standalone passkey module. It never bypasses owner authentication on the server's registration routes. Keep it disabled in normal service use.
 
 To require passkey authentication for normal API routes after credentials are configured:
 
@@ -23,9 +17,9 @@ DEVMOTER_PASSKEY_REQUIRED=1
 Recovery policy:
 
 - keep at least two passkeys when practical;
-- an already authenticated passkey session may register another passkey for the same RP ID;
-- a new/recovery RP ID requires the explicit temporary bootstrap flag;
-- restarting DevMoter clears in-memory login sessions, so the user signs in again;
+- an authenticated owner may register a passkey for the current RP ID;
+- in required-Passkey mode, use a registered passkey first when one exists; direct Passkey sign-in satisfies the requirement;
+- sessions created before Auth v2 were kept only in memory and require one final sign-in after upgrade/restart; Auth v2 owner sessions survive later service restarts until expiry or revocation. See [Owner sign-in / Auth v2](./auth-v2.md);
 - deleting the passkey registry manually is an administrator recovery action and should only be done from the trusted host.
 
 GitHub webhook delivery is the only control-plane endpoint allowed before HTTP Basic authentication. It is narrowly scoped to the exact webhook path and separately authenticated with the per-trigger HMAC-SHA256 secret. All other control-plane and passkey endpoints remain behind DevMoter Basic authentication and the normal same-origin mutation boundary.

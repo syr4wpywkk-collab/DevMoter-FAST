@@ -8,7 +8,7 @@ export function createToolsAiService({ store, dispatch, prepareChat, authorize }
   const publicRun = run => { const { ownerId: _owner, requestId: _request, ...rest } = run; return rest; };
   const owned = async (id, identity) => {
     await store.ready(); const run = store.get(id);
-    if (run.ownerId !== identity.ownerId || run.context.deviceId !== identity.deviceId) throw Object.assign(new Error("Tools AI run scope denied"), { status: 403 });
+    if (![identity.ownerId, ...(identity.legacyOwnerIds || [])].includes(run.ownerId) || run.context.deviceId !== identity.deviceId) throw Object.assign(new Error("Tools AI run scope denied"), { status: 403 });
     // Recorded results/cancellation remain accessible if a project was removed. Execution still revalidates its scope.
     await authorize({ ...run.context, project: null }, identity);
     return store.get(id);
@@ -52,6 +52,13 @@ export function createToolsAiService({ store, dispatch, prepareChat, authorize }
       if (!payload || Object.keys(payload).some(k => !["goal", "projectId", "providerId", "model", "requestId"].includes(k))) throw new Error("Unexpected Tools AI input");
       if (typeof payload.goal !== "string" || !payload.goal.trim() || Buffer.byteLength(payload.goal) > 8_000) throw new Error("Goal must be between 1 and 8000 bytes");
       if (typeof payload.requestId !== "string" || !/^[a-zA-Z0-9_-]{8,100}$/.test(payload.requestId)) throw new Error("A stable request ID is required");
+      await store.ready();
+      for (const ownerId of identity.legacyOwnerIds || []) {
+        let existing;
+        try { existing = store.findRequest(payload.requestId, ownerId, identity.deviceId); }
+        catch (error) { if (error.status !== 404) throw error; }
+        if (existing) throw Object.assign(new Error("Tools AI request already recorded"), { status: 409, runId: existing.runId });
+      }
       const prepared = await prepareChat(payload, identity);
       const run = await store.create({ requestId: payload.requestId, ownerId: identity.ownerId, goal: payload.goal,
         context: prepared.context, catalogVersion: CATALOG_VERSION });
@@ -67,7 +74,12 @@ export function createToolsAiService({ store, dispatch, prepareChat, authorize }
     async get(id, identity) { return publicRun(await owned(id, identity)); },
     async findRequest(requestId, identity) {
       await store.ready();
-      const run = store.findRequest(requestId, identity.ownerId, identity.deviceId);
+      let run;
+      for (const ownerId of [identity.ownerId, ...(identity.legacyOwnerIds || [])]) {
+        try { run = store.findRequest(requestId, ownerId, identity.deviceId); break; }
+        catch (error) { if (error.status !== 404) throw error; }
+      }
+      if (!run) throw Object.assign(new Error("Request outcome not recorded; do not assume execution or success"), { status: 404 });
       return publicRun(await owned(run.runId, identity));
     },
     async stop(id, identity) {

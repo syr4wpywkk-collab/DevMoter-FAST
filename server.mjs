@@ -8,6 +8,7 @@ import { CodexBridge } from "./server/codex-bridge.mjs";
 import { normalizeModelPricing } from "./src/model-pricing.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
+import { staticSecurityHeaders } from "./server/security-headers.mjs";
 import { createOperationRegistry } from "./server/operation-registry.mjs";
 import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
 import { createSessionControl } from "./server/session-control.mjs";
@@ -29,6 +30,7 @@ import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
 import { applyModeToPrompt, isDirectMutationRoute, isPromptRoute, isReadOnlyMode, parseAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
 import { assertAuthPassword, credentialsMatch, parseBasicAuthorization, requireSameOriginMutation } from "./server/auth.mjs";
+import { OidcAuth } from "./server/oidc-auth.mjs";
 import { ExternalAuth } from "./server/external-auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
 import { antigravityRemoteAction, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
@@ -56,11 +58,15 @@ const DEVMOTER_AUTH_USERNAME = process.env.DEVMOTER_AUTH_USERNAME || "devmoter";
 const DEVMOTER_AUTH_PASSWORD = assertAuthPassword(process.env.DEVMOTER_AUTH_PASSWORD || "");
 const DEVMOTER_PUBLIC_ORIGIN = process.env.DEVMOTER_PUBLIC_ORIGIN || "";
 const PASSKEY_REQUIRED = process.env.DEVMOTER_PASSKEY_REQUIRED === "1";
+const AUTH_SESSION_TTL_DAYS = Number(process.env.DEVMOTER_AUTH_SESSION_TTL_DAYS || 30);
+if (!Number.isFinite(AUTH_SESSION_TTL_DAYS) || AUTH_SESSION_TTL_DAYS < 1 || AUTH_SESSION_TTL_DAYS > 90) {
+  throw new Error("DEVMOTER_AUTH_SESSION_TTL_DAYS must be between 1 and 90 days");
+}
 const AUTH_CONFIG = {
   username: DEVMOTER_AUTH_USERNAME,
   password: DEVMOTER_AUTH_PASSWORD
 };
-const REDACTED_SECRETS = [OPENCODE_PASSWORD, DEVMOTER_AUTH_PASSWORD].filter(Boolean);
+const REDACTED_SECRETS = [OPENCODE_PASSWORD, DEVMOTER_AUTH_PASSWORD, process.env.DEVMOTER_GOOGLE_CLIENT_SECRET, process.env.DEVMOTER_MICROSOFT_CLIENT_SECRET].filter(Boolean);
 const OPENCODE_DIRECTORY =
   process.env.OPENCODE_DIRECTORY ||
   process.env.CODEX_CWD ||
@@ -74,7 +80,16 @@ const UPLOAD_DIR = process.env.POCKET_UPLOAD_DIR || join(HOME_DIR, ".local", "st
 const PROJECT_CONFIG_DIR = join(HOME_DIR, ".config", "opencode-pocket");
 const externalAuth = new ExternalAuth({
   configDir: PROJECT_CONFIG_DIR,
-  githubClientId: process.env.DEVMOTER_GITHUB_CLIENT_ID || ""
+  githubClientId: process.env.DEVMOTER_GITHUB_CLIENT_ID || "",
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+  sessionTtlMs: AUTH_SESSION_TTL_DAYS * 24 * 60 * 60 * 1000
+});
+const oidcAuth = new OidcAuth({
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+  googleClientId: process.env.DEVMOTER_GOOGLE_CLIENT_ID, googleClientSecret: process.env.DEVMOTER_GOOGLE_CLIENT_SECRET,
+  microsoftClientId: process.env.DEVMOTER_MICROSOFT_CLIENT_ID, microsoftClientSecret: process.env.DEVMOTER_MICROSOFT_CLIENT_SECRET,
+  microsoftTenant: process.env.DEVMOTER_MICROSOFT_TENANT || "common",
+  getOwnerSessionById: (ownerId, id, host) => externalAuth.sessionById(ownerId, id, new URL(`http://${host}`).hostname.replace(/^\[|\]$/g, ""))
 });
 const PROJECTS_FILE = join(PROJECT_CONFIG_DIR, "projects.json");
 const MULTI_API_FILE = join(PROJECT_CONFIG_DIR, "llm-providers.json");
@@ -108,7 +123,12 @@ const multiApiAttachments = createMultiApiAttachmentStore({ directory: MULTI_API
 void multiApiAttachments.cleanup().catch(error => {
   console.warn("multi-api attachment cleanup failed", redactText(error instanceof Error ? error.message : String(error)));
 });
-const passkeys = new PasskeyAuth({ configDir: PROJECT_CONFIG_DIR });
+const passkeys = new PasskeyAuth({
+  configDir: PROJECT_CONFIG_DIR, publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+  sessionResolver: req => externalAuth.session(req),
+  sessionIssuer: req => externalAuth.passkeyLogin(req),
+  ownerAuthorized: async req => { try { await requireOwner(req); return true; } catch { return false; } }
+});
 let userAutomation = null;
 const controlPlane = new ControlPlane({
   configDir: PROJECT_CONFIG_DIR,
@@ -1414,68 +1434,130 @@ async function executeControlTaskCore(definition, context = {}) {
   return { ...result, cancel, context: backendContext };
 }
 
+function basicOwner(req) {
+  return credentialsMatch(parseBasicAuthorization(req.headers.authorization), AUTH_CONFIG);
+}
+async function stepUpRequired(req, session = null) {
+  if (!PASSKEY_REQUIRED || session?.assurance === "passkey") return false;
+  return (await passkeys.load()).credentials.length > 0;
+}
+async function requireOwner(req, { requireSession = false } = {}) {
+  const session = await externalAuth.session(req);
+  if ((!basicOwner(req) || requireSession) && !session) throw Object.assign(new Error("Owner authentication is required"), { status: 401 });
+  if (await stepUpRequired(req, session)) throw Object.assign(new Error("Confirm this sign-in with a Passkey"), { status: 401 });
+  return session;
+}
+async function authStatus(req) {
+  const base = await externalAuth.status(req);
+  const session = await externalAuth.session(req);
+  const state = await externalAuth.load();
+  const pk = await passkeys.status(req);
+  const ownerAuthenticated = Boolean(session || basicOwner(req));
+  const stepUp = ownerAuthenticated && await stepUpRequired(req, session);
+  return { ...base, authenticated: ownerAuthenticated && !stepUp, ownerAuthenticated, stepUpRequired: stepUp,
+    mode: PASSKEY_REQUIRED ? "passkey-step-up" : "normal",
+    providers: {
+      passkey: { configured: pk.enabled, available: pk.enabled, linked: pk.enabled },
+      github: { configured: Boolean(externalAuth.githubClientId), linked: Boolean(state.providers.github) },
+      google: { configured: oidcAuth.isConfigured("google"), linked: Boolean(state.providers.google) },
+      microsoft: { configured: oidcAuth.isConfigured("microsoft"), linked: Boolean(state.providers.microsoft) }
+    } };
+}
 async function externalAuthRoute(req, res, url) {
-  if (!url.pathname.startsWith("/api/auth/") || url.pathname.startsWith("/api/auth/passkey/")) {
-    return false;
-  }
-
+  if (!url.pathname.startsWith("/api/auth/") || url.pathname.startsWith("/api/auth/passkey/")) return false;
+  const callback = url.pathname.match(/^\/api\/auth\/(google|microsoft)\/callback$/);
   try {
+    if (req.method === "GET" && callback) {
+      const result = await oidcAuth.callback(req, callback[1], url);
+      res.setHeader("set-cookie", result.clearCookie);
+      const session = await externalAuth.acceptOidc(req, result);
+      res.writeHead(302, { "location": "/login.html?signin=success", "cache-control": "no-store", "set-cookie": [session.cookie, result.clearCookie] });
+      res.end(); return true;
+    }
     if (req.method === "GET" && url.pathname === "/api/auth/status") {
-      json(res, 200, await externalAuth.status(req));
-      return true;
+      json(res, 200, await authStatus(req)); return true;
     }
-
     if (req.method === "POST" && url.pathname === "/api/auth/local/login") {
-      const payload = await readJson(req, 64 * 1024);
-      const result = await externalAuth.localLogin(req, payload, AUTH_CONFIG);
-      jsonWithCookie(res, 200, { ok: true, identity: result.identity }, result.cookie);
-      return true;
+      const result = await externalAuth.localLogin(req, await readJson(req, 64 * 1024), AUTH_CONFIG);
+      jsonWithCookie(res, 200, { ok: true, identity: result.identity }, result.cookie); return true;
     }
-
-    if (req.method === "POST" && url.pathname === "/api/auth/github/start") {
-      const payload = await readJson(req, 64 * 1024);
-      const session = await externalAuth.session(req);
-      const bootstrapAuthorized =
-        Boolean(session) ||
-        credentialsMatch(
-          {
-            username: String(payload?.username || ""),
-            password: String(payload?.password || "")
-          },
-          AUTH_CONFIG
-        );
-      json(res, 200, await externalAuth.startGithub(req, { bootstrapAuthorized }));
-      return true;
+    if (req.method === "GET" && url.pathname === "/api/auth/account") {
+      const session = await requireOwner(req);
+      const state = await externalAuth.load();
+      const ownerId = session?.ownerId || await externalAuth.identities.ensureOwner();
+      const pk = await passkeys.status(req);
+      const status = await authStatus(req);
+      json(res, 200, { ownerId, providers: Object.fromEntries(["github", "google", "microsoft"].map(provider => [provider, { ...status.providers[provider], identity: state.providers[provider] }])),
+        passkey: { available: pk.enabled, credentialCount: pk.credentialCount }, localRecovery: true,
+        sessions: await externalAuth.sessions.list({ ownerId, currentToken: externalAuth.token(req) }) }); return true;
     }
-
-    if (req.method === "POST" && url.pathname === "/api/auth/github/poll") {
+    const start = url.pathname.match(/^\/api\/auth\/(github|google|microsoft)\/start$/);
+    if (req.method === "POST" && start) {
       const payload = await readJson(req, 64 * 1024);
-      const result = await externalAuth.pollGithub(req, payload?.flowId);
-      if (result.status === "complete") {
-        jsonWithCookie(
-          res,
-          200,
-          { status: "complete", identity: result.identity },
-          result.cookie
-        );
-      } else {
-        json(res, 200, result);
+      const provider = start[1];
+      // Legacy GitHub bootstrap credentials remain supported, but authenticated
+      // login never implicitly turns into a provider-link operation.
+      const bootstrapAuthorized = provider === "github" && credentialsMatch({ username: String(payload?.username || ""), password: String(payload?.password || "") }, AUTH_CONFIG);
+      const intent = payload?.intent || (bootstrapAuthorized ? "link" : "login");
+      if (!["login", "link"].includes(intent)) throw Object.assign(new Error("Invalid sign-in request"), { status: 400 });
+      let ownerSession = null;
+      if (intent === "link") {
+        if (!bootstrapAuthorized) ownerSession = await requireOwner(req, { requireSession: provider !== "github" });
+        else if (await stepUpRequired(req, await externalAuth.session(req))) throw Object.assign(new Error("Confirm this sign-in with a Passkey"), { status: 401 });
       }
+      if (provider === "github") {
+        const result = await externalAuth.startGithub(req, { bootstrapAuthorized: bootstrapAuthorized || (intent === "link" && basicOwner(req)), intent, ownerSession });
+        const { flowCookie, ...publicFlow } = result;
+        jsonWithCookie(res, 200, publicFlow, flowCookie); return true;
+      }
+      const state = await externalAuth.load();
+      if (intent === "login" && !state.providers[provider]) throw Object.assign(new Error("Connect this sign-in method from Account settings first"), { status: 403 });
+      const result = await oidcAuth.start(req, provider, { intent, ownerSession });
+      jsonWithCookie(res, 200, { authorizationUrl: result.authorizationUrl }, result.setCookie); return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/auth/github/poll") {
+      const result = await externalAuth.pollGithub(req, (await readJson(req, 64 * 1024))?.flowId);
+      const { cookie: cookies, ...payload } = result;
+      if (cookies) jsonWithCookie(res, 200, payload, cookies); else json(res, 200, payload);
       return true;
     }
-
+    const disconnect = url.pathname.match(/^\/api\/auth\/providers\/(github|google|microsoft)\/disconnect$/);
+    if (req.method === "POST" && disconnect) {
+      const session = await requireOwner(req);
+      const ownerId = session?.ownerId || await externalAuth.identities.ensureOwner();
+      // The validated local recovery password always remains available, including
+      // after removing the last external provider. It is never removable here.
+      await externalAuth.identities.unbindProvider(disconnect[1], { ownerId });
+      await externalAuth.sessions.revokeProvider(ownerId, disconnect[1]);
+      if (session?.provider === disconnect[1]) res.setHeader("set-cookie", await externalAuth.logout(req));
+      json(res, 200, { ok: true, reauthenticate: session?.provider === disconnect[1] }); return true;
+    }
+    const revoke = url.pathname.match(/^\/api\/auth\/sessions\/([a-f0-9-]{36})$/i);
+    if (req.method === "DELETE" && revoke) {
+      const session = await requireOwner(req);
+      const ownerId = session?.ownerId || await externalAuth.identities.ensureOwner();
+      const result = await externalAuth.sessions.revokeById(revoke[1], { ownerId, currentToken: externalAuth.token(req) });
+      if (result && session?.id === revoke[1]) res.setHeader("set-cookie", [await externalAuth.logout(req), await passkeys.logout(req)]);
+      json(res, 200, { ok: true, revoked: result }); return true;
+    }
+    if (req.method === "POST" && url.pathname === "/api/auth/sessions/revoke-others") {
+      const session = await requireOwner(req);
+      const ownerId = session?.ownerId || await externalAuth.identities.ensureOwner();
+      json(res, 200, { ok: true, revoked: await externalAuth.sessions.revokeOthers({ ownerId, currentToken: externalAuth.token(req) }) }); return true;
+    }
     if (req.method === "POST" && url.pathname === "/api/auth/logout") {
-      const cookie = await externalAuth.logout(req);
-      jsonWithCookie(res, 200, { ok: true }, cookie);
-      return true;
+      const cookies = [await externalAuth.logout(req), await passkeys.logout(req)];
+      jsonWithCookie(res, 200, { ok: true }, cookies); return true;
     }
-
     json(res, 404, { error: "Unknown authentication endpoint" });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    json(res, Number(error?.status || (message === "Request body too large" ? 413 : 400)), {
-      error: message
-    });
+    if (callback) {
+      if (error.clearCookie) res.setHeader("set-cookie", error.clearCookie);
+      res.writeHead(302, { location: `/login.html?auth_error=${callback[1]}`, "cache-control": "no-store" }); res.end();
+    } else {
+      const status = Number(error.status || 400);
+      json(res, status, { error: status >= 500 ? "Sign-in is temporarily unavailable on this host" : safeText(error.message, REDACTED_SECRETS, 500) });
+    }
   }
   return true;
 }
@@ -1488,10 +1570,12 @@ async function passkeyRoute(req, res, url) {
       return true;
     }
     if (req.method === "POST" && url.pathname === "/api/auth/passkey/register/options") {
+      await requireOwner(req);
       json(res, 200, await passkeys.registrationOptions(req));
       return true;
     }
     if (req.method === "POST" && url.pathname === "/api/auth/passkey/register/verify") {
+      await requireOwner(req);
       const result = await passkeys.verifyRegistration(req, await readJson(req, 256 * 1024));
       res.setHeader("set-cookie", result.cookie);
       json(res, 200, { ok: true });
@@ -1508,7 +1592,7 @@ async function passkeyRoute(req, res, url) {
       return true;
     }
     if (req.method === "POST" && url.pathname === "/api/auth/passkey/logout") {
-      res.setHeader("set-cookie", await passkeys.logout(req));
+      res.setHeader("set-cookie", [await externalAuth.logout(req), await passkeys.logout(req)]);
       json(res, 200, { ok: true });
       return true;
     }
@@ -2231,12 +2315,12 @@ async function serveStatic(req, res) {
     const info = await stat(full);
     if (!info.isFile()) throw new Error("not file");
     const data = await readFile(full);
-    res.writeHead(200, { "content-type": MIME[extname(full)] || "application/octet-stream" });
+    res.writeHead(200, staticSecurityHeaders(MIME[extname(full)] || "application/octet-stream"));
     res.end(data);
   } catch {
     try {
       const data = await readFile(join(DIST, "index.html"));
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      res.writeHead(200, staticSecurityHeaders("text/html; charset=utf-8"));
       res.end(data);
     } catch {
       json(res, 404, { error: "Not built yet. Run npm run build." });
@@ -2267,7 +2351,8 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if ((req.method === "GET" || req.method === "HEAD") && url.pathname === "/login.html") {
+    if ((req.method === "GET" || req.method === "HEAD") && ["/login.html", "/login.js"].includes(url.pathname)) {
+      res.setHeader("cache-control", "no-store");
       await serveStatic(req, res);
       return;
     }
@@ -2278,6 +2363,14 @@ const server = http.createServer(async (req, res) => {
     ) {
       if (!requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)) return;
       if (await externalAuthRoute(req, res, url)) return;
+    }
+
+    if (url.pathname.startsWith("/api/auth/passkey/") && !requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)) return;
+
+    const publicPasskeyLogin = ["/api/auth/passkey/status", "/api/auth/passkey/login/options", "/api/auth/passkey/login/verify", "/api/auth/passkey/logout"].includes(url.pathname);
+    if (publicPasskeyLogin) {
+      if (!requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)) return;
+      await passkeyRoute(req, res, url); return;
     }
 
     const basicAuthenticated = credentialsMatch(
@@ -2310,8 +2403,7 @@ const server = http.createServer(async (req, res) => {
       url.pathname.startsWith("/api/") &&
       url.pathname !== "/api/health"
     ) {
-      const gate = await passkeys.require(req);
-      if (gate.required && !gate.authenticated) {
+      if (await stepUpRequired(req, ownerSession)) {
         json(res, 401, { error: "Passkey authentication required" });
         return;
       }
@@ -2322,7 +2414,7 @@ const server = http.createServer(async (req, res) => {
         const device = await systemFeatures.authenticate(req, { optional: true });
         if (req.headers["x-devmoter-device-token"] && !device) throw Object.assign(new Error("Invalid or revoked device token"), { status: 403 });
         const identity = { req, session: basicAuthenticated ? null : ownerSession, deviceId: device?.id || null,
-          ownerId: basicAuthenticated ? `basic:${DEVMOTER_AUTH_USERNAME}` : `owner:${ownerSession.identity.provider}:${ownerSession.identity.subject}` };
+          ...await externalAuth.ownerScope(DEVMOTER_AUTH_USERNAME) };
         if (req.method === "GET" && url.pathname === "/api/tools-ai/context") {
           const projects = await readProjectRegistry();
           const selectedId = url.searchParams.get("projectId");

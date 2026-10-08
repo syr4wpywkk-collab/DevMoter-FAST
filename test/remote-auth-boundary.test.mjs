@@ -6,11 +6,11 @@ test("webhook and explicit login endpoints are routed before the owner auth boun
   const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
   const serverStart = source.indexOf("const server = http.createServer");
   const webhook = source.indexOf('url.pathname === "/api/control/events/github"', serverStart);
-  const login = source.indexOf('url.pathname === "/login.html"', serverStart);
+  const login = source.indexOf('"/login.html"', serverStart);
   const publicAuth = source.indexOf('url.pathname.startsWith("/api/auth/")', serverStart);
   const auth = source.indexOf("if (!basicAuthenticated && !ownerSession)", serverStart);
   const origin = source.indexOf("requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)", auth);
-  const passkey = source.indexOf("await passkeyRoute(req, res, url)", serverStart);
+  const passkey = source.indexOf("await passkeyRoute(req, res, url)", auth);
   const control = source.indexOf("await controlRoute(req, res, url)", serverStart);
 
   assert.ok(webhook > serverStart && webhook < login);
@@ -29,13 +29,25 @@ test("control-plane task execution explicitly reuses backend context", async () 
   assert.match(source, /context: backendContext/);
 });
 
-test("passkey and control APIs stay behind owner auth and same-origin mutation checks", async () => {
+test("passkey registration and control APIs stay behind owner auth and same-origin mutation checks", async () => {
   const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
   const serverStart = source.indexOf("const server = http.createServer");
   const auth = source.indexOf("if (!basicAuthenticated && !ownerSession)", serverStart);
   const origin = source.indexOf("requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)", auth);
-  const passkey = source.indexOf("await passkeyRoute(req, res, url)", serverStart);
+  const passkey = source.indexOf("await passkeyRoute(req, res, url)", auth);
   const control = source.indexOf("await controlRoute(req, res, url)", serverStart);
   assert.ok(passkey > auth && passkey > origin);
   assert.ok(control > auth && control > origin);
+});
+
+
+test("only passkey sign-in and logout endpoints bypass the owner gate", async () => {
+  const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
+  const start = source.indexOf("const publicPasskeyLogin = ");
+  const end = source.indexOf("const basicAuthenticated", start);
+  const whitelist = source.slice(start, end);
+  assert.match(whitelist, /passkey\/login\/options/);
+  assert.match(whitelist, /passkey\/login\/verify/);
+  assert.doesNotMatch(whitelist, /passkey\/register/);
+  assert.match(whitelist, /requireSameOriginMutation/);
 });

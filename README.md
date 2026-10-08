@@ -109,7 +109,7 @@ DevMoter deliberately distinguishes **shipped**, **experimental**, and **planned
 | PWA / mobile UI | ✅ Shipped | responsive UI, backend switching, reconnect state, installable shell |
 | Passkey / device controls | 🧪 Experimental | optional secondary controls; not a public multi-user authorization system |
 | Library | 🗺️ Planned | not yet a shipped storage/library surface |
-| Google / Microsoft / Apple sign-in | 🗺️ Planned | roadmap only; not implemented |
+| Google / Microsoft sign-in | ✅ Available | OpenID Connect + PKCE; requires host OAuth app configuration |
 
 > [!NOTE]
 > Upstream capabilities are dynamic. For example, the Codex model picker uses models advertised by the installed Codex app-server instead of inventing model availability.
@@ -302,6 +302,7 @@ Open the resulting private HTTPS URL from a device on the same tailnet.
 | [Threat model](./THREAT_MODEL.md) | trust boundaries and attacker model |
 | [Fast Install](./fastinstall.MD) | shortest supported install path |
 | [Operations](./docs/operations.md) | systemd, update and operational commands |
+| [Owner sign-in / Auth v2](./docs/auth-v2.md) | Google and Microsoft OAuth setup, owner sessions and passkey policy |
 | [Developer workflows](./docs/developer-workflows.md) | extensions, MCP, ACP, skills and rules |
 | [Browser automation sandbox](./docs/BROWSER_AUTOMATION_SANDBOX.md) | browser automation boundary |
 | [Remote-control security](./docs/remote-control-security.md) | host registry / automation security |
