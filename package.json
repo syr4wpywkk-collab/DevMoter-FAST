@@ -23,7 +23,9 @@
     "esbuild": "0.25.12",
     "jsdom": "^26.1.0",
     "typescript": "^5.9.2",
-    "vite": "^7.1.5"
+    "vite": "^7.1.5",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3"
   },
   "license": "MIT",
   "dependencies": {
@@ -35,7 +37,9 @@
     "node-pty": "^1.1.0",
     "oauth4webapi": "3.8.8",
     "utif2": "4.1.0",
-    "ws": "^8.21.3"
+    "ws": "^8.21.3",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
   },
   "bin": {
     "devmoter": "./cli/devmoter.mjs"
