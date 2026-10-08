@@ -81,14 +81,14 @@ check(fileHelpers.includes("maxEncodedLength") && fileHelpers.indexOf("maxEncode
   "upload payload is size-bounded before base64 decoding");
 check(fileHelpers.includes("value.startsWith(\"/\")") && fileHelpers.includes("String.fromCharCode(0)"),
   "Markdown filename guard rejects absolute paths and NULs");
-check(!/^tailscale serve reset\\s*$/m.test(securityDocs),
+check(!/^tailscale serve reset\s*$/m.test(securityDocs),
   "security documentation does not recommend destructive Tailscale Serve reset");
 check(codeqlWorkflow.includes("javascript-typescript") && codeqlWorkflow.includes("language: [javascript-typescript, actions]"),
   "CodeQL scans JavaScript/TypeScript and GitHub Actions");
 for (const [name, workflow] of [["CI", ciWorkflow], ["Security Audit", auditWorkflow]]) {
-  check(/permissions:\\n\\s+contents: read/.test(workflow), name + " has a read-only repository token");
+  check(/permissions:\n\s+contents: read/.test(workflow), name + " has a read-only repository token");
   check(workflow.includes("persist-credentials: false"), name + " does not persist checkout credentials");
-  check(!/uses: (?:actions|github)\\/[^@\\s]+@v\\d+\\b/m.test(workflow),
+  check(!/uses: (?:actions|github)\/[^@\s]+@v\d+\b/m.test(workflow),
     name + " GitHub Actions are pinned to immutable commit SHAs");
 }
 
