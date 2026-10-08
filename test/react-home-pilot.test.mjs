@@ -48,12 +48,11 @@ test("React Home pilot bundles, delegates navigation and unmounts its own root",
     assert.equal(host.childElementCount, 0, "React must clean up its own DOM when unmounted");
   } finally {
     if (dispose) dispose();
-    Object.assign(globalThis, original);
-    if (originalNavigatorDescriptor) {
-      Object.defineProperty(globalThis, "navigator", originalNavigatorDescriptor);
-    } else {
-      delete globalThis.navigator;
-    }
+    // ReactDOM schedules a short tail of work after root.unmount().
+    // Each node:test file runs in its own process. Keep the JSDOM globals in
+    // that worker until React's scheduler has drained so window.event cannot
+    // be accessed after window has been restored to undefined.
+    await new Promise(resolve => setTimeout(resolve, 100));
     dom.window.close();
   }
 });
