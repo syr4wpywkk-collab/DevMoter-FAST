@@ -474,14 +474,20 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     }
     controls();
   };
+  let pollGeneration = 0;
   const pollRun = async () => {
-    if (!run) return;
+    if (!run || !root.open) return;
+    const generation = ++pollGeneration;
+    const id = run.id;
     try {
-      run = await api<AiRun>(`/api/office/ai/runs/${run.id}`);
+      const value = await api<AiRun>(`/api/office/ai/runs/${id}`);
+      if (!root.open || generation !== pollGeneration || run?.id !== id) return;
+      run = value;
       renderRun();
       if (["planning", "stop_requested"].includes(run.status))
         poll = window.setTimeout(() => void pollRun(), 700);
     } catch (e) {
+      if (!root.open || generation !== pollGeneration || run?.id !== id) return;
       error((e as Error).message);
       poll = window.setTimeout(() => void pollRun(), 3000);
     }
@@ -603,7 +609,9 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     if (busy) e.preventDefault();
   });
   root.addEventListener("close", () => {
+    pollGeneration++;
     if (poll) window.clearTimeout(poll);
+    poll = undefined;
   });
   window.addEventListener("devmoter:show-office", () => {
     if (!root.open) root.showModal();
