@@ -59,10 +59,13 @@ test("OpenCode history rows emphasize conversation metadata instead of agent ide
 });
 
 test("OpenCode history drawer follows the iOS visual viewport", async () => {
-  const [opencode, css] = await Promise.all([
+  // The shared stylesheet now imports ordered functional modules. Assert
+  // against the assembled CSS, rather than the import-only entrypoint.
+  const [opencode, ...cssModules] = await Promise.all([
     source("src/opencode.ts"),
-    source("src/style.css")
+    ...["base", "workspace", "tools", "chat-extras"].map(name => source(`src/styles/${name}.css`))
   ]);
+  const css = cssModules.join("");
 
   assert.ok(opencode.includes("window.visualViewport?.height ?? window.innerHeight"));
   assert.ok(opencode.includes('root.style.setProperty("--ocx-history-viewport-height"'));
