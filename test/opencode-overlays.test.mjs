@@ -27,7 +27,7 @@ const compile = value => ts.transpileModule(value, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
 }).outputText;
 
-function mount(t) {
+function mount(t, options = {}) {
   const dom = new JSDOM('<!doctype html><div id="root"></div><div id="cxWorkspaceControlsMount"></div>', {
     url: "https://devmoter.example/?surface=opencode",
     runScripts: "outside-only"
@@ -62,7 +62,7 @@ function mount(t) {
   dom.window.exports = {};
   dom.window.eval(compiled);
   document.body.classList.add("opencode-mode");
-  dom.window.exports.mountOpenCodeRemote(document.querySelector("#root"));
+  dom.window.exports.mountOpenCodeRemote(document.querySelector("#root"), options);
   const query = selector => document.querySelector(selector);
   const key = (value, shiftKey = false) => {
     const event = new dom.window.KeyboardEvent("keydown", { key: value, shiftKey, bubbles: true, cancelable: true });
@@ -95,6 +95,24 @@ test("OpenCode history traps Tab, blocks background interaction and restores its
   assert.equal(sidebar.hasAttribute("aria-modal"), false);
   assert.equal(query(".ocx-composer-wrap").inert, false);
   assert.equal(document.activeElement, menu);
+});
+
+test("OpenCode can switch directly to Codex or API Chat without opening global Tools", t => {
+  const routes = [];
+  const { query } = mount(t, { onCodex: () => routes.push("codex"), onApi: () => routes.push("api") });
+  const history = query("#ocxSidebar");
+  query("#ocxMenu").click();
+  assert.equal(history.classList.contains("open"), true);
+  assert.equal(query("#ocxQuickCodex").getAttribute("aria-label"), "Switch from OpenCode to Codex");
+  assert.equal(query("#ocxQuickApi").getAttribute("aria-label"), "Switch from OpenCode to API Chat");
+  query("#ocxQuickCodex").click();
+  assert.deepEqual(routes, ["codex"]);
+  assert.equal(history.classList.contains("open"), false);
+  assert.equal(history.inert, true);
+  query("#ocxMenu").click();
+  query("#ocxQuickApi").click();
+  assert.deepEqual(routes, ["codex", "api"]);
+  assert.equal(history.classList.contains("open"), false);
 });
 
 test("OpenCode runtime modal closes history and attachment menus without stacking overlays", t => {
