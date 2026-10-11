@@ -108,6 +108,17 @@ test("API history traps Tab, blocks its background and closes through the scrim"
   assert.equal(document.activeElement, menu);
 });
 
+test("API Chat shows its identity in the top-right actions and readable agent selections", async t => {
+  const { query } = mount(t);
+  await settle();
+  const label = query(".api-header-actions .api-surface-label");
+  assert.equal(label?.textContent, "API Chat");
+  assert.equal(query(".api-header-actions #apiSettingsTop"), query("#apiSettingsTop"));
+  const css = await readFile(new URL("../src/api-chat-surface.css", import.meta.url), "utf8");
+  assert.match(css, /html\\[data-devmoter-theme="dark"\\] \\.api-app \\.dm-agent-switch-menu > button\\.active \\{ background: #344762; color: #f5f8ff;/);
+  assert.match(css, /\\.api-app \\.dm-agent-switch-menu > button\\.active \\{ background: #dae8fa; color: #17365e;/);
+});
+
 test("API agent picker Escape closes the picker before dismissing history", async t => {
   const { document, query, key } = mount(t);
   await settle();
