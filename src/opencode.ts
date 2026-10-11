@@ -145,8 +145,14 @@ export type OpenCodeController = {
   refresh(): Promise<void>;
 };
 
+type OpenCodeRemoteOptions = {
+  onCodex?: () => void;
+  onApi?: () => void;
+};
+
 export function mountOpenCodeRemote(
-  root: HTMLElement
+  root: HTMLElement,
+  options: OpenCodeRemoteOptions = {}
 ): OpenCodeController {
   root.innerHTML = `
     <div class="ocx-app">
@@ -169,6 +175,11 @@ export function mountOpenCodeRemote(
           <span>＋</span>
           <span>New session</span>
         </button>
+
+        <nav class="ocx-quick-switch" aria-label="Switch AI workspace">
+          <button id="ocxQuickCodex" type="button" aria-label="Switch from OpenCode to Codex">Codex</button>
+          <button id="ocxQuickApi" type="button" aria-label="Switch from OpenCode to API Chat">API Chat</button>
+        </nav>
 
         <label class="ocx-search">
           <span>⌕</span>
@@ -353,6 +364,8 @@ export function mountOpenCodeRemote(
   const sessionSort = root.querySelector<HTMLSelectElement>("#ocxSessionSort")!;
   const attention = root.querySelector<HTMLDivElement>("#ocxAttention")!;
   const toolsNav = root.querySelector<HTMLButtonElement>("#ocxToolsNav")!;
+  const quickCodex = root.querySelector<HTMLButtonElement>("#ocxQuickCodex")!;
+  const quickApi = root.querySelector<HTMLButtonElement>("#ocxQuickApi")!;
   const refreshButton = root.querySelector<HTMLButtonElement>("#ocxRefresh")!;
   const sideStatus = root.querySelector<HTMLElement>("#ocxSideStatus")!;
   const sessionTitleButton = root.querySelector<HTMLButtonElement>("#ocxSessionTitleButton")!;
@@ -3534,6 +3547,18 @@ export function mountOpenCodeRemote(
   }
 
   menu.addEventListener("click", openSidebar);
+  quickCodex.hidden = !options.onCodex;
+  quickApi.hidden = !options.onApi;
+  quickCodex.addEventListener("click", () => {
+    if (!options.onCodex) return;
+    closeSidebar();
+    options.onCodex();
+  });
+  quickApi.addEventListener("click", () => {
+    if (!options.onApi) return;
+    closeSidebar();
+    options.onApi();
+  });
   toolsNav.addEventListener("click", () => {
     closeSidebar();
     window.dispatchEvent(new CustomEvent("devmoter:open-global-nav"));
