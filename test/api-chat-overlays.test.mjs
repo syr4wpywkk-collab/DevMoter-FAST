@@ -115,8 +115,9 @@ test("API Chat shows its identity in the top-right actions and readable agent se
   assert.equal(label?.textContent, "API Chat");
   assert.equal(query(".api-header-actions #apiSettingsTop"), query("#apiSettingsTop"));
   const css = await readFile(new URL("../src/api-chat-surface.css", import.meta.url), "utf8");
-  assert.match(css, /html\\[data-devmoter-theme="dark"\\] \\.api-app \\.dm-agent-switch-menu > button\\.active \\{ background: #344762; color: #f5f8ff;/);
-  assert.match(css, /\\.api-app \\.dm-agent-switch-menu > button\\.active \\{ background: #dae8fa; color: #17365e;/);
+  assert.ok(css.includes('html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active { background: #344762; color: #f5f8ff;'));
+  assert.ok(css.includes('.api-app .dm-agent-switch-menu > button.active { background: #dae8fa; color: #17365e;'));
+  assert.ok(css.includes('body.api-mode .api-app .api-topbar { padding-left: max(12px, env(safe-area-inset-left)); }'));
 });
 
 test("API agent picker Escape closes the picker before dismissing history", async t => {
