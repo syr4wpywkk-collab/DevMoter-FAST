@@ -216,7 +216,8 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 .api-app #apiWorkspaceControlsMount .dm-panel select { max-width: 100%; min-height: 44px; }
 
 @media (max-width: 899px) {
-  body.api-mode .api-app .api-topbar { padding-left: calc(max(12px, env(safe-area-inset-left)) + 58px); }
+  /* Tools opens below the header, so do not waste 58px beside the history menu. */
+  body.api-mode .api-app .api-topbar { padding-left: max(12px, env(safe-area-inset-left)); }
 }
 @media (min-width: 760px) {
   .api-app .api-transcript { padding-inline: max(24px, calc((100% - var(--api-content-width)) / 2)); }
