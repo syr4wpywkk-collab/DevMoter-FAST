@@ -1,3 +1,4 @@
+import { mountNoaWorkspace } from "./noa-workspace";
 import "./style.css";
 import { mountOpenCodeRemote } from "./opencode";
 import { mountCodexRemote } from "./codex";
@@ -36,7 +37,9 @@ if (requestedProject) {
   );
 }
 
-if (startupParams.get("demo") === "1") {
+if (startupParams.get("workspace") === "1") {
+  mountNoaWorkspace(app);
+} else if (startupParams.get("demo") === "1") {
   mountDemo(app);
 } else if (startupParams.get("setup") === "1") {
   mountSetupWizard(app);
