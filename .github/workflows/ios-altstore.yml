@@ -1,0 +1,45 @@
+name: iOS IPA for AltStore
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios-altstore.yml'
+  pull_request:
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios-altstore.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ipa:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate --spec ios/project.yml --project ios
+      - name: Build for physical iPhone
+        run: |
+          xcodebuild -project ios/DevMoter.xcodeproj -scheme DevMoter \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build/ios CODE_SIGNING_ALLOWED=NO build
+      - name: Package unsigned IPA for AltStore signing
+        run: |
+          mkdir -p build/package/Payload
+          cp -R build/ios/Build/Products/Release-iphoneos/DevMoter.app build/package/Payload/
+          cd build/package
+          zip -r ../DevMoter-AltStore.ipa Payload
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: DevMoter-AltStore
+          path: build/DevMoter-AltStore.ipa
+          if-no-files-found: error
+          retention-days: 14
