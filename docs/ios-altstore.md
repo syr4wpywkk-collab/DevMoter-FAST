@@ -18,6 +18,8 @@ The workflow compiles for a physical iPhone with signing disabled. AltStore Clas
 
 ## Linux computer only
 
+For the shortest route, iloader can also **Import IPA** directly over USB without setting up SideStore. See the [Japanese Linux walkthrough](./iphone-linux.ja.md). Re-sign and reinstall with iloader before the Apple signing period expires; SideStore is an alternative for on-device refresh.
+
 For a Linux computer, follow the current [SideStore prerequisites](https://docs.sidestore.io/docs/installation/prerequisites) and [installation guide](https://docs.sidestore.io/docs/installation/install). SideStore accepts the same unsigned IPA; there is no need to rebuild the app for this installer.
 
 1. Install `usbmuxd` with your distribution's package manager. Download iloader from the release links in the prerequisites page: DEB for Debian/Ubuntu, RPM for Fedora/openSUSE, or AppImage, matching `uname -m` (`x86_64` or `aarch64`). Chromebook users also need to pass the iPhone USB device through to the Linux environment as described there.

@@ -15,6 +15,8 @@ Codex、OpenCode、リポジトリ、認証情報、ターミナル、Gitワー�
 
 iPhone向けの接続クライアントを `ios/` に追加しました。GitHub ActionsでAltStore Classic用IPAを生成する構成、インストール手順、接続プロファイルごとのログイン状態の保存については [iPhone / AltStore手順](./docs/ios-altstore.md) を参照してください。iOSビルド・実機検証は別途必要です。
 
+LinuxのPCだけで導入する場合は、[LinuxからiPhone 16に入れる手順（日本語）](./docs/iphone-linux.ja.md) を参照してください。
+
 DevMoter v2 は、もう単なる「遠隔チャットUI」ではありません。**エージェントセッション、Projects、Git/GitHub、Reviewed Changes、モデルルーティング、Automation、ローカルツール、安全境界**を一つのmobile-first UIへまとめる、host-localなコントロールプレーンへ進化しています。
 
 > [!IMPORTANT]
