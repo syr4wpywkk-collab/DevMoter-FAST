@@ -232,6 +232,17 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: `npm run typecheck` passed; related reconnect/history/lifecycle/OpenCode suites passed 22/22; `git diff --check` passed. One earlier run failed four source-shape assertions and typecheck caught an early return placement; both were corrected and the full focused rerun passed.
 - Review/risk: automated wiring and helper tests cover the contract; no real SSE server interruption or mobile device was available. The user must still retry a history sync that failed during reconnection.
 - Next: inspect API Chat stream recovery and cancellation, then select the next independently reproducible reliability issue.
+- Commit SHA: `46aa1a9`.
+
+### Cycle 18 — Validate Codex thread/read before replacing the transcript
+
+- Finding: Codex `thread/read` only had a transport catch. Missing/non-array `turns` or malformed turn rows could throw later in rendering, sometimes after the transcript was cleared.
+- Cause: the loader treated an unvalidated RPC payload as canonical conversation state and began DOM/state mutation before checking its structure.
+- Changes: added `normalizeCodexThreadHistory`; it validates the thread, turn array, turn objects, and optional items arrays. `loadThreadHistory()` now reports malformed history and returns failure before state or transcript replacement. Added valid/invalid payload and source-order regression tests.
+- Before/after: before, malformed responses could escape as rejected promises or leave a cleared/partially rendered transcript; after, the last rendered conversation remains intact and the sync result reports failure.
+- Validation: history/list/event recovery plus Codex failure UI suites passed 12/12; typecheck and diff check passed.
+- Review/risk: validation is for the response structure required by the current client; supported but unfamiliar item types remain rendered through existing generic paths. No live Codex app-server was available.
+- Next: audit API Chat provider refresh response validation and terminal error paths, then choose the next high-impact reproducible issue.
 - Commit SHA: pending.
 
 ### Cycle 17 — Bound API Chat image upload duration
@@ -243,4 +254,4 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: API conversation/attachment + timeout suites passed 9/9; typecheck passed; diff check passed. The targeted run first exposed an unbound JSDOM fetch call and one outdated source assertion; wrapper binding and assertion were fixed before rerun.
 - Review/risk: timeout is 120 seconds, consistent with chat requests. Temporary server-side upload cleanup still depends on the existing attachment retention cleanup if the client abort reaches the server after the upload was accepted.
 - Next: inspect remaining API Chat submission and stale response boundaries, then continue with a separate reproducible defect.
-- Commit SHA: pending.
+- Commit SHA: `d74340b`.

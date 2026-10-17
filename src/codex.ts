@@ -12,6 +12,7 @@ import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "
 import { createLatestRequestGuard } from "./latest-request.mjs";
 import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
 import { normalizeCodexThreadList } from "./codex-thread-list.mjs";
+import { normalizeCodexThreadHistory } from "./codex-thread-history.mjs";
 import { recoverAfterEventOpen } from "./event-recovery.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
@@ -1303,12 +1304,7 @@ export function mountCodexRemote(
   }
 
   async function loadThreadHistory(threadId: string) {
-    let result: {
-      thread?: {
-        status?: Json;
-        turns?: Array<{ id?: string; status?: string; error?: unknown; items?: Json[] }>;
-      };
-    };
+    let result: unknown;
     try {
       result = await rpc("thread/read", { threadId, includeTurns: true });
     } catch (error) {
@@ -1319,8 +1315,15 @@ export function mountCodexRemote(
     }
     if (activeThreadId !== threadId) return false;
 
-    const turns = result?.thread?.turns ?? [];
-    const threadState = codexThreadStatusToExecutionState(result?.thread?.status);
+    let thread: ReturnType<typeof normalizeCodexThreadHistory>;
+    try {
+      thread = normalizeCodexThreadHistory(result);
+    } catch {
+      showToast("Codexから有効な会話履歴を受け取れませんでした");
+      return false;
+    }
+    const turns = thread.turns;
+    const threadState = codexThreadStatusToExecutionState(thread.status);
     const latestTurn = turns.at(-1);
     const latestTurnState = latestTurn
       ? codexTurnStatusToExecutionState(latestTurn.status)
