@@ -19,8 +19,10 @@ test("unified task-first navigation delegates to real app actions and native pro
     '<!doctype html><div id="app"></div><button id="apiMenu">API history</button><button id="cxMenu">Codex history</button><button id="ocxMenu">OpenCode history</button>',
     { url: "https://localhost/?unifiedUI=1" }
   );
+  const priorWindow = globalThis.window;
   const priorDocument = globalThis.document;
   const priorLocalStorage = globalThis.localStorage;
+  globalThis.window = dom.window;
   globalThis.document = dom.window.document;
   globalThis.localStorage = dom.window.localStorage;
   try {
@@ -67,6 +69,7 @@ test("unified task-first navigation delegates to real app actions and native pro
     assert.equal(root.ownerDocument.getElementById("dmTaskFirstWorkspace"), null);
     assert.equal(root.ownerDocument.body.classList.contains("dm-task-first-enabled"), false);
   } finally {
+    globalThis.window = priorWindow;
     globalThis.document = priorDocument;
     globalThis.localStorage = priorLocalStorage;
     dom.window.close();
