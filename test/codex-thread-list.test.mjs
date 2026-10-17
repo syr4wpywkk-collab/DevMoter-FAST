@@ -13,9 +13,17 @@ test("Codex thread list accepts valid summaries and drops malformed rows", () =>
 });
 
 test("Codex thread list rejects malformed response shapes without inventing an empty list", () => {
-  for (const value of [null, {}, { data: null }, { data: "thread-1" }]) {
+  for (const value of [null, {}, { data: null }, { data: "thread-1" }, { data: [null, { id: "" }] }]) {
     assert.throws(() => normalizeCodexThreadList(value), /invalid conversation list/);
   }
+});
+
+test("Codex thread list rejects duplicate conversation identities", () => {
+  assert.throws(() => normalizeCodexThreadList({ data: [
+    { id: "thread-1", name: "first" },
+    { id: "thread-1", name: "duplicate" }
+  ] }), /duplicate conversation identities/);
+  assert.deepEqual(normalizeCodexThreadList({ data: [] }), []);
 });
 
 test("Codex history refresh reports failures and retains the last valid snapshot", async () => {

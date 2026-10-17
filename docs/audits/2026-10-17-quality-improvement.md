@@ -353,6 +353,17 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: OpenCode provider/session/history/Markdown/overlay suites passed 14/14; typecheck and diff check passed.
 - Review/risk: absent/null provider model metadata remains supported as “no model catalog”; future provider response fields can be added without changing accepted identity semantics.
 - Next: run broader model-cost and provider refresh regressions, then reassess whether implementation backlog is ready for the requested visual direction pass.
+- Commit SHA: `fdba42f`.
+
+### Cycle 31 — Preserve Codex history when every row is malformed or IDs collide
+
+- Finding: the Codex thread-list normalizer filtered malformed rows, so a non-empty but entirely invalid response became `[]` and erased the last usable history. Duplicate thread IDs were also retained as separate rows.
+- Cause: row filtering did not distinguish a legitimate empty catalog from a wholly corrupt catalog and had no identity uniqueness check.
+- Changes: non-empty responses with no valid thread identities now fail validation; duplicate IDs reject the response. A genuinely empty array remains valid. Added all-invalid, duplicate-ID, and valid-empty cases.
+- Before/after: before, an all-invalid payload could clear history, and duplicate IDs could produce ambiguous duplicate navigation rows; after, the current history is preserved and the normalizer reports failure.
+- Validation: Codex thread/history, lifecycle and event recovery suites passed 15/15; typecheck and diff check passed.
+- Review/risk: mixed valid/invalid rows still retain valid rows for partial compatibility; only wholly invalid or ambiguous duplicate identity sets fail closed.
+- Next: run grouped provider/model/attachment and backend navigation regressions, then review whether the implementation backlog is ready for the visual direction phase.
 - Commit SHA: pending.
 
 ### Cycle 23 — Bound Codex and OpenCode attachment upload requests
