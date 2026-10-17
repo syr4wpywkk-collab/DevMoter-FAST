@@ -9,6 +9,8 @@
 > **Version track:** v2.0.0-alpha 系列  
 > **Status:** active development / pre-release
 
+Alpha 轨道表示产品/发布成熟度。`package.json` 中的 `0.2.0` 是独立的 npm 包版本，不代表 v2 产品轨道或稳定版发布。
+
 DevMoter FAST 是一个用于统一控制编程代理与开发工具的**开源、自托管、移动优先控制平面**。
 
 Codex、OpenCode、仓库、凭据、终端、Git 工作流和主机集成继续留在 Linux 主机上；手机、平板、PWA 或浏览器只负责控制。
@@ -103,7 +105,8 @@ DevMoter 明确区分 **Shipped / Experimental / Planned**。UI 中出现入口�
 | PWA / mobile UI | ✅ Shipped | responsive UI、backend switching、reconnect、installable shell |
 | Passkey / device controls | 🧪 Experimental | 辅助设备控制；不是公网 multi-user 授权系统 |
 | Library | 🗺️ Planned | storage/library surface 尚未实现 |
-| Google / Microsoft / Apple 登录 | 🗺️ Planned | 仅 roadmap；尚未实现 |
+| Google / Microsoft 登录 | ✅ Available | 需要配置 OAuth 应用；使用 OIDC + PKCE。详见 [Auth v2](./docs/auth-v2.md) |
+| Apple 登录 | 🗺️ Planned | 尚未实现 |
 
 > [!NOTE]
 > 上游能力是动态的。例如 Codex model picker 使用本机安装的 Codex app-server 实际公布的模型，而不是由 DevMoter 虚构模型可用性。

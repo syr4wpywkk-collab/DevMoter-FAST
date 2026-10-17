@@ -51,9 +51,11 @@ Only after single-host behavior is predictable:
 These should stay labeled as planned until they have a real implementation and validation path:
 
 - DevMoter Library;
-- Google/Microsoft/Apple sign-in;
+- Apple sign-in;
 - public multi-user authorization;
 - production relay service.
+
+Google and Microsoft owner sign-in are implemented with OpenID Connect and PKCE when the host has configured OAuth credentials. See [Auth v2](./docs/auth-v2.md). They are available capabilities, not roadmap-only work; provider setup and real-provider deployment validation remain host-specific.
 
 ## Pull-request rule
 

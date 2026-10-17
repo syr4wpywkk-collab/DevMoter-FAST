@@ -9,6 +9,8 @@
 > **Version track:** v2.0.0-alpha 系列  
 > **Status:** active development / pre-release
 
+Alpha表記は製品のリリース成熟度を示します。`package.json` の `0.2.0` は独立したnpmパッケージ版で、v2製品トラックや安定版リリースを示すものではありません。
+
 DevMoter FAST は、コーディングエージェントと開発ツールをまとめて操作するための **オープンソース・セルフホスト・mobile-first コントロールプレーン**です。
 
 Codex、OpenCode、リポジトリ、認証情報、ターミナル、Gitワークフロー、ホスト連携はLinuxマシン側に残したまま、スマホ・タブレット・PWA・ブラウザを操作面として使います。
@@ -107,7 +109,8 @@ DevMoterでは **Shipped / Experimental / Planned** を明確に分けます。�
 | PWA / mobile UI | ✅ Shipped | responsive UI、backend switching、reconnect、installable shell |
 | Passkey / device controls | 🧪 Experimental | 補助的な端末制御。公開multi-user認可ではありません |
 | Library | 🗺️ Planned | storage/library surfaceは未実装 |
-| Google / Microsoft / Appleログイン | 🗺️ Planned | roadmapのみ。未実装 |
+| Google / Microsoftログイン | ✅ Available | OAuthアプリ設定が必要。OIDC + PKCE。詳細は[Auth v2](./docs/auth-v2.md) |
+| Appleログイン | 🗺️ Planned | 未実装 |
 
 > [!NOTE]
 > 上流が提供する能力は動的です。たとえばCodexのmodel pickerは、インストール済みCodex app-serverが公開するmodelを利用し、存在しないmodel availabilityをDevMoter側で捏造しません。
