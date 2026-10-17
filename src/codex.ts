@@ -10,6 +10,7 @@ import { applyReasoningToTurnStart, normalizeCodexModels, reasoningChoices, reco
 import { normalizeCodexSendError } from "./codex-send-error.mjs";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 import { createLatestRequestGuard } from "./latest-request.mjs";
+import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import "./codex-chat.css";
@@ -1959,8 +1960,12 @@ export function mountCodexRemote(
 
       events?.close();
       events = null;
-      await refresh();
-      connectEvents();
+      const sync = await reconnectAfterSync(() => refresh(), () => connectEvents());
+
+      if (sync.error) {
+        showToast("会話履歴を同期できませんでした。接続を再試行します。");
+        return;
+      }
 
       if (threadId && activeThreadId === threadId) {
         showToast(replayFallback ? "会話履歴を再取得しました" : "バックグラウンドの作業を同期しました");

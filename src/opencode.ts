@@ -8,6 +8,7 @@ import { describeModelPricing, normalizeModelPricing } from "./model-pricing.mjs
 import { setWakeLockEnabled, setWakeLockExecutionActive, wakeLockEnabled, wakeLockSupported } from "./wake-lock";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 import { createLatestRequestGuard } from "./latest-request.mjs";
+import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import "./opencode-chat.css";
@@ -2960,8 +2961,13 @@ export function mountOpenCodeRemote(
       }
 
       disconnectEvents();
-      await refresh();
-      connectEvents();
+      const sync = await reconnectAfterSync(() => refresh(), () => connectEvents());
+
+      if (sync.error) {
+        setExecutionState(online ? "idle" : "offline");
+        showToast("Could not synchronize session history. Reconnecting.");
+        return;
+      }
 
       if (sessionId && activeSession?.id === sessionId) {
         showToast(replayFallback ? "Session history refreshed" : "Background work synchronized");

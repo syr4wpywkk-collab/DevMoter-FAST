@@ -76,3 +76,14 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Review/risk: this protects list snapshots, not asynchronous active-session probes or content loads; errors still follow existing caller behavior. The test asserts shared helper and source integration, not a full dual-refresh DOM race.
 - Next: inspect OpenCode-to-Codex/API/Home navigation behavior and test lifecycle restoration paths. Continue with API timeout/error handling if no navigation defect is found.
 - Commit SHA: pending.
+
+### Cycle 4 — Resume after history synchronization failure
+
+- Finding: background/online resume disconnected the event stream, then awaited full refresh, then reconnected. A failed refresh skipped event reconnection. OpenCode had already set its visible execution state to `reconnecting` and did not clear it on this path.
+- Cause: refresh and stream reconnection were sequential without `finally` protection or a surfaced sync error.
+- Changes: added `src/reconnect-after-sync.mjs` (+ declaration), wired Codex/OpenCode resume paths to always reconnect in `finally`, added user-facing sync failure messaging and OpenCode state recovery; added 3 tests.
+- Before/after: before, rejected history refresh could leave the event stream closed indefinitely; after, event reconnection is attempted on both success and failure, while failure is explicit.
+- Validation: `npm run typecheck` pass; `node --test test/reconnect-after-sync.test.mjs` 3/3 pass; `git diff --check` pass.
+- Review/risk: event source reconnect may itself fail and relies on existing bounded retry logic. Sync error behavior is covered via helper tests and wiring assertions, not full browser lifecycle automation.
+- Next: inspect API timeout/error handling and cancellation; add a focused runtime regression where supported.
+- Commit SHA: pending.
