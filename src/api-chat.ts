@@ -138,7 +138,10 @@ export function mountApiChat(
           <strong>API Chat</strong>
           <small id="apiModelTopLabel">Provider / model未設定</small>
         </div>
-        <button id="apiSettingsTop" class="api-icon-button api-settings-button" type="button" aria-label="API設定">⚙</button>
+        <div class="api-header-actions">
+          <span class="api-surface-label" aria-label="Current surface: API Chat">API Chat</span>
+          <button id="apiSettingsTop" class="api-icon-button api-settings-button" type="button" aria-label="API設定">⚙</button>
+        </div>
       </header>
 
       <main class="api-main">

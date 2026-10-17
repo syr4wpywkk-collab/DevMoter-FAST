@@ -151,7 +151,10 @@ surfaceNavigation = createSurfaceNavigation({
   onSurface: applySurface
 });
 
-const openCodeRemote = mountOpenCodeRemote(openCodeMount);
+const openCodeRemote = mountOpenCodeRemote(openCodeMount, {
+  onCodex: () => setBackend("codex"),
+  onApi: () => setBackend("api")
+});
 const codexRemote = mountCodexRemote(codexMount, {
   onOpenCode: () => setBackend("opencode"),
   onApi: () => setBackend("api"),

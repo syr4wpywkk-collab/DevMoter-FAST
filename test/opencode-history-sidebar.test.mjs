@@ -26,7 +26,7 @@ test("OpenCode hamburger is conversation-history first", async () => {
   assert.ok(sidebar.includes('id="ocxSideStatus"'));
 });
 
-test("OpenCode history drawer contains no provider or tool navigation", async () => {
+test("OpenCode history remains history-first with only direct escape switches", async () => {
   const opencode = await source("src/opencode.ts");
   const sidebar = sidebarMarkup(opencode);
 
@@ -42,13 +42,16 @@ test("OpenCode history drawer contains no provider or tool navigation", async ()
     "ocxCodexNav",
     "Codex UI",
     "ocxApiNav",
-    "API Chat",
     "ocxIntegrationsNav",
     "Integrations",
     "ocxSettingsNav",
     "ocxSessionToolsNav",
     "Session tools"
   ]) assert.ok(!sidebar.includes(forbidden), forbidden);
+  assert.ok(sidebar.includes('id="ocxQuickCodex"'));
+  assert.ok(sidebar.includes('id="ocxQuickApi"'));
+  assert.ok(sidebar.includes('aria-label="Switch AI workspace"'));
+  assert.ok(sidebar.indexOf("ocxQuickCodex") < sidebar.indexOf('id="ocxSessions"'), "switch is visible above history");
 });
 
 test("OpenCode history rows emphasize conversation metadata instead of agent identity", async () => {
@@ -75,13 +78,15 @@ test("OpenCode history drawer follows the iOS visual viewport", async () => {
   assert.ok(css.includes("-webkit-overflow-scrolling: touch"));
 });
 
-test("Codex and API Chat remain available globally, not inside OpenCode history", async () => {
+test("Codex and API Chat remain available globally and through direct OpenCode escape callbacks", async () => {
   const [main, shell] = await Promise.all([
     source("src/main.ts"),
     source("src/app-shell.ts")
   ]);
 
-  assert.ok(main.includes("mountOpenCodeRemote(openCodeMount)"));
+  assert.ok(main.includes("mountOpenCodeRemote(openCodeMount, {"));
+  assert.ok(main.includes('onCodex: () => setBackend("codex")'));
+  assert.ok(main.includes('onApi: () => setBackend("api")'));
   assert.ok(shell.includes('data-backend="codex"'));
   assert.ok(shell.includes('data-backend="api"'));
 });
