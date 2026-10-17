@@ -1,5 +1,6 @@
 import { getLanguage } from "./i18n";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
+import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import "./api-chat-surface.css";
 
 type ApiProvider = {
@@ -611,15 +612,25 @@ export function mountApiChat(
       throw new Error(apiLocale("Images must be 15 MB or smaller", "画像は15MB以下にしてください", "图片必须不超过 15MB"));
     }
 
-    const res = await fetch("/api/llm/attachments", {
-      method: "POST",
-      headers: {
-        "content-type": file.type,
-        "x-devmoter-file-name": encodeURIComponent(file.name),
-        "x-pocket-operation-id": operationId()
+    const res = await fetchWithTimeout(
+      (input, init) => fetch(input, init),
+      "/api/llm/attachments",
+      {
+        method: "POST",
+        headers: {
+          "content-type": file.type,
+          "x-devmoter-file-name": encodeURIComponent(file.name),
+          "x-pocket-operation-id": operationId()
+        },
+        body: file
       },
-      body: file
-    });
+      API_CHAT_REQUEST_TIMEOUT_MS,
+      () => new Error(apiLocale(
+        "Image upload timed out. Remove the image and retry.",
+        "画像のアップロードがタイムアウトしました。画像を削除して再試行してください。",
+        "图片上传超时。请移除图片后重试。"
+      ))
+    );
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
 

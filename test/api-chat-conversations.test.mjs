@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
 import { renderChatMarkdown } from "../src/chat-markdown.mjs";
+import * as fetchTimeout from "../src/fetch-with-timeout.mjs";
 
 const source = await readFile(new URL("../src/api-chat.ts", import.meta.url), "utf8");
 const compiled = ts.transpileModule(source, {
@@ -63,7 +64,8 @@ async function harness(t, { rejectOnAbort = false } = {}) {
   const exports = {};
   const modules = {
     "./i18n": { getLanguage: () => "en" },
-    "./chat-markdown.mjs": { renderChatMarkdown }
+    "./chat-markdown.mjs": { renderChatMarkdown },
+    "./fetch-with-timeout.mjs": fetchTimeout
   };
   window.Function("require", "exports", compiled)(name => {
     if (name.endsWith(".css")) return {};
@@ -234,6 +236,7 @@ test("uploading disables conversation navigation until the attachment belongs to
   const file = new ui.window.File(["image bytes"], "photo.png", { type: "image/png" });
   Object.defineProperty(imageInput, "files", { configurable: true, value: [file] });
   imageInput.dispatchEvent(new ui.window.Event("change", { bubbles: true }));
+  await settle();
   assert.equal(ui.uploads.length, 1);
   assert.equal(ui.root.querySelector("#apiNewChat").disabled, true);
   assert.ok(ui.history().length > 0);

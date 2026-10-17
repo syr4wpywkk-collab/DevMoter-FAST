@@ -233,3 +233,14 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Review/risk: automated wiring and helper tests cover the contract; no real SSE server interruption or mobile device was available. The user must still retry a history sync that failed during reconnection.
 - Next: inspect API Chat stream recovery and cancellation, then select the next independently reproducible reliability issue.
 - Commit SHA: pending.
+
+### Cycle 17 — Bound API Chat image upload duration
+
+- Finding: API Chat message requests use a 120-second timeout, but attachment uploads used bare `fetch()` without a deadline. A stalled upload could leave `uploadingCount` active, blocking send and history navigation indefinitely.
+- Cause: the upload path did not share the chat request timeout behavior and did not provide an AbortSignal.
+- Changes: added a bounded fetch helper that aborts the request and settles with a localized timeout error; image uploads use the existing 120-second request limit. Added helper success/timeout tests and source wiring coverage; adjusted the existing attachment harness to let the now-asynchronous request start before asserting it.
+- Before/after: before, a stuck upload remained pending without a time limit; after, it is aborted and the existing upload error/finally path releases the composer and navigation controls.
+- Validation: API conversation/attachment + timeout suites passed 9/9; typecheck passed; diff check passed. The targeted run first exposed an unbound JSDOM fetch call and one outdated source assertion; wrapper binding and assertion were fixed before rerun.
+- Review/risk: timeout is 120 seconds, consistent with chat requests. Temporary server-side upload cleanup still depends on the existing attachment retention cleanup if the client abort reaches the server after the upload was accepted.
+- Next: inspect remaining API Chat submission and stale response boundaries, then continue with a separate reproducible defect.
+- Commit SHA: pending.
