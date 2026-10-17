@@ -30,6 +30,7 @@ import {
 } from "./safety-client";
 
 const FOLLOW_BOTTOM_THRESHOLD = 48;
+const REMOTE_REQUEST_TIMEOUT_MS = 120_000;
 
 type Json = Record<string, any>;
 
@@ -687,16 +688,22 @@ export function mountOpenCodeRemote(
     let res: Response;
 
     try {
-      res = await fetch(`/api/opencode${path}`, {
-        ...init,
-        headers: {
-          ...(init.body ? { "content-type": "application/json" } : {}),
-          ...(init.headers || {}),
-          ...(opId ? { "x-pocket-operation-id": opId } : {}),
-          ...(localStorage.getItem("opencode-pocket-project") ? { "x-pocket-project-id": localStorage.getItem("opencode-pocket-project")! } : {})
+      res = await fetchWithTimeout(
+        (input, request) => fetch(input, request),
+        `/api/opencode${path}`,
+        {
+          ...init,
+          headers: {
+            ...(init.body ? { "content-type": "application/json" } : {}),
+            ...(init.headers || {}),
+            ...(opId ? { "x-pocket-operation-id": opId } : {}),
+            ...(localStorage.getItem("opencode-pocket-project") ? { "x-pocket-project-id": localStorage.getItem("opencode-pocket-project")! } : {})
+          },
+          cache: method === "GET" ? "no-store" : undefined
         },
-        cache: method === "GET" ? "no-store" : undefined
-      });
+        REMOTE_REQUEST_TIMEOUT_MS,
+        () => new Error("OpenCode request timed out")
+      );
     } catch (error) {
       if (mutating) {
         throw new Error(
@@ -758,7 +765,13 @@ export function mountOpenCodeRemote(
     if (method !== "GET" && method !== "HEAD" && !headers.has("x-pocket-operation-id")) {
       headers.set("x-pocket-operation-id", operationId());
     }
-    const res = await fetch(path, { ...init, headers, cache: method === "GET" ? "no-store" : undefined });
+    const res = await fetchWithTimeout(
+      (input, request) => fetch(input, request),
+      path,
+      { ...init, headers, cache: method === "GET" ? "no-store" : undefined },
+      REMOTE_REQUEST_TIMEOUT_MS,
+      () => new Error("DevMoter request timed out")
+    );
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(payload?.error || ("DevMoter HTTP " + res.status));
     return payload as T;

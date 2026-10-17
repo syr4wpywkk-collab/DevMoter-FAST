@@ -33,6 +33,7 @@ import {
 } from "./safety-client";
 
 const FOLLOW_BOTTOM_THRESHOLD = 48;
+const REMOTE_REQUEST_TIMEOUT_MS = 120_000;
 
 type Json = Record<string, any>;
 
@@ -691,15 +692,33 @@ export function mountCodexRemote(
   async function projectApi<T = Json>(path: string, init: RequestInit = {}): Promise<T> {
     const method = String(init.method || "GET").toUpperCase();
     const mutating = method !== "GET" && method !== "HEAD";
-    const res = await fetch(`/api/projects${path}`, {
-      ...init,
-      headers: {
-        ...(init.body ? { "content-type": "application/json" } : {}),
-        ...(mutating ? { "x-pocket-operation-id": uid() } : {}),
-        ...(init.headers || {})
-      },
-      cache: method === "GET" ? "no-store" : undefined
-    });
+    const operationId = mutating ? uid() : "";
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(
+        (input, request) => fetch(input, request),
+        `/api/projects${path}`,
+        {
+          ...init,
+          headers: {
+            ...(init.body ? { "content-type": "application/json" } : {}),
+            ...(operationId ? { "x-pocket-operation-id": operationId } : {}),
+            ...(init.headers || {})
+          },
+          cache: method === "GET" ? "no-store" : undefined
+        },
+        REMOTE_REQUEST_TIMEOUT_MS,
+        () => new Error("Project request timed out")
+      );
+    } catch (error) {
+      if (mutating) {
+        throw new Error(
+          `Mutation outcome is unknown (operation ${operationId}). DevMoter did not retry it automatically.`,
+          { cause: error }
+        );
+      }
+      throw error;
+    }
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
     return payload as T;
@@ -803,14 +822,20 @@ export function mountCodexRemote(
 
     let res: Response;
     try {
-      res = await fetch("/api/codex/rpc", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          ...(opId ? { "x-pocket-operation-id": opId } : {})
+      res = await fetchWithTimeout(
+        (input, init) => fetch(input, init),
+        "/api/codex/rpc",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            ...(opId ? { "x-pocket-operation-id": opId } : {})
+          },
+          body: JSON.stringify({ method, params })
         },
-        body: JSON.stringify({ method, params })
-      });
+        REMOTE_REQUEST_TIMEOUT_MS,
+        () => new Error("Codex RPC request timed out")
+      );
     } catch (error) {
       if (opId) {
         throw new Error(

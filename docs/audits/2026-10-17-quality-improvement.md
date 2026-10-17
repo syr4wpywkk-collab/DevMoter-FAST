@@ -276,6 +276,17 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: attachment and API Chat suites passed 12/12; typecheck and diff check passed. One intermediate assertion incorrectly expected the Send button disabled even though empty messages are rejected inside submit; it was replaced with an assertion that no provider request is made.
 - Review/risk: if the server saved an attachment but its response is malformed, the client cannot safely identify it for immediate deletion; existing server retention cleanup remains responsible for that orphan.
 - Next: review request cancellation and stale response behavior across API Chat, Codex and OpenCode, then proceed to the next reproducible issue.
+- Commit SHA: `e439d22`.
+
+### Cycle 24 — Bound Codex and OpenCode API request duration
+
+- Finding: attachment uploads were not the only unbounded requests; Codex RPC/project calls and OpenCode/DevMoter API calls could wait indefinitely during network stalls.
+- Cause: those request wrappers invoked `fetch()` directly without a deadline.
+- Changes: routed Codex RPC, Codex project API, OpenCode API, and OpenCode DevMoter API through the shared 120-second timeout helper. Mutating timeout/network failures retain the operation ID and report outcome as unknown without automatic retry. Added wrapper-boundary assertions.
+- Before/after: before, stalled reads/writes had no settlement deadline; after, they abort after 120 seconds and flow through existing error handling, with uncertain mutation outcomes clearly distinguished.
+- Validation: remote timeout boundary, upload timeout, Codex failure UI, OpenCode Markdown/overlay suites passed 13/13; typecheck and diff check passed.
+- Review/risk: timeouts cannot prove whether the server completed a mutation before the client abort; no retry was added. Some file-to-data-URL conversion occurs before the request timer begins.
+- Next: inspect streaming and cancellation lifecycles, especially client disconnects and late backend responses, then continue grouped regression tests.
 - Commit SHA: pending.
 
 ### Cycle 23 — Bound Codex and OpenCode attachment upload requests
@@ -287,7 +298,7 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: backend upload wiring, Codex failure UI, OpenCode Markdown/overlay suites passed 12/12; typecheck and diff check passed. The first harness run found an unregistered new helper import; the isolated module map was updated and the focused rerun passed.
 - Review/risk: local `FileReader` conversion itself has no explicit deadline; the timeout covers only the network request. Real large-file/mobile performance was not exercised.
 - Next: inspect remaining API errors and background recovery across surfaces, then run grouped regression tests.
-- Commit SHA: pending.
+- Commit SHA: `99a3a96`.
 
 ### Cycle 21 — Reject duplicate API Chat provider identities
 
