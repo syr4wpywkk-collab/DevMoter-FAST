@@ -254,6 +254,17 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: API conversation, upload timeout and malformed catalog suites passed 10/10; typecheck and diff check passed.
 - Review/risk: validation matches the current frontend provider contract; future protocol additions must update the accepted schema. No provider secrets are read or logged.
 - Next: inspect API Chat server response/error consistency and then run grouped reliability regressions.
+- Commit SHA: `a087b93`.
+
+### Cycle 20 — Ignore stale API Chat provider catalog responses
+
+- Finding: concurrent provider refreshes could resolve out of order, allowing an older catalog to overwrite a newer successful refresh.
+- Cause: API Chat refreshed the shared provider list without request-generation tracking.
+- Changes: added a generation guard so only the newest provider request may update catalog availability, options, or error state. Added an integration test that deliberately resolves the newer response first and the older response last.
+- Before/after: before, response order could revert the visible provider list; after, late stale results are ignored and the latest catalog remains selected.
+- Validation: API Chat conversation suite passed 8/8; typecheck and diff check passed.
+- Review/risk: guard applies to catalog refreshes only; provider-specific mutations still rely on their own server responses and subsequent refresh.
+- Next: grouped verification of history, reconnection, attachments and provider catalog behavior, then continue with the highest risk found.
 - Commit SHA: pending.
 
 ### Cycle 17 — Bound API Chat image upload duration

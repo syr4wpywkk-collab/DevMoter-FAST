@@ -254,6 +254,7 @@ export function mountApiChat(
 
   let providers: ApiProvider[] = [];
   let providerCatalogAvailable = false;
+  let providerCatalogRequestGeneration = 0;
   let presets: ApiPreset[] = [];
   let messages: ChatMessage[] = [];
   let pendingAttachments: ApiAttachment[] = [];
@@ -677,9 +678,11 @@ export function mountApiChat(
   }
 
   async function refresh() {
+    const requestGeneration = ++providerCatalogRequestGeneration;
     status.textContent = apiLocale("Loading providers…", "接続先を読み込み中…", "正在加载 Provider…");
     try {
       const payload = await apiJson<unknown>("/api/llm/providers");
+      if (requestGeneration !== providerCatalogRequestGeneration) return;
       providers = normalizeApiProviderCatalog(payload) as ApiProvider[];
       providerCatalogAvailable = true;
 
@@ -705,6 +708,7 @@ export function mountApiChat(
       }
       updateModels();
     } catch (error) {
+      if (requestGeneration !== providerCatalogRequestGeneration) return;
       providerCatalogAvailable = false;
       status.textContent = error instanceof Error ? error.message : String(error);
       updateAvailability();

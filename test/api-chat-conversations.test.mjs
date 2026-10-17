@@ -33,6 +33,8 @@ async function harness(t, { rejectOnAbort = false } = {}) {
   const copied = [];
   let providerFetchFails = false;
   let malformedProviderCatalog = false;
+  let providerFetchManual = false;
+  const providerFetches = [];
   window.Headers = Headers;
   window.AbortController = AbortController;
   window.URL.createObjectURL = file => `blob:https://devmoter.example/${file.name}`;
@@ -55,9 +57,14 @@ async function harness(t, { rejectOnAbort = false } = {}) {
         (path === "/api/llm/chat" ? chats : uploads).push(request);
       });
     }
-    if (path === "/api/llm/providers") return Promise.resolve(providerFetchFails
-      ? new Response(JSON.stringify({ error: "temporary provider outage" }), { status: 503, headers: { "content-type": "application/json" } })
-      : reply(malformedProviderCatalog ? { providers: "temporary-corruption" } : { providers }));
+    if (path === "/api/llm/providers") {
+      if (providerFetchManual) {
+        return new Promise(resolve => providerFetches.push({ resolve: payload => resolve(reply(payload)) }));
+      }
+      return Promise.resolve(providerFetchFails
+        ? new Response(JSON.stringify({ error: "temporary provider outage" }), { status: 503, headers: { "content-type": "application/json" } })
+        : reply(malformedProviderCatalog ? { providers: "temporary-corruption" } : { providers }));
+    }
     if (path === "/api/llm/presets") return Promise.resolve(reply({ presets: [
       { id: "custom", name: "Custom", protocol: "openai-compatible", baseUrl: "https://custom.example/v1" }
     ] }));
@@ -86,6 +93,8 @@ async function harness(t, { rejectOnAbort = false } = {}) {
     root, window, controller, requests, chats, uploads, copied, providers, select,
     failProviderFetch: value => { providerFetchFails = value; },
     setMalformedProviderCatalog: value => { malformedProviderCatalog = value; },
+    setProviderFetchManual: value => { providerFetchManual = value; },
+    providerFetches,
     history: () => [...root.querySelectorAll("#apiHistory .api-history-row")],
     historyChat(title) {
       const row = this.history().find(node => node.querySelector("strong")?.textContent === title);
@@ -126,6 +135,28 @@ test("provider refresh failure preserves choices but blocks send until retry suc
   assert.equal(provider.value, previousProvider);
   assert.equal(model.value, previousModel);
   assert.equal(ui.root.querySelector("#apiSend").disabled, false);
+});
+
+test("stale provider catalog responses cannot overwrite the latest refresh", async t => {
+  const ui = await harness(t);
+  ui.setProviderFetchManual(true);
+  const olderRefresh = ui.controller.refresh();
+  await settle();
+  const newerRefresh = ui.controller.refresh();
+  await settle();
+  assert.equal(ui.providerFetches.length, 2);
+
+  const latestProvider = {
+    id: "latest", name: "Latest", ready: true, protocol: "openai-compatible",
+    baseUrl: "https://latest.example/v1", models: ["latest-model"]
+  };
+  ui.providerFetches[1].resolve({ providers: [latestProvider] });
+  await newerRefresh;
+  ui.providerFetches[0].resolve({ providers: ui.providers });
+  await olderRefresh;
+
+  assert.deepEqual([...ui.root.querySelectorAll("#apiProvider option")].map(option => option.value), ["latest"]);
+  assert.equal(ui.root.querySelector("#apiProvider").value, "latest");
 });
 
 test("malformed provider catalogs preserve existing choices and block send", async t => {
