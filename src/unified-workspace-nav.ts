@@ -1,5 +1,8 @@
 import type { MainSurface } from "./surface-navigation.mjs";
 import "./unified-workspace-nav.css";
+// Stage 2: present native provider transcripts/composers consistently, without
+// unmounting/reparenting their live input, stream, history or approval controls.
+import "./unified-workspace-chat.css";
 
 type ChatBackend = "codex" | "opencode" | "api";
 
