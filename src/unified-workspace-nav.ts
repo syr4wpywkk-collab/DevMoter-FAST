@@ -23,7 +23,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   const root = document.createElement("div");
   root.id = "dmTaskFirstWorkspace";
   root.className = "dm-task-first-nav";
-  root.innerHTML = \`
+  root.innerHTML = `
     <header class="dm-task-first-header">
       <button type="button" data-workspace-home class="dm-task-first-brand" aria-label="DevMoter FAST Home">
         <span class="dm-task-first-mark" aria-hidden="true">▦</span>
@@ -48,7 +48,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     </nav>
     <p class="dm-task-first-caption">タスク・会話・レビューを一か所から</p>
     <p class="dm-task-first-feedback" role="status" aria-live="polite" data-workspace-feedback></p>
-  \`;
+  `;
   document.body.append(root);
   document.body.classList.add("dm-task-first-enabled");
 
