@@ -98,3 +98,14 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Review/risk: timeout is fixed at 120s; a legitimate provider operation longer than that is cancelled at transport level. As with any client timeout, server/provider work may have completed even if the response was lost; user must decide whether to retry.
 - Next: review mobile composer/viewport and touch interactions, then model catalog stale-state/fallback behavior.
 - Commit SHA: pending.
+
+### Cycle 7 — Model/provider catalog refresh ordering
+
+- Finding: Codex model catalog and OpenCode provider/model catalog were also overwritten by any response completion, so overlapping refreshes could restore a stale catalog and stale selection metadata.
+- Cause: catalog requests had no generation guard.
+- Changes: reused latest-request guards in `src/codex.ts` and `src/opencode.ts`; extended `test/latest-request.test.mjs` to assert both catalog guards execute before state assignment.
+- Before/after: before, old catalog responses could win by arriving last; after, only the latest-started catalog refresh mutates catalog state.
+- Validation: typecheck passed; latest-request tests 2/2 passed; diff check passed.
+- Review/risk: network failure still preserves last known catalog by existing semantics; no pricing is inferred or changed. Runtime race integration uses source wiring assertion plus directly tested helper.
+- Next: inspect server/API boundaries for reproducible permission gaps and add high-value negative tests. Mobile real-device inspection remains unavailable; source CSS constraints already enforce 44px controls and viewport sizing.
+- Commit SHA: pending.

@@ -417,6 +417,7 @@ export function mountCodexRemote(
   let reconnectAttempts = 0;
   let allThreads: ThreadSummary[] = [];
   const threadListRequests = createLatestRequestGuard();
+  const modelCatalogRequests = createLatestRequestGuard();
   let projects: ProjectSummary[] = [];
   let activeProject: ProjectSummary | null = null;
   let pendingAttachments: PendingAttachment[] = [];
@@ -643,7 +644,9 @@ export function mountCodexRemote(
   }
 
   async function loadModelCatalog() {
+    const requestGeneration = modelCatalogRequests.begin();
     const result = await rpc<Json>("model/list", { limit: 100 });
+    if (!modelCatalogRequests.isCurrent(requestGeneration)) return modelCatalog;
     modelCatalog = normalizeCodexModels(result) as CodexModel[];
 
     const migrated = modelCatalog.find(model => model.id === selectedModel && model.model !== selectedModel);

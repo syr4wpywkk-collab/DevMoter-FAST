@@ -479,6 +479,7 @@ export function mountOpenCodeRemote(
   let skills: OpenCodeSkill[] = [];
   let sessions: OpenCodeSession[] = [];
   const sessionListRequests = createLatestRequestGuard();
+  const providerCatalogRequests = createLatestRequestGuard();
   let activeSession: OpenCodeSession | null = null;
   let sessionSortMode = (localStorage.getItem("opencode-pocket-session-sort") || "recent") as SessionSortMode;
   if (!["recent", "created", "messages"].includes(sessionSortMode)) sessionSortMode = "recent";
@@ -1392,11 +1393,13 @@ export function mountOpenCodeRemote(
   }
 
   async function loadProviders() {
+    const requestGeneration = providerCatalogRequests.begin();
     const payload = await api<{
       all?: OpenCodeProvider[];
       default?: Record<string, string>;
       connected?: string[];
     }>("/pocket/providers");
+    if (!providerCatalogRequests.isCurrent(requestGeneration)) return;
 
     providers = Array.isArray(payload?.all) ? payload.all : [];
     providerDefaults = payload?.default ?? {};
