@@ -398,3 +398,25 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Review/risk: timeout is 120 seconds, consistent with chat requests. Temporary server-side upload cleanup still depends on the existing attachment retention cleanup if the client abort reaches the server after the upload was accepted.
 - Next: inspect remaining API Chat submission and stale response boundaries, then continue with a separate reproducible defect.
 - Commit SHA: `d74340b`.
+
+### Cycle 32 — Preserve Codex model choices on malformed catalogs
+
+- Finding: Codex model-list schema errors normalized to an empty catalog and could clear valid model choices after an HTTP-success response.
+- Cause: the normalizer treated absent/non-array data and all-invalid non-empty rows as an empty list, and assignment followed that permissive conversion.
+- Changes: malformed model lists now throw before catalog assignment; a truly empty array remains valid. Added normalization, state-preservation and assignment-order regression tests.
+- Before/after: before, malformed data could erase the last usable model list; after, validation fails before replacement and the prior catalog remains.
+- Validation: typecheck passed; focused Codex model/reasoning/latest-request tests passed 8/8; diff check passed.
+- Review/risk: future backend schema variants will need explicit support in the normalizer; no live Codex CLI integration was used.
+- Next: continue with user-requested UI direction improvements after reaching 20 additional implementation cycles.
+- Commit SHA: `7fd3c30`.
+
+### UI cycle 1 — Make Home read like a development workspace
+
+- Finding: Home used a purple glow, large rounded translucent cards, generic English AI slogans, and a sparkle icon for Chat, giving the entry point a generic AI-product presentation.
+- Cause: copy and styling emphasized AI branding instead of the concrete local tools and development workspaces users can open.
+- Changes: replaced generic English copy with concise Japanese workspace labels, removed the radial glow, moved Home cards to restrained neutral/green surfaces with tighter corners, clarified the Chat tool description, and localized backend-switch labels and accessible names.
+- Before/after: before, Home had an AI tagline and saturated purple/glass treatment; after, it describes tools and saved work directly with a quieter, more utilitarian treatment. Navigation callbacks and preview handling are unchanged.
+- Validation: typecheck and lint passed; Home/App Registry/React Home integration tests passed 8/8 in focused runs. Full suite: 617 total, 616 passed, 0 failed, 1 skipped. Coverage: statements 44.92%, branches 62.86%, functions 55.19%. Build passed; security audit passed 72 checks; `git diff --check` passed.
+- Review/risk: no browser screenshot or iPhone viewport/device review was available; visual quality is not claimed as device-verified. Build still reports the known 570.76 kB initial JavaScript chunk warning. Test server shutdown emits Vite dependency-scan warnings despite a successful suite.
+- Next: continue the visual direction through the main chat surfaces and tool navigation; inspect screenshots at 320/375/390/768/1280 when a browser environment is available.
+- Commit SHA: `7a8b2f6`.
