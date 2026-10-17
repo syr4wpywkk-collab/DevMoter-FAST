@@ -2,7 +2,6 @@ import "./app-shell.css";
 import type { MainSurface } from "./surface-navigation.mjs";
 import { getAppDefinition, getAppsByIds, isAppId, type AppId } from "./app-registry";
 import { mountToolsAi } from "./tools-ai";
-import { mountTaskFirstWorkspace } from "./unified-workspace-nav";
 
 type Backend = "opencode" | "codex" | "api" | "integrations";
 type SettingsPage = "root" | "appearance" | "account" | "devices" | "vault" | "notifications" | "diagnostics" | "guide";
@@ -518,13 +517,17 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   // Stage-1 rollout is explicit. Existing provider-owned session, execution,
   // approval, model and composer DOM remain authoritative and unmodified.
   if (new URLSearchParams(window.location.search).get("unifiedUI") === "1") {
-    mountTaskFirstWorkspace({
-      initialSurface: surface,
-      switchBackend: next => options.switchBackend(next),
-      openHome: options.openHome,
-      openTasks: () => run(() => launchApp("sessions")),
-      openReview: () => run(() => launchApp("review")),
-      openTools: openSidebar
-    });
+    // Load the opt-in view only after the legacy shell is mounted. This keeps
+    // the existing provider/UI test harness and normal startup unchanged.
+    void import("./unified-workspace-nav")
+      .then(({ mountTaskFirstWorkspace }) => mountTaskFirstWorkspace({
+        initialSurface: surface,
+        switchBackend: next => options.switchBackend(next),
+        openHome: options.openHome,
+        openTasks: () => run(() => launchApp("sessions")),
+        openReview: () => run(() => launchApp("review")),
+        openTools: openSidebar
+      }))
+      .catch(() => notify("Unified Workspace UIを読み込めませんでした。従来UIを使用してください。"));
   }
 }
