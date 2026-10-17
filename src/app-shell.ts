@@ -2,6 +2,7 @@ import "./app-shell.css";
 import type { MainSurface } from "./surface-navigation.mjs";
 import { getAppDefinition, getAppsByIds, isAppId, type AppId } from "./app-registry";
 import { mountToolsAi } from "./tools-ai";
+import { mountTaskFirstWorkspace } from "./unified-workspace-nav";
 
 type Backend = "opencode" | "codex" | "api" | "integrations";
 type SettingsPage = "root" | "appearance" | "account" | "devices" | "vault" | "notifications" | "diagnostics" | "guide";
@@ -513,4 +514,17 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   updateBackend(backend);
   updateSurface(surface);
   filterTools();
+
+  // Stage-1 rollout is explicit. Existing provider-owned session, execution,
+  // approval, model and composer DOM remain authoritative and unmodified.
+  if (new URLSearchParams(window.location.search).get("unifiedUI") === "1") {
+    mountTaskFirstWorkspace({
+      initialSurface: surface,
+      switchBackend: next => options.switchBackend(next),
+      openHome: options.openHome,
+      openTasks: () => run(() => launchApp("sessions")),
+      openReview: () => run(() => launchApp("review")),
+      openTools: openSidebar
+    });
+  }
 }
