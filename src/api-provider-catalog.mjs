@@ -6,7 +6,7 @@ export function normalizeApiProviderCatalog(payload) {
       !provider ||
       typeof provider.id !== "string" || !provider.id ||
       typeof provider.name !== "string" || !provider.name ||
-      typeof provider.protocol !== "string" ||
+      !["openai-compatible", "anthropic"].includes(provider.protocol) ||
       typeof provider.baseUrl !== "string" ||
       typeof provider.ready !== "boolean" ||
       !Array.isArray(provider.models) ||

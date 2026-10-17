@@ -287,6 +287,17 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: remote timeout boundary, upload timeout, Codex failure UI, OpenCode Markdown/overlay suites passed 13/13; typecheck and diff check passed.
 - Review/risk: timeouts cannot prove whether the server completed a mutation before the client abort; no retry was added. Some file-to-data-URL conversion occurs before the request timer begins.
 - Next: inspect streaming and cancellation lifecycles, especially client disconnects and late backend responses, then continue grouped regression tests.
+- Commit SHA: `7f042fb`.
+
+### Cycle 25 — Reject unsupported API Chat provider protocols
+
+- Finding: provider catalog validation accepted any string as a protocol even though this client only supports OpenAI-compatible and Anthropic request formats.
+- Cause: the validator checked the field's type but not its supported value set.
+- Changes: catalog normalization now accepts only the two implemented protocol identifiers. Added an integration regression showing unsupported protocol data preserves prior choices and blocks sending.
+- Before/after: before, an unknown protocol could appear selectable and reach request code that assumes a supported format; after, the entire invalid catalog is rejected safely.
+- Validation: API Chat suite passed 11/11; typecheck and diff check passed.
+- Review/risk: adding a future protocol requires an explicit client implementation and schema update before the catalog can accept it.
+- Next: inspect stream cancellation and late responses across the three backends.
 - Commit SHA: pending.
 
 ### Cycle 23 — Bound Codex and OpenCode attachment upload requests

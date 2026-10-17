@@ -35,6 +35,7 @@ async function harness(t, { rejectOnAbort = false } = {}) {
   let providerFetchFails = false;
   let malformedProviderCatalog = false;
   let duplicateProviderIds = false;
+  let unsupportedProviderProtocol = false;
   let providerFetchManual = false;
   const providerFetches = [];
   window.Headers = Headers;
@@ -69,6 +70,8 @@ async function harness(t, { rejectOnAbort = false } = {}) {
           ? { providers: "temporary-corruption" }
           : duplicateProviderIds
             ? { providers: [providers[0], { ...providers[0], name: "Duplicate identity" }] }
+            : unsupportedProviderProtocol
+              ? { providers: [{ ...providers[0], protocol: "unsupported-protocol" }] }
             : { providers }));
     }
     if (path === "/api/llm/presets") return Promise.resolve(reply({ presets: [
@@ -101,6 +104,7 @@ async function harness(t, { rejectOnAbort = false } = {}) {
     failProviderFetch: value => { providerFetchFails = value; },
     setMalformedProviderCatalog: value => { malformedProviderCatalog = value; },
     setDuplicateProviderIds: value => { duplicateProviderIds = value; },
+    setUnsupportedProviderProtocol: value => { unsupportedProviderProtocol = value; },
     setProviderFetchManual: value => { providerFetchManual = value; },
     providerFetches,
     history: () => [...root.querySelectorAll("#apiHistory .api-history-row")],
@@ -195,6 +199,18 @@ test("duplicate provider identities reject the whole catalog without changing se
 
   assert.deepEqual([...ui.root.querySelectorAll("#apiProvider option")].map(option => option.value), previousValues);
   assert.equal(ui.root.querySelector("#apiProvider").value, previousProvider);
+  assert.equal(ui.root.querySelector("#apiSend").disabled, true);
+  assert.match(ui.root.querySelector("#apiStatus").textContent, /invalid provider catalog/);
+});
+
+test("unsupported provider protocols preserve choices and block sends", async t => {
+  const ui = await harness(t);
+  const previousValues = [...ui.root.querySelectorAll("#apiProvider option")].map(option => option.value);
+  ui.setUnsupportedProviderProtocol(true);
+
+  await ui.controller.refresh();
+
+  assert.deepEqual([...ui.root.querySelectorAll("#apiProvider option")].map(option => option.value), previousValues);
   assert.equal(ui.root.querySelector("#apiSend").disabled, true);
   assert.match(ui.root.querySelector("#apiStatus").textContent, /invalid provider catalog/);
 });
