@@ -35,12 +35,13 @@ test("Knowledge and Browser are truthful previews and System entries stay separa
 
 test("Home cards are rendered from the Registry with accessible availability state", async () => {
   const home = await source("home.ts");
-  assert.ok(home.includes("APP_REGISTRY.map(app =>"));
-  assert.ok(home.includes('data-home-app="${app.id}"'));
-  assert.ok(home.includes("aria-label=\"${app.title}"));
-  assert.ok(home.includes("aria-disabled=\\\"true\\\""));
-  assert.ok(home.includes("${state ? `<em class=\"dm-home-app-state\">${state}</em>` : \"\"}"));
-  assert.ok(home.includes("options.onPreviewApp(app.id, app.previewMessage"));
+  assert.ok(home.includes("APP_REGISTRY.find(app => app.id === id)"), "canonical registry supplies each home app");
+  assert.ok(home.includes("button.dataset.homeApp = app.id;"), "allowlisted DOM cards");
+  assert.ok(home.includes('button.setAttribute("aria-label",'), "cards remain named for screen readers");
+  assert.ok(home.includes('button.setAttribute("aria-disabled", "true");'), "previews are explicitly identified");
+  assert.ok(home.includes('if (app.availability === "unavailable") button.disabled = true;'));
+  assert.ok(home.includes("options.onPreviewApp(app.id, app.previewMessage"), "preview must not launch a fake app");
+  assert.ok(home.includes("options.onLaunchApp(app.id)"), "available apps delegate to the real shell");
 });
 
 test("Sidebar app-like labels come from Registry and launches are fixed allowlisted behavior", async () => {
