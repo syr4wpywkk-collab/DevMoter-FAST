@@ -7,7 +7,7 @@ import { JSDOM } from "jsdom";
 async function loadNavigator() {
   const source = await readFile(new URL("../src/unified-workspace-nav.ts", import.meta.url), "utf8");
   // Browser CSS import is intentionally omitted only from this DOM unit test.
-  const transpiled = await transform(source.replace('import "./unified-workspace-nav.css";', ""), {
+  const transpiled = await transform(source.replace(/import "\.\/unified-workspace-(?:nav|chat)\.css";/g, ""), {
     loader: "ts", format: "esm", target: "es2022"
   });
   const uri = "data:text/javascript;base64," + Buffer.from(transpiled.code).toString("base64");

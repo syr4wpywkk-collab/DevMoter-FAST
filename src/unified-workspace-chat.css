@@ -1,0 +1,386 @@
+/*
+ * Unified Workspace — Stage 2: native chat presentation.
+ * Loaded ONLY by the opt-in task-first workspace chunk (?unifiedUI=1).
+ * No DOM replacements or transport/session/permission/event ownership changes.
+ * The native form, history, approval, model and streaming surfaces remain intact.
+ */
+
+body.dm-task-first-enabled {
+  --dw-chat-bg: #0c121b;
+  --dw-chat-surface: #111b27;
+  --dw-chat-raised: #192838;
+  --dw-chat-input: #172532;
+  --dw-chat-user: #1c3948;
+  --dw-chat-user-border: #316c82;
+  --dw-chat-line: #2c3f50;
+  --dw-chat-text: #eaf4fc;
+  --dw-chat-muted: #a7bdcd;
+  --dw-chat-accent: #4fd3f2;
+  --dw-chat-accent-soft: #183a4a;
+  --dw-chat-send-text: #05202c;
+  --dw-chat-shadow: 0 18px 40px rgba(0, 0, 0, .36);
+  --dw-chat-code: #0c1823;
+}
+
+html[data-devmoter-theme="light"] body.dm-task-first-enabled {
+  --dw-chat-bg: #f7fbfe;
+  --dw-chat-surface: #ffffff;
+  --dw-chat-raised: #edf5fa;
+  --dw-chat-input: #ffffff;
+  --dw-chat-user: #ddf2f9;
+  --dw-chat-user-border: #91c7da;
+  --dw-chat-line: #d0e1ea;
+  --dw-chat-text: #142938;
+  --dw-chat-muted: #506b7d;
+  --dw-chat-accent: #006e8b;
+  --dw-chat-accent-soft: #d8eef6;
+  --dw-chat-send-text: #ffffff;
+  --dw-chat-shadow: 0 14px 34px rgba(23, 55, 75, .12);
+  --dw-chat-code: #ecf4f9;
+}
+
+/* Keep all provider engines mounted and isolated; only map presentation tokens. */
+body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app) {
+  background: var(--dw-chat-bg);
+  color: var(--dw-chat-text);
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html[data-devmoter-theme="light"] body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app) {
+  color-scheme: light;
+}
+
+body.dm-task-first-enabled .cx-app {
+  --cx-surface: var(--dw-chat-bg);
+  --cx-raised: var(--dw-chat-raised);
+  --cx-text: var(--dw-chat-text);
+  --cx-muted: var(--dw-chat-muted);
+  --cx-border: var(--dw-chat-line);
+  --cx-content-width: 800px;
+}
+body.dm-task-first-enabled .ocx-app {
+  --oc-bg: var(--dw-chat-bg);
+  --oc-panel: var(--dw-chat-surface);
+  --oc-panel-2: var(--dw-chat-raised);
+  --oc-line: var(--dw-chat-line);
+  --oc-line-soft: var(--dw-chat-line);
+  --oc-text: var(--dw-chat-text);
+  --oc-muted: var(--dw-chat-muted);
+  --oc-dim: var(--dw-chat-muted);
+  --oc-accent: var(--dw-chat-accent);
+  --oc-accent-soft: var(--dw-chat-accent-soft);
+  --ocx-content-width: 800px;
+}
+body.dm-task-first-enabled .api-app {
+  --api-bg: var(--dw-chat-bg);
+  --api-surface: var(--dw-chat-surface);
+  --api-text: var(--dw-chat-text);
+  --api-muted: var(--dw-chat-muted);
+  --api-border: var(--dw-chat-line);
+  --api-accent: var(--dw-chat-accent);
+  --api-composer-surface: var(--dw-chat-input);
+  --api-content-width: 800px;
+}
+
+/* A consistent header and bounded chat canvas. Native provider titles and
+ * their real model/session labels are kept — no invented state or badges. */
+body.dm-task-first-enabled :is(.cx-app .cx-topbar, .ocx-app .ocx-topbar, .api-app .api-topbar) {
+  background: var(--dw-chat-surface);
+  border-bottom: 1px solid var(--dw-chat-line);
+  color: var(--dw-chat-text);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+body.dm-task-first-enabled :is(.cx-app .cx-main, .ocx-app .ocx-main, .api-app .api-main) {
+  background:
+    radial-gradient(ellipse 55% 38% at 50% -8%, color-mix(in srgb, var(--dw-chat-accent) 7%, transparent), transparent 80%),
+    var(--dw-chat-bg);
+}
+body.dm-task-first-enabled :is(.cx-app .cx-transcript, .ocx-app .ocx-transcript, .api-app .api-transcript) {
+  padding-top: clamp(20px, 3.2vh, 40px);
+  color: var(--dw-chat-text);
+  scrollbar-color: var(--dw-chat-line) transparent;
+  /* Bottom padding and scroll-padding remain provider-owned and dynamically
+     account for growing composers, approvals and attachments. */
+}
+body.dm-task-first-enabled :is(.cx-app .cx-welcome-mark, .ocx-app .ocx-mark, .api-app .api-spark) {
+  color: var(--dw-chat-accent);
+}
+body.dm-task-first-enabled :is(.cx-app .cx-welcome h2, .ocx-app .ocx-welcome h2, .api-app .api-welcome h1) {
+  background: none;
+  color: var(--dw-chat-text);
+  -webkit-text-fill-color: currentColor;
+  font-weight: 680;
+  letter-spacing: -.03em;
+}
+body.dm-task-first-enabled :is(.cx-app .cx-welcome p, .ocx-app .ocx-welcome p, .api-app .api-welcome p) {
+  color: var(--dw-chat-muted);
+}
+body.dm-task-first-enabled :is(.cx-app .cx-title-button, .ocx-app .ocx-session-title, .api-app .api-brand) {
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled :is(.cx-app #cxModelLabel, .ocx-app #ocxSessionMeta, .api-app #apiModelTopLabel) {
+  color: var(--dw-chat-muted);
+}
+body.dm-task-first-enabled :is(.cx-app .cx-topbar-pill, .ocx-app .ocx-topbar .ocx-icon, .api-app .api-topbar .api-icon-button) {
+  background: var(--dw-chat-raised);
+  color: var(--dw-chat-text);
+  border: 1px solid var(--dw-chat-line);
+  border-radius: 12px;
+}
+body.dm-task-first-enabled :is(.cx-app .cx-topbar-pill, .ocx-app .ocx-topbar .ocx-icon, .api-app .api-topbar .api-icon-button):hover:not(:disabled) {
+  border-color: var(--dw-chat-accent);
+}
+
+/* Native conversations: one reading width, uniform separation, and consistent
+ * user/assistant distinction. Messages and streaming DOM are NOT recreated. */
+body.dm-task-first-enabled :is(.cx-app .cx-message-row, .ocx-app .ocx-message-row, .api-app .api-message) {
+  width: min(100%, 800px);
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 20px;
+}
+body.dm-task-first-enabled :is(.cx-app .cx-message, .api-app .api-message-bubble, .ocx-app .ocx-assistant-text) {
+  color: var(--dw-chat-text);
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+body.dm-task-first-enabled :is(.cx-app .cx-message.user, .api-app .api-message.user .api-message-bubble) {
+  max-width: min(86%, 640px);
+  padding: 12px 16px;
+  border: 1px solid var(--dw-chat-user-border);
+  border-radius: 18px 18px 5px 18px;
+  background: var(--dw-chat-user);
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled .ocx-app .ocx-user-prompt {
+  width: fit-content;
+  max-width: min(86%, 640px);
+  margin-left: auto;
+  padding: 12px 16px;
+  border: 1px solid var(--dw-chat-user-border);
+  border-radius: 18px 18px 5px 18px;
+  background: var(--dw-chat-user);
+  color: var(--dw-chat-text);
+  font-family: inherit;
+}
+body.dm-task-first-enabled .ocx-app .ocx-user-prompt > span:first-child {
+  color: var(--dw-chat-accent);
+}
+body.dm-task-first-enabled :is(.cx-app .cx-message.assistant, .api-app .api-message.assistant .api-message-bubble, .ocx-app .ocx-assistant-text) {
+  background: transparent;
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled .ocx-app .ocx-assistant-text {
+  padding-left: 4px;
+  font-size: 1rem;
+  font-family: inherit;
+}
+body.dm-task-first-enabled :is(.cx-app .cx-message.system, .ocx-app .ocx-tool-card, .ocx-app .ocx-reasoning) {
+  border: 1px solid var(--dw-chat-line);
+  border-radius: 13px;
+  background: var(--dw-chat-surface);
+  color: var(--dw-chat-muted);
+}
+body.dm-task-first-enabled .ocx-app :is(.ocx-tool-card, .ocx-reasoning) > summary {
+  color: var(--dw-chat-muted);
+}
+body.dm-task-first-enabled .ocx-app .ocx-tool-content {
+  border-color: var(--dw-chat-line);
+}
+body.dm-task-first-enabled :is(.cx-app .cx-message-action, .api-app .api-message-copy) {
+  color: var(--dw-chat-muted);
+}
+body.dm-task-first-enabled :is(.cx-app .cx-message-action, .api-app .api-message-copy):hover:not(:disabled) {
+  background: var(--dw-chat-accent-soft);
+  color: var(--dw-chat-text);
+}
+
+/* Keep structured Markdown, code blocks, preformatted logs, tables and
+ * attachments readable in both themes; keep overflow containment native. */
+body.dm-task-first-enabled :is(.cx-app, .api-app) .cx-markdown {
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled :is(.cx-app, .api-app) .cx-markdown :is(p, li, strong, em, h1, h2, h3, h4, h5, h6) {
+  color: inherit;
+}
+body.dm-task-first-enabled :is(.cx-app, .api-app) .cx-markdown a {
+  color: var(--dw-chat-accent);
+}
+body.dm-task-first-enabled :is(.cx-app, .api-app) .dm-code-block {
+  border-color: var(--dw-chat-line);
+  background: var(--dw-chat-code);
+}
+body.dm-task-first-enabled :is(.cx-app, .api-app) .dm-code-head {
+  background: var(--dw-chat-raised);
+  color: var(--dw-chat-muted);
+}
+body.dm-task-first-enabled :is(.cx-app, .api-app) .cx-markdown pre,
+body.dm-task-first-enabled :is(.cx-app, .api-app) .cx-markdown pre code {
+  background: transparent;
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled :is(.cx-app, .api-app) .cx-markdown :not(pre) > code {
+  background: var(--dw-chat-raised);
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled :is(.cx-app, .api-app) .cx-markdown :is(th, td) {
+  border-color: var(--dw-chat-line);
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled :is(.cx-app, .api-app) .cx-markdown th {
+  background: var(--dw-chat-raised);
+}
+body.dm-task-first-enabled :is(.cx-app, .api-app) .dm-code-copy {
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled :is(.cx-app, .api-app) .cx-markdown blockquote {
+  border-left-color: var(--dw-chat-accent);
+  color: var(--dw-chat-muted);
+}
+
+/* Composer: shared card, focus, attachment affordances and send treatment.
+ * Forms, submit handlers, textarea values, stop buttons, models, agent modes,
+ * status messages and permission/question docks still belong to each engine. */
+body.dm-task-first-enabled :is(.cx-app .cx-composer-wrap, .ocx-app .ocx-composer-wrap, .api-app .api-composer-wrap) {
+  background: linear-gradient(to bottom, transparent, var(--dw-chat-bg) 28%);
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled :is(.cx-app .cx-composer, .ocx-app .ocx-composer, .api-app .api-composer) {
+  width: min(100%, 800px);
+  border: 1px solid var(--dw-chat-line);
+  border-radius: 20px;
+  background: var(--dw-chat-input);
+  color: var(--dw-chat-text);
+  box-shadow: var(--dw-chat-shadow);
+  backdrop-filter: none;
+}
+body.dm-task-first-enabled :is(.cx-app .cx-composer, .ocx-app .ocx-composer, .api-app .api-composer):focus-within {
+  border-color: var(--dw-chat-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dw-chat-accent) 25%, transparent), var(--dw-chat-shadow);
+}
+body.dm-task-first-enabled :is(.cx-app #cxPromptInput, .ocx-app #ocxPromptInput, .api-app #apiPrompt) {
+  min-height: 44px;
+  color: var(--dw-chat-text);
+  background: transparent;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.55;
+}
+body.dm-task-first-enabled :is(.cx-app #cxPromptInput, .ocx-app #ocxPromptInput, .api-app #apiPrompt)::placeholder {
+  color: var(--dw-chat-muted);
+  opacity: 1;
+}
+body.dm-task-first-enabled :is(.cx-app .cx-composer-left .cx-topbar-pill, .ocx-app .ocx-context-button, .ocx-app .ocx-mode-switch, .api-app .api-picker-row select) {
+  background: var(--dw-chat-raised);
+  color: var(--dw-chat-text);
+  border: 1px solid var(--dw-chat-line);
+  border-radius: 10px;
+}
+body.dm-task-first-enabled .ocx-app .ocx-mode-switch button.active {
+  background: var(--dw-chat-accent-soft);
+  color: var(--dw-chat-accent);
+}
+body.dm-task-first-enabled .ocx-app .ocx-mode-switch button {
+  min-height: 34px;
+}
+body.dm-task-first-enabled .api-app .api-picker-row select {
+  color-scheme: dark;
+  min-height: 44px;
+}
+html[data-devmoter-theme="light"] body.dm-task-first-enabled .api-app .api-picker-row select {
+  color-scheme: light;
+}
+body.dm-task-first-enabled .api-app select :is(option, optgroup) {
+  background: var(--dw-chat-surface);
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled :is(.cx-app .cx-round-button, .ocx-app .ocx-mini-button, .api-app #apiAttachImage) {
+  color: var(--dw-chat-text);
+  background: var(--dw-chat-raised);
+  border: 1px solid var(--dw-chat-line);
+  border-radius: 11px;
+}
+body.dm-task-first-enabled :is(.cx-app #cxSend:not(.stop), .ocx-app #ocxSend:not(.stop), .api-app #apiSend) {
+  min-width: 44px;
+  width: 44px;
+  min-height: 44px;
+  height: 44px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--dw-chat-accent);
+  color: var(--dw-chat-send-text);
+}
+body.dm-task-first-enabled :is(.cx-app #cxSend.stop, .ocx-app #ocxSend.stop) {
+  min-width: 44px;
+  width: 44px;
+  min-height: 44px;
+  height: 44px;
+  border: 1px solid #a65a59;
+  border-radius: 12px;
+  background: #563034;
+  color: #fff2f0;
+}
+body.dm-task-first-enabled :is(.cx-app #cxSend, .ocx-app #ocxSend, .api-app #apiSend):disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
+body.dm-task-first-enabled :is(.cx-app #cxExecutionStatus, .ocx-app #ocxActivity, .api-app #apiStatus) {
+  color: var(--dw-chat-muted);
+}
+body.dm-task-first-enabled :is(.cx-app .cx-composer button, .ocx-app .ocx-composer button, .api-app .api-composer button):focus-visible,
+body.dm-task-first-enabled :is(.cx-app .cx-topbar button, .ocx-app .ocx-topbar button, .api-app .api-topbar button):focus-visible,
+body.dm-task-first-enabled :is(.cx-app .cx-composer select, .ocx-app .ocx-composer select, .api-app .api-composer select):focus-visible {
+  outline: 2px solid var(--dw-chat-accent);
+  outline-offset: 3px;
+}
+/* Approval/permission state remains explicit and must never be recolored
+ * to look like a normal assistant message or automatically acknowledged. */
+body.dm-task-first-enabled :is(.cx-app .cx-approval, .ocx-app .ocx-dock) {
+  border: 1px solid #b68d53;
+  border-radius: 15px;
+}
+
+/* Previous layout padded two provider headers for the legacy floating tools
+ * launcher. In unified mode that launcher is hidden; don't leave dead space. */
+@media (max-width: 899px) {
+  body.dm-task-first-enabled.opencode-mode .ocx-app .ocx-topbar,
+  body.dm-task-first-enabled.api-mode .api-app .api-topbar {
+    padding-left: max(12px, env(safe-area-inset-left));
+  }
+}
+@media (max-width: 680px) {
+  body.dm-task-first-enabled :is(.cx-app .cx-transcript, .ocx-app .ocx-transcript, .api-app .api-transcript) {
+    padding-top: 18px;
+  }
+  body.dm-task-first-enabled :is(.cx-app .cx-message-row, .ocx-app .ocx-message-row, .api-app .api-message) {
+    margin-bottom: 16px;
+  }
+  body.dm-task-first-enabled :is(.cx-app .cx-message.user, .api-app .api-message.user .api-message-bubble, .ocx-app .ocx-user-prompt) {
+    max-width: 92%;
+  }
+  body.dm-task-first-enabled :is(.cx-app .cx-composer-wrap, .ocx-app .ocx-composer-wrap, .api-app .api-composer-wrap) {
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+    /* The docked task navigation owns the safe-area bottom margin. */
+    padding-bottom: 8px;
+  }
+  body.dm-task-first-enabled :is(.cx-app .cx-composer, .ocx-app .ocx-composer, .api-app .api-composer) {
+    border-radius: 16px;
+  }
+  body.dm-task-first-enabled .api-app .api-picker-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  body.dm-task-first-enabled .api-app #apiReasoning {
+    grid-column: 1 / -1;
+  }
+  body.dm-task-first-enabled .ocx-app .ocx-composer-foot {
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app) * {
+    scroll-behavior: auto;
+  }
+}
