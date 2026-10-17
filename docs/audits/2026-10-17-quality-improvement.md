@@ -441,4 +441,4 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: typecheck passed; navigation, unified shell and UI regression suites passed 21/21; `git diff --check` passed.
 - Review/risk: browser screenshot revealed the separate Tools AI panel still presents a sparkle and conversational AI prompt; this remains the largest visible AI-template element and is the next UI target. Vite-only runtime shows a diagnostics error because backend API is absent.
 - Next: redesign the Tools AI sidebar area around direct tool search and launch, keeping any AI helper explicitly secondary and optional.
-- Commit SHA: pending audit checkpoint.
+- Commit SHA: `eb986a8`.
