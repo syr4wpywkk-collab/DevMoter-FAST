@@ -199,15 +199,15 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: focused tests 5/5 passed; typecheck and diff check passed.
 - Review/risk: errors are surfaced by the existing toast; test covers helper semantics and loader wiring, not a complete browser interaction for network failure.
 - Next: inspect API Chat conversation identity/attachment lifecycle, then backend stream recovery.
-- Commit SHA: pending.
+- Commit SHA: `197e423`.
 
-### Cycle 13 — Codex history failure and malformed payload handling
+### Cycle 14 — Recheck OpenCode history generation after active-session probe
 
-- Finding: Codex `thread/list` rejected promises could escape from fire-and-forget refresh callers, and malformed response shapes were assigned to the rendered list.
-- Cause: loader had no local error boundary and used `result?.data ?? []` without validating the array contract or thread identities.
-- Changes: added `normalizeCodexThreadList` plus declaration; `loadThreads()` now reports transport/schema errors and retains the previous valid snapshot. Added three focused tests for valid rows, malformed shapes, and loader failure wiring; aligned latest-history wiring assertion.
-- Before/after: before, failures could become unhandled and malformed data could corrupt history rendering; after, invalid responses fail closed without erasing the last usable list.
-- Validation: focused tests 5/5 passed; typecheck and diff check passed.
-- Review/risk: errors are surfaced by the existing toast; test covers helper semantics and loader wiring, not a complete browser interaction for network failure.
+- Finding: OpenCode checked its history request generation after fetching sessions, then awaited a separate active-session probe and mutated state without checking again.
+- Cause: stale-response protection covered only the first of two awaited requests in `loadSessions()`.
+- Changes: added a second generation check after the active-session probe; extended `test/latest-request.test.mjs` to verify that guard precedes active-session state processing.
+- Before/after: before, an older active-session response could mutate the state map after a newer history refresh; after, stale refreshes return before that mutation.
+- Validation: focused history/Codex payload tests 5/5 passed; typecheck and diff check passed.
+- Review/risk: source wiring test plus the shared generation helper test; no full asynchronous browser race harness for OpenCode session state.
 - Next: inspect API Chat conversation identity/attachment lifecycle, then backend stream recovery.
 - Commit SHA: pending.

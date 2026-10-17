@@ -1516,6 +1516,7 @@ export function mountOpenCodeRemote(
     } catch {
       // Session list still renders when the active-session probe is unavailable.
     }
+    if (!sessionListRequests.isCurrent(requestGeneration)) return;
 
     if (activeSession) {
       const fresh = sessions.find(session => session.id === activeSession?.id);
