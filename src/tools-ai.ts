@@ -9,7 +9,7 @@ type Run = { runId: string; rawGoal: string; status: string; updatedAt: number; 
 const RUN_KEY = "devmoter-tools-ai-run";
 const PENDING_KEY = "devmoter-tools-ai-pending-request";
 const terminal = (run: Run) => ["completed", "failed", "stopped", "unknown"].includes(run.status);
-const statuses: Record<string, string> = { planning: "AIが操作を選択中です…", running: "内容を確認して、結果をまとめています…", completed: "完了", failed: "失敗", stop_requested: "停止要求済み・終了待ち", stopped: "作業の継続を停止", unknown: "結果不明・自動再開なし" };
+const statuses: Record<string, string> = { planning: "調査内容を整理しています…", running: "確認した内容をまとめています…", completed: "完了", failed: "失敗", stop_requested: "停止要求済み・終了待ち", stopped: "作業の継続を停止", unknown: "結果不明・自動再開なし" };
 const string = (value: unknown) => typeof value === "string" ? value : JSON.stringify(value) ?? "";
 const objects = (value: unknown): Data[] => Array.isArray(value) ? value as Data[] : [];
 
@@ -17,11 +17,11 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
   root.className = "tools-ai";
   root.innerHTML = `
     <div class="tools-ai-toolbar"><button type="button" data-ai-stop disabled>Stop</button></div>
-    <div class="tools-ai-welcome"><span class="tools-ai-spark" aria-hidden="true">✦</span><h2 id="toolsAiTitle">何をしたいですか？</h2><p>変更の確認、コード検索、README確認、診断などをAIに頼めます。</p></div>
+    <div class="tools-ai-welcome"><h2 id="toolsAiTitle">プロジェクトを調べる</h2><p>変更内容、認証、構成や接続の問題を読み取り専用で調べます。</p></div>
     <form data-ai-form>
-      <div class="tools-ai-composer"><label class="tools-ai-goal-label" for="toolsAiGoal">AIへの依頼</label><textarea id="toolsAiGoal" data-ai-goal rows="3" maxlength="8000" placeholder="今の変更を調べて"></textarea><div class="tools-ai-composer-actions"><span>読む・調べるお手伝い</span><button type="submit" data-ai-submit disabled>送信 <span aria-hidden="true">↑</span></button></div></div>
+      <div class="tools-ai-composer"><label class="tools-ai-goal-label" for="toolsAiGoal">調査内容</label><textarea id="toolsAiGoal" data-ai-goal rows="3" maxlength="8000" placeholder="例：現在の変更点を整理"></textarea><div class="tools-ai-composer-actions"><span>読み取り専用の調査</span><button type="submit" data-ai-submit disabled>調査を開始 <span aria-hidden="true">→</span></button></div></div>
       <div data-ai-setup-notice role="status"><p data-ai-setup-message>AIの設定を読み込んでいます…</p><button type="button" data-ai-configure hidden>API ChatのAI設定を開く</button><button type="button" data-ai-retry hidden>設定を再読み込み</button></div>
-      <div class="tools-ai-suggestions" aria-label="依頼の例">${["今の変更を調べて", "認証処理を探して", "プロジェクト構成を教えて", "READMEから起動方法を教えて", "接続できない理由を調べて"].map(text => `<button type="button" data-ai-suggestion>${text}</button>`).join("")}</div>
+      <div class="tools-ai-suggestions" aria-label="調査例">${["今の変更を調べて", "認証処理を探して", "プロジェクト構成を教えて", "READMEから起動方法を教えて", "接続できない理由を調べて"].map(text => `<button type="button" data-ai-suggestion>${text}</button>`).join("")}</div>
       <p class="tools-ai-sharing">依頼と必要なProject内容の一部を、選択したAIへ共有します。</p>
       <details class="tools-ai-settings"><summary>使用する対象とAIを変更</summary>
         <label>対象Project（次の依頼）<select data-ai-project aria-label="対象Project"></select></label>
@@ -154,7 +154,7 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
     const runDetails = element("details", "", "tools-ai-run-details"); runDetails.append(element("summary", "実行の詳細"));
     paragraph(runDetails, `今回の対象: ${run.context.project?.name || "Projectなし"} / ${run.context.hostId} / ${run.context.backend}`);
     paragraph(runDetails, `今回のPlanner: ${run.planner.providerName} / ${run.planner.model}`);
-    paragraph(progress, `依頼: ${run.rawGoal}`);
+    paragraph(progress, `調査内容: ${run.rawGoal}`);
     if (run.cancellation.requested) paragraph(progress, "新しい操作は開始しません。開始済みの読み取りやprovider内部処理が即時停止したことは保証しません。");
     for (const step of run.steps) {
       paragraph(runDetails, `${step.operationId}: ${step.status}`);

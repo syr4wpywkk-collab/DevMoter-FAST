@@ -28,6 +28,10 @@ test("AI is default, selected target is captured, close/reopen restores the SAME
   });
   try {
     $(".dm-shell-menu-trigger").click(); await tick();
+    assert.equal($("#toolsAiTitle").textContent, "プロジェクトを調べる");
+    assert.equal($(".tools-ai-spark"), null);
+    assert.match($(".tools-ai-welcome").textContent, /読み取り専用/);
+    assert.equal($("[data-ai-submit]").textContent.trim(), "調査を開始 →");
     assert.equal($("[data-manual-tools]").open, false);
     assert.equal(dom.window.document.querySelectorAll("[data-tools-item]").length, 21);
     assert.match($("[data-ai-availability]").textContent, /Configured provider.*configured-model/);
@@ -174,7 +178,7 @@ test("lost start response is reconciled by original request ID, never assumed su
     $("[data-shell-close]").click(); $(".dm-shell-menu-trigger").click(); await tick();
     assert.equal(dom.window.localStorage.getItem("devmoter-tools-ai-run"), baseRun.runId);
     assert.equal(dom.window.localStorage.getItem("devmoter-tools-ai-pending-request"), null);
-    assert.match($("[data-ai-progress]").textContent, /操作を選択中/);
+    assert.match($("[data-ai-progress]").textContent, /調査内容を整理しています/);
   } finally { dom.window.close(); }
 });
 
@@ -195,7 +199,7 @@ test("an old reconnect response cannot replace a newly submitted run", async () 
     release(); await tick();
     assert.equal($("[data-ai-stop]").disabled, false);
     assert.equal(dom.window.localStorage.getItem("devmoter-tools-ai-run"), newer.runId);
-    assert.match($("[data-ai-progress]").textContent, /操作を選択中/);
+    assert.match($("[data-ai-progress]").textContent, /調査内容を整理しています/);
   } finally { dom.window.close(); }
 });
 

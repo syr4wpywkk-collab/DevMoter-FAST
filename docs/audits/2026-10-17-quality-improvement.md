@@ -442,3 +442,14 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Review/risk: browser screenshot revealed the separate Tools AI panel still presents a sparkle and conversational AI prompt; this remains the largest visible AI-template element and is the next UI target. Vite-only runtime shows a diagnostics error because backend API is absent.
 - Next: redesign the Tools AI sidebar area around direct tool search and launch, keeping any AI helper explicitly secondary and optional.
 - Commit SHA: `eb986a8`.
+
+### UI cycle 4 — Present Tools AI as a bounded project inspection utility
+
+- Finding: the sidebar's default panel had a sparkle, a large centered “what do you want?” greeting, a chat-style prompt, bright pill suggestions and AI-focused copy, making an optional reader look like a generic AI chat product.
+- Cause: labels and visual hierarchy were copied from conversational assistants even though this surface runs a bounded, read-only project inspection workflow.
+- Changes: removed the sparkle; replaced the greeting/copy with a concise project-inspection description; renamed the prompt and action to investigation terms; clarified read-only behavior; compacted the left-aligned heading, bordered form and rectangular examples; relabeled run progress. Execution, selection, approval and stop paths are unchanged.
+- Before/after: before, the screen centered a decorative chatbot invitation; after, it describes the project scope, read-only limit and available investigation action. Playwright screenshots at 320, 390 and 768px showed no horizontal overflow (document widths matched each viewport).
+- Validation: typecheck passed; Tools AI UI and UI audit suites passed 16/16; lint passed (316 files); build passed; security audit passed (72 checks); diff check passed. Initial JS remains 570.74 kB minified / 174.09 kB gzip.
+- Review/risk: screenshots are `/tmp/devmoter-tools-{320,390,768}.png`; API setup retrieval still displays its real failure in the isolated Vite environment. The direct manual-tools list remains behind its existing disclosure to preserve current navigation behavior; making it primary is a separate information-architecture decision.
+- Next: apply the same restrained treatment to Codex/OpenCode headers, session history and their composer controls; review light/dark contrast and touch targets in real device/browser sessions.
+- Commit SHA: pending.

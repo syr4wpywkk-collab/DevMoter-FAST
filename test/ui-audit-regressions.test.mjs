@@ -71,3 +71,16 @@ test("global workspace navigation uses neutral state cues instead of backend bra
   assert.doesNotMatch(css, /backdrop-filter: blur\(22px\)/);
   assert.match(css, /\.dm-shell-menu-trigger \{[\s\S]*?border-radius: 10px/);
 });
+
+test("Tools assistant reads like a project inspection utility instead of a chat prompt", async () => {
+  const tools = await readFile(new URL("../src/tools-ai.ts", import.meta.url), "utf8");
+  assert.match(tools, /プロジェクトを調べる/);
+  assert.match(tools, /読み取り専用で調べます/);
+  assert.match(tools, /調査を開始/);
+  assert.doesNotMatch(tools, /tools-ai-spark|何をしたいですか|AIに頼めます/);
+
+  const css = await readFile(new URL("../src/app-shell.css", import.meta.url), "utf8");
+  assert.match(css, /\.tools-ai-welcome \{ padding: 18px 4px 14px; text-align: left; \}/);
+  assert.doesNotMatch(css, /\.tools-ai-composer \{[^}]*linear-gradient/);
+  assert.match(css, /\.tools-ai-composer \{[^}]*border-radius: 12px/);
+});
