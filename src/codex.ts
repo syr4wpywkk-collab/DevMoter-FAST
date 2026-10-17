@@ -11,6 +11,7 @@ import { normalizeCodexSendError } from "./codex-send-error.mjs";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 import { createLatestRequestGuard } from "./latest-request.mjs";
 import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
+import { normalizeCodexThreadList } from "./codex-thread-list.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import "./codex-chat.css";
@@ -1252,9 +1253,22 @@ export function mountCodexRemote(
 
   async function loadThreads() {
     const requestGeneration = threadListRequests.begin();
-    const result = await rpc<{ data?: ThreadSummary[] }>("thread/list", { limit: 100 });
+    let result: Json;
+    try {
+      result = await rpc<Json>("thread/list", { limit: 100 });
+    } catch (error) {
+      if (threadListRequests.isCurrent(requestGeneration)) {
+        showToast(error instanceof Error ? error.message : "会話一覧を読み込めませんでした");
+      }
+      return;
+    }
     if (!threadListRequests.isCurrent(requestGeneration)) return;
-    allThreads = result?.data ?? [];
+    try {
+      allThreads = normalizeCodexThreadList(result);
+    } catch {
+      showToast("Codexから有効な会話一覧を受け取れませんでした");
+      return;
+    }
     renderThreads();
 
     // thread/list can briefly lag a just-created or just-resumed thread.

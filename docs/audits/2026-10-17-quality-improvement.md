@@ -189,3 +189,14 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Worktree is expected clean after this log update is committed. Branch remains `work`; nothing was pushed or merged.
 - Remote GitHub PR/Issue/CI checks remain unavailable (API Forbidden). No iPhone/browser screenshots, real Codex/OpenCode servers, external OAuth credentials, or production service validation were run.
 - Resume priorities: inspect PR #313 and Issues #316–#395 when authorized GitHub access is available; run real iPhone/mobile viewport smoke; profile and split the main JS bundle; verify Codex/OpenCode runtime reconnection under real network interruption; inspect required branch checks and CI run records.
+
+### Cycle 13 — Codex history failure and malformed payload handling
+
+- Finding: Codex `thread/list` rejected promises could escape from fire-and-forget refresh callers, and malformed response shapes were assigned to the rendered list.
+- Cause: loader had no local error boundary and used `result?.data ?? []` without validating the array contract or thread identities.
+- Changes: added `normalizeCodexThreadList` plus declaration; `loadThreads()` now reports transport/schema errors and retains the previous valid snapshot. Added three focused tests for valid rows, malformed shapes, and loader failure wiring. Updated the stale-history wiring assertion to the validated assignment.
+- Before/after: before, failures could become unhandled and malformed data could corrupt history rendering; after, invalid responses fail closed without erasing the last usable list.
+- Validation: focused tests 5/5 passed; typecheck and diff check passed.
+- Review/risk: errors are surfaced by the existing toast; test covers helper semantics and loader wiring, not a complete browser interaction for network failure.
+- Next: inspect API Chat conversation identity/attachment lifecycle, then backend stream recovery.
+- Commit SHA: pending.
