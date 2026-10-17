@@ -128,6 +128,18 @@ test("server requires auth and exact Origin for mutations", async () => {
       body: "{}"
     });
     assert.equal(authenticatedIntegrations.status, 200);
+    const duplicateIntegrationStatus = await fetch(`${origin}/api/integrations/status`, {
+      method: "POST",
+      headers: {
+        authorization,
+        origin,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "integration-status-test"
+      },
+      body: "{}"
+    });
+    assert.equal(duplicateIntegrationStatus.status, 409);
+    assert.equal((await duplicateIntegrationStatus.json()).outcome, "unknown");
     const oversizedOperationId = await fetch(`${origin}/api/integrations/status`, {
       method: "POST",
       headers: {

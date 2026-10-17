@@ -142,3 +142,14 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Review/risk: this hardens idempotency key identity and bounded input; it does not replace route authorization or guarantee exactly-once upstream behavior.
 - Next: add a deeper test of duplicate protected mutation delivery, then run grouped and final quality gates.
 - Commit SHA: pending.
+
+### Cycle 10 — Duplicate mutation delivery integration coverage
+
+- Finding: operation registry unit tests established scope and TTL behavior, but the authenticated HTTP integration test did not prove duplicate operation IDs are rejected before the route executes.
+- Cause: no end-to-end regression case for the server's `claimOperation` boundary.
+- Changes: `test/auth-server.integration.test.mjs` now repeats the same authenticated, same-origin Integration Status operation ID and asserts HTTP 409 with `outcome: unknown`.
+- Before/after: before, duplicate suppression was only unit-tested; after, the real local HTTP server/auth/origin/route pipeline is covered.
+- Validation: auth server integration tests 2/2 passed; diff check passed.
+- Review/risk: endpoint is read-only and test-local; this does not establish exactly-once semantics beyond the operation registry TTL/capacity.
+- Next: run the full final quality gate sequentially; inspect build warnings and all committed diffs.
+- Commit SHA: pending.
