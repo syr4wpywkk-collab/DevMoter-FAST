@@ -14,6 +14,7 @@ import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
 import { normalizeCodexThreadList } from "./codex-thread-list.mjs";
 import { normalizeCodexThreadHistory } from "./codex-thread-history.mjs";
 import { recoverAfterEventOpen } from "./event-recovery.mjs";
+import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import "./codex-chat.css";
@@ -1561,18 +1562,24 @@ export function mountCodexRemote(
     }
 
     const dataUrl = await fileToDataUrl(blob);
-    const res = await fetch("/api/codex/upload", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-pocket-operation-id": uid()
+    const res = await fetchWithTimeout(
+      (input, init) => fetch(input, init),
+      "/api/codex/upload",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-pocket-operation-id": uid()
+        },
+        body: JSON.stringify({
+          name: blob.name,
+          type: blob.type || "application/octet-stream",
+          data: dataUrl
+        })
       },
-      body: JSON.stringify({
-        name: blob.name,
-        type: blob.type || "application/octet-stream",
-        data: dataUrl
-      })
-    });
+      120_000,
+      () => new Error("アップロードがタイムアウトしました。もう一度試してください。")
+    );
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) {
       throw new Error(payload?.error || "ファイルをアップロードできませんでした");

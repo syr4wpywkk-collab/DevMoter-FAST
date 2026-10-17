@@ -11,6 +11,7 @@ import { createLatestRequestGuard } from "./latest-request.mjs";
 import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
 import { normalizeOpenCodeSessionList } from "./opencode-session-list.mjs";
 import { recoverAfterEventOpen } from "./event-recovery.mjs";
+import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import "./opencode-chat.css";
@@ -2158,11 +2159,17 @@ export function mountOpenCodeRemote(
     const limit = kind === "image" ? 10 * 1024 * 1024 : 15 * 1024 * 1024;
     if (file.size > limit) throw new Error(`${file.name} は${kind === "image" ? "10" : "15"}MBを超えています`);
     const data = await fileToDataUrl(file);
-    const response = await fetch("/api/codex/upload", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-pocket-operation-id": operationId() },
-      body: JSON.stringify({ name: file.name, type: file.type || "application/octet-stream", data })
-    });
+    const response = await fetchWithTimeout(
+      (input, init) => fetch(input, init),
+      "/api/codex/upload",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-pocket-operation-id": operationId() },
+        body: JSON.stringify({ name: file.name, type: file.type || "application/octet-stream", data })
+      },
+      120_000,
+      () => new Error("Upload timed out. Please try again.")
+    );
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload?.error || `Upload failed (${response.status})`);
     return {

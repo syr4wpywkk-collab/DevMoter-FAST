@@ -278,6 +278,17 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Next: review request cancellation and stale response behavior across API Chat, Codex and OpenCode, then proceed to the next reproducible issue.
 - Commit SHA: pending.
 
+### Cycle 23 — Bound Codex and OpenCode attachment upload requests
+
+- Finding: Codex and OpenCode file attachments converted files locally and then used unbounded `fetch()` for `/api/codex/upload`; a stalled network could leave upload feedback and pending attachment work unresolved.
+- Cause: only API Chat's attachment endpoint had timeout/cancellation behavior after Cycle 17.
+- Changes: both backends now use the shared timeout helper with a 120-second deadline and backend-appropriate timeout messages. Added an assertion covering all three attachment upload paths and registered the helper in the OpenCode DOM harness.
+- Before/after: before, Codex/OpenCode upload requests had no client deadline; after, they abort and surface an upload error after 120 seconds, while the existing `addFiles` error path retains its normal recovery behavior.
+- Validation: backend upload wiring, Codex failure UI, OpenCode Markdown/overlay suites passed 12/12; typecheck and diff check passed. The first harness run found an unregistered new helper import; the isolated module map was updated and the focused rerun passed.
+- Review/risk: local `FileReader` conversion itself has no explicit deadline; the timeout covers only the network request. Real large-file/mobile performance was not exercised.
+- Next: inspect remaining API errors and background recovery across surfaces, then run grouped regression tests.
+- Commit SHA: pending.
+
 ### Cycle 21 — Reject duplicate API Chat provider identities
 
 - Finding: two catalog entries with the same provider ID render as separate choices but resolve through the same `currentProvider()` identity, making the visible selection ambiguous and potentially sending through the first matching configuration.
