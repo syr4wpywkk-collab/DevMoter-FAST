@@ -24,7 +24,7 @@ test("split CSS retains the previous section boundaries and major UI selectors",
   assert.match(base, /^:root\s*\{/);
   assert.match(workspace, /^\/\* Projects \+ Markdown workspace \*\//);
   assert.match(tools, /^\/\* Issues #41-#50: session controls \+ read-only project Git\/diff tools \*\//);
-  assert.match(chat, /^\/\* ---------- Multi-API chat/);
+  assert.match(chat, /^\/\* ---------- API Chat surface/);
   assert.match(base, /\.transcript\s*\{/);
   assert.match(workspace, /\.cx-project-actions/);
   assert.match(tools, /\.ocx-session-toolbar/);

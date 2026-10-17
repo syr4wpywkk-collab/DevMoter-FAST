@@ -86,12 +86,13 @@ setTimeout(() => process.exit(0), 1200);`);
   assert.equal(attempts.length, 2);
 });
 
-test("terminal runner rejects a CLI that exits immediately", async t => {
+test("terminal runner rejects a CLI that exits before the startup window", async t => {
   const dir = await mkdtemp(join(tmpdir(), "devmoter-issue-210-exit-"));
   t.after(async () => rm(dir, { recursive: true, force: true }));
   const receipt = join(dir, "ack.json");
   const exit = join(dir, "exit-fast.mjs");
-  await writeFile(exit, "process.exit(5);\n");
+  // A slow-loading CLI can outlast the old 450ms window and exit before it is usable.
+  await writeFile(exit, "await new Promise(resolve => setTimeout(resolve, 650)); process.exit(5);\n");
   const entry = fileURLToPath(new URL("../server/integration-terminal-runner.mjs", import.meta.url));
   const child = spawn(process.execPath, [entry, receipt, process.execPath, dir, exit], {
     cwd: dir,

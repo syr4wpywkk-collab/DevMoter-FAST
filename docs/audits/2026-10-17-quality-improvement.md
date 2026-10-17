@@ -453,3 +453,14 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Review/risk: screenshots are `/tmp/devmoter-tools-{320,390,768}.png`; API setup retrieval still displays its real failure in the isolated Vite environment. The direct manual-tools list remains behind its existing disclosure to preserve current navigation behavior; making it primary is a separate information-architecture decision.
 - Next: apply the same restrained treatment to Codex/OpenCode headers, session history and their composer controls; review light/dark contrast and touch targets in real device/browser sessions.
 - Commit SHA: `61cf819`.
+
+### Cycle 33 — Avoid false success while a slow CLI is still starting
+
+- Finding: the interactive terminal runner reported a CLI as started if its process remained alive for 450ms. A slow module load under test load could cross that threshold, receive a success receipt, then exit before becoming usable.
+- Cause: process spawn was treated as sufficient readiness after a short fixed grace interval.
+- Changes: extended the pre-success liveness window to 1000ms and changed the regression fixture to exit after 650ms, which would have been misreported by the previous window. Updated the stylesheet structure test for the API Chat section heading renamed during UI work.
+- Before/after: before, a CLI that needed more than 450ms to load could receive a false successful launch receipt; after, it must remain alive for a longer bounded window. Existing successful detached-launch test also passed.
+- Validation: focused terminal/CSS tests passed 8/8; final full suite passed 619/620 with one skip; coverage 44.92% statements, 62.86% branches, 55.19% functions; typecheck, lint, build, 72-check security audit and diff check passed.
+- Review/risk: the 1000ms readiness heuristic still cannot prove a CLI is interactively usable; it only reduces false positives. Slow but valid CLIs delay the success receipt by up to one second.
+- Next: continue the UI direction across Codex/OpenCode conversation history and composer controls; separately consider a protocol-level ready signal for integrations.
+- Commit SHA: pending.
