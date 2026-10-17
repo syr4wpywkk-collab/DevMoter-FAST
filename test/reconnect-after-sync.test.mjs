@@ -32,8 +32,7 @@ test("both chat backends use the failure-safe resume boundary", async () => {
     readFile(new URL("../src/codex.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/opencode.ts", import.meta.url), "utf8")
   ]);
-  for (const source of [codex, opencode]) {
-    assert.match(source, /reconnectAfterSync\(\(\) => refresh\(\), \(\) => connectEvents\(\)\)/);
-    assert.match(source, /if \(sync\.error\)/);
-  }
+  assert.match(codex, /reconnectAfterSync\(async \(\) => \{\s*if \(!\(await refresh\(\)\)\)/);
+  assert.match(opencode, /reconnectAfterSync\(\(\) => refresh\(\), \(\) => connectEvents\(\)\)/);
+  for (const source of [codex, opencode]) assert.match(source, /if \(sync\.error\)/);
 });

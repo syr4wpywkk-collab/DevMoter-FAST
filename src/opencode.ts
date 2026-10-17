@@ -2957,13 +2957,16 @@ export function mountOpenCodeRemote(
     let cursor = localStorage.getItem(storageKey) || "0";
 
     for (let page = 0; page < 4; page += 1) {
-      const response = await fetch(
+      const response = await fetchWithTimeout(
+        (input, init) => fetch(input, init),
         "/api/workspace-control/events?sessionId=" +
           encodeURIComponent(sessionId) +
           "&after=" +
           encodeURIComponent(cursor) +
           "&limit=500",
-        { cache: "no-store" }
+        { cache: "no-store" },
+        REMOTE_REQUEST_TIMEOUT_MS,
+        () => new Error("Background event replay timed out")
       );
       if (!response.ok) throw new Error("Background event replay unavailable");
       const payload = await response.json().catch(() => ({}));

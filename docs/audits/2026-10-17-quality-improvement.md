@@ -298,6 +298,17 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: API Chat suite passed 11/11; typecheck and diff check passed.
 - Review/risk: adding a future protocol requires an explicit client implementation and schema update before the catalog can accept it.
 - Next: inspect stream cancellation and late responses across the three backends.
+- Commit SHA: `b5dfdc1`.
+
+### Cycle 26 — Bound background replay so resume locks can recover
+
+- Finding: Codex and OpenCode background event replay used unbounded fetches while `resumeSyncInFlight` was true. A stalled replay could prevent all later visibility/pageshow/online resume attempts.
+- Cause: reconnect refresh requests were bounded in Cycle 24, but the replay requests preceding them were not.
+- Changes: both replay loops now use the shared 120-second aborting timeout and fall through to the existing canonical refresh fallback on failure. Added replay boundary assertions and aligned the reconnect test with Codex's explicit boolean refresh contract.
+- Before/after: before, a replay request could remain pending indefinitely and hold the resume lock; after, it settles with an error and the resume flow attempts canonical refresh, then releases its lock in `finally`.
+- Validation: background replay, lifecycle continuity and reconnect-after-sync tests passed 9/9; typecheck and diff check passed. Initial grouped run found one stale source assertion; updated it and reran the lifecycle group successfully.
+- Review/risk: the deadline is 120 seconds, so recovery is bounded but not immediate. Real background/sleep behavior was not device-tested.
+- Next: audit unbounded event/reconnect loops and test that visibility recovery remains retriable after transient failures.
 - Commit SHA: pending.
 
 ### Cycle 23 — Bound Codex and OpenCode attachment upload requests
