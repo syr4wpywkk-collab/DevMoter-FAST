@@ -431,3 +431,14 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Review/risk: API backend requests return HTTP 500 in this isolated Vite-only environment, so the setup diagnostics overlay was removed from screenshot rendering; provider loading and actual sends were not exercised. Screenshots are stored under `/tmp/devmoter-api-{320,375,390,768,1280}.png`; this is browser viewport testing, not iPhone hardware testing.
 - Next: extend the restrained visual system into backend headers, history and sidebar controls; check contrast and tap targets across themes before broadening to the remaining feature surfaces.
 - Commit SHA: `30d3f69`.
+
+### UI cycle 3 — Make global navigation workspace-oriented and neutral
+
+- Finding: the persistent sidebar was headed “Tools / AIに相談・ツール,” grouped Codex/OpenCode/API Chat under “AI,” and the floating navigation trigger changed to provider-specific blue/purple/green colors with a strong blur/shadow effect.
+- Cause: navigation framed the entire product as AI-first and relied on backend brand color despite already exposing the current surface label and pressed state.
+- Changes: renamed the sidebar header and group to development tools/chat workspaces; reduced trigger radius, shadow and removed backdrop blur; removed backend-specific trigger colors in dark and light themes. Existing backend buttons continue to use `aria-pressed` and current-surface text.
+- Before/after: before, backend identity was reinforced with per-backend accent color and prominent glass styling; after, the navigation uses a neutral trigger and explicit labels/selected state. Playwright at 390px confirmed the sidebar width equals the viewport and document scroll width stays 390px.
+- Validation: typecheck passed; navigation, unified shell and UI regression suites passed 21/21; `git diff --check` passed.
+- Review/risk: browser screenshot revealed the separate Tools AI panel still presents a sparkle and conversational AI prompt; this remains the largest visible AI-template element and is the next UI target. Vite-only runtime shows a diagnostics error because backend API is absent.
+- Next: redesign the Tools AI sidebar area around direct tool search and launch, keeping any AI helper explicitly secondary and optional.
+- Commit SHA: pending audit checkpoint.

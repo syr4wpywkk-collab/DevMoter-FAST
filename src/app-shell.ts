@@ -130,8 +130,8 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     <aside class="dm-shell-sidebar" aria-hidden="true" aria-label="DevMoter feature sidebar" inert>
       <header class="dm-shell-sidebar-head">
         <div>
-          <strong>Tools</strong>
-          <small>AIに相談・ツール</small>
+          <strong>開発ツール</strong>
+          <small>作業環境と機能</small>
         </div>
         <button type="button" data-shell-close aria-label="Close sidebar">×</button>
       </header>
@@ -161,8 +161,8 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
           <button class="dm-shell-home-link" type="button" data-home-nav>
             <span aria-hidden="true">⌂</span><strong>Home</strong><svg class="dm-shell-home-arrow" aria-hidden="true" viewBox="0 0 20 20" focusable="false"><path d="M4 10h11M10 5l5 5-5 5" /></svg>
           </button>
-          <h2>AI</h2>
-          <div class="dm-shell-ai-grid" role="group" aria-label="AI surfaces">
+          <h2>Chat workspaces</h2>
+          <div class="dm-shell-ai-grid" role="group" aria-label="Chat workspaces">
             <button type="button" data-backend="opencode"><span>OC</span><strong>OpenCode</strong></button>
             <button type="button" data-backend="codex"><span>CX</span><strong>Codex</strong></button>
             <button type="button" data-backend="api"><span>API</span><strong>API Chat</strong></button>

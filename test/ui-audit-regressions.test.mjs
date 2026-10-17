@@ -57,3 +57,17 @@ test("API Chat welcome and composer use a restrained workspace treatment", async
   assert.match(css, /\.api-app \.api-picker-row select[^\n]*border-radius: 8px/);
   assert.match(css, /\.api-app #apiSend \{ background: var\(--api-accent\); color: #fff; \}/);
 });
+
+test("global workspace navigation uses neutral state cues instead of backend brand colors", async () => {
+  const shell = await readFile(new URL("../src/app-shell.ts", import.meta.url), "utf8");
+  assert.match(shell, /<strong>開発ツール<\/strong>/);
+  assert.match(shell, /<small>作業環境と機能<\/small>/);
+  assert.match(shell, /<h2>Chat workspaces<\/h2>/);
+  assert.match(shell, /aria-label="Chat workspaces"/);
+  assert.match(shell, /button\.setAttribute\("aria-pressed", String\(active\)\)/);
+
+  const css = await readFile(new URL("../src/app-shell.css", import.meta.url), "utf8");
+  assert.doesNotMatch(css, /\.dm-shell-menu-trigger\[data-backend=/);
+  assert.doesNotMatch(css, /backdrop-filter: blur\(22px\)/);
+  assert.match(css, /\.dm-shell-menu-trigger \{[\s\S]*?border-radius: 10px/);
+});
