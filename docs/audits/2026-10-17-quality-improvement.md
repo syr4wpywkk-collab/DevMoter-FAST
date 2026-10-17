@@ -243,6 +243,17 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: history/list/event recovery plus Codex failure UI suites passed 12/12; typecheck and diff check passed.
 - Review/risk: validation is for the response structure required by the current client; supported but unfamiliar item types remain rendered through existing generic paths. No live Codex app-server was available.
 - Next: audit API Chat provider refresh response validation and terminal error paths, then choose the next high-impact reproducible issue.
+- Commit SHA: `500a1ec`.
+
+### Cycle 19 — Reject malformed API Chat provider catalogs safely
+
+- Finding: `/api/llm/providers` responses with a non-array `providers` value were treated as an empty catalog, clearing current options and presenting a transient/schema failure as “no providers configured.” Malformed rows could also fail later during rendering.
+- Cause: refresh used `Array.isArray(payload?.providers) ? payload.providers : []` and marked the catalog available without validating provider records.
+- Changes: added `normalizeApiProviderCatalog` to validate the catalog and required fields before assignment. Invalid responses follow the existing failure path, preserve the last rendered choices, and disable sending until a successful refresh. Added an integration regression using a malformed mocked server response.
+- Before/after: before, malformed data erased choices and could leave the catalog marked available; after, the UI retains previous choices and blocks sends while showing the catalog error.
+- Validation: API conversation, upload timeout and malformed catalog suites passed 10/10; typecheck and diff check passed.
+- Review/risk: validation matches the current frontend provider contract; future protocol additions must update the accepted schema. No provider secrets are read or logged.
+- Next: inspect API Chat server response/error consistency and then run grouped reliability regressions.
 - Commit SHA: pending.
 
 ### Cycle 17 — Bound API Chat image upload duration

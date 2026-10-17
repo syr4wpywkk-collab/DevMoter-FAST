@@ -1,6 +1,7 @@
 import { getLanguage } from "./i18n";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
+import { normalizeApiProviderCatalog } from "./api-provider-catalog.mjs";
 import "./api-chat-surface.css";
 
 type ApiProvider = {
@@ -678,8 +679,8 @@ export function mountApiChat(
   async function refresh() {
     status.textContent = apiLocale("Loading providers…", "接続先を読み込み中…", "正在加载 Provider…");
     try {
-      const payload = await apiJson<{ providers?: ApiProvider[] }>("/api/llm/providers");
-      providers = Array.isArray(payload?.providers) ? payload.providers : [];
+      const payload = await apiJson<unknown>("/api/llm/providers");
+      providers = normalizeApiProviderCatalog(payload) as ApiProvider[];
       providerCatalogAvailable = true;
 
       const saved = localStorage.getItem("devmoter-api-provider");

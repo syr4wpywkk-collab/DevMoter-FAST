@@ -5,6 +5,7 @@ import ts from "typescript";
 import { JSDOM } from "jsdom";
 import { renderChatMarkdown } from "../src/chat-markdown.mjs";
 import * as fetchTimeout from "../src/fetch-with-timeout.mjs";
+import * as providerCatalog from "../src/api-provider-catalog.mjs";
 
 const source = await readFile(new URL("../src/api-chat.ts", import.meta.url), "utf8");
 const compiled = ts.transpileModule(source, {
@@ -31,6 +32,7 @@ async function harness(t, { rejectOnAbort = false } = {}) {
   const uploads = [];
   const copied = [];
   let providerFetchFails = false;
+  let malformedProviderCatalog = false;
   window.Headers = Headers;
   window.AbortController = AbortController;
   window.URL.createObjectURL = file => `blob:https://devmoter.example/${file.name}`;
@@ -55,7 +57,7 @@ async function harness(t, { rejectOnAbort = false } = {}) {
     }
     if (path === "/api/llm/providers") return Promise.resolve(providerFetchFails
       ? new Response(JSON.stringify({ error: "temporary provider outage" }), { status: 503, headers: { "content-type": "application/json" } })
-      : reply({ providers }));
+      : reply(malformedProviderCatalog ? { providers: "temporary-corruption" } : { providers }));
     if (path === "/api/llm/presets") return Promise.resolve(reply({ presets: [
       { id: "custom", name: "Custom", protocol: "openai-compatible", baseUrl: "https://custom.example/v1" }
     ] }));
@@ -65,7 +67,8 @@ async function harness(t, { rejectOnAbort = false } = {}) {
   const modules = {
     "./i18n": { getLanguage: () => "en" },
     "./chat-markdown.mjs": { renderChatMarkdown },
-    "./fetch-with-timeout.mjs": fetchTimeout
+    "./fetch-with-timeout.mjs": fetchTimeout,
+    "./api-provider-catalog.mjs": providerCatalog
   };
   window.Function("require", "exports", compiled)(name => {
     if (name.endsWith(".css")) return {};
@@ -82,6 +85,7 @@ async function harness(t, { rejectOnAbort = false } = {}) {
   return {
     root, window, controller, requests, chats, uploads, copied, providers, select,
     failProviderFetch: value => { providerFetchFails = value; },
+    setMalformedProviderCatalog: value => { malformedProviderCatalog = value; },
     history: () => [...root.querySelectorAll("#apiHistory .api-history-row")],
     historyChat(title) {
       const row = this.history().find(node => node.querySelector("strong")?.textContent === title);
@@ -122,6 +126,24 @@ test("provider refresh failure preserves choices but blocks send until retry suc
   assert.equal(provider.value, previousProvider);
   assert.equal(model.value, previousModel);
   assert.equal(ui.root.querySelector("#apiSend").disabled, false);
+});
+
+test("malformed provider catalogs preserve existing choices and block send", async t => {
+  const ui = await harness(t);
+  const provider = ui.root.querySelector("#apiProvider");
+  const model = ui.root.querySelector("#apiModel");
+  const previousProvider = provider.value;
+  const previousModel = model.value;
+  const previousChoices = [...provider.options].map(option => option.value);
+
+  ui.setMalformedProviderCatalog(true);
+  await ui.controller.refresh();
+
+  assert.deepEqual([...provider.options].map(option => option.value), previousChoices);
+  assert.equal(provider.value, previousProvider);
+  assert.equal(model.value, previousModel);
+  assert.equal(ui.root.querySelector("#apiSend").disabled, true);
+  assert.match(ui.root.querySelector("#apiStatus").textContent, /invalid provider catalog/);
 });
 
 test("API Chat timeout aborts the request, retains the prompt, and restores send controls", async t => {
