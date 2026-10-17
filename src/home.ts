@@ -282,7 +282,8 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     const pilotHost = target.querySelector<HTMLElement>("[data-home-react-pilot]");
     if (pilotHost) {
       pilotDisposers.set(target, mountHomeBackendShortcuts(pilotHost, backend => {
-        recent = [{ id: "chat", openedAt: Date.now() }, ...recent.filter(entry => entry.id !== "chat")].slice(0, RECENT_LIMIT);
+        const chatEntry: RecentApp = { id: "chat", openedAt: Date.now() };
+        recent = [chatEntry, ...recent.filter(entry => entry.id !== "chat")].slice(0, RECENT_LIMIT);
         try { storage?.setItem(HOME_RECENTS_KEY, JSON.stringify(recent)); } catch { /* Optional local recents. */ }
         renderRecents();
         options.onSwitchBackend?.(backend);
