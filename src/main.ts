@@ -1,8 +1,5 @@
 import { mountNoaWorkspace } from "./noa-workspace";
 import "./style.css";
-import { mountOpenCodeRemote } from "./opencode";
-import { mountCodexRemote } from "./codex";
-import { mountApiChat } from "./api-chat";
 import { startI18n } from "./i18n";
 import { mountIntegrations } from "./integrations";
 import { mountAgentConsole } from "./agent-console";
@@ -23,6 +20,7 @@ import { createSurfaceNavigation, type MainSurface } from "./surface-navigation.
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const startupParams = new URLSearchParams(window.location.search);
+type BackendController = { setOnline?(online: boolean): void; refresh?(): Promise<unknown> };
 
 const requestedProject = startupParams.get("project");
 const hasProjectDeepLink = Boolean(requestedProject);
@@ -86,6 +84,79 @@ let activeBackend: Backend =
 
 let surfaceNavigation: ReturnType<typeof createSurfaceNavigation> | null = null;
 let initialSurfaceApplied = false;
+let openCodeRemote: BackendController | null = null;
+let codexRemote: BackendController | null = null;
+let apiRemote: BackendController | null = null;
+let openCodeMountTask: Promise<BackendController> | null = null;
+let codexMountTask: Promise<BackendController> | null = null;
+let apiMountTask: Promise<BackendController> | null = null;
+let backendHealth = { opencode: false, codex: false };
+
+function ensureBackendMounted(backend: Backend): Promise<BackendController> {
+  if (backend === "opencode") {
+    openCodeMountTask ??= import("./opencode").then(({ mountOpenCodeRemote }) => {
+      openCodeRemote = mountOpenCodeRemote(openCodeMount);
+      openCodeRemote.setOnline?.(backendHealth.opencode);
+      return openCodeRemote!;
+    }).catch(error => {
+      openCodeMountTask = null;
+      throw error;
+    });
+    return openCodeMountTask!;
+  }
+  if (backend === "codex") {
+    codexMountTask ??= import("./codex").then(({ mountCodexRemote }) => {
+      codexRemote = mountCodexRemote(codexMount, {
+        onOpenCode: () => setBackend("opencode"),
+        onApi: () => setBackend("api"),
+        onIntegrations: () => setBackend("integrations")
+      });
+      codexRemote.setOnline?.(backendHealth.codex);
+      return codexRemote!;
+    }).catch(error => {
+      codexMountTask = null;
+      throw error;
+    });
+    return codexMountTask!;
+  }
+
+  apiMountTask ??= import("./api-chat").then(({ mountApiChat }) => {
+    apiRemote = mountApiChat(apiMount, {
+      onCodex: () => setBackend("codex"),
+      onOpenCode: () => setBackend("opencode")
+    });
+    return apiRemote!;
+  }).catch(error => {
+    apiMountTask = null;
+    throw error;
+  });
+  return apiMountTask!;
+}
+
+function requestBackendMount(backend: Backend) {
+  const alreadyMounted = backend === "opencode" ? openCodeRemote !== null
+    : backend === "codex" ? codexRemote !== null
+    : apiRemote !== null;
+  void ensureBackendMounted(backend).then(remote => {
+    if (alreadyMounted && backend === "api" && activeBackend === backend) void remote.refresh?.();
+  }).catch(() => {
+    if (activeBackend !== backend) return;
+    const target = backend === "opencode" ? openCodeMount
+      : backend === "codex" ? codexMount
+      : apiMount;
+    target.replaceChildren();
+    const message = document.createElement("div");
+    message.className = "dm-backend-load-error";
+    message.setAttribute("role", "alert");
+    message.textContent = "画面を読み込めませんでした。接続を確認して再試行してください。";
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.textContent = "再試行";
+    retry.addEventListener("click", () => requestBackendMount(backend));
+    message.appendChild(retry);
+    target.appendChild(message);
+  });
+}
 
 function applyBackend(next: Backend) {
   activeBackend = next;
@@ -100,8 +171,10 @@ function applyBackend(next: Backend) {
   document.body.classList.toggle("opencode-mode", next === "opencode");
   document.body.classList.toggle("api-mode", next === "api");
   document.body.classList.toggle("integrations-mode", next === "integrations");
-  if (next === "api") void apiRemote.refresh();
-  if (next === "integrations") void integrationsRemote.refresh();
+  if (next === "api") {
+    requestBackendMount(next);
+  } else if (next === "integrations") void integrationsRemote.refresh();
+  else requestBackendMount(next);
   window.dispatchEvent(new CustomEvent("devmoter:backend-changed", { detail: { backend: next } }));
 }
 
@@ -151,17 +224,6 @@ surfaceNavigation = createSurfaceNavigation({
   onSurface: applySurface
 });
 
-const openCodeRemote = mountOpenCodeRemote(openCodeMount);
-const codexRemote = mountCodexRemote(codexMount, {
-  onOpenCode: () => setBackend("opencode"),
-  onApi: () => setBackend("api"),
-  onIntegrations: () => setBackend("integrations")
-});
-const apiRemote = mountApiChat(apiMount, {
-  onCodex: () => setBackend("codex"),
-  onOpenCode: () => setBackend("opencode")
-});
-
 const integrationsRemote = mountIntegrations(integrationsMount, {
   onOpenCode: () => setBackend("opencode"),
   onCodex: () => setBackend("codex")
@@ -197,11 +259,16 @@ async function checkHealth() {
   try {
     const res = await fetch("/api/health", { cache: "no-store" });
     const payload = await res.json();
-    openCodeRemote.setOnline(Boolean(payload?.backends?.opencode?.online));
-    codexRemote.setOnline(Boolean(payload?.backends?.codex?.online));
+    backendHealth = {
+      opencode: Boolean(payload?.backends?.opencode?.online),
+      codex: Boolean(payload?.backends?.codex?.online)
+    };
+    openCodeRemote?.setOnline?.(backendHealth.opencode);
+    codexRemote?.setOnline?.(backendHealth.codex);
   } catch {
-    openCodeRemote.setOnline(false);
-    codexRemote.setOnline(false);
+    backendHealth = { opencode: false, codex: false };
+    openCodeRemote?.setOnline?.(false);
+    codexRemote?.setOnline?.(false);
   } finally {
     healthCheckInFlight = false;
   }
@@ -211,8 +278,9 @@ applySurface(surfaceNavigation.current());
 void checkHealth();
 window.setInterval(() => void checkHealth(), 15000);
 window.addEventListener("offline", () => {
-  openCodeRemote.setOnline(false);
-  codexRemote.setOnline(false);
+  backendHealth = { opencode: false, codex: false };
+  openCodeRemote?.setOnline?.(false);
+  codexRemote?.setOnline?.(false);
 });
 window.addEventListener("online", () => void checkHealth());
 document.addEventListener("visibilitychange", () => {

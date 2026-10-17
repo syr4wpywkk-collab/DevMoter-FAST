@@ -309,6 +309,17 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: background replay, lifecycle continuity and reconnect-after-sync tests passed 9/9; typecheck and diff check passed. Initial grouped run found one stale source assertion; updated it and reran the lifecycle group successfully.
 - Review/risk: the deadline is 120 seconds, so recovery is bounded but not immediate. Real background/sleep behavior was not device-tested.
 - Next: audit unbounded event/reconnect loops and test that visibility recovery remains retriable after transient failures.
+- Commit SHA: `2159b89`.
+
+### Cycle 27 — Lazy-load chat backends and recover from chunk load failure
+
+- Finding: `main.ts` statically imported and mounted OpenCode, Codex, and API Chat at startup even when the user landed on Home, contributing to the oversized initial JavaScript payload.
+- Cause: all three large surface modules were eager imports and their DOM initialization ran unconditionally.
+- Changes: backend modules now load when selected; cached health state is applied when Codex/OpenCode mount. Import failures clear the cached promise and show an accessible retry control. Added source-wiring/lazy-load regressions and updated the deep-link test for deferred mounting.
+- Before/after: production build initial `index` JS fell from the prior baseline 778.99 kB minified / 234.90 kB gzip to 570.28 kB / 173.71 kB (−208.71 kB minified, −61.19 kB gzip, about −26.8%/−26.1%). Chat chunks are separate: Codex 95.53 kB, OpenCode 69.72 kB, API Chat 35.30 kB minified. The initial chunk still exceeds Vite's 500 kB warning.
+- Validation: navigation/deep-link/backend mount suites passed 29/29; typecheck and production build passed; diff check passed. No real browser startup trace or device measurement was available.
+- Review/risk: first visit to a backend now waits for its chunk; failed loads can be retried. Other eager app modules still keep the entry chunk above the warning threshold.
+- Next: run full test/lint/security gates after several additional cycles and inspect remaining initial bundle contributors.
 - Commit SHA: pending.
 
 ### Cycle 23 — Bound Codex and OpenCode attachment upload requests

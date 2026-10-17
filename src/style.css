@@ -2,3 +2,15 @@
 @import "./styles/workspace.css";
 @import "./styles/tools.css";
 @import "./styles/chat-extras.css";
+.dm-backend-load-error {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  margin: 24px;
+  color: var(--text, #f4f4f5);
+}
+
+.dm-backend-load-error button {
+  min-height: 44px;
+  padding: 0 16px;
+}
