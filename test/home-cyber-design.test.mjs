@@ -82,9 +82,8 @@ test("recent application cards use validated local app IDs and persist safely", 
   root.querySelector('[data-home-app="chat"]').click();
   mountHomeSurface(root, options);
   assert.equal(root.querySelectorAll("[data-home-recent]").length, 1);
-  assert.deepEqual([...root.querySelectorAll("[data-home-recent] [data-home-recent]")].map(node => node.dataset.homeRecent), []);
-  assert.deepEqual([...root.querySelectorAll(".dm-home-recent-card")].map(node => node.dataset.homeRecent), ["chat", "git"]);
-  root.querySelector('[data-home-recent="git"]').click();
+  assert.deepEqual([...root.querySelectorAll(".dm-home-recent-card")].map(node => node.dataset.homeRecentApp), ["chat", "git"]);
+  root.querySelector('[data-home-recent-app="git"]').click();
   assert.deepEqual(launched, ["git", "chat", "git"]);
   // Simulate tampered storage; bogus actions and markup must not be injected.
   dom.window.localStorage.setItem("devmoter-home-recent-apps-v1", JSON.stringify([
@@ -93,7 +92,7 @@ test("recent application cards use validated local app IDs and persist safely", 
     { id: "chat", openedAt: Date.now() }
   ]));
   mountHomeSurface(root, options);
-  assert.deepEqual([...root.querySelectorAll(".dm-home-recent-card")].map(node => node.dataset.homeRecent), ["chat"]);
+  assert.deepEqual([...root.querySelectorAll(".dm-home-recent-card")].map(node => node.dataset.homeRecentApp), ["chat"]);
   assert.equal(root.querySelector("img"), null);
   dom.window.close();
 });

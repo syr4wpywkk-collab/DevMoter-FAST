@@ -162,7 +162,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "dm-home-recent-card";
-      button.dataset.homeRecent = app.id;
+      button.dataset.homeRecentApp = app.id;
       button.setAttribute("aria-label", app.title + " をもう一度開く");
       const top = document.createElement("span");
       top.className = "dm-home-recent-top";
