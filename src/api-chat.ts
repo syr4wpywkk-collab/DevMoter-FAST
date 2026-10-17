@@ -148,9 +148,8 @@ export function mountApiChat(
       <main class="api-main">
         <div id="apiTranscript" class="api-transcript">
           <section id="apiWelcome" class="api-welcome">
-            <div class="api-spark">✦</div>
-            <h1>こんにちは</h1>
-            <p>どのAPIで考える？</p>
+            <h1>API Chat</h1>
+            <p>接続先を選んでメッセージを入力</p>
           </section>
         </div>
       </main>

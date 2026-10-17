@@ -43,3 +43,17 @@ test("theme overrides keep history and workspace controls readable", async () =>
   assert.match(apiCss, /data-devmoter-theme="dark"[^\n]*#apiWorkspaceControlsMount \.dm-controlbar > \.dm-theme/);
   assert.match(apiCss, /background: var\(--api-composer-surface\)/);
 });
+
+test("API Chat welcome and composer use a restrained workspace treatment", async () => {
+  const api = await readFile(new URL("../src/api-chat.ts", import.meta.url), "utf8");
+  assert.match(api, /<h1>API Chat<\/h1>/);
+  assert.match(api, /接続先を選んでメッセージを入力/);
+  assert.doesNotMatch(api, /api-spark|どのAPIで考える/);
+
+  const css = await readFile(new URL("../src/api-chat-surface.css", import.meta.url), "utf8");
+  assert.match(css, /\.api-app \.api-welcome h1[^\n]*color: var\(--api-text\)/);
+  assert.doesNotMatch(css, /\.api-app \.api-welcome h1[^\n]*linear-gradient/);
+  assert.match(css, /\.api-app \.api-composer \{[^}]*border-radius: 14px/);
+  assert.match(css, /\.api-app \.api-picker-row select[^\n]*border-radius: 8px/);
+  assert.match(css, /\.api-app #apiSend \{ background: var\(--api-accent\); color: #fff; \}/);
+});

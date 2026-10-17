@@ -419,4 +419,15 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: typecheck and lint passed; Home/App Registry/React Home integration tests passed 8/8 in focused runs. Full suite: 617 total, 616 passed, 0 failed, 1 skipped. Coverage: statements 44.92%, branches 62.86%, functions 55.19%. Build passed; security audit passed 72 checks; `git diff --check` passed.
 - Review/risk: no browser screenshot or iPhone viewport/device review was available; visual quality is not claimed as device-verified. Build still reports the known 570.76 kB initial JavaScript chunk warning. Test server shutdown emits Vite dependency-scan warnings despite a successful suite.
 - Next: continue the visual direction through the main chat surfaces and tool navigation; inspect screenshots at 320/375/390/768/1280 when a browser environment is available.
-- Commit SHA: `7a8b2f6`.
+- Commit SHA: `270958e`.
+
+### UI cycle 2 — Remove generic AI visual language from API Chat
+
+- Finding: API Chat welcome copy and component styles used a sparkle mark, blue-violet text/background gradients, blurred glass-like surfaces, pill-shaped selectors and a blue send button.
+- Cause: the presentation was inherited from a generic AI-chat visual template rather than the app's role as a provider-connected development workspace.
+- Changes: replaced the greeting with a direct API Chat heading and connection instruction; removed sparkle/gradient treatment; switched the composer and selectors to bordered, compact surfaces; changed the accent to a muted green and kept dark-theme variables aligned. No provider or message request behavior changed.
+- Before/after: before, welcome styling emphasized decorative gradients and an AI greeting; after, it foregrounds the product and the next user action. Chromium/Playwright rendered the UI at 320, 375, 390, 768 and 1280px; document scroll width equaled viewport width at each size.
+- Validation: typecheck passed; API chat, overlay and UI audit suites passed 23/23; lint passed (316 files); build passed; security audit passed (72 checks); diff check passed. Production JS initial chunk remains 570.76 kB minified / 174.10 kB gzip.
+- Review/risk: API backend requests return HTTP 500 in this isolated Vite-only environment, so the setup diagnostics overlay was removed from screenshot rendering; provider loading and actual sends were not exercised. Screenshots are stored under `/tmp/devmoter-api-{320,375,390,768,1280}.png`; this is browser viewport testing, not iPhone hardware testing.
+- Next: extend the restrained visual system into backend headers, history and sidebar controls; check contrast and tap targets across themes before broadening to the remaining feature surfaces.
+- Commit SHA: `30d3f69`.
