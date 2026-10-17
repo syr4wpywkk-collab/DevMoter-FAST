@@ -164,3 +164,14 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Review/risk: no production code changed; continue to verify every isolated OpenCode harness in the full suite.
 - Next: sequential final gate.
 - Commit SHA: pending.
+
+### Cycle 12 — Align lifecycle regression with failure-safe reconnect
+
+- Finding: final suite failed one continuity test because it asserted the old literal `await refresh()` implementation after Cycle 4 had moved sync under `reconnectAfterSync`.
+- Cause: source-shape assertion was coupled to the previous control-flow syntax rather than the required reconnection behavior.
+- Changes: `test/chat-continuity-regression.test.mjs` now asserts the refresh callback is passed through the failure-safe reconnect boundary.
+- Before/after: before, lifecycle test failed despite helper-level failure/reconnect tests passing; after, continuity suite passes 5/5.
+- Validation: focused continuity tests 5/5 pass; `git diff --check` passes. Full suite needs a final rerun.
+- Review/risk: this remains a source-wiring assertion rather than simulated browser lifecycle; helper separately tests both success and failure paths.
+- Next: commit, then final sequential suite/coverage/build/audit.
+- Commit SHA: pending.
