@@ -101,6 +101,10 @@ export function mountApiChat(
       <div id="apiScrim" class="api-scrim hidden"></div>
       <aside id="apiSidebar" class="api-sidebar" aria-hidden="true" aria-label="API Chat conversation history" tabindex="-1" inert>
         <div class="api-sidebar-head dm-agent-head">
+          <div class="dm-unified-agent-identity" data-unified-agent-label hidden aria-label="API Chat チャット履歴">
+            <span class="dm-unified-agent-icon" aria-hidden="true">✦</span>
+            <span class="dm-unified-agent-copy"><strong>API Chat</strong><small>チャット履歴</small></span>
+          </div>
           <div class="dm-agent-switch-shell">
             <button id="apiAgentSwitchButton" class="dm-agent-switch-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
               <span class="dm-agent-switch-icon">✦</span>

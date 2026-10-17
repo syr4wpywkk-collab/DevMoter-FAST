@@ -55,6 +55,11 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   `;
   document.body.append(root);
   document.body.classList.add("dm-task-first-enabled");
+  // The unified selector is the only agent switcher in this view. Native
+  // Codex/API switchers stay mounted for legacy UI, but a read-only identity
+  // label replaces them inside their history drawers while this view is active.
+  const agentLabels = Array.from(document.querySelectorAll<HTMLElement>("[data-unified-agent-label]"));
+  for (const label of agentLabels) label.hidden = false;
 
   const backendSelect = root.querySelector<HTMLSelectElement>("[data-workspace-backend]")!;
   const projectLabel = root.querySelector<HTMLElement>("[data-workspace-project]")!;
@@ -148,6 +153,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   return { destroy() {
     window.removeEventListener("devmoter:surface-changed", onSurfaceChanged);
     window.removeEventListener("devmoter:backend-changed", onBackendChanged);
+    for (const label of agentLabels) label.hidden = true;
     root.remove();
     document.body.classList.remove("dm-task-first-enabled");
   } };
