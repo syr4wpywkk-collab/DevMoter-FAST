@@ -75,7 +75,7 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: initial typecheck caught a missing `.d.mts` declaration; fixed. `npm run typecheck` passed; `node --test test/latest-request.test.mjs` passed 2/2; `git diff --check` passed.
 - Review/risk: this protects list snapshots, not asynchronous active-session probes or content loads; errors still follow existing caller behavior. The test asserts shared helper and source integration, not a full dual-refresh DOM race.
 - Next: inspect OpenCode-to-Codex/API/Home navigation behavior and test lifecycle restoration paths. Continue with API timeout/error handling if no navigation defect is found.
-- Commit SHA: pending.
+- Commit SHA: `9cf5a4e`.
 
 ### Cycle 4 — Resume after history synchronization failure
 
@@ -86,7 +86,7 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: `npm run typecheck` pass; `node --test test/reconnect-after-sync.test.mjs` 3/3 pass; `git diff --check` pass.
 - Review/risk: event source reconnect may itself fail and relies on existing bounded retry logic. Sync error behavior is covered via helper tests and wiring assertions, not full browser lifecycle automation.
 - Next: inspect API timeout/error handling and cancellation; add a focused runtime regression where supported.
-- Commit SHA: pending.
+- Commit SHA: `21ffc4f`.
 
 ### Cycle 5 — API Chat request timeout and recovery
 
@@ -97,7 +97,7 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: typecheck passed; API Chat conversation tests 5/5 passed; lint checked 288 files; `git diff --check` passed.
 - Review/risk: timeout is fixed at 120s; a legitimate provider operation longer than that is cancelled at transport level. As with any client timeout, server/provider work may have completed even if the response was lost; user must decide whether to retry.
 - Next: review mobile composer/viewport and touch interactions, then model catalog stale-state/fallback behavior.
-- Commit SHA: pending.
+- Commit SHA: `ce9343a`.
 
 ### Cycle 7 — Model/provider catalog refresh ordering
 
@@ -108,7 +108,7 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: typecheck passed; latest-request tests 2/2 passed; diff check passed.
 - Review/risk: network failure still preserves last known catalog by existing semantics; no pricing is inferred or changed. Runtime race integration uses source wiring assertion plus directly tested helper.
 - Next: inspect server/API boundaries for reproducible permission gaps and add high-value negative tests. Mobile real-device inspection remains unavailable; source CSS constraints already enforce 44px controls and viewport sizing.
-- Commit SHA: pending.
+- Commit SHA: `a4c9fa1`.
 
 ### Cycle 3 — OpenCode surface navigation regression coverage
 
@@ -119,7 +119,7 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: surface navigation tests 6/6 passed; diff check passed.
 - Review/risk: fake History API validates controller behavior, not real browser rendering or manual shell click targets.
 - Next: resume API timeout/error work and security test review.
-- Commit SHA: pending.
+- Commit SHA: `66a192a`.
 
 ### Cycle 8 — API Chat provider refresh outage
 
@@ -130,7 +130,7 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: typecheck passed; API Chat tests 6/6 passed; lint passed (288 files); diff check passed.
 - Review/risk: a failed refresh still disables sending even where a previously configured backend might remain usable; this is intentional to avoid relying on stale model/provider authorization metadata.
 - Next: security-boundary regression tests and final quality gates.
-- Commit SHA: pending.
+- Commit SHA: `389f164`.
 
 ### Cycle 9 — Reject oversized idempotency keys
 
@@ -141,7 +141,7 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: typecheck passed; operation-registry + auth server integration tests 5/5 passed; diff check passed.
 - Review/risk: this hardens idempotency key identity and bounded input; it does not replace route authorization or guarantee exactly-once upstream behavior.
 - Next: add a deeper test of duplicate protected mutation delivery, then run grouped and final quality gates.
-- Commit SHA: pending.
+- Commit SHA: `567bcdb`.
 
 ### Cycle 10 — Duplicate mutation delivery integration coverage
 
@@ -152,7 +152,7 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: auth server integration tests 2/2 passed; diff check passed.
 - Review/risk: endpoint is read-only and test-local; this does not establish exactly-once semantics beyond the operation registry TTL/capacity.
 - Next: run the full final quality gate sequentially; inspect build warnings and all committed diffs.
-- Commit SHA: pending.
+- Commit SHA: `4d68556`.
 
 ### Cycle 11 — Keep OpenCode DOM test harness aligned with imported modules
 
@@ -163,7 +163,7 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: focused tests pass; full suite is being rerun after this fix.
 - Review/risk: no production code changed; continue to verify every isolated OpenCode harness in the full suite.
 - Next: sequential final gate.
-- Commit SHA: pending.
+- Commit SHA: `4e2d05b`.
 
 ### Cycle 12 — Align lifecycle regression with failure-safe reconnect
 
@@ -174,4 +174,18 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: focused continuity tests 5/5 pass; `git diff --check` passes. Full suite needs a final rerun.
 - Review/risk: this remains a source-wiring assertion rather than simulated browser lifecycle; helper separately tests both success and failure paths.
 - Next: commit, then final sequential suite/coverage/build/audit.
-- Commit SHA: pending.
+- Commit SHA: `afcad1e`.
+
+## Final checkpoint — 2026-10-17
+
+- Implemented/test-improvement cycles completed: 10 counted cycles (Cycles 2, 3, 4, 5, 7, 8, 9, 10, 11, 12). Cycle 6 was investigated and not counted because no source-backed mobile defect was confirmed. The earlier documentation-only cycle is excluded.
+- New automated test cases: 9 (latest-request 1 + wiring assertion 1; reconnect-after-sync 3; surface-navigation 1; API Chat 2; operation ID 1). Existing authenticated HTTP integration test also gained duplicate and oversized ID assertions. Existing continuity and OpenCode harness tests were corrected to follow new imports/control flow.
+- Final full test: 585 total, 584 pass, 0 fail, 1 skipped; 99.83% executed-case pass (excluding one environment skip).
+- Coverage run: same 585/584/0/1; statements 44.76%, branches 62.27%, functions 55.02%.
+- Final gates: typecheck pass; lint pass (288 source files); build pass; security audit pass (72 checks); `git diff --check` pass.
+- Build size: main JS 778.99 kB minified / 234.90 kB gzip, still above 500 kB warning. Baseline was 777.89 kB / 234.33 kB gzip; the approximately +1.10 kB minified delta reflects small added shared guards. No bundle splitting was attempted.
+- Relative quality estimates: Reliability 3.5→3.8/5 (history/catalog race protection and resume reconnection recovery; real runtime/device remains untested); Security 4.0→4.2/5 (strict operation ID bound and authenticated duplicate/oversize HTTP coverage; no external penetration test); Usability 3.0→3.0/5 (navigation paths regression-tested, no visual/device change); Maintainability 2.5→2.7/5 (shared narrow async guards); Performance 2.5→2.5/5 (bundle remains oversized); Testability 4.0→4.3/5 (585 cases; focused async/failure regressions). Scores remain estimates, not production telemetry.
+- Commit sequence: `fc85db4` (documentation handoff), `9cf5a4e`, `21ffc4f`, `ce9343a`, `a4c9fa1`, `66a192a`, `389f164`, `567bcdb`, `4d68556`, `4e2d05b`, `afcad1e`.
+- Worktree is expected clean after this log update is committed. Branch remains `work`; nothing was pushed or merged.
+- Remote GitHub PR/Issue/CI checks remain unavailable (API Forbidden). No iPhone/browser screenshots, real Codex/OpenCode servers, external OAuth credentials, or production service validation were run.
+- Resume priorities: inspect PR #313 and Issues #316–#395 when authorized GitHub access is available; run real iPhone/mobile viewport smoke; profile and split the main JS bundle; verify Codex/OpenCode runtime reconnection under real network interruption; inspect required branch checks and CI run records.
