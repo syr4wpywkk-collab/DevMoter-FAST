@@ -7,6 +7,7 @@ import { countTranscriptMessages, normalizeExternalThread, sessionContextToMarkd
 import { describeModelPricing, normalizeModelPricing } from "./model-pricing.mjs";
 import { setWakeLockEnabled, setWakeLockExecutionActive, wakeLockEnabled, wakeLockSupported } from "./wake-lock";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
+import { createLatestRequestGuard } from "./latest-request.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import "./opencode-chat.css";
@@ -476,6 +477,7 @@ export function mountOpenCodeRemote(
   let commands: OpenCodeCommand[] = [];
   let skills: OpenCodeSkill[] = [];
   let sessions: OpenCodeSession[] = [];
+  const sessionListRequests = createLatestRequestGuard();
   let activeSession: OpenCodeSession | null = null;
   let sessionSortMode = (localStorage.getItem("opencode-pocket-session-sort") || "recent") as SessionSortMode;
   if (!["recent", "created", "messages"].includes(sessionSortMode)) sessionSortMode = "recent";
@@ -1487,7 +1489,9 @@ export function mountOpenCodeRemote(
   }
 
   async function loadSessions() {
+    const requestGeneration = sessionListRequests.begin();
     const data = await api<OpenCodeSession[]>("/session?limit=80&order=desc");
+    if (!sessionListRequests.isCurrent(requestGeneration)) return;
     sessions = Array.isArray(data) ? data : [];
 
     try {

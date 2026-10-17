@@ -9,6 +9,7 @@ import { enrichInstalledPluginEntries, pluginEntries } from "./codex-plugin-meta
 import { applyReasoningToTurnStart, normalizeCodexModels, reasoningChoices, reconcileReasoningMode } from "./codex-reasoning.mjs";
 import { normalizeCodexSendError } from "./codex-send-error.mjs";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
+import { createLatestRequestGuard } from "./latest-request.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import "./codex-chat.css";
@@ -414,6 +415,7 @@ export function mountCodexRemote(
   let reconnectTimer: number | null = null;
   let reconnectAttempts = 0;
   let allThreads: ThreadSummary[] = [];
+  const threadListRequests = createLatestRequestGuard();
   let projects: ProjectSummary[] = [];
   let activeProject: ProjectSummary | null = null;
   let pendingAttachments: PendingAttachment[] = [];
@@ -1245,7 +1247,9 @@ export function mountCodexRemote(
   }
 
   async function loadThreads() {
+    const requestGeneration = threadListRequests.begin();
     const result = await rpc<{ data?: ThreadSummary[] }>("thread/list", { limit: 100 });
+    if (!threadListRequests.isCurrent(requestGeneration)) return;
     allThreads = result?.data ?? [];
     renderThreads();
 

@@ -1,0 +1,78 @@
+# DevMoter FAST quality improvement log — 2026-10-17
+
+## Scope and repository state
+
+- Workspace: `/workspace/DevMoter-FAST` (the user-provided absolute path was unavailable in this execution environment).
+- Branch: `work`; HEAD and fetched `origin/main`: `0408eb1d2f6af3f81d379cc3ede2ee48df248b45` (#315). Initial worktree was clean. No product code changes were present.
+- The initial `git fetch origin --prune` updated `origin/main` to the current HEAD. No user changes were overwritten.
+- GitHub GraphQL access returned `Forbidden` for PR/Issue queries; PR #313, issue details, CI runs, and required-check configuration could not be verified remotely.
+- The directory does not have Chromium/browser automation availability established by this review; no mobile viewport screenshots or iPhone/device test were performed.
+
+## Baseline evidence and scores
+
+Scores are engineering estimates based on code/tests/docs in this checkout, not production telemetry. Reliability/security/testability estimates have high confidence from focused automated tests; usability/performance estimates are lower confidence because no real devices or performance traces were available.
+
+| Axis | Before | Evidence / uncertainty |
+| --- | ---: | --- |
+| Reliability | 3.5/5 | 576 tests later pass; startup parity and real upstream/device behavior remain manual in `RELEASE_SMOKE.md`. |
+| Security | 4/5 | `npm run security:audit` passes 72 checks; auth/OIDC/passkey, origin, path and approval tests exist. Not a full external penetration or dependency-service assessment. |
+| Usability | 3/5 | Mobile/browser regression tests cover navigation, viewport, focus and contrast selectors; no actual iPhone or viewport screenshot comparison. |
+| Maintainability | 2.5/5 | `server.mjs` aggregates many route families and imports; bundle warning indicates broad frontend entry. Estimate based on structure, not change-time study. |
+| Performance | 2.5/5 | Build succeeds but main JS is 777.89 kB minified / 234.33 kB gzip, above Vite's 500 kB warning threshold. No device timing/memory trace. |
+| Testability | 4/5 | 576 automated tests, integration harnesses and coverage command; Vite dep-scan shutdown diagnostics appear in concurrent test fixtures. CI exact-commit result not remotely verifiable. |
+
+## Confirmed findings (prioritized)
+
+1. **P2 documentation correctness:** `ROADMAP.md` called Google/Microsoft sign-in planned while README said available. `server/oidc-auth.mjs`, `server.mjs`, `docs/auth-v2.md`, and `test/oidc-auth.test.mjs` confirm OIDC+PKCE login/link implementation and validation. Fixed roadmap and translated README status; real OAuth credentials/provider deployment remain host-specific.
+2. **P2 release checklist correctness:** `RELEASE_SMOKE.md` referred to nonexistent `scripts/start-devmoter.sh`. Repository contains `scripts/start-pocket.sh`; corrected the checklist. This is only the launcher script name; checks continue to require `devmoter-fast.service`, with no legacy service instruction.
+3. **P2 release checklist formatting:** Four installer checks had literal `\n` text embedded in one bullet, preventing normal checklist rendering. Split them into four items.
+4. **P2 documentation consistency:** README product track `v2.0.0-alpha` and package version `0.2.0` were unexplained. Clarified in English/Japanese/Chinese that the former is release maturity and the latter is the npm package version.
+5. **P2 / issue #333 candidate, remote verification unavailable:** CI workflow contains `npm ci`, typecheck, lint, build, tests, and coverage, but a workflow definition is not evidence of successful runs or branch protection. GitHub API was forbidden; no claim of CI/required-check completion is made.
+6. **P2 mobile validation gap:** target sizes 320/375/390/768/1280 and real iPhone checks have not been run in this environment. Existing regression source tests include mobile navigation, visual viewport, keyboard/modal/focus and theme checks; this does not establish real-device behavior.
+7. **P2 frontend bundle size:** production build emits 777.89 kB main JS (234.33 kB gzip), generating Vite's >500 kB warning. No code splitting was attempted because it is a separate, wider performance change.
+8. **P2 concurrency diagnostic:** concurrent `npm test` / `npm run test:coverage` runs logged Vite/esbuild dep-scan “server is being restarted or closed” diagnostics from lifecycle-managed test fixtures. Both commands exited 0; worth isolating if it recurs in CI.
+9. **P2 external integration validation:** Codex/OpenCode live-runtime operations and Google/Microsoft actual provider callbacks require host credentials/services; local mocks/contracts do not prove deployment compatibility.
+10. **P3 performance evidence gap:** no mobile CPU/memory, network waterfall, or startup latency measurements available; ratings should be revisited with browser/device profiling.
+11. **P3 runtime test skip:** one real tmux persistence test was skipped by its environment guard; other terminal tests passed.
+12. **P3 repository/CI policy evidence:** no GitHub issue/PR state, CI success state, or required status-check configuration could be observed from this environment.
+
+## Improvement cycles
+
+### Cycle 1 — Documentation and release checklist integrity
+
+- Issue: documentation inconsistency / release checklist errors; issue number could not be established due unavailable GitHub API.
+- Cause: stale roadmap and localized README capability labels; incorrect launcher path and escaped newline text in checklist.
+- Changes: `README.md`, `README.ja.md`, `README.zh-CN.md`, `ROADMAP.md`, `RELEASE_SMOKE.md`.
+- Tests: auth source/tests reviewed; OIDC tests passed in test suite; `git diff --check` passed; final typecheck/lint/security audit passed. No dedicated docs test exists.
+- Risk: documentation describes OAuth availability conditional on host setup; actual provider credentials were not used.
+- Next: validate PR #313 and issues #316–#395 when GitHub access exists; run required-check/branch-protection inspection; obtain real-device and upstream-backend smoke.
+- Commit SHA: not committed; awaiting normal review/PR handling.
+
+## Validation record
+
+- `npm run typecheck`: pass (baseline and final).
+- `npm run lint`: pass, 282 source files (baseline and final).
+- `npm test`: exit 0; 576 tests, 575 pass, 0 fail, 1 skipped; duration about 151 seconds.
+- `npm run test:coverage`: exit 0; coverage report generated; one environment-guarded tmux test skipped. Aggregate percentages were truncated in captured terminal output; report artifact exists under `coverage/` but was not copied into this log.
+- `npm run build`: pass. Vite warns that main JS exceeds 500 kB (777.89 kB minified, 234.33 kB gzip).
+- `npm run security:audit`: pass, 72 checks.
+- `npm ci`: not run; existing locked dependencies and node_modules were present. No dependency install was needed for these documentation changes.
+- GitHub CI/PR/issue details, `npm audit` workflow step, branch protection, real systemd service, real Codex/OpenCode servers, external OAuth, viewport screenshots and iPhone test: not run/unavailable.
+- No production service was restarted, no deployment or external data operation was performed, and no secrets were printed.
+
+## End state / restart handoff
+
+- Branch `work`; documentation changes are uncommitted and isolated to the five files listed above; there were no initial user modifications.
+- No application code changed. Review the five-file diff before creating a small documentation PR.
+- Highest remaining priorities: obtain GitHub read access to inspect PR #313 and issues #316–#395; inspect exact CI/check protections; profile/split frontend bundle; test 320/375/390/768/1280 and actual iPhone; perform host-specific OAuth and Codex/OpenCode/systemd smoke.
+
+### Cycle 2 — Concurrent conversation-history refresh
+
+- Finding: overlapping Codex `thread/list` and OpenCode `/session` refreshes were applied in completion order. A slower older response could replace the newer history snapshot after the user had already received a newer refresh.
+- Cause: both `loadThreads()` and `loadSessions()` assigned any successful response without tracking request order.
+- Changes: added `src/latest-request.mjs` and declaration; both history loaders ignore stale generations; added `test/latest-request.test.mjs` (2 tests: guard semantics and wiring-before-assignment).
+- Before/after: before, response arrival order controlled the displayed list; after, only the latest-started refresh may update it. Failed list requests still do not assign an empty list because assignment follows successful fetch/parse.
+- Validation: initial typecheck caught a missing `.d.mts` declaration; fixed. `npm run typecheck` passed; `node --test test/latest-request.test.mjs` passed 2/2; `git diff --check` passed.
+- Review/risk: this protects list snapshots, not asynchronous active-session probes or content loads; errors still follow existing caller behavior. The test asserts shared helper and source integration, not a full dual-refresh DOM race.
+- Next: inspect OpenCode-to-Codex/API/Home navigation behavior and test lifecycle restoration paths. Continue with API timeout/error handling if no navigation defect is found.
+- Commit SHA: pending.
