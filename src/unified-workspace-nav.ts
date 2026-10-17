@@ -5,6 +5,7 @@ type ChatBackend = "codex" | "opencode" | "api";
 
 type WorkspaceActions = {
   initialSurface: MainSurface;
+  initialBackend?: ChatBackend;
   switchBackend: (backend: ChatBackend) => void;
   openHome: () => void;
   openTasks: () => void;
@@ -57,9 +58,12 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   const feedback = root.querySelector<HTMLElement>("[data-workspace-feedback]")!;
 
   let surface: MainSurface = actions.initialSurface;
+  // Preserve the last real backend when starting on Home or Integrations.
   let currentBackend: ChatBackend = surface === "codex" || surface === "api" || surface === "opencode"
     ? surface
-    : "opencode";
+    : actions.initialBackend === "codex" || actions.initialBackend === "api" || actions.initialBackend === "opencode"
+      ? actions.initialBackend
+      : "opencode";
 
   const updateProject = () => {
     // Project selection is owned by the existing backend; this is a label only.
@@ -71,7 +75,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   const updateSurface = (next: MainSurface) => {
     surface = next;
     if (next === "codex" || next === "opencode" || next === "api") currentBackend = next;
-    backendSelect.value = next === "codex" || next === "opencode" || next === "api" ? next : "";
+    backendSelect.value = currentBackend;
     for (const button of root.querySelectorAll<HTMLButtonElement>("[data-workspace-action]")) {
       const isCurrent = button.dataset.workspaceAction === "chat" &&
         (next === "codex" || next === "opencode" || next === "api");
@@ -89,7 +93,10 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
 
   const onBackendChanged = (event: Event) => {
     const next = (event as CustomEvent<{ backend?: ChatBackend }>).detail?.backend;
-    if (next === "codex" || next === "opencode" || next === "api") currentBackend = next;
+    if (next === "codex" || next === "opencode" || next === "api") {
+      currentBackend = next;
+      backendSelect.value = next;
+    }
   };
   window.addEventListener("devmoter:backend-changed", onBackendChanged);
 
