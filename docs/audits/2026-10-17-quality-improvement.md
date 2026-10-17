@@ -452,4 +452,4 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: typecheck passed; Tools AI UI and UI audit suites passed 16/16; lint passed (316 files); build passed; security audit passed (72 checks); diff check passed. Initial JS remains 570.74 kB minified / 174.09 kB gzip.
 - Review/risk: screenshots are `/tmp/devmoter-tools-{320,390,768}.png`; API setup retrieval still displays its real failure in the isolated Vite environment. The direct manual-tools list remains behind its existing disclosure to preserve current navigation behavior; making it primary is a separate information-architecture decision.
 - Next: apply the same restrained treatment to Codex/OpenCode headers, session history and their composer controls; review light/dark contrast and touch targets in real device/browser sessions.
-- Commit SHA: pending.
+- Commit SHA: `61cf819`.
