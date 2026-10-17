@@ -2,6 +2,7 @@ import { getLanguage } from "./i18n";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { normalizeApiProviderCatalog } from "./api-provider-catalog.mjs";
+import { normalizeApiAttachment } from "./api-attachment.mjs";
 import "./api-chat-surface.css";
 
 type ApiProvider = {
@@ -637,7 +638,7 @@ export function mountApiChat(
     if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
 
     return {
-      ...payload.attachment,
+      ...normalizeApiAttachment(payload, file),
       previewUrl: URL.createObjectURL(file)
     } as ApiAttachment;
   }
@@ -655,6 +656,7 @@ export function mountApiChat(
     );
 
     let completed = 0;
+    let uploadError: string | null = null;
     try {
       for (const file of list) {
         const attachment = await uploadImage(file);
@@ -669,11 +671,15 @@ export function mountApiChat(
       }
       status.textContent = `${currentProvider()?.name || "API"} · ${apiLocale("image ready", "画像準備OK", "图片已准备")}`;
     } catch (error) {
-      status.textContent = error instanceof Error ? error.message : String(error);
+      uploadError = error instanceof Error ? error.message : String(error);
     } finally {
       uploadingCount -= list.length;
       imageInput.value = "";
       updateModels();
+      if (uploadError) {
+        status.textContent = uploadError;
+        status.title = uploadError;
+      }
     }
   }
 

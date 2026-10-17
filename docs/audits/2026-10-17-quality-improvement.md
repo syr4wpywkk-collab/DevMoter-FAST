@@ -265,6 +265,17 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: API Chat conversation suite passed 8/8; typecheck and diff check passed.
 - Review/risk: guard applies to catalog refreshes only; provider-specific mutations still rely on their own server responses and subsequent refresh.
 - Next: grouped verification of history, reconnection, attachments and provider catalog behavior, then continue with the highest risk found.
+- Commit SHA: `36dd009`.
+
+### Cycle 22 — Validate API Chat attachment responses and retain upload errors
+
+- Finding: API Chat trusted `payload.attachment` after HTTP 200 and could add an attachment without a valid server ID or matching media metadata. Separately, upload errors were immediately overwritten by `updateModels()` in `finally`, including the timeout path from Cycle 17.
+- Cause: no attachment response schema validation, and the common model refresh rewrote the same status element after the upload catch set its error.
+- Changes: added `normalizeApiAttachment` to validate UUID identity, allowed MIME, name, and exact positive size before adding the attachment. Upload failure is now reapplied to status after availability refresh. Added helper and UI regressions, and updated the existing upload fixture to use the server's UUID contract.
+- Before/after: before, malformed attachment IDs could be submitted to the provider and failed uploads appeared as “Ready”; after, invalid uploads stay out of conversation state, and the user sees the error needed to retry.
+- Validation: attachment and API Chat suites passed 12/12; typecheck and diff check passed. One intermediate assertion incorrectly expected the Send button disabled even though empty messages are rejected inside submit; it was replaced with an assertion that no provider request is made.
+- Review/risk: if the server saved an attachment but its response is malformed, the client cannot safely identify it for immediate deletion; existing server retention cleanup remains responsible for that orphan.
+- Next: review request cancellation and stale response behavior across API Chat, Codex and OpenCode, then proceed to the next reproducible issue.
 - Commit SHA: pending.
 
 ### Cycle 21 — Reject duplicate API Chat provider identities
@@ -276,7 +287,7 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: API Chat suite passed 9/9; latest-request suite passed 2/2 after assertion update; typecheck and diff check passed.
 - Review/risk: duplicate IDs are treated as a provider catalog error rather than arbitrarily choosing one entry. No provider credentials are included in test output.
 - Next: continue auditing backend response contracts and retry/cancel behavior; run broader grouped tests after the next few changes.
-- Commit SHA: pending.
+- Commit SHA: `f891f9a`.
 
 ### Cycle 17 — Bound API Chat image upload duration
 

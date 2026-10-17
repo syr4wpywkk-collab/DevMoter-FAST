@@ -6,6 +6,7 @@ import { JSDOM } from "jsdom";
 import { renderChatMarkdown } from "../src/chat-markdown.mjs";
 import * as fetchTimeout from "../src/fetch-with-timeout.mjs";
 import * as providerCatalog from "../src/api-provider-catalog.mjs";
+import * as apiAttachment from "../src/api-attachment.mjs";
 
 const source = await readFile(new URL("../src/api-chat.ts", import.meta.url), "utf8");
 const compiled = ts.transpileModule(source, {
@@ -80,7 +81,8 @@ async function harness(t, { rejectOnAbort = false } = {}) {
     "./i18n": { getLanguage: () => "en" },
     "./chat-markdown.mjs": { renderChatMarkdown },
     "./fetch-with-timeout.mjs": fetchTimeout,
-    "./api-provider-catalog.mjs": providerCatalog
+    "./api-provider-catalog.mjs": providerCatalog,
+    "./api-attachment.mjs": apiAttachment
   };
   window.Function("require", "exports", compiled)(name => {
     if (name.endsWith(".css")) return {};
@@ -318,19 +320,36 @@ test("uploading disables conversation navigation until the attachment belongs to
   ui.historyChat("Archived conversation").click();
   assert.equal(prompt.value, "Image draft");
   assert.equal(ui.root.querySelectorAll(".api-message").length, 0);
-  ui.uploads[0].resolve({ attachment: { id: "upload-1", name: "photo.png", mime: "image/png", size: file.size } });
+  ui.uploads[0].resolve({ attachment: { id: "123e4567-e89b-42d3-a456-426614174000", name: "photo.png", mime: "image/png", size: file.size } });
   await settle();
   assert.equal(ui.root.querySelector("#apiNewChat").disabled, false);
   assert.ok(ui.history().every(row => !row.disabled));
   assert.match(ui.root.querySelector("#apiAttachments").textContent, /photo\.png/);
   const request = ui.submit("Image draft");
-  assert.equal(request.body.messages.at(-1).attachments[0].id, "upload-1");
+  assert.equal(request.body.messages.at(-1).attachments[0].id, "123e4567-e89b-42d3-a456-426614174000");
   request.resolve({ message: { content: "Image answer" } });
   await settle();
   ui.historyChat("Archived conversation").click();
   assert.ok(!ui.root.querySelector("#apiTranscript").textContent.includes("photo.png"));
   ui.historyChat("Image draft").click();
   assert.match(ui.root.querySelector("#apiTranscript").textContent, /photo\.png/);
+});
+
+test("malformed upload responses do not enter conversation attachment state", async t => {
+  const ui = await harness(t);
+  const imageInput = ui.root.querySelector("#apiImageInput");
+  const file = new ui.window.File(["image bytes"], "photo.png", { type: "image/png" });
+  Object.defineProperty(imageInput, "files", { configurable: true, value: [file] });
+  imageInput.dispatchEvent(new ui.window.Event("change", { bubbles: true }));
+  const request = ui.uploads.at(-1);
+  assert.ok(request);
+  request.resolve({ attachment: { name: "photo.png", mime: "image/png", size: file.size } });
+  await settle();
+
+  assert.equal(ui.root.querySelectorAll(".api-attachment-chip").length, 0);
+  assert.match(ui.root.querySelector("#apiStatus").textContent, /invalid attachment response/);
+  ui.submit("");
+  assert.equal(ui.chats.length, 0, "invalid attachment is not sent to the provider");
 });
 
 test("memory history keeps at most 20 conversations and 100 messages per conversation", async t => {
