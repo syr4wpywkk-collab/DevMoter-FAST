@@ -652,7 +652,8 @@ export function mountCodexRemote(
     const requestGeneration = modelCatalogRequests.begin();
     const result = await rpc<Json>("model/list", { limit: 100 });
     if (!modelCatalogRequests.isCurrent(requestGeneration)) return modelCatalog;
-    modelCatalog = normalizeCodexModels(result) as CodexModel[];
+    const normalizedModels = normalizeCodexModels(result) as CodexModel[];
+    modelCatalog = normalizedModels;
 
     const migrated = modelCatalog.find(model => model.id === selectedModel && model.model !== selectedModel);
     if (migrated) persistSelectedModel(migrated.model);

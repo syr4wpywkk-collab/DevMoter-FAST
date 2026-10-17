@@ -64,6 +64,8 @@ test("missing reasoning metadata falls back to Auto-only without rejecting saved
   assert.equal(reconcileReasoningMode("medium", models[0]), "medium");
 });
 
-test("invalid model/list payload produces an empty catalog", () => {
-  assert.deepEqual(normalizeCodexModels({ data: null }), []);
+test("invalid model/list payload is rejected before replacing a valid catalog", () => {
+  assert.throws(() => normalizeCodexModels({ data: null }), /invalid model catalog/);
+  assert.throws(() => normalizeCodexModels({ data: [null, { id: "" }] }), /invalid model catalog/);
+  assert.deepEqual(normalizeCodexModels({ data: [] }), []);
 });

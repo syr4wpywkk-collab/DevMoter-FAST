@@ -364,7 +364,7 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: Codex thread/history, lifecycle and event recovery suites passed 15/15; typecheck and diff check passed.
 - Review/risk: mixed valid/invalid rows still retain valid rows for partial compatibility; only wholly invalid or ambiguous duplicate identity sets fail closed.
 - Next: run grouped provider/model/attachment and backend navigation regressions, then review whether the implementation backlog is ready for the visual direction phase.
-- Commit SHA: pending.
+- Commit SHA: `67e5a7b`.
 
 ### Cycle 23 — Bound Codex and OpenCode attachment upload requests
 
