@@ -14,7 +14,7 @@ const reply = payload => new Response(JSON.stringify(payload), {
   headers: { "content-type": "application/json" }
 });
 
-async function harness(t) {
+async function harness(t, { rejectOnAbort = false } = {}) {
   const dom = new JSDOM('<!doctype html><main id="root"></main>', {
     url: "https://devmoter.example/chat", runScripts: "outside-only"
   });
@@ -45,8 +45,9 @@ async function harness(t) {
     if (path === "/api/llm/chat" || (path === "/api/llm/attachments" && init.method === "POST")) {
       // Deliberately allow late resolution after abort to exercise the UI's own
       // generation boundary independently of fetch cancellation behavior.
-      return new Promise(resolve => {
+      return new Promise((resolve, reject) => {
         request.resolve = payload => resolve(reply(payload));
+        if (rejectOnAbort) init.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
         (path === "/api/llm/chat" ? chats : uploads).push(request);
       });
     }
@@ -94,6 +95,27 @@ async function harness(t) {
     }
   };
 }
+
+test("API Chat timeout aborts the request, retains the prompt, and restores send controls", async t => {
+  const ui = await harness(t, { rejectOnAbort: true });
+  const scheduled = [];
+  ui.window.setTimeout = (callback, delay) => {
+    scheduled.push({ callback, delay });
+    return scheduled.length;
+  };
+  ui.window.clearTimeout = () => {};
+
+  const request = ui.submit("Keep this prompt after timeout");
+  const timeout = scheduled.find(item => item.delay === 120_000);
+  assert.ok(timeout, "chat request installs a bounded timeout");
+  timeout.callback();
+  await new Promise(resolve => setImmediate(resolve));
+
+  assert.equal(request.init.signal.aborted, true);
+  assert.equal(ui.root.querySelector(".api-message.user")?.textContent, "Keep this prompt after timeout");
+  assert.match(ui.root.querySelector(".api-message.assistant")?.textContent || "", /timed out/i);
+  assert.equal(ui.root.querySelector("#apiSend").disabled, false);
+});
 
 test("API conversations restore raw messages and provider choices with safe Markdown and exact copy", async t => {
   const ui = await harness(t);

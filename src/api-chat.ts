@@ -50,6 +50,7 @@ type ChatConversation = {
 
 const API_CHAT_HISTORY_LIMIT = 100;
 const API_CHAT_SESSION_LIMIT = 20;
+const API_CHAT_REQUEST_TIMEOUT_MS = 120_000;
 const DEVICE_TOKEN_KEY = "devmoter-device-token";
 const PROJECT_KEY = "opencode-pocket-project";
 
@@ -1205,6 +1206,11 @@ export function mountApiChat(
     const controller = new AbortController();
     activeChatController?.abort();
     activeChatController = controller;
+    let requestTimedOut = false;
+    const requestTimeout = window.setTimeout(() => {
+      requestTimedOut = true;
+      controller.abort();
+    }, API_CHAT_REQUEST_TIMEOUT_MS);
     prompt.value = "";
     resizePrompt();
     renderMessages();
@@ -1238,16 +1244,19 @@ export function mountApiChat(
       renderMessages();
       status.textContent = `${provider.name} · Ready`;
     } catch (error) {
-      if (generation !== conversationGeneration || controller.signal.aborted) return;
+      if (generation !== conversationGeneration || (controller.signal.aborted && !requestTimedOut)) return;
       responseFailed = true;
       messages.push({
         role: "assistant",
-        content: `${apiLocale("Error", "エラー", "错误")}: ${error instanceof Error ? error.message : String(error)}`
+        content: requestTimedOut
+          ? apiLocale("Error: The request timed out. Your message is still in this conversation; retry when ready.", "エラー: 要求がタイムアウトしました。メッセージはこの会話に残っています。準備ができたら再試行してください。", "错误：请求超时。消息仍保留在此会话中；准备好后可以重试。")
+          : `${apiLocale("Error", "エラー", "错误")}: ${error instanceof Error ? error.message : String(error)}`
       });
       trimHistory();
       renderMessages();
       status.textContent = `${provider.name} · Error`;
     } finally {
+      window.clearTimeout(requestTimeout);
       if (activeChatController === controller) activeChatController = null;
       if (generation === conversationGeneration) {
         sending = false;

@@ -87,3 +87,14 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Review/risk: event source reconnect may itself fail and relies on existing bounded retry logic. Sync error behavior is covered via helper tests and wiring assertions, not full browser lifecycle automation.
 - Next: inspect API timeout/error handling and cancellation; add a focused runtime regression where supported.
 - Commit SHA: pending.
+
+### Cycle 5 — API Chat request timeout and recovery
+
+- Finding: API Chat had no request deadline. A provider/network request that never settled kept the composer disabled with an indefinite waiting state.
+- Cause: request cancellation existed for conversation changes, but no timeout distinguished a hung provider request from deliberate cancellation.
+- Changes: `src/api-chat.ts` now aborts chat requests after 120 seconds, shows a localized timeout error while preserving the submitted prompt/message, and restores send controls. `test/api-chat-conversations.test.mjs` adds a deterministic abort-timeout case.
+- Before/after: before, wait could continue indefinitely; after, request is aborted at 120s, error is visible, prompt remains in history, and send is enabled. No automatic retry is performed.
+- Validation: typecheck passed; API Chat conversation tests 5/5 passed; lint checked 288 files; `git diff --check` passed.
+- Review/risk: timeout is fixed at 120s; a legitimate provider operation longer than that is cancelled at transport level. As with any client timeout, server/provider work may have completed even if the response was lost; user must decide whether to retry.
+- Next: review mobile composer/viewport and touch interactions, then model catalog stale-state/fallback behavior.
+- Commit SHA: pending.
