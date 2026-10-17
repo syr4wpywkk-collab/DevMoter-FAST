@@ -1,0 +1,235 @@
+/*
+ * Task-first workspace (opt-in). Scoped tokens inspired by the user's Stitch
+ * dark/cyan system. No generated Tailwind, fonts, sample sessions or fake states.
+ */
+.dm-task-first-nav {
+  --dw-bg: #0c121b;
+  --dw-panel: #17212d;
+  --dw-border: #2c3c4d;
+  --dw-text: #eaf4fc;
+  --dw-muted: #a0b2c2;
+  --dw-accent: #4fd3f2;
+  position: fixed;
+  z-index: 2147481999;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 208px;
+  display: flex;
+  flex-direction: column;
+  padding: max(18px, env(safe-area-inset-top)) 12px max(18px, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  border-right: 1px solid var(--dw-border);
+  background: var(--dw-bg);
+  color: var(--dw-text);
+  font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", sans-serif;
+}
+.dm-task-first-nav * { box-sizing: border-box; }
+.dm-task-first-nav button,
+.dm-task-first-nav select {
+  font: inherit;
+  color: inherit;
+}
+.dm-task-first-nav button:focus-visible,
+.dm-task-first-nav select:focus-visible {
+  outline: 2px solid var(--dw-accent);
+  outline-offset: 2px;
+}
+.dm-task-first-header { display: grid; gap: 16px; }
+.dm-task-first-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.dm-task-first-mark {
+  flex: 0 0 36px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #28617a;
+  border-radius: 10px;
+  background: #123040;
+  color: var(--dw-accent);
+  font-size: 23px;
+}
+.dm-task-first-brand strong { display:block; font-size: 13px; white-space:nowrap; }
+.dm-task-first-brand em { font-style:normal; color:var(--dw-accent); }
+.dm-task-first-brand small {
+  display: block;
+  margin-top: 4px;
+  color:var(--dw-muted);
+  font-size: 8px;
+  letter-spacing: .08em;
+}
+.dm-task-first-project {
+  margin: 0;
+  min-height: 44px;
+  padding: 13px 11px;
+  border:1px solid var(--dw-border);
+  border-radius:12px;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  color: var(--dw-muted);
+  background: var(--dw-panel);
+  font-size:12px;
+}
+.dm-task-first-backend { display:grid; gap: 7px; }
+.dm-task-first-backend > span {
+  color:var(--dw-muted);
+  font-size: 11px;
+  font-weight:700;
+}
+.dm-task-first-backend select {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 9px;
+  background: var(--dw-panel);
+  border:1px solid var(--dw-border);
+  border-radius:10px;
+  font-size: 14px;
+}
+.dm-task-first-tabs { display: grid; gap: 9px; margin-top:24px; }
+.dm-task-first-tabs button {
+  width:100%;
+  min-height: 48px;
+  display:flex;
+  gap:12px;
+  align-items:center;
+  padding: 10px 13px;
+  border:1px solid transparent;
+  border-radius:12px;
+  text-align:left;
+  background:transparent;
+  color:var(--dw-muted);
+  cursor:pointer;
+}
+.dm-task-first-tabs button:hover,
+.dm-task-first-tabs button[aria-current="page"] {
+  border-color:#265c6e;
+  background:#123040;
+  color:var(--dw-accent);
+}
+.dm-task-first-tabs button > span { font-size:20px; line-height:1; }
+.dm-task-first-tabs button > strong { font-size: 13px; }
+.dm-task-first-caption {
+  margin:auto 5px 0;
+  color:var(--dw-muted);
+  font-size:11px;
+  line-height:1.6;
+}
+.dm-task-first-feedback { margin: 10px 5px 0; color: var(--dw-muted); font-size: 11px; }
+/* Provider roots are fixed to the viewport, so shifting #app alone does
+ * NOT reserve space for navigation. Offset the actual fixed surfaces.
+ * Provider-owned drawers remain positioned relative to their own roots. */
+body.dm-task-first-enabled #app { width: calc(100% - 208px); margin-left: 208px; }
+body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app, .ix-app) {
+  left: 208px;
+  right: 0;
+  width: calc(100% - 208px);
+}
+body.dm-task-first-enabled .dm-shell-menu-trigger { display: none; }
+body.devmoter-shell-menu-open .dm-task-first-nav { pointer-events:none; }
+html[data-devmoter-theme="light"] .dm-task-first-nav {
+  --dw-bg:#f8fbfd;
+  --dw-panel:#edf4f8;
+  --dw-border:#d1e0e9;
+  --dw-text:#162a39;
+  --dw-muted:#516b7f;
+  --dw-accent:#006e8b;
+}
+@media(max-width:680px) {
+  body.dm-task-first-enabled {
+    --dw-top-height: calc(58px + env(safe-area-inset-top));
+    --dw-bottom-height: calc(66px + env(safe-area-inset-bottom));
+  }
+  .dm-task-first-nav {
+    width:100%;
+    bottom:auto;
+    height:var(--dw-top-height);
+    padding: env(safe-area-inset-top) 10px 0;
+    border-right:0;
+    border-bottom:1px solid var(--dw-border);
+  }
+  .dm-task-first-header {
+    height:52px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:9px;
+  }
+  .dm-task-first-brand { flex:none; }
+  .dm-task-first-mark { width:32px; height:32px; flex-basis:32px; font-size:20px; }
+  .dm-task-first-brand strong { font-size:12px; }
+  .dm-task-first-brand small { font-size:7px; }
+  .dm-task-first-project { display:none; }
+  .dm-task-first-backend { display:block; min-width:0; width:min(39vw,150px); }
+  .dm-task-first-backend > span { position:absolute; clip-path:inset(50%); height:1px; width:1px; overflow:hidden; }
+  .dm-task-first-backend select { min-height:44px; padding:7px; font-size:13px; }
+  .dm-task-first-tabs {
+    position:fixed;
+    left:0;
+    bottom:0;
+    width:100%;
+    height:var(--dw-bottom-height);
+    margin:0;
+    padding:0 0 env(safe-area-inset-bottom);
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:0;
+    background:var(--dw-bg);
+    border-top:1px solid var(--dw-border);
+  }
+  .dm-task-first-tabs button {
+    min-width:0;
+    min-height:44px;
+    border:0;
+    border-radius:0;
+    padding:8px 2px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:3px;
+    text-align:center;
+  }
+  .dm-task-first-tabs button > span { font-size:19px; }
+  .dm-task-first-tabs button > strong { font-size:10px; }
+  .dm-task-first-caption,.dm-task-first-feedback { display:none; }
+  body.dm-task-first-enabled #app {
+    width:100%;
+    min-width:0;
+    margin-left:0;
+    margin-top:var(--dw-top-height);
+    height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - var(--dw-bottom-height));
+  }
+  /* All four surfaces use position:fixed and must be bounded independently.
+   * Otherwise the navigation overlays chat headers, composers and approvals. */
+  body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app, .ix-app) {
+    top:var(--dw-top-height);
+    left:0;
+    right:0;
+    width:100%;
+    height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - var(--dw-bottom-height));
+    max-height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - var(--dw-bottom-height));
+  }
+  /* History drawers with explicit viewport heights must stay inside the
+   * bounded provider surface, rather than spilling beneath the bottom tab. */
+  body.dm-task-first-enabled .ocx-app .ocx-sidebar,
+  body.dm-task-first-enabled .api-app .api-sidebar { height:100%; }
+  /* Preserve space for iOS keyboard: collapse bottom nav while typing. */
+  body.dm-task-first-enabled:has(textarea:focus, input[type="text"]:focus, input[type="search"]:focus, [contenteditable="true"]:focus) {
+    --dw-bottom-height:0px;
+  }
+  body.dm-task-first-enabled:has(textarea:focus, input[type="text"]:focus, input[type="search"]:focus, [contenteditable="true"]:focus) .dm-task-first-tabs { display:none; }
+  body.devmoter-shell-menu-open .dm-task-first-nav { visibility:hidden; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dm-task-first-nav *, .dm-task-first-nav *::before, .dm-task-first-nav *::after { transition: none !important; }
+}

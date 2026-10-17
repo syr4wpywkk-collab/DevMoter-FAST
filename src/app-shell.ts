@@ -513,4 +513,22 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   updateBackend(backend);
   updateSurface(surface);
   filterTools();
+
+  // Stage-1 rollout is explicit. Existing provider-owned session, execution,
+  // approval, model and composer DOM remain authoritative and unmodified.
+  if (new URLSearchParams(window.location.search).get("unifiedUI") === "1") {
+    // Load the opt-in view only after the legacy shell is mounted. This keeps
+    // the existing provider/UI test harness and normal startup unchanged.
+    void import("./unified-workspace-nav")
+      .then(({ mountTaskFirstWorkspace }) => mountTaskFirstWorkspace({
+        initialSurface: surface,
+        initialBackend: backend === "integrations" ? "opencode" : backend,
+        switchBackend: next => options.switchBackend(next),
+        openHome: options.openHome,
+        openTasks: () => run(() => launchApp("sessions")),
+        openReview: () => run(() => launchApp("review")),
+        openTools: openSidebar
+      }))
+      .catch(() => notify("Unified Workspace UIを読み込めませんでした。従来UIを使用してください。"));
+  }
 }
