@@ -522,6 +522,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     void import("./unified-workspace-nav")
       .then(({ mountTaskFirstWorkspace }) => mountTaskFirstWorkspace({
         initialSurface: surface,
+        initialBackend: backend === "integrations" ? "opencode" : backend,
         switchBackend: next => options.switchBackend(next),
         openHome: options.openHome,
         openTasks: () => run(() => launchApp("sessions")),
