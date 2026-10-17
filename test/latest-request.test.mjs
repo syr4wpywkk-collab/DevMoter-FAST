@@ -20,6 +20,10 @@ test("Codex and OpenCode guard history and model catalogs before assignment", as
 
   assert.match(codex, /const requestGeneration = threadListRequests\.begin\(\);[\s\S]{0,500}if \(!threadListRequests\.isCurrent\(requestGeneration\)\) return;[\s\S]{0,240}allThreads = normalizeCodexThreadList\(result\)/);
   assert.match(opencode, /const requestGeneration = sessionListRequests\.begin\(\);[\s\S]{0,180}if \(!sessionListRequests\.isCurrent\(requestGeneration\)\) return;[\s\S]{0,80}sessions = Array\.isArray\(data\)/);
+  const sessionLoaderStart = opencode.indexOf("async function loadSessions()");
+  const sessionLoaderEnd = opencode.indexOf("async function syncPendingPermission", sessionLoaderStart);
+  const sessionLoader = opencode.slice(sessionLoaderStart, sessionLoaderEnd);
+  assert.match(sessionLoader, /catch \{[\s\S]{0,180}if \(!sessionListRequests\.isCurrent\(requestGeneration\)\) return;[\s\S]{0,100}if \(activeSession\)/);
   assert.match(codex, /const requestGeneration = modelCatalogRequests\.begin\(\);[\s\S]{0,180}if \(!modelCatalogRequests\.isCurrent\(requestGeneration\)\) return modelCatalog;[\s\S]{0,80}modelCatalog = normalizeCodexModels/);
   assert.match(opencode, /const requestGeneration = providerCatalogRequests\.begin\(\);[\s\S]{0,300}if \(!providerCatalogRequests\.isCurrent\(requestGeneration\)\) return;[\s\S]{0,100}providers = Array\.isArray/);
 });
