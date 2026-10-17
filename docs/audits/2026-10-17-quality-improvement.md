@@ -463,4 +463,4 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: focused terminal/CSS tests passed 8/8; final full suite passed 619/620 with one skip; coverage 44.92% statements, 62.86% branches, 55.19% functions; typecheck, lint, build, 72-check security audit and diff check passed.
 - Review/risk: the 1000ms readiness heuristic still cannot prove a CLI is interactively usable; it only reduces false positives. Slow but valid CLIs delay the success receipt by up to one second.
 - Next: continue the UI direction across Codex/OpenCode conversation history and composer controls; separately consider a protocol-level ready signal for integrations.
-- Commit SHA: pending.
+- Commit SHA: `b21accb`.
