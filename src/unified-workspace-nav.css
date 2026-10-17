@@ -243,6 +243,7 @@ body.dm-task-first-enabled :is(
   .cx-app .dm-agent-switch-shell,
   .api-app .dm-agent-switch-shell,
   .dm-shell-ai-grid,
+  [data-home-react-pilot],
   .dm-shell-primary > h2:first-of-type
 ) { display: none !important; }
 

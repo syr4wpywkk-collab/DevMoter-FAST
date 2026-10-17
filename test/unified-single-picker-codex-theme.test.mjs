@@ -23,7 +23,7 @@ test("Codex and API Chat keep their legacy switch DOM but use read-only labels i
     assert.match(text, /dm-agent-switch-shell/, name + " legacy chooser must remain usable without the new flag");
   }
   assert.match(css, /body\.dm-task-first-enabled\s+:is\(/);
-  for (const target of [".cx-app .dm-agent-switch-shell", ".api-app .dm-agent-switch-shell", ".dm-shell-ai-grid"]) {
+  for (const target of [".cx-app .dm-agent-switch-shell", ".api-app .dm-agent-switch-shell", ".dm-shell-ai-grid", "[data-home-react-pilot]"]) {
     assert.ok(css.includes(target), "redundant agent picker not scoped: " + target);
   }
   assert.ok(css.includes(".dm-shell-primary > h2:first-of-type"), "hide the now-orphaned AI heading");
