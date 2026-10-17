@@ -267,6 +267,17 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Next: grouped verification of history, reconnection, attachments and provider catalog behavior, then continue with the highest risk found.
 - Commit SHA: pending.
 
+### Cycle 21 — Reject duplicate API Chat provider identities
+
+- Finding: two catalog entries with the same provider ID render as separate choices but resolve through the same `currentProvider()` identity, making the visible selection ambiguous and potentially sending through the first matching configuration.
+- Cause: Cycle 19 validated row fields but did not enforce provider ID uniqueness.
+- Changes: provider catalog normalization now rejects duplicate IDs as a whole. Added an integration case proving the current choices remain and sending is disabled; aligned stale Codex/OpenCode source assertions found by the grouped regression run with their explicit failure return contract.
+- Before/after: before, duplicate identities could make labels and the actual selected configuration disagree; after, the ambiguous catalog is rejected and the last valid selection remains visible.
+- Validation: API Chat suite passed 9/9; latest-request suite passed 2/2 after assertion update; typecheck and diff check passed.
+- Review/risk: duplicate IDs are treated as a provider catalog error rather than arbitrarily choosing one entry. No provider credentials are included in test output.
+- Next: continue auditing backend response contracts and retry/cancel behavior; run broader grouped tests after the next few changes.
+- Commit SHA: pending.
+
 ### Cycle 17 — Bound API Chat image upload duration
 
 - Finding: API Chat message requests use a 120-second timeout, but attachment uploads used bare `fetch()` without a deadline. A stalled upload could leave `uploadingCount` active, blocking send and history navigation indefinitely.

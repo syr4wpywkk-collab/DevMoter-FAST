@@ -33,6 +33,7 @@ async function harness(t, { rejectOnAbort = false } = {}) {
   const copied = [];
   let providerFetchFails = false;
   let malformedProviderCatalog = false;
+  let duplicateProviderIds = false;
   let providerFetchManual = false;
   const providerFetches = [];
   window.Headers = Headers;
@@ -63,7 +64,11 @@ async function harness(t, { rejectOnAbort = false } = {}) {
       }
       return Promise.resolve(providerFetchFails
         ? new Response(JSON.stringify({ error: "temporary provider outage" }), { status: 503, headers: { "content-type": "application/json" } })
-        : reply(malformedProviderCatalog ? { providers: "temporary-corruption" } : { providers }));
+        : reply(malformedProviderCatalog
+          ? { providers: "temporary-corruption" }
+          : duplicateProviderIds
+            ? { providers: [providers[0], { ...providers[0], name: "Duplicate identity" }] }
+            : { providers }));
     }
     if (path === "/api/llm/presets") return Promise.resolve(reply({ presets: [
       { id: "custom", name: "Custom", protocol: "openai-compatible", baseUrl: "https://custom.example/v1" }
@@ -93,6 +98,7 @@ async function harness(t, { rejectOnAbort = false } = {}) {
     root, window, controller, requests, chats, uploads, copied, providers, select,
     failProviderFetch: value => { providerFetchFails = value; },
     setMalformedProviderCatalog: value => { malformedProviderCatalog = value; },
+    setDuplicateProviderIds: value => { duplicateProviderIds = value; },
     setProviderFetchManual: value => { providerFetchManual = value; },
     providerFetches,
     history: () => [...root.querySelectorAll("#apiHistory .api-history-row")],
@@ -173,6 +179,20 @@ test("malformed provider catalogs preserve existing choices and block send", asy
   assert.deepEqual([...provider.options].map(option => option.value), previousChoices);
   assert.equal(provider.value, previousProvider);
   assert.equal(model.value, previousModel);
+  assert.equal(ui.root.querySelector("#apiSend").disabled, true);
+  assert.match(ui.root.querySelector("#apiStatus").textContent, /invalid provider catalog/);
+});
+
+test("duplicate provider identities reject the whole catalog without changing selection", async t => {
+  const ui = await harness(t);
+  const previousValues = [...ui.root.querySelectorAll("#apiProvider option")].map(option => option.value);
+  const previousProvider = ui.root.querySelector("#apiProvider").value;
+  ui.setDuplicateProviderIds(true);
+
+  await ui.controller.refresh();
+
+  assert.deepEqual([...ui.root.querySelectorAll("#apiProvider option")].map(option => option.value), previousValues);
+  assert.equal(ui.root.querySelector("#apiProvider").value, previousProvider);
   assert.equal(ui.root.querySelector("#apiSend").disabled, true);
   assert.match(ui.root.querySelector("#apiStatus").textContent, /invalid provider catalog/);
 });
