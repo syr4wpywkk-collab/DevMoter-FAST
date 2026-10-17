@@ -342,6 +342,17 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: API conversation and overlay suites passed 19/19; typecheck and diff check passed.
 - Review/risk: provider-specific rates still are not retrieved or calculated; the notice is explicit about that limitation. Real mobile visual review is deferred to the planned UI pass.
 - Next: review model-selection persistence when a provider catalog changes, then run grouped model/cost safety tests.
+- Commit SHA: `85c47a1`.
+
+### Cycle 30 — Validate OpenCode provider/model catalog before assignment
+
+- Finding: OpenCode replaced its provider list with `[]` whenever `/pocket/providers` returned a non-array `all`, and accepted duplicate IDs or malformed model/default metadata.
+- Cause: `loadProviders()` used permissive fallbacks and assigned providers/defaults/connected IDs without validating their shared contract.
+- Changes: added `normalizeOpenCodeProviderCatalog` to validate provider IDs/uniqueness, optional models shape, defaults, and connected IDs before updating state. Added canonical/malformed payload tests and loader-order coverage; registered the helper in the isolated OpenCode DOM harness.
+- Before/after: before, malformed provider responses could erase or ambiguously map model choices; after, the loader rejects invalid responses before touching the last valid catalog.
+- Validation: OpenCode provider/session/history/Markdown/overlay suites passed 14/14; typecheck and diff check passed.
+- Review/risk: absent/null provider model metadata remains supported as “no model catalog”; future provider response fields can be added without changing accepted identity semantics.
+- Next: run broader model-cost and provider refresh regressions, then reassess whether implementation backlog is ready for the requested visual direction pass.
 - Commit SHA: pending.
 
 ### Cycle 23 — Bound Codex and OpenCode attachment upload requests

@@ -13,6 +13,7 @@ import * as reconnectAfterSync from "../src/reconnect-after-sync.mjs";
 import * as sessionList from "../src/opencode-session-list.mjs";
 import * as eventRecovery from "../src/event-recovery.mjs";
 import * as fetchTimeout from "../src/fetch-with-timeout.mjs";
+import * as providerCatalog from "../src/opencode-provider-catalog.mjs";
 import { renderChatMarkdown } from "../src/chat-markdown.mjs";
 import { loadPureTypeScript } from "./helpers/ts-pure-modules.mjs";
 
@@ -81,6 +82,7 @@ async function harness(t, initialContext = []) {
     "./opencode-session-list.mjs": sessionList,
     "./event-recovery.mjs": eventRecovery,
     "./fetch-with-timeout.mjs": fetchTimeout,
+    "./opencode-provider-catalog.mjs": providerCatalog,
     "./chat-markdown.mjs": { renderChatMarkdown },
     "./bounded-transcript": bounds,
     "./opencode-chat.css": {},

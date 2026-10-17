@@ -10,6 +10,7 @@ import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "
 import { createLatestRequestGuard } from "./latest-request.mjs";
 import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
 import { normalizeOpenCodeSessionList } from "./opencode-session-list.mjs";
+import { normalizeOpenCodeProviderCatalog } from "./opencode-provider-catalog.mjs";
 import { recoverAfterEventOpen } from "./event-recovery.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
@@ -1410,16 +1411,13 @@ export function mountOpenCodeRemote(
 
   async function loadProviders() {
     const requestGeneration = providerCatalogRequests.begin();
-    const payload = await api<{
-      all?: OpenCodeProvider[];
-      default?: Record<string, string>;
-      connected?: string[];
-    }>("/pocket/providers");
+    const payload = await api<unknown>("/pocket/providers");
     if (!providerCatalogRequests.isCurrent(requestGeneration)) return;
 
-    providers = Array.isArray(payload?.all) ? payload.all : [];
-    providerDefaults = payload?.default ?? {};
-    connectedProviders = new Set(payload?.connected ?? []);
+    const catalog = normalizeOpenCodeProviderCatalog(payload);
+    providers = catalog.providers as OpenCodeProvider[];
+    providerDefaults = catalog.defaults;
+    connectedProviders = new Set(catalog.connected);
 
     if (!selectedModel) {
       const provider =
