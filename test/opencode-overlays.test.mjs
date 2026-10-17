@@ -12,6 +12,8 @@ const compiled = ts.transpileModule(source, {
 const modules = new Map(await Promise.all(ts.preProcessFile(source).importedFiles
   .filter(({ fileName }) => fileName.endsWith(".mjs"))
   .map(async ({ fileName }) => [fileName, await import(new URL("../src/" + fileName.slice(2), import.meta.url))])));
+// These overlay tests intentionally exercise the legacy ?unifiedUI=0 view.
+modules.set("./unified-ui-mode.mjs", await import("../src/unified-ui-mode.mjs"));
 modules.set("./opencode/status", await loadPureTypeScript("opencode/status.ts"));
 modules.set("./opencode/tools", await loadPureTypeScript("opencode/tools.ts"));
 const workspaceSource = await readFile(new URL("../src/workspace-control.ts", import.meta.url), "utf8");
@@ -29,7 +31,7 @@ const compile = value => ts.transpileModule(value, {
 
 function mount(t) {
   const dom = new JSDOM('<!doctype html><div id="root"></div><div id="cxWorkspaceControlsMount"></div>', {
-    url: "https://devmoter.example/?surface=opencode",
+    url: "https://devmoter.example/?surface=opencode&unifiedUI=0",
     runScripts: "outside-only"
   });
   t.after(() => dom.window.close());
