@@ -7,7 +7,7 @@ async function source(path) {
   return readFile(new URL(path, import.meta.url), "utf8");
 }
 
-test("unified chat CSS compiles and is gated behind the optional workspace UI", async () => {
+test("unified chat CSS compiles and is loaded by the default workspace UI", async () => {
   const [css, nav, shell, entry] = await Promise.all([
     source("../src/unified-workspace-chat.css"),
     source("../src/unified-workspace-nav.ts"),
@@ -17,7 +17,7 @@ test("unified chat CSS compiles and is gated behind the optional workspace UI", 
   const output = await transform(css, { loader: "css", target: ["chrome120", "safari17"], minify: true });
   assert.ok(output.code.length > 0, "shared chat CSS must parse");
   assert.ok(nav.includes('import "./unified-workspace-chat.css";'));
-  assert.ok(shell.includes('get("unifiedUI") === "1"'));
+  assert.ok(shell.includes("shouldUseUnifiedWorkspace(window.location.search)"));
   assert.ok(shell.includes('import("./unified-workspace-nav")'));
   assert.ok(!entry.includes("unified-workspace-chat.css"), "default app must not import opt-in CSS");
   assert.ok(!entry.includes("unified-workspace-nav.css"), "default UI must keep its legacy styles");

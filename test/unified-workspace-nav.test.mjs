@@ -82,7 +82,7 @@ test("task-first navigator has no fake execution, server state or permission han
     readFile(new URL("../src/app-shell.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/unified-workspace-nav.css", import.meta.url), "utf8")
   ]);
-  assert.ok(shellCode.includes('get("unifiedUI") === "1"'));
+  assert.ok(shellCode.includes("shouldUseUnifiedWorkspace(window.location.search)"));
   assert.ok(shellCode.includes('launchApp("sessions")'));
   assert.ok(shellCode.includes('launchApp("review")'));
   assert.ok(moduleCode.includes('document.querySelector<HTMLButtonElement>'));

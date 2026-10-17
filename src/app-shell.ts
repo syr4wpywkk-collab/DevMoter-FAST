@@ -1,5 +1,6 @@
 import "./app-shell.css";
 import type { MainSurface } from "./surface-navigation.mjs";
+import { shouldUseUnifiedWorkspace } from "./unified-ui-mode.mjs";
 import { getAppDefinition, getAppsByIds, isAppId, type AppId } from "./app-registry";
 import { mountToolsAi } from "./tools-ai";
 
@@ -514,11 +515,11 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   updateSurface(surface);
   filterTools();
 
-  // Stage-1 rollout is explicit. Existing provider-owned session, execution,
-  // approval, model and composer DOM remain authoritative and unmodified.
-  if (new URLSearchParams(window.location.search).get("unifiedUI") === "1") {
-    // Load the opt-in view only after the legacy shell is mounted. This keeps
-    // the existing provider/UI test harness and normal startup unchanged.
+  // The unified navigator is now the default on the existing URL.
+  // ?unifiedUI=0 is an explicit emergency rollback for visual regressions.
+  // The native providers retain all streaming, history, permissions and model
+  // controls, including when the unified navigator cannot be loaded.
+  if (shouldUseUnifiedWorkspace(window.location.search)) {
     void import("./unified-workspace-nav")
       .then(({ mountTaskFirstWorkspace }) => mountTaskFirstWorkspace({
         initialSurface: surface,
@@ -529,6 +530,16 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
         openReview: () => run(() => launchApp("review")),
         openTools: openSidebar
       }))
-      .catch(() => notify("Unified Workspace UIを読み込めませんでした。従来UIを使用してください。"));
+      .catch(error => {
+        // A missing/cached JS chunk or a partial mount must never leave the
+        // provider screens offset behind an orphaned dark nav surface.
+        console.error("Unified Workspace UI mount failed", error);
+        document.getElementById("dmTaskFirstWorkspace")?.remove();
+        document.body.classList.remove("dm-task-first-enabled");
+        document.querySelectorAll<HTMLElement>("[data-unified-agent-label]").forEach(label => {
+          label.hidden = true;
+        });
+        notify("新UIの読み込みに失敗しました。従来UIで表示しています。");
+      });
   }
 }
