@@ -251,6 +251,7 @@ export function mountApiChat(
   }
 
   let providers: ApiProvider[] = [];
+  let providerCatalogAvailable = false;
   let presets: ApiPreset[] = [];
   let messages: ChatMessage[] = [];
   let pendingAttachments: ApiAttachment[] = [];
@@ -376,7 +377,7 @@ export function mountApiChat(
     providerSelect.disabled = busy;
     modelSelect.disabled = busy || !provider?.models.length;
     reasoningSelect.disabled = busy || reasoningSelect.options.length <= 1;
-    send.disabled = !provider?.ready || !modelSelect.value || busy;
+    send.disabled = !providerCatalogAvailable || !provider?.ready || !modelSelect.value || busy;
     attachImage.disabled = busy;
     newChat.disabled = uploadingCount > 0;
     history.querySelectorAll<HTMLButtonElement>("button").forEach(button => { button.disabled = uploadingCount > 0; });
@@ -668,6 +669,7 @@ export function mountApiChat(
     try {
       const payload = await apiJson<{ providers?: ApiProvider[] }>("/api/llm/providers");
       providers = Array.isArray(payload?.providers) ? payload.providers : [];
+      providerCatalogAvailable = true;
 
       const saved = localStorage.getItem("devmoter-api-provider");
       providerSelect.replaceChildren();
@@ -691,11 +693,9 @@ export function mountApiChat(
       }
       updateModels();
     } catch (error) {
-      providers = [];
-      providerSelect.replaceChildren();
-      modelSelect.replaceChildren();
+      providerCatalogAvailable = false;
       status.textContent = error instanceof Error ? error.message : String(error);
-      send.disabled = true;
+      updateAvailability();
     }
   }
 

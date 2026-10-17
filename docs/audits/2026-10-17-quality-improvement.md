@@ -120,3 +120,14 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Review/risk: fake History API validates controller behavior, not real browser rendering or manual shell click targets.
 - Next: resume API timeout/error work and security test review.
 - Commit SHA: pending.
+
+### Cycle 8 — API Chat provider refresh outage
+
+- Finding: refreshing providers during a temporary server/network failure cleared provider and model choices from the UI.
+- Cause: `refresh()` replaced the cached catalog with empty arrays in its error handler; stale provider state had no explicit availability gate.
+- Changes: `src/api-chat.ts` retains the last displayed provider/model selection after refresh failure, marks the catalog unavailable, and blocks chat submission until refresh succeeds. `test/api-chat-conversations.test.mjs` covers outage, preserved selection, disabled send, and successful retry.
+- Before/after: before, transient outage erased displayed configuration; after, configuration remains inspectable while sending stays fail-closed until a successful refresh.
+- Validation: typecheck passed; API Chat tests 6/6 passed; lint passed (288 files); diff check passed.
+- Review/risk: a failed refresh still disables sending even where a previously configured backend might remain usable; this is intentional to avoid relying on stale model/provider authorization metadata.
+- Next: security-boundary regression tests and final quality gates.
+- Commit SHA: pending.

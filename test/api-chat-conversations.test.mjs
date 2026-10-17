@@ -29,6 +29,7 @@ async function harness(t, { rejectOnAbort = false } = {}) {
   const chats = [];
   const uploads = [];
   const copied = [];
+  let providerFetchFails = false;
   window.Headers = Headers;
   window.AbortController = AbortController;
   window.URL.createObjectURL = file => `blob:https://devmoter.example/${file.name}`;
@@ -51,7 +52,9 @@ async function harness(t, { rejectOnAbort = false } = {}) {
         (path === "/api/llm/chat" ? chats : uploads).push(request);
       });
     }
-    if (path === "/api/llm/providers") return Promise.resolve(reply({ providers }));
+    if (path === "/api/llm/providers") return Promise.resolve(providerFetchFails
+      ? new Response(JSON.stringify({ error: "temporary provider outage" }), { status: 503, headers: { "content-type": "application/json" } })
+      : reply({ providers }));
     if (path === "/api/llm/presets") return Promise.resolve(reply({ presets: [
       { id: "custom", name: "Custom", protocol: "openai-compatible", baseUrl: "https://custom.example/v1" }
     ] }));
@@ -76,6 +79,7 @@ async function harness(t, { rejectOnAbort = false } = {}) {
   };
   return {
     root, window, controller, requests, chats, uploads, copied, providers, select,
+    failProviderFetch: value => { providerFetchFails = value; },
     history: () => [...root.querySelectorAll("#apiHistory .api-history-row")],
     historyChat(title) {
       const row = this.history().find(node => node.querySelector("strong")?.textContent === title);
@@ -95,6 +99,28 @@ async function harness(t, { rejectOnAbort = false } = {}) {
     }
   };
 }
+
+test("provider refresh failure preserves choices but blocks send until retry succeeds", async t => {
+  const ui = await harness(t);
+  const provider = ui.root.querySelector("#apiProvider");
+  const model = ui.root.querySelector("#apiModel");
+  const previousProvider = provider.value;
+  const previousModel = model.value;
+  assert.ok(provider.options.length > 1);
+
+  ui.failProviderFetch(true);
+  await ui.controller.refresh();
+  assert.equal(provider.value, previousProvider);
+  assert.equal(model.value, previousModel);
+  assert.ok(provider.options.length > 1, "existing provider choices remain visible");
+  assert.equal(ui.root.querySelector("#apiSend").disabled, true, "stale catalog cannot submit");
+
+  ui.failProviderFetch(false);
+  await ui.controller.refresh();
+  assert.equal(provider.value, previousProvider);
+  assert.equal(model.value, previousModel);
+  assert.equal(ui.root.querySelector("#apiSend").disabled, false);
+});
 
 test("API Chat timeout aborts the request, retains the prompt, and restores send controls", async t => {
   const ui = await harness(t, { rejectOnAbort: true });
