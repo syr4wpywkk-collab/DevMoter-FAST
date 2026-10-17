@@ -27,3 +27,10 @@ export function createOperationRegistry({ ttlMs = 10 * 60 * 1000, maxEntries = 1
     }
   };
 }
+
+export function normalizeOperationId(value, maxLength = 160) {
+  if (Array.isArray(value)) value = value[0];
+  if (typeof value !== "string") return "";
+  if (value.length > maxLength) return null;
+  return value;
+}

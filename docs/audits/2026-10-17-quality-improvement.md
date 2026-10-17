@@ -131,3 +131,14 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Review/risk: a failed refresh still disables sending even where a previously configured backend might remain usable; this is intentional to avoid relying on stale model/provider authorization metadata.
 - Next: security-boundary regression tests and final quality gates.
 - Commit SHA: pending.
+
+### Cycle 9 — Reject oversized idempotency keys
+
+- Finding: `x-pocket-operation-id` was silently truncated to 160 characters, making distinct caller-supplied IDs with the same prefix collide and suppress a legitimate operation.
+- Cause: server parsing clipped input instead of validating the maximum length.
+- Changes: `server/operation-registry.mjs` exports bounded `normalizeOperationId`; `server.mjs` now returns HTTP 400 for IDs longer than 160 rather than truncating; added unit and authenticated HTTP integration coverage.
+- Before/after: before, distinct long IDs shared one effective key; after, oversized IDs fail before the mutation route and valid IDs preserve their exact identity.
+- Validation: typecheck passed; operation-registry + auth server integration tests 5/5 passed; diff check passed.
+- Review/risk: this hardens idempotency key identity and bounded input; it does not replace route authorization or guarantee exactly-once upstream behavior.
+- Next: add a deeper test of duplicate protected mutation delivery, then run grouped and final quality gates.
+- Commit SHA: pending.
