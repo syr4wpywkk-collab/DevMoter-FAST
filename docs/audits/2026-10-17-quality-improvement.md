@@ -153,3 +153,14 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Review/risk: endpoint is read-only and test-local; this does not establish exactly-once semantics beyond the operation registry TTL/capacity.
 - Next: run the full final quality gate sequentially; inspect build warnings and all committed diffs.
 - Commit SHA: pending.
+
+### Cycle 11 — Keep OpenCode DOM test harness aligned with imported modules
+
+- Finding: first final full-suite run failed three OpenCode Markdown tests before assertions because their isolated module loader rejected the newly added shared helper imports.
+- Cause: the test harness used a hand-maintained module map and did not register `latest-request.mjs` and `reconnect-after-sync.mjs`.
+- Changes: `test/opencode-markdown.test.mjs` now loads and registers both helper modules.
+- Before/after: before, three tests failed during harness initialization; after, the focused OpenCode Markdown suite passes 3/3.
+- Validation: focused tests pass; full suite is being rerun after this fix.
+- Review/risk: no production code changed; continue to verify every isolated OpenCode harness in the full suite.
+- Next: sequential final gate.
+- Commit SHA: pending.
