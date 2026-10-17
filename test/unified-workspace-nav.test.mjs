@@ -91,4 +91,53 @@ test("task-first navigator has no fake execution, server state or permission han
   assert.ok(!moduleCode.includes("innerHTML = response"));
   assert.ok(css.includes("env(safe-area-inset-bottom)"));
   assert.ok(css.includes("min-height:44px") || css.includes("min-height: 44px"));
+  // Each provider is fixed to the viewport, not laid out by #app.
+  // Prevent mobile navigation from covering headers, composer and approvals.
+  assert.ok(css.includes(":is(.cx-app, .ocx-app, .api-app, .ix-app)"));
+  assert.ok(css.includes("top:var(--dw-top-height)"));
+  assert.ok(css.includes("--dw-bottom-height"));
+  assert.ok(css.includes("height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - var(--dw-bottom-height))"));
+  assert.ok(!css.includes("body.dm-task-first-enabled #ocxSidebar,"));
+});
+
+test("Home and Integrations preserve the real backend choice for Chat", async () => {
+  const dom = new JSDOM('<!doctype html><div id="app"></div>', { url: "https://localhost/?unifiedUI=1" });
+  const priorWindow = globalThis.window;
+  const priorDocument = globalThis.document;
+  const priorLocalStorage = globalThis.localStorage;
+  globalThis.window = dom.window;
+  globalThis.document = dom.window.document;
+  globalThis.localStorage = dom.window.localStorage;
+  try {
+    const mount = await loadNavigator();
+    const switched = [];
+    const controller = mount({
+      initialSurface: "home",
+      initialBackend: "api",
+      switchBackend: backend => switched.push(backend),
+      openHome: () => {},
+      openTasks: () => {},
+      openReview: () => {},
+      openTools: () => {}
+    });
+    const root = dom.window.document.getElementById("dmTaskFirstWorkspace");
+    const picker = root.querySelector("[data-workspace-backend]");
+    const chat = root.querySelector('[data-workspace-action="chat"]');
+    assert.equal(picker.value, "api", "Home should not silently reset the selected backend");
+    chat.click();
+    assert.deepEqual(switched, ["api"]);
+
+    dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:surface-changed", { detail: { surface: "integrations" } }));
+    assert.equal(picker.value, "api");
+    dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:backend-changed", { detail: { backend: "codex" } }));
+    assert.equal(picker.value, "codex");
+    chat.click();
+    assert.deepEqual(switched, ["api", "codex"]);
+    controller.destroy();
+  } finally {
+    globalThis.window = priorWindow;
+    globalThis.document = priorDocument;
+    globalThis.localStorage = priorLocalStorage;
+    dom.window.close();
+  }
 });
