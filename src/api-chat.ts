@@ -164,6 +164,7 @@ export function mountApiChat(
             <select id="apiModel" aria-label="Model"></select>
             <select id="apiReasoning" aria-label="推論モード"></select>
           </div>
+          <small id="apiBillingNotice" class="api-billing-notice" role="status" aria-live="polite"></small>
           <input id="apiImageInput" class="hidden" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple />
           <div class="api-composer-foot">
             <button id="apiAttachImage" class="api-attach-button" type="button" aria-label="画像を添付">＋</button>
@@ -202,6 +203,7 @@ export function mountApiChat(
   const newChat = root.querySelector<HTMLButtonElement>("#apiNewChat")!;
   const providerSelect = root.querySelector<HTMLSelectElement>("#apiProvider")!;
   const modelSelect = root.querySelector<HTMLSelectElement>("#apiModel")!;
+  const billingNotice = root.querySelector<HTMLElement>("#apiBillingNotice")!;
   const reasoningSelect = root.querySelector<HTMLSelectElement>("#apiReasoning")!;
   const transcript = root.querySelector<HTMLDivElement>("#apiTranscript")!;
   const welcome = root.querySelector<HTMLElement>("#apiWelcome")!;
@@ -497,6 +499,12 @@ export function mountApiChat(
     }
     updateReasoning();
     updateHeader();
+    billingNotice.hidden = !provider || !modelSelect.value;
+    billingNotice.textContent = billingNotice.hidden ? "" : apiLocale(
+      "Provider billing applies. Free use is unverified; check provider pricing.",
+      "料金はProviderの契約に従います。無料利用は確認できません。利用前にProvider側で料金を確認してください。",
+      "费用以 Provider 契约为准。DevMoter 无法确认免费额度；使用前请查看 Provider 定价。"
+    );
 
     status.textContent = !provider
       ? apiLocale("⚙ Add an API provider", "⚙ API Providerを追加してね", "⚙ 添加 API Provider")

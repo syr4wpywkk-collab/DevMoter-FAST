@@ -331,6 +331,17 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: health/lazy-load plus authenticated backend integration tests passed 4/4; typecheck and diff check passed.
 - Review/risk: a slow but healthy local service taking more than five seconds is considered offline for that interval; the next poll retries after the normal 15-second cadence.
 - Next: run full type/lint/test/coverage/build/security gates after a few more scoped improvements, then start the requested visual direction work only after implementation backlog is reviewed.
+- Commit SHA: `496d4c6`.
+
+### Cycle 29 — Make unknown API Chat pricing explicit
+
+- Finding: API Chat model catalogs contain provider model IDs but no pricing/free-tier metadata, and the client gave users no indication that cost was unknown.
+- Cause: model selection displayed only provider/model names while this client has no pricing endpoint for API Chat providers.
+- Changes: added a localized, screen-reader-announced notice beside the model selectors stating that provider billing applies and free use is unverified. The notice appears only when a provider/model is selected.
+- Before/after: before, the user saw no pricing boundary; after, the UI clearly says to verify provider pricing and does not claim that any model is free.
+- Validation: API conversation and overlay suites passed 19/19; typecheck and diff check passed.
+- Review/risk: provider-specific rates still are not retrieved or calculated; the notice is explicit about that limitation. Real mobile visual review is deferred to the planned UI pass.
+- Next: review model-selection persistence when a provider catalog changes, then run grouped model/cost safety tests.
 - Commit SHA: pending.
 
 ### Cycle 23 — Bound Codex and OpenCode attachment upload requests

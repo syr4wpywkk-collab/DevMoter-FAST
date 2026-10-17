@@ -134,6 +134,9 @@ test("provider refresh failure preserves choices but blocks send until retry suc
   const previousProvider = provider.value;
   const previousModel = model.value;
   assert.ok(provider.options.length > 1);
+  const billingNotice = ui.root.querySelector("#apiBillingNotice");
+  assert.equal(billingNotice.hidden, false);
+  assert.match(billingNotice.textContent, /Free use is unverified/);
 
   ui.failProviderFetch(true);
   await ui.controller.refresh();

@@ -267,3 +267,14 @@ html[data-devmoter-theme="dark"] .api-app .cx-markdown th { background: var(--ap
 html[data-devmoter-theme="light"] .api-app select,
 html[data-devmoter-theme="light"] .api-app select option,
 html[data-devmoter-theme="light"] .api-app select optgroup { color-scheme: light; background: #f9fbff; color: var(--api-text); }
+.api-billing-notice {
+  display: block;
+  padding: 0 12px 6px;
+  color: var(--api-muted, #a1a1aa);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.api-billing-notice[hidden] {
+  display: none;
+}
