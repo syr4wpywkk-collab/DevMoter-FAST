@@ -384,3 +384,135 @@ body.dm-task-first-enabled :is(.cx-app .cx-approval, .ocx-app .ocx-dock) {
     scroll-behavior: auto;
   }
 }
+
+
+/* Stage 3: Codex still carried literal grayscale surfaces in its own
+ * history drawer, even though chat and composer already inherited tokens.
+ * Complete the opt-in design across all *native* Codex controls. */
+body.dm-task-first-enabled.codex-mode {
+  background: var(--dw-chat-bg);
+}
+body.dm-task-first-enabled .cx-app {
+  --cx-header-height: 60px;
+  --cx-surface: var(--dw-chat-bg);
+  --cx-raised: var(--dw-chat-raised);
+  --cx-text: var(--dw-chat-text);
+  --cx-muted: var(--dw-chat-muted);
+  --cx-border: var(--dw-chat-line);
+  --cx-content-width: 800px;
+}
+body.dm-task-first-enabled .cx-app .cx-topbar {
+  height: var(--cx-header-height);
+  min-height: var(--cx-header-height);
+  padding: 8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left));
+  border-bottom: 1px solid var(--dw-chat-line);
+  background: var(--dw-chat-surface);
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled .cx-app .cx-main { top: var(--cx-header-height); }
+body.dm-task-first-enabled .cx-app .cx-sidebar {
+  background: var(--dw-chat-surface);
+  color: var(--dw-chat-text);
+  border-right: 1px solid var(--dw-chat-line);
+  box-shadow: 18px 0 48px rgba(0,0,0,.3);
+}
+body.dm-task-first-enabled .cx-app .cx-sidebar-head {
+  border-bottom: 1px solid var(--dw-chat-line);
+}
+body.dm-task-first-enabled .cx-app .cx-side-action.primary {
+  border: 1px solid var(--dw-chat-line);
+  background: var(--dw-chat-raised);
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled .cx-app .cx-side-action.primary:hover,
+body.dm-task-first-enabled .cx-app .cx-nav-item:hover,
+body.dm-task-first-enabled .cx-app .cx-thread-row:hover {
+  background: var(--dw-chat-accent-soft);
+}
+body.dm-task-first-enabled .cx-app .cx-search {
+  border-color: var(--dw-chat-line);
+  background: var(--dw-chat-input);
+}
+body.dm-task-first-enabled .cx-app .cx-search input,
+body.dm-task-first-enabled .cx-app .cx-nav-item,
+body.dm-task-first-enabled .cx-app .cx-thread-row {
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled .cx-app .cx-search input::placeholder,
+body.dm-task-first-enabled .cx-app .cx-side-label,
+body.dm-task-first-enabled .cx-app .cx-side-empty,
+body.dm-task-first-enabled .cx-app .cx-online-pill {
+  color: var(--dw-chat-muted);
+}
+body.dm-task-first-enabled .cx-app .cx-thread-row.active {
+  background: var(--dw-chat-accent-soft);
+  color: var(--dw-chat-accent);
+}
+body.dm-task-first-enabled .cx-app :is(.cx-sidebar-foot, .cx-side-nav),
+body.dm-task-first-enabled .cx-app #cxWorkspaceControlsMount {
+  border-color: var(--dw-chat-line);
+}
+body.dm-task-first-enabled .cx-app #cxWorkspaceControlsMount .dm-controlbar > :is(.dm-theme, .dm-context, .dm-tasks, .dm-extensions) {
+  background: var(--dw-chat-raised);
+  border: 1px solid var(--dw-chat-line);
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled .cx-app #cxWorkspaceControlsMount :is(.dm-panel, .dm-panel-head) {
+  border-color: var(--dw-chat-line);
+  background: var(--dw-chat-surface);
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled .cx-app #cxWorkspaceControlsMount .dm-panel button {
+  border: 1px solid var(--dw-chat-line);
+  background: var(--dw-chat-raised);
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled .cx-app :is(.cx-modal-card, .cx-feedback-menu, .cx-tool-card, .cx-plus-menu, .cx-context-palette) {
+  border-color: var(--dw-chat-line);
+  background: var(--dw-chat-surface);
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled .cx-app :is(.cx-modal-head, .cx-tool-card) {
+  border-color: var(--dw-chat-line);
+}
+body.dm-task-first-enabled .cx-app .cx-composer-wrap {
+  background: linear-gradient(to bottom, transparent, var(--dw-chat-bg) 25%);
+}
+body.dm-task-first-enabled .cx-app .cx-composer {
+  border: 1px solid var(--dw-chat-line);
+  background: var(--dw-chat-input);
+  border-radius: 20px;
+  box-shadow: var(--dw-chat-shadow);
+}
+body.dm-task-first-enabled .cx-app .cx-composer:focus-within {
+  border-color: var(--dw-chat-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dw-chat-accent) 24%, transparent), var(--dw-chat-shadow);
+}
+body.dm-task-first-enabled .cx-app #cxSend:not(.stop) {
+  background: var(--dw-chat-accent);
+  color: var(--dw-chat-send-text);
+}
+body.dm-task-first-enabled .cx-app #cxSend.stop {
+  background: #563034;
+  color: #fff2f0;
+}
+body.dm-task-first-enabled .cx-app .cx-welcome-mark,
+body.dm-task-first-enabled .cx-app .cx-title-button {
+  color: var(--dw-chat-text);
+}
+body.dm-task-first-enabled .cx-app .cx-welcome-mark { color: var(--dw-chat-accent); }
+body.dm-task-first-enabled .cx-app :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--dw-chat-accent);
+  outline-offset: 3px;
+}
+/* The container is already offset around the unified top/bottom navigator.
+ * Never reintroduce iOS safe-area padding inside the nested fixed topbar. */
+@media (max-width: 680px) {
+  body.dm-task-first-enabled .cx-app .cx-sidebar {
+    padding-top: 10px;
+    padding-bottom: 12px;
+  }
+  body.dm-task-first-enabled .cx-app .cx-composer-wrap {
+    padding-bottom: 8px;
+  }
+}
