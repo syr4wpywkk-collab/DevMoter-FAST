@@ -126,11 +126,16 @@
   line-height:1.6;
 }
 .dm-task-first-feedback { margin: 10px 5px 0; color: var(--dw-muted); font-size: 11px; }
+/* Provider roots are fixed to the viewport, so shifting #app alone does
+ * NOT reserve space for navigation. Offset the actual fixed surfaces.
+ * Provider-owned drawers remain positioned relative to their own roots. */
 body.dm-task-first-enabled #app { width: calc(100% - 208px); margin-left: 208px; }
+body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app, .ix-app) {
+  left: 208px;
+  right: 0;
+  width: calc(100% - 208px);
+}
 body.dm-task-first-enabled .dm-shell-menu-trigger { display: none; }
-body.dm-task-first-enabled #ocxSidebar,
-body.dm-task-first-enabled #apiSidebar,
-body.dm-task-first-enabled .cx-sidebar { left: 208px; }
 body.devmoter-shell-menu-open .dm-task-first-nav { pointer-events:none; }
 html[data-devmoter-theme="light"] .dm-task-first-nav {
   --dw-bg:#f8fbfd;
@@ -141,11 +146,15 @@ html[data-devmoter-theme="light"] .dm-task-first-nav {
   --dw-accent:#006e8b;
 }
 @media(max-width:680px) {
+  body.dm-task-first-enabled {
+    --dw-top-height: calc(58px + env(safe-area-inset-top));
+    --dw-bottom-height: calc(66px + env(safe-area-inset-bottom));
+  }
   .dm-task-first-nav {
     width:100%;
     bottom:auto;
-    height:58px;
-    padding: max(3px, env(safe-area-inset-top)) 10px 0;
+    height:var(--dw-top-height);
+    padding: env(safe-area-inset-top) 10px 0;
     border-right:0;
     border-bottom:1px solid var(--dw-border);
   }
@@ -169,7 +178,7 @@ html[data-devmoter-theme="light"] .dm-task-first-nav {
     left:0;
     bottom:0;
     width:100%;
-    height:calc(66px + env(safe-area-inset-bottom));
+    height:var(--dw-bottom-height);
     margin:0;
     padding:0 0 env(safe-area-inset-bottom);
     display:grid;
@@ -197,14 +206,28 @@ html[data-devmoter-theme="light"] .dm-task-first-nav {
     width:100%;
     min-width:0;
     margin-left:0;
-    margin-top:58px;
-    height:calc(100dvh - 124px - env(safe-area-inset-bottom));
+    margin-top:var(--dw-top-height);
+    height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - var(--dw-bottom-height));
   }
-  body.dm-task-first-enabled #ocxSidebar,
-  body.dm-task-first-enabled #apiSidebar,
-  body.dm-task-first-enabled .cx-sidebar { left:0; }
-  body.dm-task-first-enabled:has(textarea:focus) .dm-task-first-tabs { display:none; }
-  body.dm-task-first-enabled:has(textarea:focus) #app { height:calc(100dvh - 58px); }
+  /* All four surfaces use position:fixed and must be bounded independently.
+   * Otherwise the navigation overlays chat headers, composers and approvals. */
+  body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app, .ix-app) {
+    top:var(--dw-top-height);
+    left:0;
+    right:0;
+    width:100%;
+    height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - var(--dw-bottom-height));
+    max-height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - var(--dw-bottom-height));
+  }
+  /* History drawers with explicit viewport heights must stay inside the
+   * bounded provider surface, rather than spilling beneath the bottom tab. */
+  body.dm-task-first-enabled .ocx-app .ocx-sidebar,
+  body.dm-task-first-enabled .api-app .api-sidebar { height:100%; }
+  /* Preserve space for iOS keyboard: collapse bottom nav while typing. */
+  body.dm-task-first-enabled:has(textarea:focus, input[type="text"]:focus, input[type="search"]:focus, [contenteditable="true"]:focus) {
+    --dw-bottom-height:0px;
+  }
+  body.dm-task-first-enabled:has(textarea:focus, input[type="text"]:focus, input[type="search"]:focus, [contenteditable="true"]:focus) .dm-task-first-tabs { display:none; }
   body.devmoter-shell-menu-open .dm-task-first-nav { visibility:hidden; }
 }
 @media (prefers-reduced-motion: reduce) {
