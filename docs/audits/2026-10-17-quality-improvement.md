@@ -317,9 +317,20 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Cause: all three large surface modules were eager imports and their DOM initialization ran unconditionally.
 - Changes: backend modules now load when selected; cached health state is applied when Codex/OpenCode mount. Import failures clear the cached promise and show an accessible retry control. Added source-wiring/lazy-load regressions and updated the deep-link test for deferred mounting.
 - Before/after: production build initial `index` JS fell from the prior baseline 778.99 kB minified / 234.90 kB gzip to 570.28 kB / 173.71 kB (−208.71 kB minified, −61.19 kB gzip, about −26.8%/−26.1%). Chat chunks are separate: Codex 95.53 kB, OpenCode 69.72 kB, API Chat 35.30 kB minified. The initial chunk still exceeds Vite's 500 kB warning.
-- Validation: navigation/deep-link/backend mount suites passed 29/29; typecheck and production build passed; diff check passed. No real browser startup trace or device measurement was available.
+- Validation: navigation/deep-link/backend mount suites passed 29/29; typecheck and production build passed. The first full suite run reported 611 tests: 609 passed, 1 failed, 1 skipped; the sole failure was the CSS entry-module assertion after adding retry styles. The styles were moved into the existing base stylesheet in follow-up commit `bf1b7ad`, and the focused CSS/navigation rerun passed 9/9. No real browser startup trace or device measurement was available.
 - Review/risk: first visit to a backend now waits for its chunk; failed loads can be retried. Other eager app modules still keep the entry chunk above the warning threshold.
 - Next: run full test/lint/security gates after several additional cycles and inspect remaining initial bundle contributors.
+- Commit SHA: `f6f9def`.
+
+### Cycle 28 — Bound health polling so one stall cannot disable future checks
+
+- Finding: the 15-second `/api/health` poll used bare fetch behind `healthCheckInFlight`. A request that never settled kept the guard true, suppressing every later poll and preventing backend online state from recovering.
+- Cause: health polling did not use the shared timeout boundary and relied on `finally` that runs only after the fetch settles.
+- Changes: health requests now abort and settle after five seconds, allowing `finally` to clear the in-flight guard and the next interval to retry. Added a source regression for the deadline and guard release.
+- Before/after: before, one hung request could permanently stop connection-state polling; after, the request fails within five seconds and polling remains retryable.
+- Validation: health/lazy-load plus authenticated backend integration tests passed 4/4; typecheck and diff check passed.
+- Review/risk: a slow but healthy local service taking more than five seconds is considered offline for that interval; the next poll retries after the normal 15-second cadence.
+- Next: run full type/lint/test/coverage/build/security gates after a few more scoped improvements, then start the requested visual direction work only after implementation backlog is reviewed.
 - Commit SHA: pending.
 
 ### Cycle 23 — Bound Codex and OpenCode attachment upload requests

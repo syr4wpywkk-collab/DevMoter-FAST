@@ -17,6 +17,7 @@ import { mountUnifiedFeatureShell } from "./app-shell";
 import { mountHomeSurface } from "./home";
 import { mountMissionControl } from "./mission-control";
 import { createSurfaceNavigation, type MainSurface } from "./surface-navigation.mjs";
+import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const startupParams = new URLSearchParams(window.location.search);
@@ -257,7 +258,13 @@ async function checkHealth() {
   if (healthCheckInFlight) return;
   healthCheckInFlight = true;
   try {
-    const res = await fetch("/api/health", { cache: "no-store" });
+    const res = await fetchWithTimeout(
+      (input, init) => fetch(input, init),
+      "/api/health",
+      { cache: "no-store" },
+      5_000,
+      () => new Error("Health check timed out")
+    );
     const payload = await res.json();
     backendHealth = {
       opencode: Boolean(payload?.backends?.opencode?.online),
