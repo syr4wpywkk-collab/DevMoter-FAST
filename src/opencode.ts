@@ -10,6 +10,7 @@ import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "
 import { createLatestRequestGuard } from "./latest-request.mjs";
 import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
 import { normalizeOpenCodeSessionList } from "./opencode-session-list.mjs";
+import { recoverAfterEventOpen } from "./event-recovery.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import "./opencode-chat.css";
@@ -145,7 +146,7 @@ type PendingQuestion = {
 
 export type OpenCodeController = {
   setOnline(online: boolean): void;
-  refresh(): Promise<void>;
+  refresh(): Promise<boolean>;
 };
 
 export function mountOpenCodeRemote(
@@ -1502,14 +1503,14 @@ export function mountOpenCodeRemote(
       if (sessionListRequests.isCurrent(requestGeneration)) {
         showToast(error instanceof Error ? error.message : "Could not load session history");
       }
-      return;
+      return false;
     }
-    if (!sessionListRequests.isCurrent(requestGeneration)) return;
+    if (!sessionListRequests.isCurrent(requestGeneration)) return false;
     try {
       sessions = normalizeOpenCodeSessionList(data) as OpenCodeSession[];
     } catch {
       showToast("OpenCode returned an invalid session history");
-      return;
+      return false;
     }
 
     try {
@@ -1530,7 +1531,7 @@ export function mountOpenCodeRemote(
     } catch {
       // Session list still renders when the active-session probe is unavailable.
     }
-    if (!sessionListRequests.isCurrent(requestGeneration)) return;
+    if (!sessionListRequests.isCurrent(requestGeneration)) return false;
 
     if (activeSession) {
       const fresh = sessions.find(session => session.id === activeSession?.id);
@@ -1569,6 +1570,7 @@ export function mountOpenCodeRemote(
       if (target) await selectSession(target);
       else if (saved) await restoreSavedSession(saved);
     }
+    return true;
   }
 
   async function syncPendingPermission() {
@@ -3022,10 +3024,14 @@ export function mountOpenCodeRemote(
       }
 
       if (executionState === "reconnecting") {
-        void refresh().finally(() => {
+        void recoverAfterEventOpen(async () => {
+          if (!(await refresh())) throw new Error("Could not refresh OpenCode state");
+        }, error => {
           if (executionState === "reconnecting") {
             setExecutionState("idle");
-            showToast("Connection recovered");
+            showToast(error
+              ? "Connection restored, but session sync failed. Refresh history to retry."
+              : "Connection recovered");
           }
         });
       }
@@ -3511,8 +3517,8 @@ export function mountOpenCodeRemote(
     root.querySelector<HTMLButtonElement>("#ocxOpenSessionTools")?.addEventListener("click", showSessionTools);
   }
 
-  async function refresh() {
-    if (!online) return;
+  async function refresh(): Promise<boolean> {
+    if (!online) return false;
 
     try {
       setActivity("syncing");
@@ -3523,7 +3529,8 @@ export function mountOpenCodeRemote(
         loadCommands(),
         loadSkills()
       ]);
-      await loadSessions();
+      const sessionsLoaded = await loadSessions();
+      if (!sessionsLoaded) throw new Error("Could not refresh session history");
 
       if (activeSession) {
         await Promise.all([
@@ -3535,9 +3542,11 @@ export function mountOpenCodeRemote(
       } else if (executionState === "reconnecting" || executionState === "offline") {
         setExecutionState("idle");
       }
+      return true;
     } catch (error) {
       setActivity("error");
       showToast(error instanceof Error ? error.message : String(error));
+      return false;
     }
   }
 

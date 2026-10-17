@@ -23,7 +23,8 @@ test("Codex history refresh reports failures and retains the last valid snapshot
   const start = source.indexOf("async function loadThreads()");
   const end = source.indexOf("function parseUserMessage", start);
   const loader = source.slice(start, end);
-  assert.match(loader, /catch \(error\)[\s\S]*?showToast\([\s\S]*?\)[\s\S]*?return;/);
+  assert.match(loader, /catch \(error\)[\s\S]*?showToast\([\s\S]*?\)[\s\S]*?return false;/);
   assert.match(loader, /allThreads = normalizeCodexThreadList\(result\)/);
   assert.match(loader, /catch \{[\s\S]*?showToast\("Codexから有効な会話一覧/);
+  assert.match(loader, /return true;/);
 });

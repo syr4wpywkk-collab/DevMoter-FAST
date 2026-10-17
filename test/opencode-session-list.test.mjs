@@ -20,7 +20,8 @@ test("OpenCode loader catches request and schema errors before replacing session
   const start = source.indexOf("async function loadSessions()");
   const end = source.indexOf("async function syncPendingPermission", start);
   const loader = source.slice(start, end);
-  assert.match(loader, /catch \(error\)[\s\S]*?showToast\([\s\S]*?return;/);
+  assert.match(loader, /catch \(error\)[\s\S]*?showToast\([\s\S]*?return false;/);
   assert.match(loader, /sessions = normalizeOpenCodeSessionList\(data\)/);
   assert.match(loader, /catch \{[\s\S]*?showToast\("OpenCode returned an invalid session history/);
+  assert.match(loader, /return true;/);
 });

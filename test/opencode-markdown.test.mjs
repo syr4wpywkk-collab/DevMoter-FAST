@@ -11,6 +11,7 @@ import * as reconnect from "../src/reconnect-policy.mjs";
 import * as latestRequest from "../src/latest-request.mjs";
 import * as reconnectAfterSync from "../src/reconnect-after-sync.mjs";
 import * as sessionList from "../src/opencode-session-list.mjs";
+import * as eventRecovery from "../src/event-recovery.mjs";
 import { renderChatMarkdown } from "../src/chat-markdown.mjs";
 import { loadPureTypeScript } from "./helpers/ts-pure-modules.mjs";
 
@@ -77,6 +78,7 @@ async function harness(t, initialContext = []) {
     "./latest-request.mjs": latestRequest,
     "./reconnect-after-sync.mjs": reconnectAfterSync,
     "./opencode-session-list.mjs": sessionList,
+    "./event-recovery.mjs": eventRecovery,
     "./chat-markdown.mjs": { renderChatMarkdown },
     "./bounded-transcript": bounds,
     "./opencode-chat.css": {},

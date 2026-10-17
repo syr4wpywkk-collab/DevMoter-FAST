@@ -12,6 +12,7 @@ import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "
 import { createLatestRequestGuard } from "./latest-request.mjs";
 import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
 import { normalizeCodexThreadList } from "./codex-thread-list.mjs";
+import { recoverAfterEventOpen } from "./event-recovery.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import "./codex-chat.css";
@@ -114,7 +115,7 @@ type CodexRemoteOptions = {
 
 export type CodexRemoteController = {
   setOnline(online: boolean): void;
-  refresh(): Promise<void>;
+  refresh(): Promise<boolean>;
 };
 
 export function mountCodexRemote(
@@ -1260,14 +1261,14 @@ export function mountCodexRemote(
       if (threadListRequests.isCurrent(requestGeneration)) {
         showToast(error instanceof Error ? error.message : "会話一覧を読み込めませんでした");
       }
-      return;
+      return false;
     }
-    if (!threadListRequests.isCurrent(requestGeneration)) return;
+    if (!threadListRequests.isCurrent(requestGeneration)) return false;
     try {
       allThreads = normalizeCodexThreadList(result);
     } catch {
       showToast("Codexから有効な会話一覧を受け取れませんでした");
-      return;
+      return false;
     }
     renderThreads();
 
@@ -1279,6 +1280,7 @@ export function mountCodexRemote(
       if (target) await selectThread(target);
       else if (saved) await restoreSavedThread(saved);
     }
+    return true;
   }
 
   function parseUserMessage(item: Json) {
@@ -1301,16 +1303,21 @@ export function mountCodexRemote(
   }
 
   async function loadThreadHistory(threadId: string) {
-    const result = await rpc<{
+    let result: {
       thread?: {
         status?: Json;
         turns?: Array<{ id?: string; status?: string; error?: unknown; items?: Json[] }>;
       };
-    }>(
-      "thread/read",
-      { threadId, includeTurns: true }
-    );
-    if (activeThreadId !== threadId) return;
+    };
+    try {
+      result = await rpc("thread/read", { threadId, includeTurns: true });
+    } catch (error) {
+      if (activeThreadId === threadId) {
+        showToast(error instanceof Error ? error.message : "会話履歴を読み込めませんでした");
+      }
+      return false;
+    }
+    if (activeThreadId !== threadId) return false;
 
     const turns = result?.thread?.turns ?? [];
     const threadState = codexThreadStatusToExecutionState(result?.thread?.status);
@@ -1394,6 +1401,7 @@ export function mountCodexRemote(
     }
 
     followLatest();
+    return true;
   }
 
   async function selectThread(thread: ThreadSummary): Promise<boolean> {
@@ -1977,7 +1985,9 @@ export function mountCodexRemote(
 
       events?.close();
       events = null;
-      const sync = await reconnectAfterSync(() => refresh(), () => connectEvents());
+      const sync = await reconnectAfterSync(async () => {
+        if (!(await refresh())) throw new Error("Could not refresh Codex state");
+      }, () => connectEvents());
 
       if (sync.error) {
         showToast("会話履歴を同期できませんでした。接続を再試行します。");
@@ -2017,10 +2027,14 @@ export function mountCodexRemote(
       }
 
       if (executionState === "reconnecting") {
-        void refresh().finally(() => {
+        void recoverAfterEventOpen(async () => {
+          if (!(await refresh())) throw new Error("Could not refresh Codex state");
+        }, error => {
           if (executionState === "reconnecting") {
             setExecutionState("idle");
-            showToast("再接続しました");
+            showToast(error
+              ? "接続は復帰しましたが、会話の同期に失敗しました。履歴を再読み込みしてください。"
+              : "再接続しました");
           }
         });
       }
@@ -3188,9 +3202,9 @@ export function mountCodexRemote(
     `;
   }
 
-  async function refresh() {
+  async function refresh(): Promise<boolean> {
     await loadProjects();
-    if (!online) return;
+    if (!online) return false;
 
     try {
       await loadModelCatalog();
@@ -3199,11 +3213,12 @@ export function mountCodexRemote(
     }
 
     const threadBeforeRefresh = activeThreadId;
-    await loadThreads();
+    if (!(await loadThreads())) return false;
 
     if (threadBeforeRefresh && activeThreadId === threadBeforeRefresh) {
-      await loadThreadHistory(threadBeforeRefresh);
+      if (!(await loadThreadHistory(threadBeforeRefresh))) return false;
     }
+    return true;
   }
 
   menu.addEventListener("click", openSidebar);

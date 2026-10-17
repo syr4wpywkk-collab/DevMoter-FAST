@@ -210,7 +210,7 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: focused history/Codex payload tests 5/5 passed; typecheck and diff check passed.
 - Review/risk: source wiring test plus the shared generation helper test; no full asynchronous browser race harness for OpenCode session state.
 - Next: inspect API Chat conversation identity/attachment lifecycle, then backend stream recovery.
-- Commit SHA: pending.
+- Commit SHA: `66e0571`.
 
 ### Cycle 15 — OpenCode history failure and malformed payload handling
 
@@ -221,4 +221,15 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Validation: OpenCode session-list, Markdown and overlay tests 11/11 passed; typecheck and diff check passed.
 - Review/risk: invalid individual rows are filtered; entire invalid response is rejected. Tests cover helper and source wiring, not a complete flaky-network UI exercise.
 - Next: inspect event reconnect/error handling and API Chat conversation status recovery.
+- Commit SHA: `46c245d`.
+
+### Cycle 16 — Do not report recovery when history synchronization failed
+
+- Finding: EventSource `onopen` used `refresh().finally(...)`, which reported recovery even if the refresh rejected. After Cycles 13 and 15 made history loaders catch their errors to preserve the last valid list, the enclosing refresh could also appear successful despite a failed conversation/session history request.
+- Cause: reconnect handling treated transport-open as full application recovery, while refresh APIs returned no success result and some history loaders swallowed failures after displaying a toast.
+- Changes: added shared `recoverAfterEventOpen` error capture; Codex history loaders return explicit success/failure; Codex and OpenCode `refresh()` return a boolean and OpenCode propagates session-list failure; both EventSource recovery and Codex background resume now require successful state refresh before showing success. Added helper success/rejection coverage, source contract assertions, and aligned existing source-wiring tests/harness imports.
+- Before/after: before, a rejected refresh could emit an unhandled rejection and a success toast; a swallowed history failure could also be mistaken for recovery. After, refresh rejection or explicit loader failure yields the failure toast and no unhandled promise; only a completed refresh yields success.
+- Validation: `npm run typecheck` passed; related reconnect/history/lifecycle/OpenCode suites passed 22/22; `git diff --check` passed. One earlier run failed four source-shape assertions and typecheck caught an early return placement; both were corrected and the full focused rerun passed.
+- Review/risk: automated wiring and helper tests cover the contract; no real SSE server interruption or mobile device was available. The user must still retry a history sync that failed during reconnection.
+- Next: inspect API Chat stream recovery and cancellation, then select the next independently reproducible reliability issue.
 - Commit SHA: pending.

@@ -75,7 +75,8 @@ test("mobile lifecycle resume reconnects to canonical chat state with bounded cu
     assert.ok(sourceText.includes("/api/workspace-control/events?sessionId="));
     assert.ok(sourceText.includes("&limit=500"));
     assert.ok(sourceText.includes("Background replay gap detected"));
-    assert.ok(sourceText.includes("reconnectAfterSync(() => refresh(), () => connectEvents())"));
+    assert.ok(sourceText.includes("reconnectAfterSync("));
+    assert.ok(sourceText.includes("connectEvents())"));
   }
 
   assert.ok(codex.includes("eventBelongsToActiveThread"));
