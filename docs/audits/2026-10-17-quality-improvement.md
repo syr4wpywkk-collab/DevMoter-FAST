@@ -211,3 +211,14 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Review/risk: source wiring test plus the shared generation helper test; no full asynchronous browser race harness for OpenCode session state.
 - Next: inspect API Chat conversation identity/attachment lifecycle, then backend stream recovery.
 - Commit SHA: pending.
+
+### Cycle 15 — OpenCode history failure and malformed payload handling
+
+- Finding: OpenCode `loadSessions()` allowed request rejection to escape fire-and-forget callers and converted malformed responses into an empty session list.
+- Cause: no local error boundary and permissive `Array.isArray(data) ? data : []` fallback.
+- Changes: added `normalizeOpenCodeSessionList` and declaration; loader now reports request/schema errors and retains the previous valid session list. Added three contract/wiring tests and registered the helper in the isolated OpenCode Markdown harness.
+- Before/after: before, transient backend errors could clear history or create unhandled rejections; after, last valid history remains visible and errors are surfaced.
+- Validation: OpenCode session-list, Markdown and overlay tests 11/11 passed; typecheck and diff check passed.
+- Review/risk: invalid individual rows are filtered; entire invalid response is rejected. Tests cover helper and source wiring, not a complete flaky-network UI exercise.
+- Next: inspect event reconnect/error handling and API Chat conversation status recovery.
+- Commit SHA: pending.

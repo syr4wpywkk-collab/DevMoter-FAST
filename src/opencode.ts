@@ -9,6 +9,7 @@ import { setWakeLockEnabled, setWakeLockExecutionActive, wakeLockEnabled, wakeLo
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 import { createLatestRequestGuard } from "./latest-request.mjs";
 import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
+import { normalizeOpenCodeSessionList } from "./opencode-session-list.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import "./opencode-chat.css";
@@ -1494,9 +1495,22 @@ export function mountOpenCodeRemote(
 
   async function loadSessions() {
     const requestGeneration = sessionListRequests.begin();
-    const data = await api<OpenCodeSession[]>("/session?limit=80&order=desc");
+    let data: OpenCodeSession[];
+    try {
+      data = await api<OpenCodeSession[]>("/session?limit=80&order=desc");
+    } catch (error) {
+      if (sessionListRequests.isCurrent(requestGeneration)) {
+        showToast(error instanceof Error ? error.message : "Could not load session history");
+      }
+      return;
+    }
     if (!sessionListRequests.isCurrent(requestGeneration)) return;
-    sessions = Array.isArray(data) ? data : [];
+    try {
+      sessions = normalizeOpenCodeSessionList(data) as OpenCodeSession[];
+    } catch {
+      showToast("OpenCode returned an invalid session history");
+      return;
+    }
 
     try {
       const payload = await api<Json>("/session/active");
