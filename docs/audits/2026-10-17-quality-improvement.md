@@ -109,3 +109,14 @@ Scores are engineering estimates based on code/tests/docs in this checkout, not 
 - Review/risk: network failure still preserves last known catalog by existing semantics; no pricing is inferred or changed. Runtime race integration uses source wiring assertion plus directly tested helper.
 - Next: inspect server/API boundaries for reproducible permission gaps and add high-value negative tests. Mobile real-device inspection remains unavailable; source CSS constraints already enforce 44px controls and viewport sizing.
 - Commit SHA: pending.
+
+### Cycle 3 — OpenCode surface navigation regression coverage
+
+- Finding: implementation inspection found OpenCode navigation is owned by the unified global shell and browser history (`src/main.ts`, `src/surface-navigation.mjs`), but automated behavior coverage exercised only Home↔one backend, not the full OpenCode→Codex→API Chat→Home path.
+- Cause: the existing navigation test did not cover all supported surface transitions together.
+- Changes: added a browser-history regression in `test/surface-navigation.test.mjs` checking OpenCode→Codex→API→Home, Back navigation, and query/hash preservation.
+- Before/after: before, the transition chain was untested; after, all transitions and reverse navigation are exercised. No runtime defect was observed, so no production code was changed.
+- Validation: surface navigation tests 6/6 passed; diff check passed.
+- Review/risk: fake History API validates controller behavior, not real browser rendering or manual shell click targets.
+- Next: resume API timeout/error work and security test review.
+- Commit SHA: pending.
