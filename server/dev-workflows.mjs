@@ -169,6 +169,17 @@ export function validateExtensionManifest(input) {
   if (Number(input.manifestVersion) !== 1) errors.push("manifestVersion must be 1");
   if (!String(input.name || "").trim()) errors.push("name is required");
   if (!String(input.version || "").trim()) errors.push("version is required");
+  if (String(input.version || "").length > 80) errors.push("version exceeds 80 characters");
+  const allowedFields = new Set(["manifestVersion", "name", "version", "description", "capabilities", "permissions", "declarations"]);
+  for (const key of Object.keys(input)) {
+    if (!allowedFields.has(key)) errors.push("Unknown manifest field: " + key);
+  }
+  if (input.capabilities !== undefined && !Array.isArray(input.capabilities)) errors.push("capabilities must be an array");
+  if (input.permissions !== undefined && !Array.isArray(input.permissions)) errors.push("permissions must be an array");
+  if (Array.isArray(input.capabilities) && input.capabilities.length > 64) errors.push("Too many capabilities");
+  if (Array.isArray(input.permissions) && input.permissions.length > 64) errors.push("Too many permissions");
+  if (input.declarations !== undefined && !plain(input.declarations)) errors.push("declarations must be an object");
+
   const capabilities = strings(input.capabilities, 64);
   const unknown = capabilities.filter(item => !EXTENSION_CAPABILITIES.has(item));
   if (unknown.length) errors.push("Unknown capabilities: " + unknown.join(", "));
@@ -176,8 +187,10 @@ export function validateExtensionManifest(input) {
   const unknownPermissions = permissions.filter(item => !EXTENSION_PERMISSIONS.has(item));
   if (unknownPermissions.length) errors.push("Unknown permissions: " + unknownPermissions.join(", "));
   const declarations = plain(input.declarations) ? input.declarations : {};
-  for (const key of Object.keys(declarations)) {
+  for (const [key, value] of Object.entries(declarations)) {
     if (!EXTENSION_CAPABILITIES.has(key)) errors.push("Unsafe or unknown declaration: " + key);
+    else if (!capabilities.includes(key)) errors.push("Declaration missing capability: " + key);
+    if (!Array.isArray(value)) errors.push("Declaration must be an array: " + key);
   }
   return {
     valid: errors.length === 0,
@@ -197,9 +210,14 @@ export function validateExtensionManifest(input) {
 export function extensionPermissionFingerprint(manifest) {
   const validated = validateExtensionManifest(manifest);
   if (!validated.valid) throw new Error("Cannot fingerprint invalid extension manifest");
+  // Approval is tied to the actual declared behavior, not just the permission names.
+  // A manifest that changes hooks, commands, or adapters must require re-approval.
   const payload = {
     name: validated.manifest.name,
-    permissions: validated.manifest.permissions
+    version: validated.manifest.version,
+    capabilities: [...new Set(validated.manifest.capabilities)].sort(),
+    permissions: validated.manifest.permissions,
+    declarations: validated.manifest.declarations
   };
   return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
 }
@@ -224,7 +242,7 @@ export function structureMcpResult(value, options = {}) {
     }
     if (Array.isArray(item)) return item.slice(0, maxEntries).map(child => visit(child, depth + 1));
     if (plain(item)) {
-      const out = {};
+      const out = Object.create(null);
       for (const [key, child] of Object.entries(item)) {
         if (count >= maxEntries) {
           truncated = true;
@@ -237,10 +255,20 @@ export function structureMcpResult(value, options = {}) {
     return String(item);
   }
 
+  const structuredValue = visit(value, 0);
+  let rawText;
+  try {
+    rawText = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  } catch {
+    rawText = "[MCP result could not be serialized]";
+    truncated = true;
+  }
+  const boundedRaw = clip(rawText ?? "", maxText);
+  truncated ||= boundedRaw.truncated;
   return {
     kind: "structured",
-    value: visit(value, 0),
-    rawText: clip(typeof value === "string" ? value : JSON.stringify(value, null, 2), maxText).text,
+    value: structuredValue,
+    rawText: boundedRaw.text,
     truncated
   };
 }

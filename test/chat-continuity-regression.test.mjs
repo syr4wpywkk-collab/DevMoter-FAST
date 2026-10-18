@@ -22,7 +22,7 @@ test("global Tools navigation leaves provider-local history controls reachable",
   assert.ok(codex.includes('new CustomEvent("devmoter:close-global-nav")'));
   assert.ok(opencode.includes('new CustomEvent("devmoter:close-global-nav")'));
   assert.ok(codex.includes('window.addEventListener("devmoter:close-chat-history", closeSidebar)'));
-  assert.ok(opencode.includes('window.addEventListener("devmoter:close-chat-history", closeSidebar)'));
+  assert.ok(opencode.includes('window.addEventListener("devmoter:close-chat-history", () => closeSidebar())'));
   assert.ok(shellCss.includes(".cx-sidebar.open"));
   assert.ok(shellCss.includes(".ocx-sidebar.open"));
   assert.ok(shellCss.includes("body.codex-mode .dm-shell-menu-trigger { display: none; }"));

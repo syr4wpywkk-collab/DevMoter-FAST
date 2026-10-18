@@ -152,8 +152,14 @@ export type OpenCodeController = {
   refresh(): Promise<boolean>;
 };
 
+type OpenCodeRemoteOptions = {
+  onCodex?: () => void;
+  onApi?: () => void;
+};
+
 export function mountOpenCodeRemote(
-  root: HTMLElement
+  root: HTMLElement,
+  options: OpenCodeRemoteOptions = {}
 ): OpenCodeController {
   root.innerHTML = `
     <div class="ocx-app">
@@ -170,6 +176,11 @@ export function mountOpenCodeRemote(
           </div>
           <button id="ocxSidebarClose" class="ocx-icon" type="button" aria-label="閉じる">×</button>
         </div>
+
+        <nav class="ocx-quick-switch" aria-label="Switch AI workspace">
+          <button id="ocxQuickCodex" type="button" aria-label="Switch from OpenCode to Codex">Codex</button>
+          <button id="ocxQuickApi" type="button" aria-label="Switch from OpenCode to API Chat">API Chat</button>
+        </nav>
 
         <div class="ocx-sidebar-scroll">
         <button id="ocxNewSessionSide" class="ocx-new-session" type="button">
@@ -360,6 +371,8 @@ export function mountOpenCodeRemote(
   const sessionSort = root.querySelector<HTMLSelectElement>("#ocxSessionSort")!;
   const attention = root.querySelector<HTMLDivElement>("#ocxAttention")!;
   const toolsNav = root.querySelector<HTMLButtonElement>("#ocxToolsNav")!;
+  const quickCodex = root.querySelector<HTMLButtonElement>("#ocxQuickCodex")!;
+  const quickApi = root.querySelector<HTMLButtonElement>("#ocxQuickApi")!;
   const refreshButton = root.querySelector<HTMLButtonElement>("#ocxRefresh")!;
   const sideStatus = root.querySelector<HTMLElement>("#ocxSideStatus")!;
   const sessionTitleButton = root.querySelector<HTMLButtonElement>("#ocxSessionTitleButton")!;
@@ -570,7 +583,7 @@ export function mountOpenCodeRemote(
     sidebarClose.focus({ preventScroll: true });
   }
 
-  function closeSidebar() {
+  function closeSidebar(restoreTriggerFocus = true) {
     const restoreFocus = sidebar.contains(document.activeElement);
     sidebar.classList.remove("open");
     sidebar.setAttribute("aria-hidden", "true");
@@ -578,7 +591,7 @@ export function mountOpenCodeRemote(
     sidebar.removeAttribute("role");
     sidebar.removeAttribute("aria-modal");
     syncOverlayState();
-    if (restoreFocus) restoreOverlayFocus(sidebarReturnFocus);
+    if (restoreFocus && restoreTriggerFocus) restoreOverlayFocus(sidebarReturnFocus);
     sidebarReturnFocus = null;
   }
 
@@ -2722,6 +2735,13 @@ export function mountOpenCodeRemote(
     }
 
     if (type === "message.part.delta") {
+      // Non-text deltas update tool/metadata fields, not the chat transcript.
+      // Reconcile the canonical context rather than creating a bogus text row.
+      if (normalized.delta === null) {
+        lastLiveEventAt = Date.now();
+        scheduleRefresh(220);
+        return;
+      }
       const key = streamKey({
         messageID: props?.messageID,
         partID: props?.partID
@@ -3592,11 +3612,23 @@ export function mountOpenCodeRemote(
   }
 
   menu.addEventListener("click", openSidebar);
+  quickCodex.hidden = !options.onCodex;
+  quickApi.hidden = !options.onApi;
+  quickCodex.addEventListener("click", () => {
+    if (!options.onCodex) return;
+    closeSidebar(false);
+    options.onCodex();
+  });
+  quickApi.addEventListener("click", () => {
+    if (!options.onApi) return;
+    closeSidebar(false);
+    options.onApi();
+  });
   toolsNav.addEventListener("click", () => {
     closeSidebar();
     window.dispatchEvent(new CustomEvent("devmoter:open-global-nav"));
   });
-  window.addEventListener("devmoter:close-chat-history", closeSidebar);
+  window.addEventListener("devmoter:close-chat-history", () => closeSidebar());
   const closeLocalOverlays = () => {
     closeSidebar();
     closeModal();
@@ -3609,8 +3641,8 @@ export function mountOpenCodeRemote(
   });
   window.addEventListener("pageshow", () => void resumeFromBackground());
   window.addEventListener("online", () => void resumeFromBackground());
-  sidebarClose.addEventListener("click", closeSidebar);
-  scrim.addEventListener("click", closeSidebar);
+  sidebarClose.addEventListener("click", () => closeSidebar());
+  scrim.addEventListener("click", () => closeSidebar());
   sessionSearch.addEventListener("input", renderSessions);
   sessionSort.addEventListener("change", () => {
     sessionSortMode = sessionSort.value as SessionSortMode;

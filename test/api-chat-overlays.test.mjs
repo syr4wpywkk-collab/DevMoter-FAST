@@ -18,6 +18,8 @@ const compiledApi = compile(apiSource);
 const modules = new Map(await Promise.all(ts.preProcessFile(apiSource).importedFiles
   .filter(({ fileName }) => fileName.endsWith(".mjs"))
   .map(async ({ fileName }) => [fileName, await import(new URL("../src/" + fileName.slice(2), import.meta.url))])));
+// These overlay tests intentionally exercise the legacy ?unifiedUI=0 view.
+modules.set("./unified-ui-mode.mjs", await import("../src/unified-ui-mode.mjs"));
 const settle = () => new Promise(resolve => setImmediate(resolve));
 const presets = [{ id: "custom", name: "Custom", protocol: "openai-compatible", baseUrl: "https://provider.example/v1" }];
 const providers = [{
@@ -28,7 +30,7 @@ const providers = [{
 
 function mount(t, { deferPresets = false } = {}) {
   const dom = new JSDOM('<!doctype html><div id="root"></div><div id="cxWorkspaceControlsMount"></div><div id="ocxWorkspaceControlsMount"></div>', {
-    url: "https://devmoter.example/?surface=api", runScripts: "outside-only"
+    url: "https://devmoter.example/?surface=api&unifiedUI=0", runScripts: "outside-only"
   });
   t.after(() => dom.window.close());
   const { document, HTMLElement } = dom.window;

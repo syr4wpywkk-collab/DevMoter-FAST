@@ -35,7 +35,12 @@ export function normalizeOpenCodeEvent(payload) {
     phase = "delta";
     messageID = props?.messageID ?? null;
     partID = props?.partID ?? null;
-    delta = typeof props?.delta === "string" ? props.delta : "";
+    // OpenCode may stream tool or metadata changes through this event too.
+    // Only the text field belongs in the visible assistant transcript.
+    delta =
+      props?.field == null || props.field === "text"
+        ? (typeof props?.delta === "string" ? props.delta : "")
+        : null;
   } else if (
     type === "session.text.started" ||
     type === "session.text.delta" ||

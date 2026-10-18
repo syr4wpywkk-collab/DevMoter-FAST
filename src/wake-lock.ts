@@ -1,6 +1,8 @@
 const PREF_KEY = "opencode-pocket-wake-lock";
 const activeSources = new Set<string>();
 let sentinel: any = null;
+let pendingRequest: Promise<void> | null = null;
+let resyncRequested = false;
 let visibilityInstalled = false;
 
 export function wakeLockSupported() {
@@ -27,26 +29,58 @@ async function releaseWakeLock() {
   }
 }
 
+function shouldHoldWakeLock() {
+  return wakeLockEnabled() &&
+    activeSources.size > 0 &&
+    typeof document !== "undefined" &&
+    document.visibilityState === "visible" &&
+    wakeLockSupported();
+}
+
 async function syncWakeLock() {
-  if (
-    !wakeLockEnabled() ||
-    !activeSources.size ||
-    typeof document === "undefined" ||
-    document.visibilityState !== "visible" ||
-    !wakeLockSupported()
-  ) {
+  if (!shouldHoldWakeLock()) {
     await releaseWakeLock();
     return;
   }
 
+  // A pending browser permission/request must not outlive the active turn.
+  // Coalesce concurrent status changes into one outstanding request.
   if (sentinel) return;
-  try {
-    sentinel = await (navigator as any).wakeLock.request("screen");
-    sentinel.addEventListener?.("release", () => {
-      sentinel = null;
+  if (pendingRequest) {
+    resyncRequested = true;
+    return;
+  }
+  const request = (async () => {
+    let acquired: any;
+    try {
+      acquired = await (navigator as any).wakeLock.request("screen");
+    } catch {
+      return; // Unsupported/denied/low-battery browsers degrade cleanly.
+    }
+    if (!shouldHoldWakeLock()) {
+      try {
+        await acquired.release();
+      } catch {
+        // The browser may already have released it.
+      }
+      return;
+    }
+    sentinel = acquired;
+    acquired.addEventListener?.("release", () => {
+      if (sentinel === acquired) sentinel = null;
     }, { once: true });
-  } catch {
-    sentinel = null;
+  })();
+  pendingRequest = request;
+  try {
+    await request;
+  } finally {
+    if (pendingRequest === request) {
+      pendingRequest = null;
+      const rerun = resyncRequested;
+      resyncRequested = false;
+      // A new turn may have started while an old acquisition was releasing.
+      if (rerun && shouldHoldWakeLock() && !sentinel) void syncWakeLock();
+    }
   }
 }
 

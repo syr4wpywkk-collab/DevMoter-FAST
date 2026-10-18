@@ -34,7 +34,9 @@ export function normalizeStructuredMcpResult(
     }
     if (Array.isArray(value)) return value.slice(0, maxEntries).map(item => visit(item, depth + 1));
     if (isRecord(value)) {
-      const output: Record<string, unknown> = {};
+      // Tool payload keys are untrusted. A null prototype preserves "__proto__"
+      // as ordinary data instead of mutating the result object's prototype.
+      const output: Record<string, unknown> = Object.create(null);
       for (const [key, item] of Object.entries(value)) {
         if (entries >= maxEntries) {
           truncated = true;
@@ -57,8 +59,16 @@ export function normalizeStructuredMcpResult(
   }
 
   const normalized = visit(parsed, 0);
-  const rawSource = typeof input === "string" ? input : JSON.stringify(input, null, 2);
-  const raw = boundText(rawSource ?? "", maxText);
+  let rawSource: string;
+  try {
+    rawSource = typeof input === "string" ? input : JSON.stringify(input, null, 2) ?? "";
+  } catch {
+    // Runtime MCP providers can return circular objects. Keep rendering the
+    // bounded structured view instead of crashing the whole conversation.
+    rawSource = "[MCP result could not be serialized]";
+    truncated = true;
+  }
+  const raw = boundText(rawSource, maxText);
   truncated ||= raw.truncated;
 
   return {

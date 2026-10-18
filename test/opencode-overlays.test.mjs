@@ -12,6 +12,8 @@ const compiled = ts.transpileModule(source, {
 const modules = new Map(await Promise.all(ts.preProcessFile(source).importedFiles
   .filter(({ fileName }) => fileName.endsWith(".mjs"))
   .map(async ({ fileName }) => [fileName, await import(new URL("../src/" + fileName.slice(2), import.meta.url))])));
+// These overlay tests intentionally exercise the legacy ?unifiedUI=0 view.
+modules.set("./unified-ui-mode.mjs", await import("../src/unified-ui-mode.mjs"));
 modules.set("./opencode/status", await loadPureTypeScript("opencode/status.ts"));
 modules.set("./opencode/tools", await loadPureTypeScript("opencode/tools.ts"));
 const workspaceSource = await readFile(new URL("../src/workspace-control.ts", import.meta.url), "utf8");
@@ -27,9 +29,9 @@ const compile = value => ts.transpileModule(value, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
 }).outputText;
 
-function mount(t) {
+function mount(t, options = {}) {
   const dom = new JSDOM('<!doctype html><div id="root"></div><div id="cxWorkspaceControlsMount"></div>', {
-    url: "https://devmoter.example/?surface=opencode",
+    url: "https://devmoter.example/?surface=opencode&unifiedUI=0",
     runScripts: "outside-only"
   });
   t.after(() => dom.window.close());
@@ -62,7 +64,7 @@ function mount(t) {
   dom.window.exports = {};
   dom.window.eval(compiled);
   document.body.classList.add("opencode-mode");
-  dom.window.exports.mountOpenCodeRemote(document.querySelector("#root"));
+  dom.window.exports.mountOpenCodeRemote(document.querySelector("#root"), options);
   const query = selector => document.querySelector(selector);
   const key = (value, shiftKey = false) => {
     const event = new dom.window.KeyboardEvent("keydown", { key: value, shiftKey, bubbles: true, cancelable: true });
@@ -95,6 +97,23 @@ test("OpenCode history traps Tab, blocks background interaction and restores its
   assert.equal(sidebar.hasAttribute("aria-modal"), false);
   assert.equal(query(".ocx-composer-wrap").inert, false);
   assert.equal(document.activeElement, menu);
+});
+
+test("OpenCode direct quick switches are pinned above scrolling history and do not restore focus into a hidden surface", t => {
+  const routes = [];
+  const { document, query } = mount(t, { onCodex: () => routes.push("codex"), onApi: () => routes.push("api") });
+  const sidebar = query("#ocxSidebar");
+  assert.equal(query("#ocxQuickCodex").closest(".ocx-sidebar-scroll"), null);
+  assert.equal(query("#ocxQuickApi").closest(".ocx-sidebar-scroll"), null);
+  query("#ocxMenu").click();
+  query("#ocxQuickCodex").focus();
+  query("#ocxQuickCodex").click();
+  assert.deepEqual(routes, ["codex"]);
+  assert.equal(sidebar.inert, true);
+  assert.notEqual(document.activeElement, query("#ocxMenu"), "do not move focus back to a surface that is being hidden");
+  query("#ocxMenu").click();
+  query("#ocxQuickApi").click();
+  assert.deepEqual(routes, ["codex", "api"]);
 });
 
 test("OpenCode runtime modal closes history and attachment menus without stacking overlays", t => {

@@ -14,12 +14,34 @@ export class AcpAdapter extends EventEmitter {
     this.pending = new Map();
     this.nextId = 1;
     this.initialized = null;
+    this.connectPromise = null;
   }
 
   async connect({ timeoutMs = 10000 } = {}) {
     if (this.initialized && this.child?.stdin?.writable) return this.initialized;
     if (!this.command) throw new Error("ACP adapter command is not configured");
+    if (!this.connectPromise) {
+      // Share one handshake; apply independent deadlines for each caller.
+      const handshake = this.#initialize(60000);
+      this.connectPromise = handshake;
+      void handshake.finally(() => {
+        if (this.connectPromise === handshake) this.connectPromise = null;
+      }).catch(() => {});
+    }
+    let timer;
+    try {
+      return await Promise.race([
+        this.connectPromise,
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error("ACP connect timeout")), Math.max(1, Number(timeoutMs) || 10000));
+        })
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
 
+  async #initialize(timeoutMs) {
     const child = this.spawnImpl(this.command, this.args, {
       cwd: this.cwd,
       env: process.env,
@@ -27,6 +49,7 @@ export class AcpAdapter extends EventEmitter {
     });
     this.child = child;
     child.stderr?.resume?.();
+    child.stdin?.on?.("error", error => this.#fail(error));
 
     child.once("error", error => this.#fail(error));
     child.once("exit", (code, signal) => {
@@ -48,6 +71,10 @@ export class AcpAdapter extends EventEmitter {
         version: "0.2.0"
       }
     }, { timeoutMs, skipConnect: true });
+    if (!result || result.protocolVersion !== 1) {
+      this.close();
+      throw new Error("Unsupported ACP protocol version (expected v1)");
+    }
     this.initialized = result;
     this.emit("ready", result);
     return result;
@@ -74,7 +101,20 @@ export class AcpAdapter extends EventEmitter {
           reject(error);
         }
       });
-      this.#write({ jsonrpc: "2.0", id, method, params });
+      try {
+        this.#write({ jsonrpc: "2.0", id, method, params }, error => {
+          if (!error) return;
+          const pending = this.pending.get(String(id));
+          if (pending) {
+            this.pending.delete(String(id));
+            pending.reject(error);
+          }
+        });
+      } catch (error) {
+        this.pending.delete(String(id));
+        clearTimeout(timer);
+        reject(error);
+      }
     });
   }
 
@@ -110,13 +150,23 @@ export class AcpAdapter extends EventEmitter {
   }
 
   #handleLine(line) {
-    const text = String(line || "").trim();
+    const raw = String(line || "");
+    if (Buffer.byteLength(raw, "utf8") > 1024 * 1024) {
+      this.emit("protocol-error", { error: "ACP message exceeds 1 MiB limit" });
+      this.close();
+      return;
+    }
+    const text = raw.trim();
     if (!text) return;
     let message;
     try {
       message = JSON.parse(text);
     } catch {
       this.emit("protocol-error", { error: "Invalid JSON", line: text.slice(0, 400) });
+      return;
+    }
+    if (!message || message.jsonrpc !== "2.0") {
+      this.emit("protocol-error", { error: "Invalid JSON-RPC envelope" });
       return;
     }
 
@@ -156,9 +206,9 @@ export class AcpAdapter extends EventEmitter {
     }
   }
 
-  #write(message) {
+  #write(message, callback) {
     if (!this.child?.stdin?.writable) throw new Error("ACP agent is offline");
-    this.child.stdin.write(JSON.stringify(message) + "\n");
+    this.child.stdin.write(JSON.stringify(message) + "\n", callback);
   }
 
   #fail(error) {

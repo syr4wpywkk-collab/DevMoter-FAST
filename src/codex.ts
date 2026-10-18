@@ -131,6 +131,10 @@ export function mountCodexRemote(
 
       <aside id="cxSidebar" class="cx-sidebar" aria-hidden="true" aria-label="会話履歴" tabindex="-1">
         <div class="cx-sidebar-head dm-agent-head">
+          <div class="dm-unified-agent-identity" data-unified-agent-label hidden aria-label="Codex チャット履歴">
+            <span class="dm-unified-agent-icon" aria-hidden="true">⌘</span>
+            <span class="dm-unified-agent-copy"><strong>Codex</strong><small>チャット履歴</small></span>
+          </div>
           <div class="dm-agent-switch-shell">
             <button id="cxAgentSwitchButton" class="dm-agent-switch-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
               <span class="dm-agent-switch-icon">⌘</span>
