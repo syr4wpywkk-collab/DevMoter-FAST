@@ -11,7 +11,7 @@ function statePath(homeDir) {
 }
 
 async function request(control, method, pathname, payload) {
-  const req = Readable.from(payload === undefined ? [] : [JSON.stringify(payload)]);
+  const req = Readable.from(payload === undefined ? [] : [Buffer.from(JSON.stringify(payload))]);
   req.method = method;
   const res = {
     status: null,
