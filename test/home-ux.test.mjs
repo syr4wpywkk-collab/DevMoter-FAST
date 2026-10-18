@@ -67,3 +67,30 @@ test("Home still treats non-shipped applications as previews, never launches the
   assert.match(previews[0].message, /not available yet/i);
   dom.window.close();
 });
+
+test("MAR-111: five accessible Home quick actions reuse the safe App Registry launcher", async () => {
+  const { mountHomeSurface } = await loadHome();
+  const dom = new JSDOM("<main id='home'></main>", { url: "https://devmoter.test" });
+  const root = dom.window.document.getElementById("home");
+  const launched = [];
+  const previews = [];
+  mountHomeSurface(root, {
+    onLaunchApp: id => launched.push(id),
+    onPreviewApp: (id, message) => previews.push({ id, message })
+  });
+  const ids = ["chat", "projects", "terminal", "review", "sessions"];
+  const buttons = [...root.querySelectorAll("[data-home-quick-action]")];
+  assert.deepEqual(buttons.map(button => button.dataset.homeQuickAction), ids);
+  for (const button of buttons) {
+    assert.equal(button.tagName, "BUTTON");
+    assert.equal(button.type, "button");
+    assert.equal(button.disabled, false);
+    assert.ok(button.getAttribute("aria-label"));
+    button.click();
+  }
+  assert.deepEqual(launched, ids);
+  assert.deepEqual(previews, []);
+  assert.deepEqual([...root.querySelectorAll(".dm-home-recent-card")].map(button => button.dataset.homeRecentApp),
+    ["sessions", "review", "terminal"]);
+  dom.window.close();
+});
