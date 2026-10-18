@@ -26,7 +26,7 @@ test("OpenCode hamburger is conversation-history first", async () => {
   assert.ok(sidebar.includes('id="ocxSideStatus"'));
 });
 
-test("OpenCode history drawer contains no provider or tool navigation", async () => {
+test("OpenCode history stays history-first with only direct workspace exits", async () => {
   const opencode = await source("src/opencode.ts");
   const sidebar = sidebarMarkup(opencode);
 
@@ -42,13 +42,15 @@ test("OpenCode history drawer contains no provider or tool navigation", async ()
     "ocxCodexNav",
     "Codex UI",
     "ocxApiNav",
-    "API Chat",
     "ocxIntegrationsNav",
     "Integrations",
     "ocxSettingsNav",
     "ocxSessionToolsNav",
     "Session tools"
   ]) assert.ok(!sidebar.includes(forbidden), forbidden);
+  assert.ok(sidebar.includes('id="ocxQuickCodex"'));
+  assert.ok(sidebar.includes('id="ocxQuickApi"'));
+  assert.ok(sidebar.indexOf('class="ocx-quick-switch"') < sidebar.indexOf('class="ocx-sidebar-scroll"'), "quick exits must remain visible outside scrollable history");
 });
 
 test("OpenCode history rows emphasize conversation metadata instead of agent identity", async () => {
@@ -75,13 +77,15 @@ test("OpenCode history drawer follows the iOS visual viewport", async () => {
   assert.ok(css.includes("-webkit-overflow-scrolling: touch"));
 });
 
-test("Codex and API Chat remain available globally, not inside OpenCode history", async () => {
+test("Codex and API Chat remain available globally and via direct OpenCode exits", async () => {
   const [main, shell] = await Promise.all([
     source("src/main.ts"),
     source("src/app-shell.ts")
   ]);
 
-  assert.ok(main.includes("mountOpenCodeRemote(openCodeMount)"));
+  assert.ok(main.includes("mountOpenCodeRemote(openCodeMount, {"));
+  assert.ok(main.includes('onCodex: () => {'));
+  assert.ok(main.includes('onApi: () => {'));
   assert.ok(shell.includes('data-backend="codex"'));
   assert.ok(shell.includes('data-backend="api"'));
 });
