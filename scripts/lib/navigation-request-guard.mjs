@@ -214,11 +214,11 @@ export function inspectRequest(record, options = {}) {
     if (url.pathname === "/api/codex/rpc" && !url.search && methodOf(record) === "POST") {
       try {
         const rpc = JSON.parse(record.body);
-        const params = rpc.params || {};
+        const params = Object.hasOwn(rpc, "params") ? rpc.params : {};
         const allowedParams = rpc.method === "thread/read" ? ["threadId", "includeTurns"] : ["limit"];
         safeRpc = READ_RPC.has(rpc.method)
           && Object.keys(rpc).every(key => ["method", "params"].includes(key))
-          && typeof params === "object" && !Array.isArray(params)
+          && params !== null && typeof params === "object" && !Array.isArray(params)
           && Object.keys(params).every(key => allowedParams.includes(key))
           && (params.limit === undefined || (Number.isInteger(params.limit) && params.limit > 0 && params.limit <= 100))
           && (rpc.method !== "thread/read" || (options.allowedThreadIds || []).includes(params.threadId))

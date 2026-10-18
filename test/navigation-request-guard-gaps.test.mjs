@@ -90,3 +90,20 @@ test("encoded sentinel strings split at every byte boundary across requests rema
 test("oversized header normalization fails closed", () => {
   assert.deepEqual(inspectRequest(req({ headers: { a: "x".repeat(1024 * 1024 + 1) } }), opts), ["request normalization failed closed"]);
 });
+
+test("Codex: explicitly supplied non-object RPC params never default to an empty object", async t => {
+  for (const params of [null, false, 0, "", true, "synthetic", []]) {
+    await t.test(JSON.stringify(params), () => rejects(req({ url: `${opts.origin}/api/codex/rpc`, method: "POST", body: JSON.stringify({ method: "thread/list", params }) })));
+  }
+  for (const body of [{ method: "thread/list" }, { method: "thread/list", params: {} }]) {
+    assert.deepEqual(inspectRequest(req({ url: `${opts.origin}/api/codex/rpc`, method: "POST", body: JSON.stringify(body) }), opts), []);
+  }
+});
+test("Codex: Base64 sentinel embedded in a larger token remains detectable", () => {
+  const record = req({ headers: { a: `x${b64(opts.credential)}y` } });
+  assert.ok(inspectRequest(record, opts).includes("credential leaked outside authentication header"));
+});
+test("Codex: split sentinels with intervening fields remain detectable", () => {
+  assert.ok(inspectRequest(req({ headers: { a: "SYNTHETIC_DRAFT_", noise: "ok", b: "X7" } }), opts).includes("draft content leaked"));
+  assert.ok(inspectRequest(req({ url: `${opts.origin}/api/projects?a=SYNTHETIC_DRAFT_&noise=ok&b=X7` }), opts).includes("draft content leaked"));
+});
