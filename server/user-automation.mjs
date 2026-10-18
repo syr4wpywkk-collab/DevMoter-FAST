@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
 import { buildBubblewrapCommand, sandboxStatus } from "./advanced-features.mjs";
+import { sanitizeChildEnv } from "./integrations.mjs";
 
 const execFileAsync = promisify(execFile);
 export const HOOK_SCHEMA_VERSION = 1;
@@ -203,6 +204,15 @@ export function resolveSlashCommand(commands, input) {
   };
 }
 
+export function hookChildEnvironment(event, schema, sourceEnv = process.env) {
+  return {
+    ...sanitizeChildEnv(sourceEnv),
+    DEVMOTER_HOOK_SCHEMA: String(HOOK_SCHEMA_VERSION),
+    DEVMOTER_HOOK_EVENT: event,
+    DEVMOTER_HOOK_EVENT_JSON: JSON.stringify(schema).slice(0, 64000)
+  };
+}
+
 export function createUserAutomationService({ configDir, resolveProject, executeTask, runVerification }) {
   const file = join(configDir, "user-automation.json");
   const runs = new Map();
@@ -261,12 +271,7 @@ export function createUserAutomationService({ configDir, resolveProject, execute
           timeout: hook.timeoutMs,
           maxBuffer: 256 * 1024,
           windowsHide: true,
-          env: {
-            ...process.env,
-            DEVMOTER_HOOK_SCHEMA: String(HOOK_SCHEMA_VERSION),
-            DEVMOTER_HOOK_EVENT: event,
-            DEVMOTER_HOOK_EVENT_JSON: JSON.stringify(schema).slice(0, 64000)
-          }
+          env: hookChildEnvironment(event, schema)
         });
         return {
           id: hook.id,

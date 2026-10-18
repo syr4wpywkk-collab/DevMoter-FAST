@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readBoundedResponseBody, resolveLivePreviewTarget, rewriteLivePreviewBody } from "../server/advanced-api.mjs";
@@ -10,6 +10,8 @@ import {
   chooseModel,
   createArtifactRegistry,
   createGrantRegistry,
+  isRetryableProviderFailure,
+  publicArtifact,
   listProjectDirectory,
   previewFile,
   externalBackendSandboxPolicy,
@@ -303,4 +305,74 @@ test("live preview rewrites root-relative HTML/CSS/module assets through the aut
 
   const js = rewriteLivePreviewBody(Buffer.from('import x from "/src/x.js";'), "application/javascript", "abc123").toString("utf8");
   assert.match(js, /from "\/api\/live-preview\/proxy\/abc123\/src\/x\.js"/);
+});
+
+test("sensitive paths cannot be opened directly or through internal symlink aliases", async t => {
+  const parent = await mkdtemp(join(tmpdir(), "devmoter-sensitive-"));
+  t.after(() => rm(parent, { recursive: true, force: true }));
+  const root = join(parent, "project");
+  await mkdir(root);
+  await mkdir(join(root, ".git"));
+  await writeFile(join(root, ".env"), "MY_API_KEY=private");
+  await writeFile(join(root, ".git", "config"), "[core]");
+  await writeFile(join(root, ".npmrc"), "//example.invalid/:_authToken=private");
+  await writeFile(join(root, "report.txt"), "public");
+  await symlink(join(root, ".env"), join(root, "alias.txt"));
+
+  assert.equal((await previewFile(root, "report.txt")).content, "public");
+  for (const path of [".env", ".git/config", ".npmrc", "alias.txt"]) {
+    await assert.rejects(() => previewFile(root, path), /Sensitive paths/);
+  }
+  await assert.rejects(() => listProjectDirectory(root, ".git"), /Sensitive paths/);
+  assert.equal((await listProjectDirectory(root)).entries.some(item => item.name === ".npmrc"), false);
+});
+
+test("artifact exports omit host roots and reject secret files", async t => {
+  const parent = await mkdtemp(join(tmpdir(), "devmoter-artifact-policy-"));
+  t.after(() => rm(parent, { recursive: true, force: true }));
+  await writeFile(join(parent, "report.txt"), "report");
+  await writeFile(join(parent, ".env"), "AUTH_SECRET=private");
+  const registry = createArtifactRegistry({ file: join(parent, "state", "artifacts.json") });
+  const artifact = await registry.register({
+    sessionId: "test", projectId: "project", root: parent, relativePath: "report.txt"
+  });
+  assert.equal(artifact.root, parent);
+  const safe = publicArtifact(artifact);
+  assert.equal("root" in safe, false);
+  assert.equal(safe.path, "report.txt");
+  await assert.rejects(() => registry.register({
+    sessionId: "test", projectId: "project", root: parent, relativePath: ".env"
+  }), /Sensitive paths/);
+});
+
+test("provider failover does not retry semantic errors with missing status", () => {
+  assert.equal(isRetryableProviderFailure(new Error("Invalid model response")), false);
+  assert.equal(isRetryableProviderFailure({ status: 401 }), false);
+  assert.equal(isRetryableProviderFailure({ status: 400 }), false);
+  assert.equal(isRetryableProviderFailure({ status: 429 }), true);
+  assert.equal(isRetryableProviderFailure({ code: "ECONNRESET" }), true);
+  assert.equal(isRetryableProviderFailure(Object.assign(new Error("fetch timed out"), { name: "AbortError", code: 20 })), true);
+});
+
+test("failover order follows configured chain rather than discovery order", async () => {
+  const seen = [];
+  const fetchImpl = async (_url, options = {}) => {
+    if (!options.method) {
+      return new Response(JSON.stringify({ models: [{ name: "first" }, { name: "second" }, { name: "third" }] }), { status: 200 });
+    }
+    const { model } = JSON.parse(options.body);
+    seen.push(model);
+    if (model !== "second") return new Response(JSON.stringify({ error: "busy" }), { status: 503 });
+    return new Response(JSON.stringify({ message: { content: "ok" } }), { status: 200 });
+  };
+  const env = {
+    DEVMOTER_OLLAMA_URL: "http://127.0.0.1:11434",
+    DEVMOTER_MODEL_ROUTES: JSON.stringify([{ role: "coding", providerId: "ollama", model: "first" }]),
+    DEVMOTER_PROVIDER_FAILOVER: "ollama/third,ollama/second"
+  };
+  const result = await runWithRouting({
+    env, fetchImpl, role: "coding", messages: [{ role: "user", content: "ping" }]
+  });
+  assert.deepEqual(seen, ["first", "third", "second"]);
+  assert.equal(result.model, "second");
 });
