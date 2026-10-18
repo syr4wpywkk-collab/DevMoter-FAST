@@ -13,30 +13,72 @@ function normalize(input) {
         const code = parseInt(h || d, h ? 16 : 10);
         return code <= 0x10ffff ? String.fromCodePoint(code) : raw;
       });
-    try { next = decodeURIComponent(next); } catch { /* Keep malformed encodings visible. */ }
+    // Decode valid runs independently: a stray %ZZ must not mask adjacent data.
+    next = next.replace(/(?:%[\da-f]{2})+/gi, run => {
+      try { return decodeURIComponent(run); } catch { return run; }
+    });
     if (next === value) break;
     value = next;
   }
   return value;
 }
 function variants(value) {
-  const text = normalize(value);
-  const result = [String(value), text, normalize(text.replace(/\+/g, " "))];
-  for (const match of text.matchAll(/[A-Za-z0-9+/_-]{16,}={0,2}/g)) {
-    if (match[0].length > 65536) continue;
-    const decoded = Buffer.from(match[0], "base64url").toString("utf8");
-    if (/^[\x09\x0a\x0d\x20-\x7e]+$/.test(decoded)) result.push(normalize(decoded));
+  const result = new Set([String(value), normalize(value), normalize(String(value).replace(/\+/g, " "))]);
+  let frontier = [...result];
+  for (let depth = 0; depth < 4; depth++) {
+    const next = [];
+    for (const text of frontier) for (const match of text.matchAll(/[A-Za-z0-9+/_-]{4,}={0,2}/g)) {
+      if (match[0].length > 65536) throw new Error("base64 size exceeded");
+      const decoded = normalize(Buffer.from(match[0], "base64url").toString("utf8"));
+      if (/^[\x09\x0a\x0d\x20-\x7e]+$/.test(decoded) && !result.has(decoded)) {
+        result.add(decoded);
+        next.push(decoded);
+      }
+    }
+    if (result.size > 256) throw new Error("normalization variant limit exceeded");
+    frontier = next;
+    if (!frontier.length) break;
   }
-  return result;
+  return [...result];
 }
-function contains(values, sentinel) {
+function contains(values, sentinel, fragments) {
   if (!sentinel) return false;
-  const target = normalize(sentinel).toLowerCase();
-  const candidates = values.flatMap(variants);
-  // Join leaves only, not raw JSON or interleaved field names/duplicate variants.
-  candidates.push(values.map(normalize).join(""));
-  candidates.push(values.map(value => variants(value).at(-1)).join(""));
-  return candidates.some(value => value.toLowerCase().includes(target));
+  const targets = new Set([normalize(sentinel)]);
+  let frontier = [...targets];
+  // Compare encoded sentinel forms as well: individually undecodable Base64
+  // chunks can span values or requests without an unbounded combination search.
+  for (let depth = 0; depth < 4; depth++) {
+    const next = [];
+    for (const target of frontier) for (const encoding of ["base64", "base64url"]) {
+      const encoded = Buffer.from(target).toString(encoding);
+      if (!targets.has(encoded)) { targets.add(encoded); next.push(encoded); }
+    }
+    frontier = next;
+  }
+  const groups = values.map(value => {
+    if (String(value).length > MAX_TEXT) throw new Error("normalization size exceeded");
+    return variants(value).map(item => item.toLowerCase());
+  });
+  let found = false;
+  for (const form of targets) {
+    const target = form.toLowerCase();
+    const progress = new Set(fragments?.get(target) || [0]);
+    for (const candidates of groups) {
+      const offsets = [...progress];
+      for (const candidate of candidates) {
+        if (candidate.includes(target)) found = true;
+        // Keep decoding alternatives and skip unrelated leaves/field names.
+        if (!candidate || candidate.length > target.length) continue;
+        for (const offset of offsets) if (target.startsWith(candidate, offset)) {
+          const end = offset + candidate.length;
+          if (end === target.length) found = true;
+          else progress.add(end);
+        }
+      }
+    }
+    fragments?.set(target, progress);
+  }
+  return found;
 }
 function parsedValues(raw, contentType = "", depth = 0) {
   if (depth > 16) throw new Error("normalization depth exceeded");
@@ -92,6 +134,33 @@ function parsedValues(raw, contentType = "", depth = 0) {
 function urlOf(record) { return new URL(record.url || record.path, "http://localhost"); }
 function headersOf(record) { return Object.entries(record.headers || {}).map(([key, value]) => [key.toLowerCase(), String(value)]); }
 function methodOf(record) { return String(record.method || "GET").toUpperCase(); }
+export function isExpectedGet(record, options = {}) {
+  if (methodOf(record) !== "GET" || record.body) return false;
+  const url = urlOf(record);
+  if (url.origin !== options.origin) return false;
+  const noQuery = new Set([
+    "/api/health", "/api/projects", "/api/auth/status", "/api/terminal/sessions",
+    "/api/agent-runs", "/api/agent-runs/events", "/api/session-control/state",
+    "/api/opencode/pocket/providers", "/api/opencode/agent", "/api/opencode/session/active",
+    "/api/opencode/event", "/api/codex/events", "/api/llm/providers", "/api/llm/presets",
+  ]);
+  if (noQuery.has(url.pathname)) return !url.search;
+  if (url.pathname === "/api/opencode/session") {
+    return url.search === "?limit=80&order=desc";
+  }
+  // IDs are fixture values, never an arbitrary path suffix or user-controlled ID.
+  return !url.search && (options.allowedSessionIds || []).some(id =>
+    ["", "/context", "/permission", "/question"].some(suffix =>
+      url.pathname === `/api/opencode/session/${encodeURIComponent(id)}${suffix}`));
+}
+export function createRequestGuard(options = {}) {
+  const fragments = new Map();
+  let count = 0;
+  return record => {
+    if (++count > (options.maxRequests ?? 4096)) return ["request audit limit exceeded"];
+    return inspectRequest(record, { ...options, fragments });
+  };
+}
 export function isStaticRequest(record) {
   if (methodOf(record) !== "GET") return false;
   const url = urlOf(record);
@@ -131,18 +200,18 @@ export function inspectRequest(record, options = {}) {
     const headerValues = [...ordinaryHeaders.flatMap(([key, value]) => [key, value]), ordinaryHeaders.map(([, value]) => normalize(value)).join("")];
     const violations = [];
     if (url.origin !== options.origin) violations.push("external origin forbidden");
-    if (contains([...urlValues, ...body, ...headerValues, ordinaryHeaders.map(([, value]) => value).join("")], options.credential)) violations.push("credential leaked outside authentication header");
+    if (contains([...urlValues, ...body, ...headerValues, ...ordinaryHeaders.map(([, value]) => value)], options.credential, options.fragments)) violations.push("credential leaked outside authentication header");
     if (headers.some(([key, value]) => key === TOKEN_HEADER && value !== options.credential)) violations.push("unexpected device credential header value");
     const expectedUpload = isExpectedUpload(record, options);
-    const allValues = [...urlValues, ...body, ...headerValues];
-    if (contains(allValues, options.draft)) violations.push("draft content leaked");
+    const allValues = [...urlValues, ...body, ...headerValues, ...ordinaryHeaders.map(([, value]) => value)];
+    if (contains(allValues, options.draft, options.fragments)) violations.push("draft content leaked");
     // The sole exception is the exact known synthetic attachment body. URL and
     // unrelated headers remain subject to attachment checks during preparation.
     const attachmentValues = expectedUpload ? [...urlValues, ...headerValues] : allValues;
-    if ([options.attachmentName, options.attachmentContent, options.uploadId].some(value => contains(attachmentValues, value))) violations.push("attachment data leaked");
+    if ([options.attachmentName, options.attachmentContent, options.uploadId].some(value => contains(attachmentValues, value, options.fragments))) violations.push("attachment data leaked");
     if (url.pathname === "/api/codex/upload" && !expectedUpload) violations.push("unexpected attachment upload request");
     let safeRpc = false;
-    if (url.pathname === "/api/codex/rpc" && methodOf(record) === "POST") {
+    if (url.pathname === "/api/codex/rpc" && !url.search && methodOf(record) === "POST") {
       try {
         const rpc = JSON.parse(record.body);
         const params = rpc.params || {};
@@ -152,12 +221,12 @@ export function inspectRequest(record, options = {}) {
           && typeof params === "object" && !Array.isArray(params)
           && Object.keys(params).every(key => allowedParams.includes(key))
           && (params.limit === undefined || (Number.isInteger(params.limit) && params.limit > 0 && params.limit <= 100))
-          && (params.threadId === undefined || typeof params.threadId === "string")
+          && (rpc.method !== "thread/read" || (options.allowedThreadIds || []).includes(params.threadId))
           && (params.includeTurns === undefined || typeof params.includeTurns === "boolean")
           && record.body === JSON.stringify(rpc);
       } catch { /* Reject malformed RPC. */ }
     }
-    if (methodOf(record) !== "GET" && !expectedUpload && !safeRpc) violations.push("unexpected non-static request");
+    if (!isStaticRequest(record) && !isExpectedGet(record, options) && !expectedUpload && !safeRpc) violations.push("unexpected non-static request");
     return violations;
   } catch {
     return ["request normalization failed closed"];

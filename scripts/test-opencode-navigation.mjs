@@ -1,24 +1,32 @@
 import assert from "node:assert/strict";
 import { createServer } from "vite";
 import { webkit } from "playwright";
-import { inspectRequest, isStaticRequest, isExpectedUpload } from "./lib/navigation-request-guard.mjs";
+import { isStaticRequest, isExpectedUpload } from "./lib/navigation-request-guard.mjs";
+
+import { installNavigationHttpGuard, selfTestNavigationHttpGuard } from "./lib/navigation-http-guard.mjs";
+import { installNavigationWebSocketGuard, selfTestNavigationWebSocketGuard } from "./lib/navigation-websocket-guard.mjs";
 
 const synthetic = {
   draft: "Synthetic conversation: person@example.invalid; no real personal data",
   attachmentName: "synthetic-private.txt",
   attachmentContent: "synthetic-attachment-content",
   uploadId: "synthetic-upload-id",
-  credential: "synthetic-device-credential"
+  credential: "synthetic-device-credential",
+  allowedThreadIds: ["synthetic-thread"],
+  allowedSessionIds: ["synthetic-retained-session"]
 };
 
 // Run the real frontend, never a live application backend. All API responses
 // are synthetic; cross-origin requests and WebSockets are blocked.
-const server = await createServer({ configFile: false, server: { host: "127.0.0.1", port: 0, hmr: false, watch: null } });
+const server = await createServer({ configFile: false, server: { host: "127.0.0.1", port: 0, hmr: false, ws: false, watch: null } });
 let browser;
 try {
   await server.listen();
   const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
   browser = await webkit.launch({ headless: true });
+  await selfTestNavigationHttpGuard(browser, { origin, ...synthetic });
+  await selfTestNavigationWebSocketGuard(browser);
+  console.log("PASS synthetic negative controls: unknown GET rejects; WebSocket URL/frame attempts recorded and denied");
   for (const unified of ["1", "0"]) {
     for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1280, height: 800 }]) {
       const context = await browser.newContext({ viewport, serviceWorkers: "block", isMobile: viewport.width < 681, hasTouch: viewport.width < 681 });
@@ -28,37 +36,12 @@ try {
           localStorage.setItem("opencode-pocket-backend", "opencode");
           localStorage.setItem("devmoter-device-token", "synthetic-device-credential");
         });
-        const page = await context.newPage();
-        await context.routeWebSocket("**/*", socket => socket.close());
-        const requests = [];
-        const external = [];
-        const violations = [];
+        const wsGuard = await installNavigationWebSocketGuard(context);
         let preparingAttachment = false;
-        // Context-wide routing also covers popups and worker HTTP traffic.
-        await context.route("**/*", async route => {
-          const request = route.request();
-          const url = new URL(request.url());
-          if (url.origin !== origin) {
-            external.push(request.url());
-            return route.abort();
-          }
-          const body = request.postData() || "";
-          const record = { path: url.pathname, method: request.method(), body, url: request.url(), headers: await request.allHeaders(), preparingAttachment, resourceType: request.resourceType() };
-          requests.push(record);
-          const findings = inspectRequest(record, { origin, ...synthetic });
-          violations.push(...findings);
-          if (findings.length) return route.abort();
-          // Only known static GETs reach Vite. Every other request is inspected
-          // and mocked, including non-/api endpoints and non-GET asset URLs.
-          if (isStaticRequest(record)) return route.continue();
-          let payload = {};
-          if (url.pathname === "/api/projects") payload = { projects: [] };
-          else if (url.pathname === "/api/codex/upload") payload = { uploadId: "synthetic-upload-id" };
-          else if (url.pathname === "/api/codex/rpc") payload = { result: { data: [] } };
-          else if (url.pathname.startsWith("/api/opencode/")) payload = { data: [] };
-          else if (url.pathname === "/api/auth/status") payload = { authenticated: true };
-          return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(payload) });
+        const { requests, external, violations } = await installNavigationHttpGuard(context, {
+          origin, ...synthetic, isPreparingAttachment: () => preparingAttachment,
         });
+        const page = await context.newPage();
         await page.goto(`${origin}/?surface=opencode&unifiedUI=${unified}`);
         await page.locator("#ocxMenu").waitFor().catch(error => {
           console.error("Initialization request classifications:", requests.map(request => ({ path: request.path, type: request.resourceType, static: isStaticRequest(request) })), violations);
@@ -78,6 +61,13 @@ try {
         await page.locator("#ocxFileInput").setInputFiles({ name: "synthetic-private.txt", mimeType: "text/plain", buffer: Buffer.from("synthetic-attachment-content") });
         await page.waitForFunction(() => document.querySelector("#ocxAttachmentStrip")?.textContent.includes("synthetic-private.txt"));
         preparingAttachment = false;
+        // Vite injects a client even with hmr/ws disabled. Its one known startup
+        // attempt is denied and retained, never silently excluded from the audit.
+        await wsGuard.collect(page);
+        const initialWebSockets = [...wsGuard.records.connections];
+        const expectedHmr = `ws://127.0.0.1:${server.config.server.port}/?token=${server.config.webSocketToken}`;
+        assert.ok(initialWebSockets.length <= 1 && initialWebSockets.every(url => url === expectedHmr), "only Vite's exact local startup socket may be attempted before navigation");
+        assert.deepEqual(wsGuard.records.frames, [], "startup must not attempt WebSocket frames");
         for (const [button, surface, destination] of [["#ocxQuickCodex", "codex", "#cxMenu"], ["#ocxQuickApi", "api", "#apiMenu"]]) {
           await page.locator("#ocxMenu").click();
           await page.locator("#ocxSidebar.open").waitFor();
@@ -113,9 +103,14 @@ try {
           assert.match(await page.locator("#ocxAttachmentStrip").textContent(), /synthetic-private\.txt/);
           assert.equal(await page.evaluate(() => localStorage.getItem("opencode-pocket-opencode-session")), "synthetic-retained-session");
         }
+        // Collect after the real Back/Forward sequence, not just socket blocking.
+        for (const ownedPage of context.pages()) await wsGuard.collect(ownedPage);
+        assert.deepEqual(wsGuard.records.connections, initialWebSockets, "history navigation must not attempt any WebSocket connection");
+        assert.deepEqual(wsGuard.records.frames, [], "history navigation must not attempt any WebSocket frame");
         assert.equal(requests.filter(request => isExpectedUpload(request, { origin, ...synthetic })).length, 1, "exercise exactly one expected synthetic attachment upload");
         assert.ok(requests.some(isStaticRequest), "record static GETs as well as dynamic traffic");
         assert.deepEqual(external, [], "no request may leave the synthetic same-origin backend");
+        if (violations.length) console.error("Rejected synthetic paths:", requests.filter(record => record.findings.length).map(({ path, method, findings }) => ({ path, method, findings })));
         assert.deepEqual(violations, [], "all HTTP phases must preserve authentication, draft, attachment and mutation boundaries");
         console.log(`PASS unifiedUI=${unified}, viewport=${viewport.width}x${viewport.height}: pinned 44px exits, real routing/focus, Back/Forward, retained draft/session/attachment, mocked send boundary`);
       } finally {

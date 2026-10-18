@@ -9,6 +9,7 @@ const opts = {
   attachmentContent: "SYNTHETIC_CONTENT_X7",
   uploadId: "SYNTHETIC_UPLOAD_X7",
   credential: "SYNTHETIC_CREDENTIAL_X7",
+  allowedThreadIds: ["synthetic-thread"],
 };
 const base = { url: `${opts.origin}/api/codex/rpc`, method: "GET", headers: {} };
 const req = (overrides = {}) => ({ ...base, ...overrides });
@@ -100,7 +101,7 @@ test("draft inspection decodes nested, escaped, base64 and split values in body/
 
 test("only approved read RPC methods and exact endpoint permit POST", async t => {
   for (const method of ["thread/list", "thread/read", "model/list"]) {
-    await t.test(`read ${method}`, () => assert.deepEqual(inspectRequest(req({ method: "POST", body: JSON.stringify({ method }) }), opts), []));
+    await t.test(`read ${method}`, () => assert.deepEqual(inspectRequest(req({ method: "POST", body: JSON.stringify(method === "thread/read" ? { method, params: { threadId: "synthetic-thread" } } : { method }) }), opts), []));
   }
   for (const [label, record] of [
     ["mutating RPC", req({ method: "POST", body: JSON.stringify({ method: "thread/delete" }) })],
