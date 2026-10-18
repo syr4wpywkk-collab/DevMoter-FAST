@@ -7,6 +7,8 @@ test("session handoff inherits remaining budget before first Codex or OpenCode t
   assert.match(source, /await inheritBudget\(source,\{\.\.\.source,backend:"codex",id\}\);onSessionReady\?\.\(\);await codex\("turn\/start"/);
   assert.match(source, /await inheritBudget\(source,\{\.\.\.source,backend:"opencode",id\}\);onSessionReady\?\.\(\);await oc\("\/session\/"\+encodeURIComponent\(id\)\+"\/prompt"/);
   assert.match(source, /Inherited agent budget is exhausted; new run was not started/);
+  assert.match(source, /await preflightBudget\(source\);if\(targetBackend===\"codex\"\)/);
+  assert.match(source, /budget\/remaining/);
 });
 
 test("side conversation retains a registered workspace once the agent session starts", async () => {
