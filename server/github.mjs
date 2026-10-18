@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { access, mkdir, realpath, stat } from "node:fs/promises";
+import { lstat, mkdir, realpath } from "node:fs/promises";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
@@ -62,6 +62,34 @@ function managedPath(homeDir, identity) {
   return destination;
 }
 
+// Reject symlink pivots under the managed repository root before running git/gh.
+async function assertManagedDirectoryBoundary(homeDir, identity) {
+  const root = managedRoot(homeDir);
+  const components = [
+    resolve(homeDir, ".local"),
+    resolve(homeDir, ".local", "share"),
+    resolve(homeDir, ".local", "share", "opencode-pocket"),
+    root,
+    join(root, identity.owner),
+    managedPath(homeDir, identity)
+  ];
+  for (const component of components) {
+    let details;
+    try {
+      details = await lstat(component);
+    } catch (error) {
+      if (error?.code === "ENOENT") continue;
+      throw error;
+    }
+    if (details.isSymbolicLink()) {
+      throw new Error("Managed GitHub repository path must not contain symbolic links");
+    }
+    if (!details.isDirectory()) {
+      throw new Error("Managed GitHub repository path must contain directories only");
+    }
+  }
+}
+
 function parseJson(text) {
   try { return JSON.parse(text); } catch { throw new Error("GitHub CLI returned invalid JSON"); }
 }
@@ -85,13 +113,25 @@ export async function githubStatus(homeDir) {
 
 async function localState(homeDir, identity) {
   const path = managedPath(homeDir, identity);
+  await assertManagedDirectoryBoundary(homeDir, identity);
+  let gitDirectory;
   try {
-    await access(join(path, ".git"));
-    const origin = (await run("git", ["config", "--get", "remote.origin.url"], { cwd: path })).stdout.trim();
-    const branch = (await run("git", ["branch", "--show-current"], { cwd: path })).stdout.trim();
-    const dirty = Boolean((await run("git", ["status", "--porcelain"], { cwd: path })).stdout.trim());
-    return { cloned: true, path, currentBranch: branch, dirty, origin: origin.slice(0, 300) };
-  } catch { return { cloned: false, path, currentBranch: null, dirty: false, origin: null }; }
+    gitDirectory = await lstat(join(path, ".git"));
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return { cloned: false, path, currentBranch: null, dirty: false };
+    }
+    throw error;
+  }
+  // Worktree pointers or symlinked .git may redirect metadata outside the checkout.
+  // gh-managed clones must have a real .git directory.
+  if (!gitDirectory.isDirectory()) {
+    throw new Error("Managed GitHub repository .git must be a directory");
+  }
+  const branch = (await run("git", ["branch", "--show-current"], { cwd: path })).stdout.trim();
+  const dirty = Boolean((await run("git", ["status", "--porcelain"], { cwd: path })).stdout.trim());
+  // Never expose remote.origin.url to the browser: it may include credentials.
+  return { cloned: true, path, currentBranch: branch, dirty };
 }
 
 function repoSummary(item, local) {
@@ -203,7 +243,9 @@ async function registerProject(projectsApi, identity, path) {
 export async function openGithubRepo(homeDir, projectsApi, owner, repo, branch = "") {
   const identity = validateRepoIdentity(owner, repo);
   const path = managedPath(homeDir, identity);
+  await assertManagedDirectoryBoundary(homeDir, identity);
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
+  await assertManagedDirectoryBoundary(homeDir, identity);
   const current = await localState(homeDir, identity);
   if (!current.cloned) {
     await run("gh", ["repo", "clone", identity.fullName, path]);
@@ -212,6 +254,7 @@ export async function openGithubRepo(homeDir, projectsApi, owner, repo, branch =
     if (current.dirty) throw new Error("Repository has local changes; fetch or branch switching was not performed");
     await run("git", ["fetch", "--prune", "origin"], { cwd: path });
   }
+  await assertManagedDirectoryBoundary(homeDir, identity);
   const requested = branch || (await run("git", ["branch", "--show-current"], { cwd: path })).stdout.trim() || "main";
   const branches = (await run("git", ["branch", "--all", "--format=%(refname:short)"], { cwd: path })).stdout.split(/\r?\n/).filter(Boolean);
   if (!branches.includes(requested) && !branches.includes(`origin/${requested}`)) throw new Error("Requested branch was not found after fetch");
@@ -220,6 +263,7 @@ export async function openGithubRepo(homeDir, projectsApi, owner, repo, branch =
     if (branches.includes(requested)) await run("git", ["switch", requested], { cwd: path });
     else await run("git", ["switch", "--track", `origin/${requested}`], { cwd: path });
   }
+  await assertManagedDirectoryBoundary(homeDir, identity);
   const registered = await registerProject(projectsApi, identity, await realpath(path));
   return { ...registered, currentBranch: requested, dirty: false, path: await realpath(path), fullName: identity.fullName };
 }
@@ -228,6 +272,7 @@ export async function fetchGithubRepo(homeDir, owner, repo) {
   const identity = validateRepoIdentity(owner, repo);
   const state = await localState(homeDir, identity);
   if (!state.cloned) throw new Error("Repository is not cloned in the managed directory");
+  await assertManagedDirectoryBoundary(homeDir, identity);
   await assertOrigin(state.path, identity);
   await run("git", ["fetch", "--prune", "origin"], { cwd: state.path });
   return { ...(await localState(homeDir, identity)), fullName: identity.fullName };
