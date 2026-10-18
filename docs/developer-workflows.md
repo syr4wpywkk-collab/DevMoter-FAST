@@ -115,7 +115,9 @@ Recognized capability/declaration keys in manifest version 1 are:
 
 `commands`, `skills`, `hooks`, `mcp`, `adapters`, `themes`, `rules`, `review`, and `verification`.
 
-Unknown capabilities and declarations fail closed. A manifest is metadata only: discovery does not execute repository code or commands.
+Unknown capabilities, fields, malformed declarations, and declarations without matching capabilities fail closed. A manifest is metadata only: discovery does not execute repository code or commands.
+
+An extension approval is bound to the reviewed manifest version, capabilities, permissions, and declarations. Changing an extension's declared behavior requires explicit re-approval even when its permission labels are unchanged.
 
 Breaking changes require a new `manifestVersion`. Version 1 parsers must reject unknown unsafe declaration surfaces instead of guessing.
 
@@ -139,7 +141,7 @@ Connection tests are intentionally conservative. HTTP configuration performs a b
 
 MCP/tool output shown in conversation history is normalized into bounded structured data with a collapsible raw fallback.
 
-Rendering uses DOM `textContent`, not untrusted HTML. Large strings, deeply nested data, and high-entry-count objects are truncated. This prevents tool output from injecting scripts or producing an unbounded browser payload.
+Rendering uses DOM `textContent`, not untrusted HTML. Large strings, deeply nested data, and high-entry-count objects are truncated. Special JSON property names (such as `__proto__`) remain data and cannot change a result object's prototype. If a provider returns cyclic data, DevMoter keeps a bounded structured view and marks the raw fallback as unserializable. This prevents tool output from injecting scripts or producing an unbounded browser payload.
 
 ## AgentAdapter and optional ACP compatibility
 
@@ -151,7 +153,7 @@ Native adapters remain first class:
 
 The adapter registry negotiates required capabilities and reports when a requested adapter falls back to another compatible adapter.
 
-The optional ACP adapter uses the stable ACP v1 JSON-RPC-over-stdio lifecycle: `initialize`, `session/new`, `session/prompt`, and `session/cancel`. ACP is disabled by default. When enabled, the Developer workflows panel can probe the configured agent by launching it and completing the v1 initialization handshake.
+The optional ACP adapter uses the stable ACP v1 JSON-RPC-over-stdio lifecycle: `initialize`, `session/new`, `session/prompt`, and `session/cancel`. Initialization rejects incompatible protocol versions; parallel connection requests share a single handshake, and oversized inbound messages are rejected. ACP is disabled by default. When enabled, the Developer workflows panel can probe the configured agent by launching it and completing the v1 initialization handshake.
 
 DevMoter advertises no implicit terminal or filesystem client capability to an ACP agent. Unexpected agent-to-client requests are rejected unless DevMoter explicitly implements them.
 
