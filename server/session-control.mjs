@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 
 const MAX_BODY = 512 * 1024;
 const MAX_QUEUE_TEXT = 16_000;
+const MAX_QUEUE_ITEMS = 200;
 const MAX_CHECKPOINT_MESSAGES = 80;
 const MAX_CHECKPOINT_CHARS = 36_000;
 const MAX_EVENTS = 400;
@@ -70,7 +71,19 @@ function boundedFiles(value) {
 function sanitizeState(raw) {
   const state = defaultState();
   if (!raw || raw.version !== 1) return state;
-  state.queue = Array.isArray(raw.queue) ? raw.queue.slice(-200) : [];
+  state.queue = (Array.isArray(raw.queue) ? raw.queue.slice(-MAX_QUEUE_ITEMS) : [])
+    .filter(item => item && isBackend(item.backend) && typeof item.sessionId === "string" &&
+      item.sessionId.length > 0 && typeof item.text === "string" && item.text.trim().length > 0)
+    .map(item => ({
+      id: typeof item.id === "string" ? item.id : randomUUID(),
+      backend: item.backend,
+      sessionId: item.sessionId,
+      sessionKey: keyOf(item.backend, item.sessionId),
+      text: item.text.slice(0, MAX_QUEUE_TEXT),
+      createdAt: Number.isFinite(item.createdAt) ? item.createdAt : Date.now(),
+      // Any dispatch without a durable acknowledgment must be reviewed, never replayed silently.
+      status: item.status === "dispatching" || item.status === "needs-review" ? "needs-review" : "pending"
+    }));
   state.budgets = raw.budgets && typeof raw.budgets === "object" ? raw.budgets : {};
   state.ownership = raw.ownership && typeof raw.ownership === "object" ? raw.ownership : {};
   state.checkpoints = Array.isArray(raw.checkpoints) ? raw.checkpoints.slice(-MAX_CHECKPOINTS) : [];
@@ -105,7 +118,7 @@ export function createSessionControl({ homeDir, inspectSession, dispatchQueued, 
 
   async function persist() {
     const snapshot = JSON.stringify(await ensureLoaded(), null, 2);
-    writeChain = writeChain.then(async () => {
+    writeChain = writeChain.catch(() => {}).then(async () => {
       await mkdir(dirname(stateFile), { recursive: true, mode: 0o700 });
       const temp = `${stateFile}.${process.pid}.${randomUUID()}.tmp`;
       await writeFile(temp, snapshot, { mode: 0o600 });
@@ -176,6 +189,8 @@ export function createSessionControl({ homeDir, inspectSession, dispatchQueued, 
         const text = String(payload.text || "").trim().slice(0, MAX_QUEUE_TEXT);
         if (!isBackend(backend) || !sessionId || !text) throw new Error("backend, sessionId and text are required");
         const item = { id: randomUUID(), backend, sessionId, sessionKey: keyOf(backend, sessionId), text, createdAt: Date.now() };
+        if (target.queue.length >= MAX_QUEUE_ITEMS) throw new Error("Queue limit reached");
+        item.status = "pending";
         target.queue.push(item);
         addEvent(target, { sessionKey: item.sessionKey, type: "queue", detail: "Queued follow-up" });
         await persist();
@@ -188,6 +203,12 @@ export function createSessionControl({ homeDir, inspectSession, dispatchQueued, 
         const payload = await readJson(req);
         const index = target.queue.findIndex(item => item.id === queueMatch[1]);
         if (index < 0) throw new Error("Queue item not found");
+        if (target.queue[index].status === "dispatching") throw new Error("Queue item is being dispatched");
+        if (payload.retry === true) {
+          if (target.queue[index].status !== "needs-review") throw new Error("Only unconfirmed sends can be retried");
+          target.queue[index].status = "pending";
+          addEvent(target, { sessionKey: target.queue[index].sessionKey, type: "queue", detail: "User explicitly retried unconfirmed follow-up" });
+        }
         if (typeof payload.text === "string") {
           const text = payload.text.trim().slice(0, MAX_QUEUE_TEXT);
           if (!text) throw new Error("Queued text cannot be empty");
@@ -204,6 +225,7 @@ export function createSessionControl({ homeDir, inspectSession, dispatchQueued, 
       }
       if (queueMatch && req.method === "DELETE") {
         const before = target.queue.length;
+        if (target.queue.some(item => item.id === queueMatch[1] && item.status === "dispatching")) throw new Error("Queue item is being dispatched");
         target.queue = target.queue.filter(item => item.id !== queueMatch[1]);
         if (target.queue.length === before) throw new Error("Queue item not found");
         await persist();
@@ -309,7 +331,7 @@ export function createSessionControl({ homeDir, inspectSession, dispatchQueued, 
     try {
       const target = await ensureLoaded();
       const keys = new Set([
-        ...target.queue.map(item => item.sessionKey),
+        ...target.queue.filter(item => item.status === "pending").map(item => item.sessionKey),
         ...Object.keys(target.budgets).filter(key => !target.budgets[key]?.stopReason)
       ]);
       let dirty = false;
@@ -346,15 +368,23 @@ export function createSessionControl({ homeDir, inspectSession, dispatchQueued, 
         }
 
         if (!snapshot?.active) {
-          const next = target.queue.find(item => item.sessionKey === sessionKey);
+          const next = target.queue.find(item => item.sessionKey === sessionKey && item.status === "pending");
           if (next && !(budget?.stopReason)) {
+            // Persist the intent before invoking an external agent: a crash must not silently resend.
+            next.status = "dispatching";
+            addEvent(target, { sessionKey, type: "queue", detail: "Dispatch started (awaiting acknowledgment)" });
             try {
+              await persist();
               await dispatchQueued(backend, sessionId, next.text);
               target.queue = target.queue.filter(item => item.id !== next.id);
               addEvent(target, { sessionKey, type: "queue", detail: "Dispatched queued follow-up" });
               dirty = true;
             } catch {
-              // Keep queued data durable for the next reconcile pass.
+              // The backend may have accepted the message before losing the response.
+              // Fail closed: user must explicitly inspect the run before attempting a retry.
+              next.status = "needs-review";
+              addEvent(target, { sessionKey, type: "queue", detail: "Dispatch unconfirmed; manual review required before retry" });
+              dirty = true;
             }
           }
         }
