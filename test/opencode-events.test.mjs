@@ -113,3 +113,34 @@ test("fallback reconciliation replaces persisted context instead of appending du
   const renderIndex = loadContext.indexOf("renderMessage(message)");
   assert.ok(resetIndex >= 0 && renderIndex > resetIndex);
 });
+
+test("non-text OpenCode part deltas never become assistant text", async () => {
+  for (const field of ["state", "state.input", "metadata", "time"]) {
+    const event = normalizeOpenCodeEvent({
+      type: "message.part.delta",
+      properties: {
+        sessionID: "session-1",
+        messageID: "assistant-1",
+        partID: "tool-part-1",
+        field,
+        delta: '{"command":"private-tool-input"}'
+      }
+    });
+
+    assert.equal(event.delta, null, field);
+    assert.equal(mergeOpenCodeStreamText("visible assistant text", event), "visible assistant text");
+  }
+
+  // Both the current text-field schema and field-less legacy payloads remain supported.
+  for (const field of ["text", undefined]) {
+    const event = normalizeOpenCodeEvent({
+      type: "message.part.delta",
+      properties: { messageID: "assistant-1", partID: "text-1", field, delta: " world" }
+    });
+    assert.equal(mergeOpenCodeStreamText("Hello", event), "Hello world");
+  }
+
+  const source = await readFile(new URL("../src/opencode.ts", import.meta.url), "utf8");
+  const handler = source.slice(source.indexOf('if (type === "message.part.delta")'));
+  assert.match(handler, /if \(normalized\.delta === null\) \{[\s\S]*?scheduleRefresh\(220\);[\s\S]*?return;/);
+});
