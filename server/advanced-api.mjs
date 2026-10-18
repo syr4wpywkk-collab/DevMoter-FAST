@@ -3,7 +3,7 @@ import { basename, extname, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 import {
   buildModelRegistry, createArtifactRegistry, createGrantRegistry, listProjectDirectory, parseRoutingRules,
-  previewFile, providerConfigFromEnv, runWithRouting, sandboxStatus
+  previewFile, providerConfigFromEnv, publicArtifact, runWithRouting, sandboxStatus
 } from "./advanced-features.mjs";
 import {
   backendAttachmentCapabilities, fetchUrlAttachment, negotiateAttachments, previewUrlInput
@@ -358,8 +358,8 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
         const project = await getProjectById(projectId);
         if (req.method === "GET") {
           sendJson(res, 200, {
-            artifacts: await artifacts.list(url.searchParams.get("session") || "", projectId),
-            roots: (await approvedOutputRoots(project)).map(({ id, label, path }) => ({ id, label, path }))
+            artifacts: (await artifacts.list(url.searchParams.get("session") || "", projectId)).map(publicArtifact),
+            roots: (await approvedOutputRoots(project)).map(({ id, label }) => ({ id, label }))
           });
           return true;
         }
@@ -371,7 +371,7 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
           const artifact = await artifacts.register({
             sessionId: payload.sessionId, projectId, root: root.path, relativePath: payload.path
           });
-          sendJson(res, 201, { artifact });
+          sendJson(res, 201, { artifact: publicArtifact(artifact) });
           return true;
         }
       }
@@ -379,7 +379,7 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
       const artifactPreview = url.pathname.match(/^\/api\/artifacts\/([^/]+)\/preview$/);
       if (artifactPreview && req.method === "GET") {
         const { artifact } = await artifacts.get(decodeURIComponent(artifactPreview[1]));
-        sendJson(res, 200, { artifact, preview: await previewFile(artifact.root, artifact.path) });
+        sendJson(res, 200, { artifact: publicArtifact(artifact), preview: await previewFile(artifact.root, artifact.path) });
         return true;
       }
 
