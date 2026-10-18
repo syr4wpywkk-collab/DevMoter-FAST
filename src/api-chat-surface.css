@@ -46,7 +46,7 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
   right: 0;
   z-index: 30;
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
   height: var(--api-header-height);
   min-height: var(--api-header-height);
   gap: 8px;
@@ -60,6 +60,8 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 .api-app .api-brand { display: grid; min-width: 0; grid-column: 2; grid-row: 1; }
 .api-app .api-brand strong { font-size: 1.05rem; font-weight: 500; }
 .api-app .api-brand small { display: block; color: var(--api-muted); font-size: .7rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.api-app .api-header-actions { grid-column: 3; grid-row: 1; display: flex; align-items: center; justify-content: flex-end; gap: 4px; min-width: 0; }
+.api-app .api-surface-label { display: inline-flex; align-items: center; min-height: 30px; padding: 0 9px; border: 1px solid var(--api-border); border-radius: 999px; background: var(--api-composer-surface); color: var(--api-text); font-size: .7rem; font-weight: 700; white-space: nowrap; }
 .api-app #apiSettingsTop { grid-area: auto; align-self: center; height: 44px; }
 .api-app .api-main { position: absolute; top: var(--api-header-height); right: 0; bottom: 0; left: 0; display: block; overflow: hidden; }
 .api-app .api-transcript {
@@ -167,7 +169,10 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 .api-app .dm-agent-switch-menu { background: #fff; border-color: #d5deeb; color: var(--api-text); }
 .api-app .dm-agent-switch-menu > button { color: var(--api-text); }
 .api-app .dm-agent-switch-menu > button:hover,
-.api-app .dm-agent-switch-menu > button.active { background: #e7eef8; }
+.api-app .dm-agent-switch-menu > button:focus-visible,
+.api-app .dm-agent-switch-menu > button.active { background: #dae8fa; color: #17365e; }
+.api-app .dm-agent-switch-menu > button.active small { color: #345679; }
+.api-app .dm-agent-switch-menu > button.active > span:last-child { color: #184c9c; }
 .api-app .dm-agent-switch-menu small { color: var(--api-muted); }
 
 .api-app .api-settings-modal { position: absolute; z-index: 100; padding: max(14px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); background: rgba(24, 35, 50, .32); color-scheme: light; }
@@ -211,7 +216,7 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 .api-app #apiWorkspaceControlsMount .dm-panel select { max-width: 100%; min-height: 44px; }
 
 @media (max-width: 899px) {
-  body.api-mode .api-app .api-topbar { padding-left: calc(max(12px, env(safe-area-inset-left)) + 58px); }
+  body.api-mode .api-app .api-topbar { padding-left: max(12px, env(safe-area-inset-left)); }
 }
 @media (min-width: 760px) {
   .api-app .api-transcript { padding-inline: max(24px, calc((100% - var(--api-content-width)) / 2)); }
@@ -228,6 +233,11 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 }
 
 /* Explicit app preference takes priority over the OS palette. */
+html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button:hover,
+html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button:focus-visible,
+html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active { background: #344762; color: #f5f8ff; }
+html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active small { color: #d5e2f9; }
+html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active > span:last-child { color: #b5c9ff; }
 html[data-devmoter-theme="dark"] .api-app {
   --api-bg: #13151a; --api-surface: #1e222b; --api-text: #e8eaf0; --api-muted: #b7bfcd;
   --api-border: #485264; --api-accent: #adc6ff; --api-composer-surface: #242b38;
