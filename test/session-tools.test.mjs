@@ -64,3 +64,30 @@ test("external thread import records origin, surfaces unsupported items and keep
   assert.match(imported.messages[1].text, /will not be executed/);
   assert.ok(imported.unsupported.includes("mysteryEvent"));
 });
+
+
+test("export redacts JSON-shaped credentials and tolerates malformed timestamps", () => {
+  const source = '{"apiKey": "tool-secret-ABC123", "Authorization": "Basic dXNlcjpwYXNz"}';
+  const sanitized = redactSensitiveText(source + "\nclient_secret: another-secret-123");
+  assert.doesNotMatch(sanitized, /tool-secret-ABC123|dXNlcjpwYXNz|another-secret-123/);
+  assert.match(sanitized, /\[REDACTED\]/);
+  const quoted = redactSensitiveText(['password = "correct horse battery staple"', "apiKey: 'quoted value with spaces'"].join("\n"));
+  assert.doesNotMatch(quoted, /correct horse|battery staple|quoted value/);
+
+  const markdown = sessionContextToMarkdown(
+    { id: "safe", title: "Test", time: { created: "invalid-date", updated: "invalid-date" } },
+    [{ type: "tool", name: "request", state: { status: "completed", result: source } }]
+  );
+  assert.doesNotMatch(markdown, /tool-secret-ABC123|dXNlcjpwYXNz/);
+  assert.doesNotMatch(markdown, /- Created:|- Updated:/);
+});
+
+test("nested tool outputs have a bounded sanitizer traversal", () => {
+  let big = { safe: "ok" };
+  for (let i = 0; i < 8; i += 1) big = { left: big, right: big };
+  const markdown = sessionContextToMarkdown({ id: "bounded" }, [
+    { type: "tool", name: "large", state: { status: "completed", result: big } }
+  ], { maxToolChars: 350 });
+  assert.ok(markdown.length < 2000);
+  assert.match(markdown, /truncated/);
+});

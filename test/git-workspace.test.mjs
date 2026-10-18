@@ -102,3 +102,26 @@ test("large untracked files are bounded before content is read into the diff", a
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+
+test("untracked diffs preserve exact hunk lengths and missing-newline markers", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-git-newlines-"));
+  try {
+    await git(dir, "init");
+    await writeFile(join(dir, "with-newline.txt"), "first\n");
+    await writeFile(join(dir, "without-newline.txt"), "second");
+    await writeFile(join(dir, "empty.txt"), "");
+
+    const withNewline = await getFileDiff(dir, "with-newline.txt");
+    assert.match(withNewline.diff, /@@ -0,0 \+1,1 @@\n\+first\n/);
+    assert.doesNotMatch(withNewline.diff, /No newline at end of file/);
+
+    const withoutNewline = await getFileDiff(dir, "without-newline.txt");
+    assert.match(withoutNewline.diff, /@@ -0,0 \+1,1 @@\n\+second\n\\ No newline at end of file/);
+
+    const empty = await getFileDiff(dir, "empty.txt");
+    assert.doesNotMatch(empty.diff, /@@ -0,0 \+1,/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

@@ -238,16 +238,21 @@ async function untrackedDiff(projectPath, path) {
     return "diff --git a/" + path + " b/" + path + "\nnew file mode 100644\nBinary file\n";
   }
 
-  const lines = content.replace(/\r\n/g, "\n").split("\n");
-  const body = lines.map(line => "+" + line).join("\n");
-  return [
+  const normalized = content.replace(/\r\n/g, "\n");
+  const lines = normalized.split("\n");
+  const endsWithNewline = normalized.endsWith("\n");
+  if (endsWithNewline || normalized.length === 0) lines.pop();
+  const header = [
     "diff --git a/" + path + " b/" + path,
     "new file mode 100644",
     "--- /dev/null",
-    "+++ b/" + path,
-    "@@ -0,0 +1," + lines.length + " @@",
-    body
-  ].join("\n") + "\n";
+    "+++ b/" + path
+  ];
+  if (!lines.length) return header.join("\n") + "\n";
+  const body = lines.map(line => "+" + line).join("\n");
+  const missingNewlineNotice = endsWithNewline ? "" : "\\ No newline at end of file\n";
+  return [...header, "@@ -0,0 +1," + lines.length + " @@", body].join("\n") +
+    "\n" + missingNewlineNotice;
 }
 
 export async function getFileDiff(projectPath, inputPath, { scope = "all" } = {}) {
