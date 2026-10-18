@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import {
   HOOK_SCHEMA_VERSION,
   createUserAutomationService,
+  hookChildEnvironment,
   normalizeHook,
   normalizeRecipe,
   normalizeSlashCommand,
@@ -160,4 +161,24 @@ test("user automation state is private config data and round-trips normalized co
   assert.equal(state.slashCommands[0].precedence, 20);
   const raw = JSON.parse(await readFile(join(dir, "user-automation.json"), "utf8"));
   assert.equal(raw.slashCommands[0].source, "user");
+});
+
+test("approved hook subprocess env strips inherited tokens and injection hooks", () => {
+  const schema = { schemaVersion: 1, event: "after-run", payload: {} };
+  const env = hookChildEnvironment("after-run", schema, {
+    PATH: "/usr/bin",
+    DEVMOTER_PRIVATE_TOKEN: "hidden",
+    OPENAI_API_KEY: "hidden",
+    NODE_OPTIONS: "--require=attacker.js",
+    LD_PRELOAD: "/tmp/injected.so",
+    NORMAL_LABEL: "safe"
+  });
+  assert.equal(env.PATH, "/usr/bin");
+  assert.equal(env.NORMAL_LABEL, "safe");
+  assert.equal(env.DEVMOTER_PRIVATE_TOKEN, undefined);
+  assert.equal(env.OPENAI_API_KEY, undefined);
+  assert.equal(env.NODE_OPTIONS, undefined);
+  assert.equal(env.LD_PRELOAD, undefined);
+  assert.equal(env.DEVMOTER_HOOK_EVENT, "after-run");
+  assert.deepEqual(JSON.parse(env.DEVMOTER_HOOK_EVENT_JSON), schema);
 });
