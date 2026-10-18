@@ -48,6 +48,17 @@ Record PASS / FAIL, device, date and a **redacted** note for each item.
 - If a smoke case fails, record the visible symptom, reproduction sequence
   and a sanitized log; leave #13 open.
 
+## Automated managed-path security checks
+
+The host now rejects symlinked managed-root components, owner directories,
+and repository directories **before** running `gh` or `git`. Managed clones
+must have a real `.git` directory; external gitdir pointers/worktrees cannot be
+adopted automatically. The repository picker API does not expose raw
+`remote.origin.url` values, which can contain credentials.
+
+These automated checks (`test/github-managed-path.test.mjs`) complement, but
+**do not replace**, GH-01…GH-10 real Chromebook and iPhone validation.
+
 ## Closure rule
 
 Only close #13 when GH-01 through GH-10 have passed on the designated
