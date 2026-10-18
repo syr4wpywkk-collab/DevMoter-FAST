@@ -1,5 +1,7 @@
 const SECRET_KEY = /(authorization|cookie|password|passwd|secret|token|api[_-]?key|credential|private[_-]?key)/i;
 const SECRET_TEXT_PATTERNS = [
+  /\b(?:authorization|proxy-authorization|cookie|set-cookie)\b["']?\s*[:=]\s*[^\r\n]+/gi,
+  /\b(?:password|passwd|secret|token|api[_-]?key|client[_-]?secret|private[_-]?key)\b["']?\s*[:=]\s*["']?[^\s"',}\]]{4,}/gi,
   /Bearer\s+[A-Za-z0-9._~+/=-]{8,}/gi,
   /\bsk-[A-Za-z0-9_-]{12,}\b/g,
   /\bgh[pousr]_[A-Za-z0-9]{12,}\b/g,
@@ -52,15 +54,15 @@ export function redactSensitiveText(value) {
   return text;
 }
 
-function sanitizeValue(value, depth = 0) {
-  if (depth > 5) return "[truncated object]";
+function sanitizeValue(value, depth = 0, budget = { remaining: 500 }) {
+  if (budget.remaining-- <= 0 || depth > 5) return "[truncated object]";
   if (value === null || value === undefined) return value;
   if (typeof value === "string") return redactSensitiveText(value);
   if (typeof value !== "object") return value;
-  if (Array.isArray(value)) return value.slice(0, 50).map(item => sanitizeValue(item, depth + 1));
+  if (Array.isArray(value)) return value.slice(0, 50).map(item => sanitizeValue(item, depth + 1, budget));
   const result = {};
   for (const [key, item] of Object.entries(value).slice(0, 80)) {
-    result[key] = SECRET_KEY.test(key) ? "[REDACTED]" : sanitizeValue(item, depth + 1);
+    result[key] = SECRET_KEY.test(key) ? "[REDACTED]" : sanitizeValue(item, depth + 1, budget);
   }
   return result;
 }
@@ -128,6 +130,11 @@ function toolMarkdown(item, maxToolChars) {
   return lines.join("\n");
 }
 
+function safeIsoDate(value) {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
 export function sessionContextToMarkdown(session, context, options = {}) {
   const maxToolChars = Math.max(256, Number(options.maxToolChars) || 4000);
   const title = redactSensitiveText(session?.title || "Untitled session");
@@ -144,8 +151,10 @@ export function sessionContextToMarkdown(session, context, options = {}) {
     "- Directory: " + redactSensitiveText(directory)
   ];
 
-  if (session?.time?.created) lines.push("- Created: " + new Date(session.time.created).toISOString());
-  if (session?.time?.updated) lines.push("- Updated: " + new Date(session.time.updated).toISOString());
+  const created = session?.time?.created && safeIsoDate(session.time.created);
+  const updated = session?.time?.updated && safeIsoDate(session.time.updated);
+  if (created) lines.push("- Created: " + created);
+  if (updated) lines.push("- Updated: " + updated);
   lines.push("", "> Exported by DevMoter. Secret-like values are redacted. Hidden reasoning is not exported.", "");
 
   const list = Array.isArray(context) ? context : [];
