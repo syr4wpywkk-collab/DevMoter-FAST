@@ -374,7 +374,7 @@ export function chooseModel({ models, rules, role, requirements = {}, override }
 }
 
 export function isRetryableProviderFailure(error) {
-  if (error?.retryable === true) return true;
+  if (error?.retryable === true || error?.name === "AbortError") return true;
   const status = Number(error?.status || 0);
   if ([408, 409, 425, 429].includes(status) || (status >= 500 && status < 600)) return true;
   // Unknown errors (including authentication, validation and malformed response
