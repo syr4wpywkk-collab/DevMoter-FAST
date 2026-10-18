@@ -490,6 +490,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
     modal.setAttribute("aria-hidden", "true");
     document.body.style.overflow = previousOverflow;
     if (returnFocus?.isConnected && !returnFocus.closest(".hidden, [hidden]")) returnFocus.focus({ preventScroll: true });
+    window.dispatchEvent(new CustomEvent("devmoter:workspace-panel-closed", { detail: { tab: "review" } }));
   }
   launch.addEventListener("click", () => {
     if (!modal.classList.contains("hidden")) return;
@@ -504,6 +505,9 @@ export function mountTaskWorkflow(root: HTMLElement) {
   closeButton.addEventListener("click", closeReview);
   modal.addEventListener("click", event => { if (event.target === modal) closeReview(); });
   window.addEventListener("devmoter:surface-changed", closeReview);
+  window.addEventListener("devmoter:workspace-tab-changing", event => {
+    if ((event as CustomEvent<{ tab?: string }>).detail?.tab !== "review") closeReview();
+  });
   modal.addEventListener("keydown", event => {
     if (event.key === "Escape") { event.preventDefault(); closeReview(); return; }
     if (event.key !== "Tab") return;
