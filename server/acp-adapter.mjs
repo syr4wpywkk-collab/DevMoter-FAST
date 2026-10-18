@@ -19,14 +19,25 @@ export class AcpAdapter extends EventEmitter {
 
   async connect({ timeoutMs = 10000 } = {}) {
     if (this.initialized && this.child?.stdin?.writable) return this.initialized;
-    if (this.connectPromise) return this.connectPromise;
     if (!this.command) throw new Error("ACP adapter command is not configured");
-
-    this.connectPromise = this.#initialize(timeoutMs);
+    if (!this.connectPromise) {
+      // Share one handshake; apply independent deadlines for each caller.
+      const handshake = this.#initialize(60000);
+      this.connectPromise = handshake;
+      void handshake.finally(() => {
+        if (this.connectPromise === handshake) this.connectPromise = null;
+      }).catch(() => {});
+    }
+    let timer;
     try {
-      return await this.connectPromise;
+      return await Promise.race([
+        this.connectPromise,
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error("ACP connect timeout")), Math.max(1, Number(timeoutMs) || 10000));
+        })
+      ]);
     } finally {
-      this.connectPromise = null;
+      clearTimeout(timer);
     }
   }
 
@@ -38,6 +49,7 @@ export class AcpAdapter extends EventEmitter {
     });
     this.child = child;
     child.stderr?.resume?.();
+    child.stdin?.on?.("error", error => this.#fail(error));
 
     child.once("error", error => this.#fail(error));
     child.once("exit", (code, signal) => {
@@ -90,7 +102,14 @@ export class AcpAdapter extends EventEmitter {
         }
       });
       try {
-        this.#write({ jsonrpc: "2.0", id, method, params });
+        this.#write({ jsonrpc: "2.0", id, method, params }, error => {
+          if (!error) return;
+          const pending = this.pending.get(String(id));
+          if (pending) {
+            this.pending.delete(String(id));
+            pending.reject(error);
+          }
+        });
       } catch (error) {
         this.pending.delete(String(id));
         clearTimeout(timer);
@@ -131,13 +150,14 @@ export class AcpAdapter extends EventEmitter {
   }
 
   #handleLine(line) {
-    const text = String(line || "").trim();
-    if (!text) return;
-    if (Buffer.byteLength(text, "utf8") > 1024 * 1024) {
+    const raw = String(line || "");
+    if (Buffer.byteLength(raw, "utf8") > 1024 * 1024) {
       this.emit("protocol-error", { error: "ACP message exceeds 1 MiB limit" });
       this.close();
       return;
     }
+    const text = raw.trim();
+    if (!text) return;
     let message;
     try {
       message = JSON.parse(text);
@@ -186,9 +206,9 @@ export class AcpAdapter extends EventEmitter {
     }
   }
 
-  #write(message) {
+  #write(message, callback) {
     if (!this.child?.stdin?.writable) throw new Error("ACP agent is offline");
-    this.child.stdin.write(JSON.stringify(message) + "\n");
+    this.child.stdin.write(JSON.stringify(message) + "\n", callback);
   }
 
   #fail(error) {
