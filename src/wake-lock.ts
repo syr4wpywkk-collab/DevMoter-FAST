@@ -2,6 +2,7 @@ const PREF_KEY = "opencode-pocket-wake-lock";
 const activeSources = new Set<string>();
 let sentinel: any = null;
 let pendingRequest: Promise<void> | null = null;
+let resyncRequested = false;
 let visibilityInstalled = false;
 
 export function wakeLockSupported() {
@@ -44,7 +45,11 @@ async function syncWakeLock() {
 
   // A pending browser permission/request must not outlive the active turn.
   // Coalesce concurrent status changes into one outstanding request.
-  if (sentinel || pendingRequest) return;
+  if (sentinel) return;
+  if (pendingRequest) {
+    resyncRequested = true;
+    return;
+  }
   const request = (async () => {
     let acquired: any;
     try {
@@ -69,7 +74,13 @@ async function syncWakeLock() {
   try {
     await request;
   } finally {
-    if (pendingRequest === request) pendingRequest = null;
+    if (pendingRequest === request) {
+      pendingRequest = null;
+      const rerun = resyncRequested;
+      resyncRequested = false;
+      // A new turn may have started while an old acquisition was releasing.
+      if (rerun && shouldHoldWakeLock() && !sentinel) void syncWakeLock();
+    }
   }
 }
 
