@@ -63,7 +63,9 @@ export function languageForPath(path) {
 }
 
 export async function previewFile(root, relativePath) {
+  assertPublicProjectPath(relativePath);
   const resolved = await resolveInsideRoot(root, relativePath);
+  assertPublicProjectPath(relative(resolved.root, resolved.target));
   const info = await stat(resolved.target);
   if (!info.isFile()) throw new Error("Preview target is not a file");
   const ext = extname(resolved.target).toLowerCase();
@@ -92,7 +94,19 @@ export async function previewFile(root, relativePath) {
 
 const FILE_BROWSER_LIMIT = 250;
 const FILE_BROWSER_LARGE = 1024 * 1024;
-const SENSITIVE_BROWSER_NAME = /^(?:\.env(?:\.|$)|\.git$|id_[a-z0-9_-]+(?:\.pub)?$|.*(?:secret|credential|credentials|private[_-]?key).*)/i;
+const SENSITIVE_BROWSER_NAME = /^(?:\.env(?:\.|$)|\.(?:git|ssh|aws|config|npmrc|netrc|pypirc|kube|docker)$|id_[a-z0-9_-]+(?:\.pub)?$|.*(?:secret|credential|credentials|private[_-]?key).*|.*\.(?:pem|key|p12|pfx))$/i;
+
+// Directory listings and direct preview/download paths must have the same deny policy.
+// Canonical target checks also cover symlink aliases pointing at sensitive files.
+export function assertPublicProjectPath(relativePath) {
+  const segments = String(relativePath || "").replaceAll("\\", "/").split("/").filter(Boolean);
+  if (segments.some(segment => SENSITIVE_BROWSER_NAME.test(segment))) {
+    throw Object.assign(new Error("Sensitive paths cannot be browsed, previewed, or registered as artifacts"), { statusCode: 403 });
+  }
+}
+export function publicArtifact({ root, ...safe }) {
+  return safe;
+}
 
 function normalizeBrowserRelative(input) {
   const value = String(input || "").replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$/, "");
@@ -105,9 +119,11 @@ function normalizeBrowserRelative(input) {
 export async function listProjectDirectory(rootInput, relativePath = "", options = {}) {
   const root = await realpath(rootInput);
   const safeRelative = normalizeBrowserRelative(relativePath);
+  assertPublicProjectPath(safeRelative);
   const candidate = safeRelative ? resolve(root, safeRelative) : root;
   const target = await realpath(candidate);
   if (!inside(root, target)) throw new Error("Browser path escapes the registered project");
+  assertPublicProjectPath(relative(root, target));
   const targetInfo = await lstat(target);
   if (targetInfo.isSymbolicLink() || !targetInfo.isDirectory()) throw new Error("Browser path is not a regular project directory");
 
@@ -217,7 +233,9 @@ export function createArtifactRegistry({ file }) {
     return items.filter(item => (!sessionId || item.sessionId === sessionId) && (!projectId || item.projectId === projectId));
   }
   async function register({ sessionId, projectId, root, relativePath }) {
+    assertPublicProjectPath(relativePath);
     const resolved = await resolveInsideRoot(root, relativePath);
+    assertPublicProjectPath(relative(resolved.root, resolved.target));
     const info = await stat(resolved.target);
     if (!info.isFile()) throw new Error("Artifact must be a file");
     const all = await list();
@@ -234,7 +252,9 @@ export function createArtifactRegistry({ file }) {
     const data = await readJsonFile(file, { version: 1, artifacts: [] });
     const artifact = (data.artifacts || []).find(item => item.id === id);
     if (!artifact) throw new Error("Artifact not found");
+    assertPublicProjectPath(artifact.path);
     const resolved = await resolveInsideRoot(artifact.root, artifact.path);
+    assertPublicProjectPath(relative(resolved.root, resolved.target));
     return { artifact, resolved };
   }
   return { list, register, get };
@@ -354,8 +374,13 @@ export function chooseModel({ models, rules, role, requirements = {}, override }
 }
 
 export function isRetryableProviderFailure(error) {
+  if (error?.retryable === true) return true;
   const status = Number(error?.status || 0);
-  return Boolean(error?.retryable) || status === 408 || status === 409 || status === 425 || status === 429 || status >= 500 || status === 0;
+  if ([408, 409, 425, 429].includes(status) || (status >= 500 && status < 600)) return true;
+  // Unknown errors (including authentication, validation and malformed response
+  // errors) must never silently move a request to another provider.
+  const code = String(error?.code || error?.cause?.code || "");
+  return ["ECONNRESET", "ECONNREFUSED", "EAI_AGAIN", "ETIMEDOUT", "UND_ERR_CONNECT_TIMEOUT", "UND_ERR_HEADERS_TIMEOUT"].includes(code);
 }
 
 async function invokeProvider(provider, model, messages, fetchImpl = fetch) {
@@ -389,14 +414,14 @@ export async function runWithRouting({ env = process.env, fetchImpl = fetch, mes
   const registry = await buildModelRegistry(env, fetchImpl);
   const decision = chooseModel({ models: registry.models, rules: parseRoutingRules(env), role, requirements, override });
   const configuredChain = String(env.DEVMOTER_PROVIDER_FAILOVER || "").split(",").map(x => x.trim()).filter(Boolean);
-  const candidates = [
-    decision.model,
-    ...registry.models.filter(m =>
-      configuredChain.includes(m.providerId + "/" + m.id) &&
-      !(m.providerId === decision.model.providerId && m.id === decision.model.id) &&
-      modelMeets(m, requirements)
-    )
-  ];
+  const candidates = [decision.model];
+  for (const target of configuredChain) {
+    const model = registry.models.find(item => item.providerId + "/" + item.id === target);
+    if (model && modelMeets(model, requirements) &&
+        !candidates.some(item => item.providerId === model.providerId && item.id === model.id)) {
+      candidates.push(model);
+    }
+  }
   const attempts = [];
 
   for (let index = 0; index < candidates.length; index++) {
