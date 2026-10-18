@@ -196,6 +196,11 @@ body.opencode-mode .sc-panel:not(.open) { box-shadow: none; }
   font-weight: 700;
 }
 .ocx-app .ocx-new-session { background: var(--oc-panel); border-color: var(--oc-line); color: var(--oc-text); border-radius: 10px; }
+.ocx-app .ocx-quick-switch { flex: 0 0 auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 12px 12px; }
+.ocx-app .ocx-quick-switch button { min-width: 0; min-height: 44px; border: 1px solid var(--oc-line); border-radius: 10px; background: var(--oc-panel); color: var(--oc-text); font: inherit; font-size: .8rem; font-weight: 650; cursor: pointer; }
+.ocx-app .ocx-quick-switch button:hover { background: var(--oc-panel-2); }
+.ocx-app .ocx-quick-switch button:focus-visible { outline: 2px solid var(--oc-accent); outline-offset: 2px; }
+.ocx-app .ocx-quick-switch button[hidden] { display: none; }
 .ocx-app .ocx-search { min-height: 44px; background: #fffdf8; border-radius: 10px; }
 .ocx-app .ocx-search input { min-height: 42px; font-size: .8rem; }
 .ocx-app .ocx-session-toolbar label { color: var(--oc-muted); }
