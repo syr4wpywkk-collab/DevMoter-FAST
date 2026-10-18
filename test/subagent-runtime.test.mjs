@@ -566,3 +566,90 @@ test("fleet nested children reject escalation and record the reason", async () =
   assert.equal(fleet.errors.length, 1);
   assert.match(fleet.errors[0].error, /capability escalation rejected/i);
 });
+
+test("duplicate nested run id does not consume the parent delegation budget", async () => {
+  const fake = fakeAdapter();
+  const runtime = new SubagentRuntime({
+    adapters: { codex: fake.adapter },
+    policy: { tokenBudget: 200, turnBudget: 5 }
+  });
+  const parent = await runtime.spawn({ id: "parent-run", parentSessionId: "session", task: "root task" });
+  await runtime.spawn({
+    id: "existing-child", parentRunId: parent.id, parentSessionId: parent.sessionId,
+    task: "first child", tokenBudget: 30, turnBudget: 1
+  });
+  const before = runtime.getRun(parent.id).budget;
+  const startsBefore = fake.starts.length;
+  await assert.rejects(
+    () => runtime.spawn({
+      id: "existing-child", parentRunId: parent.id, parentSessionId: parent.sessionId,
+      task: "a different task", tokenBudget: 30, turnBudget: 1
+    }),
+    /Duplicate subagent run id/
+  );
+  assert.deepEqual(runtime.getRun(parent.id).budget, before);
+  assert.equal(fake.starts.length, startsBefore);
+});
+
+test("second opinion needs an explicit parent context selection even with project metadata", async () => {
+  const fake = fakeAdapter();
+  const runtime = new SubagentRuntime({ adapters: { codex: fake.adapter } });
+  const parent = await runtime.spawn({
+    id: "root-with-project", parentSessionId: "parent-session",
+    task: "private parent task", context: { projectId: "project-1" }
+  });
+  const startsBefore = fake.starts.length;
+  await assert.rejects(
+    () => runtime.spawnSecondOpinion(parent.id, { share: {} }),
+    /Select at least one parent context field/
+  );
+  await assert.rejects(
+    () => runtime.spawnSecondOpinion(parent.id, { share: { output: false, task: false } }),
+    /Select at least one parent context field/
+  );
+  assert.equal(fake.starts.length, startsBefore);
+  assert.equal(runtime.getRun(parent.id).role, "executor");
+});
+
+test("backend callbacks cannot rewrite authoritative agent identity, scope or budget", async () => {
+  const fake = fakeAdapter();
+  const runtime = new SubagentRuntime({ adapters: { codex: fake.adapter } });
+  const created = await runtime.spawn({
+    id: "protected-run",
+    parentSessionId: "parent-session",
+    task: "read only task",
+    context: { projectId: "project-1" },
+    capabilityPolicy: {
+      allow: ["read"], deny: ["files", "commands", "network"],
+      mutationPolicy: "read-only-until-explicit-transition"
+    }
+  });
+  const original = runtime.getRun(created.id);
+  runtime.update(created.id, {
+    id: "spoofed-id",
+    kind: "second-opinion",
+    backend: "untrusted",
+    parentSessionId: "spoofed-parent",
+    parentRunId: "spoofed-run",
+    fleetId: "spoofed-fleet",
+    role: "executor",
+    model: "spoofed-model",
+    task: "write files",
+    fingerprint: "spoofed",
+    context: { projectId: "wrong-project" },
+    lineage: ["spoofed-ancestor"],
+    depth: 999,
+    budget: { tokenLimit: 999999, tokensRemaining: 999999, turnLimit: 999, turnsRemaining: 999 },
+    capabilityPolicy: { allow: ["read", "files", "commands"], deny: [], mutationPolicy: "approval-required" },
+    createdAt: 0,
+    outputDelta: "normal progress"
+  });
+  const after = runtime.getRun(created.id);
+  for (const field of [
+    "id", "kind", "backend", "parentSessionId", "parentRunId", "fleetId",
+    "role", "model", "task", "fingerprint", "context", "lineage",
+    "depth", "budget", "capabilityPolicy", "createdAt"
+  ]) assert.deepEqual(after[field], original[field], field);
+  assert.equal(after.output, "normal progress");
+  assert.equal(runtime.getRun("spoofed-id"), null);
+});
