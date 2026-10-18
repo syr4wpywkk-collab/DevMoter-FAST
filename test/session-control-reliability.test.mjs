@@ -143,3 +143,26 @@ test("durable queue applies a finite item limit", async () => withHome(async hom
   assert.equal((await enqueue(control)).status, 400);
   assert.equal((await request(control, "GET", "/api/session-control/state")).queue.length, 200);
 }));
+
+test("budget stop failures remain pending and retry safely until acknowledged", async () => withHome(async homeDir => {
+  let turns = 0;
+  let attempts = 0;
+  const control = createSessionControl({
+    homeDir,
+    inspectSession: async () => ({ active: turns > 0, turns, tokens: 0 }),
+    dispatchQueued: async () => {},
+    interruptSession: async () => { attempts++; if (attempts === 1) throw Error("agent unreachable"); }
+  });
+  const url = "/api/session-control/budget/codex/session-1";
+  assert.equal((await request(control, "PUT", url, { maxTurns: 1, maxTokens: null })).status, 200);
+  turns = 1;
+  await control.reconcile();
+  let state = await request(control, "GET", "/api/session-control/state");
+  assert.equal(state.budgets["codex:session-1"].interruptPending, true);
+  assert.match(state.budgets["codex:session-1"].stopReason, /Turn budget reached/);
+  await control.reconcile();
+  state = await request(control, "GET", "/api/session-control/state");
+  assert.equal(attempts, 2);
+  assert.equal(state.budgets["codex:session-1"].interruptPending, false);
+  assert.equal(state.events.at(-1).detail, "Stop request acknowledged by agent");
+}));
