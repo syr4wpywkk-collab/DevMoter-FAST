@@ -71,7 +71,7 @@ test("export redacts JSON-shaped credentials and tolerates malformed timestamps"
   const sanitized = redactSensitiveText(source + "\nclient_secret: another-secret-123");
   assert.doesNotMatch(sanitized, /tool-secret-ABC123|dXNlcjpwYXNz|another-secret-123/);
   assert.match(sanitized, /\[REDACTED\]/);
-  const quoted = redactSensitiveText('password = "correct horse battery staple"\\napiKey: \' + "'quoted value with spaces'" + ');
+  const quoted = redactSensitiveText(['password = "correct horse battery staple"', "apiKey: 'quoted value with spaces'"].join("\n"));
   assert.doesNotMatch(quoted, /correct horse|battery staple|quoted value/);
 
   const markdown = sessionContextToMarkdown(
