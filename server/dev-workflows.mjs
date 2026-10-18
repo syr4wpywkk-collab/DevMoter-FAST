@@ -169,12 +169,15 @@ export function validateExtensionManifest(input) {
   if (Number(input.manifestVersion) !== 1) errors.push("manifestVersion must be 1");
   if (!String(input.name || "").trim()) errors.push("name is required");
   if (!String(input.version || "").trim()) errors.push("version is required");
+  if (String(input.version || "").length > 80) errors.push("version exceeds 80 characters");
   const allowedFields = new Set(["manifestVersion", "name", "version", "description", "capabilities", "permissions", "declarations"]);
   for (const key of Object.keys(input)) {
     if (!allowedFields.has(key)) errors.push("Unknown manifest field: " + key);
   }
   if (input.capabilities !== undefined && !Array.isArray(input.capabilities)) errors.push("capabilities must be an array");
   if (input.permissions !== undefined && !Array.isArray(input.permissions)) errors.push("permissions must be an array");
+  if (Array.isArray(input.capabilities) && input.capabilities.length > 64) errors.push("Too many capabilities");
+  if (Array.isArray(input.permissions) && input.permissions.length > 64) errors.push("Too many permissions");
   if (input.declarations !== undefined && !plain(input.declarations)) errors.push("declarations must be an object");
 
   const capabilities = strings(input.capabilities, 64);
