@@ -306,6 +306,10 @@ export class SubagentRuntime {
       ? intersectCapabilityPolicies(parentRun.capabilityPolicy, spec.capabilityPolicy)
       : normalizeCapabilityPolicy(spec.capabilityPolicy);
 
+    // Validate the run identity before reserving any budget from its parent.
+    const runId = String(spec.id || this.idFactory());
+    if (this.runs.has(runId)) throw new Error(`Duplicate subagent run id: ${runId}`);
+
     let tokenLimit = this.policy.tokenBudget;
     let turnLimit = this.policy.turnBudget;
     if (parentRun) {
@@ -330,7 +334,7 @@ export class SubagentRuntime {
     }
 
     const run = {
-      id: String(spec.id || this.idFactory()),
+      id: runId,
       kind: String(spec.kind || "subagent"),
       backend,
       parentSessionId,
@@ -361,7 +365,6 @@ export class SubagentRuntime {
       updatedAt: Date.now()
     };
 
-    if (this.runs.has(run.id)) throw new Error(`Duplicate subagent run id: ${run.id}`);
     this.runs.set(run.id, run);
     this.#emit(run);
 
@@ -390,15 +393,15 @@ export class SubagentRuntime {
     if (!parent) throw new Error(`Unknown parent run: ${String(parentRunId)}`);
 
     const share = options.share && typeof options.share === "object" ? options.share : {};
+    // Routing metadata such as projectId is necessary, but is not consent to share parent content.
+    if (!["task", "output", "error"].some(field => share[field] === true)) {
+      throw new Error("Select at least one parent context field for the second opinion");
+    }
     const context = {};
     if (parent.context?.projectId) context.projectId = String(parent.context.projectId);
     if (share.task) context.parentTask = parent.task;
     if (share.output) context.parentOutput = parent.output;
     if (share.error && parent.error) context.parentError = parent.error;
-    if (!Object.keys(context).length) {
-      throw new Error("Select at least one parent context field for the second opinion");
-    }
-
     const originalOwner = parent.role;
     context.originalOwner = originalOwner;
     const run = await this.spawn({
@@ -429,11 +432,12 @@ export class SubagentRuntime {
     if (patch.outputDelta) run.output += String(patch.outputDelta);
     const next = { ...patch };
     delete next.outputDelta;
-    // Delegation authority is assigned by the runtime, never by backend callbacks.
-    delete next.capabilityPolicy;
-    delete next.parentRunId;
-    delete next.lineage;
-    delete next.depth;
+    // Backend events may report execution progress, not rewrite identity, scope or budgets.
+    for (const field of [
+      "id", "kind", "backend", "parentSessionId", "parentRunId", "fleetId",
+      "role", "model", "task", "fingerprint", "context", "lineage",
+      "depth", "budget", "capabilityPolicy", "createdAt"
+    ]) delete next[field];
     Object.assign(run, next, { updatedAt: Date.now() });
     this.#emit(run);
     if (run.fleetId && TERMINAL_RUN_STATES.has(run.state)) {
