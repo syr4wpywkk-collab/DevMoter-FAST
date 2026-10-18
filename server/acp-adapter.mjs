@@ -14,12 +14,23 @@ export class AcpAdapter extends EventEmitter {
     this.pending = new Map();
     this.nextId = 1;
     this.initialized = null;
+    this.connectPromise = null;
   }
 
   async connect({ timeoutMs = 10000 } = {}) {
     if (this.initialized && this.child?.stdin?.writable) return this.initialized;
+    if (this.connectPromise) return this.connectPromise;
     if (!this.command) throw new Error("ACP adapter command is not configured");
 
+    this.connectPromise = this.#initialize(timeoutMs);
+    try {
+      return await this.connectPromise;
+    } finally {
+      this.connectPromise = null;
+    }
+  }
+
+  async #initialize(timeoutMs) {
     const child = this.spawnImpl(this.command, this.args, {
       cwd: this.cwd,
       env: process.env,
@@ -48,6 +59,10 @@ export class AcpAdapter extends EventEmitter {
         version: "0.2.0"
       }
     }, { timeoutMs, skipConnect: true });
+    if (!result || result.protocolVersion !== 1) {
+      this.close();
+      throw new Error("Unsupported ACP protocol version (expected v1)");
+    }
     this.initialized = result;
     this.emit("ready", result);
     return result;
@@ -74,7 +89,13 @@ export class AcpAdapter extends EventEmitter {
           reject(error);
         }
       });
-      this.#write({ jsonrpc: "2.0", id, method, params });
+      try {
+        this.#write({ jsonrpc: "2.0", id, method, params });
+      } catch (error) {
+        this.pending.delete(String(id));
+        clearTimeout(timer);
+        reject(error);
+      }
     });
   }
 
@@ -112,11 +133,20 @@ export class AcpAdapter extends EventEmitter {
   #handleLine(line) {
     const text = String(line || "").trim();
     if (!text) return;
+    if (Buffer.byteLength(text, "utf8") > 1024 * 1024) {
+      this.emit("protocol-error", { error: "ACP message exceeds 1 MiB limit" });
+      this.close();
+      return;
+    }
     let message;
     try {
       message = JSON.parse(text);
     } catch {
       this.emit("protocol-error", { error: "Invalid JSON", line: text.slice(0, 400) });
+      return;
+    }
+    if (!message || message.jsonrpc !== "2.0") {
+      this.emit("protocol-error", { error: "Invalid JSON-RPC envelope" });
       return;
     }
 
