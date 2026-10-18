@@ -103,6 +103,12 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
           '<button type="button" data-home-search-close aria-label="検索を閉じる">×</button>',
         '</div>',
       '</div>',
+      '<section class="dm-home-section dm-home-quick-section" aria-labelledby="dm-home-quick-title">',
+        '<div class="dm-home-section-heading">',
+          '<div><p class="dm-home-eyebrow">ONE TAP</p><h2 id="dm-home-quick-title">クイックアクション</h2></div>',
+        '</div>',
+        '<div class="dm-home-quick-actions" data-home-quick-actions></div>',
+      '</section>',
       '<section class="dm-home-section" aria-labelledby="dm-home-apps-title">',
         '<div class="dm-home-section-heading">',
           '<div><p class="dm-home-eyebrow">WORKSPACE</p><h2 id="dm-home-apps-title">クイックランチャー</h2></div>',
@@ -129,6 +135,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
   ].join("");
 
   const grid = target.querySelector<HTMLElement>("[data-home-app-grid]")!;
+  const quickActions = target.querySelector<HTMLElement>("[data-home-quick-actions]")!;
   const noResults = target.querySelector<HTMLElement>("[data-home-no-results]")!;
   const count = target.querySelector<HTMLElement>("[data-home-app-count]")!;
   const recentsHost = target.querySelector<HTMLElement>("[data-home-recent]")!;
@@ -186,6 +193,31 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       recentsHost.appendChild(button);
     }
   };
+
+  // Launch only allowlisted App Registry entries; Home never executes a shell command.
+  const quickIds: readonly AppId[] = ["chat", "projects", "terminal", "review", "sessions"];
+  for (const id of quickIds) {
+    const app = APP_REGISTRY.find(candidate => candidate.id === id)!;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "dm-home-quick-action";
+    button.dataset.homeQuickAction = id;
+    button.setAttribute("aria-label", app.title + " を開く");
+    const icon = document.createElement("span");
+    icon.className = "dm-home-quick-action-icon";
+    icon.textContent = app.icon;
+    icon.setAttribute("aria-hidden", "true");
+    const title = document.createElement("strong");
+    title.textContent = app.title;
+    button.append(icon, title);
+    if (app.availability !== "available") {
+      button.disabled = true;
+      button.title = app.previewMessage || "現在は利用できません";
+    } else {
+      button.addEventListener("click", () => launch(app));
+    }
+    quickActions.append(button);
+  }
 
   for (const app of HOME_APPS) {
     const button = document.createElement("button");
