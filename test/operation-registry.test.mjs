@@ -1,6 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createOperationRegistry } from "../server/operation-registry.mjs";
+import { createOperationRegistry, normalizeOperationId } from "../server/operation-registry.mjs";
+
+test("operation IDs are bounded without truncation collisions", () => {
+  const prefix = "x".repeat(160);
+  assert.equal(normalizeOperationId(prefix), prefix);
+  assert.equal(normalizeOperationId(prefix + "a"), null);
+  assert.equal(normalizeOperationId([prefix]), prefix);
+  assert.equal(normalizeOperationId([prefix + "b"]), null);
+  assert.equal(normalizeOperationId(undefined), "");
+});
 
 test("operation registry suppresses duplicates only within the same scope", () => {
   const registry = createOperationRegistry({ ttlMs: 100, maxEntries: 10 });

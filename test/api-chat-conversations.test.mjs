@@ -4,6 +4,9 @@ import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
 import { renderChatMarkdown } from "../src/chat-markdown.mjs";
+import * as fetchTimeout from "../src/fetch-with-timeout.mjs";
+import * as providerCatalog from "../src/api-provider-catalog.mjs";
+import * as apiAttachment from "../src/api-attachment.mjs";
 
 const source = await readFile(new URL("../src/api-chat.ts", import.meta.url), "utf8");
 const compiled = ts.transpileModule(source, {
@@ -14,7 +17,7 @@ const reply = payload => new Response(JSON.stringify(payload), {
   headers: { "content-type": "application/json" }
 });
 
-async function harness(t) {
+async function harness(t, { rejectOnAbort = false } = {}) {
   const dom = new JSDOM('<!doctype html><main id="root"></main>', {
     url: "https://devmoter.example/chat", runScripts: "outside-only"
   });
@@ -29,6 +32,12 @@ async function harness(t) {
   const chats = [];
   const uploads = [];
   const copied = [];
+  let providerFetchFails = false;
+  let malformedProviderCatalog = false;
+  let duplicateProviderIds = false;
+  let unsupportedProviderProtocol = false;
+  let providerFetchManual = false;
+  const providerFetches = [];
   window.Headers = Headers;
   window.AbortController = AbortController;
   window.URL.createObjectURL = file => `blob:https://devmoter.example/${file.name}`;
@@ -45,12 +54,26 @@ async function harness(t) {
     if (path === "/api/llm/chat" || (path === "/api/llm/attachments" && init.method === "POST")) {
       // Deliberately allow late resolution after abort to exercise the UI's own
       // generation boundary independently of fetch cancellation behavior.
-      return new Promise(resolve => {
+      return new Promise((resolve, reject) => {
         request.resolve = payload => resolve(reply(payload));
+        if (rejectOnAbort) init.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
         (path === "/api/llm/chat" ? chats : uploads).push(request);
       });
     }
-    if (path === "/api/llm/providers") return Promise.resolve(reply({ providers }));
+    if (path === "/api/llm/providers") {
+      if (providerFetchManual) {
+        return new Promise(resolve => providerFetches.push({ resolve: payload => resolve(reply(payload)) }));
+      }
+      return Promise.resolve(providerFetchFails
+        ? new Response(JSON.stringify({ error: "temporary provider outage" }), { status: 503, headers: { "content-type": "application/json" } })
+        : reply(malformedProviderCatalog
+          ? { providers: "temporary-corruption" }
+          : duplicateProviderIds
+            ? { providers: [providers[0], { ...providers[0], name: "Duplicate identity" }] }
+            : unsupportedProviderProtocol
+              ? { providers: [{ ...providers[0], protocol: "unsupported-protocol" }] }
+            : { providers }));
+    }
     if (path === "/api/llm/presets") return Promise.resolve(reply({ presets: [
       { id: "custom", name: "Custom", protocol: "openai-compatible", baseUrl: "https://custom.example/v1" }
     ] }));
@@ -59,7 +82,10 @@ async function harness(t) {
   const exports = {};
   const modules = {
     "./i18n": { getLanguage: () => "en" },
-    "./chat-markdown.mjs": { renderChatMarkdown }
+    "./chat-markdown.mjs": { renderChatMarkdown },
+    "./fetch-with-timeout.mjs": fetchTimeout,
+    "./api-provider-catalog.mjs": providerCatalog,
+    "./api-attachment.mjs": apiAttachment
   };
   window.Function("require", "exports", compiled)(name => {
     if (name.endsWith(".css")) return {};
@@ -75,6 +101,12 @@ async function harness(t) {
   };
   return {
     root, window, controller, requests, chats, uploads, copied, providers, select,
+    failProviderFetch: value => { providerFetchFails = value; },
+    setMalformedProviderCatalog: value => { malformedProviderCatalog = value; },
+    setDuplicateProviderIds: value => { duplicateProviderIds = value; },
+    setUnsupportedProviderProtocol: value => { unsupportedProviderProtocol = value; },
+    setProviderFetchManual: value => { providerFetchManual = value; },
+    providerFetches,
     history: () => [...root.querySelectorAll("#apiHistory .api-history-row")],
     historyChat(title) {
       const row = this.history().find(node => node.querySelector("strong")?.textContent === title);
@@ -94,6 +126,118 @@ async function harness(t) {
     }
   };
 }
+
+test("provider refresh failure preserves choices but blocks send until retry succeeds", async t => {
+  const ui = await harness(t);
+  const provider = ui.root.querySelector("#apiProvider");
+  const model = ui.root.querySelector("#apiModel");
+  const previousProvider = provider.value;
+  const previousModel = model.value;
+  assert.ok(provider.options.length > 1);
+  const billingNotice = ui.root.querySelector("#apiBillingNotice");
+  assert.equal(billingNotice.hidden, false);
+  assert.match(billingNotice.textContent, /Free use is unverified/);
+
+  ui.failProviderFetch(true);
+  await ui.controller.refresh();
+  assert.equal(provider.value, previousProvider);
+  assert.equal(model.value, previousModel);
+  assert.ok(provider.options.length > 1, "existing provider choices remain visible");
+  assert.equal(ui.root.querySelector("#apiSend").disabled, true, "stale catalog cannot submit");
+
+  ui.failProviderFetch(false);
+  await ui.controller.refresh();
+  assert.equal(provider.value, previousProvider);
+  assert.equal(model.value, previousModel);
+  assert.equal(ui.root.querySelector("#apiSend").disabled, false);
+});
+
+test("stale provider catalog responses cannot overwrite the latest refresh", async t => {
+  const ui = await harness(t);
+  ui.setProviderFetchManual(true);
+  const olderRefresh = ui.controller.refresh();
+  await settle();
+  const newerRefresh = ui.controller.refresh();
+  await settle();
+  assert.equal(ui.providerFetches.length, 2);
+
+  const latestProvider = {
+    id: "latest", name: "Latest", ready: true, protocol: "openai-compatible",
+    baseUrl: "https://latest.example/v1", models: ["latest-model"]
+  };
+  ui.providerFetches[1].resolve({ providers: [latestProvider] });
+  await newerRefresh;
+  ui.providerFetches[0].resolve({ providers: ui.providers });
+  await olderRefresh;
+
+  assert.deepEqual([...ui.root.querySelectorAll("#apiProvider option")].map(option => option.value), ["latest"]);
+  assert.equal(ui.root.querySelector("#apiProvider").value, "latest");
+});
+
+test("malformed provider catalogs preserve existing choices and block send", async t => {
+  const ui = await harness(t);
+  const provider = ui.root.querySelector("#apiProvider");
+  const model = ui.root.querySelector("#apiModel");
+  const previousProvider = provider.value;
+  const previousModel = model.value;
+  const previousChoices = [...provider.options].map(option => option.value);
+
+  ui.setMalformedProviderCatalog(true);
+  await ui.controller.refresh();
+
+  assert.deepEqual([...provider.options].map(option => option.value), previousChoices);
+  assert.equal(provider.value, previousProvider);
+  assert.equal(model.value, previousModel);
+  assert.equal(ui.root.querySelector("#apiSend").disabled, true);
+  assert.match(ui.root.querySelector("#apiStatus").textContent, /invalid provider catalog/);
+});
+
+test("duplicate provider identities reject the whole catalog without changing selection", async t => {
+  const ui = await harness(t);
+  const previousValues = [...ui.root.querySelectorAll("#apiProvider option")].map(option => option.value);
+  const previousProvider = ui.root.querySelector("#apiProvider").value;
+  ui.setDuplicateProviderIds(true);
+
+  await ui.controller.refresh();
+
+  assert.deepEqual([...ui.root.querySelectorAll("#apiProvider option")].map(option => option.value), previousValues);
+  assert.equal(ui.root.querySelector("#apiProvider").value, previousProvider);
+  assert.equal(ui.root.querySelector("#apiSend").disabled, true);
+  assert.match(ui.root.querySelector("#apiStatus").textContent, /invalid provider catalog/);
+});
+
+test("unsupported provider protocols preserve choices and block sends", async t => {
+  const ui = await harness(t);
+  const previousValues = [...ui.root.querySelectorAll("#apiProvider option")].map(option => option.value);
+  ui.setUnsupportedProviderProtocol(true);
+
+  await ui.controller.refresh();
+
+  assert.deepEqual([...ui.root.querySelectorAll("#apiProvider option")].map(option => option.value), previousValues);
+  assert.equal(ui.root.querySelector("#apiSend").disabled, true);
+  assert.match(ui.root.querySelector("#apiStatus").textContent, /invalid provider catalog/);
+});
+
+test("API Chat timeout aborts the request, retains the prompt, and restores send controls", async t => {
+  const ui = await harness(t, { rejectOnAbort: true });
+  const scheduled = [];
+  ui.window.setTimeout = (callback, delay) => {
+    scheduled.push({ callback, delay });
+    return scheduled.length;
+  };
+  ui.window.clearTimeout = () => {};
+
+  const request = ui.submit("Keep this prompt after timeout");
+  const timeout = scheduled.find(item => item.delay === 120_000);
+  assert.ok(timeout, "chat request installs a bounded timeout");
+  timeout.callback();
+  await new Promise(resolve => setImmediate(resolve));
+
+  assert.equal(request.init.signal.aborted, true);
+  assert.equal(ui.root.querySelector(".api-message.user")?.textContent, "Keep this prompt after timeout");
+  assert.match(ui.root.querySelector(".api-message.assistant")?.textContent || "", /timed out/i);
+  assert.equal(ui.root.querySelector("#apiSend").disabled, false);
+});
 
 test("API conversations restore raw messages and provider choices with safe Markdown and exact copy", async t => {
   const ui = await harness(t);
@@ -186,6 +330,7 @@ test("uploading disables conversation navigation until the attachment belongs to
   const file = new ui.window.File(["image bytes"], "photo.png", { type: "image/png" });
   Object.defineProperty(imageInput, "files", { configurable: true, value: [file] });
   imageInput.dispatchEvent(new ui.window.Event("change", { bubbles: true }));
+  await settle();
   assert.equal(ui.uploads.length, 1);
   assert.equal(ui.root.querySelector("#apiNewChat").disabled, true);
   assert.ok(ui.history().length > 0);
@@ -194,19 +339,36 @@ test("uploading disables conversation navigation until the attachment belongs to
   ui.historyChat("Archived conversation").click();
   assert.equal(prompt.value, "Image draft");
   assert.equal(ui.root.querySelectorAll(".api-message").length, 0);
-  ui.uploads[0].resolve({ attachment: { id: "upload-1", name: "photo.png", mime: "image/png", size: file.size } });
+  ui.uploads[0].resolve({ attachment: { id: "123e4567-e89b-42d3-a456-426614174000", name: "photo.png", mime: "image/png", size: file.size } });
   await settle();
   assert.equal(ui.root.querySelector("#apiNewChat").disabled, false);
   assert.ok(ui.history().every(row => !row.disabled));
   assert.match(ui.root.querySelector("#apiAttachments").textContent, /photo\.png/);
   const request = ui.submit("Image draft");
-  assert.equal(request.body.messages.at(-1).attachments[0].id, "upload-1");
+  assert.equal(request.body.messages.at(-1).attachments[0].id, "123e4567-e89b-42d3-a456-426614174000");
   request.resolve({ message: { content: "Image answer" } });
   await settle();
   ui.historyChat("Archived conversation").click();
   assert.ok(!ui.root.querySelector("#apiTranscript").textContent.includes("photo.png"));
   ui.historyChat("Image draft").click();
   assert.match(ui.root.querySelector("#apiTranscript").textContent, /photo\.png/);
+});
+
+test("malformed upload responses do not enter conversation attachment state", async t => {
+  const ui = await harness(t);
+  const imageInput = ui.root.querySelector("#apiImageInput");
+  const file = new ui.window.File(["image bytes"], "photo.png", { type: "image/png" });
+  Object.defineProperty(imageInput, "files", { configurable: true, value: [file] });
+  imageInput.dispatchEvent(new ui.window.Event("change", { bubbles: true }));
+  const request = ui.uploads.at(-1);
+  assert.ok(request);
+  request.resolve({ attachment: { name: "photo.png", mime: "image/png", size: file.size } });
+  await settle();
+
+  assert.equal(ui.root.querySelectorAll(".api-attachment-chip").length, 0);
+  assert.match(ui.root.querySelector("#apiStatus").textContent, /invalid attachment response/);
+  ui.submit("");
+  assert.equal(ui.chats.length, 0, "invalid attachment is not sent to the provider");
 });
 
 test("memory history keeps at most 20 conversations and 100 messages per conversation", async t => {

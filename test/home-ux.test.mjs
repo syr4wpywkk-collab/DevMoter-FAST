@@ -40,13 +40,25 @@ test("Continue working opens Chat using the same allowlisted launch callback", a
   const continueButton = root.querySelector("[data-home-open-chat]");
   assert.ok(continueButton);
   assert.equal(continueButton.getAttribute("type"), "button");
-  assert.match(continueButton.getAttribute("aria-label"), /chat workspace/i);
+  assert.match(continueButton.getAttribute("aria-label"), /チャット.*ワークスペース/);
   continueButton.click();
   assert.deepEqual(launches, ["chat"], "Continue must use the same app registry launch path");
 
   root.querySelector('[data-home-app="chat"]').click();
   assert.deepEqual(launches, ["chat", "chat"]);
   assert.deepEqual(previews, []);
+  dom.window.close();
+});
+
+test("Home copy describes a development workspace without generic AI slogans", async () => {
+  const { mountHomeSurface } = await loadHome();
+  const dom = new JSDOM("<main id='home'></main>");
+  const root = dom.window.document.querySelector("#home");
+  mountHomeSurface(root, { onLaunchApp() {}, onPreviewApp() {} });
+  assert.equal(root.querySelector("h1")?.textContent, "作業スペース");
+  assert.equal(root.querySelector("#dm-home-apps-title")?.textContent, "ツール");
+  assert.doesNotMatch(root.textContent, /building with AI|local AI workspace/i);
+  assert.match(root.querySelector("[data-home-open-chat]")?.getAttribute("aria-label") || "", /チャット.*ワークスペース/);
   dom.window.close();
 });
 

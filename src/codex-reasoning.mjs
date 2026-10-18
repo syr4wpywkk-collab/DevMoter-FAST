@@ -1,7 +1,7 @@
 export function normalizeCodexModels(payload) {
-  const raw = payload?.data ?? payload?.models ?? [];
-  if (!Array.isArray(raw)) return [];
-  return raw
+  const raw = payload?.data ?? payload?.models;
+  if (!Array.isArray(raw)) throw new Error("Codex returned an invalid model catalog");
+  const models = raw
     .map(model => ({
       id: String(model?.id || ""),
       model: String(model?.model || model?.id || ""),
@@ -20,6 +20,10 @@ export function normalizeCodexModels(payload) {
         : []
     }))
     .filter(model => model.model);
+  if (raw.length > 0 && models.length === 0) {
+    throw new Error("Codex returned an invalid model catalog");
+  }
+  return models;
 }
 
 export function reconcileReasoningMode(savedMode, model) {

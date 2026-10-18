@@ -9,6 +9,8 @@
 > **Version track:** v2.0.0-alpha series  
 > **Status:** active development / pre-release
 
+The alpha track describes the product/release maturity. `package.json` currently reports `0.2.0`, the independent npm package version; it is not the v2 product track or a published stable release.
+
 DevMoter FAST is an **open-source, self-hosted, mobile-first control plane for coding agents and developer tools**.
 
 Keep Codex, OpenCode, repositories, credentials, terminals, Git workflows, and host integrations on your Linux machine. Use a phone, tablet, PWA, or browser as the control surface.

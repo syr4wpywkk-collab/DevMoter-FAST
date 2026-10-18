@@ -30,7 +30,7 @@ test("uploaded HTML becomes a real 3-column home launcher, not a static fake das
     onLaunchApp: id => launched.push(id),
     onPreviewApp: (id, message) => previews.push({ id, message })
   });
-  assert.match(root.textContent, /統合コントロールホーム/);
+  assert.match(root.textContent, /作業スペース/);
   assert.equal(root.querySelectorAll("[data-home-app]").length, 13);
   assert.equal(root.querySelector("[data-home-app-grid]").children.length, 13);
   assert.equal(root.querySelector('[data-home-app="chat"]').getAttribute("type"), "button");

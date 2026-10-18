@@ -1,5 +1,8 @@
 import { getLanguage } from "./i18n";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
+import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
+import { normalizeApiProviderCatalog } from "./api-provider-catalog.mjs";
+import { normalizeApiAttachment } from "./api-attachment.mjs";
 import "./api-chat-surface.css";
 
 type ApiProvider = {
@@ -50,6 +53,7 @@ type ChatConversation = {
 
 const API_CHAT_HISTORY_LIMIT = 100;
 const API_CHAT_SESSION_LIMIT = 20;
+const API_CHAT_REQUEST_TIMEOUT_MS = 120_000;
 const DEVICE_TOKEN_KEY = "devmoter-device-token";
 const PROJECT_KEY = "opencode-pocket-project";
 
@@ -151,9 +155,8 @@ export function mountApiChat(
       <main class="api-main">
         <div id="apiTranscript" class="api-transcript">
           <section id="apiWelcome" class="api-welcome">
-            <div class="api-spark">✦</div>
-            <h1>こんにちは</h1>
-            <p>どのAPIで考える？</p>
+            <h1>API Chat</h1>
+            <p>接続先を選んでメッセージを入力</p>
           </section>
         </div>
       </main>
@@ -167,6 +170,7 @@ export function mountApiChat(
             <select id="apiModel" aria-label="Model"></select>
             <select id="apiReasoning" aria-label="推論モード"></select>
           </div>
+          <small id="apiBillingNotice" class="api-billing-notice" role="status" aria-live="polite"></small>
           <input id="apiImageInput" class="hidden" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple />
           <div class="api-composer-foot">
             <button id="apiAttachImage" class="api-attach-button" type="button" aria-label="画像を添付">＋</button>
@@ -205,6 +209,7 @@ export function mountApiChat(
   const newChat = root.querySelector<HTMLButtonElement>("#apiNewChat")!;
   const providerSelect = root.querySelector<HTMLSelectElement>("#apiProvider")!;
   const modelSelect = root.querySelector<HTMLSelectElement>("#apiModel")!;
+  const billingNotice = root.querySelector<HTMLElement>("#apiBillingNotice")!;
   const reasoningSelect = root.querySelector<HTMLSelectElement>("#apiReasoning")!;
   const transcript = root.querySelector<HTMLDivElement>("#apiTranscript")!;
   const welcome = root.querySelector<HTMLElement>("#apiWelcome")!;
@@ -257,6 +262,8 @@ export function mountApiChat(
   }
 
   let providers: ApiProvider[] = [];
+  let providerCatalogAvailable = false;
+  let providerCatalogRequestGeneration = 0;
   let presets: ApiPreset[] = [];
   let messages: ChatMessage[] = [];
   let pendingAttachments: ApiAttachment[] = [];
@@ -382,7 +389,7 @@ export function mountApiChat(
     providerSelect.disabled = busy;
     modelSelect.disabled = busy || !provider?.models.length;
     reasoningSelect.disabled = busy || reasoningSelect.options.length <= 1;
-    send.disabled = !provider?.ready || !modelSelect.value || busy;
+    send.disabled = !providerCatalogAvailable || !provider?.ready || !modelSelect.value || busy;
     attachImage.disabled = busy;
     newChat.disabled = uploadingCount > 0;
     history.querySelectorAll<HTMLButtonElement>("button").forEach(button => { button.disabled = uploadingCount > 0; });
@@ -498,6 +505,12 @@ export function mountApiChat(
     }
     updateReasoning();
     updateHeader();
+    billingNotice.hidden = !provider || !modelSelect.value;
+    billingNotice.textContent = billingNotice.hidden ? "" : apiLocale(
+      "Provider billing applies. Free use is unverified; check provider pricing.",
+      "料金はProviderの契約に従います。無料利用は確認できません。利用前にProvider側で料金を確認してください。",
+      "费用以 Provider 契约为准。DevMoter 无法确认免费额度；使用前请查看 Provider 定价。"
+    );
 
     status.textContent = !provider
       ? apiLocale("⚙ Add an API provider", "⚙ API Providerを追加してね", "⚙ 添加 API Provider")
@@ -616,20 +629,30 @@ export function mountApiChat(
       throw new Error(apiLocale("Images must be 15 MB or smaller", "画像は15MB以下にしてください", "图片必须不超过 15MB"));
     }
 
-    const res = await fetch("/api/llm/attachments", {
-      method: "POST",
-      headers: {
-        "content-type": file.type,
-        "x-devmoter-file-name": encodeURIComponent(file.name),
-        "x-pocket-operation-id": operationId()
+    const res = await fetchWithTimeout(
+      (input, init) => fetch(input, init),
+      "/api/llm/attachments",
+      {
+        method: "POST",
+        headers: {
+          "content-type": file.type,
+          "x-devmoter-file-name": encodeURIComponent(file.name),
+          "x-pocket-operation-id": operationId()
+        },
+        body: file
       },
-      body: file
-    });
+      API_CHAT_REQUEST_TIMEOUT_MS,
+      () => new Error(apiLocale(
+        "Image upload timed out. Remove the image and retry.",
+        "画像のアップロードがタイムアウトしました。画像を削除して再試行してください。",
+        "图片上传超时。请移除图片后重试。"
+      ))
+    );
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
 
     return {
-      ...payload.attachment,
+      ...normalizeApiAttachment(payload, file),
       previewUrl: URL.createObjectURL(file)
     } as ApiAttachment;
   }
@@ -647,6 +670,7 @@ export function mountApiChat(
     );
 
     let completed = 0;
+    let uploadError: string | null = null;
     try {
       for (const file of list) {
         const attachment = await uploadImage(file);
@@ -661,19 +685,26 @@ export function mountApiChat(
       }
       status.textContent = `${currentProvider()?.name || "API"} · ${apiLocale("image ready", "画像準備OK", "图片已准备")}`;
     } catch (error) {
-      status.textContent = error instanceof Error ? error.message : String(error);
+      uploadError = error instanceof Error ? error.message : String(error);
     } finally {
       uploadingCount -= list.length;
       imageInput.value = "";
       updateModels();
+      if (uploadError) {
+        status.textContent = uploadError;
+        status.title = uploadError;
+      }
     }
   }
 
   async function refresh() {
+    const requestGeneration = ++providerCatalogRequestGeneration;
     status.textContent = apiLocale("Loading providers…", "接続先を読み込み中…", "正在加载 Provider…");
     try {
-      const payload = await apiJson<{ providers?: ApiProvider[] }>("/api/llm/providers");
-      providers = Array.isArray(payload?.providers) ? payload.providers : [];
+      const payload = await apiJson<unknown>("/api/llm/providers");
+      if (requestGeneration !== providerCatalogRequestGeneration) return;
+      providers = normalizeApiProviderCatalog(payload) as ApiProvider[];
+      providerCatalogAvailable = true;
 
       const saved = localStorage.getItem("devmoter-api-provider");
       providerSelect.replaceChildren();
@@ -697,11 +728,10 @@ export function mountApiChat(
       }
       updateModels();
     } catch (error) {
-      providers = [];
-      providerSelect.replaceChildren();
-      modelSelect.replaceChildren();
+      if (requestGeneration !== providerCatalogRequestGeneration) return;
+      providerCatalogAvailable = false;
       status.textContent = error instanceof Error ? error.message : String(error);
-      send.disabled = true;
+      updateAvailability();
     }
   }
 
@@ -1212,6 +1242,11 @@ export function mountApiChat(
     const controller = new AbortController();
     activeChatController?.abort();
     activeChatController = controller;
+    let requestTimedOut = false;
+    const requestTimeout = window.setTimeout(() => {
+      requestTimedOut = true;
+      controller.abort();
+    }, API_CHAT_REQUEST_TIMEOUT_MS);
     prompt.value = "";
     resizePrompt();
     renderMessages();
@@ -1245,16 +1280,19 @@ export function mountApiChat(
       renderMessages();
       status.textContent = `${provider.name} · Ready`;
     } catch (error) {
-      if (generation !== conversationGeneration || controller.signal.aborted) return;
+      if (generation !== conversationGeneration || (controller.signal.aborted && !requestTimedOut)) return;
       responseFailed = true;
       messages.push({
         role: "assistant",
-        content: `${apiLocale("Error", "エラー", "错误")}: ${error instanceof Error ? error.message : String(error)}`
+        content: requestTimedOut
+          ? apiLocale("Error: The request timed out. Your message is still in this conversation; retry when ready.", "エラー: 要求がタイムアウトしました。メッセージはこの会話に残っています。準備ができたら再試行してください。", "错误：请求超时。消息仍保留在此会话中；准备好后可以重试。")
+          : `${apiLocale("Error", "エラー", "错误")}: ${error instanceof Error ? error.message : String(error)}`
       });
       trimHistory();
       renderMessages();
       status.textContent = `${provider.name} · Error`;
     } finally {
+      window.clearTimeout(requestTimeout);
       if (activeChatController === controller) activeChatController = null;
       if (generation === conversationGeneration) {
         sending = false;

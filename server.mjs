@@ -11,7 +11,7 @@ import { normalizeModelPricing } from "./src/model-pricing.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { staticSecurityHeaders } from "./server/security-headers.mjs";
-import { createOperationRegistry } from "./server/operation-registry.mjs";
+import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
 import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
 import { createSessionControl } from "./server/session-control.mjs";
 import { createTaskWorkflow } from "./server/task-workflow.mjs";
@@ -438,13 +438,15 @@ async function featureJson(res, task, successStatus = 200) {
 }
 
 function operationId(req) {
-  const value = req.headers["x-pocket-operation-id"];
-  if (Array.isArray(value)) return String(value[0] || "").slice(0, 160);
-  return typeof value === "string" ? value.slice(0, 160) : "";
+  return normalizeOperationId(req.headers["x-pocket-operation-id"]);
 }
 
 function claimOperation(req, res, scope) {
   const id = operationId(req);
+  if (id === null) {
+    json(res, 400, { error: "Operation ID must be 160 characters or fewer" });
+    return false;
+  }
   if (!id) return true;
 
   if (!operationRegistry.claim(scope, id)) {

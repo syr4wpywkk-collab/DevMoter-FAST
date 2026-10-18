@@ -69,6 +69,32 @@ test("Home to surface to Home updates Back and Forward without duplicate entries
   assert.deepEqual(changes, ["codex", "home", "codex", "home"]);
 });
 
+test("OpenCode can navigate to Codex, API Chat, and Home with browser Back support", () => {
+  const win = fakeWindow("/?project=p1#chat");
+  const changes = [];
+  const nav = createSurfaceNavigation({
+    window: win,
+    hasProjectDeepLink: true,
+    savedBackend: "opencode",
+    onSurface: surface => changes.push(surface)
+  });
+
+  assert.equal(nav.current(), "opencode");
+  assert.equal(nav.navigate("codex"), true);
+  assert.equal(nav.navigate("api"), true);
+  assert.equal(nav.navigate("home"), true);
+  assert.equal(nav.current(), "home");
+  win.back();
+  assert.equal(nav.current(), "api");
+  win.back();
+  assert.equal(nav.current(), "codex");
+  win.back();
+  assert.equal(nav.current(), "opencode");
+  assert.deepEqual(changes, ["codex", "api", "home", "api", "codex", "opencode"]);
+  assert.equal(new URL(win.location.href).searchParams.get("project"), "p1");
+  assert.equal(new URL(win.location.href).hash, "#chat");
+});
+
 test("repeated Home navigation preserves one history entry and route parameters", () => {
   const win = fakeWindow("/?project=p1#notes");
   const nav = createSurfaceNavigation({ window: win, hasProjectDeepLink: true, savedBackend: "opencode" });

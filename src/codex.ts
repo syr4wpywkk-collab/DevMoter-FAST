@@ -9,6 +9,12 @@ import { enrichInstalledPluginEntries, pluginEntries } from "./codex-plugin-meta
 import { applyReasoningToTurnStart, normalizeCodexModels, reasoningChoices, reconcileReasoningMode } from "./codex-reasoning.mjs";
 import { normalizeCodexSendError } from "./codex-send-error.mjs";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
+import { createLatestRequestGuard } from "./latest-request.mjs";
+import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
+import { normalizeCodexThreadList } from "./codex-thread-list.mjs";
+import { normalizeCodexThreadHistory } from "./codex-thread-history.mjs";
+import { recoverAfterEventOpen } from "./event-recovery.mjs";
+import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import "./codex-chat.css";
@@ -27,6 +33,7 @@ import {
 } from "./safety-client";
 
 const FOLLOW_BOTTOM_THRESHOLD = 48;
+const REMOTE_REQUEST_TIMEOUT_MS = 120_000;
 
 type Json = Record<string, any>;
 
@@ -111,7 +118,7 @@ type CodexRemoteOptions = {
 
 export type CodexRemoteController = {
   setOnline(online: boolean): void;
-  refresh(): Promise<void>;
+  refresh(): Promise<boolean>;
 };
 
 export function mountCodexRemote(
@@ -418,6 +425,8 @@ export function mountCodexRemote(
   let reconnectTimer: number | null = null;
   let reconnectAttempts = 0;
   let allThreads: ThreadSummary[] = [];
+  const threadListRequests = createLatestRequestGuard();
+  const modelCatalogRequests = createLatestRequestGuard();
   let projects: ProjectSummary[] = [];
   let activeProject: ProjectSummary | null = null;
   let pendingAttachments: PendingAttachment[] = [];
@@ -644,8 +653,11 @@ export function mountCodexRemote(
   }
 
   async function loadModelCatalog() {
+    const requestGeneration = modelCatalogRequests.begin();
     const result = await rpc<Json>("model/list", { limit: 100 });
-    modelCatalog = normalizeCodexModels(result) as CodexModel[];
+    if (!modelCatalogRequests.isCurrent(requestGeneration)) return modelCatalog;
+    const normalizedModels = normalizeCodexModels(result) as CodexModel[];
+    modelCatalog = normalizedModels;
 
     const migrated = modelCatalog.find(model => model.id === selectedModel && model.model !== selectedModel);
     if (migrated) persistSelectedModel(migrated.model);
@@ -685,15 +697,33 @@ export function mountCodexRemote(
   async function projectApi<T = Json>(path: string, init: RequestInit = {}): Promise<T> {
     const method = String(init.method || "GET").toUpperCase();
     const mutating = method !== "GET" && method !== "HEAD";
-    const res = await fetch(`/api/projects${path}`, {
-      ...init,
-      headers: {
-        ...(init.body ? { "content-type": "application/json" } : {}),
-        ...(mutating ? { "x-pocket-operation-id": uid() } : {}),
-        ...(init.headers || {})
-      },
-      cache: method === "GET" ? "no-store" : undefined
-    });
+    const operationId = mutating ? uid() : "";
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(
+        (input, request) => fetch(input, request),
+        `/api/projects${path}`,
+        {
+          ...init,
+          headers: {
+            ...(init.body ? { "content-type": "application/json" } : {}),
+            ...(operationId ? { "x-pocket-operation-id": operationId } : {}),
+            ...(init.headers || {})
+          },
+          cache: method === "GET" ? "no-store" : undefined
+        },
+        REMOTE_REQUEST_TIMEOUT_MS,
+        () => new Error("Project request timed out")
+      );
+    } catch (error) {
+      if (mutating) {
+        throw new Error(
+          `Mutation outcome is unknown (operation ${operationId}). DevMoter did not retry it automatically.`,
+          { cause: error }
+        );
+      }
+      throw error;
+    }
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
     return payload as T;
@@ -797,14 +827,20 @@ export function mountCodexRemote(
 
     let res: Response;
     try {
-      res = await fetch("/api/codex/rpc", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          ...(opId ? { "x-pocket-operation-id": opId } : {})
+      res = await fetchWithTimeout(
+        (input, init) => fetch(input, init),
+        "/api/codex/rpc",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            ...(opId ? { "x-pocket-operation-id": opId } : {})
+          },
+          body: JSON.stringify({ method, params })
         },
-        body: JSON.stringify({ method, params })
-      });
+        REMOTE_REQUEST_TIMEOUT_MS,
+        () => new Error("Codex RPC request timed out")
+      );
     } catch (error) {
       if (opId) {
         throw new Error(
@@ -1249,8 +1285,23 @@ export function mountCodexRemote(
   }
 
   async function loadThreads() {
-    const result = await rpc<{ data?: ThreadSummary[] }>("thread/list", { limit: 100 });
-    allThreads = result?.data ?? [];
+    const requestGeneration = threadListRequests.begin();
+    let result: Json;
+    try {
+      result = await rpc<Json>("thread/list", { limit: 100 });
+    } catch (error) {
+      if (threadListRequests.isCurrent(requestGeneration)) {
+        showToast(error instanceof Error ? error.message : "会話一覧を読み込めませんでした");
+      }
+      return false;
+    }
+    if (!threadListRequests.isCurrent(requestGeneration)) return false;
+    try {
+      allThreads = normalizeCodexThreadList(result);
+    } catch {
+      showToast("Codexから有効な会話一覧を受け取れませんでした");
+      return false;
+    }
     renderThreads();
 
     // thread/list can briefly lag a just-created or just-resumed thread.
@@ -1261,6 +1312,7 @@ export function mountCodexRemote(
       if (target) await selectThread(target);
       else if (saved) await restoreSavedThread(saved);
     }
+    return true;
   }
 
   function parseUserMessage(item: Json) {
@@ -1283,19 +1335,26 @@ export function mountCodexRemote(
   }
 
   async function loadThreadHistory(threadId: string) {
-    const result = await rpc<{
-      thread?: {
-        status?: Json;
-        turns?: Array<{ id?: string; status?: string; error?: unknown; items?: Json[] }>;
-      };
-    }>(
-      "thread/read",
-      { threadId, includeTurns: true }
-    );
-    if (activeThreadId !== threadId) return;
+    let result: unknown;
+    try {
+      result = await rpc("thread/read", { threadId, includeTurns: true });
+    } catch (error) {
+      if (activeThreadId === threadId) {
+        showToast(error instanceof Error ? error.message : "会話履歴を読み込めませんでした");
+      }
+      return false;
+    }
+    if (activeThreadId !== threadId) return false;
 
-    const turns = result?.thread?.turns ?? [];
-    const threadState = codexThreadStatusToExecutionState(result?.thread?.status);
+    let thread: ReturnType<typeof normalizeCodexThreadHistory>;
+    try {
+      thread = normalizeCodexThreadHistory(result);
+    } catch {
+      showToast("Codexから有効な会話履歴を受け取れませんでした");
+      return false;
+    }
+    const turns = thread.turns;
+    const threadState = codexThreadStatusToExecutionState(thread.status);
     const latestTurn = turns.at(-1);
     const latestTurnState = latestTurn
       ? codexTurnStatusToExecutionState(latestTurn.status)
@@ -1376,6 +1435,7 @@ export function mountCodexRemote(
     }
 
     followLatest();
+    return true;
   }
 
   async function selectThread(thread: ThreadSummary): Promise<boolean> {
@@ -1532,18 +1592,24 @@ export function mountCodexRemote(
     }
 
     const dataUrl = await fileToDataUrl(blob);
-    const res = await fetch("/api/codex/upload", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-pocket-operation-id": uid()
+    const res = await fetchWithTimeout(
+      (input, init) => fetch(input, init),
+      "/api/codex/upload",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-pocket-operation-id": uid()
+        },
+        body: JSON.stringify({
+          name: blob.name,
+          type: blob.type || "application/octet-stream",
+          data: dataUrl
+        })
       },
-      body: JSON.stringify({
-        name: blob.name,
-        type: blob.type || "application/octet-stream",
-        data: dataUrl
-      })
-    });
+      120_000,
+      () => new Error("アップロードがタイムアウトしました。もう一度試してください。")
+    );
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) {
       throw new Error(payload?.error || "ファイルをアップロードできませんでした");
@@ -1914,13 +1980,16 @@ export function mountCodexRemote(
     let cursor = localStorage.getItem(storageKey) || "0";
 
     for (let page = 0; page < 4; page += 1) {
-      const response = await fetch(
+      const response = await fetchWithTimeout(
+        (input, init) => fetch(input, init),
         "/api/workspace-control/events?sessionId=" +
           encodeURIComponent(threadId) +
           "&after=" +
           encodeURIComponent(cursor) +
           "&limit=500",
-        { cache: "no-store" }
+        { cache: "no-store" },
+        REMOTE_REQUEST_TIMEOUT_MS,
+        () => new Error("Background event replay timed out")
       );
       if (!response.ok) throw new Error("Background event replay unavailable");
       const payload = await response.json().catch(() => ({}));
@@ -1959,8 +2028,14 @@ export function mountCodexRemote(
 
       events?.close();
       events = null;
-      await refresh();
-      connectEvents();
+      const sync = await reconnectAfterSync(async () => {
+        if (!(await refresh())) throw new Error("Could not refresh Codex state");
+      }, () => connectEvents());
+
+      if (sync.error) {
+        showToast("会話履歴を同期できませんでした。接続を再試行します。");
+        return;
+      }
 
       if (threadId && activeThreadId === threadId) {
         showToast(replayFallback ? "会話履歴を再取得しました" : "バックグラウンドの作業を同期しました");
@@ -1995,10 +2070,14 @@ export function mountCodexRemote(
       }
 
       if (executionState === "reconnecting") {
-        void refresh().finally(() => {
+        void recoverAfterEventOpen(async () => {
+          if (!(await refresh())) throw new Error("Could not refresh Codex state");
+        }, error => {
           if (executionState === "reconnecting") {
             setExecutionState("idle");
-            showToast("再接続しました");
+            showToast(error
+              ? "接続は復帰しましたが、会話の同期に失敗しました。履歴を再読み込みしてください。"
+              : "再接続しました");
           }
         });
       }
@@ -3166,9 +3245,9 @@ export function mountCodexRemote(
     `;
   }
 
-  async function refresh() {
+  async function refresh(): Promise<boolean> {
     await loadProjects();
-    if (!online) return;
+    if (!online) return false;
 
     try {
       await loadModelCatalog();
@@ -3177,11 +3256,12 @@ export function mountCodexRemote(
     }
 
     const threadBeforeRefresh = activeThreadId;
-    await loadThreads();
+    if (!(await loadThreads())) return false;
 
     if (threadBeforeRefresh && activeThreadId === threadBeforeRefresh) {
-      await loadThreadHistory(threadBeforeRefresh);
+      if (!(await loadThreadHistory(threadBeforeRefresh))) return false;
     }
+    return true;
   }
 
   menu.addEventListener("click", openSidebar);

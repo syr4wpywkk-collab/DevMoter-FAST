@@ -45,7 +45,7 @@ async function main() {
     await once(child, "spawn");
     const early = await Promise.race([
       finished,
-      delay(450).then(() => null)
+      delay(1000).then(() => null)
     ]);
     if (early) {
       console.error("DevMoter: the CLI exited before its interactive session was ready.");

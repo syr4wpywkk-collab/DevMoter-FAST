@@ -7,6 +7,12 @@ import { countTranscriptMessages, normalizeExternalThread, sessionContextToMarkd
 import { describeModelPricing, normalizeModelPricing } from "./model-pricing.mjs";
 import { setWakeLockEnabled, setWakeLockExecutionActive, wakeLockEnabled, wakeLockSupported } from "./wake-lock";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
+import { createLatestRequestGuard } from "./latest-request.mjs";
+import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
+import { normalizeOpenCodeSessionList } from "./opencode-session-list.mjs";
+import { normalizeOpenCodeProviderCatalog } from "./opencode-provider-catalog.mjs";
+import { recoverAfterEventOpen } from "./event-recovery.mjs";
+import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import "./opencode-chat.css";
@@ -25,6 +31,7 @@ import {
 } from "./safety-client";
 
 const FOLLOW_BOTTOM_THRESHOLD = 48;
+const REMOTE_REQUEST_TIMEOUT_MS = 120_000;
 
 type Json = Record<string, any>;
 
@@ -142,7 +149,7 @@ type PendingQuestion = {
 
 export type OpenCodeController = {
   setOnline(online: boolean): void;
-  refresh(): Promise<void>;
+  refresh(): Promise<boolean>;
 };
 
 type OpenCodeRemoteOptions = {
@@ -489,6 +496,8 @@ export function mountOpenCodeRemote(
   let commands: OpenCodeCommand[] = [];
   let skills: OpenCodeSkill[] = [];
   let sessions: OpenCodeSession[] = [];
+  const sessionListRequests = createLatestRequestGuard();
+  const providerCatalogRequests = createLatestRequestGuard();
   let activeSession: OpenCodeSession | null = null;
   let sessionSortMode = (localStorage.getItem("opencode-pocket-session-sort") || "recent") as SessionSortMode;
   if (!["recent", "created", "messages"].includes(sessionSortMode)) sessionSortMode = "recent";
@@ -693,16 +702,22 @@ export function mountOpenCodeRemote(
     let res: Response;
 
     try {
-      res = await fetch(`/api/opencode${path}`, {
-        ...init,
-        headers: {
-          ...(init.body ? { "content-type": "application/json" } : {}),
-          ...(init.headers || {}),
-          ...(opId ? { "x-pocket-operation-id": opId } : {}),
-          ...(localStorage.getItem("opencode-pocket-project") ? { "x-pocket-project-id": localStorage.getItem("opencode-pocket-project")! } : {})
+      res = await fetchWithTimeout(
+        (input, request) => fetch(input, request),
+        `/api/opencode${path}`,
+        {
+          ...init,
+          headers: {
+            ...(init.body ? { "content-type": "application/json" } : {}),
+            ...(init.headers || {}),
+            ...(opId ? { "x-pocket-operation-id": opId } : {}),
+            ...(localStorage.getItem("opencode-pocket-project") ? { "x-pocket-project-id": localStorage.getItem("opencode-pocket-project")! } : {})
+          },
+          cache: method === "GET" ? "no-store" : undefined
         },
-        cache: method === "GET" ? "no-store" : undefined
-      });
+        REMOTE_REQUEST_TIMEOUT_MS,
+        () => new Error("OpenCode request timed out")
+      );
     } catch (error) {
       if (mutating) {
         throw new Error(
@@ -764,7 +779,13 @@ export function mountOpenCodeRemote(
     if (method !== "GET" && method !== "HEAD" && !headers.has("x-pocket-operation-id")) {
       headers.set("x-pocket-operation-id", operationId());
     }
-    const res = await fetch(path, { ...init, headers, cache: method === "GET" ? "no-store" : undefined });
+    const res = await fetchWithTimeout(
+      (input, request) => fetch(input, request),
+      path,
+      { ...init, headers, cache: method === "GET" ? "no-store" : undefined },
+      REMOTE_REQUEST_TIMEOUT_MS,
+      () => new Error("DevMoter request timed out")
+    );
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(payload?.error || ("DevMoter HTTP " + res.status));
     return payload as T;
@@ -1402,15 +1423,14 @@ export function mountOpenCodeRemote(
   }
 
   async function loadProviders() {
-    const payload = await api<{
-      all?: OpenCodeProvider[];
-      default?: Record<string, string>;
-      connected?: string[];
-    }>("/pocket/providers");
+    const requestGeneration = providerCatalogRequests.begin();
+    const payload = await api<unknown>("/pocket/providers");
+    if (!providerCatalogRequests.isCurrent(requestGeneration)) return;
 
-    providers = Array.isArray(payload?.all) ? payload.all : [];
-    providerDefaults = payload?.default ?? {};
-    connectedProviders = new Set(payload?.connected ?? []);
+    const catalog = normalizeOpenCodeProviderCatalog(payload);
+    providers = catalog.providers as OpenCodeProvider[];
+    providerDefaults = catalog.defaults;
+    connectedProviders = new Set(catalog.connected);
 
     if (!selectedModel) {
       const provider =
@@ -1500,8 +1520,23 @@ export function mountOpenCodeRemote(
   }
 
   async function loadSessions() {
-    const data = await api<OpenCodeSession[]>("/session?limit=80&order=desc");
-    sessions = Array.isArray(data) ? data : [];
+    const requestGeneration = sessionListRequests.begin();
+    let data: OpenCodeSession[];
+    try {
+      data = await api<OpenCodeSession[]>("/session?limit=80&order=desc");
+    } catch (error) {
+      if (sessionListRequests.isCurrent(requestGeneration)) {
+        showToast(error instanceof Error ? error.message : "Could not load session history");
+      }
+      return false;
+    }
+    if (!sessionListRequests.isCurrent(requestGeneration)) return false;
+    try {
+      sessions = normalizeOpenCodeSessionList(data) as OpenCodeSession[];
+    } catch {
+      showToast("OpenCode returned an invalid session history");
+      return false;
+    }
 
     try {
       const payload = await api<Json>("/session/active");
@@ -1521,6 +1556,7 @@ export function mountOpenCodeRemote(
     } catch {
       // Session list still renders when the active-session probe is unavailable.
     }
+    if (!sessionListRequests.isCurrent(requestGeneration)) return false;
 
     if (activeSession) {
       const fresh = sessions.find(session => session.id === activeSession?.id);
@@ -1559,6 +1595,7 @@ export function mountOpenCodeRemote(
       if (target) await selectSession(target);
       else if (saved) await restoreSavedSession(saved);
     }
+    return true;
   }
 
   async function syncPendingPermission() {
@@ -2146,11 +2183,17 @@ export function mountOpenCodeRemote(
     const limit = kind === "image" ? 10 * 1024 * 1024 : 15 * 1024 * 1024;
     if (file.size > limit) throw new Error(`${file.name} は${kind === "image" ? "10" : "15"}MBを超えています`);
     const data = await fileToDataUrl(file);
-    const response = await fetch("/api/codex/upload", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-pocket-operation-id": operationId() },
-      body: JSON.stringify({ name: file.name, type: file.type || "application/octet-stream", data })
-    });
+    const response = await fetchWithTimeout(
+      (input, init) => fetch(input, init),
+      "/api/codex/upload",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-pocket-operation-id": operationId() },
+        body: JSON.stringify({ name: file.name, type: file.type || "application/octet-stream", data })
+      },
+      120_000,
+      () => new Error("Upload timed out. Please try again.")
+    );
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload?.error || `Upload failed (${response.status})`);
     return {
@@ -2932,13 +2975,16 @@ export function mountOpenCodeRemote(
     let cursor = localStorage.getItem(storageKey) || "0";
 
     for (let page = 0; page < 4; page += 1) {
-      const response = await fetch(
+      const response = await fetchWithTimeout(
+        (input, init) => fetch(input, init),
         "/api/workspace-control/events?sessionId=" +
           encodeURIComponent(sessionId) +
           "&after=" +
           encodeURIComponent(cursor) +
           "&limit=500",
-        { cache: "no-store" }
+        { cache: "no-store" },
+        REMOTE_REQUEST_TIMEOUT_MS,
+        () => new Error("Background event replay timed out")
       );
       if (!response.ok) throw new Error("Background event replay unavailable");
       const payload = await response.json().catch(() => ({}));
@@ -2976,8 +3022,13 @@ export function mountOpenCodeRemote(
       }
 
       disconnectEvents();
-      await refresh();
-      connectEvents();
+      const sync = await reconnectAfterSync(() => refresh(), () => connectEvents());
+
+      if (sync.error) {
+        setExecutionState(online ? "idle" : "offline");
+        showToast("Could not synchronize session history. Reconnecting.");
+        return;
+      }
 
       if (sessionId && activeSession?.id === sessionId) {
         showToast(replayFallback ? "Session history refreshed" : "Background work synchronized");
@@ -3014,10 +3065,14 @@ export function mountOpenCodeRemote(
       }
 
       if (executionState === "reconnecting") {
-        void refresh().finally(() => {
+        void recoverAfterEventOpen(async () => {
+          if (!(await refresh())) throw new Error("Could not refresh OpenCode state");
+        }, error => {
           if (executionState === "reconnecting") {
             setExecutionState("idle");
-            showToast("Connection recovered");
+            showToast(error
+              ? "Connection restored, but session sync failed. Refresh history to retry."
+              : "Connection recovered");
           }
         });
       }
@@ -3503,8 +3558,8 @@ export function mountOpenCodeRemote(
     root.querySelector<HTMLButtonElement>("#ocxOpenSessionTools")?.addEventListener("click", showSessionTools);
   }
 
-  async function refresh() {
-    if (!online) return;
+  async function refresh(): Promise<boolean> {
+    if (!online) return false;
 
     try {
       setActivity("syncing");
@@ -3515,7 +3570,8 @@ export function mountOpenCodeRemote(
         loadCommands(),
         loadSkills()
       ]);
-      await loadSessions();
+      const sessionsLoaded = await loadSessions();
+      if (!sessionsLoaded) throw new Error("Could not refresh session history");
 
       if (activeSession) {
         await Promise.all([
@@ -3527,9 +3583,11 @@ export function mountOpenCodeRemote(
       } else if (executionState === "reconnecting" || executionState === "offline") {
         setExecutionState("idle");
       }
+      return true;
     } catch (error) {
       setActivity("error");
       showToast(error instanceof Error ? error.message : String(error));
+      return false;
     }
   }
 

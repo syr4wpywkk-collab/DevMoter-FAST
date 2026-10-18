@@ -33,15 +33,15 @@ test("React Home pilot bundles, delegates navigation and unmounts its own root",
     const host = dom.window.document.getElementById("pilot");
     const changes = [];
     dispose = mountHomeBackendShortcuts(host, backend => changes.push(backend));
-    for (let i = 0; i < 40 && !host.querySelector("[aria-label='Open Codex workspace']"); i++) {
+    for (let i = 0; i < 40 && !host.querySelector("[aria-label='Codexのワークスペースを開く']"); i++) {
       await new Promise(resolve => setTimeout(resolve, 15));
     }
     const buttons = host.querySelectorAll("button");
     assert.equal(buttons.length, 3, "show three supported backend choices");
-    assert.equal(host.querySelector("nav")?.getAttribute("aria-label"), "Quick switch to an AI workspace");
+    assert.equal(host.querySelector("nav")?.getAttribute("aria-label"), "チャット環境の切り替え");
     assert.equal(buttons[0].getAttribute("type"), "button");
-    host.querySelector("[aria-label='Open Codex workspace']").click();
-    host.querySelector("[aria-label='Open OpenCode workspace']").click();
+    host.querySelector("[aria-label='Codexのワークスペースを開く']").click();
+    host.querySelector("[aria-label='OpenCodeのワークスペースを開く']").click();
     assert.deepEqual(changes, ["codex", "opencode"], "React must delegate and not bypass shell navigation");
     dispose();
     dispose = null;

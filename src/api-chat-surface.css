@@ -10,8 +10,8 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
   --api-text: #1f1f1f;
   --api-muted: #5f6368;
   --api-border: #d9e0e8;
-  --api-accent: #1967d2;
-  --api-composer-surface: #f0f4f9;
+  --api-accent: #496454;
+  --api-composer-surface: #f1f3f0;
   --api-content-width: 760px;
   --api-header-height: calc(64px + env(safe-area-inset-top));
   position: fixed;
@@ -74,12 +74,11 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
   scrollbar-color: #c7d0da transparent;
 }
 .api-app .api-welcome { width: min(100%, var(--api-content-width)); margin: 0 auto; min-height: max(180px, calc((var(--dm-viewport-height, 100dvh) - var(--api-header-height) - var(--api-composer-height, 250px)) * .75)); padding: 28px 4px; }
-.api-app .api-spark { font-size: 28px; }
-.api-app .api-welcome h1 { margin: 10px 0 8px; font-size: clamp(2rem, 5vw, 3rem); font-weight: 500; line-height: 1.3; background-image: linear-gradient(90deg, #1a73e8, #7662c4 60%, #a966a5); }
-.api-app .api-welcome p { color: var(--api-muted); font-size: clamp(1.4rem, 3.5vw, 2rem); font-weight: 400; line-height: 1.4; }
+.api-app .api-welcome h1 { margin: 0 0 8px; color: var(--api-text); font-size: clamp(1.65rem, 5vw, 2rem); font-weight: 620; line-height: 1.3; letter-spacing: -.02em; background: none; }
+.api-app .api-welcome p { color: var(--api-muted); font-size: .95rem; font-weight: 400; line-height: 1.5; }
 .api-app .api-message { width: min(100%, var(--api-content-width)); min-width: 0; margin: 0 auto 28px; }
 .api-app .api-message-bubble { min-width: 0; max-width: 100%; color: var(--api-text); font-size: 1rem; line-height: 1.75; }
-.api-app .api-message.user .api-message-bubble { max-width: min(85%, 640px); padding: 10px 18px; border-radius: 24px; background: #e9eef6; color: var(--api-text); }
+.api-app .api-message.user .api-message-bubble { max-width: min(85%, 640px); padding: 10px 16px; border-radius: 14px 14px 4px 14px; background: #e9ede9; color: var(--api-text); }
 .api-app .api-message.assistant .api-message-bubble { width: 100%; padding: 0; background: transparent; color: var(--api-text); white-space: normal; }
 .api-app .api-message.assistant { display: block; }
 .api-app .api-message-copy { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; margin-top: 6px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: var(--api-muted); font-size: .8rem; }
@@ -124,13 +123,13 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 .api-app .cx-markdown td { padding: 8px 12px; border: 1px solid var(--api-border); text-align: left; color: var(--api-text); }
 .api-app .cx-markdown th { background: #eef3f9; font-weight: 600; }
 
-.api-app .api-composer-wrap { position: absolute; z-index: 35; padding: 12px max(12px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--api-bg) 22px); }
-.api-app .api-composer { width: min(100%, var(--api-content-width)); padding: 12px 12px 8px; border: 1px solid transparent; border-radius: 30px; background: var(--api-composer-surface); box-shadow: none; backdrop-filter: none; }
+.api-app .api-composer-wrap { position: absolute; z-index: 35; padding: 12px max(12px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); background: var(--api-bg); }
+.api-app .api-composer { width: min(100%, var(--api-content-width)); padding: 12px 12px 8px; border: 1px solid var(--api-border); border-radius: 14px; background: var(--api-composer-surface); box-shadow: none; backdrop-filter: none; }
 .api-app .api-composer:focus-within { border-color: #c7d5e8; }
 .api-app .api-composer textarea { min-height: 44px; max-height: min(160px, calc(var(--dm-viewport-height, 100dvh) * .25)); padding: 6px 8px 8px; font-size: 16px; line-height: 1.5; }
 .api-app .api-composer textarea::placeholder { color: var(--api-muted); }
 .api-app .api-picker-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, .75fr); grid-template-areas: none; width: 100%; margin: 4px 0; gap: 6px; }
-.api-app .api-picker-row select { grid-area: auto; min-width: 0; width: 100%; max-width: none; height: 44px; min-height: 44px; padding: 0 28px 0 12px; border: 1px solid #d4deeb; border-radius: 16px; background: #f9fbff; color: var(--api-text); font-size: .8rem; text-overflow: ellipsis; color-scheme: light; }
+.api-app .api-picker-row select { grid-area: auto; min-width: 0; width: 100%; max-width: none; height: 44px; min-height: 44px; padding: 0 28px 0 12px; border: 1px solid var(--api-border); border-radius: 8px; background: var(--api-bg); color: var(--api-text); font-size: .8rem; text-overflow: ellipsis; color-scheme: light; }
 .api-app #apiProvider,
 .api-app #apiModel,
 .api-app #apiReasoning { grid-area: auto; min-width: 0; }
@@ -140,7 +139,7 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 .api-app .api-composer-foot button { width: 44px; height: 44px; min-height: 44px; flex: 0 0 44px; }
 .api-app #apiAttachImage { border: 0; background: transparent; color: var(--api-text); }
 .api-app #apiAttachImage:hover:not(:disabled) { background: #dfe7f3; }
-.api-app #apiSend { background: #d3e3fd; color: #1b385e; }
+.api-app #apiSend { background: var(--api-accent); color: #fff; }
 .api-app .api-composer-foot span { font-size: .75rem; }
 .api-app .api-attachment-chip { height: 60px; max-width: 250px; border-color: #d2ddeb; background: #fff; }
 .api-app .api-attachment-chip button { width: 44px; height: 44px; min-height: 44px; }
@@ -240,7 +239,7 @@ html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active 
 html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active > span:last-child { color: #b5c9ff; }
 html[data-devmoter-theme="dark"] .api-app {
   --api-bg: #13151a; --api-surface: #1e222b; --api-text: #e8eaf0; --api-muted: #b7bfcd;
-  --api-border: #485264; --api-accent: #adc6ff; --api-composer-surface: #242b38;
+  --api-border: #424a44; --api-accent: #9ab49f; --api-composer-surface: #202522;
   color-scheme: dark;
 }
 html[data-devmoter-theme="dark"] .api-app .api-sidebar,
@@ -277,3 +276,14 @@ html[data-devmoter-theme="dark"] .api-app .cx-markdown th { background: var(--ap
 html[data-devmoter-theme="light"] .api-app select,
 html[data-devmoter-theme="light"] .api-app select option,
 html[data-devmoter-theme="light"] .api-app select optgroup { color-scheme: light; background: #f9fbff; color: var(--api-text); }
+.api-billing-notice {
+  display: block;
+  padding: 0 12px 6px;
+  color: var(--api-muted, #a1a1aa);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.api-billing-notice[hidden] {
+  display: none;
+}

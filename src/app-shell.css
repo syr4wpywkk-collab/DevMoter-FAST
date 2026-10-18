@@ -20,12 +20,10 @@
   gap: 1px;
   padding: 5px 8px;
   border: 1px solid var(--dm-shell-border);
-  border-radius: 14px;
+  border-radius: 10px;
   color: var(--dm-shell-muted);
   background: var(--dm-shell-bg);
-  box-shadow: 0 12px 35px rgba(0,0,0,.28);
-  backdrop-filter: blur(22px) saturate(1.2);
-  -webkit-backdrop-filter: blur(22px) saturate(1.2);
+  box-shadow: 0 3px 12px rgba(0,0,0,.16);
   font: inherit;
   cursor: pointer;
   transition: opacity 140ms ease, transform 140ms ease, background 140ms ease;
@@ -39,9 +37,6 @@
 .dm-shell-menu-trigger:active { transform: scale(.96); }
 .dm-shell-menu-trigger > span { font-size: 18px; line-height: 1; font-weight: 800; }
 .dm-shell-menu-trigger > small { font-size: 8px; line-height: 1; font-weight: 800; }
-.dm-shell-menu-trigger[data-backend="codex"] { color: #d5e3ff; }
-.dm-shell-menu-trigger[data-backend="api"] { color: #d7cdfc; }
-.dm-shell-menu-trigger[data-backend="integrations"] { color: #ccebd9; }
 
 /* Codex exposes the same Tools menu from its conversation drawer. */
 body.codex-mode .dm-shell-menu-trigger { display: none; }
@@ -432,7 +427,7 @@ body.opencode-mode:has(.ocx-sidebar.open) .dm-shell-menu-trigger {
 .tools-ai textarea { resize: vertical; max-height: 220px; }
 .tools-ai button { min-height: 44px; min-width: 44px; border: 1px solid var(--dm-shell-border); border-radius: 10px; padding: 8px 12px; background: #293650; color: var(--dm-shell-text); font: inherit; cursor: pointer; }
 .tools-ai button:disabled { opacity: .45; cursor: default; }
-.tools-ai button:focus-visible, .tools-ai select:focus-visible, .tools-ai textarea:focus-visible, .dm-shell-manual-tools > summary:focus-visible { outline: 2px solid #b8c4ff; outline-offset: 2px; }
+.tools-ai button:focus-visible, .tools-ai select:focus-visible, .tools-ai textarea:focus-visible, .dm-shell-manual-tools > summary:focus-visible { outline: 2px solid #9ab49f; outline-offset: 2px; }
 .tools-ai-models { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; }
 .tools-ai-sharing { color: var(--dm-shell-muted); font-size: 12px; }
 .tools-ai-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
@@ -454,21 +449,20 @@ html[data-devmoter-theme="light"] .tools-ai [data-ai-error] { color: #a32020; }
 /* Tools AI conversation entry; the shared chat surfaces keep their styles. */
 .tools-ai { font-size: 14px; }
 .tools-ai-toolbar:empty { display: none; }
-.tools-ai-welcome { padding: 32px 4px 24px; text-align: center; }
-.tools-ai-spark { display: inline-block; margin-bottom: 12px; color: #b7baff; font-size: 34px; }
-.tools-ai .tools-ai-welcome h2 { margin: 0 0 12px; font-size: clamp(26px, 6vw, 32px); line-height: 1.35; letter-spacing: -.04em; }
+.tools-ai-welcome { padding: 18px 4px 14px; text-align: left; }
+.tools-ai .tools-ai-welcome h2 { margin: 0 0 6px; font-size: 21px; line-height: 1.4; letter-spacing: -.02em; }
 .tools-ai-welcome p { color: var(--dm-shell-muted); font-size: 14px; }
-.tools-ai-composer { overflow: hidden; padding: 12px; border: 1px solid var(--dm-shell-border); border-radius: 26px; background: linear-gradient(145deg, #252a36, #202534); box-shadow: 0 8px 24px #0002; transition: border-color .15s, box-shadow .15s; }
-.tools-ai-composer:focus-within { border-color: #a9b6ef; box-shadow: 0 0 0 2px #a9b6ef20; }
+.tools-ai-composer { overflow: hidden; padding: 12px; border: 1px solid var(--dm-shell-border); border-radius: 12px; background: #202632; transition: border-color .15s; }
+.tools-ai-composer:focus-within { border-color: #9ab49f; }
 .tools-ai .tools-ai-goal-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .tools-ai .tools-ai-composer textarea { min-height: 100px; padding: 6px 8px; border: 0; outline: none; background: transparent; line-height: 1.6; }
 .tools-ai .tools-ai-composer textarea:focus-visible { outline: none; }
 .tools-ai-composer-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .tools-ai-composer-actions > span { color: var(--dm-shell-muted); font-size: 12px; padding-left: 8px; }
-.tools-ai .tools-ai-composer-actions button { border-radius: 24px; background: #b8c4ff; color: #161e39; font-weight: 600; }
+.tools-ai .tools-ai-composer-actions button { border-radius: 8px; background: #9ab49f; color: #16231a; font-weight: 650; }
 .tools-ai-suggestions { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
-.tools-ai .tools-ai-suggestions button { border-radius: 22px; padding: 8px 12px; background: #ffffff05; font-size: 12px; text-align: left; }
-.tools-ai .tools-ai-suggestions button:hover { background: #ffffff0d; border-color: #a9b6ef; }
+.tools-ai .tools-ai-suggestions button { border-radius: 8px; padding: 8px 12px; background: #ffffff05; font-size: 12px; text-align: left; }
+.tools-ai .tools-ai-suggestions button:hover { background: #ffffff0d; border-color: #9ab49f; }
 .tools-ai-settings { border-top: 1px solid var(--dm-shell-border); padding-top: 4px; color: var(--dm-shell-muted); }
 .tools-ai-settings > summary, .tools-ai-run-details > summary { min-height: 44px; align-content: center; cursor: pointer; }
 .tools-ai-settings > label, .tools-ai-settings > div { margin: 8px 0; }
@@ -491,10 +485,7 @@ html[data-devmoter-theme="light"] .dm-shell {
 }
 html[data-devmoter-theme="light"] .dm-shell-sidebar,
 html[data-devmoter-theme="light"] .dm-shell-tools-controls { background: #f7f9fc; }
-html[data-devmoter-theme="light"] .dm-shell-menu-trigger { box-shadow: 0 10px 28px rgba(31,41,55,.18); }
-html[data-devmoter-theme="light"] .dm-shell-menu-trigger[data-backend="codex"] { color: #254d9b; }
-html[data-devmoter-theme="light"] .dm-shell-menu-trigger[data-backend="api"] { color: #6542a8; }
-html[data-devmoter-theme="light"] .dm-shell-menu-trigger[data-backend="integrations"] { color: #246b48; }
+html[data-devmoter-theme="light"] .dm-shell-menu-trigger { box-shadow: 0 3px 12px rgba(31,41,55,.12); }
 html[data-devmoter-theme="light"] .dm-shell-sidebar-head button,
 html[data-devmoter-theme="light"] .dm-shell-home-link,
 html[data-devmoter-theme="light"] .dm-shell-ai-grid button,
@@ -527,8 +518,9 @@ html[data-devmoter-theme="light"] .tools-ai input,
 html[data-devmoter-theme="light"] .tools-ai select,
 html[data-devmoter-theme="light"] .tools-ai textarea,
 html[data-devmoter-theme="light"] .tools-ai-card { background-color: #fff; color: var(--dm-shell-text); }
-html[data-devmoter-theme="light"] .tools-ai button { background: #e8edf8; color: #172033; }
-html[data-devmoter-theme="light"] .tools-ai-composer { background: linear-gradient(145deg,#fff,#f1f4fa); }
+html[data-devmoter-theme="light"] .tools-ai button { background: #e7eee8; color: #17231a; }
+html[data-devmoter-theme="light"] .tools-ai .tools-ai-composer-actions button { background: #496454; color: #fff; }
+html[data-devmoter-theme="light"] .tools-ai-composer { background: #fff; }
 
 /* Git and first-run panels are mounted outside .dm-shell; give them their own scoped theme tokens. */
 .pocket-git-panel,

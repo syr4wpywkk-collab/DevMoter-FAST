@@ -5,7 +5,7 @@ The user requested that the already-implemented Unified Workspace be the normal 
 **no new Tailscale domain or ?unifiedUI=1 required**.
 
 ## Change
-- `src/unified-ui-mode.mjs`: return true for bare, existing `?surface=...`, 
+- `src/unified-ui-mode.mjs`: return true for bare, existing `?surface=...`,
   and legacy `?backend=...&session=...` URLs. Opt-out is only `?unifiedUI=0`.
 - `src/app-shell.ts`: after the existing shell mounts, dynamically import
   the Unified Workspace by default. Preserve `?unifiedUI=1` for existing links.
