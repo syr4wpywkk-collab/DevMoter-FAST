@@ -6,7 +6,7 @@ import { JSDOM } from "jsdom";
 
 async function navigator() {
   const source = await readFile(new URL("../src/unified-workspace-nav.ts", import.meta.url), "utf8");
-  const js = await transform(source.replace(/import "\\.\\/unified-workspace-(?:nav|chat)\\.css";/g, ""), {
+  const js = await transform(source.replace(/import "\.\/unified-workspace-(?:nav|chat)\.css";/g, ""), {
     loader: "ts", format: "esm", target: "es2022"
   });
   return (await import("data:text/javascript;base64," + Buffer.from(js.code).toString("base64"))).mountTaskFirstWorkspace;
@@ -67,12 +67,12 @@ test("MAR-249: Review canvas shares theme tokens; touch hover cannot masquerade 
     readFile(new URL("../src/workflow.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/session-control.ts", import.meta.url), "utf8")
   ]);
-  assert.match(css, /body\\.dm-task-first-enabled \\.wf-modal\\s*\\{[^}]*background: var\\(--dw-chat-bg\\)/s);
-  assert.match(css, /body\\.dm-task-first-enabled \\.wf-sheet\\s*\\{[^}]*background: var\\(--dw-chat-bg\\)/s);
-  assert.match(css, /body\\.dm-task-first-enabled \\.wf-body\\s*\\{ background: var\\(--dw-chat-bg\\); \\}/);
-  assert.match(css, /@media \\(hover: hover\\) and \\(pointer: fine\\)/);
-  assert.doesNotMatch(css, /\\.dm-task-first-tabs button:hover,\\s*\\.dm-task-first-tabs button\\[aria-current="page"\\]/);
+  assert.match(css, /body\.dm-task-first-enabled \.wf-modal\s*\{[^}]*background: var\(--dw-chat-bg\)/s);
+  assert.match(css, /body\.dm-task-first-enabled \.wf-sheet\s*\{[^}]*background: var\(--dw-chat-bg\)/s);
+  assert.match(css, /body\.dm-task-first-enabled \.wf-body\s*\{ background: var\(--dw-chat-bg\); \}/);
+  assert.match(css, /@media \(hover: hover\) and \(pointer: fine\)/);
+  assert.doesNotMatch(css, /\.dm-task-first-tabs button:hover,\s*\.dm-task-first-tabs button\[aria-current="page"\]/);
   assert.match(workflow, /devmoter:workspace-tab-changing/);
   assert.match(session, /devmoter:workspace-tab-changing/);
-  assert.match(css, /env\\(safe-area-inset-bottom\\)/);
+  assert.match(css, /env\(safe-area-inset-bottom\)/);
 });
