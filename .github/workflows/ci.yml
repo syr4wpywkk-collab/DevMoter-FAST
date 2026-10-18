@@ -23,6 +23,8 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm test
+      - name: Synthetic request guard negative controls
+        run: node --test test/navigation-request-guard.test.mjs
       - run: npx playwright install --with-deps webkit
       - run: npm run test:opencode-navigation
       - run: npm run test:coverage
