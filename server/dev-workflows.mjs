@@ -239,7 +239,7 @@ export function structureMcpResult(value, options = {}) {
     }
     if (Array.isArray(item)) return item.slice(0, maxEntries).map(child => visit(child, depth + 1));
     if (plain(item)) {
-      const out = {};
+      const out = Object.create(null);
       for (const [key, child] of Object.entries(item)) {
         if (count >= maxEntries) {
           truncated = true;
@@ -252,10 +252,20 @@ export function structureMcpResult(value, options = {}) {
     return String(item);
   }
 
+  const structuredValue = visit(value, 0);
+  let rawText;
+  try {
+    rawText = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  } catch {
+    rawText = "[MCP result could not be serialized]";
+    truncated = true;
+  }
+  const boundedRaw = clip(rawText ?? "", maxText);
+  truncated ||= boundedRaw.truncated;
   return {
     kind: "structured",
-    value: visit(value, 0),
-    rawText: clip(typeof value === "string" ? value : JSON.stringify(value, null, 2), maxText).text,
+    value: structuredValue,
+    rawText: boundedRaw.text,
     truncated
   };
 }
