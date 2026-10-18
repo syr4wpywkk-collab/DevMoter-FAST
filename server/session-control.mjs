@@ -332,7 +332,7 @@ export function createSessionControl({ homeDir, inspectSession, dispatchQueued, 
       const target = await ensureLoaded();
       const keys = new Set([
         ...target.queue.filter(item => item.status === "pending").map(item => item.sessionKey),
-        ...Object.keys(target.budgets).filter(key => !target.budgets[key]?.stopReason)
+        ...Object.keys(target.budgets).filter(key => !target.budgets[key]?.stopReason || target.budgets[key]?.interruptPending)
       ]);
       let dirty = false;
       for (const sessionKey of keys) {
@@ -358,14 +358,28 @@ export function createSessionControl({ homeDir, inspectSession, dispatchQueued, 
               : null;
           if (reason) {
             budget.stopReason = reason;
+            budget.interruptPending = Boolean(snapshot?.active);
             addEvent(target, { sessionKey, type: "budget", detail: reason });
             dirty = true;
-            if (snapshot?.active) {
-              try { await interruptSession(backend, sessionId, snapshot); } catch { /* retry is not safe after marking stopped */ }
-            }
-            continue;
           }
         }
+        if (budget?.interruptPending) {
+          if (!snapshot?.active) {
+            budget.interruptPending = false;
+            dirty = true;
+          } else {
+            try {
+              await interruptSession(backend, sessionId, snapshot);
+              budget.interruptPending = false;
+              addEvent(target, { sessionKey, type: "budget", detail: "Stop request acknowledged by agent" });
+              dirty = true;
+            } catch {
+              // Failed stop requests remain visible and are retried while the run is active.
+              dirty = true;
+            }
+          }
+        }
+        if (budget?.stopReason) continue;
 
         if (!snapshot?.active) {
           const next = target.queue.find(item => item.sessionKey === sessionKey && item.status === "pending");
