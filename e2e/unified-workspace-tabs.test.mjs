@@ -9,6 +9,36 @@ import { webkit } from "playwright";
 
 const repo = path.resolve(import.meta.dirname, "..");
 
+// Codex's inventory reads use POST. Do not treat every POST as a mutation, or
+// allow the entire RPC endpoint: turn/start also travels over POST.
+function isReadOnlyApiRequest({ method, pathname, body, external = false }) {
+  if (external) return false;
+  if (method === "GET" || method === "HEAD") return [
+    "/api/projects", "/api/session-control/state", "/api/opencode/session",
+    "/api/opencode/session/active", "/api/tools-ai/context",
+    "/api/workflow/projects/fixture/changes", "/api/workflow/projects/fixture/worktrees",
+    "/api/workflow/projects/fixture/github/tasks"
+  ].includes(pathname);
+  if (method !== "POST" || pathname !== "/api/codex/rpc") return false;
+  try { return ["thread/list", "thread/read"].includes(JSON.parse(body).method); }
+  catch { return false; }
+}
+
+test("history request guard rejects approvals, applies, executions and unknown RPCs", () => {
+  for (const method of ["thread/list", "thread/read"]) {
+    assert.equal(isReadOnlyApiRequest({ method: "POST", pathname: "/api/codex/rpc", body: JSON.stringify({ method }) }), true);
+  }
+  for (const method of ["turn/start", "thread/start", "item/commandExecution/requestApproval", "unknown/method"]) {
+    assert.equal(isReadOnlyApiRequest({ method: "POST", pathname: "/api/codex/rpc", body: JSON.stringify({ method }) }), false);
+  }
+  for (const pathname of ["/outside-api/mutate", "/api/codex/approval", "/api/workflow/projects/fixture/changes/synthetic/apply", "/api/opencode/session/synthetic/prompt", "/api/session-control/queue", "/api/tools-ai/runs"]) {
+    for (const method of ["POST", "PUT", "PATCH", "DELETE"]) assert.equal(isReadOnlyApiRequest({ method, pathname, body: "{}" }), false);
+  }
+  assert.equal(isReadOnlyApiRequest({ method: "GET", pathname: "/api/projects", external: true }), false);
+  assert.equal(isReadOnlyApiRequest({ method: "GET", pathname: "/api/unknown-action" }), false);
+  assert.equal(isReadOnlyApiRequest({ method: "POST", pathname: "/api/codex/rpc", body: "not-json" }), false);
+});
+
 async function fixtureServer() {
   const dir = await mkdtemp(path.join(os.tmpdir(), "devmoter-tabs-"));
   const entry = path.join(dir, "fixture.ts");
@@ -45,11 +75,23 @@ async function fixtureServer() {
     if (url.pathname.startsWith("/api/")) {
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
       if (url.pathname === "/api/projects") res.end(JSON.stringify({ projects: [{ id: "fixture", name: "Fixture", path: "/synthetic/project", available: true }] }));
-      else if (url.pathname.endsWith("/changes")) res.end(JSON.stringify({ changes: [] }));
+      else if (url.pathname.endsWith("/changes")) res.end(JSON.stringify({ changes: [{
+        id: "synthetic-change", status: "pending", source: "fixture", autoCommit: false, appliedFiles: [],
+        files: [{ path: "synthetic.txt", decision: "accept", hunks: [],
+          preview: { content: "synthetic proposal", truncated: false, totalLines: 1, totalBytes: 18 },
+          acceptedPreview: { content: "synthetic proposal" } }]
+      }] }));
       else if (url.pathname.endsWith("/worktrees")) res.end(JSON.stringify({ worktrees: [] }));
       else if (url.pathname.endsWith("/github/tasks")) res.end(JSON.stringify({ tasks: [] }));
       else if (url.pathname === "/api/session-control/state") res.end(JSON.stringify({ version: 1, queue: [], budgets: {}, ownership: {}, checkpoints: [], events: [] }));
-      else if (url.pathname === "/api/codex/rpc") res.end(JSON.stringify({ result: { data: [] } }));
+      else if (url.pathname === "/api/codex/rpc") {
+        let body = "";
+        for await (const chunk of req) body += chunk;
+        const rpc = JSON.parse(body);
+        res.end(JSON.stringify({ result: rpc.method === "thread/list"
+          ? { data: [{ id: "synthetic-session", name: "Synthetic waiting run", cwd: "/synthetic/project" }] }
+          : { thread: { id: "synthetic-session", status: "waiting", turns: [{ id: "synthetic-turn", status: "waiting", items: [] }] } } }));
+      }
       else if (url.pathname.startsWith("/api/opencode")) res.end(JSON.stringify({ data: [] }));
       else res.end("{}");
       return;
@@ -104,8 +146,23 @@ for (const device of [
     t.after(async () => { await browser.close(); await server.close(); });
     const context = await browser.newContext({ viewport: device.viewport, isMobile: device.mobile, hasTouch: device.hasTouch });
     const page = await context.newPage();
-    // This fixture is local-only; block any accidental non-fixture network request.
-    await page.route("**/*", route => route.request().url().startsWith("http://127.0.0.1:") ? route.continue() : route.abort());
+    const apiRequests = [];
+    const fixtureOrigin = new URL(server.url).origin;
+    // Record attempted mutations BEFORE blocking them. A caught fetch error must
+    // still fail this regression; no request can reach a real backend.
+    await page.route("**/*", route => {
+      const request = route.request();
+      const url = new URL(request.url());
+      const external = url.origin !== fixtureOrigin;
+      const staticAsset = !external && ["GET", "HEAD"].includes(request.method()) && ["/", "/fixture.js", "/fixture.css"].includes(url.pathname);
+      if (!staticAsset) {
+        const record = { method: request.method(), pathname: url.pathname, body: request.postData(), external };
+        apiRequests.push(record);
+        if (external) return route.abort();
+        if (!isReadOnlyApiRequest(record)) return route.fulfill({ status: 409, contentType: "application/json", body: '{"error":"synthetic fixture blocks mutations"}' });
+      }
+      return route.continue();
+    });
     await page.goto(server.url);
     await page.locator(".dm-task-first-tabs").waitFor();
     await page.waitForFunction(() => Boolean(document.querySelector("#dmTaskFirstWorkspace")));
@@ -122,22 +179,55 @@ for (const device of [
 
     await select("review");
     await page.locator("#wfModal:not(.hidden)").waitFor();
+    await page.locator('[data-wf-action="apply"]').waitFor();
     await select("tasks");
     await page.locator(".sc-panel.open").waitFor();
+    await page.locator(".sc-card[data-status=waiting]").waitFor();
     assert.equal(await page.locator("#wfModal:not(.hidden)").count(), 0, "Review overlay closes when Tasks opens");
     await select("review");
     await page.locator("#wfModal:not(.hidden)").waitFor();
     assert.equal(await page.locator(".sc-panel.open").count(), 0, "Tasks overlay closes when Review opens");
 
     for (const name of ["chat", "tools", "review", "tasks", "tools", "chat", "tasks", "review", "tasks"]) await select(name);
-    await page.goBack();
-    await page.waitForFunction(() => new URL(location.href).searchParams.get("workspaceTab") === "review");
-    await page.locator("#wfModal:not(.hidden)").waitFor();
-    await assertNavAndHitTargets(page, device);
-    await page.goForward();
-    await page.waitForFunction(() => new URL(location.href).searchParams.get("workspaceTab") === "tasks");
-    await page.locator(".sc-panel.open").waitFor();
-    await assertNavAndHitTargets(page, device);
+    // Prove the browser recorder sees attempted writes, even when blocked.
+    // These requests hit only our rejecting loopback fixture, never live data.
+    const negativeControls = [
+      { pathname: "/api/codex/approval", body: { id: "synthetic-approval", decision: "accept" } },
+      { pathname: "/api/workflow/projects/fixture/changes/synthetic-change/apply", body: {} },
+      { pathname: "/api/codex/rpc", body: { method: "turn/start" } }
+    ];
+    const controlStart = apiRequests.length;
+    await page.evaluate(async controls => {
+      for (const control of controls) await fetch(control.pathname, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(control.body) });
+    }, negativeControls);
+    assert.equal(apiRequests.slice(controlStart).filter(request => !isReadOnlyApiRequest(request)).length, 3, "network guard detects all three synthetic mutation attempts");
+
+    // Create an exact four-destination history chain, then traverse it without
+    // clicking any approval, apply, queue, stop, or execution controls.
+    for (const name of ["chat", "tasks", "review", "tools", "chat"]) await select(name);
+    await page.waitForLoadState("networkidle");
+    const historyStart = apiRequests.length;
+    for (const [direction, destinations] of [
+      ["goBack", ["tools", "review", "tasks", "chat"]],
+      ["goForward", ["tasks", "review", "tools", "chat"]]
+    ]) {
+      for (const name of destinations) {
+        await page[direction]();
+        await page.waitForFunction(expected => new URL(location.href).searchParams.get("workspaceTab") === expected, name);
+        await page.waitForLoadState("networkidle");
+        assert.equal(await page.locator('.dm-task-first-tabs [aria-current="page"]').getAttribute("data-workspace-action"), name);
+        assert.equal(await page.locator("#wfModal").isVisible(), name === "review");
+        assert.equal(await page.locator(".sc-panel.open").count(), name === "tasks" ? 1 : 0);
+        assert.equal(await page.locator(".dm-shell-sidebar.open").count(), name === "tools" ? 1 : 0);
+        await assertNavAndHitTargets(page, device);
+        assert.deepEqual(apiRequests.slice(historyStart).filter(request => !isReadOnlyApiRequest(request)), [], `browser ${direction} to ${name} must not authorize, apply, start, or otherwise mutate`);
+      }
+    }
+    const historyRequests = apiRequests.slice(historyStart);
+    assert.ok(historyRequests.some(request => request.pathname.endsWith("/changes")), "history really refreshes the populated Review panel");
+    for (const method of ["thread/list", "thread/read"]) {
+      assert.ok(historyRequests.some(request => request.pathname === "/api/codex/rpc" && JSON.parse(request.body).method === method), `history performs the allowed ${method} inventory read`);
+    }
     await context.close();
   });
 }
