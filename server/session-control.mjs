@@ -151,6 +151,22 @@ export function createSessionControl({ homeDir, inspectSession, dispatchQueued, 
     return target.budgets[key];
   }
 
+  async function remainingBudget(payload) {
+    const target = await ensureLoaded();
+    const backend = payload?.source?.backend;
+    const sessionId = String(payload?.source?.sessionId || "");
+    if (!isBackend(backend) || !sessionId) throw new Error("Valid source session is required");
+    const sourceBudget = target.budgets[keyOf(backend, sessionId)];
+    if (!sourceBudget) return null;
+    const metrics = await inspectSession(backend, sessionId);
+    const usedTurns = Math.max(0, Number(metrics?.turns || 0) - Number(sourceBudget.baseTurns || 0));
+    const usedTokens = Math.max(0, Number(metrics?.tokens || 0) - Number(sourceBudget.baseTokens || 0));
+    return {
+      maxTurns: sourceBudget.stopReason ? 0 : sourceBudget.maxTurns === null ? null : Math.max(0, sourceBudget.maxTurns - usedTurns),
+      maxTokens: sourceBudget.stopReason ? 0 : sourceBudget.maxTokens === null ? null : Math.max(0, sourceBudget.maxTokens - usedTokens)
+    };
+  }
+
   async function inheritBudget(payload) {
     const target = await ensureLoaded();
     const sourceBackend = payload?.source?.backend;
@@ -193,7 +209,14 @@ export function createSessionControl({ homeDir, inspectSession, dispatchQueued, 
         item.status = "pending";
         target.queue.push(item);
         addEvent(target, { sessionKey: item.sessionKey, type: "queue", detail: "Queued follow-up" });
-        await persist();
+        try {
+          await persist();
+        } catch (error) {
+          // Failed requests must not reappear as executable in-memory work.
+          target.queue = target.queue.filter(queued => queued.id !== item.id);
+          target.events = target.events.filter(event => event.sessionKey !== item.sessionKey || event.detail !== "Queued follow-up" || event.createdAt < item.createdAt);
+          throw error;
+        }
         json(res, 201, { item });
         return true;
       }
@@ -243,6 +266,10 @@ export function createSessionControl({ homeDir, inspectSession, dispatchQueued, 
         delete target.budgets[keyOf(budgetMatch[1], decodeURIComponent(budgetMatch[2]))];
         await persist();
         json(res, 200, { ok: true });
+        return true;
+      }
+      if (req.method === "POST" && url.pathname === "/api/session-control/budget/remaining") {
+        json(res, 200, { budget: await remainingBudget(await readJson(req)) });
         return true;
       }
       if (req.method === "POST" && url.pathname === "/api/session-control/budget/inherit") {
@@ -351,7 +378,7 @@ export function createSessionControl({ homeDir, inspectSession, dispatchQueued, 
         if (budget && !budget.stopReason) {
           const usedTurns = Math.max(0, Number(snapshot?.turns || 0) - Number(budget.baseTurns || 0));
           const usedTokens = Math.max(0, Number(snapshot?.tokens || 0) - Number(budget.baseTokens || 0));
-          const reason = budget.maxTurns !== null && usedTurns >= budget.maxTurns
+          const reason = budget.maxTurns !== null && (usedTurns > budget.maxTurns || (!snapshot?.active && usedTurns >= budget.maxTurns))
             ? `Turn budget reached (${usedTurns}/${budget.maxTurns})`
             : budget.maxTokens !== null && usedTokens >= budget.maxTokens
               ? `Token budget reached (${usedTokens}/${budget.maxTokens})`
@@ -382,8 +409,9 @@ export function createSessionControl({ homeDir, inspectSession, dispatchQueued, 
         if (budget?.stopReason) continue;
 
         if (!snapshot?.active) {
-          const next = target.queue.find(item => item.sessionKey === sessionKey && item.status === "pending");
-          if (next && !(budget?.stopReason)) {
+          // FIFO: an unconfirmed head item blocks all later follow-ups.
+          const next = target.queue.find(item => item.sessionKey === sessionKey);
+          if (next?.status === "pending" && !(budget?.stopReason)) {
             // Persist the intent before invoking an external agent: a crash must not silently resend.
             next.status = "dispatching";
             addEvent(target, { sessionKey, type: "queue", detail: "Dispatch started (awaiting acknowledgment)" });
