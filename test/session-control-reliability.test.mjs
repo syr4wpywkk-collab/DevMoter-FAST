@@ -155,7 +155,8 @@ test("budget stop failures remain pending and retry safely until acknowledged", 
   });
   const url = "/api/session-control/budget/codex/session-1";
   assert.equal((await request(control, "PUT", url, { maxTurns: 1, maxTokens: null })).status, 200);
-  turns = 1;
+  // Two turns exceeds the one-turn budget even while the agent is active.
+  turns = 2;
   await control.reconcile();
   let state = await request(control, "GET", "/api/session-control/state");
   assert.equal(state.budgets["codex:session-1"].interruptPending, true);
