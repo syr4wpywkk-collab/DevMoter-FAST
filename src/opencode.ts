@@ -2679,6 +2679,13 @@ export function mountOpenCodeRemote(
     }
 
     if (type === "message.part.delta") {
+      // Non-text deltas update tool/metadata fields, not the chat transcript.
+      // Reconcile the canonical context rather than creating a bogus text row.
+      if (normalized.delta === null) {
+        lastLiveEventAt = Date.now();
+        scheduleRefresh(220);
+        return;
+      }
       const key = streamKey({
         messageID: props?.messageID,
         partID: props?.partID
