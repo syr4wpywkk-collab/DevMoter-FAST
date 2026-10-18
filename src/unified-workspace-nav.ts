@@ -80,16 +80,21 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     projectLabel.textContent = normalized.split("/").filter(Boolean).pop()?.slice(0, 80) || "Workspace";
   };
 
+  type WorkspaceTab = "tasks" | "chat" | "review" | "tools";
+  let activeTab: WorkspaceTab | null = null;
+  const setActiveTab = (tab: WorkspaceTab | null) => {
+    activeTab = tab;
+    for (const button of root.querySelectorAll<HTMLButtonElement>("[data-workspace-action]")) {
+      if (button.dataset.workspaceAction === tab) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+    }
+  };
+
   const updateSurface = (next: MainSurface) => {
     surface = next;
     if (next === "codex" || next === "opencode" || next === "api") currentBackend = next;
     backendSelect.value = currentBackend;
-    for (const button of root.querySelectorAll<HTMLButtonElement>("[data-workspace-action]")) {
-      const isCurrent = button.dataset.workspaceAction === "chat" &&
-        (next === "codex" || next === "opencode" || next === "api");
-      if (isCurrent) button.setAttribute("aria-current", "page");
-      else button.removeAttribute("aria-current");
-    }
+    setActiveTab(next === "codex" || next === "opencode" || next === "api" ? "chat" : null);
     updateProject();
   };
 
@@ -107,6 +112,14 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     }
   };
   window.addEventListener("devmoter:backend-changed", onBackendChanged);
+
+  const onPanelClosed = (event: Event) => {
+    const tab = (event as CustomEvent<{ tab?: WorkspaceTab }>).detail?.tab;
+    if (tab && tab === activeTab) {
+      setActiveTab(surface === "codex" || surface === "opencode" || surface === "api" ? "chat" : null);
+    }
+  };
+  window.addEventListener("devmoter:workspace-panel-closed", onPanelClosed);
 
   backendSelect.addEventListener("change", () => {
     const next = backendSelect.value;
@@ -129,8 +142,11 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
 
   for (const button of root.querySelectorAll<HTMLButtonElement>("[data-workspace-action]")) {
     button.addEventListener("click", () => {
+      const tab = button.dataset.workspaceAction as WorkspaceTab;
+      // Close any other workspace overlay before activating the requested tab.
+      window.dispatchEvent(new window.CustomEvent("devmoter:workspace-tab-changing", { detail: { tab } }));
       feedback.textContent = "";
-      switch (button.dataset.workspaceAction) {
+      switch (tab) {
         case "tasks":
           actions.openTasks();
           break;
@@ -145,6 +161,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
           actions.openTools();
           break;
       }
+      setActiveTab(tab);
     });
   }
 
@@ -153,6 +170,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   return { destroy() {
     window.removeEventListener("devmoter:surface-changed", onSurfaceChanged);
     window.removeEventListener("devmoter:backend-changed", onBackendChanged);
+    window.removeEventListener("devmoter:workspace-panel-closed", onPanelClosed);
     for (const label of agentLabels) label.hidden = true;
     root.remove();
     document.body.classList.remove("dm-task-first-enabled");
