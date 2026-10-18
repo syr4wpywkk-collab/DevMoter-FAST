@@ -488,6 +488,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
     if (modal.classList.contains("hidden")) return;
     modal.classList.add("hidden");
     modal.setAttribute("aria-hidden", "true");
+    window.dispatchEvent(new CustomEvent("devmoter:workspace-panel-changed", { detail: { tab: "review", open: false } }));
     document.body.style.overflow = previousOverflow;
     if (returnFocus?.isConnected && !returnFocus.closest(".hidden, [hidden]")) returnFocus.focus({ preventScroll: true });
   }
@@ -499,11 +500,13 @@ export function mountTaskWorkflow(root: HTMLElement) {
     modal.classList.remove("hidden");
     modal.setAttribute("aria-hidden", "false");
     closeButton.focus({ preventScroll: true });
+    window.dispatchEvent(new CustomEvent("devmoter:workspace-panel-changed", { detail: { tab: "review", open: true } }));
     void refreshAll();
   });
   closeButton.addEventListener("click", closeReview);
   modal.addEventListener("click", event => { if (event.target === modal) closeReview(); });
   window.addEventListener("devmoter:surface-changed", closeReview);
+  window.addEventListener("devmoter:workspace-tab-changing", closeReview);
   modal.addEventListener("keydown", event => {
     if (event.key === "Escape") { event.preventDefault(); closeReview(); return; }
     if (event.key !== "Tab") return;

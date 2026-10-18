@@ -61,7 +61,8 @@ test("the default UI preserves provider ownership and a recoverable legacy route
     file("src/api-chat.ts")
   ]);
   assert.ok(nav.includes('switchBackend: (backend: ChatBackend) => void'));
-  assert.ok(nav.includes('actions.switchBackend(next)'));
+  assert.ok(nav.includes('selectTab("chat", "push", next)'));
+  assert.ok(nav.includes('actions.switchBackend(backend || currentBackend)'));
   assert.ok(nav.includes("openNativeHistory()"));
   for (const [source, formId] of [[openCode,"ocxPromptForm"],[codex,"cxPromptForm"],[api,"apiForm"]]) {
     assert.ok(source.includes('id="' + formId + '"'), "real composer must remain mounted");

@@ -118,3 +118,15 @@ test("temporary modal state is not serialized as a main surface", () => {
   assert.equal(win.history.length, depth);
   assert.equal(new URL(win.location.href).searchParams.get("surface"), "home");
 });
+
+test("provider navigation clears workspace panel routes but keeps unrelated deep links", () => {
+  const window = fakeWindow("/?surface=codex&workspaceTab=review&session=synthetic#keep");
+  const navigation = createSurfaceNavigation({ window });
+  assert.equal(navigation.navigate("api"), true);
+  const url = new URL(window.location.href);
+  assert.equal(url.searchParams.get("surface"), "api");
+  assert.equal(url.searchParams.has("workspaceTab"), false);
+  assert.equal(url.searchParams.get("session"), "synthetic");
+  assert.equal(url.hash, "#keep");
+  navigation.destroy();
+});

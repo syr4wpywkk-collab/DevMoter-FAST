@@ -141,3 +141,82 @@ test("Home and Integrations preserve the real backend choice for Chat", async ()
     dom.window.close();
   }
 });
+
+test("workspace tabs close the previous panel, select exactly one tab and restore browser history", async () => {
+  const dom = new JSDOM('<!doctype html><div id="app"></div>', {
+    url: "https://localhost/?surface=codex&session=synthetic-session#keep"
+  });
+  const prior = { window: globalThis.window, document: globalThis.document, localStorage: globalThis.localStorage };
+  Object.assign(globalThis, { window: dom.window, document: dom.window.document, localStorage: dom.window.localStorage });
+  const { window } = dom;
+  let panel = null;
+  const panelEvent = (tab, open) => window.dispatchEvent(new window.CustomEvent("devmoter:workspace-panel-changed", { detail: { tab, open } }));
+  window.addEventListener("devmoter:workspace-tab-changing", () => {
+    if (panel) panelEvent(panel, false);
+    panel = null;
+  });
+  const open = tab => { panel = tab; panelEvent(tab, true); };
+  try {
+    const mount = await loadNavigator();
+    window.history.replaceState({ devmoterSurface: "codex", retained: "synthetic" }, "");
+    const controller = mount({
+      initialSurface: "codex", switchBackend: () => {}, openHome: () => {},
+      openTasks: () => open("tasks"), openReview: () => open("review"), openTools: () => open("tools")
+    });
+    const root = window.document.getElementById("dmTaskFirstWorkspace");
+    const selected = () => [...root.querySelectorAll('[aria-current="page"]')].map(button => button.dataset.workspaceAction);
+    const click = tab => root.querySelector(`[data-workspace-action="${tab}"]`).click();
+    for (const tab of ["tasks", "review", "tasks", "chat", "review", "tools", "tasks"]) {
+      click(tab);
+      assert.deepEqual(selected(), [tab]);
+      assert.equal(panel, tab === "chat" ? null : tab);
+      assert.equal(new URL(window.location.href).searchParams.get("workspaceTab"), tab);
+      assert.equal(new URL(window.location.href).searchParams.get("session"), "synthetic-session");
+      assert.equal(window.location.hash, "#keep");
+      assert.deepEqual(window.history.state, { devmoterSurface: "codex", retained: "synthetic" });
+    }
+    const traverse = direction => new Promise(resolve => {
+      window.addEventListener("popstate", resolve, { once: true });
+      window.history[direction]();
+    });
+    await traverse("back");
+    assert.deepEqual(selected(), ["tools"]);
+    assert.equal(panel, "tools");
+    await traverse("forward");
+    assert.deepEqual(selected(), ["tasks"]);
+    assert.equal(panel, "tasks");
+    panel = null;
+    panelEvent("tasks", false);
+    assert.deepEqual(selected(), ["chat"], "closing a panel restores the visible underlying Chat");
+    const length = window.history.length;
+    click("tasks");
+    click("tasks");
+    assert.equal(window.history.length, length + 1, "reselecting the current tab must not add history");
+    controller.destroy();
+  } finally {
+    Object.assign(globalThis, prior);
+    dom.window.close();
+  }
+});
+
+test("untrusted tab URLs cannot launch arbitrary tools or inject project markup", async () => {
+  const dom = new JSDOM('<!doctype html><div id="app"></div>', {
+    url: "https://localhost/?surface=codex&workspaceTab=javascript%3Aalert(1)"
+  });
+  const prior = { window: globalThis.window, document: globalThis.document, localStorage: globalThis.localStorage };
+  Object.assign(globalThis, { window: dom.window, document: dom.window.document, localStorage: dom.window.localStorage });
+  try {
+    const calls = [];
+    const mount = await loadNavigator();
+    const controller = mount({
+      initialSurface: "codex", switchBackend: () => calls.push("backend"), openHome: () => calls.push("home"),
+      openTasks: () => calls.push("tasks"), openReview: () => calls.push("review"), openTools: () => calls.push("tools")
+    });
+    assert.deepEqual(calls, []);
+    assert.equal(dom.window.document.querySelector('[data-workspace-action][aria-current="page"]').dataset.workspaceAction, "chat");
+    controller.destroy();
+  } finally {
+    Object.assign(globalThis, prior);
+    dom.window.close();
+  }
+});

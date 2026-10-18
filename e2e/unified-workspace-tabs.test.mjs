@@ -1,0 +1,143 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import os from "node:os";
+import path from "node:path";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { createServer } from "node:http";
+import { build } from "esbuild";
+import { webkit } from "playwright";
+
+const repo = path.resolve(import.meta.dirname, "..");
+
+async function fixtureServer() {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "devmoter-tabs-"));
+  const entry = path.join(dir, "fixture.ts");
+  const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="stylesheet" href="/fixture.css"></head><body><div id="app"></div><div id="workflowMount"></div><script type="module" src="/fixture.js"></script></body></html>`;
+  await import("node:fs/promises").then(({ writeFile }) => writeFile(entry, `
+    import { mountUnifiedFeatureShell } from ${JSON.stringify(path.join(repo, "src/app-shell.ts"))};
+    import { mountTaskWorkflow } from ${JSON.stringify(path.join(repo, "src/workflow.ts"))};
+    import { mountSessionControl } from ${JSON.stringify(path.join(repo, "src/session-control.ts"))};
+    import { createSurfaceNavigation } from ${JSON.stringify(path.join(repo, "src/surface-navigation.mjs"))};
+    const applySurface = surface => {
+      window.dispatchEvent(new CustomEvent('devmoter:surface-changed', { detail: { surface } }));
+      document.body.dataset.surface = surface;
+      window.dispatchEvent(new CustomEvent('devmoter:backend-changed', { detail: { backend: surface } }));
+    };
+    const navigation = createSurfaceNavigation({ window, onSurface: applySurface });
+    document.body.dataset.surface = navigation.current();
+    mountTaskWorkflow(document.querySelector('#workflowMount'));
+    mountSessionControl();
+    mountUnifiedFeatureShell({
+      initialSurface: navigation.current(), initialBackend: 'codex',
+      switchBackend: backend => navigation.navigate(backend), openHome: () => navigation.navigate('home')
+    });
+  `));
+  await build({ entryPoints: [entry], outfile: path.join(dir, "fixture.js"), bundle: true, format: "esm", platform: "browser", target: "es2022", loader: { ".css": "empty" } });
+  // Serve the repository CSS files themselves alongside the bundled JS so the layout/hit testing is real.
+  const baseCss = await readFile(path.join(repo, "src/styles/base.css"), "utf8");
+  const appShellCss = await readFile(path.join(repo, "src/app-shell.css"), "utf8");
+  const navCss = await readFile(path.join(repo, "src/unified-workspace-nav.css"), "utf8");
+  const workflowCss = await readFile(path.join(repo, "src/styles/tools.css"), "utf8");
+  const sessionCss = await readFile(path.join(repo, "src/session-control.css"), "utf8");
+  const css = [baseCss, appShellCss, workflowCss, sessionCss, navCss].join("\n");
+  const server = createServer(async (req, res) => {
+    const url = new URL(req.url, "http://127.0.0.1");
+    if (url.pathname.startsWith("/api/")) {
+      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+      if (url.pathname === "/api/projects") res.end(JSON.stringify({ projects: [{ id: "fixture", name: "Fixture", path: "/synthetic/project", available: true }] }));
+      else if (url.pathname.endsWith("/changes")) res.end(JSON.stringify({ changes: [] }));
+      else if (url.pathname.endsWith("/worktrees")) res.end(JSON.stringify({ worktrees: [] }));
+      else if (url.pathname.endsWith("/github/tasks")) res.end(JSON.stringify({ tasks: [] }));
+      else if (url.pathname === "/api/session-control/state") res.end(JSON.stringify({ version: 1, queue: [], budgets: {}, ownership: {}, checkpoints: [], events: [] }));
+      else if (url.pathname === "/api/codex/rpc") res.end(JSON.stringify({ result: { data: [] } }));
+      else if (url.pathname.startsWith("/api/opencode")) res.end(JSON.stringify({ data: [] }));
+      else res.end("{}");
+      return;
+    }
+    if (url.pathname === "/") { res.writeHead(200, { "content-type": "text/html" }); res.end(html); return; }
+    const name = url.pathname === "/fixture.js" ? "fixture.js" : null;
+    if (name) { res.writeHead(200, { "content-type": "text/javascript" }); res.end(await readFile(path.join(dir, name))); return; }
+    if (url.pathname === "/fixture.css") { res.writeHead(200, { "content-type": "text/css" }); res.end(css); return; }
+    res.writeHead(404).end();
+  });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  return { url: `http://127.0.0.1:${address.port}/?unifiedUI=1&surface=codex`, async close() { await new Promise(resolve => server.close(resolve)); await rm(dir, { recursive: true, force: true }); } };
+}
+
+async function assertNavAndHitTargets(page, device) {
+  await page.evaluate(() => Promise.all(document.getAnimations().map(animation => animation.finished.catch(() => {}))));
+  const current = page.locator(".dm-task-first-tabs [aria-current='page']");
+  assert.equal(await current.count(), 1, "exactly one workspace destination is current");
+  const backgrounds = await page.locator('.dm-task-first-tabs button').evaluateAll(buttons => buttons.map(button => ({
+    current: button.getAttribute('aria-current') === 'page', background: getComputedStyle(button).backgroundColor
+  })));
+  const selectedBackground = backgrounds.find(button => button.current).background;
+  assert.equal(backgrounds.filter(button => button.background === selectedBackground).length, 1, 'only the selected tab has the selected background, including after touch hover');
+  const buttons = page.locator(".dm-task-first-tabs button");
+  const count = await buttons.count();
+  const boxes = [];
+  for (let i = 0; i < count; i++) {
+    const box = await buttons.nth(i).boundingBox();
+    assert.ok(box && box.width >= 44 && box.height >= 44, "every tab has a usable hit target");
+    boxes.push(box);
+    {
+      const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest("button[data-workspace-action]")?.dataset.workspaceAction, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+      assert.equal(hit, ["tasks", "chat", "review", "tools"][i], "each tab center hits that same tab");
+    }
+  }
+  for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+    const a = boxes[i], b = boxes[j];
+    const overlap = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
+    assert.equal(overlap, 0, "tab button bounds do not overlap");
+  }
+}
+
+for (const device of [
+  { name: "narrow iPhone-size WebKit", viewport: { width: 320, height: 568 }, mobile: true, hasTouch: true },
+  { name: "iPhone-size WebKit", viewport: { width: 390, height: 844 }, mobile: true, hasTouch: true },
+  { name: "desktop WebKit", viewport: { width: 1280, height: 800 }, mobile: false, hasTouch: false }
+]) {
+  test(`workspace tabs, overlays and browser history (${device.name})`, async t => {
+    const server = await fixtureServer();
+    const browser = await webkit.launch({ headless: true });
+    t.after(async () => { await browser.close(); await server.close(); });
+    const context = await browser.newContext({ viewport: device.viewport, isMobile: device.mobile, hasTouch: device.hasTouch });
+    const page = await context.newPage();
+    // This fixture is local-only; block any accidental non-fixture network request.
+    await page.route("**/*", route => route.request().url().startsWith("http://127.0.0.1:") ? route.continue() : route.abort());
+    await page.goto(server.url);
+    await page.locator(".dm-task-first-tabs").waitFor();
+    await page.waitForFunction(() => Boolean(document.querySelector("#dmTaskFirstWorkspace")));
+    const tab = name => page.locator(`.dm-task-first-tabs [data-workspace-action='${name}']`);
+    const select = async name => {
+      await tab(name).click();
+      await page.waitForFunction(expected => new URL(location.href).searchParams.get("workspaceTab") === expected, name);
+      assert.equal(await page.locator('.dm-task-first-tabs [aria-current="page"]').getAttribute('data-workspace-action'), name);
+      assert.equal(await page.locator('#wfModal').isVisible(), name === 'review', 'only Review shows the Review modal');
+      assert.equal(await page.locator('.sc-panel.open').count(), name === 'tasks' ? 1 : 0);
+      assert.equal(await page.locator('.dm-shell-sidebar.open').count(), name === 'tools' ? 1 : 0);
+      await assertNavAndHitTargets(page, device);
+    };
+
+    await select("review");
+    await page.locator("#wfModal:not(.hidden)").waitFor();
+    await select("tasks");
+    await page.locator(".sc-panel.open").waitFor();
+    assert.equal(await page.locator("#wfModal:not(.hidden)").count(), 0, "Review overlay closes when Tasks opens");
+    await select("review");
+    await page.locator("#wfModal:not(.hidden)").waitFor();
+    assert.equal(await page.locator(".sc-panel.open").count(), 0, "Tasks overlay closes when Review opens");
+
+    for (const name of ["chat", "tools", "review", "tasks", "tools", "chat", "tasks", "review", "tasks"]) await select(name);
+    await page.goBack();
+    await page.waitForFunction(() => new URL(location.href).searchParams.get("workspaceTab") === "review");
+    await page.locator("#wfModal:not(.hidden)").waitFor();
+    await assertNavAndHitTargets(page, device);
+    await page.goForward();
+    await page.waitForFunction(() => new URL(location.href).searchParams.get("workspaceTab") === "tasks");
+    await page.locator(".sc-panel.open").waitFor();
+    await assertNavAndHitTargets(page, device);
+    await context.close();
+  });
+}

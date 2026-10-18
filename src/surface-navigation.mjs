@@ -30,6 +30,8 @@ export function createSurfaceNavigation({ window, hasProjectDeepLink = false, sa
   function urlFor(surface) {
     const url = new URL(location.href);
     url.searchParams.set("surface", surface);
+    // A provider/Home navigation leaves any unified workspace panel route.
+    url.searchParams.delete("workspaceTab");
     return url.pathname + url.search + url.hash;
   }
   function read() {
