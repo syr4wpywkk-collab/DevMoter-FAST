@@ -1,5 +1,6 @@
 const SECRET_KEY = /(authorization|cookie|password|passwd|secret|token|api[_-]?key|credential|private[_-]?key)/i;
 const SECRET_TEXT_PATTERNS = [
+  /\b(?:password|passwd|secret|token|api[_-]?key|client[_-]?secret|private[_-]?key)\b["']?\s*[:=]\s*(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/gi,
   /\b(?:authorization|proxy-authorization|cookie|set-cookie)\b["']?\s*[:=]\s*[^\r\n]+/gi,
   /\b(?:password|passwd|secret|token|api[_-]?key|client[_-]?secret|private[_-]?key)\b["']?\s*[:=]\s*["']?[^\s"',}\]]{4,}/gi,
   /Bearer\s+[A-Za-z0-9._~+/=-]{8,}/gi,
