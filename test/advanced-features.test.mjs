@@ -351,6 +351,7 @@ test("provider failover does not retry semantic errors with missing status", () 
   assert.equal(isRetryableProviderFailure({ status: 400 }), false);
   assert.equal(isRetryableProviderFailure({ status: 429 }), true);
   assert.equal(isRetryableProviderFailure({ code: "ECONNRESET" }), true);
+  assert.equal(isRetryableProviderFailure(Object.assign(new Error("fetch timed out"), { name: "AbortError", code: 20 })), true);
 });
 
 test("failover order follows configured chain rather than discovery order", async () => {
