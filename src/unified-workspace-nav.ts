@@ -5,6 +5,9 @@ import "./unified-workspace-nav.css";
 import "./unified-workspace-chat.css";
 
 type ChatBackend = "codex" | "opencode" | "api";
+type WorkspaceTab = "tasks" | "chat" | "review" | "tools";
+const isWorkspaceTab = (value: unknown): value is WorkspaceTab =>
+  value === "tasks" || value === "chat" || value === "review" || value === "tools";
 
 type WorkspaceActions = {
   initialSurface: MainSurface;
@@ -17,7 +20,7 @@ type WorkspaceActions = {
 };
 
 /**
- * Opt-in presentation-only workspace navigator.
+ * Presentation-only workspace navigator.
  * Sessions, messages, tools and approvals remain owned by their existing providers.
  * This view never invents task records, connectivity, models or permissions.
  */
@@ -80,16 +83,31 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     projectLabel.textContent = normalized.split("/").filter(Boolean).pop()?.slice(0, 80) || "Workspace";
   };
 
+  let activeTab: WorkspaceTab | null = null;
+  let changingTab = false;
+  const renderSelection = () => {
+    root.dataset.workspaceTab = activeTab || "";
+    for (const button of root.querySelectorAll<HTMLButtonElement>("[data-workspace-action]")) {
+      if (button.dataset.workspaceAction === activeTab) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+    }
+  };
+  const writeTabRoute = (tab: WorkspaceTab | null, mode: "push" | "replace") => {
+    const url = new URL(window.location.href);
+    if (tab) url.searchParams.set("workspaceTab", tab);
+    else url.searchParams.delete("workspaceTab");
+    if (url.href === window.location.href) return;
+    // Keep the existing surface router's state and unrelated deep-link parameters.
+    window.history[mode === "push" ? "pushState" : "replaceState"](
+      window.history.state, "", url.pathname + url.search + url.hash
+    );
+  };
   const updateSurface = (next: MainSurface) => {
     surface = next;
     if (next === "codex" || next === "opencode" || next === "api") currentBackend = next;
     backendSelect.value = currentBackend;
-    for (const button of root.querySelectorAll<HTMLButtonElement>("[data-workspace-action]")) {
-      const isCurrent = button.dataset.workspaceAction === "chat" &&
-        (next === "codex" || next === "opencode" || next === "api");
-      if (isCurrent) button.setAttribute("aria-current", "page");
-      else button.removeAttribute("aria-current");
-    }
+    activeTab = next === "codex" || next === "opencode" || next === "api" ? "chat" : null;
+    renderSelection();
     updateProject();
   };
 
@@ -97,7 +115,9 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     const next = (event as CustomEvent<{ surface?: MainSurface }>).detail?.surface;
     if (next) updateSurface(next);
   };
-  window.addEventListener("devmoter:surface-changed", onSurfaceChanged);
+  // Reset selection before provider listeners close their old overlays. Otherwise
+  // their close notifications could replace the destination history entry.
+  window.addEventListener("devmoter:surface-changed", onSurfaceChanged, true);
 
   const onBackendChanged = (event: Event) => {
     const next = (event as CustomEvent<{ backend?: ChatBackend }>).detail?.backend;
@@ -112,7 +132,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     const next = backendSelect.value;
     if (next !== "codex" && next !== "opencode" && next !== "api") return;
     feedback.textContent = "";
-    actions.switchBackend(next);
+    selectTab("chat", "push", next);
   });
 
   function openNativeHistory() {
@@ -127,32 +147,82 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     trigger.click();
   }
 
+  function selectTab(tab: WorkspaceTab, historyMode: "push" | "replace" | "none", backend?: ChatBackend) {
+    changingTab = true;
+    try {
+      // Tasks and Review are provider-owned overlays, not MainSurface routes.
+      // Close them explicitly even when the underlying backend did not change.
+      window.dispatchEvent(new window.CustomEvent("devmoter:workspace-tab-changing"));
+      window.dispatchEvent(new window.CustomEvent("devmoter:close-chat-history"));
+      feedback.textContent = "";
+      let providerRouteChanged = false;
+      if (tab === "tasks") actions.openTasks();
+      else if (tab === "review") actions.openReview();
+      else if (tab === "tools") actions.openTools();
+      else if (backend || surface === "home" || surface === "integrations") {
+        const previousSurface = new URL(window.location.href).searchParams.get("surface");
+        actions.switchBackend(backend || currentBackend);
+        // The main-surface navigator already pushed a history entry. Reuse it
+        // instead of adding a second Back stop for the identical Chat screen.
+        providerRouteChanged = new URL(window.location.href).searchParams.get("surface") !== previousSurface;
+      }
+      activeTab = tab;
+      renderSelection();
+      if (historyMode !== "none") {
+        writeTabRoute(tab, providerRouteChanged ? "replace" : historyMode);
+        // Closing Review/Tools may move focus to their old trigger. Keep it on
+        // the destination when no new modal takes ownership of focus.
+        if (tab === "tasks" || tab === "chat") {
+          root.querySelector<HTMLButtonElement>(`[data-workspace-action="${tab}"]`)?.focus({ preventScroll: true });
+        }
+      }
+    } finally {
+      changingTab = false;
+    }
+  }
+
+  const onPanelChanged = (event: Event) => {
+    if (changingTab) return;
+    const detail = (event as CustomEvent<{ tab?: unknown; open?: boolean }>).detail;
+    if (!detail || !isWorkspaceTab(detail.tab)) return;
+    if (detail.open) activeTab = detail.tab;
+    else if (activeTab === detail.tab) activeTab = surface === "home" || surface === "integrations" ? null : "chat";
+    else return;
+    renderSelection();
+    writeTabRoute(activeTab, "replace");
+  };
+  window.addEventListener("devmoter:workspace-panel-changed", onPanelChanged);
+
+  const restoreTabRoute = () => {
+    const tab = new URLSearchParams(window.location.search).get("workspaceTab");
+    if (isWorkspaceTab(tab)) selectTab(tab, "none");
+    else {
+      changingTab = true;
+      try { window.dispatchEvent(new window.CustomEvent("devmoter:workspace-tab-changing")); }
+      finally { changingTab = false; }
+      updateSurface(surface);
+    }
+  };
+  window.addEventListener("popstate", restoreTabRoute);
+
   for (const button of root.querySelectorAll<HTMLButtonElement>("[data-workspace-action]")) {
     button.addEventListener("click", () => {
-      feedback.textContent = "";
-      switch (button.dataset.workspaceAction) {
-        case "tasks":
-          actions.openTasks();
-          break;
-        case "chat":
-          if (surface === "home" || surface === "integrations") actions.switchBackend(currentBackend);
-          else openNativeHistory();
-          break;
-        case "review":
-          actions.openReview();
-          break;
-        case "tools":
-          actions.openTools();
-          break;
-      }
+      const tab = button.dataset.workspaceAction;
+      if (!isWorkspaceTab(tab)) return;
+      // Preserve the established Chat history shortcut only on the Chat screen.
+      if (tab === "chat" && activeTab === "chat") openNativeHistory();
+      else if (tab !== activeTab) selectTab(tab, "push");
     });
   }
 
   root.querySelector<HTMLButtonElement>("[data-workspace-home]")!.addEventListener("click", actions.openHome);
   updateSurface(surface);
+  restoreTabRoute();
   return { destroy() {
-    window.removeEventListener("devmoter:surface-changed", onSurfaceChanged);
+    window.removeEventListener("devmoter:surface-changed", onSurfaceChanged, true);
     window.removeEventListener("devmoter:backend-changed", onBackendChanged);
+    window.removeEventListener("devmoter:workspace-panel-changed", onPanelChanged);
+    window.removeEventListener("popstate", restoreTabRoute);
     for (const label of agentLabels) label.hidden = true;
     root.remove();
     document.body.classList.remove("dm-task-first-enabled");

@@ -118,3 +118,30 @@ test("temporary modal state is not serialized as a main surface", () => {
   assert.equal(win.history.length, depth);
   assert.equal(new URL(win.location.href).searchParams.get("surface"), "home");
 });
+
+test("provider navigation clears workspace panel routes but keeps unrelated deep links", () => {
+  const window = fakeWindow("/?surface=codex&workspaceTab=review&session=synthetic#keep");
+  const navigation = createSurfaceNavigation({ window });
+  assert.equal(navigation.navigate("api"), true);
+  const url = new URL(window.location.href);
+  assert.equal(url.searchParams.get("surface"), "api");
+  assert.equal(url.searchParams.has("workspaceTab"), false);
+  assert.equal(url.searchParams.get("session"), "synthetic");
+  assert.equal(url.hash, "#keep");
+  navigation.destroy();
+});
+
+test("same-surface Home navigation dismisses an active Review route without stale reload state", () => {
+  const win = fakeWindow("/?surface=home&workspaceTab=review&session=synthetic#keep");
+  const changes = [];
+  const nav = createSurfaceNavigation({ window: win, onSurface: surface => changes.push(surface) });
+  const length = win.history.length;
+  assert.equal(nav.navigate("home"), true);
+  assert.equal(win.history.length, length, "dismissal must replace rather than push another Home");
+  assert.equal(new URL(win.location.href).searchParams.has("workspaceTab"), false);
+  assert.equal(new URL(win.location.href).searchParams.get("session"), "synthetic");
+  assert.equal(new URL(win.location.href).hash, "#keep");
+  assert.deepEqual(changes, ["home"], "notify listeners to close the visible Review overlay");
+  assert.equal(nav.navigate("home"), false);
+  nav.destroy();
+});
