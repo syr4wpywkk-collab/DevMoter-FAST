@@ -306,3 +306,31 @@ body.dm-task-first-enabled .dm-unified-agent-copy small {
   color: var(--dw-chat-muted, #a7bdcd);
   font-size: 11px;
 }
+
+/* #411/#402: Review must share the active Unified Workspace canvas. */
+body.dm-task-first-enabled .wf-modal {
+  top: var(--dw-top-height, 0px);
+  bottom: var(--dw-bottom-height, 0px);
+  padding: 0;
+  background: var(--dw-chat-bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+body.dm-task-first-enabled .wf-sheet {
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--dw-chat-bg);
+  color: var(--dw-chat-text);
+  box-shadow: none;
+}
+body.dm-task-first-enabled .wf-body { background: var(--dw-chat-bg); }
+body.dm-task-first-enabled :is(.wf-header, .wf-toolbar) {
+  background: var(--dw-chat-surface);
+  border-color: var(--dw-chat-line);
+}
+@media (min-width: 681px) {
+  body.dm-task-first-enabled .wf-modal { left: 208px; }
+}

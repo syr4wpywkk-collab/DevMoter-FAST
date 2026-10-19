@@ -155,13 +155,27 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
       window.dispatchEvent(new window.CustomEvent("devmoter:workspace-tab-changing"));
       window.dispatchEvent(new window.CustomEvent("devmoter:close-chat-history"));
       feedback.textContent = "";
+      let providerRouteChanged = false;
       if (tab === "tasks") actions.openTasks();
       else if (tab === "review") actions.openReview();
       else if (tab === "tools") actions.openTools();
-      else if (backend || surface === "home" || surface === "integrations") actions.switchBackend(backend || currentBackend);
+      else if (backend || surface === "home" || surface === "integrations") {
+        const previousSurface = new URL(window.location.href).searchParams.get("surface");
+        actions.switchBackend(backend || currentBackend);
+        // The main-surface navigator already pushed a history entry. Reuse it
+        // instead of adding a second Back stop for the identical Chat screen.
+        providerRouteChanged = new URL(window.location.href).searchParams.get("surface") !== previousSurface;
+      }
       activeTab = tab;
       renderSelection();
-      if (historyMode !== "none") writeTabRoute(tab, historyMode);
+      if (historyMode !== "none") {
+        writeTabRoute(tab, providerRouteChanged ? "replace" : historyMode);
+        // Closing Review/Tools may move focus to their old trigger. Keep it on
+        // the destination when no new modal takes ownership of focus.
+        if (tab === "tasks" || tab === "chat") {
+          root.querySelector<HTMLButtonElement>(`[data-workspace-action="${tab}"]`)?.focus({ preventScroll: true });
+        }
+      }
     } finally {
       changingTab = false;
     }

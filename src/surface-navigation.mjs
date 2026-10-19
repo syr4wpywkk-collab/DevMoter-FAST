@@ -49,7 +49,14 @@ export function createSurfaceNavigation({ window, hasProjectDeepLink = false, sa
 
   function navigate(surface, { replaceCurrent = false } = {}) {
     if (!isMainSurface(surface)) return false;
-    if (current() === surface) return false;
+    if (current() === surface) {
+      // A Home/provider navigation must dismiss a workspace overlay even
+      // when the underlying main surface does not change.
+      if (!new URLSearchParams(location.search).has("workspaceTab")) return false;
+      replace(surface);
+      onSurface(surface);
+      return true;
+    }
     if (replaceCurrent) replace(surface);
     else history.pushState(stateWithSurface(history.state, surface), "", urlFor(surface));
     onSurface(surface);

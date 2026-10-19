@@ -220,3 +220,54 @@ test("untrusted tab URLs cannot launch arbitrary tools or inject project markup"
     dom.window.close();
   }
 });
+
+test("Chat routing reuses provider history entries and focuses the live tab after closing Review", async () => {
+  const dom = new JSDOM('<!doctype html><div id="app"></div>', { url: "https://localhost/?surface=home&project=keep" });
+  const prior = { window: globalThis.window, document: globalThis.document, localStorage: globalThis.localStorage };
+  Object.assign(globalThis, { window: dom.window, document: dom.window.document, localStorage: dom.window.localStorage });
+  try {
+    const { createSurfaceNavigation } = await import("../src/surface-navigation.mjs");
+    const navigation = createSurfaceNavigation({
+      window: dom.window,
+      onSurface: surface => dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:surface-changed", { detail: { surface } }))
+    });
+    const mount = await loadNavigator();
+    const nav = mount({
+      initialSurface: "home", initialBackend: "codex",
+      switchBackend: backend => navigation.navigate(backend),
+      openHome: () => navigation.navigate("home"),
+      openTasks: () => {}, openReview: () => {}, openTools: () => {}
+    });
+    const root = dom.window.document.getElementById("dmTaskFirstWorkspace");
+    const tab = name => root.querySelector(`[data-workspace-action="${name}"]`);
+    const start = dom.window.history.length;
+    tab("chat").click();
+    assert.equal(dom.window.history.length, start + 1, "opening Chat from Home must push just once");
+    assert.equal(new URL(dom.window.location.href).searchParams.get("workspaceTab"), "chat");
+    assert.equal(new URL(dom.window.location.href).searchParams.get("surface"), "codex");
+    const picker = root.querySelector("[data-workspace-backend]");
+    picker.value = "api";
+    picker.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    assert.equal(dom.window.history.length, start + 2, "changing provider must push just once");
+    assert.equal(new URL(dom.window.location.href).searchParams.get("surface"), "api");
+    tab("review").click();
+    tab("tasks").click();
+    assert.equal(dom.window.document.activeElement, tab("tasks"), "focus follows the live Tasks tab");
+    nav.destroy();
+    navigation.destroy();
+  } finally {
+    Object.assign(globalThis, prior);
+    dom.window.close();
+  }
+});
+
+test("Review canvas uses the Unified Workspace theme instead of a detached modal background", async () => {
+  const [css, workflow] = await Promise.all([
+    readFile(new URL("../src/unified-workspace-nav.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/workflow.ts", import.meta.url), "utf8")
+  ]);
+  assert.match(css, /body\.dm-task-first-enabled \.wf-modal\s*\{[^}]*background: var\(--dw-chat-bg\)/s);
+  assert.match(css, /body\.dm-task-first-enabled \.wf-sheet\s*\{[^}]*background: var\(--dw-chat-bg\)/s);
+  assert.match(css, /body\.dm-task-first-enabled \.wf-body\s*\{[^}]*background: var\(--dw-chat-bg\)/s);
+  assert.match(workflow, /devmoter:workspace-tab-changing", \(\) => closeReview\(false\)/);
+});

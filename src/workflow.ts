@@ -484,13 +484,13 @@ export function mountTaskWorkflow(root: HTMLElement) {
   const closeButton = root.querySelector<HTMLButtonElement>("#wfClose")!;
   let returnFocus: HTMLElement | null = null;
   let previousOverflow = "";
-  function closeReview() {
+  function closeReview(restoreFocus = true) {
     if (modal.classList.contains("hidden")) return;
     modal.classList.add("hidden");
     modal.setAttribute("aria-hidden", "true");
     window.dispatchEvent(new CustomEvent("devmoter:workspace-panel-changed", { detail: { tab: "review", open: false } }));
     document.body.style.overflow = previousOverflow;
-    if (returnFocus?.isConnected && !returnFocus.closest(".hidden, [hidden]")) returnFocus.focus({ preventScroll: true });
+    if (restoreFocus && returnFocus?.isConnected && !returnFocus.closest(".hidden, [hidden]")) returnFocus.focus({ preventScroll: true });
   }
   launch.addEventListener("click", () => {
     if (!modal.classList.contains("hidden")) return;
@@ -503,10 +503,11 @@ export function mountTaskWorkflow(root: HTMLElement) {
     window.dispatchEvent(new CustomEvent("devmoter:workspace-panel-changed", { detail: { tab: "review", open: true } }));
     void refreshAll();
   });
-  closeButton.addEventListener("click", closeReview);
+  closeButton.addEventListener("click", () => closeReview());
   modal.addEventListener("click", event => { if (event.target === modal) closeReview(); });
-  window.addEventListener("devmoter:surface-changed", closeReview);
-  window.addEventListener("devmoter:workspace-tab-changing", closeReview);
+  // Programmatic navigation must not steal focus back from the destination.
+  window.addEventListener("devmoter:surface-changed", () => closeReview(false));
+  window.addEventListener("devmoter:workspace-tab-changing", () => closeReview(false));
   modal.addEventListener("keydown", event => {
     if (event.key === "Escape") { event.preventDefault(); closeReview(); return; }
     if (event.key !== "Tab") return;
