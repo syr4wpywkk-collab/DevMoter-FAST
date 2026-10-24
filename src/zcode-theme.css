@@ -1,0 +1,191 @@
+/* Shared ZCode presentation layer. Keep component DOM and behavior owned by
+   their existing modules; this file only maps their visual tokens. */
+:root,
+html[data-devmoter-theme="dark"] {
+  color-scheme: dark;
+  --canvas-base: #0a0a0a;
+  --surface-panel: #111111;
+  --surface-card: #141416;
+  --surface-elevated: #161618;
+  --surface-hover: #1c1c20;
+  --border-hairline: #202022;
+  --border-subtle: #252528;
+  --border-focus: #10b981;
+  --accent: #10b981;
+  --accent-pressed: #059669;
+  --accent-glow: rgba(16, 185, 129, .16);
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --text-dim: #52525b;
+  --status-error: #ef4444;
+  --status-warning: #f59e0b;
+}
+
+html[data-devmoter-theme="light"] {
+  color-scheme: light;
+  --canvas-base: #f7f7f8;
+  --surface-panel: #ffffff;
+  --surface-card: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-hover: #f0f0f2;
+  --border-hairline: #e4e4e7;
+  --border-subtle: #d4d4d8;
+  --border-focus: #059669;
+  --accent: #047857;
+  --accent-pressed: #065f46;
+  --accent-glow: rgba(4, 120, 87, .12);
+  --text-primary: #18181b;
+  --text-secondary: #3f3f46;
+  --text-muted: #71717a;
+  --text-dim: #a1a1aa;
+  --status-error: #dc2626;
+  --status-warning: #b45309;
+}
+
+html, body { background: var(--canvas-base); color: var(--text-primary); }
+body { font-family: var(--font-ui); }
+:is(button, input, textarea, select):focus-visible {
+  outline-color: var(--border-focus);
+}
+:is(input, textarea, select) {
+  accent-color: var(--accent);
+}
+
+/* Home: remove the older blue/gradient palette while retaining its layout. */
+.dm-home-view {
+  --hm-bg: var(--canvas-base);
+  --hm-surface: var(--surface-panel);
+  --hm-surface-hover: var(--surface-hover);
+  --hm-border: var(--border-hairline);
+  --hm-accent: var(--accent);
+  --hm-text: var(--text-primary);
+  --hm-muted: var(--text-secondary);
+  --hm-green: var(--accent);
+  --hm-warn: var(--status-warning);
+  --hm-grid: transparent;
+  background-image: none;
+  font-family: var(--font-ui);
+}
+.dm-home-view :is(.dm-home-brand-mark, .dm-home-search-trigger, .dm-home-search-row,
+  .dm-home-search-row input, .dm-home-search-row > button, .dm-home-app-card,
+  .dm-home-quick-action, .dm-home-recent-card) {
+  border-radius: var(--radius-control);
+  box-shadow: none;
+}
+.dm-home-view :is(.dm-home-brand-mark, .dm-home-search-trigger > span,
+  .dm-home-quick-action-icon, .dm-home-card-icon, .dm-home-recent-icon) { color: var(--accent); }
+.dm-home-view :is(.dm-home-brand-mark, .dm-home-search-row > button) {
+  border-color: var(--border-subtle);
+  background: var(--surface-card);
+}
+.dm-home-view :is(.dm-home-app-card:hover, .dm-home-recent-card:hover) {
+  border-color: var(--accent);
+  background: var(--surface-hover);
+}
+
+/* Chat providers share the same neutral surfaces and single emerald accent. */
+body.codex-mode, body.opencode-mode, body.api-mode { background: var(--canvas-base); }
+.cx-app {
+  --cx-surface: var(--canvas-base);
+  --cx-raised: var(--surface-card);
+  --cx-text: var(--text-primary);
+  --cx-muted: var(--text-secondary);
+  --cx-border: var(--border-hairline);
+  font-family: var(--font-ui);
+  color-scheme: dark;
+}
+.cx-app :is(.cx-topbar, .cx-composer, .cx-message.system) { border-color: var(--border-hairline); }
+.cx-app :is(.cx-composer, .cx-message.system) { background: var(--surface-card); }
+.cx-app :is(button, a, input, select, textarea):focus-visible {
+  outline: 1px solid var(--border-focus);
+  outline-offset: 1px;
+}
+.cx-app .cx-message.user { border-radius: var(--radius-panel); background: var(--surface-card); }
+.cx-app .cx-send-button { background: var(--accent); color: var(--canvas-base); }
+
+.ocx-app {
+  --oc-bg: var(--canvas-base);
+  --oc-panel: var(--surface-panel);
+  --oc-panel-2: var(--surface-card);
+  --oc-line: var(--border-hairline);
+  --oc-line-soft: var(--border-hairline);
+  --oc-text: var(--text-primary);
+  --oc-muted: var(--text-secondary);
+  --oc-dim: var(--text-muted);
+  --oc-accent: var(--accent);
+  --oc-accent-soft: rgba(16, 185, 129, .1);
+  --oc-green: var(--accent);
+  --oc-red: var(--status-error);
+  --oc-yellow: var(--status-warning);
+  color-scheme: dark;
+  font-family: var(--font-ui);
+}
+.ocx-app :is(.ocx-composer, .ocx-tool-card, .ocx-reasoning, .ocx-user-prompt,
+  .ocx-sidebar, .ocx-sidebar-head, .ocx-sidebar-foot, .ocx-search, .ocx-session-row.active) {
+  border-color: var(--border-hairline);
+  border-radius: var(--radius-panel);
+  background-color: var(--surface-card);
+  box-shadow: none;
+}
+.ocx-app :is(.ocx-send, .ocx-command-row strong, .ocx-session-dot[data-state="running"]) { color: var(--accent); }
+.ocx-app .ocx-send { background: var(--accent); color: var(--canvas-base); }
+.ocx-app :is(.ocx-tool-content pre, .cx-markdown pre, .cx-markdown code) {
+  background-color: var(--canvas-base);
+  color: var(--text-primary);
+}
+.ocx-app :is(.cx-markdown a, .ocx-user-prompt > span:first-child) { color: var(--accent); }
+
+/* The opt-in task-first workspace is token-mapped too, so it follows the
+   product palette without changing its navigation or responsive behavior. */
+body.dm-task-first-enabled {
+  --dw-chat-bg: var(--canvas-base);
+  --dw-chat-surface: var(--surface-panel);
+  --dw-chat-raised: var(--surface-card);
+  --dw-chat-input: var(--canvas-base);
+  --dw-chat-user: var(--surface-card);
+  --dw-chat-user-border: var(--border-subtle);
+  --dw-chat-line: var(--border-hairline);
+  --dw-chat-text: var(--text-primary);
+  --dw-chat-muted: var(--text-secondary);
+  --dw-chat-accent: var(--accent);
+  --dw-chat-accent-soft: rgba(16, 185, 129, .1);
+  --dw-chat-send-text: var(--canvas-base);
+  --dw-chat-shadow: none;
+  --dw-chat-code: var(--canvas-base);
+}
+body.dm-task-first-enabled .dm-task-first-nav {
+  --dw-bg: var(--surface-panel);
+  --dw-panel: var(--surface-card);
+  --dw-border: var(--border-hairline);
+  --dw-text: var(--text-primary);
+  --dw-muted: var(--text-secondary);
+  --dw-accent: var(--accent);
+  font-family: var(--font-ui);
+}
+body.dm-task-first-enabled .dm-task-first-mark,
+body.dm-task-first-enabled .dm-task-first-tabs button[aria-current="page"] {
+  border-color: var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-hover);
+  color: var(--accent);
+}
+html[data-devmoter-theme="light"] body.dm-task-first-enabled {
+  --dw-chat-bg: var(--canvas-base);
+  --dw-chat-surface: var(--surface-panel);
+  --dw-chat-raised: var(--surface-card);
+  --dw-chat-input: var(--surface-panel);
+  --dw-chat-user: var(--surface-hover);
+  --dw-chat-user-border: var(--border-subtle);
+  --dw-chat-line: var(--border-hairline);
+  --dw-chat-text: var(--text-primary);
+  --dw-chat-muted: var(--text-secondary);
+  --dw-chat-accent: var(--accent);
+  --dw-chat-accent-soft: var(--accent-glow);
+  --dw-chat-send-text: #fff;
+  --dw-chat-code: var(--surface-hover);
+}
+
+/* Keep the existing compact console geometry and safe-area padding. */
+.cx-app .cx-topbar, .ocx-app .ocx-topbar { border-bottom: 1px solid var(--border-hairline); }
+.cx-app .cx-topbar-pill, .ocx-app .ocx-context-button { border-radius: var(--radius-control); }

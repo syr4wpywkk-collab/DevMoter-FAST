@@ -20,6 +20,7 @@ import { mountUnifiedFeatureShell } from "./app-shell";
 import { mountHomeSurface } from "./home";
 import { mountMissionControl } from "./mission-control";
 import { createSurfaceNavigation, type MainSurface } from "./surface-navigation.mjs";
+import "./zcode-theme.css";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const startupParams = new URLSearchParams(window.location.search);
