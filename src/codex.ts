@@ -161,6 +161,7 @@ export function mountCodexRemote(
         </label>
 
         <nav class="cx-side-nav">
+          <button id="cxPluginsQuick" class="cx-nav-item" type="button"><span>◇</span><span>Plugins</span></button>
           <button id="cxLibraryNav" class="cx-nav-item" type="button"><span>▦</span><span>ライブラリ · 準備中</span></button>
           <button id="cxProjectsNav" class="cx-nav-item" type="button"><span>▱</span><span>Projects</span></button>
           <button id="cxIntegrationsNav" class="cx-nav-item" type="button"><span>⌁</span><span>Integrations</span></button>
@@ -170,7 +171,7 @@ export function mountCodexRemote(
         </nav>
 
         <div class="cx-side-section">
-          <div class="cx-side-label">最近</div>
+          <div class="cx-side-label cx-task-heading"><span>Tasks</span><span aria-hidden="true">☷</span></div>
           <div id="cxSidebarThreads" class="cx-sidebar-threads">
             <div class="cx-side-empty">読み込み中…</div>
           </div>
@@ -193,6 +194,7 @@ export function mountCodexRemote(
 
       <header class="cx-topbar">
         <button id="cxMenu" class="cx-icon-button" type="button" aria-label="会話履歴を開く" title="会話履歴">${cxIcons.menu}</button>
+        <div class="cx-brand" aria-label="DevMoter"><span class="cx-brand-mark">Z</span><strong>DevMoter</strong></div>
         <button id="cxTitleButton" class="cx-title-button" type="button">
           <span id="cxTitle">Codex</span>
           <small id="cxModelLabel">DevMoter agent</small>
@@ -220,6 +222,14 @@ export function mountCodexRemote(
           <strong id="cxDetailsTitle">Codex</strong>
           <small id="cxDetailsModel">DevMoter agent</small>
           <p id="cxDetailsActivity">接続状態を確認中</p>
+        </section>
+        <section class="cx-detail-section cx-goal-section" id="cxGoalSection" hidden>
+          <div class="cx-detail-heading"><span>Goal</span><span id="cxGoalState"></span></div>
+          <strong id="cxGoalText"></strong><small id="cxGoalMeta"></small>
+        </section>
+        <section class="cx-detail-section cx-progress-section" id="cxProgressSection" hidden>
+          <div class="cx-detail-heading"><span>Progress</span></div>
+          <div id="cxProgressItems"></div>
         </section>
         <section class="cx-detail-section cx-workspace-section">
           <div class="cx-detail-heading"><span>WORKSPACE</span></div>
@@ -252,7 +262,7 @@ export function mountCodexRemote(
           <textarea
             id="cxPromptInput"
             rows="1"
-            placeholder="Codexにメッセージ"
+            placeholder="追加の変更を依頼…"
             aria-label="Codexへのメッセージ"
           ></textarea>
 
@@ -272,7 +282,6 @@ export function mountCodexRemote(
         <div id="cxPlusMenu" class="cx-plus-menu hidden">
           <button id="cxPhoto" type="button"><span>▧</span><span>画像送信</span></button>
           <button id="cxFile" type="button"><span>⌑</span><span>ファイル</span></button>
-          <button id="cxPluginsQuick" type="button"><span>◉</span><span>プラグイン</span></button>
         </div>
 
         <input id="cxPhotoInput" type="file" accept="image/*" multiple hidden />
@@ -329,6 +338,14 @@ export function mountCodexRemote(
   const detailsModel = root.querySelector<HTMLElement>("#cxDetailsModel")!;
   const detailsActivity = root.querySelector<HTMLElement>("#cxDetailsActivity")!;
   const detailsState = root.querySelector<HTMLElement>("#cxDetailsState")!;
+  const scheduleDetailsSync = (() => {
+    let queued = false;
+    return () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => { queued = false; syncDetails(); });
+    };
+  })();
   const syncDetails = () => {
     const nextTitle = title.textContent || "Codex";
     const nextModel = modelLabel.textContent || "";
@@ -339,7 +356,11 @@ export function mountCodexRemote(
     if (detailsActivity.textContent !== nextActivity) detailsActivity.textContent = nextActivity;
     if (detailsState.dataset.state !== nextState) detailsState.dataset.state = nextState;
   };
-  new MutationObserver(syncDetails).observe(root, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["data-state"] });
+  const detailsObserver = new MutationObserver(scheduleDetailsSync);
+  detailsObserver.observe(title, { childList: true, characterData: true, subtree: true });
+  detailsObserver.observe(modelLabel, { childList: true, characterData: true, subtree: true });
+  const executionStatus = root.querySelector<HTMLElement>("#cxExecutionStatus")!;
+  detailsObserver.observe(executionStatus, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ["data-state"] });
   const transcript = root.querySelector<HTMLDivElement>("#cxTranscript")!;
   let followsBottom = true;
   const followLatest = () => {
@@ -374,7 +395,6 @@ export function mountCodexRemote(
   const send = root.querySelector<HTMLButtonElement>("#cxSend")!;
   const plus = root.querySelector<HTMLButtonElement>("#cxPlus")!;
   const plusMenu = root.querySelector<HTMLDivElement>("#cxPlusMenu")!;
-  const executionStatus = root.querySelector<HTMLDivElement>("#cxExecutionStatus")!;
   syncDetails();
   const attachmentStrip = root.querySelector<HTMLDivElement>("#cxAttachmentStrip")!;
   const contextPalette = root.querySelector<HTMLDivElement>("#cxContextPalette")!;
@@ -1306,7 +1326,23 @@ export function mountCodexRemote(
       return;
     }
 
+    let groupName = "";
     for (const thread of items) {
+      const cwd = thread.cwd || "";
+      const nextGroup = cwd.split(/[\\/]/).filter(Boolean).at(-1) || "その他";
+      if (!q && nextGroup !== groupName) {
+        groupName = nextGroup;
+        const group = document.createElement("div");
+        group.className = "cx-thread-group";
+        const icon = document.createElement("span");
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = "▱";
+        group.appendChild(icon);
+        const label = document.createElement("span");
+        label.textContent = groupName;
+        group.appendChild(label);
+        sidebarThreads.appendChild(group);
+      }
       const button = document.createElement("button");
       button.type = "button";
       button.className = "cx-thread-row";
@@ -1315,6 +1351,13 @@ export function mountCodexRemote(
       const text = document.createElement("span");
       text.textContent = thread.name || thread.preview || "新しいチャット";
       button.appendChild(text);
+      if (thread.updatedAt) {
+        const age = Math.max(0, Date.now() - thread.updatedAt);
+        const stamp = document.createElement("small");
+        stamp.className = "cx-thread-age";
+        stamp.textContent = age < 60_000 ? "now" : age < 3_600_000 ? `${Math.floor(age / 60_000)}m` : age < 86_400_000 ? `${Math.floor(age / 3_600_000)}h` : `${Math.floor(age / 86_400_000)}d`;
+        button.appendChild(stamp);
+      }
       button.addEventListener("click", () => {
         closeSidebar();
         void selectThread(thread);
