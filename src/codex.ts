@@ -178,8 +178,6 @@ export function mountCodexRemote(
 
         </div>
 
-        <div id="cxWorkspaceControlsMount"></div>
-
         <div class="cx-sidebar-foot">
           <label class="pocket-language-setting" title="Language">
             <span aria-hidden="true">◎</span>
@@ -201,6 +199,7 @@ export function mountCodexRemote(
         </button>
         <div class="cx-topbar-controls">
           <button id="cxUsageTop" class="cx-topbar-pill cx-usage-pill" type="button" aria-label="使用量" title="Usage">${cxIcons.usage}<small id="cxUsageLabel">Usage</small></button>
+          <button id="cxDetailsTop" class="cx-topbar-pill cx-details-toggle" type="button" aria-label="作業スペース情報を開く" aria-expanded="false">詳細</button>
           <button id="cxNewChatTop" class="cx-icon-button" type="button" aria-label="新しいチャット">${cxIcons.newChat}</button>
         </div>
       </header>
@@ -214,6 +213,19 @@ export function mountCodexRemote(
           </div>
         </div>
       </main>
+
+      <aside id="cxDetailsPanel" class="cx-details-panel" aria-label="作業スペース情報" aria-hidden="true" inert>
+        <section class="cx-detail-section">
+          <div class="cx-detail-heading"><span>SESSION</span><span id="cxDetailsState" class="cx-detail-state">●</span></div>
+          <strong id="cxDetailsTitle">Codex</strong>
+          <small id="cxDetailsModel">DevMoter agent</small>
+          <p id="cxDetailsActivity">接続状態を確認中</p>
+        </section>
+        <section class="cx-detail-section cx-workspace-section">
+          <div class="cx-detail-heading"><span>WORKSPACE</span></div>
+          <div id="cxWorkspaceControlsMount"></div>
+        </section>
+      </aside>
 
       <div id="cxApproval" class="cx-approval hidden">
         <div class="cx-approval-copy">
@@ -285,6 +297,8 @@ export function mountCodexRemote(
   `;
 
   const sidebar = root.querySelector<HTMLElement>("#cxSidebar")!;
+  const detailsPanel = root.querySelector<HTMLElement>("#cxDetailsPanel")!;
+  const detailsToggle = root.querySelector<HTMLButtonElement>("#cxDetailsTop")!;
   const scrim = root.querySelector<HTMLElement>("#cxScrim")!;
   const sidebarClose = root.querySelector<HTMLButtonElement>("#cxSidebarClose")!;
   const agentSwitchButton = root.querySelector<HTMLButtonElement>("#cxAgentSwitchButton")!;
@@ -311,6 +325,21 @@ export function mountCodexRemote(
   const title = root.querySelector<HTMLElement>("#cxTitle")!;
   const titleButton = root.querySelector<HTMLButtonElement>("#cxTitleButton")!;
   const modelLabel = root.querySelector<HTMLElement>("#cxModelLabel")!;
+  const detailsTitle = root.querySelector<HTMLElement>("#cxDetailsTitle")!;
+  const detailsModel = root.querySelector<HTMLElement>("#cxDetailsModel")!;
+  const detailsActivity = root.querySelector<HTMLElement>("#cxDetailsActivity")!;
+  const detailsState = root.querySelector<HTMLElement>("#cxDetailsState")!;
+  const syncDetails = () => {
+    const nextTitle = title.textContent || "Codex";
+    const nextModel = modelLabel.textContent || "";
+    const nextActivity = executionStatus.querySelector("span")?.textContent || "";
+    const nextState = executionStatus.dataset.state || "offline";
+    if (detailsTitle.textContent !== nextTitle) detailsTitle.textContent = nextTitle;
+    if (detailsModel.textContent !== nextModel) detailsModel.textContent = nextModel;
+    if (detailsActivity.textContent !== nextActivity) detailsActivity.textContent = nextActivity;
+    if (detailsState.dataset.state !== nextState) detailsState.dataset.state = nextState;
+  };
+  new MutationObserver(syncDetails).observe(root, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["data-state"] });
   const transcript = root.querySelector<HTMLDivElement>("#cxTranscript")!;
   let followsBottom = true;
   const followLatest = () => {
@@ -346,6 +375,7 @@ export function mountCodexRemote(
   const plus = root.querySelector<HTMLButtonElement>("#cxPlus")!;
   const plusMenu = root.querySelector<HTMLDivElement>("#cxPlusMenu")!;
   const executionStatus = root.querySelector<HTMLDivElement>("#cxExecutionStatus")!;
+  syncDetails();
   const attachmentStrip = root.querySelector<HTMLDivElement>("#cxAttachmentStrip")!;
   const contextPalette = root.querySelector<HTMLDivElement>("#cxContextPalette")!;
   const photo = root.querySelector<HTMLButtonElement>("#cxPhoto")!;
@@ -777,12 +807,49 @@ export function mountCodexRemote(
     agentSwitchMenu.classList.add("hidden");
     agentSwitchButton.setAttribute("aria-expanded", "false");
     sidebar.classList.remove("open");
+    detailsPanel.classList.remove("open");
+    detailsToggle.setAttribute("aria-expanded", "false");
     sidebar.setAttribute("aria-hidden", "true");
     scrim.classList.add("hidden");
     sidebar.removeAttribute("role");
     sidebar.removeAttribute("aria-modal");
     syncOverlayState();
     if (restoreFocus) (sidebarReturnFocus?.isConnected ? sidebarReturnFocus : menu)?.focus({ preventScroll: true });
+  }
+
+  const desktopLayout = window.matchMedia("(min-width: 1100px)");
+  const syncDetailsAccessibility = () => {
+    const hidden = !desktopLayout.matches && !detailsPanel.classList.contains("open");
+    detailsPanel.setAttribute("aria-hidden", String(hidden));
+    detailsPanel.toggleAttribute("inert", hidden);
+  };
+  syncDetailsAccessibility();
+  const syncDesktopSidebar = () => {
+    if (desktopLayout.matches) {
+      sidebar.classList.remove("open");
+      sidebar.setAttribute("aria-hidden", "false");
+      sidebar.removeAttribute("role");
+      sidebar.removeAttribute("aria-modal");
+    } else {
+      sidebar.setAttribute("aria-hidden", String(!sidebar.classList.contains("open")));
+    }
+    syncDetailsAccessibility();
+  };
+  syncDesktopSidebar();
+  desktopLayout.addEventListener("change", syncDesktopSidebar);
+
+  function toggleDetails() {
+    const open = detailsPanel.classList.toggle("open");
+    detailsToggle.setAttribute("aria-expanded", String(open));
+    scrim.classList.toggle("hidden", !open);
+    if (open) {
+      closeSidebar();
+      detailsPanel.classList.add("open");
+      detailsToggle.setAttribute("aria-expanded", "true");
+      scrim.classList.remove("hidden");
+      window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
+    }
+    syncDetailsAccessibility();
   }
 
   function openModal(titleText: string, subtitleText = "") {
@@ -3265,6 +3332,11 @@ export function mountCodexRemote(
   }
 
   menu.addEventListener("click", openSidebar);
+  detailsToggle.addEventListener("click", toggleDetails);
+  scrim.addEventListener("click", () => {
+    detailsPanel.classList.remove("open");
+    detailsToggle.setAttribute("aria-expanded", "false");
+  });
   window.addEventListener("devmoter:close-chat-history", closeSidebar);
   window.addEventListener("devmoter:surface-changed", closeSidebar);
   document.addEventListener("visibilitychange", () => {
