@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
+import { get } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -153,9 +154,22 @@ test("owner session survives a real server restart and logout revokes the persis
     assert.equal(statusPayload.authenticated, true);
     assert.equal(statusPayload.ownerAuthenticated, true);
 
-    const differentHost = await fetch(`http://127.0.0.2:${port}/api/auth/status`, { headers: { cookie: ownerCookie } });
+    // Keep the TCP connection on the known loopback address so an environment
+    // proxy cannot intercept the test; the application binds sessions to Host.
+    const differentHost = await new Promise((resolve, reject) => {
+      const request = get(`${origin}/api/auth/status`, {
+        headers: { host: `127.0.0.2:${port}`, cookie: ownerCookie }
+      }, response => {
+        let body = "";
+        response.setEncoding("utf8");
+        response.on("data", chunk => { body += chunk; });
+        response.on("end", () => resolve({ status: response.statusCode, body }));
+        response.on("error", reject);
+      });
+      request.on("error", reject);
+    });
     assert.equal(differentHost.status, 200);
-    assert.equal((await differentHost.json()).authenticated, false, "owner cookie must stay bound to its original host");
+    assert.equal(JSON.parse(differentHost.body).authenticated, false, "owner cookie must stay bound to its original host");
 
     const logout = await fetch(`${origin}/api/auth/logout`, {
       method: "POST",

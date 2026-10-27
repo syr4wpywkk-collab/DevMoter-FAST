@@ -279,6 +279,11 @@ function createToolbar() {
 
   const openHiddenLauncher = (selector: string) => {
     closeMobileMenu();
+    // The mobile Codex details drawer owns the toolbar. Release its focus
+    // trap before handing off to a body-mounted dialog or panel.
+    if (host.closest("#cxDetailsPanel.open")) {
+      window.dispatchEvent(new CustomEvent("devmoter:close-codex-details"));
+    }
     window.setTimeout(() => document.querySelector<HTMLElement>(selector)?.click(), 0);
   };
 

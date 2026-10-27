@@ -142,8 +142,11 @@ for (const device of [
 ]) {
   test(`workspace tabs, overlays and browser history (${device.name})`, async t => {
     const server = await fixtureServer();
-    const browser = await webkit.launch({ headless: true });
-    t.after(async () => { await browser.close(); await server.close(); });
+    let browser;
+    t.after(async () => {
+      try { await browser?.close(); } finally { await server.close(); }
+    });
+    browser = await webkit.launch({ headless: true });
     const context = await browser.newContext({ viewport: device.viewport, isMobile: device.mobile, hasTouch: device.hasTouch });
     const page = await context.newPage();
     const apiRequests = [];

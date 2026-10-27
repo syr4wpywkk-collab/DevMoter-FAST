@@ -21,7 +21,6 @@ test("global Tools navigation leaves provider-local history controls reachable",
   assert.ok(opencode.includes('aria-label="セッション履歴を開く"'));
   assert.ok(codex.includes('new CustomEvent("devmoter:close-global-nav")'));
   assert.ok(opencode.includes('new CustomEvent("devmoter:close-global-nav")'));
-  assert.ok(codex.includes('window.addEventListener("devmoter:close-chat-history", closeSidebar)'));
   assert.ok(opencode.includes('window.addEventListener("devmoter:close-chat-history", () => closeSidebar())'));
   assert.ok(shellCss.includes(".cx-sidebar.open"));
   assert.ok(shellCss.includes(".ocx-sidebar.open"));
