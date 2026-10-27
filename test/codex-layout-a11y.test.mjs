@@ -9,6 +9,10 @@ const source = await readFile(new URL("../src/codex.ts", import.meta.url), "utf8
 const compiled = ts.transpileModule(source, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
 }).outputText;
+const workspaceSource = await readFile(new URL("../src/workspace-control.ts", import.meta.url), "utf8");
+const compiledWorkspace = ts.transpileModule(workspaceSource, {
+  compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
+}).outputText;
 const modules = new Map(await Promise.all(ts.preProcessFile(source).importedFiles
   .filter(({ fileName }) => fileName.endsWith(".mjs"))
   .map(async ({ fileName }) => [fileName, await import(new URL("../src/" + fileName.slice(2), import.meta.url))])));
@@ -33,7 +37,8 @@ function mount(t, desktop = false) {
   const media = { matches: desktop, addEventListener(_name, fn) { listeners.push(fn); } };
   window.matchMedia = () => media;
   window.setInterval = () => 1;
-  window.setTimeout = () => 1;
+  const timers = [];
+  window.setTimeout = fn => { timers.push(fn); return timers.length; };
   window.requestAnimationFrame = () => 1;
   const noop = () => {};
   const require = name => {
@@ -54,7 +59,8 @@ function mount(t, desktop = false) {
   const query = selector => document.querySelector(selector);
   const setDesktop = value => { media.matches = value; for (const listener of listeners) listener({ matches: value }); };
   const key = key => document.dispatchEvent(new window.KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
-  return { window, document, query, setDesktop, key };
+  const flushTimers = () => { for (const fn of timers.splice(0)) fn(); };
+  return { window, document, query, setDesktop, key, flushTimers };
 }
 
 test("desktop sidebar stays interactive until a modal opens, including after a resize", t => {
@@ -111,4 +117,45 @@ test("mobile history closes on global navigation and surface changes", t => {
     assert.equal(sidebar.getAttribute("aria-hidden"), "true");
     assert.equal(query(".cx-main").inert, false);
   }
+});
+
+test("mobile workspace shortcuts release the Codex details focus trap before opening global panels", t => {
+  const { window, document, query, key, flushTimers } = mount(t);
+  window.exports = {};
+  window.Function("exports", compiledWorkspace)(window.exports);
+  const stop = window.exports.startWorkspaceControl();
+  t.after(stop);
+  const paths = [
+    [".dm-review-shortcut", "wfLaunch"],
+    [".dm-agent-shortcut", "devmoterAgentLauncher"],
+    [".dm-session-shortcut", "sc-fab"],
+    [".dm-settings-shortcut", "devmoter-settings-trigger"],
+    [".dm-git-shortcut", "pocket-git-trigger"]
+  ];
+  for (const [, target] of paths) {
+    const button = document.createElement("button");
+    if (target === "wfLaunch" || target === "devmoterAgentLauncher") button.id = target;
+    else button.className = target;
+    button.addEventListener("click", () => { button.dataset.opened = "yes"; });
+    document.body.appendChild(button);
+  }
+  const panel = query("#cxDetailsPanel");
+  const toggle = query("#cxDetailsTop");
+  for (const [shortcut, target] of paths) {
+    toggle.click();
+    const button = query(shortcut);
+    button.focus();
+    button.click();
+    assert.equal(panel.inert, true, `${shortcut} closes the details drawer`);
+    assert.equal(document.activeElement, toggle, `${shortcut} returns focus to the details toggle`);
+    flushTimers();
+    const launcher = target === "wfLaunch" || target === "devmoterAgentLauncher" ? query(`#${target}`) : query(`.${target}`);
+    assert.equal(launcher.dataset.opened, "yes");
+    launcher.focus();
+    assert.equal(key("Tab"), true, "details drawer no longer intercepts Tab");
+  }
+  toggle.click();
+  query(".dm-context").click();
+  assert.equal(panel.inert, false, "controls rendered inside the drawer keep it open");
+  assert.equal(query(".dm-panel").classList.contains("hidden"), false);
 });

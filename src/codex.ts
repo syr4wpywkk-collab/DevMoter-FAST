@@ -3395,6 +3395,7 @@ export function mountCodexRemote(
 
   menu.addEventListener("click", openSidebar);
   detailsToggle.addEventListener("click", toggleDetails);
+  window.addEventListener("devmoter:close-codex-details", () => closeDetails());
   window.addEventListener("devmoter:close-chat-history", () => closeSidebar(false));
   window.addEventListener("devmoter:surface-changed", () => closeSidebar(false));
   document.addEventListener("visibilitychange", () => {

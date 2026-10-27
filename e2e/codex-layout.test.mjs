@@ -16,8 +16,12 @@ async function fixtureServer() {
     import ${JSON.stringify(path.join(repo, "src/style.css"))};
     import ${JSON.stringify(path.join(repo, "src/zcode-theme.css"))};
     import { mountCodexRemote } from ${JSON.stringify(path.join(repo, "src/codex.ts"))};
+    import { startWorkspaceControl } from ${JSON.stringify(path.join(repo, "src/workspace-control.ts"))};
+    import { mountSettingsPanel } from ${JSON.stringify(path.join(repo, "src/settings.ts"))};
     document.body.classList.add('codex-mode');
     mountCodexRemote(document.querySelector('#app'));
+    mountSettingsPanel();
+    startWorkspaceControl();
     const button = document.createElement('button');
     button.textContent = 'Fixture workspace control';
     button.id = 'fixtureWorkspaceControl';
@@ -81,7 +85,7 @@ test("mobile Codex details drawer restores focus and removes hidden controls", a
   assert.equal(await details.getAttribute("role"), "dialog");
   assert.equal(await page.evaluate(() => document.activeElement?.id), "cxDetailsPanel");
   await page.keyboard.press("Tab");
-  assert.equal(await page.evaluate(() => document.activeElement?.id), "fixtureWorkspaceControl");
+  assert.equal(await details.evaluate(node => node.contains(document.activeElement)), true);
   await page.keyboard.press("Escape");
   assert.equal(await details.getAttribute("aria-hidden"), "true");
   assert.notEqual(await details.getAttribute("inert"), null);
@@ -90,4 +94,18 @@ test("mobile Codex details drawer restores focus and removes hidden controls", a
   await page.locator("#cxScrim").click({ position: { x: 8, y: 100 } });
   assert.equal(await details.getAttribute("aria-hidden"), "true");
   assert.notEqual(await details.getAttribute("inert"), null);
+});
+
+test("mobile settings shortcut closes the details focus trap before opening Settings", async t => {
+  const page = await setup(t, { width: 390, height: 844 });
+  const details = page.locator("#cxDetailsPanel");
+  await page.locator("#cxDetailsTop").click();
+  await page.locator(".dm-mobile-menu-toggle").click();
+  await page.locator(".dm-settings-shortcut").click();
+  await page.locator(".devmoter-settings-modal:not(.hidden)").waitFor();
+  assert.equal(await details.getAttribute("aria-hidden"), "true");
+  assert.notEqual(await details.getAttribute("inert"), null);
+  await page.locator(".devmoter-settings-close").focus();
+  await page.keyboard.press("Tab");
+  assert.equal(await details.evaluate(node => node.contains(document.activeElement)), false);
 });
