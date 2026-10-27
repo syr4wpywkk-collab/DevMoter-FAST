@@ -161,6 +161,7 @@ export function mountCodexRemote(
         </label>
 
         <nav class="cx-side-nav">
+          <button id="cxPluginsQuick" class="cx-nav-item" type="button"><span>◇</span><span>Plugins</span></button>
           <button id="cxLibraryNav" class="cx-nav-item" type="button"><span>▦</span><span>ライブラリ · 準備中</span></button>
           <button id="cxProjectsNav" class="cx-nav-item" type="button"><span>▱</span><span>Projects</span></button>
           <button id="cxIntegrationsNav" class="cx-nav-item" type="button"><span>⌁</span><span>Integrations</span></button>
@@ -170,15 +171,13 @@ export function mountCodexRemote(
         </nav>
 
         <div class="cx-side-section">
-          <div class="cx-side-label">最近</div>
+          <div class="cx-side-label cx-task-heading"><span>Tasks</span><span aria-hidden="true">☷</span></div>
           <div id="cxSidebarThreads" class="cx-sidebar-threads">
             <div class="cx-side-empty">読み込み中…</div>
           </div>
         </div>
 
         </div>
-
-        <div id="cxWorkspaceControlsMount"></div>
 
         <div class="cx-sidebar-foot">
           <label class="pocket-language-setting" title="Language">
@@ -195,12 +194,14 @@ export function mountCodexRemote(
 
       <header class="cx-topbar">
         <button id="cxMenu" class="cx-icon-button" type="button" aria-label="会話履歴を開く" title="会話履歴">${cxIcons.menu}</button>
+        <div class="cx-brand" aria-label="DevMoter"><span class="cx-brand-mark">Z</span><strong>DevMoter</strong></div>
         <button id="cxTitleButton" class="cx-title-button" type="button">
           <span id="cxTitle">Codex</span>
           <small id="cxModelLabel">DevMoter agent</small>
         </button>
         <div class="cx-topbar-controls">
           <button id="cxUsageTop" class="cx-topbar-pill cx-usage-pill" type="button" aria-label="使用量" title="Usage">${cxIcons.usage}<small id="cxUsageLabel">Usage</small></button>
+          <button id="cxDetailsTop" class="cx-topbar-pill cx-details-toggle" type="button" aria-label="作業スペース情報を開く" aria-expanded="false">詳細</button>
           <button id="cxNewChatTop" class="cx-icon-button" type="button" aria-label="新しいチャット">${cxIcons.newChat}</button>
         </div>
       </header>
@@ -214,6 +215,27 @@ export function mountCodexRemote(
           </div>
         </div>
       </main>
+
+      <aside id="cxDetailsPanel" class="cx-details-panel" aria-label="作業スペース情報" aria-hidden="true" inert>
+        <section class="cx-detail-section">
+          <div class="cx-detail-heading"><span>SESSION</span><span id="cxDetailsState" class="cx-detail-state">●</span></div>
+          <strong id="cxDetailsTitle">Codex</strong>
+          <small id="cxDetailsModel">DevMoter agent</small>
+          <p id="cxDetailsActivity">接続状態を確認中</p>
+        </section>
+        <section class="cx-detail-section cx-goal-section" id="cxGoalSection" hidden>
+          <div class="cx-detail-heading"><span>Goal</span><span id="cxGoalState"></span></div>
+          <strong id="cxGoalText"></strong><small id="cxGoalMeta"></small>
+        </section>
+        <section class="cx-detail-section cx-progress-section" id="cxProgressSection" hidden>
+          <div class="cx-detail-heading"><span>Progress</span></div>
+          <div id="cxProgressItems"></div>
+        </section>
+        <section class="cx-detail-section cx-workspace-section">
+          <div class="cx-detail-heading"><span>WORKSPACE</span></div>
+          <div id="cxWorkspaceControlsMount"></div>
+        </section>
+      </aside>
 
       <div id="cxApproval" class="cx-approval hidden">
         <div class="cx-approval-copy">
@@ -240,7 +262,7 @@ export function mountCodexRemote(
           <textarea
             id="cxPromptInput"
             rows="1"
-            placeholder="Codexにメッセージ"
+            placeholder="追加の変更を依頼…"
             aria-label="Codexへのメッセージ"
           ></textarea>
 
@@ -260,7 +282,6 @@ export function mountCodexRemote(
         <div id="cxPlusMenu" class="cx-plus-menu hidden">
           <button id="cxPhoto" type="button"><span>▧</span><span>画像送信</span></button>
           <button id="cxFile" type="button"><span>⌑</span><span>ファイル</span></button>
-          <button id="cxPluginsQuick" type="button"><span>◉</span><span>プラグイン</span></button>
         </div>
 
         <input id="cxPhotoInput" type="file" accept="image/*" multiple hidden />
@@ -285,6 +306,8 @@ export function mountCodexRemote(
   `;
 
   const sidebar = root.querySelector<HTMLElement>("#cxSidebar")!;
+  const detailsPanel = root.querySelector<HTMLElement>("#cxDetailsPanel")!;
+  const detailsToggle = root.querySelector<HTMLButtonElement>("#cxDetailsTop")!;
   const scrim = root.querySelector<HTMLElement>("#cxScrim")!;
   const sidebarClose = root.querySelector<HTMLButtonElement>("#cxSidebarClose")!;
   const agentSwitchButton = root.querySelector<HTMLButtonElement>("#cxAgentSwitchButton")!;
@@ -311,6 +334,33 @@ export function mountCodexRemote(
   const title = root.querySelector<HTMLElement>("#cxTitle")!;
   const titleButton = root.querySelector<HTMLButtonElement>("#cxTitleButton")!;
   const modelLabel = root.querySelector<HTMLElement>("#cxModelLabel")!;
+  const detailsTitle = root.querySelector<HTMLElement>("#cxDetailsTitle")!;
+  const detailsModel = root.querySelector<HTMLElement>("#cxDetailsModel")!;
+  const detailsActivity = root.querySelector<HTMLElement>("#cxDetailsActivity")!;
+  const detailsState = root.querySelector<HTMLElement>("#cxDetailsState")!;
+  const scheduleDetailsSync = (() => {
+    let queued = false;
+    return () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => { queued = false; syncDetails(); });
+    };
+  })();
+  const syncDetails = () => {
+    const nextTitle = title.textContent || "Codex";
+    const nextModel = modelLabel.textContent || "";
+    const nextActivity = executionStatus.querySelector("span")?.textContent || "";
+    const nextState = executionStatus.dataset.state || "offline";
+    if (detailsTitle.textContent !== nextTitle) detailsTitle.textContent = nextTitle;
+    if (detailsModel.textContent !== nextModel) detailsModel.textContent = nextModel;
+    if (detailsActivity.textContent !== nextActivity) detailsActivity.textContent = nextActivity;
+    if (detailsState.dataset.state !== nextState) detailsState.dataset.state = nextState;
+  };
+  const detailsObserver = new MutationObserver(scheduleDetailsSync);
+  detailsObserver.observe(title, { childList: true, characterData: true, subtree: true });
+  detailsObserver.observe(modelLabel, { childList: true, characterData: true, subtree: true });
+  const executionStatus = root.querySelector<HTMLElement>("#cxExecutionStatus")!;
+  detailsObserver.observe(executionStatus, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ["data-state"] });
   const transcript = root.querySelector<HTMLDivElement>("#cxTranscript")!;
   let followsBottom = true;
   const followLatest = () => {
@@ -345,7 +395,7 @@ export function mountCodexRemote(
   const send = root.querySelector<HTMLButtonElement>("#cxSend")!;
   const plus = root.querySelector<HTMLButtonElement>("#cxPlus")!;
   const plusMenu = root.querySelector<HTMLDivElement>("#cxPlusMenu")!;
-  const executionStatus = root.querySelector<HTMLDivElement>("#cxExecutionStatus")!;
+  syncDetails();
   const attachmentStrip = root.querySelector<HTMLDivElement>("#cxAttachmentStrip")!;
   const contextPalette = root.querySelector<HTMLDivElement>("#cxContextPalette")!;
   const photo = root.querySelector<HTMLButtonElement>("#cxPhoto")!;
@@ -777,12 +827,49 @@ export function mountCodexRemote(
     agentSwitchMenu.classList.add("hidden");
     agentSwitchButton.setAttribute("aria-expanded", "false");
     sidebar.classList.remove("open");
+    detailsPanel.classList.remove("open");
+    detailsToggle.setAttribute("aria-expanded", "false");
     sidebar.setAttribute("aria-hidden", "true");
     scrim.classList.add("hidden");
     sidebar.removeAttribute("role");
     sidebar.removeAttribute("aria-modal");
     syncOverlayState();
     if (restoreFocus) (sidebarReturnFocus?.isConnected ? sidebarReturnFocus : menu)?.focus({ preventScroll: true });
+  }
+
+  const desktopLayout = window.matchMedia("(min-width: 1100px)");
+  const syncDetailsAccessibility = () => {
+    const hidden = !desktopLayout.matches && !detailsPanel.classList.contains("open");
+    detailsPanel.setAttribute("aria-hidden", String(hidden));
+    detailsPanel.toggleAttribute("inert", hidden);
+  };
+  syncDetailsAccessibility();
+  const syncDesktopSidebar = () => {
+    if (desktopLayout.matches) {
+      sidebar.classList.remove("open");
+      sidebar.setAttribute("aria-hidden", "false");
+      sidebar.removeAttribute("role");
+      sidebar.removeAttribute("aria-modal");
+    } else {
+      sidebar.setAttribute("aria-hidden", String(!sidebar.classList.contains("open")));
+    }
+    syncDetailsAccessibility();
+  };
+  syncDesktopSidebar();
+  desktopLayout.addEventListener("change", syncDesktopSidebar);
+
+  function toggleDetails() {
+    const open = detailsPanel.classList.toggle("open");
+    detailsToggle.setAttribute("aria-expanded", String(open));
+    scrim.classList.toggle("hidden", !open);
+    if (open) {
+      closeSidebar();
+      detailsPanel.classList.add("open");
+      detailsToggle.setAttribute("aria-expanded", "true");
+      scrim.classList.remove("hidden");
+      window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
+    }
+    syncDetailsAccessibility();
   }
 
   function openModal(titleText: string, subtitleText = "") {
@@ -1239,7 +1326,23 @@ export function mountCodexRemote(
       return;
     }
 
+    let groupName = "";
     for (const thread of items) {
+      const cwd = thread.cwd || "";
+      const nextGroup = cwd.split(/[\\/]/).filter(Boolean).at(-1) || "その他";
+      if (!q && nextGroup !== groupName) {
+        groupName = nextGroup;
+        const group = document.createElement("div");
+        group.className = "cx-thread-group";
+        const icon = document.createElement("span");
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = "▱";
+        group.appendChild(icon);
+        const label = document.createElement("span");
+        label.textContent = groupName;
+        group.appendChild(label);
+        sidebarThreads.appendChild(group);
+      }
       const button = document.createElement("button");
       button.type = "button";
       button.className = "cx-thread-row";
@@ -1248,6 +1351,13 @@ export function mountCodexRemote(
       const text = document.createElement("span");
       text.textContent = thread.name || thread.preview || "新しいチャット";
       button.appendChild(text);
+      if (thread.updatedAt) {
+        const age = Math.max(0, Date.now() - thread.updatedAt);
+        const stamp = document.createElement("small");
+        stamp.className = "cx-thread-age";
+        stamp.textContent = age < 60_000 ? "now" : age < 3_600_000 ? `${Math.floor(age / 60_000)}m` : age < 86_400_000 ? `${Math.floor(age / 3_600_000)}h` : `${Math.floor(age / 86_400_000)}d`;
+        button.appendChild(stamp);
+      }
       button.addEventListener("click", () => {
         closeSidebar();
         void selectThread(thread);
@@ -3265,6 +3375,11 @@ export function mountCodexRemote(
   }
 
   menu.addEventListener("click", openSidebar);
+  detailsToggle.addEventListener("click", toggleDetails);
+  scrim.addEventListener("click", () => {
+    detailsPanel.classList.remove("open");
+    detailsToggle.setAttribute("aria-expanded", "false");
+  });
   window.addEventListener("devmoter:close-chat-history", closeSidebar);
   window.addEventListener("devmoter:surface-changed", closeSidebar);
   document.addEventListener("visibilitychange", () => {
