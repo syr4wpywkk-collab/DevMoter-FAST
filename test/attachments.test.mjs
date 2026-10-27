@@ -38,7 +38,7 @@ test("URL preview is network-free metadata and rejects credentials/non-http sche
 });
 
 test("private and special-use addresses are blocked", async () => {
-  for (const value of ["127.0.0.1", "10.0.0.1", "192.168.1.1", "169.254.169.254", "::1", "fc00::1"]) {
+  for (const value of ["127.0.0.1", "10.0.0.1", "192.168.1.1", "169.254.169.254", "::1", "0:0:0:0:0:0:0:1", "fc00::1", "::ffff:127.0.0.1", "::ffff:7f00:1", "0:0:0:0:0:ffff:a9fe:a9fe", "64:ff9b::a00:1"]) {
     assert.equal(isPrivateAddress(value), true, value);
   }
   assert.equal(isPrivateAddress("8.8.8.8"), false);
@@ -46,4 +46,36 @@ test("private and special-use addresses are blocked", async () => {
     () => fetchUrlAttachment("http://127.0.0.1:3000/private"),
     /private|special-use/i
   );
+});
+
+test("URL attachment validates every resolved address on every redirect before requesting it", async () => {
+  const requested = [];
+  const lookupHost = async host => host === "start.example"
+    ? [{ address: "8.8.8.8", family: 4 }]
+    : [{ address: "8.8.8.8", family: 4 }, { address: "::ffff:7f00:1", family: 6 }];
+  const request = async url => {
+    requested.push(url.hostname);
+    return { status: 302, headers: { location: "http://redirect.example/" }, body: Buffer.alloc(0) };
+  };
+  await assert.rejects(() => fetchUrlAttachment("http://start.example/", {}, { lookupHost, request }), /private|special-use/i);
+  assert.deepEqual(requested, ["start.example"]);
+  await assert.rejects(() => fetchUrlAttachment("http://[::ffff:127.0.0.1]/", {}, { lookupHost, request }), /private|special-use/i);
+  assert.deepEqual(requested, ["start.example"], "blocked literal must never be requested");
+});
+
+test("URL attachment honours zero redirects and still follows redirects by default", async () => {
+  const requests = [];
+  const lookupHost = async () => [{ address: "8.8.8.8", family: 4 }];
+  const request = async url => {
+    requests.push(url.hostname);
+    return url.hostname === "start.example"
+      ? { status: 302, headers: { location: "https://end.example/" }, body: Buffer.alloc(0) }
+      : { status: 200, headers: { "content-type": "text/plain" }, body: Buffer.from("fixture text") };
+  };
+  await assert.rejects(() => fetchUrlAttachment("https://start.example/", { maxRedirects: 0 }, { lookupHost, request }), /redirect limit/i);
+  assert.deepEqual(requests, ["start.example"]);
+  requests.length = 0;
+  const result = await fetchUrlAttachment("https://start.example/", {}, { lookupHost, request });
+  assert.equal(result.text, "fixture text");
+  assert.deepEqual(requests, ["start.example", "end.example"]);
 });

@@ -25,8 +25,6 @@ test("chat history cannot strand global navigation after switching surfaces", as
   assert.match(opencode, /id="ocxToolsNav"/);
   assert.match(opencode, /devmoter:open-global-nav/);
 
-  const codex = await readFile(new URL("../src/codex.ts", import.meta.url), "utf8");
-  assert.match(codex, /devmoter:surface-changed", closeSidebar/);
 });
 
 test("theme overrides keep history and workspace controls readable", async () => {

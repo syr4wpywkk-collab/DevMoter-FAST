@@ -216,7 +216,7 @@ export function mountCodexRemote(
         </div>
       </main>
 
-      <aside id="cxDetailsPanel" class="cx-details-panel" aria-label="作業スペース情報" aria-hidden="true" inert>
+      <aside id="cxDetailsPanel" class="cx-details-panel" aria-label="作業スペース情報" aria-hidden="true" tabindex="-1" inert>
         <section class="cx-detail-section">
           <div class="cx-detail-heading"><span>SESSION</span><span id="cxDetailsState" class="cx-detail-state">●</span></div>
           <strong id="cxDetailsTitle">Codex</strong>
@@ -415,10 +415,19 @@ export function mountCodexRemote(
     .map(selector => root.querySelector<HTMLElement>(selector)!);
   let sidebarReturnFocus: HTMLElement | null = null;
   let modalReturnFocus: HTMLElement | null = null;
+  const desktopLayout = window.matchMedia("(min-width: 1100px)");
 
   function syncOverlayState() {
-    const blocking = sidebar.classList.contains("open") || !modal.classList.contains("hidden");
-    sidebar.inert = !sidebar.classList.contains("open");
+    const modalOpen = !modal.classList.contains("hidden");
+    const sidebarOpen = sidebar.classList.contains("open");
+    const detailsOpen = !desktopLayout.matches && detailsPanel.classList.contains("open");
+    const blocking = sidebarOpen || detailsOpen || modalOpen;
+    const sidebarHidden = (!desktopLayout.matches && !sidebarOpen) || modalOpen || detailsOpen;
+    const detailsHidden = (!desktopLayout.matches && !detailsOpen) || modalOpen || sidebarOpen;
+    sidebar.inert = sidebarHidden;
+    sidebar.setAttribute("aria-hidden", String(sidebarHidden));
+    detailsPanel.inert = detailsHidden;
+    detailsPanel.setAttribute("aria-hidden", String(detailsHidden));
     for (const region of backgroundRegions) region.inert = blocking;
   }
   syncOverlayState();
@@ -811,6 +820,7 @@ export function mountCodexRemote(
   function openSidebar() {
     if (!modal.classList.contains("hidden")) return;
     sidebarReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : menu;
+    closeDetails(false);
     closePlusMenu();
     window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
     sidebar.classList.add("open");
@@ -822,60 +832,69 @@ export function mountCodexRemote(
     sidebarClose.focus({ preventScroll: true });
   }
 
-  function closeSidebar() {
-    const restoreFocus = sidebar.contains(document.activeElement);
+  function closeDetails(restoreFocus = true) {
+    const hadFocus = detailsPanel.classList.contains("open") && detailsPanel.contains(document.activeElement);
+    detailsPanel.classList.remove("open");
+    detailsPanel.removeAttribute("role");
+    detailsPanel.removeAttribute("aria-modal");
+    detailsToggle.setAttribute("aria-expanded", "false");
+    if (!sidebar.classList.contains("open")) scrim.classList.add("hidden");
+    syncOverlayState();
+    if (restoreFocus && hadFocus && !desktopLayout.matches) detailsToggle.focus({ preventScroll: true });
+  }
+
+  function closeSidebar(restoreFocus = true) {
+    const restoreSidebarFocus = sidebar.classList.contains("open") && sidebar.contains(document.activeElement);
+    const restoreDetailsFocus = detailsPanel.classList.contains("open") && detailsPanel.contains(document.activeElement);
     agentSwitchMenu.classList.add("hidden");
     agentSwitchButton.setAttribute("aria-expanded", "false");
     sidebar.classList.remove("open");
-    detailsPanel.classList.remove("open");
-    detailsToggle.setAttribute("aria-expanded", "false");
-    sidebar.setAttribute("aria-hidden", "true");
+    closeDetails(false);
     scrim.classList.add("hidden");
     sidebar.removeAttribute("role");
     sidebar.removeAttribute("aria-modal");
     syncOverlayState();
-    if (restoreFocus) (sidebarReturnFocus?.isConnected ? sidebarReturnFocus : menu)?.focus({ preventScroll: true });
+    if (restoreFocus && !desktopLayout.matches && restoreSidebarFocus) (sidebarReturnFocus?.isConnected ? sidebarReturnFocus : menu)?.focus({ preventScroll: true });
+    else if (restoreFocus && !desktopLayout.matches && restoreDetailsFocus) detailsToggle.focus({ preventScroll: true });
   }
 
-  const desktopLayout = window.matchMedia("(min-width: 1100px)");
-  const syncDetailsAccessibility = () => {
-    const hidden = !desktopLayout.matches && !detailsPanel.classList.contains("open");
-    detailsPanel.setAttribute("aria-hidden", String(hidden));
-    detailsPanel.toggleAttribute("inert", hidden);
-  };
-  syncDetailsAccessibility();
   const syncDesktopSidebar = () => {
     if (desktopLayout.matches) {
       sidebar.classList.remove("open");
-      sidebar.setAttribute("aria-hidden", "false");
       sidebar.removeAttribute("role");
       sidebar.removeAttribute("aria-modal");
-    } else {
-      sidebar.setAttribute("aria-hidden", String(!sidebar.classList.contains("open")));
+      closeDetails(false);
+      scrim.classList.add("hidden");
+    } else if (sidebar.contains(document.activeElement) && !sidebar.classList.contains("open")) {
+      menu.focus({ preventScroll: true });
+    } else if (detailsPanel.contains(document.activeElement) && !detailsPanel.classList.contains("open")) {
+      detailsToggle.focus({ preventScroll: true });
     }
-    syncDetailsAccessibility();
+    syncOverlayState();
   };
   syncDesktopSidebar();
   desktopLayout.addEventListener("change", syncDesktopSidebar);
 
   function toggleDetails() {
-    const open = detailsPanel.classList.toggle("open");
-    detailsToggle.setAttribute("aria-expanded", String(open));
-    scrim.classList.toggle("hidden", !open);
-    if (open) {
-      closeSidebar();
-      detailsPanel.classList.add("open");
-      detailsToggle.setAttribute("aria-expanded", "true");
-      scrim.classList.remove("hidden");
-      window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
-    }
-    syncDetailsAccessibility();
+    if (detailsPanel.classList.contains("open")) { closeDetails(); return; }
+    if (!modal.classList.contains("hidden")) return;
+    closeSidebar(false);
+    closePlusMenu();
+    detailsPanel.classList.add("open");
+    detailsPanel.setAttribute("role", "dialog");
+    detailsPanel.setAttribute("aria-modal", "true");
+    detailsToggle.setAttribute("aria-expanded", "true");
+    scrim.classList.remove("hidden");
+    window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
+    syncOverlayState();
+    detailsPanel.focus({ preventScroll: true });
   }
 
   function openModal(titleText: string, subtitleText = "") {
-    modalReturnFocus = sidebar.contains(document.activeElement) ? menu
+    modalReturnFocus = sidebar.contains(document.activeElement) && !desktopLayout.matches ? menu
+      : detailsPanel.contains(document.activeElement) && !desktopLayout.matches ? detailsToggle
       : document.activeElement instanceof HTMLElement ? document.activeElement : menu;
-    closeSidebar();
+    closeSidebar(false);
     closePlusMenu();
     window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
     modalCloseGuard = null;
@@ -3376,12 +3395,8 @@ export function mountCodexRemote(
 
   menu.addEventListener("click", openSidebar);
   detailsToggle.addEventListener("click", toggleDetails);
-  scrim.addEventListener("click", () => {
-    detailsPanel.classList.remove("open");
-    detailsToggle.setAttribute("aria-expanded", "false");
-  });
-  window.addEventListener("devmoter:close-chat-history", closeSidebar);
-  window.addEventListener("devmoter:surface-changed", closeSidebar);
+  window.addEventListener("devmoter:close-chat-history", () => closeSidebar(false));
+  window.addEventListener("devmoter:surface-changed", () => closeSidebar(false));
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") void resumeFromBackground();
   });
@@ -3391,8 +3406,8 @@ export function mountCodexRemote(
     const open = agentSwitchMenu.classList.toggle("hidden") === false;
     agentSwitchButton.setAttribute("aria-expanded", String(open));
   });
-  sidebarClose.addEventListener("click", closeSidebar);
-  scrim.addEventListener("click", closeSidebar);
+  sidebarClose.addEventListener("click", () => closeSidebar());
+  scrim.addEventListener("click", () => closeSidebar());
   threadSearch.addEventListener("input", renderThreads);
   newChatSide.addEventListener("click", () => void createThread());
   newChatTop.addEventListener("click", () => void createThread());
@@ -3449,7 +3464,8 @@ export function mountCodexRemote(
   });
   document.addEventListener("keydown", event => {
     const overlay = !modal.classList.contains("hidden") ? modal
-      : sidebar.classList.contains("open") ? sidebar : null;
+      : sidebar.classList.contains("open") ? sidebar
+        : !desktopLayout.matches && detailsPanel.classList.contains("open") ? detailsPanel : null;
     if (!document.body.classList.contains("codex-mode")) return;
     if (!overlay) {
       if (event.key === "Escape" && !plusMenu.classList.contains("hidden")) {
@@ -3461,6 +3477,7 @@ export function mountCodexRemote(
     if (event.key === "Escape") {
       event.preventDefault();
       if (overlay === modal) closeModal();
+      else if (overlay === detailsPanel) closeDetails();
       else closeSidebar();
       return;
     }
@@ -3470,7 +3487,10 @@ export function mountCodexRemote(
     )).filter(control => control.getClientRects().length && !control.closest('[inert], [aria-hidden="true"]'));
     const first = controls[0];
     const last = controls.at(-1);
-    if (!first || !last) return;
+    if (!first || !last) {
+      if (overlay === detailsPanel) { event.preventDefault(); detailsPanel.focus({ preventScroll: true }); }
+      return;
+    }
     if (!overlay.contains(document.activeElement) || (event.shiftKey && document.activeElement === first)) {
       event.preventDefault();
       (event.shiftKey ? last : first).focus();
