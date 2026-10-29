@@ -1,6 +1,83 @@
 import "./settings.css";
 import { boundedPushWait, inspectPushReadiness, type PushReadiness } from "./push-readiness.js";
 
+// Line icons for settings rows, keyed by row label (inlined: tests load this module standalone).
+const SETTINGS_ICON = (body: string) => `<svg class="dm-line-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
+const SETTINGS_ICON_PATHS: Record<string, string> = {
+  activity: '<path d="M3 12h4l2-6 4 12 2-6h6"/>',
+  review: '<circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M6 8v4a4 4 0 0 0 4 4h6M18 16v-4a4 4 0 0 0-4-4H8"/>',
+  agent: '<path d="M12 4l1.8 4.6L18 10l-4.2 1.4L12 16l-1.8-4.6L6 10l4.2-1.4z"/>',
+  gauge: '<path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/>',
+  check: '<path d="M5 12l4 4 10-10"/>',
+  layout: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M10 9v11"/>',
+  theme: '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" stroke="none"/>',
+  bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/>',
+  key: '<circle cx="8" cy="14" r="4"/><path d="M11 11l9-9M16 6l3 3"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  device: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  server: '<rect x="4" y="4" width="16" height="7" rx="1.5"/><rect x="4" y="13" width="16" height="7" rx="1.5"/><path d="M8 7.5h.01M8 16.5h.01"/>',
+  clock: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  terminal: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
+  puzzle: '<path d="M9 4h6v3a2 2 0 1 0 0 4h3v6h-3a2 2 0 1 0-4 0v3H5v-6h3a2 2 0 1 0 0-4H5V4z"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  pulse: '<path d="M3 12h4l2-6 4 12 2-6h6"/>',
+  disk: '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17h.01"/>',
+  flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M5 19l1.4-1.4M17.6 6.4L19 5"/>',
+  moon: '<path d="M20 14A8 8 0 1 1 10 4a6 6 0 0 0 10 10z"/>',
+  rows: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  rowsdense: '<path d="M4 5h16M4 9h16M4 13h16M4 17h16"/>',
+};
+const SETTINGS_ROW_ICONS: Record<string, string> = {
+  "Activity / Session Control": "activity",
+  "Review & Tasks": "review",
+  "エージェントモード": "agent",
+  "Context": "gauge",
+  "Task checkpoints": "check",
+  "表示とレイアウト": "layout",
+  "テーマ": "theme",
+  "通知": "bell",
+  "サインイン": "user",
+  "サインイン方法": "key",
+  "使用状況と制限": "chart",
+  "Passkeys": "key",
+  "Trusted devices": "device",
+  "Trusted device": "device",
+  "API Vault": "lock",
+  "ホスト registry": "server",
+  "Automation / Schedules": "clock",
+  "ペアリングコード": "link",
+  "通知設定": "bell",
+  "通知の状態": "bell",
+  "ターミナル": "terminal",
+  "Terminal": "terminal",
+  "プロジェクトインデックス": "folder",
+  "セーフティスキャン": "shield",
+  "Safety": "shield",
+  "拡張機能と Skills": "puzzle",
+  "クラウドブラウザー / Preview": "globe",
+  "診断": "pulse",
+  "診断を見る": "pulse",
+  "ストレージ": "disk",
+  "データコントロール": "sliders",
+  "使い方ガイド": "help",
+  "不具合を報告": "flag",
+  "詳細": "info",
+  "システム": "theme",
+  "ライト": "sun",
+  "ダーク": "moon",
+  "標準": "rows",
+  "コンパクト": "rowsdense",
+};
+
 type Json = Record<string, any>;
 type SettingsPage = "root" | "appearance" | "account" | "devices" | "vault" | "notifications" | "diagnostics" | "guide";
 
@@ -133,7 +210,7 @@ export function mountSettingsPanel() {
         ${options.action ? `data-action="${escapeHtml(options.action)}"` : ""}
         ${options.disabled ? "disabled" : ""}
       >
-        <span class="devmoter-settings-icon" aria-hidden="true">${icon}</span>
+        <span class="devmoter-settings-icon" aria-hidden="true">${SETTINGS_ROW_ICONS[label] ? SETTINGS_ICON(SETTINGS_ICON_PATHS[SETTINGS_ROW_ICONS[label]]) : escapeHtml(icon)}</span>
         <span class="devmoter-settings-row-copy">
           <strong>${escapeHtml(label)}</strong>
           ${options.value ? `<small>${escapeHtml(options.value)}</small>` : ""}

@@ -16,8 +16,8 @@ html[data-devmoter-theme="dark"] {
   --accent-glow: rgba(16, 185, 129, .16);
   --text-primary: #f4f4f5;
   --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
-  --text-dim: #52525b;
+  --text-muted: #727272;
+  --text-dim: #535353;
   --status-error: #ef4444;
   --status-warning: #f59e0b;
   --space-1: 4px;
@@ -45,8 +45,8 @@ html[data-devmoter-theme="light"] {
   --accent-pressed: #065f46;
   --accent-glow: rgba(4, 120, 87, .12);
   --text-primary: #18181b;
-  --text-secondary: #3f3f46;
-  --text-muted: #71717a;
+  --text-secondary: #404040;
+  --text-muted: #727272;
   --text-dim: #a1a1aa;
   --status-error: #dc2626;
   --status-warning: #b45309;
@@ -400,3 +400,13 @@ html[data-devmoter-theme="light"] body.dm-task-first-enabled {
 .dm-shell-menu-trigger span,
 .dm-shell-home-link span[aria-hidden] { display: inline-grid; place-items: center; color: var(--text-muted); }
 .cx-nav-item:hover span:first-child { color: var(--text-primary); }
+
+/* Unslop pass 4: workspace controls use line icons beside their labels. */
+.dm-controlbar > button { display: inline-flex; align-items: center; gap: 8px; }
+.dm-controlbar > button .dm-line-icon,
+.dm-agent-switch-icon .dm-line-icon,
+.dm-unified-agent-icon .dm-line-icon,
+.cx-agent-option .dm-line-icon { flex: 0 0 auto; color: var(--text-muted); }
+.dm-controlbar > button:hover .dm-line-icon { color: var(--text-primary); }
+.devmoter-settings-icon { color: var(--text-muted); }
+.devmoter-settings-row:hover .devmoter-settings-icon { color: var(--text-primary); }

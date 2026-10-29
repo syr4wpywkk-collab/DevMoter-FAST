@@ -4,7 +4,7 @@
   z-index: 1650;
   display: grid;
   align-items: end;
-  background: rgba(5, 8, 14, .66);
+  background: rgba(8, 8, 8, .66);
   backdrop-filter: blur(16px);
 }
 .dm-mission-modal.hidden { display: none; }
@@ -15,7 +15,7 @@
   overflow: hidden;
   border: 1px solid rgba(184, 197, 225, .16);
   border-radius: 24px 24px 0 0;
-  background: rgba(17, 21, 31, .97);
+  background: rgba(21, 21, 21, .97);
   box-shadow: 0 -26px 70px rgba(0, 0, 0, .42);
   color: #eef2fa;
 }
@@ -117,7 +117,7 @@
 }
 .dm-mission-row-copy strong { font-size: 12px; font-weight: 650; }
 .dm-mission-row-copy small { color: #8c98ad; font-size: 10px; }
-.dm-mission-row-copy .dm-mission-row-meta { color: #66738a; }
+.dm-mission-row-copy .dm-mission-row-meta { color: #727272; }
 
 .dm-mission-status,
 .dm-mission-capability {

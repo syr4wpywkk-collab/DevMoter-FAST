@@ -8,7 +8,7 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
   --api-bg: #fff;
   --api-surface: #fff;
   --api-text: #1f1f1f;
-  --api-muted: #5f6368;
+  --api-muted: #636363;
   --api-border: #d9e0e8;
   --api-accent: #496454;
   --api-composer-surface: #f1f3f0;
@@ -109,14 +109,14 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 .api-app .cx-markdown blockquote { margin: 1em 0; padding-left: 1em; border-left: 3px solid #aebccd; color: var(--api-muted); }
 .api-app .cx-markdown a { color: #185abc; text-underline-offset: 3px; }
 .api-app .cx-markdown hr { border: 0; border-top: 1px solid var(--api-border); margin: 1.5em 0; }
-.api-app .cx-markdown code { padding: .15em .35em; border-radius: 5px; background: #eaf0f7; color: #273343; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .875em; }
+.api-app .cx-markdown code { padding: .15em .35em; border-radius: 5px; background: #eaf0f7; color: #323232; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .875em; }
 .api-app .dm-code-block { max-width: 100%; min-width: 0; margin: 1em 0; overflow: hidden; border: 1px solid var(--api-border); border-radius: 14px; background: #f6f8fc; }
 .api-app .dm-code-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 0 8px 0 16px; background: #e9eef6; color: var(--api-muted); font-size: .75rem; }
 .api-app .dm-code-language { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .api-app .dm-code-copy { flex: 0 0 auto; min-height: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--api-text); font-size: .75rem; }
 .api-app .dm-code-copy:hover { background: #dbe5f2; }
-.api-app .cx-markdown pre { max-width: 100%; margin: 0; padding: 16px; overflow-x: auto; overscroll-behavior-x: contain; white-space: pre; overflow-wrap: normal; line-height: 1.6; color: #273343; }
-.api-app .cx-markdown pre code { padding: 0; background: transparent; color: #273343; white-space: pre; }
+.api-app .cx-markdown pre { max-width: 100%; margin: 0; padding: 16px; overflow-x: auto; overscroll-behavior-x: contain; white-space: pre; overflow-wrap: normal; line-height: 1.6; color: #323232; }
+.api-app .cx-markdown pre code { padding: 0; background: transparent; color: #323232; white-space: pre; }
 .api-app .dm-markdown-table { max-width: 100%; margin: 1em 0; overflow-x: auto; overscroll-behavior-x: contain; }
 .api-app .cx-markdown table { border-collapse: collapse; font-size: .9em; color: var(--api-text); }
 .api-app .cx-markdown th,
@@ -146,8 +146,8 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 .api-app .api-attachment-chip span { font-size: .75rem; }
 .api-app .api-message-attachments span { font-size: .75rem; background: rgba(255, 255, 255, .6); }
 
-.api-app .api-scrim { position: absolute; inset: 0; z-index: 70; background: rgba(24, 35, 50, .3); }
-.api-app .api-sidebar { position: absolute; inset: 0 auto auto 0; z-index: 80; width: min(88vw, 350px); height: var(--dm-viewport-height, 100dvh); padding: calc(12px + env(safe-area-inset-top)) 14px calc(12px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); background: #f0f4f9; color: var(--api-text); box-shadow: 12px 0 40px rgba(30, 47, 72, .12); transform: translateX(-110%); }
+.api-app .api-scrim { position: absolute; inset: 0; z-index: 70; background: rgba(34, 34, 34, .3); }
+.api-app .api-sidebar { position: absolute; inset: 0 auto auto 0; z-index: 80; width: min(88vw, 350px); height: var(--dm-viewport-height, 100dvh); padding: calc(12px + env(safe-area-inset-top)) 14px calc(12px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); background: #f0f4f9; color: var(--api-text); box-shadow: 12px 0 40px rgba(45, 45, 45, .12); transform: translateX(-110%); }
 .api-app .api-sidebar.open { transform: translateX(0); }
 .api-app .api-sidebar-head,
 .api-app .api-new-chat { flex: 0 0 auto; }
@@ -169,12 +169,12 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 .api-app .dm-agent-switch-menu > button { color: var(--api-text); }
 .api-app .dm-agent-switch-menu > button:hover,
 .api-app .dm-agent-switch-menu > button:focus-visible,
-.api-app .dm-agent-switch-menu > button.active { background: #dae8fa; color: #17365e; }
-.api-app .dm-agent-switch-menu > button.active small { color: #345679; }
+.api-app .dm-agent-switch-menu > button.active { background: #dae8fa; color: #323232; }
+.api-app .dm-agent-switch-menu > button.active small { color: #515151; }
 .api-app .dm-agent-switch-menu > button.active > span:last-child { color: #184c9c; }
 .api-app .dm-agent-switch-menu small { color: var(--api-muted); }
 
-.api-app .api-settings-modal { position: absolute; z-index: 100; padding: max(14px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); background: rgba(24, 35, 50, .32); color-scheme: light; }
+.api-app .api-settings-modal { position: absolute; z-index: 100; padding: max(14px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); background: rgba(34, 34, 34, .32); color-scheme: light; }
 .api-app .api-settings-card { max-height: min(820px, calc(var(--dm-viewport-height, 100dvh) - 28px)); border-radius: 24px; background: #fff; color: var(--api-text); }
 .api-app .api-settings-head { min-height: 68px; padding: 12px 14px 12px 18px; }
 .api-app .api-settings-head button { width: 44px; height: 44px; min-height: 44px; flex: 0 0 44px; }
@@ -207,7 +207,7 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 .api-app #apiWorkspaceControlsMount .dm-controlbar > button span { display: inline; min-width: 0; max-width: 100%; overflow: hidden; font-size: inherit; line-height: inherit; text-overflow: ellipsis; white-space: nowrap; }
 .api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-mobile-menu-toggle,
 .api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-mobile-shortcut { display: none; }
-.api-app #apiWorkspaceControlsMount .dm-panel { right: 0; bottom: calc(100% + 8px); width: 100%; max-width: 100%; max-height: max(88px, min(calc(var(--dm-viewport-height, 100dvh) * .5), calc(var(--dm-viewport-height, 100dvh) - 240px))); padding: 12px; overflow: auto; overscroll-behavior: contain; border-color: var(--api-border); border-radius: 14px; background: #fff; color: var(--api-text); font-size: .8rem; overflow-wrap: anywhere; box-shadow: 0 8px 24px rgba(30, 47, 72, .15); }
+.api-app #apiWorkspaceControlsMount .dm-panel { right: 0; bottom: calc(100% + 8px); width: 100%; max-width: 100%; max-height: max(88px, min(calc(var(--dm-viewport-height, 100dvh) * .5), calc(var(--dm-viewport-height, 100dvh) - 240px))); padding: 12px; overflow: auto; overscroll-behavior: contain; border-color: var(--api-border); border-radius: 14px; background: #fff; color: var(--api-text); font-size: .8rem; overflow-wrap: anywhere; box-shadow: 0 8px 24px rgba(45, 45, 45, .15); }
 .api-app #apiWorkspaceControlsMount .dm-panel button { min-height: 44px; padding: 7px 10px; border: 1px solid var(--api-border); border-radius: 8px; background: #edf2f8; color: var(--api-text); }
 .api-app #apiWorkspaceControlsMount .dm-panel-head { position: sticky; top: 0; background: #fff; }
 .api-app #apiWorkspaceControlsMount .dm-panel-head button { flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; }
@@ -234,11 +234,11 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 /* Explicit app preference takes priority over the OS palette. */
 html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button:hover,
 html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button:focus-visible,
-html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active { background: #344762; color: #f5f8ff; }
+html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active { background: #454545; color: #f5f8ff; }
 html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active small { color: #d5e2f9; }
 html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active > span:last-child { color: #b5c9ff; }
 html[data-devmoter-theme="dark"] .api-app {
-  --api-bg: #13151a; --api-surface: #1e222b; --api-text: #e8eaf0; --api-muted: #b7bfcd;
+  --api-bg: #151515; --api-surface: #222222; --api-text: #e8eaf0; --api-muted: #b7bfcd;
   --api-border: #424a44; --api-accent: #9ab49f; --api-composer-surface: #202522;
   color-scheme: dark;
 }

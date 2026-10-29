@@ -213,21 +213,35 @@ function estimateTokens() {
   return Math.ceil(text.length / 4);
 }
 
+// Static line icons (inlined: tests load this module standalone).
+const WC_ICON = (body: string) => `<svg class="dm-line-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
+const WC_ICONS = {
+  review: WC_ICON('<circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M6 8v4a4 4 0 0 0 4 4h6M18 16v-4a4 4 0 0 0-4-4H8"/>'),
+  agent: WC_ICON('<path d="M12 4l1.8 4.6L18 10l-4.2 1.4L12 16l-1.8-4.6L6 10l4.2-1.4z"/><path d="M18 16l.7 1.6L20 18l-1.3.4L18 20l-.7-1.6L16 18l1.3-.4z"/>'),
+  activity: WC_ICON('<path d="M3 12h4l2-6 4 12 2-6h6"/>'),
+  settings: WC_ICON('<circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>'),
+  git: WC_ICON('<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 7v10M18 10a6 6 0 0 1-6 6H6"/>'),
+  theme: WC_ICON('<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" stroke="none"/>'),
+  context: WC_ICON('<path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/>'),
+  tasks: WC_ICON('<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>'),
+  extensions: WC_ICON('<path d="M12 5v14M5 12h14"/>'),
+} as const;
+
 function createToolbar() {
   const host = document.createElement("section");
   host.className = "dm-controlbar";
   host.setAttribute("aria-label", "DevMoter control plane");
   host.innerHTML = `
     <button type="button" class="dm-mobile-menu-toggle" aria-label="More DevMoter controls" aria-expanded="false">••• <span>More</span></button>
-    <button type="button" class="dm-mobile-shortcut dm-review-shortcut" aria-label="Review changes">⌁ <span>Review</span></button>
-    <button type="button" class="dm-mobile-shortcut dm-agent-shortcut" aria-label="Agent mode">✦ <span>Agent</span></button>
-    <button type="button" class="dm-mobile-shortcut dm-session-shortcut" aria-label="Session activity">◎ <span>Activity</span></button>
-    <button type="button" class="dm-mobile-shortcut dm-settings-shortcut" aria-label="Settings">⚙ <span>Settings</span></button>
-    <button type="button" class="dm-mobile-shortcut dm-git-shortcut" aria-label="Project Git">⑂ <span>Git</span></button>
-    <button type="button" class="dm-theme" aria-label="Theme">◐ <span>System</span></button>
-    <button type="button" class="dm-context" aria-label="Context usage">◒ <span>Context</span></button>
-    <button type="button" class="dm-tasks" aria-label="Task checkpoints">✓ <span>Tasks</span></button>
-    <button type="button" class="dm-extensions" aria-label="Extensions">＋ <span>Extensions</span></button>
+    <button type="button" class="dm-mobile-shortcut dm-review-shortcut" aria-label="Review changes">${WC_ICONS.review}<span>Review</span></button>
+    <button type="button" class="dm-mobile-shortcut dm-agent-shortcut" aria-label="Agent mode">${WC_ICONS.agent}<span>Agent</span></button>
+    <button type="button" class="dm-mobile-shortcut dm-session-shortcut" aria-label="Session activity">${WC_ICONS.activity}<span>Activity</span></button>
+    <button type="button" class="dm-mobile-shortcut dm-settings-shortcut" aria-label="Settings">${WC_ICONS.settings}<span>Settings</span></button>
+    <button type="button" class="dm-mobile-shortcut dm-git-shortcut" aria-label="Project Git">${WC_ICONS.git}<span>Git</span></button>
+    <button type="button" class="dm-theme" aria-label="Theme">${WC_ICONS.theme}<span>System</span></button>
+    <button type="button" class="dm-context" aria-label="Context usage">${WC_ICONS.context}<span>Context</span></button>
+    <button type="button" class="dm-tasks" aria-label="Task checkpoints">${WC_ICONS.tasks}<span>Tasks</span></button>
+    <button type="button" class="dm-extensions" aria-label="Extensions">${WC_ICONS.extensions}<span>Extensions</span></button>
     <div class="dm-panel hidden" role="dialog" aria-label="DevMoter controls"></div>
   `;
   document.body.appendChild(host);

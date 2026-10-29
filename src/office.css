@@ -1,5 +1,5 @@
 .dm-office {
-  --office-line: var(--border, #30323b);
+  --office-line: var(--border, #323232);
   box-sizing: border-box;
   width: 100vw;
   max-width: none;
@@ -68,7 +68,7 @@
 html[data-devmoter-theme="light"] .dm-office {
   --office-line: #d6dae3;
   background: #fafbfc;
-  color: #202530;
+  color: #252525;
 }
 html[data-devmoter-theme="light"] .office-ai-actions {
   background: #fafbfc;
@@ -187,7 +187,7 @@ html[data-devmoter-theme="light"] .office-ai-actions {
 }
 .office-ai-actions button:first-child {
   background: #8eaaff;
-  color: #101426;
+  color: #141414;
   border-color: transparent;
 }
 .office-library button,

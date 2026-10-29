@@ -35,6 +35,9 @@ import {
 // Static line icons, inlined so this module stays import-light for its tests.
 const ICON_SVG = (body: string) => `<svg class="dm-line-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
 const LINE_ICONS: Record<string, string> = {
+  "terminal": ICON_SVG('<path d="M5 8l4 4-4 4M12 16h7"/>'),
+  "agents": ICON_SVG('<rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 4v4M9 13h.01M15 13h.01"/>'),
+  "chat": ICON_SVG('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>'),
   "edit": ICON_SVG('<path d="M4 20h4L19 9l-4-4L4 16z"/>'),
   "search": ICON_SVG('<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>'),
   "plugins": ICON_SVG('<path d="M9 4h6v3a2 2 0 1 0 0 4h3v6h-3a2 2 0 1 0-4 0v3H5v-6h3a2 2 0 1 0 0-4H5V4z" transform="translate(0.5 0)"/>'),
@@ -149,19 +152,19 @@ export function mountCodexRemote(
       <aside id="cxSidebar" class="cx-sidebar" aria-hidden="true" aria-label="会話履歴" tabindex="-1">
         <div class="cx-sidebar-head dm-agent-head">
           <div class="dm-unified-agent-identity" data-unified-agent-label hidden aria-label="Codex チャット履歴">
-            <span class="dm-unified-agent-icon" aria-hidden="true">⌘</span>
+            <span class="dm-unified-agent-icon" aria-hidden="true">${lineIcon("terminal")}</span>
             <span class="dm-unified-agent-copy"><strong>Codex</strong><small>チャット履歴</small></span>
           </div>
           <div class="dm-agent-switch-shell">
             <button id="cxAgentSwitchButton" class="dm-agent-switch-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
-              <span class="dm-agent-switch-icon">⌘</span>
+              <span class="dm-agent-switch-icon" aria-hidden="true">${lineIcon("terminal")}</span>
               <span class="dm-agent-switch-copy"><strong>Codex</strong><small>現在のエージェント</small></span>
               <span class="dm-agent-switch-chevron">⌄</span>
             </button>
             <div id="cxAgentSwitchMenu" class="dm-agent-switch-menu hidden" role="listbox" aria-label="エージェントを選択">
-              <button class="cx-agent-option active" type="button" data-agent="codex"><span>⌘</span><span><strong>Codex</strong><small>実装・修正</small></span><span>✓</span></button>
-              <button class="cx-agent-option" type="button" data-agent="opencode"><span>◈</span><span><strong>OpenCode</strong><small>エージェント実行</small></span><span></span></button>
-              <button class="cx-agent-option" type="button" data-agent="api"><span>✦</span><span><strong>API Chat</strong><small>マルチプロバイダー</small></span><span></span></button>
+              <button class="cx-agent-option active" type="button" data-agent="codex"><span aria-hidden="true">${lineIcon("terminal")}</span><span><strong>Codex</strong><small>実装・修正</small></span><span>✓</span></button>
+              <button class="cx-agent-option" type="button" data-agent="opencode"><span aria-hidden="true">${lineIcon("agents")}</span><span><strong>OpenCode</strong><small>エージェント実行</small></span><span></span></button>
+              <button class="cx-agent-option" type="button" data-agent="api"><span aria-hidden="true">${lineIcon("chat")}</span><span><strong>API Chat</strong><small>マルチプロバイダー</small></span><span></span></button>
             </div>
           </div>
           <button id="cxSidebarClose" class="cx-icon-button" type="button" aria-label="閉じる">×</button>

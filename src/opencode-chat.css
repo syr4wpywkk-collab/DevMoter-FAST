@@ -224,7 +224,7 @@ body.opencode-mode .sc-panel:not(.open) { box-shadow: none; }
 .ocx-app .ocx-attention-row.failed .ocx-attention-glyph,
 .ocx-app .ocx-session-dot[data-state="failed"] { color: var(--oc-red); }
 .ocx-app .ocx-attention-row.completed .ocx-attention-glyph,
-.ocx-app .ocx-session-dot[data-state="completed"] { color: #416782; }
+.ocx-app .ocx-session-dot[data-state="completed"] { color: #616161; }
 .ocx-app .ocx-sidebar-foot { flex-wrap: wrap; }
 .ocx-app .ocx-refresh { min-height: 44px; font-size: .75rem; }
 .ocx-app .ocx-side-status { font-size: .7rem; }

@@ -103,7 +103,7 @@
   min-height: 44px;
   border: 1px solid rgba(255,255,255,.15);
   border-radius: 10px;
-  background: #1c1f24;
+  background: #1f1f1f;
   color: #f1f2f5;
   font: inherit;
   font-size: .9rem;
@@ -139,7 +139,7 @@
 
 .dm-tools-tabs button.active {
   border-color: rgba(255,255,255,.12);
-  background: #262a31;
+  background: #2a2a2a;
   color: #fff;
 }
 
@@ -261,7 +261,7 @@
 .dm-tools-panel button.primary {
   border-color: #88aef0;
   background: #dce8ff;
-  color: #101827;
+  color: #171717;
   font-weight: 650;
 }
 
@@ -280,7 +280,7 @@
 
 .dm-tools-note {
   padding: 12px 14px;
-  border-left: 3px solid #525e71;
+  border-left: 3px solid #5d5d5d;
   border-radius: 0 8px 8px 0;
   background: rgba(255,255,255,.035);
 }

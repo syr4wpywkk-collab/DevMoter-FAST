@@ -4,8 +4,8 @@
   --api-bg: #f8f9fb;
   --api-surface: #fff;
   --api-text: #202124;
-  --api-muted: #6f7278;
-  --api-border: rgba(60, 64, 67, 0.15);
+  --api-muted: #727272;
+  --api-border: rgba(63, 63, 63, 0.15);
   --api-accent: #496454;
   min-height: 100dvh;
   background: var(--api-bg);
@@ -41,7 +41,7 @@
 
 .api-icon-button:hover,
 .api-sidebar-head button:hover {
-  background: rgba(60, 64, 67, 0.08);
+  background: rgba(63, 63, 63, 0.08);
 }
 
 .api-brand {
@@ -171,7 +171,7 @@
   border-radius: 14px;
   padding: 12px 12px 9px 18px;
   background: var(--api-surface);
-  box-shadow: 0 3px 12px rgba(31, 35, 40, 0.06);
+  box-shadow: 0 3px 12px rgba(35, 35, 35, 0.06);
 }
 
 .api-composer textarea {
@@ -366,7 +366,7 @@
   }
 
   .api-new-chat {
-    background: #2b3037;
+    background: #2f2f2f;
   }
 }
 
@@ -448,7 +448,7 @@
 }
 
 .api-settings-head button:hover {
-  background: rgba(60, 64, 67, 0.08);
+  background: rgba(63, 63, 63, 0.08);
 }
 
 .api-settings-body {
@@ -1195,13 +1195,13 @@
 }
 
 .dm-agent-switch-copy small {
-  color: #8d8d94;
+  color: #8e8e8e;
   font-size: .6rem;
   font-weight: 500;
 }
 
 .dm-agent-switch-chevron {
-  color: #888890;
+  color: #898989;
   font-size: .82rem;
   text-align: center;
 }

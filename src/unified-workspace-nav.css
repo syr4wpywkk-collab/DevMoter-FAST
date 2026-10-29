@@ -3,9 +3,9 @@
  * dark/cyan system. No generated Tailwind, fonts, sample sessions or fake states.
  */
 .dm-task-first-nav {
-  --dw-bg: #0c121b;
-  --dw-panel: #17212d;
-  --dw-border: #2c3c4d;
+  --dw-bg: #111111;
+  --dw-panel: #202020;
+  --dw-border: #3a3a3a;
   --dw-text: #eaf4fc;
   --dw-muted: #a0b2c2;
   --dw-accent: #4fd3f2;
@@ -53,9 +53,9 @@
   place-items: center;
   width: 36px;
   height: 36px;
-  border: 1px solid #28617a;
+  border: 1px solid #575757;
   border-radius: 10px;
-  background: #123040;
+  background: #2b2b2b;
   color: var(--dw-accent);
   font-size: 23px;
 }
@@ -112,8 +112,8 @@
   cursor:pointer;
 }
 .dm-task-first-tabs button[aria-current="page"] {
-  border-color:#265c6e;
-  background:#123040;
+  border-color:#525252;
+  background:#2b2b2b;
   color:var(--dw-accent);
 }
 /* iOS Safari retains :hover after a tap. Never give an inactive touch tab
@@ -153,9 +153,9 @@ html[data-devmoter-theme="light"] .dm-task-first-nav {
   --dw-bg:#f8fbfd;
   --dw-panel:#edf4f8;
   --dw-border:#d1e0e9;
-  --dw-text:#162a39;
-  --dw-muted:#516b7f;
-  --dw-accent:#006e8b;
+  --dw-text:#272727;
+  --dw-muted:#676767;
+  --dw-accent:#595959;
 }
 @media(max-width:680px) {
   body.dm-task-first-enabled {
@@ -287,10 +287,10 @@ body.dm-task-first-enabled .dm-unified-agent-icon {
   height: 36px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--dw-chat-line, #2c3f50);
+  border: 1px solid var(--dw-chat-line, #3c3c3c);
   border-radius: 10px;
   color: var(--dw-chat-accent, #4fd3f2);
-  background: var(--dw-chat-raised, #192838);
+  background: var(--dw-chat-raised, #262626);
 }
 body.dm-task-first-enabled .dm-unified-agent-copy {
   min-width: 0;
