@@ -63,7 +63,7 @@ function systemActionButton(icon: string, title: string, detail: string, action:
   const keywords = systemKeywords[action] || "";
   return `
     <button type="button" class="dm-shell-action" data-tools-item data-tools-category="${category}" data-tools-search="${title} ${detail} ${category} ${keywords}" data-shell-action="${action}">
-      <span class="dm-shell-action-icon" aria-hidden="true">${icon}</span>
+      <span class="dm-shell-action-icon" aria-hidden="true">${icon === "🔐" ? '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2.5" y="7" width="11" height="7" rx="1.5"/><path d="M5 7V4.75a3 3 0 0 1 6 0V7"/></svg>' : icon}</span>
       <span class="dm-shell-action-copy"><strong>${title}</strong><small>${detail}</small></span>
       ${badge ? `<span class="dm-shell-action-badge">${badge}</span>` : ""}
       <span class="dm-shell-chevron" aria-hidden="true">›</span>

@@ -185,7 +185,20 @@ export function mountAdvancedTools() {
         const row = element("div", "adv-item");
         const open = element("button");
         open.type = "button";
-        open.textContent = (item.kind === "directory" ? "📁 " : "📄 ") + item.name;
+        const fileIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        fileIcon.setAttribute("viewBox", "0 0 16 16");
+        fileIcon.setAttribute("width", "16");
+        fileIcon.setAttribute("height", "16");
+        fileIcon.setAttribute("aria-hidden", "true");
+        fileIcon.setAttribute("fill", "none");
+        fileIcon.setAttribute("stroke", "currentColor");
+        fileIcon.setAttribute("stroke-width", "1.5");
+        const iconPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        iconPath.setAttribute("d", item.kind === "directory" ? "M1.75 4.5h4l1.5 1.5h7v6.25c0 .55-.45 1-1 1h-11.5c-.55 0-1-.45-1-1z M1.75 4.5v-.75c0-.55.45-1 1-1h3l1.5 1.5" : "M4 1.75h5l3 3v9.5H4z M9 1.75v3h3 M6 8h4 M6 10.5h4");
+        fileIcon.append(iconPath);
+        const fileName = document.createElement("span");
+        fileName.textContent = item.name;
+        open.append(fileIcon, fileName);
         open.addEventListener("click", () => {
           if (item.kind === "directory") void loadFileBrowser(item.path);
           else if (item.previewable) {

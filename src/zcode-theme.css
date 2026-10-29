@@ -20,6 +20,15 @@ html[data-devmoter-theme="dark"] {
   --text-dim: #52525b;
   --status-error: #ef4444;
   --status-warning: #f59e0b;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-9: 36px;
+  --radius-control: 6px;
+  --radius-panel: 8px;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 html[data-devmoter-theme="light"] {
@@ -41,6 +50,159 @@ html[data-devmoter-theme="light"] {
   --text-dim: #a1a1aa;
   --status-error: #dc2626;
   --status-warning: #b45309;
+}
+
+/* Shared finishing pass: quiet surfaces, consistent spacing and restrained type. */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-9: 36px;
+  --radius-control: 6px;
+  --radius-panel: 8px;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+:is(.dm-home-view, .dm-app-shell, .cx-app, .ocx-app, .api-app,
+    .dm-mission, .dm-settings, .devmoter-agent-panel, .dm-control-center,
+    .dm-workspace, .dm-task-first-nav) {
+  font-size: 14px;
+  letter-spacing: normal;
+}
+
+:is(.dm-home-view, .dm-app-shell, .cx-app, .ocx-app, .api-app,
+    .dm-mission, .dm-settings, .devmoter-agent-panel, .dm-control-center,
+    .dm-workspace) :is(h1, h2, h3) {
+  font-weight: 550;
+  letter-spacing: -0.02em;
+}
+
+:is(.dm-home-view, .dm-app-shell, .cx-app, .ocx-app, .api-app,
+    .dm-mission, .dm-settings, .devmoter-agent-panel, .dm-control-center,
+    .dm-workspace) :is(.section-label, .eyebrow, .group-title, .nav-section-title) {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+:is(.dm-home-view, .dm-app-shell, .cx-app, .ocx-app, .api-app,
+    .dm-mission, .dm-settings, .devmoter-agent-panel, .dm-control-center,
+    .dm-workspace) :is(.card, .panel, .modal-card, .settings-card,
+    .dm-home-app-card, .dm-home-recent-card, .dm-home-quick-action) {
+  border-radius: var(--radius-panel);
+  box-shadow: none;
+}
+
+:is(.dm-home-view, .dm-app-shell, .cx-app, .ocx-app, .api-app,
+    .dm-mission, .dm-settings, .devmoter-agent-panel, .dm-control-center,
+    .dm-workspace) :is(.badge, .pill, .count-badge, .nav-badge) {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+:is(.dm-home-view, .dm-app-shell, .cx-app, .ocx-app, .api-app,
+    .dm-mission, .dm-settings, .devmoter-agent-panel, .dm-control-center,
+    .dm-workspace) :is(button, input, textarea, select) { border-radius: var(--radius-control); }
+
+/* App shell and feature surfaces use hairline elevation instead of depth effects. */
+.dm-shell, .dm-shell-sidebar, .dm-shell-topbar, .dm-shell-menu,
+.dm-mission-panel, .dm-mission-head, .dm-settings-card,
+.dm-control-center-panel, .devmoter-agent-panel, .sc-panel,
+.dm-advanced-drawer, .dm-workflow-modal, .dm-workspace-panel {
+  box-shadow: none !important;
+  border-color: var(--border-hairline) !important;
+}
+
+:is(.dm-home-view, .dm-shell, .cx-app, .ocx-app, .api-app, .dm-mission,
+    .dm-settings, .dm-control-center, .dm-task-first-nav) {
+  background-image: none;
+}
+
+:is(.dm-home-app-card, .dm-home-recent-card, .dm-home-quick-action,
+    .dm-home-search-row, .dm-home-search-trigger, .dm-home-brand-mark,
+    .dm-shell-menu, .dm-shell-card, .dm-mission-panel, .dm-settings-card,
+    .dm-control-center-card, .cx-message.system, .cx-composer,
+    .ocx-tool-card, .ocx-reasoning, .ocx-user-prompt, .api-composer) {
+  background-image: none !important;
+  box-shadow: none !important;
+  border-color: var(--border-hairline);
+}
+
+:is(.dm-shell, .dm-shell-sidebar, .dm-mission-panel, .dm-settings-card,
+    .dm-control-center-panel, .devmoter-agent-panel, .sc-panel,
+    .dm-advanced-drawer, .dm-workflow-modal, .dm-workspace-panel) {
+  border-radius: var(--radius-panel) !important;
+}
+
+:is(.dm-home-view, .dm-shell, .dm-mission, .dm-settings, .dm-control-center)
+  :is(.active, [aria-current="page"], [aria-selected="true"], .selected) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+:is(.dm-home-view, .dm-shell, .dm-mission, .dm-settings, .dm-control-center)
+  :is(.count, .badge-count, .nav-count, .dm-home-health-label) {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.dm-shell-action-badge, .dm-shell-category-filter, .dm-home-count,
+.dm-home-app-badge, .dm-home-health-badge {
+  border: 1px solid var(--border-hairline) !important;
+  border-radius: 4px !important;
+  background: var(--surface-card) !important;
+  color: var(--text-muted) !important;
+  box-shadow: none !important;
+  font: 500 11px/1.4 var(--font-mono) !important;
+  letter-spacing: 0 !important;
+}
+
+.adv-item > button { display: inline-flex; align-items: center; gap: var(--space-2); }
+.adv-item > button svg { flex: 0 0 auto; color: var(--text-muted); }
+
+.dm-home-shell { padding: 24px max(16px, env(safe-area-inset-right)) calc(36px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.dm-home-header { min-height: 0; gap: 24px; padding-bottom: 24px; margin-bottom: 24px; }
+.dm-home-header h1 { font-weight: 550; letter-spacing: -0.025em; }
+.dm-home-eyebrow { font-weight: 500; letter-spacing: 0; text-transform: none; }
+.dm-home-recent-grid, .dm-home-quick-actions, .dm-home-app-grid { gap: 16px; }
+.dm-home-section { margin-block: 24px; }
+.dm-home-app-card, .dm-home-recent-card, .dm-home-quick-action { padding: 16px; }
+.dm-home-continue, .dm-home-search-panel { border-color: var(--border-hairline); border-radius: 8px; background: var(--surface-card); box-shadow: none; }
+.dm-home-app-card:hover:not(:disabled):not([aria-disabled="true"]) { transform: none; border-color: var(--border-subtle); background: var(--surface-hover); }
+.dm-home-recent-card:hover, .dm-home-quick-action:hover:not(:disabled) { border-color: var(--border-subtle); background: var(--surface-hover); }
+.dm-home-section { margin-bottom: 24px; }
+.dm-home-section-heading h2 { font-weight: 550; }
+.dm-home-section-note, .dm-home-section-context { font-size: 12px; letter-spacing: 0; }
+.dm-shell { --dm-shell-bg: var(--surface-panel); --dm-shell-border: var(--border-hairline); --dm-shell-text: var(--text-primary); --dm-shell-muted: var(--text-secondary); }
+.dm-shell-sidebar { background: var(--surface-panel); }
+.dm-shell-sidebar-head, .dm-shell-sidebar-foot, .dm-shell-tools-controls { border-color: var(--border-hairline); background: var(--surface-panel); }
+.dm-shell-primary, .dm-shell-tool-results { background: var(--surface-panel); }
+.dm-shell-action[aria-current="page"], .dm-shell-action.active { border-color: var(--border-subtle); background: var(--surface-hover); color: var(--text-primary); box-shadow: inset 2px 0 0 var(--accent); }
+.dm-home-health[data-state="online"] { color: var(--text-muted); }
+.dm-home-health[data-state="online"] .dm-home-health-dot { box-shadow: none; }
+
+.dm-mission-sheet { border-radius: 8px 8px 0 0; background: var(--surface-panel); box-shadow: none; }
+.dm-mission-head small, .dm-mission-panel header small { font-size: 11px; letter-spacing: 0; text-transform: none; }
+.dm-mission-head strong { font-size: 18px; font-weight: 550; }
+.dm-mission-kpis article, .dm-mission-panel { border-radius: 8px; background: var(--surface-card); }
+.dm-mission-status, .dm-mission-capability { border-radius: 4px; font-family: var(--font-mono); font-size: 10px; text-transform: none; }
+
+@media (max-width: 600px) {
+  .dm-home-shell { padding-top: max(16px, env(safe-area-inset-top)); }
+  .dm-home-header { flex-direction: column; align-items: stretch; }
+  .dm-home-header-actions { justify-content: flex-start; }
+}
+
+@media (max-width: 600px) {
+  body { padding-left: max(var(--space-4), env(safe-area-inset-left)); padding-right: max(var(--space-4), env(safe-area-inset-right)); }
+  :is(.dm-home-view, .dm-shell, .dm-mission, .dm-settings) :is(.card, .panel, .settings-card) { padding: var(--space-4); }
 }
 
 html, body { background: var(--canvas-base); color: var(--text-primary); }
