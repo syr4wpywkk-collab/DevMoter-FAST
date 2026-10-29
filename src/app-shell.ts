@@ -3,6 +3,14 @@ import type { MainSurface } from "./surface-navigation.mjs";
 import { shouldUseUnifiedWorkspace } from "./unified-ui-mode.mjs";
 import { getAppDefinition, getAppsByIds, isAppId, type AppId } from "./app-registry";
 import { mountToolsAi } from "./tools-ai";
+// Static line icons, inlined so this module stays import-free for its tests.
+const ICON_SVG = (body: string) => `<svg class="dm-line-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
+const LINE_ICONS: Record<string, string> = {
+  "menu": ICON_SVG('<path d="M4 7h16M4 12h16M4 17h16"/>'),
+  "home": ICON_SVG('<path d="M4 11l8-7 8 7M6 9.5V20h12V9.5"/>'),
+};
+const lineIcon = (id: string): string => LINE_ICONS[id] ?? "";
+
 
 type Backend = "opencode" | "codex" | "api" | "integrations";
 type SettingsPage = "root" | "appearance" | "account" | "devices" | "vault" | "notifications" | "diagnostics" | "guide";
@@ -123,7 +131,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   root.className = "dm-shell";
   root.innerHTML = `
     <button class="dm-shell-menu-trigger" type="button" aria-label="Open DevMoter sidebar" aria-expanded="false">
-      <span aria-hidden="true">☰</span><small>Tools</small>
+      <span aria-hidden="true">${lineIcon("menu")}</span><small>Tools</small>
     </button>
 
     <div class="dm-shell-scrim hidden" data-shell-scrim></div>
@@ -160,7 +168,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
         <div class="dm-shell-tool-results" id="dmShellToolResults" aria-label="Available tools">
         <section class="dm-shell-primary">
           <button class="dm-shell-home-link" type="button" data-home-nav>
-            <span aria-hidden="true">⌂</span><strong>Home</strong><svg class="dm-shell-home-arrow" aria-hidden="true" viewBox="0 0 20 20" focusable="false"><path d="M4 10h11M10 5l5 5-5 5" /></svg>
+            <span aria-hidden="true">${lineIcon("home")}</span><strong>Home</strong><svg class="dm-shell-home-arrow" aria-hidden="true" viewBox="0 0 20 20" focusable="false"><path d="M4 10h11M10 5l5 5-5 5" /></svg>
           </button>
           <h2>Chat workspaces</h2>
           <div class="dm-shell-ai-grid" role="group" aria-label="Chat workspaces">

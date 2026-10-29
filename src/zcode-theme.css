@@ -388,3 +388,15 @@ html[data-devmoter-theme="light"] body.dm-task-first-enabled {
 .dm-line-icon { width: 16px; height: 16px; display: block; }
 .dm-home-card:hover .has-line-icon,
 .dm-home-quick-action:hover .has-line-icon { color: var(--text-primary); }
+
+/* Unslop pass 3: line icons in the tab bar, Codex sidebar and shell. */
+.dm-task-first-tabs span .dm-line-icon { width: 20px; height: 20px; margin-inline: auto; }
+.dm-task-first-tabs span { display: grid; place-items: center; }
+.cx-nav-item span:first-child,
+.cx-side-action span:first-child,
+.cx-search > span:first-child,
+.cx-task-heading span[aria-hidden],
+.pocket-language-setting > span[aria-hidden],
+.dm-shell-menu-trigger span,
+.dm-shell-home-link span[aria-hidden] { display: inline-grid; place-items: center; color: var(--text-muted); }
+.cx-nav-item:hover span:first-child { color: var(--text-primary); }

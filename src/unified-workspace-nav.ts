@@ -3,6 +3,16 @@ import "./unified-workspace-nav.css";
 // Stage 2: present native provider transcripts/composers consistently, without
 // unmounting/reparenting their live input, stream, history or approval controls.
 import "./unified-workspace-chat.css";
+// Static line icons, inlined so this module stays import-free for its tests.
+const ICON_SVG = (body: string) => `<svg class="dm-line-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
+const LINE_ICONS: Record<string, string> = {
+  "tasks": ICON_SVG('<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>'),
+  "chat": ICON_SVG('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>'),
+  "git": ICON_SVG('<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 8v8M18 10a6 6 0 0 1-6 6H8"/>'),
+  "tools": ICON_SVG('<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-2.5z"/>'),
+};
+const lineIcon = (id: string): string => LINE_ICONS[id] ?? "";
+
 
 type ChatBackend = "codex" | "opencode" | "api";
 type WorkspaceTab = "tasks" | "chat" | "review" | "tools";
@@ -34,7 +44,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     <header class="dm-task-first-header">
       <button type="button" data-workspace-home class="dm-task-first-brand" aria-label="DevMoter FAST Home">
         <span class="dm-task-first-mark" aria-hidden="true">▦</span>
-        <span><strong>DevMoter <em>FAST</em></strong><small>UNIFIED WORKSPACE</small></span>
+        <span><strong>DevMoter <em>FAST</em></strong><small>Unified workspace</small></span>
       </button>
       <p class="dm-task-first-project" data-workspace-project aria-label="Current project"></p>
       <label class="dm-task-first-backend">
@@ -48,10 +58,10 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
       </label>
     </header>
     <nav class="dm-task-first-tabs" aria-label="DevMoter workspace">
-      <button type="button" data-workspace-action="tasks" aria-label="Tasks and sessions"><span aria-hidden="true">▤</span><strong>Tasks</strong></button>
-      <button type="button" data-workspace-action="chat" aria-label="Current chat and conversation history"><span aria-hidden="true">◇</span><strong>Chat</strong></button>
-      <button type="button" data-workspace-action="review" aria-label="Review changes"><span aria-hidden="true">⑂</span><strong>Review</strong></button>
-      <button type="button" data-workspace-action="tools" aria-label="Open tools"><span aria-hidden="true">⌘</span><strong>Tools</strong></button>
+      <button type="button" data-workspace-action="tasks" aria-label="Tasks and sessions"><span aria-hidden="true">${lineIcon("tasks")}</span><strong>Tasks</strong></button>
+      <button type="button" data-workspace-action="chat" aria-label="Current chat and conversation history"><span aria-hidden="true">${lineIcon("chat")}</span><strong>Chat</strong></button>
+      <button type="button" data-workspace-action="review" aria-label="Review changes"><span aria-hidden="true">${lineIcon("git")}</span><strong>Review</strong></button>
+      <button type="button" data-workspace-action="tools" aria-label="Open tools"><span aria-hidden="true">${lineIcon("tools")}</span><strong>Tools</strong></button>
     </nav>
     <p class="dm-task-first-caption">タスク・会話・レビューを一か所から</p>
     <p class="dm-task-first-feedback" role="status" aria-live="polite" data-workspace-feedback></p>

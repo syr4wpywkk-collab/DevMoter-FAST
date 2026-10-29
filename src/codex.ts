@@ -19,6 +19,7 @@ import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import "./codex-chat.css";
 import {
+
   continueAgentRun,
   guardMessage,
   loopMessage,
@@ -31,6 +32,22 @@ import {
   type LoopResult,
   type PermissionScope
 } from "./safety-client";
+// Static line icons, inlined so this module stays import-light for its tests.
+const ICON_SVG = (body: string) => `<svg class="dm-line-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
+const LINE_ICONS: Record<string, string> = {
+  "edit": ICON_SVG('<path d="M4 20h4L19 9l-4-4L4 16z"/>'),
+  "search": ICON_SVG('<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>'),
+  "plugins": ICON_SVG('<path d="M9 4h6v3a2 2 0 1 0 0 4h3v6h-3a2 2 0 1 0-4 0v3H5v-6h3a2 2 0 1 0 0-4H5V4z" transform="translate(0.5 0)"/>'),
+  "library": ICON_SVG('<path d="M5 4v16M10 4v16M15 5l4 15"/>'),
+  "projects": ICON_SVG('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
+  "integrations": ICON_SVG('<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0zM12 16v5"/>'),
+  "developer-workflows": ICON_SVG('<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/>'),
+  "settings": ICON_SVG('<circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>'),
+  "tools": ICON_SVG('<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-2.5z"/>'),
+  "tasks": ICON_SVG('<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>'),
+  "globe": ICON_SVG('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>'),
+};
+const lineIcon = (id: string): string => LINE_ICONS[id] ?? "";
 
 const FOLLOW_BOTTOM_THRESHOLD = 48;
 const REMOTE_REQUEST_TIMEOUT_MS = 120_000;
@@ -152,26 +169,26 @@ export function mountCodexRemote(
 
         <div class="cx-sidebar-scroll">
         <button id="cxNewChatSide" class="cx-side-action primary" type="button">
-          <span>✎</span><span>新しいチャット</span>
+          <span>${lineIcon("edit")}</span><span>新しいチャット</span>
         </button>
 
         <label class="cx-search">
-          <span>⌕</span>
+          <span>${lineIcon("search")}</span>
           <input id="cxThreadSearch" type="search" placeholder="チャットを検索" />
         </label>
 
         <nav class="cx-side-nav">
-          <button id="cxPluginsQuick" class="cx-nav-item" type="button"><span>◇</span><span>Plugins</span></button>
-          <button id="cxLibraryNav" class="cx-nav-item" type="button"><span>▦</span><span>ライブラリ · 準備中</span></button>
-          <button id="cxProjectsNav" class="cx-nav-item" type="button"><span>▱</span><span>Projects</span></button>
-          <button id="cxIntegrationsNav" class="cx-nav-item" type="button"><span>⌁</span><span>Integrations</span></button>
-          <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button"><span>◇</span><span>Developer workflows</span></button>
-          <button id="cxSettingsNav" class="cx-nav-item" type="button"><span>⚙</span><span>Settings</span></button>
-          <button id="cxToolsNav" class="cx-nav-item" type="button"><span>☷</span><span>DevMoter tools</span></button>
+          <button id="cxPluginsQuick" class="cx-nav-item" type="button"><span>${lineIcon("plugins")}</span><span>Plugins</span></button>
+          <button id="cxLibraryNav" class="cx-nav-item" type="button"><span>${lineIcon("library")}</span><span>ライブラリ · 準備中</span></button>
+          <button id="cxProjectsNav" class="cx-nav-item" type="button"><span>${lineIcon("projects")}</span><span>Projects</span></button>
+          <button id="cxIntegrationsNav" class="cx-nav-item" type="button"><span>${lineIcon("integrations")}</span><span>Integrations</span></button>
+          <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button"><span>${lineIcon("developer-workflows")}</span><span>Developer workflows</span></button>
+          <button id="cxSettingsNav" class="cx-nav-item" type="button"><span>${lineIcon("settings")}</span><span>Settings</span></button>
+          <button id="cxToolsNav" class="cx-nav-item" type="button"><span>${lineIcon("tools")}</span><span>DevMoter tools</span></button>
         </nav>
 
         <div class="cx-side-section">
-          <div class="cx-side-label cx-task-heading"><span>Tasks</span><span aria-hidden="true">☷</span></div>
+          <div class="cx-side-label cx-task-heading"><span>Tasks</span><span aria-hidden="true">${lineIcon("tasks")}</span></div>
           <div id="cxSidebarThreads" class="cx-sidebar-threads">
             <div class="cx-side-empty">読み込み中…</div>
           </div>
@@ -181,7 +198,7 @@ export function mountCodexRemote(
 
         <div class="cx-sidebar-foot">
           <label class="pocket-language-setting" title="Language">
-            <span aria-hidden="true">◎</span>
+            <span aria-hidden="true">${lineIcon("globe")}</span>
             <select data-language-select aria-label="Language">
               <option value="en">English</option>
               <option value="ja">日本語</option>
