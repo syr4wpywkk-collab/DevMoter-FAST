@@ -1,5 +1,6 @@
 import "./home.css";
 import { APP_REGISTRY, type AppId, type AppDefinition } from "./app-registry";
+import { lineIcon } from "./line-icons";
 import { mountHomeBackendShortcuts, type ChatBackend } from "./react/home-backend-shortcuts";
 
 type HomeOptions = {
@@ -84,7 +85,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
         '<div class="dm-home-identity">',
           '<div class="dm-home-brand-mark" aria-hidden="true">D</div>',
           '<div class="dm-home-brand-copy">',
-            '<p class="dm-home-eyebrow"><span>DEV MOTER FAST</span><span class="dm-home-eyebrow-slash">/</span><span>UNIFIED WORKSPACE</span></p>',
+            '<p class="dm-home-eyebrow"><span>DevMoter FAST</span><span class="dm-home-eyebrow-slash">/</span><span>Unified workspace</span></p>',
             '<h1 id="devmoterHomeTitle" tabindex="-1">作業スペース</h1>',
             '<p class="dm-home-subtitle">開発環境の入口。ツールやプロジェクトにすぐ移動できます。</p>',
           '</div>',
@@ -105,13 +106,13 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       '</div>',
       '<section class="dm-home-section dm-home-quick-section" aria-labelledby="dm-home-quick-title">',
         '<div class="dm-home-section-heading">',
-          '<div><p class="dm-home-eyebrow">ONE TAP</p><h2 id="dm-home-quick-title">クイックアクション</h2></div>',
+          '<div><p class="dm-home-eyebrow">Quick actions</p><h2 id="dm-home-quick-title">クイックアクション</h2></div>',
         '</div>',
         '<div class="dm-home-quick-actions" data-home-quick-actions></div>',
       '</section>',
       '<section class="dm-home-section" aria-labelledby="dm-home-apps-title">',
         '<div class="dm-home-section-heading">',
-          '<div><p class="dm-home-eyebrow">WORKSPACE</p><h2 id="dm-home-apps-title">ツール</h2></div>',
+          '<div><p class="dm-home-eyebrow">Workspace</p><h2 id="dm-home-apps-title">ツール</h2></div>',
           '<span class="dm-home-section-note" data-home-app-count></span>',
         '</div>',
         '<div class="dm-home-app-grid" data-home-app-grid></div>',
@@ -119,7 +120,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       '</section>',
       '<section class="dm-home-section dm-home-activity" aria-labelledby="dm-home-activity-title">',
         '<div class="dm-home-section-heading">',
-          '<div><p class="dm-home-eyebrow">RECENT ACTIVITY</p><h2 id="dm-home-activity-title">最近使ったアプリ</h2></div>',
+          '<div><p class="dm-home-eyebrow">Recent activity</p><h2 id="dm-home-activity-title">最近使ったアプリ</h2></div>',
           '<button type="button" class="dm-home-history-link" data-home-sessions>セッション履歴を見る <span aria-hidden="true">↗</span></button>',
         '</div>',
         '<p class="dm-home-section-context">このブラウザで実際に開いたアプリを表示します。サンプルの活動履歴は使用しません。</p>',
@@ -175,7 +176,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       top.className = "dm-home-recent-top";
       const icon = document.createElement("span");
       icon.className = "dm-home-recent-icon";
-      icon.textContent = app.icon;
+      setAppIcon(icon, app);
       icon.setAttribute("aria-hidden", "true");
       const opened = document.createElement("time");
       opened.dateTime = new Date(entry.openedAt).toISOString();
@@ -205,7 +206,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     button.setAttribute("aria-label", app.title + " を開く");
     const icon = document.createElement("span");
     icon.className = "dm-home-quick-action-icon";
-    icon.textContent = app.icon;
+    setAppIcon(icon, app);
     icon.setAttribute("aria-hidden", "true");
     const title = document.createElement("strong");
     title.textContent = app.title;
@@ -233,7 +234,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     icon.className = "dm-home-card-icon";
     icon.dataset.appIcon = app.id;
     icon.setAttribute("aria-hidden", "true");
-    icon.textContent = app.icon;
+    setAppIcon(icon, app);
     const copy = document.createElement("span");
     copy.className = "dm-home-card-copy";
     const heading = document.createElement("strong");
@@ -365,4 +366,14 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
   renderRecents();
   filterApps();
   homeDisposers.set(target, () => { for (const dispose of disposers) dispose(); });
+}
+
+function setAppIcon(target: HTMLElement, app: AppDefinition): void {
+  const markup = lineIcon(app.id);
+  if (markup) {
+    target.innerHTML = markup;
+    target.classList.add("has-line-icon");
+  } else {
+    target.textContent = app.icon;
+  }
 }

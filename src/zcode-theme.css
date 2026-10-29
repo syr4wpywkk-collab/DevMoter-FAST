@@ -351,3 +351,40 @@ html[data-devmoter-theme="light"] body.dm-task-first-enabled {
 /* Keep the existing compact console geometry and safe-area padding. */
 .cx-app .cx-topbar, .ocx-app .ocx-topbar { border-bottom: 1px solid var(--border-hairline); }
 .cx-app .cx-topbar-pill, .ocx-app .ocx-context-button { border-radius: var(--radius-control); }
+
+/* Unslop pass 2: quiet sentence-case section labels instead of tracked
+   all-caps eyebrows. Status badges keep their own treatment. */
+.eyebrow,
+.dm-home-eyebrow,
+.cx-detail-heading span:first-child,
+.cx-approval-eyebrow,
+.dm-shell-sidebar h2,
+.dm-shell-search-label,
+.cx-settings-section h3,
+.pocket-git-section-title,
+.ocx-tool-label,
+.ocx-picker-heading,
+.dm-mission-head small,
+.dm-mission-panel header small,
+.devmoter-orchestration-child span {
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.dm-home-eyebrow-slash { color: var(--text-dim); }
+
+/* Line icons in app cards and quick actions. */
+.has-line-icon {
+  display: inline-grid;
+  place-items: center;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-hairline);
+}
+.dm-line-icon { width: 16px; height: 16px; display: block; }
+.dm-home-card:hover .has-line-icon,
+.dm-home-quick-action:hover .has-line-icon { color: var(--text-primary); }

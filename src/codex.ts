@@ -218,7 +218,7 @@ export function mountCodexRemote(
 
       <aside id="cxDetailsPanel" class="cx-details-panel" aria-label="作業スペース情報" aria-hidden="true" tabindex="-1" inert>
         <section class="cx-detail-section">
-          <div class="cx-detail-heading"><span>SESSION</span><span id="cxDetailsState" class="cx-detail-state">●</span></div>
+          <div class="cx-detail-heading"><span>Session</span><span id="cxDetailsState" class="cx-detail-state">●</span></div>
           <strong id="cxDetailsTitle">Codex</strong>
           <small id="cxDetailsModel">DevMoter agent</small>
           <p id="cxDetailsActivity">接続状態を確認中</p>
@@ -232,14 +232,14 @@ export function mountCodexRemote(
           <div id="cxProgressItems"></div>
         </section>
         <section class="cx-detail-section cx-workspace-section">
-          <div class="cx-detail-heading"><span>WORKSPACE</span></div>
+          <div class="cx-detail-heading"><span>Workspace</span></div>
           <div id="cxWorkspaceControlsMount"></div>
         </section>
       </aside>
 
       <div id="cxApproval" class="cx-approval hidden">
         <div class="cx-approval-copy">
-          <span class="cx-approval-eyebrow">CODEX APPROVAL</span>
+          <span class="cx-approval-eyebrow">Codex approval</span>
           <strong id="cxApprovalTitle">許可が必要です</strong>
           <div id="cxApprovalMeta" class="cx-approval-meta"></div>
           <pre id="cxApprovalDetail"></pre>
