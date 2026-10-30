@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import readline from "node:readline";
+import { assertCliReady, cliDefinition } from "./cli-launch.mjs";
 
 export class AcpAdapter extends EventEmitter {
   constructor({ command, args = [], cwd = process.cwd(), spawnImpl = spawn } = {}) {
@@ -42,7 +43,13 @@ export class AcpAdapter extends EventEmitter {
   }
 
   async #initialize(timeoutMs) {
-    const child = this.spawnImpl(this.command, this.args, {
+    let command = this.command;
+    if (cliDefinition(command)) {
+      const ready = await assertCliReady(command);
+      command = ready.resolvedPath;
+      this.command = command;
+    }
+    const child = this.spawnImpl(command, this.args, {
       cwd: this.cwd,
       env: process.env,
       stdio: ["pipe", "pipe", "pipe"]

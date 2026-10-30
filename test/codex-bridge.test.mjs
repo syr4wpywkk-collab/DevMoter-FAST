@@ -12,18 +12,30 @@ function fakeChild() {
   return child;
 }
 
-test("Codex bridge reports CLI spawn failures", async () => {
-  const bridge = new CodexBridge({ spawnImpl: () => {
-    const child = fakeChild();
-    queueMicrotask(() => child.emit("error", new Error("codex missing")));
-    return child;
-  }});
-  await assert.rejects(bridge.start(), /codex missing/);
-  assert.equal((await bridge.health()).online, false);
+const readyCli = async () => ({ resolvedPath: "codex" });
+
+test("Codex bridge reports a missing CLI before spawn", async () => {
+  let spawned = false;
+  const bridge = new CodexBridge({
+    prepareCli: async () => {
+      const error = new Error("codex が見つからないよ。入れ方: npm install -g @openai/codex");
+      error.code = "not_installed";
+      throw error;
+    },
+    spawnImpl: () => {
+      spawned = true;
+      return fakeChild();
+    }
+  });
+  await assert.rejects(bridge.start(), /見つからないよ/);
+  assert.equal(spawned, false);
+  const health = await bridge.health();
+  assert.equal(health.online, false);
+  assert.equal(health.code, "not_installed");
 });
 
 test("Codex bridge rejects an unanswered RPC on timeout", async () => {
-  const bridge = new CodexBridge({ spawnImpl: fakeChild });
+  const bridge = new CodexBridge({ prepareCli: readyCli, spawnImpl: fakeChild });
   const child = fakeChild();
   bridge.child = child;
   await assert.rejects(bridge.request("thread/list", {}, { skipStart: true, timeoutMs: 5 }), /RPC timeout/);
@@ -31,7 +43,7 @@ test("Codex bridge rejects an unanswered RPC on timeout", async () => {
 
 test("Codex bridge rejects pending requests when the CLI exits non-zero", async () => {
   const child = fakeChild();
-  const bridge = new CodexBridge({ spawnImpl: () => {
+  const bridge = new CodexBridge({ prepareCli: readyCli, spawnImpl: () => {
     queueMicrotask(() => child.emit("exit", 7, null));
     return child;
   }});

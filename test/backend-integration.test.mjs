@@ -74,6 +74,10 @@ test("DevMoter integrates with mocked OpenCode and Codex happy/failure paths", a
   const fakeCodex = join(home, "fake-codex.mjs");
   await writeFile(fakeCodex, `#!/usr/bin/env node
 import readline from "node:readline";
+if (process.argv.includes("--version")) {
+  console.log("0.0.0-test");
+  process.exit(0);
+}
 const rl = readline.createInterface({ input: process.stdin });
 rl.on("line", line => {
   const message = JSON.parse(line);
