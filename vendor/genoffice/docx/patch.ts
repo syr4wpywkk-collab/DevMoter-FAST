@@ -722,7 +722,7 @@ export async function saveDocx(
     const rootRelsEntry = zip.file(rootRelsPath)
     if (rootRelsEntry) {
       rootRelsXml = await rootRelsEntry.async('string')
-      if (!rootRelsXml.includes(CUSTOM_PROPERTIES_REL_TYPE)) {
+      if (!relationshipTypes(rootRelsXml).has(CUSTOM_PROPERTIES_REL_TYPE)) {
         const rId = `rId${maxRelId(rootRelsXml) + 1}`
         rootRelsXml = rootRelsXml.replace(
           '</Relationships>',
@@ -2609,4 +2609,17 @@ function retargetImageBlip(xml: string, rId: string): string {
       .replace(/<a:ext\b[^>]*>\s*<\w+:svgBlip\b[\s\S]*?<\/a:ext>/, '')
       .replace(/<a:extLst>\s*<\/a:extLst>/, '')
   )
+}
+
+/**
+ * Relationship Type values declared in a .rels part (exact values, not a
+ * substring search). DevMoter modification (CodeQL).
+ */
+function relationshipTypes(relsXml: string): Set<string> {
+  const types = new Set<string>()
+  for (const rel of relsXml.matchAll(/<Relationship\b[^>]*>/g)) {
+    const type = /\bType\s*=\s*(?:"([^"]*)"|'([^']*)')/.exec(rel[0])
+    if (type) types.add(type[1] ?? type[2] ?? '')
+  }
+  return types
 }

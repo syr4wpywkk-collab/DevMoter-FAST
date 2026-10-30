@@ -182,24 +182,73 @@ function requestPinned(url, address, family, { timeoutMs, maxBytes }) {
   });
 }
 
+const RAW_TEXT_ELEMENTS = new Set(["script", "style", "noscript"]);
+const HTML_ENTITIES = { nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'" };
+
+// End of the tag that opens at `start` ("<"), skipping ">" inside quoted
+// attribute values. Returns -1 when the tag never closes.
+function tagEnd(html, start) {
+  let quote = "";
+  for (let index = start + 1; index < html.length; index += 1) {
+    const ch = html[index];
+    if (quote) {
+      if (ch === quote) quote = "";
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === ">") {
+      return index;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Visible text of an HTML document, by one linear scan: markup, comments and
+ * the bodies of script/style/noscript are dropped without any regex replace,
+ * then entities are decoded in a single pass (so "&amp;lt;" stays "&lt;").
+ */
+export function htmlToText(html) {
+  const source = String(html || "");
+  const lower = source.toLowerCase();
+  let text = "";
+  let index = 0;
+  while (index < source.length) {
+    const open = source.indexOf("<", index);
+    if (open === -1) {
+      text += source.slice(index);
+      break;
+    }
+    text += source.slice(index, open);
+    if (source.startsWith("<!--", open)) {
+      const close = source.indexOf("-->", open + 4);
+      index = close === -1 ? source.length : close + 3;
+      text += " ";
+      continue;
+    }
+    const end = tagEnd(source, open);
+    if (end === -1) break;
+    const name = /^<\s*([a-z][a-z0-9-]*)/i.exec(source.slice(open, end + 1))?.[1]?.toLowerCase() || "";
+    index = end + 1;
+    if (RAW_TEXT_ELEMENTS.has(name) && source[end - 1] !== "/") {
+      const closing = lower.indexOf("</" + name, index);
+      if (closing === -1) {
+        index = source.length;
+      } else {
+        const closingEnd = tagEnd(source, closing);
+        index = closingEnd === -1 ? source.length : closingEnd + 1;
+      }
+    }
+    text += " ";
+  }
+  return text
+    .replace(/&(nbsp|amp|lt|gt|quot|#39);/gi, (_match, entity) => HTML_ENTITIES[entity.toLowerCase()])
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function extractReadableText(buffer, contentType) {
   const raw = buffer.toString("utf8");
-  if (/html|xhtml/i.test(contentType)) {
-    return raw
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
-      .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, " ")
-      .replace(/<!--([\s\S]*?)-->/g, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/gi, " ")
-      .replace(/&amp;/gi, "&")
-      .replace(/&lt;/gi, "<")
-      .replace(/&gt;/gi, ">")
-      .replace(/&quot;/gi, '"')
-      .replace(/&#39;/gi, "'")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
+  if (/html|xhtml/i.test(contentType)) return htmlToText(raw);
   return raw.replace(/\0/g, "").trim();
 }
 
@@ -247,7 +296,7 @@ export async function fetchUrlAttachment(value, options = {}, dependencies = {})
     const titleMatch = response.body.toString("utf8").match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
     const attachment = normalizeAttachment({
       type: "url",
-      name: titleMatch ? titleMatch[1].replace(/<[^>]+>/g, "").trim().slice(0, 240) : current.hostname,
+      name: titleMatch ? htmlToText(titleMatch[1]).slice(0, 240) || current.hostname : current.hostname,
       mime: contentType.split(";", 1)[0],
       size: response.body.length,
       source: current.href,

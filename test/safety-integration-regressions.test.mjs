@@ -25,6 +25,11 @@ test("closed terminal sessions replay buffered output through an authorized webs
 
 test("terminal UI does not execute remote CDN JavaScript", async () => {
   const source = await readFile(new URL("../src/control-center.ts", import.meta.url), "utf8");
-  assert.doesNotMatch(source, /cdn\.jsdelivr\.net/);
+  // No absolute URL in the terminal UI may point at a remote script host.
+  const hosts = (source.match(/\bhttps?:\/\/[^\s"'`)<>]+/g) || []).map(url => {
+    try { return new URL(url).hostname; } catch { return ""; }
+  });
+  assert.deepEqual(hosts.filter(host => host === "cdn.jsdelivr.net" || host.endsWith(".jsdelivr.net") || host === "unpkg.com"), []);
+  assert.doesNotMatch(source, /import\(\s*["'`]https?:/);
   assert.doesNotMatch(source, /@vite-ignore/);
 });
