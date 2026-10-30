@@ -66,7 +66,7 @@ function parseIpv4(address) {
 }
 
 export function isPrivateAddress(address) {
-  const normalized = String(address || "").toLowerCase().split("%", 1)[0];
+  const normalized = String(address || "").toLowerCase().replace(/^\[|\]$/g, "").split("%", 1)[0];
   const family = isIP(normalized);
   if (family === 4) {
     const p = parseIpv4(normalized);
@@ -84,15 +84,19 @@ export function isPrivateAddress(address) {
     );
   }
   if (family === 6) {
+    // Compare a canonical representation: DNS and IP literals can spell the
+    // same IPv6 address in compressed, expanded or IPv4-mapped form.
+    let canonical;
+    try { canonical = new URL(`http://[${normalized}]/`).hostname.slice(1, -1); }
+    catch { return true; }
     return (
-      normalized === "::" || normalized === "::1" ||
-      normalized.startsWith("fc") || normalized.startsWith("fd") ||
-      /^fe[89ab]/.test(normalized) ||
-      normalized.startsWith("ff") ||
-      normalized.startsWith("::ffff:127.") ||
-      normalized.startsWith("::ffff:10.") ||
-      normalized.startsWith("::ffff:192.168.") ||
-      /^::ffff:172\.(1[6-9]|2\d|3[01])\./.test(normalized)
+      // Exclude IPv4-compatible and IPv4-mapped forms entirely: a mapped
+      // address can otherwise bypass the IPv4 private-address checks.
+      canonical.startsWith("::") ||
+      canonical.startsWith("fc") || canonical.startsWith("fd") ||
+      /^fe[89abcdef]/.test(canonical) ||
+      canonical.startsWith("ff") ||
+      canonical.startsWith("64:ff9b:")
     );
   }
   return true;
@@ -115,12 +119,13 @@ export function previewUrlInput(value) {
   };
 }
 
-async function resolvePublicHost(hostname) {
-  if (isIP(hostname)) {
-    if (isPrivateAddress(hostname)) throw new Error("Private or special-use network targets are blocked");
-    return { address: hostname, family: isIP(hostname) };
+async function resolvePublicHost(hostname, lookupHost = lookup) {
+  const host = hostname.replace(/^\[|\]$/g, "");
+  if (isIP(host)) {
+    if (isPrivateAddress(host)) throw new Error("Private or special-use network targets are blocked");
+    return { address: host, family: isIP(host) };
   }
-  const records = await lookup(hostname, { all: true, verbatim: true });
+  const records = await lookupHost(host, { all: true, verbatim: true });
   if (!records.length) throw new Error("URL host did not resolve");
   if (records.some(record => isPrivateAddress(record.address))) {
     throw new Error("URL host resolves to a private or special-use network");
@@ -206,17 +211,20 @@ function contentTypeAllowed(value) {
   ].includes(type);
 }
 
-export async function fetchUrlAttachment(value, options = {}) {
+export async function fetchUrlAttachment(value, options = {}, dependencies = {}) {
   const maxBytes = Math.min(8 * 1024 * 1024, Math.max(16 * 1024, Number(options.maxBytes) || DEFAULT_URL_LIMIT));
-  const maxRedirects = Math.min(5, Math.max(0, Number(options.maxRedirects) || DEFAULT_REDIRECT_LIMIT));
+  const requestedRedirects = options.maxRedirects == null ? DEFAULT_REDIRECT_LIMIT : Number(options.maxRedirects);
+  const maxRedirects = Math.min(5, Math.max(0, Number.isFinite(requestedRedirects) ? requestedRedirects : DEFAULT_REDIRECT_LIMIT));
   const timeoutMs = Math.min(30000, Math.max(1000, Number(options.timeoutMs) || DEFAULT_TIMEOUT_MS));
+  const lookupHost = dependencies.lookupHost || lookup;
+  const request = dependencies.request || requestPinned;
   let preview = previewUrlInput(value);
   let current = new URL(preview.normalizedUrl);
   const redirects = [];
 
   for (let attempt = 0; attempt <= maxRedirects; attempt += 1) {
-    const resolved = await resolvePublicHost(current.hostname);
-    const response = await requestPinned(current, resolved.address, resolved.family, { timeoutMs, maxBytes });
+    const resolved = await resolvePublicHost(current.hostname, lookupHost);
+    const response = await request(current, resolved.address, resolved.family, { timeoutMs, maxBytes });
     if (response.status >= 300 && response.status < 400) {
       const location = Array.isArray(response.headers.location) ? response.headers.location[0] : response.headers.location;
       if (!location) throw new Error("URL attachment redirect is missing Location");

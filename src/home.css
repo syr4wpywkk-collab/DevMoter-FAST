@@ -210,6 +210,36 @@
   font: 12px/1.4 ui-monospace, monospace;
   white-space: nowrap;
 }
+.dm-home-quick-section { padding-bottom: 20px; }
+.dm-home-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+.dm-home-quick-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  min-width: 0;
+  padding: 10px 8px;
+  border: 1px solid var(--hm-border);
+  border-radius: 12px;
+  color: var(--hm-text);
+  background: var(--hm-surface);
+  font: inherit;
+  cursor: pointer;
+}
+.dm-home-quick-action strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.dm-home-quick-action-icon { color: var(--hm-accent); font-size: 19px; }
+.dm-home-quick-action:focus-visible { outline: 2px solid var(--hm-accent); outline-offset: 3px; }
+.dm-home-quick-action:hover:not(:disabled) { background: var(--hm-surface-hover); border-color: var(--hm-accent); }
+.dm-home-quick-action:disabled { cursor: not-allowed; opacity: .6; }
+@media (max-width: 750px) {
+  .dm-home-quick-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 .dm-home-app-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

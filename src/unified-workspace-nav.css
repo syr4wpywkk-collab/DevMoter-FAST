@@ -111,11 +111,18 @@
   color:var(--dw-muted);
   cursor:pointer;
 }
-.dm-task-first-tabs button:hover,
 .dm-task-first-tabs button[aria-current="page"] {
   border-color:#265c6e;
   background:#123040;
   color:var(--dw-accent);
+}
+/* iOS Safari retains :hover after a tap. Never give an inactive touch tab
+ * the same selected background as the real current tab. */
+@media (hover: hover) and (pointer: fine) {
+  .dm-task-first-tabs button:not([aria-current="page"]):hover {
+    color: var(--dw-text);
+    text-decoration: underline;
+  }
 }
 .dm-task-first-tabs button > span { font-size:20px; line-height:1; }
 .dm-task-first-tabs button > strong { font-size: 13px; }
@@ -137,6 +144,15 @@ body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app, .ix-app) {
 }
 body.dm-task-first-enabled .dm-shell-menu-trigger { display: none; }
 body.devmoter-shell-menu-open .dm-task-first-nav { pointer-events:none; }
+body.dm-task-first-enabled.devmoter-shell-menu-open .dm-task-first-nav { pointer-events:auto; }
+@media (min-width:681px) {
+  body.dm-task-first-enabled .dm-shell-sidebar { left:208px; width:min(calc(100vw - 208px),460px); }
+  /* Closed drawers use translateX(-105%) of their own width. After the
+   * sidebar is shifted right to clear this nav, that shift no longer clears
+   * the viewport, so the right edge stays visible and clipped. */
+  body.dm-task-first-enabled .dm-shell-sidebar:not(.open) { transform: translateX(calc(-100% - 320px)); }
+  body.dm-task-first-enabled .dm-shell-scrim { left:208px; }
+}
 html[data-devmoter-theme="light"] .dm-task-first-nav {
   --dw-bg:#f8fbfd;
   --dw-panel:#edf4f8;
@@ -228,7 +244,19 @@ html[data-devmoter-theme="light"] .dm-task-first-nav {
     --dw-bottom-height:0px;
   }
   body.dm-task-first-enabled:has(textarea:focus, input[type="text"]:focus, input[type="search"]:focus, [contenteditable="true"]:focus) .dm-task-first-tabs { display:none; }
-  body.devmoter-shell-menu-open .dm-task-first-nav { visibility:hidden; }
+  /* Workspace panels/scrims must not occupy the bottom tab hit targets.
+   * Keep Tools' high-z-index modal bounded too, rather than raising the nav
+   * above security/approval dialogs globally. */
+  body.dm-task-first-enabled :is(.sc-shell, .wf-modal, .dm-shell-sidebar, .dm-shell-scrim) {
+    top: var(--dw-top-height);
+    bottom: var(--dw-bottom-height);
+    height: calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - var(--dw-bottom-height));
+    max-height: calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - var(--dw-bottom-height));
+  }
+  body.dm-task-first-enabled.devmoter-shell-menu-open .dm-task-first-nav {
+    visibility: visible;
+    pointer-events: auto;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .dm-task-first-nav *, .dm-task-first-nav *::before, .dm-task-first-nav *::after { transition: none !important; }
@@ -281,4 +309,32 @@ body.dm-task-first-enabled .dm-unified-agent-copy strong {
 body.dm-task-first-enabled .dm-unified-agent-copy small {
   color: var(--dw-chat-muted, #a7bdcd);
   font-size: 11px;
+}
+
+/* #411/#402: Review must share the active Unified Workspace canvas. */
+body.dm-task-first-enabled .wf-modal {
+  top: var(--dw-top-height, 0px);
+  bottom: var(--dw-bottom-height, 0px);
+  padding: 0;
+  background: var(--dw-chat-bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+body.dm-task-first-enabled .wf-sheet {
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--dw-chat-bg);
+  color: var(--dw-chat-text);
+  box-shadow: none;
+}
+body.dm-task-first-enabled .wf-body { background: var(--dw-chat-bg); }
+body.dm-task-first-enabled :is(.wf-header, .wf-toolbar) {
+  background: var(--dw-chat-surface);
+  border-color: var(--dw-chat-line);
+}
+@media (min-width: 681px) {
+  body.dm-task-first-enabled .wf-modal { left: 208px; }
 }

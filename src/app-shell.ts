@@ -276,6 +276,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     scrim.classList.remove("hidden");
     document.body.classList.add("devmoter-shell-menu-open");
     root.querySelector<HTMLButtonElement>("[data-shell-close]")!.focus({ preventScroll: true });
+    window.dispatchEvent(new CustomEvent("devmoter:workspace-panel-changed", { detail: { tab: "tools", open: true } }));
     void toolsAi.refresh();
   }
 
@@ -290,6 +291,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     scrim.classList.add("hidden");
     document.body.classList.remove("devmoter-shell-menu-open");
     if (wasOpen) {
+      window.dispatchEvent(new CustomEvent("devmoter:workspace-panel-changed", { detail: { tab: "tools", open: false } }));
       const fallback = document.body.classList.contains("codex-mode")
         ? document.querySelector<HTMLElement>("#cxMenu")
         : trigger;
@@ -508,6 +510,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     toolsLink.addEventListener("click", openSidebar);
     apiNavigation.prepend(toolsLink);
   }
+  window.addEventListener("devmoter:workspace-tab-changing", closeSidebar);
   window.addEventListener("devmoter:close-global-nav", closeSidebar);
   window.addEventListener("devmoter:open-global-nav", openSidebar);
 

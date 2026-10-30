@@ -22,6 +22,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
+      - run: npx playwright install --with-deps webkit
+      - run: npm run test:workspace-browser
       - run: npm test
       - name: Synthetic request guard negative controls
         run: node --test test/navigation-request-guard*.test.mjs test/navigation-websocket-guard.test.mjs
