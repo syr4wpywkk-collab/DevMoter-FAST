@@ -429,7 +429,7 @@
 body.opencode-mode {
   padding: 0;
   overflow: hidden;
-  background: #171512;
+  background: var(--canvas-base);
 }
 
 body.opencode-mode #app {
@@ -437,37 +437,14 @@ body.opencode-mode #app {
 }
 
 .ocx-app {
-  --oc-bg: #171512;
-  --oc-panel: #1e1b17;
-  --oc-panel-2: #25211c;
-  --oc-line: #393229;
-  --oc-line-soft: #2d2822;
-  --oc-text: #eee8de;
-  --oc-muted: #9e9588;
-  --oc-dim: #70695f;
-  --oc-accent: #d97745;
-  --oc-accent-soft: #3c281d;
-  --oc-green: #8fb38a;
-  --oc-red: #d9897b;
-  --oc-yellow: #d5b46d;
-
   position: fixed;
   inset: 0;
   height: 100dvh;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 50% -25%, rgba(217,119,69,.07), transparent 42%),
-    var(--oc-bg);
-  color: var(--oc-text);
+  background: var(--oc-bg, var(--canvas-base));
+  color: var(--oc-text, var(--text-primary));
   z-index: 20;
-  font-family:
-    ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    Monaco,
-    Consolas,
-    "Liberation Mono",
-    monospace;
+  font-family: var(--font-ui);
 }
 
 .ocx-app button,
@@ -489,13 +466,11 @@ body.opencode-mode #app {
     8px
     max(12px, env(safe-area-inset-left));
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  grid-template-columns: 42px minmax(0, 1fr) auto 42px;
   align-items: center;
   gap: 8px;
   border-bottom: 1px solid var(--oc-line-soft);
-  background: rgba(23,21,18,.93);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--oc-bg, var(--canvas-base));
 }
 
 .ocx-icon {
@@ -886,15 +861,15 @@ body.opencode-mode #app {
   width: min(100%, 760px);
   margin: 0 auto;
   overflow: hidden;
-  border: 1px solid #4a3d31;
-  border-radius: 10px;
-  background: #1d1a16;
-  box-shadow: 0 15px 44px rgba(0,0,0,.34);
+  border: 1px solid var(--oc-line);
+  border-radius: var(--radius-composer, 24px);
+  background: var(--oc-panel);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
 }
 
 .ocx-composer:focus-within {
-  border-color: #75503a;
-  box-shadow: 0 0 0 1px rgba(217,119,69,.08), 0 15px 44px rgba(0,0,0,.34);
+  border-color: var(--oc-muted);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
 }
 
 .ocx-composer textarea {
@@ -1152,8 +1127,8 @@ body.opencode-mode #app {
   transform: translateX(-104%);
   transition: transform .2s ease;
   border-right: 1px solid var(--oc-line);
-  background: #15130f;
-  box-shadow: 20px 0 60px rgba(0,0,0,.45);
+  background: var(--oc-panel, var(--surface-panel));
+  box-shadow: none;
 }
 
 .ocx-sidebar.open {
@@ -1604,8 +1579,8 @@ body.opencode-mode #app {
   overflow: hidden;
   border: 1px solid var(--oc-line);
   border-radius: 11px;
-  background: #1b1814;
-  box-shadow: 0 20px 70px rgba(0,0,0,.58);
+  background: var(--oc-panel, var(--surface-card));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .12);
 }
 
 .ocx-modal-head {
@@ -1648,10 +1623,9 @@ body.opencode-mode #app {
 
 .ocx-picker-heading {
   padding: 12px 9px 5px;
-  color: #776d62;
-  font-size: .56rem;
-  text-transform: uppercase;
-  letter-spacing: .08em;
+  color: var(--oc-muted);
+  font-size: .75rem;
+  letter-spacing: 0;
 }
 
 .ocx-picker-row {
@@ -1754,7 +1728,7 @@ body.opencode-mode #app {
   }
 
   .ocx-sidebar {
-    width: 365px;
+    width: 260px;
   }
 
   .ocx-modal {
@@ -1774,6 +1748,19 @@ body.opencode-mode #app {
   .ocx-command-row {
     grid-template-columns: minmax(72px, .35fr) 1fr;
   }
+}
+
+@media (min-width: 900px) {
+  .ocx-app.ocx-history-docked .ocx-sidebar.open {
+    transform: none;
+    width: 260px;
+  }
+  .ocx-app.ocx-history-docked .ocx-topbar,
+  .ocx-app.ocx-history-docked .ocx-main,
+  .ocx-app.ocx-history-docked .ocx-composer-wrap {
+    left: 260px;
+  }
+  .ocx-app.ocx-history-docked .ocx-scrim { display: none; }
 }
 
 

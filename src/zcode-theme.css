@@ -3,44 +3,46 @@
 :root,
 html[data-devmoter-theme="dark"] {
   color-scheme: dark;
-  --canvas-base: #0a0a0a;
-  --surface-panel: #111111;
-  --surface-card: #141416;
-  --surface-elevated: #161618;
-  --surface-hover: #1c1c20;
-  --border-hairline: #202022;
-  --border-subtle: #252528;
-  --border-focus: #10b981;
-  --accent: #10b981;
-  --accent-pressed: #059669;
-  --accent-glow: rgba(16, 185, 129, .16);
-  --text-primary: #f4f4f5;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
-  --text-dim: #52525b;
-  --status-error: #ef4444;
-  --status-warning: #f59e0b;
+  --canvas-base: #212121;
+  --surface-panel: #212121;
+  --surface-card: #2f2f2f;
+  --surface-elevated: #2f2f2f;
+  --surface-hover: #3a3a3a;
+  --border-hairline: #3a3a3a;
+  --border-subtle: #4a4a4a;
+  --border-focus: #ececec;
+  --accent: #ececec;
+  --accent-pressed: #ffffff;
+  --accent-glow: transparent;
+  --text-primary: #ececec;
+  --text-secondary: #b4b4b4;
+  --text-muted: #8e8e8e;
+  --text-dim: #6e6e6e;
+  --user-bubble: #303030;
+  --status-error: #f08b8b;
+  --status-warning: #e0b15a;
 }
 
 html[data-devmoter-theme="light"] {
   color-scheme: light;
-  --canvas-base: #f7f7f8;
+  --canvas-base: #ffffff;
   --surface-panel: #ffffff;
   --surface-card: #ffffff;
   --surface-elevated: #ffffff;
-  --surface-hover: #f0f0f2;
-  --border-hairline: #e4e4e7;
-  --border-subtle: #d4d4d8;
-  --border-focus: #059669;
-  --accent: #047857;
-  --accent-pressed: #065f46;
-  --accent-glow: rgba(4, 120, 87, .12);
-  --text-primary: #18181b;
-  --text-secondary: #3f3f46;
-  --text-muted: #71717a;
-  --text-dim: #a1a1aa;
-  --status-error: #dc2626;
-  --status-warning: #b45309;
+  --surface-hover: #f4f4f4;
+  --border-hairline: #e6e6e6;
+  --border-subtle: #d9d9d9;
+  --border-focus: #0d0d0d;
+  --accent: #0d0d0d;
+  --accent-pressed: #000000;
+  --accent-glow: transparent;
+  --text-primary: #0d0d0d;
+  --text-secondary: #5d5d5d;
+  --text-muted: #6e6e6e;
+  --text-dim: #8a8a8a;
+  --user-bubble: #f4f4f4;
+  --status-error: #b42318;
+  --status-warning: #8a6116;
 }
 
 html, body { background: var(--canvas-base); color: var(--text-primary); }
@@ -114,22 +116,14 @@ body.codex-mode, body.opencode-mode, body.api-mode { background: var(--canvas-ba
   --oc-muted: var(--text-secondary);
   --oc-dim: var(--text-muted);
   --oc-accent: var(--accent);
-  --oc-accent-soft: rgba(16, 185, 129, .1);
-  --oc-green: var(--accent);
+  --oc-accent-soft: var(--surface-hover);
+  --oc-user: var(--user-bubble);
+  --oc-green: var(--text-secondary);
   --oc-red: var(--status-error);
   --oc-yellow: var(--status-warning);
-  color-scheme: dark;
   font-family: var(--font-ui);
 }
-.ocx-app :is(.ocx-composer, .ocx-tool-card, .ocx-reasoning, .ocx-user-prompt,
-  .ocx-sidebar, .ocx-sidebar-head, .ocx-sidebar-foot, .ocx-search, .ocx-session-row.active) {
-  border-color: var(--border-hairline);
-  border-radius: var(--radius-panel);
-  background-color: var(--surface-card);
-  box-shadow: none;
-}
-.ocx-app :is(.ocx-send, .ocx-command-row strong, .ocx-session-dot[data-state="running"]) { color: var(--accent); }
-.ocx-app .ocx-send { background: var(--accent); color: var(--canvas-base); }
+.ocx-app .ocx-send { background: var(--accent); color: var(--canvas-base); border-radius: 999px; }
 .ocx-app :is(.ocx-tool-content pre, .cx-markdown pre, .cx-markdown code) {
   background-color: var(--canvas-base);
   color: var(--text-primary);
@@ -149,7 +143,7 @@ body.dm-task-first-enabled {
   --dw-chat-text: var(--text-primary);
   --dw-chat-muted: var(--text-secondary);
   --dw-chat-accent: var(--accent);
-  --dw-chat-accent-soft: rgba(16, 185, 129, .1);
+  --dw-chat-accent-soft: var(--surface-hover);
   --dw-chat-send-text: var(--canvas-base);
   --dw-chat-shadow: none;
   --dw-chat-code: var(--canvas-base);

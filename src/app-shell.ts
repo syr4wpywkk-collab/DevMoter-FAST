@@ -140,7 +140,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
       <div class="dm-shell-sidebar-scroll">
         <div data-tools-ai-root></div>
         <details class="dm-shell-manual-tools" data-manual-tools>
-        <summary>ツールを直接開く · 21 tools</summary>
+        <summary>開発ツール</summary>
         <div class="dm-shell-tools-controls" aria-label="Find tools">
           <label class="dm-shell-search-label" for="dmShellToolSearch">Search tools</label>
           <div class="dm-shell-search-row">
@@ -243,8 +243,12 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   let sidebarReturnFocus: HTMLElement | null = null;
   let activeCategory = "All";
   const manualTools = root.querySelector<HTMLDetailsElement>("[data-manual-tools]")!;
+  manualTools.addEventListener("toggle", () => {
+    if (!manualTools.open) return;
+    manualTools.querySelector("summary")?.scrollIntoView?.({ block: "start" });
+  });
   const toolsAi = mountToolsAi(root.querySelector<HTMLElement>("[data-tools-ai-root]")!, {
-    openManual: () => { manualTools.open = true; manualTools.querySelector("summary")?.scrollIntoView?.({ block: "nearest" }); },
+    openManual: () => { manualTools.open = true; },
     openSettings: () => { closeSidebar(); options.switchBackend("api"); window.requestAnimationFrame(() => document.querySelector<HTMLButtonElement>("#apiSettingsTop")?.click()); }
   });
   // Keep the SAME Stop control outside the scrolling content, including while browsing manual tools.

@@ -549,11 +549,7 @@ function createToolbar() {
 function injectStyles() {
   const style = document.createElement("style");
   style.textContent = `
-    :root[data-devmoter-theme="light"] { color-scheme: light; }
-    :root[data-devmoter-theme="dark"] { color-scheme: dark; }
-    :root[data-devmoter-theme="light"] body { background:#f7f7f8 !important; color:#171717 !important; }
-    :root[data-devmoter-theme="dark"] body { background:#111214 !important; color:#f5f5f5 !important; }
-    .dm-controlbar { position:fixed; z-index:70; right:max(10px,env(safe-area-inset-right)); bottom:max(10px,env(safe-area-inset-bottom)); display:flex; gap:6px; padding:6px; border:1px solid color-mix(in srgb,currentColor 18%,transparent); border-radius:14px; background:color-mix(in srgb,Canvas 92%,transparent); backdrop-filter:blur(14px); box-shadow:0 8px 30px rgba(0,0,0,.16); }
+    .dm-controlbar { position:fixed; z-index:70; right:max(10px,env(safe-area-inset-right)); bottom:max(10px,env(safe-area-inset-bottom)); display:flex; gap:6px; padding:6px; border:1px solid var(--border-hairline); border-radius:12px; background:var(--surface-card); color:var(--text-primary); }
     .dm-controlbar>button { min-height:38px; border:0; border-radius:10px; padding:0 10px; background:color-mix(in srgb,currentColor 8%,transparent); color:inherit; }
     .dm-mobile-menu-toggle,.dm-mobile-shortcut { display:none; }
     .dm-context[data-pressure="high"] { outline:2px solid currentColor; }

@@ -3,12 +3,12 @@
  * dark/cyan system. No generated Tailwind, fonts, sample sessions or fake states.
  */
 .dm-task-first-nav {
-  --dw-bg: #0c121b;
-  --dw-panel: #17212d;
-  --dw-border: #2c3c4d;
-  --dw-text: #eaf4fc;
-  --dw-muted: #a0b2c2;
-  --dw-accent: #4fd3f2;
+  --dw-bg: var(--surface-panel);
+  --dw-panel: var(--surface-card);
+  --dw-border: var(--border-hairline);
+  --dw-text: var(--text-primary);
+  --dw-muted: var(--text-secondary);
+  --dw-accent: var(--text-primary);
   position: fixed;
   z-index: 2147481999;
   top: 0;
@@ -145,23 +145,11 @@ body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app, .ix-app) {
 body.dm-task-first-enabled .dm-shell-menu-trigger { display: none; }
 body.devmoter-shell-menu-open .dm-task-first-nav { pointer-events:none; }
 body.dm-task-first-enabled.devmoter-shell-menu-open .dm-task-first-nav { pointer-events:auto; }
-@media (min-width:681px) {
+@media (min-width:901px) {
   body.dm-task-first-enabled .dm-shell-sidebar { left:208px; width:min(calc(100vw - 208px),460px); }
-  /* Closed drawers use translateX(-105%) of their own width. After the
-   * sidebar is shifted right to clear this nav, that shift no longer clears
-   * the viewport, so the right edge stays visible and clipped. */
-  body.dm-task-first-enabled .dm-shell-sidebar:not(.open) { transform: translateX(calc(-100% - 320px)); }
   body.dm-task-first-enabled .dm-shell-scrim { left:208px; }
 }
-html[data-devmoter-theme="light"] .dm-task-first-nav {
-  --dw-bg:#f8fbfd;
-  --dw-panel:#edf4f8;
-  --dw-border:#d1e0e9;
-  --dw-text:#162a39;
-  --dw-muted:#516b7f;
-  --dw-accent:#006e8b;
-}
-@media(max-width:680px) {
+@media(max-width:900px) {
   body.dm-task-first-enabled {
     --dw-top-height: calc(58px + env(safe-area-inset-top));
     --dw-bottom-height: calc(66px + env(safe-area-inset-bottom));

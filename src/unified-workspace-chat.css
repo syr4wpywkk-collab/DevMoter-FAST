@@ -6,37 +6,20 @@
  */
 
 body.dm-task-first-enabled {
-  --dw-chat-bg: #0c121b;
-  --dw-chat-surface: #111b27;
-  --dw-chat-raised: #192838;
-  --dw-chat-input: #172532;
-  --dw-chat-user: #1c3948;
-  --dw-chat-user-border: #316c82;
-  --dw-chat-line: #2c3f50;
-  --dw-chat-text: #eaf4fc;
-  --dw-chat-muted: #a7bdcd;
-  --dw-chat-accent: #4fd3f2;
-  --dw-chat-accent-soft: #183a4a;
-  --dw-chat-send-text: #05202c;
-  --dw-chat-shadow: 0 18px 40px rgba(0, 0, 0, .36);
-  --dw-chat-code: #0c1823;
-}
-
-html[data-devmoter-theme="light"] body.dm-task-first-enabled {
-  --dw-chat-bg: #f7fbfe;
-  --dw-chat-surface: #ffffff;
-  --dw-chat-raised: #edf5fa;
-  --dw-chat-input: #ffffff;
-  --dw-chat-user: #ddf2f9;
-  --dw-chat-user-border: #91c7da;
-  --dw-chat-line: #d0e1ea;
-  --dw-chat-text: #142938;
-  --dw-chat-muted: #506b7d;
-  --dw-chat-accent: #006e8b;
-  --dw-chat-accent-soft: #d8eef6;
-  --dw-chat-send-text: #ffffff;
-  --dw-chat-shadow: 0 14px 34px rgba(23, 55, 75, .12);
-  --dw-chat-code: #ecf4f9;
+  --dw-chat-bg: var(--canvas-base);
+  --dw-chat-surface: var(--surface-panel);
+  --dw-chat-raised: var(--surface-card);
+  --dw-chat-input: var(--surface-card);
+  --dw-chat-user: var(--user-bubble);
+  --dw-chat-user-border: transparent;
+  --dw-chat-line: var(--border-hairline);
+  --dw-chat-text: var(--text-primary);
+  --dw-chat-muted: var(--text-secondary);
+  --dw-chat-accent: var(--accent);
+  --dw-chat-accent-soft: var(--surface-hover);
+  --dw-chat-send-text: var(--canvas-base);
+  --dw-chat-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+  --dw-chat-code: var(--surface-hover);
 }
 
 /* Keep all provider engines mounted and isolated; only map presentation tokens. */

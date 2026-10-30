@@ -182,16 +182,16 @@ export function mountOpenCodeRemote(
           <button id="ocxSidebarClose" class="ocx-icon" type="button" aria-label="閉じる">×</button>
         </div>
 
+        <button id="ocxNewSessionSide" class="ocx-new-session" type="button">
+          <span>新しいチャット</span>
+        </button>
+
         <nav class="ocx-quick-switch" aria-label="Switch AI workspace">
           <button id="ocxQuickCodex" type="button" aria-label="Switch from OpenCode to Codex">Codex</button>
           <button id="ocxQuickApi" type="button" aria-label="Switch from OpenCode to API Chat">API Chat</button>
         </nav>
 
         <div class="ocx-sidebar-scroll">
-        <button id="ocxNewSessionSide" class="ocx-new-session" type="button">
-          <span>＋</span>
-          <span>New session</span>
-        </button>
 
         <label class="ocx-search">
           <span>⌕</span>
@@ -230,8 +230,10 @@ export function mountOpenCodeRemote(
               <option value="zh-CN">简体中文</option>
             </select>
           </label>
-          <button id="ocxToolsNav" type="button" class="ocx-refresh">☰ Tools / AI</button>
-          <button id="ocxRefresh" type="button" class="ocx-refresh">↻ Refresh</button>
+          <button id="ocxTheme" type="button" class="ocx-refresh">表示</button>
+          <button id="ocxToolsNav" type="button" class="ocx-refresh">開発ツール</button>
+          <button id="ocxPrefs" type="button" class="ocx-refresh">設定</button>
+          <button id="ocxRefresh" type="button" class="ocx-refresh">更新</button>
           <span id="ocxSideStatus" class="ocx-side-status offline"><i></i> Offline</span>
         </div>
       </aside>
@@ -244,6 +246,7 @@ export function mountOpenCodeRemote(
           <small id="ocxSessionMeta">No session</small>
         </button>
 
+        <button id="ocxModelButton" type="button" class="ocx-context-button">model</button>
         <button id="ocxNewSessionTop" class="ocx-icon" type="button" aria-label="新規セッション">＋</button>
       </header>
 
@@ -311,7 +314,6 @@ export function mountOpenCodeRemote(
             </div>
             <div class="ocx-context-buttons">
               <button id="ocxAgentButton" type="button" class="ocx-context-button">agent</button>
-              <button id="ocxModelButton" type="button" class="ocx-context-button">model</button>
             </div>
           </div>
 
@@ -376,6 +378,8 @@ export function mountOpenCodeRemote(
   const sessionSort = root.querySelector<HTMLSelectElement>("#ocxSessionSort")!;
   const attention = root.querySelector<HTMLDivElement>("#ocxAttention")!;
   const toolsNav = root.querySelector<HTMLButtonElement>("#ocxToolsNav")!;
+  const themeButton = root.querySelector<HTMLButtonElement>("#ocxTheme")!;
+  const prefsButton = root.querySelector<HTMLButtonElement>("#ocxPrefs")!;
   const quickCodex = root.querySelector<HTMLButtonElement>("#ocxQuickCodex")!;
   const quickApi = root.querySelector<HTMLButtonElement>("#ocxQuickApi")!;
   const refreshButton = root.querySelector<HTMLButtonElement>("#ocxRefresh")!;
@@ -454,13 +458,20 @@ export function mountOpenCodeRemote(
   let sidebarReturnFocus: HTMLElement | null = null;
   let modalReturnFocus: HTMLElement | null = null;
 
+  function dockedSidebar() {
+    return window.matchMedia("(min-width: 900px)").matches;
+  }
+
   function syncOverlayState() {
     const historyOpen = sidebar.classList.contains("open");
     const modalOpen = !modal.classList.contains("hidden");
+    const runtime = modal.classList.contains("ocx-runtime-modal");
+    const docked = historyOpen && dockedSidebar();
     sidebar.inert = !historyOpen;
     modal.inert = !modalOpen;
-    for (const region of backgroundRegions) region.inert = historyOpen || modalOpen;
+    for (const region of backgroundRegions) region.inert = (historyOpen && !docked) || (modalOpen && !runtime);
     menu.setAttribute("aria-expanded", String(historyOpen));
+    root.querySelector(".ocx-app")?.classList.toggle("ocx-history-docked", docked);
   }
   syncOverlayState();
   plus.setAttribute("aria-expanded", "false");
@@ -527,7 +538,7 @@ export function mountOpenCodeRemote(
   let modelPickerAvailable = false;
   let modelPickerNeedsKey = false;
   let modelPickerDeprecatedOpen = false;
-  let modelPickerRows: Array<{ kind: "provider"; name: string; id: string } | { kind: "deprecated"; count: number } | { kind: "model"; row: ReturnType<typeof filterOpenCodePickerModels>["active"][number]; pricing: string }> = [];
+  let modelPickerRows: Array<{ kind: "provider"; name: string; id: string } | { kind: "group"; name: string } | { kind: "deprecated"; count: number } | { kind: "model"; row: ReturnType<typeof filterOpenCodePickerModels>["active"][number]; pricing: string }> = [];
   let modelPickerWindowKey = "";
   const MODEL_ROW_PX = 56;
   const PROVIDER_REFRESH_MS = 45_000;
@@ -592,6 +603,13 @@ export function mountOpenCodeRemote(
     window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
     sidebar.classList.add("open");
     sidebar.setAttribute("aria-hidden", "false");
+    if (dockedSidebar()) {
+      sidebar.removeAttribute("role");
+      sidebar.removeAttribute("aria-modal");
+      scrim.classList.add("hidden");
+      syncOverlayState();
+      return;
+    }
     sidebar.setAttribute("role", "dialog");
     sidebar.setAttribute("aria-modal", "true");
     scrim.classList.remove("hidden");
@@ -3168,7 +3186,7 @@ export function mountOpenCodeRemote(
       copy.innerHTML = "<strong></strong><small></small>";
       copy.querySelector("strong")!.textContent = agent.id;
       copy.querySelector("small")!.textContent =
-        agent.description || agent.mode || "OpenCode agent";
+        "このエージェントで応答します";
 
       const mark = document.createElement("span");
       mark.textContent = selectedAgent === agent.id ? "✓" : "›";
@@ -3212,15 +3230,34 @@ export function mountOpenCodeRemote(
         flat.push({ kind: "model", row, pricing: describeModelPricing(row.model.cost).detail });
       }
     };
-    pushGroup(result.active);
-    if (result.deprecated.length) {
-      flat.push({ kind: "deprecated", count: result.deprecated.length });
-      if (modelPickerDeprecatedOpen) pushGroup(result.deprecated);
+    if (modelPickerFree) {
+      const ready = result.active.filter(row => !row.needsKey);
+      const keyed = result.active.filter(row => row.needsKey);
+      if (ready.length) {
+        flat.push({ kind: "group", name: "使える" });
+        pushGroup(ready);
+      }
+      if (keyed.length) {
+        flat.push({ kind: "group", name: "キーが必要" });
+        pushGroup(keyed);
+      }
+    } else {
+      pushGroup(result.active);
+    }
+    if (modelPickerDeprecatedOpen && result.deprecated.length) {
+      flat.push({ kind: "group", name: "非推奨" });
+      pushGroup(result.deprecated);
     }
     return flat;
   }
 
   function renderModelSlot(item: typeof modelPickerRows[number]) {
+    if (item.kind === "group") {
+      const heading = document.createElement("div");
+      heading.className = "ocx-picker-provider";
+      heading.textContent = item.name;
+      return heading;
+    }
     if (item.kind === "provider") {
       const heading = document.createElement("div");
       heading.className = "ocx-picker-provider";
@@ -3256,19 +3293,14 @@ export function mountOpenCodeRemote(
     const title = document.createElement("strong");
     const detail = document.createElement("small");
     title.textContent = model.name || model.id;
-    const capabilities = model.capabilities && typeof model.capabilities === "object"
-      ? Object.entries(model.capabilities).filter(([, value]) => Boolean(value)).map(([key]) => key).slice(0, 4).join(", ")
-      : "";
     detail.textContent = row.selectable
-      ? row.providerID + "/" + model.id + (capabilities ? " · " + capabilities : "")
-      : row.providerID + "/" + model.id + " · " + row.reason;
+      ? row.providerID + "/" + model.id
+      : row.reason;
     const pricing = document.createElement("small");
     pricing.className = "ocx-picker-pricing";
     pricing.textContent = item.pricing;
     copy.append(title, detail, pricing);
-    const mark = document.createElement("span");
-    mark.textContent = selected ? "✓" : row.selectable ? "›" : "×";
-    option.append(copy, mark);
+    option.append(copy);
     if (row.selectable) {
       option.addEventListener("click", () => {
         void switchModel({ providerID: row.providerID, modelID: model.id })
@@ -3320,14 +3352,25 @@ export function mountOpenCodeRemote(
     const result = runtimeModelRows();
     modelPickerRows = flatModelRows(result);
     const heading = modalBody.querySelector("#ocxModelHeading");
-    if (heading) heading.textContent = `Provider · Model · ${result.counts.shown}`;
+    if (heading) {
+      const count = document.createElement("span");
+      count.dataset.i18nSkip = "true";
+      count.textContent = String(result.counts.shown);
+      heading.replaceChildren(document.createTextNode("Provider · Model · "), count);
+    }
+    const filterLabels = { free: "無料", available: "使える", needsKey: "キーが必要" } as const;
     for (const button of modalBody.querySelectorAll<HTMLButtonElement>("[data-model-filter]")) {
       const filter = button.dataset.modelFilter;
+      if (filter === "deprecated") {
+        button.setAttribute("aria-pressed", String(modelPickerDeprecatedOpen));
+        button.textContent = (modelPickerDeprecatedOpen ? "非推奨を表示中 " : "非推奨を下に追加 ") + result.deprecated.length;
+        continue;
+      }
       const pressed = filter === "free" ? modelPickerFree : filter === "available" ? modelPickerAvailable : modelPickerNeedsKey;
       const count = filter === "free" ? result.counts.free : filter === "available" ? result.counts.available : result.counts.needsKey;
-      const label = filter === "free" ? "Free" : filter === "available" ? "Available" : "Needs key";
+      const label = filter === "free" || filter === "available" || filter === "needsKey" ? filterLabels[filter] : filter;
       button.setAttribute("aria-pressed", String(pressed));
-      button.textContent = `${label} · ${count}`;
+      button.textContent = `${label} ${count}`;
     }
     modelPickerWindowKey = "";
     syncModelWindow(resetScroll);
@@ -3365,10 +3408,21 @@ export function mountOpenCodeRemote(
       });
       toolbar.appendChild(button);
     }
+    const deprecated = document.createElement("button");
+    deprecated.type = "button";
+    deprecated.className = "ocx-model-filter";
+    deprecated.dataset.modelFilter = "deprecated";
+    deprecated.textContent = "Deprecated";
+    deprecated.setAttribute("aria-pressed", String(modelPickerDeprecatedOpen));
+    deprecated.addEventListener("click", () => {
+      modelPickerDeprecatedOpen = !modelPickerDeprecatedOpen;
+      paintRuntimePicker(true);
+    });
+    toolbar.appendChild(deprecated);
     const refresh = document.createElement("button");
     refresh.type = "button";
     refresh.className = "ocx-model-filter";
-    refresh.textContent = "↻ Refresh";
+    refresh.textContent = "更新";
     refresh.addEventListener("click", () => {
       void loadProviders(true).catch(error => showToast(error instanceof Error ? error.message : String(error)));
     });
@@ -3383,7 +3437,7 @@ export function mountOpenCodeRemote(
     agentSection.className = "ocx-picker-section";
     const agentHeading = document.createElement("div");
     agentHeading.className = "ocx-picker-heading";
-    agentHeading.textContent = "Agent";
+    agentHeading.textContent = "エージェント";
     agentSection.appendChild(agentHeading);
     for (const agent of agents) {
       const option = document.createElement("button");
@@ -3393,7 +3447,7 @@ export function mountOpenCodeRemote(
       const title = document.createElement("strong");
       const detail = document.createElement("small");
       title.textContent = agent.id;
-      detail.textContent = (agent.description || agent.mode || "OpenCode agent") + " · supported";
+      detail.textContent = "このエージェントで応答します";
       copy.append(title, detail);
       const mark = document.createElement("span");
       mark.textContent = selectedAgent === agent.id ? "✓" : "›";
@@ -3444,17 +3498,27 @@ export function mountOpenCodeRemote(
   }
 
   function showRuntimePicker() {
+    closeSidebar();
     runtimePickerVisible = true;
     const existing = modalBody.querySelector("#ocxModelSearch");
     if (modal.classList.contains("hidden") || !existing) {
-      openModal("Provider · Model · Agent", "Choose a compatible OpenCode runtime");
+      if (modal.classList.contains("hidden")) {
+        modalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : menu;
+      }
+      closeComposerMenus();
       modal.classList.add("ocx-runtime-modal");
+      modalTitle.textContent = "Provider · Model · Agent";
+      modalSubtitle.textContent = "";
+      modal.classList.remove("hidden");
+      syncOverlayState();
       mountRuntimePicker();
       void loadProviders(true).catch(error => showToast(error instanceof Error ? error.message : String(error)));
     } else {
       modal.classList.add("ocx-runtime-modal");
+      syncOverlayState();
     }
     paintRuntimePicker(false);
+    modalClose.focus({ preventScroll: true });
   }
 
   function persistImportedThreads() {
@@ -3748,7 +3812,10 @@ export function mountOpenCodeRemote(
     }
   }
 
-  menu.addEventListener("click", openSidebar);
+  menu.addEventListener("click", () => {
+    if (sidebar.classList.contains("open")) closeSidebar();
+    else openSidebar();
+  });
   quickCodex.hidden = !options.onCodex;
   quickApi.hidden = !options.onApi;
   quickCodex.addEventListener("click", () => {
@@ -3765,6 +3832,13 @@ export function mountOpenCodeRemote(
     closeSidebar();
     window.dispatchEvent(new CustomEvent("devmoter:open-global-nav"));
   });
+  themeButton.addEventListener("click", () => {
+    document.querySelector<HTMLButtonElement>(".dm-theme")?.click();
+  });
+  prefsButton.addEventListener("click", () => {
+    window.dispatchEvent(new CustomEvent("devmoter:open-settings", { detail: { page: "appearance" } }));
+  });
+  window.addEventListener("resize", () => syncOverlayState());
   window.addEventListener("devmoter:close-chat-history", () => closeSidebar());
   const closeLocalOverlays = () => {
     closeSidebar();
@@ -3929,9 +4003,15 @@ export function mountOpenCodeRemote(
   });
   document.addEventListener("keydown", event => {
     if (!document.body.classList.contains("opencode-mode")) return;
+    const historyOverlay = sidebar.classList.contains("open") && !dockedSidebar();
     const overlay = !modal.classList.contains("hidden") ? modal
-      : sidebar.classList.contains("open") ? sidebar : null;
+      : historyOverlay ? sidebar : null;
     if (!overlay) {
+      if (event.key === "Escape" && sidebar.classList.contains("open") && dockedSidebar()) {
+        event.preventDefault();
+        closeSidebar();
+        return;
+      }
       if (event.key === "Escape" && !attachmentMenu.classList.contains("hidden")) {
         event.preventDefault();
         closeAttachmentMenu();
