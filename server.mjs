@@ -1765,6 +1765,9 @@ async function materializeCodexUploadInputs(method, params) {
 
 const OPENCODE_ORIGIN = new URL(OPENCODE_URL).origin;
 const OPENCODE_PROXY_PREFIX = "/api/opencode";
+// Allowlist: RFC 3986 path characters only (percent-escapes allowed, decoded below).
+const OPENCODE_SAFE_PATH = /^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/;
+const OPENCODE_SAFE_QUERY = /^(\?[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*)?$/;
 const OPENCODE_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
 // eslint-disable-next-line no-control-regex
 const OPENCODE_CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
@@ -1773,7 +1776,12 @@ function fullyDecodeOpenCodePath(value) {
   let current = value;
   // Undo nested percent-encoding (e.g. %252e) so checks see what OpenCode will.
   for (let i = 0; i < 4; i += 1) {
-    const next = decodeURIComponent(current);
+    let next;
+    try {
+      next = decodeURIComponent(current);
+    } catch {
+      return null;
+    }
     if (next === current) return current;
     current = next;
   }
@@ -1781,11 +1789,11 @@ function fullyDecodeOpenCodePath(value) {
 }
 
 /**
- * Validate the client path once and build the OpenCode URL from the validated
- * string. Returns { url } or { error } (400). Only paths under OpenCode's
- * /api/ on the configured origin can come out of here.
+ * Validate the client path once and build the OpenCode request target as a
+ * plain string: fixed OpenCode origin + "/api/" + allowlisted path (+ query).
+ * Returns { upstreamUrl, policyPath } or { error } (400).
  */
-export function buildOpenCodeUpstreamUrl(rawRequestUrl) {
+export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   const raw = String(rawRequestUrl || "");
   if (!raw.startsWith(OPENCODE_PROXY_PREFIX)) {
     return { error: "OpenCode proxy path is invalid" };
@@ -1795,48 +1803,39 @@ export function buildOpenCodeUpstreamUrl(rawRequestUrl) {
   const rawPath = (queryIndex === -1 ? rest : rest.slice(0, queryIndex)) || "/";
   const rawQuery = queryIndex === -1 ? "" : rest.slice(queryIndex);
 
-  if (!rawPath.startsWith("/")) {
-    return { error: "OpenCode proxy path is invalid" };
+  if (!OPENCODE_SAFE_PATH.test(rawPath) || !OPENCODE_SAFE_QUERY.test(rawQuery)) {
+    return { error: "OpenCode proxy path is not allowed" };
   }
-
-  let decodedPath;
-  try {
-    decodedPath = fullyDecodeOpenCodePath(rawPath);
-  } catch {
-    decodedPath = null;
-  }
+  const decodedPath = fullyDecodeOpenCodePath(rawPath);
   if (
     decodedPath === null ||
     decodedPath.startsWith("//") ||
+    rawPath.startsWith("//") ||
     decodedPath.includes("..") ||
     decodedPath.includes("\\") ||
     OPENCODE_SCHEME_SEGMENT.test(decodedPath) ||
-    OPENCODE_CONTROL_CHARS.test(decodedPath) ||
-    OPENCODE_CONTROL_CHARS.test(rawPath) ||
-    OPENCODE_CONTROL_CHARS.test(rawQuery) ||
-    rawPath.includes("\\")
+    OPENCODE_CONTROL_CHARS.test(decodedPath)
   ) {
     return { error: "OpenCode proxy path is not allowed" };
   }
 
-  // rawPath is validated; strip the optional client-side "/api" and pin the
-  // origin and the "/api/" root as literal prefixes of the upstream URL.
-  const apiRelative = (rawPath.startsWith("/api/") ? rawPath.slice("/api/".length) : rawPath.slice(1));
-  const url = new URL(`${OPENCODE_ORIGIN}/api/${apiRelative}${rawQuery}`);
-  if (url.origin !== OPENCODE_ORIGIN || !url.pathname.startsWith("/api/")) {
+  // Strip the optional client-side "/api" prefix; the upstream root is fixed.
+  const apiRelative = rawPath.startsWith("/api/") ? rawPath.slice("/api/".length) : rawPath.slice(1);
+  if (apiRelative.startsWith("/")) {
     return { error: "OpenCode proxy path is not allowed" };
   }
-  return { url };
+  const policyPath = `/api/${apiRelative}`;
+  const upstreamUrl = `${OPENCODE_ORIGIN}/api/${apiRelative}${rawQuery}`;
+  return { upstreamUrl, policyPath };
 }
 
 async function proxy(req, res) {
-  const target = buildOpenCodeUpstreamUrl(req.url);
+  const target = buildOpenCodeUpstreamTarget(req.url);
   if (target.error) {
     json(res, 400, { error: target.error });
     return;
   }
-  const { url } = target;
-  const policyPath = url.pathname;
+  const { upstreamUrl, policyPath } = target;
   const sessionId = sessionIdFromOpenCodePath(policyPath);
   const requestedMode = parseAgentMode(req.headers["x-pocket-agent-mode"]);
   if (sessionId && requestedMode) openCodeSessionModes.set(sessionId, requestedMode);
@@ -1903,7 +1902,7 @@ async function proxy(req, res) {
   res.on("close", onClientClosed);
 
   try {
-    const upstream = await fetch(url, {
+    const upstream = await fetch(upstreamUrl, {
       method: req.method,
       headers: await openCodeHeadersForRequest(req, {
         "content-type": req.headers["content-type"] || "application/json",
