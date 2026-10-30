@@ -115,8 +115,8 @@ test("mobile navigation is sidebar-first and no bottom dock remains", async () =
   assert.ok(shell.includes('data-backend="opencode"'));
   assert.ok(!shell.includes("dm-shell-dock"));
   assert.ok(!css.includes(".dm-shell-dock"));
-  assert.ok(css.includes("transform: translateX(-105%)"));
-  assert.ok(css.includes(".dm-shell-sidebar.open"));
+  assert.ok(css.includes(".dm-shell-sidebar {\n  position: fixed;\n  inset: 0 auto auto 0;\n  z-index: 950;\n  width: min(100vw, 460px);\n  height: var(--dm-shell-viewport-height, 100dvh);\n  display: none;"));
+  assert.ok(css.includes(".dm-shell-sidebar.open { display: grid; }"));
 });
 
 

@@ -1994,8 +1994,9 @@ textarea:focus-visible,
 }
 
 .ocx-model-filter[aria-pressed="true"] {
-  border-color: var(--oc-line);
-  background: var(--oc-accent-soft);
+  border-color: var(--oc-accent);
+  background: var(--oc-accent);
+  color: var(--canvas-base);
 }
 
 .ocx-modal.ocx-runtime-modal {

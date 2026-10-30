@@ -111,6 +111,10 @@ const dictionary: Record<string, TranslationSet> = {
   "Extensions": { en: "Extensions", ja: "拡張", "zh-CN": "扩展" },
   "offline": { en: "offline", ja: "オフライン", "zh-CN": "离线" },
   "No models match": { en: "No models match", ja: "一致するモデルはありません", "zh-CN": "没有匹配的模型" },
+  "このエージェントで応答します": { en: "Replies with this agent", ja: "このエージェントで応答します", "zh-CN": "使用此智能体回复" },
+  "非推奨を下に追加": { en: "Show deprecated below", ja: "非推奨を下に追加", "zh-CN": "在下方显示已弃用" },
+  "非推奨を表示中": { en: "Showing deprecated", ja: "非推奨を表示中", "zh-CN": "正在显示已弃用" },
+  "非推奨": { en: "Deprecated", ja: "非推奨", "zh-CN": "已弃用" },
   "Plan, ask, and build in your workspace.": {
     en: "Plan, ask, and build in your workspace.",
     ja: "このワークスペースで計画し、質問し、実装できます。",

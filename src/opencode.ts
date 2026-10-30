@@ -3186,7 +3186,7 @@ export function mountOpenCodeRemote(
       copy.innerHTML = "<strong></strong><small></small>";
       copy.querySelector("strong")!.textContent = agent.id;
       copy.querySelector("small")!.textContent =
-        agent.description || agent.mode || "OpenCode agent";
+        "このエージェントで応答します";
 
       const mark = document.createElement("span");
       mark.textContent = selectedAgent === agent.id ? "✓" : "›";
@@ -3245,7 +3245,7 @@ export function mountOpenCodeRemote(
       pushGroup(result.active);
     }
     if (modelPickerDeprecatedOpen && result.deprecated.length) {
-      flat.push({ kind: "group", name: "Deprecated" });
+      flat.push({ kind: "group", name: "非推奨" });
       pushGroup(result.deprecated);
     }
     return flat;
@@ -3358,7 +3358,7 @@ export function mountOpenCodeRemote(
       const filter = button.dataset.modelFilter;
       if (filter === "deprecated") {
         button.setAttribute("aria-pressed", String(modelPickerDeprecatedOpen));
-        button.textContent = "Deprecated " + result.deprecated.length;
+        button.textContent = (modelPickerDeprecatedOpen ? "非推奨を表示中 " : "非推奨を下に追加 ") + result.deprecated.length;
         continue;
       }
       const pressed = filter === "free" ? modelPickerFree : filter === "available" ? modelPickerAvailable : modelPickerNeedsKey;
@@ -3432,7 +3432,7 @@ export function mountOpenCodeRemote(
     agentSection.className = "ocx-picker-section";
     const agentHeading = document.createElement("div");
     agentHeading.className = "ocx-picker-heading";
-    agentHeading.textContent = "Agent";
+    agentHeading.textContent = "エージェント";
     agentSection.appendChild(agentHeading);
     for (const agent of agents) {
       const option = document.createElement("button");
@@ -3442,7 +3442,7 @@ export function mountOpenCodeRemote(
       const title = document.createElement("strong");
       const detail = document.createElement("small");
       title.textContent = agent.id;
-      detail.textContent = (agent.description || agent.mode || "OpenCode agent") + " · supported";
+      detail.textContent = "このエージェントで応答します";
       copy.append(title, detail);
       const mark = document.createElement("span");
       mark.textContent = selectedAgent === agent.id ? "✓" : "›";

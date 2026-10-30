@@ -56,8 +56,7 @@ body.codex-mode .dm-shell-menu-trigger { display: none; }
   z-index: 950;
   width: min(100vw, 460px);
   height: var(--dm-shell-viewport-height, 100dvh);
-  transform: translateX(-105%);
-  display: grid;
+  display: none;
   grid-template-rows: auto minmax(0, 1fr);
   border-right: 1px solid var(--dm-shell-border);
   color: var(--dm-shell-text);
@@ -66,7 +65,7 @@ body.codex-mode .dm-shell-menu-trigger { display: none; }
   transition: transform 180ms ease;
   overflow: hidden;
 }
-.dm-shell-sidebar.open { transform: translateX(0); }
+.dm-shell-sidebar.open { display: grid; }
 
 .dm-shell-sidebar-head {
   display: flex;

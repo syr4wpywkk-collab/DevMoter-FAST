@@ -201,9 +201,6 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
           ${systemActionButton("●", "Notifications", "Push notification controls", "notifications")}
           ${systemActionButton("◇", "Diagnostics", "Backends, network and capability health", "diagnostics")}
           ${systemActionButton("⚙", "Settings", "Account, appearance, guide and all settings", "settings")}
-          <button type="button" class="dm-shell-action" data-tools-item data-tools-category="Settings" data-tools-search="表示 テーマ theme appearance" data-shell-action="appearance">
-            <span class="dm-shell-action-copy"><strong>表示</strong><small>ライトとダーク</small></span>
-          </button>
           ${systemActionButton("⇩", "Setup Wizard", "Installer v2 foundation — currently paused for further expansion", "setup", "EXPERIMENTAL")}
         </section>
         </div>
@@ -435,7 +432,6 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     notifications: () => openSettings("notifications"),
     diagnostics: () => openSettings("diagnostics"),
     settings: () => openSettings("root"),
-    appearance: () => openSettings("appearance"),
     setup: () => { window.location.assign("/?setup=1"); }
   };
 
