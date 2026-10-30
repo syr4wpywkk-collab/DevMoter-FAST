@@ -2401,6 +2401,18 @@ function isLoopbackHost(hostHeader) {
   }
 }
 
+// Files a browser must fetch before (or without) a login: the login page itself
+// and the PWA metadata. Browsers request the web app manifest without
+// credentials, so anything behind auth would come back as the login redirect.
+// Exact paths only; nothing else under dist/ is reachable without auth.
+const PUBLIC_STATIC_PATHS = new Set([
+  "/login.html",
+  "/login.js",
+  "/manifest.webmanifest",
+  "/icon.svg",
+  "/sw.js"
+]);
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
@@ -2410,7 +2422,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if ((req.method === "GET" || req.method === "HEAD") && ["/login.html", "/login.js"].includes(url.pathname)) {
+    if ((req.method === "GET" || req.method === "HEAD") && PUBLIC_STATIC_PATHS.has(url.pathname)) {
       res.setHeader("cache-control", "no-store");
       await serveStatic(req, res);
       return;

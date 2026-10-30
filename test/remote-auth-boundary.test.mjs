@@ -6,7 +6,7 @@ test("webhook and explicit login endpoints are routed before the owner auth boun
   const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
   const serverStart = source.indexOf("const server = http.createServer");
   const webhook = source.indexOf('url.pathname === "/api/control/events/github"', serverStart);
-  const login = source.indexOf('"/login.html"', serverStart);
+  const login = source.indexOf("PUBLIC_STATIC_PATHS.has(url.pathname)", serverStart);
   const publicAuth = source.indexOf('url.pathname.startsWith("/api/auth/")', serverStart);
   const auth = source.indexOf("if (!basicAuthenticated && !ownerSession)", serverStart);
   const origin = source.indexOf("requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)", auth);
@@ -19,6 +19,14 @@ test("webhook and explicit login endpoints are routed before the owner auth boun
   assert.ok(origin < passkey);
   assert.ok(passkey < control);
   assert.equal(source.indexOf('url.pathname === "/api/control/events/github"', webhook + 1), -1);
+
+  // The pre-auth static allowlist is exact paths only, and never an API route.
+  const setStart = source.indexOf("const PUBLIC_STATIC_PATHS = new Set([");
+  const setEnd = source.indexOf("]);", setStart);
+  assert.ok(setStart >= 0 && setStart < serverStart);
+  const publicPaths = [...source.slice(setStart, setEnd).matchAll(/"([^"]+)"/g)].map(match => match[1]);
+  assert.deepEqual(publicPaths.sort(), ["/icon.svg", "/login.html", "/login.js", "/manifest.webmanifest", "/sw.js"]);
+  assert.equal(source.indexOf("PUBLIC_STATIC_PATHS.has(url.pathname)", login + 1), -1);
 });
 
 test("control-plane task execution explicitly reuses backend context", async () => {
