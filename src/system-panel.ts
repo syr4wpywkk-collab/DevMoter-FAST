@@ -39,13 +39,6 @@ export function mountSystemPanel() {
   const modal = root.querySelector<HTMLDivElement>(".devmoter-system-modal")!;
   const closeButton = root.querySelector<HTMLButtonElement>(".devmoter-system-close")!;
   const body = root.querySelector<HTMLDivElement>(".devmoter-system-body")!;
-  let automaticSetupTimer = 0;
-
-  function cancelAutomaticSetup() {
-    if (!automaticSetupTimer) return;
-    window.clearTimeout(automaticSetupTimer);
-    automaticSetupTimer = 0;
-  }
 
   async function request(path: string, init: RequestInit = {}, auth = false) {
     const headers = new Headers(init.headers || {});
@@ -363,7 +356,6 @@ export function mountSystemPanel() {
   document.addEventListener("visibilitychange", () => void syncVisibility());
 
   function open() {
-    cancelAutomaticSetup();
     modal.classList.remove("hidden");
     void render().catch(error => {
       body.innerHTML = `<p class="devmoter-system-error">${escapeHtml(error instanceof Error ? error.message : String(error))}</p>`;
@@ -376,9 +368,7 @@ export function mountSystemPanel() {
 
   openButton.addEventListener("click", open);
   closeButton.addEventListener("click", close);
-  window.addEventListener("devmoter:surface-changed", event => {
-    const surface = (event as CustomEvent<{ surface?: string }>).detail?.surface;
-    if (surface && surface !== "home") cancelAutomaticSetup();
+  window.addEventListener("devmoter:surface-changed", () => {
     close();
   });
   modal.addEventListener("click", event => {
@@ -386,8 +376,4 @@ export function mountSystemPanel() {
   });
 
   void currentSubscription().then(() => void syncVisibility()).catch(() => {});
-
-  if (!localStorage.getItem(SETUP_DISMISSED_KEY)) {
-    automaticSetupTimer = window.setTimeout(open, 250);
-  }
 }
