@@ -184,6 +184,11 @@ export function filterOpenCodePickerModels(providers, options = {}) {
       (choice.deprecated ? deprecated : active).push(row);
     }
   }
+  if (wantFree) {
+    active.sort((a, b) => Number(a.needsKey) - Number(b.needsKey)
+      || String(a.providerName).localeCompare(String(b.providerName))
+      || String(a.model.name || a.model.id).localeCompare(String(b.model.name || b.model.id)));
+  }
   return { active, deprecated, counts };
 }
 

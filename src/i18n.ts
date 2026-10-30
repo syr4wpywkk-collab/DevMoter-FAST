@@ -69,7 +69,23 @@ const dictionary: Record<string, TranslationSet> = {
     ja: "DevMoterに保存された素材と添付ファイル",
     "zh-CN": "DevMoter 中保存的素材和附件"
   },
-  "New session": { en: "New session", ja: "新しいセッション", "zh-CN": "新建会话" },
+  "New session": { en: "New session", ja: "新しいチャット", "zh-CN": "新建会话" },
+  "Search conversation history": { en: "Search conversation history", ja: "チャットを検索", "zh-CN": "搜索对话" },
+  "Sort conversation history": { en: "Sort conversation history", ja: "履歴の並べ替え", "zh-CN": "排序" },
+  "Sort history": { en: "Sort history", ja: "並べ替え", "zh-CN": "排序" },
+  "CONVERSATION HISTORY": { en: "Conversation history", ja: "チャット", "zh-CN": "对话" },
+  "Recent activity": { en: "Recent activity", ja: "最近の更新", "zh-CN": "最近活动" },
+  "Created time": { en: "Created time", ja: "作成日時", "zh-CN": "创建时间" },
+  "Message count": { en: "Message count", ja: "メッセージ数", "zh-CN": "消息数" },
+  "Free": { en: "Free", ja: "無料", "zh-CN": "免费" },
+  "Available": { en: "Available", ja: "使える", "zh-CN": "可用" },
+  "Needs key": { en: "Needs key", ja: "キーが必要", "zh-CN": "需要密钥" },
+  "Deprecated": { en: "Deprecated", ja: "非推奨", "zh-CN": "已弃用" },
+  "Search models": { en: "Search models", ja: "モデルを検索", "zh-CN": "搜索模型" },
+  "使える": { en: "Ready", ja: "使える", "zh-CN": "可用" },
+  "キーが必要": { en: "Needs a key", ja: "キーが必要", "zh-CN": "需要密钥" },
+  "表示": { en: "Appearance", ja: "表示", "zh-CN": "外观" },
+  "開発ツール": { en: "Developer tools", ja: "開発ツール", "zh-CN": "开发工具" },
   "Search sessions": { en: "Search sessions", ja: "セッションを検索", "zh-CN": "搜索会话" },
   "Agents": { en: "Agents", ja: "エージェント", "zh-CN": "智能体" },
   "Commands": { en: "Commands", ja: "コマンド", "zh-CN": "命令" },
@@ -87,6 +103,19 @@ const dictionary: Record<string, TranslationSet> = {
     "zh-CN": "OpenCode 正在 Chromebook 上运行。"
   },
   "Plan first": { en: "Plan first", ja: "まず計画", "zh-CN": "先规划" },
+  "Ask": { en: "Ask", ja: "質問", "zh-CN": "提问" },
+  "Light": { en: "Light", ja: "ライト", "zh-CN": "浅色" },
+  "Dark": { en: "Dark", ja: "ダーク", "zh-CN": "深色" },
+  "System": { en: "System", ja: "システム", "zh-CN": "系统" },
+  "Tasks": { en: "Tasks", ja: "タスク", "zh-CN": "任务" },
+  "Extensions": { en: "Extensions", ja: "拡張", "zh-CN": "扩展" },
+  "offline": { en: "offline", ja: "オフライン", "zh-CN": "离线" },
+  "No models match": { en: "No models match", ja: "一致するモデルはありません", "zh-CN": "没有匹配的模型" },
+  "Plan, ask, and build in your workspace.": {
+    en: "Plan, ask, and build in your workspace.",
+    ja: "このワークスペースで計画し、質問し、実装できます。",
+    "zh-CN": "在此工作区里规划、提问和实现。"
+  },
   "Start building": { en: "Start building", ja: "実装を始める", "zh-CN": "开始构建" },
   "/ commands": { en: "/ commands", ja: "/ コマンド", "zh-CN": "/ 命令" },
   "PERMISSION REQUIRED": { en: "PERMISSION REQUIRED", ja: "許可が必要です", "zh-CN": "需要权限" },
@@ -226,11 +255,7 @@ const dictionary: Record<string, TranslationSet> = {
 function resolveLanguage(): DevMoterLanguage {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved === "en" || saved === "ja" || saved === "zh-CN") return saved;
-
-  const browserLanguage = (navigator.languages?.[0] || navigator.language || "en").toLowerCase();
-  if (browserLanguage.startsWith("ja")) return "ja";
-  if (browserLanguage.startsWith("zh")) return "zh-CN";
-  return "en";
+  return "ja";
 }
 
 let currentLanguage = resolveLanguage();
