@@ -1311,6 +1311,11 @@ body.codex-mode #app {
   background: #7cdd8d;
 }
 
+/* Codex CLI not installed: a setup state, not a connection error. */
+.cx-online-pill.missing i {
+  background: #f5b84f;
+}
+
 .cx-approval {
   position: absolute;
   z-index: 45;

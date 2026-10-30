@@ -210,11 +210,11 @@ async function checkHealth() {
     openCodeRemote.setOnline(Boolean(payload?.backends?.opencode?.online));
     const codexHealth = payload?.backends?.codex;
     const codexCode = codexHealth?.code;
+    const codexLaunchFailed = codexCode === "not_installed" || codexCode === "not_executable" || codexCode === "failed";
     codexRemote.setOnline(
       Boolean(codexHealth?.online),
-      codexCode === "not_installed" || codexCode === "not_executable" || codexCode === "failed"
-        ? String(codexHealth?.error || "")
-        : ""
+      codexLaunchFailed ? String(codexHealth?.error || "") : "",
+      codexLaunchFailed ? codexCode : ""
     );
   } catch {
     openCodeRemote.setOnline(false);

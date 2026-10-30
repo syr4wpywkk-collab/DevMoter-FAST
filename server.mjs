@@ -7,7 +7,7 @@ import { basename, delimiter, dirname, extname, isAbsolute, join, normalize, rel
 import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
 import { CodexBridge } from "./server/codex-bridge.mjs";
-import { inspectKnownClis } from "./server/cli-launch.mjs";
+import { inspectKnownClis, launchCode } from "./server/cli-launch.mjs";
 import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/opencode-provider-catalog.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
@@ -2021,8 +2021,8 @@ async function codexRpc(req, res) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const status = Number(error?.status || (message === "Request body too large" ? 413 : 502));
-    const code = ["not_installed", "not_executable", "failed"].includes(error?.code) ? error.code : null;
-    json(res, code ? 503 : status, {
+    const code = launchCode(error);
+    json(res, status, {
       error: message,
       ...(code ? { code } : {})
     });

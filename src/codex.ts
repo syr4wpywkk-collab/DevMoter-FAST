@@ -117,9 +117,22 @@ type CodexRemoteOptions = {
 };
 
 export type CodexRemoteController = {
-  setOnline(online: boolean, notice?: string): void;
+  /** `code` is the server's CLI launch code (not_installed / not_executable / failed) when Codex cannot start. */
+  setOnline(online: boolean, notice?: string, code?: string): void;
   refresh(): Promise<boolean>;
 };
+
+type CodexUnavailableCode = "not_installed" | "not_executable" | "failed";
+
+function codexUnavailableCode(code: unknown): CodexUnavailableCode | null {
+  return code === "not_installed" || code === "not_executable" || code === "failed" ? code : null;
+}
+
+export function codexAvailabilityLabel(code: CodexUnavailableCode | null): string {
+  if (code === "not_installed") return "未インストール";
+  if (code === "not_executable" || code === "failed") return "起動できません";
+  return "Offline";
+}
 
 export function mountCodexRemote(
   root: HTMLElement,
@@ -473,6 +486,7 @@ export function mountCodexRemote(
   }
 
   let online = false;
+  let unavailableCode: CodexUnavailableCode | null = null;
   let activeThreadId: string | null = null;
   let activeTurnId: string | null = null;
   let activeSendDraft: FailedCodexSendDraft | null = null;
@@ -1007,12 +1021,15 @@ export function mountCodexRemote(
     }
   }
 
-  function setOnline(next: boolean, notice = "") {
+  function setOnline(next: boolean, notice = "", code = "") {
     const changed = online !== next;
     online = next;
+    unavailableCode = next ? null : codexUnavailableCode(code);
     sideStatus.classList.toggle("offline", !next);
     sideStatus.classList.toggle("online", next);
-    sideStatus.innerHTML = `<i></i> ${next ? "Online" : "Offline"}`;
+    sideStatus.classList.toggle("missing", unavailableCode === "not_installed");
+    sideStatus.dataset.codexState = next ? "online" : unavailableCode || "offline";
+    sideStatus.innerHTML = `<i></i> ${next ? "Online" : codexAvailabilityLabel(unavailableCode)}`;
     promptInput.disabled = !next;
 
     if (!next) {
@@ -1028,7 +1045,11 @@ export function mountCodexRemote(
         sidebarThreads.replaceChildren();
         const empty = document.createElement("div");
         empty.className = "cx-side-empty";
-        empty.textContent = "Codexはオフラインです";
+        empty.textContent = unavailableCode === "not_installed"
+          ? "Codex が未インストールです"
+          : unavailableCode
+            ? "Codex を起動できません"
+            : "Codexはオフラインです";
         sidebarThreads.appendChild(empty);
       }
       if (notice) {
@@ -2401,8 +2422,18 @@ export function mountCodexRemote(
       );
     });
 
-    events.addEventListener("offline", () => {
-      setOnline(false);
+    events.addEventListener("offline", event => {
+      let detail: { error?: unknown; code?: unknown } = {};
+      try {
+        detail = JSON.parse((event as MessageEvent<string>).data || "{}") || {};
+      } catch {
+        detail = {};
+      }
+      setOnline(
+        false,
+        codexUnavailableCode(detail.code) ? String(detail.error || "") : "",
+        typeof detail.code === "string" ? detail.code : ""
+      );
     });
 
     events.onerror = () => {
@@ -3426,7 +3457,7 @@ export function mountCodexRemote(
     openModal("リモート", "DevMoter接続情報");
     modalBody.innerHTML = `
       <section class="cx-settings-section">
-        <div class="cx-info-row"><span>Codex</span><strong>${online ? "Connected" : "Offline"}</strong></div>
+        <div class="cx-info-row"><span>Codex</span><strong>${online ? "Connected" : codexAvailabilityLabel(unavailableCode)}</strong></div>
         <div class="cx-info-row"><span>Transport</span><strong>app-server / stdio</strong></div>
         <div class="cx-info-row"><span>Access</span><strong>Tailscale / DevMoter</strong></div>
       </section>
