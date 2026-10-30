@@ -88,7 +88,24 @@ try {
           }
           await page.locator(button).click();
           await page.waitForFunction(expected => new URL(location.href).searchParams.get("surface") === expected, surface);
-          await page.waitForFunction(selector => document.activeElement === document.querySelector(selector), destination);
+          // #481's desktop Codex rail (min-width 1100px) hides #cxMenu and keeps
+          // history on screen. Focusing that hidden button leaves focus on body.
+          // Narrow layouts still move focus onto the visible history button.
+          const destinationShown = await page.locator(destination).evaluate(node => getComputedStyle(node).display !== "none" && node.getClientRects().length > 0);
+          if (destinationShown) {
+            await page.waitForFunction(selector => document.activeElement === document.querySelector(selector), destination);
+          } else {
+            await page.waitForFunction(selector => {
+              const menu = document.querySelector(selector);
+              const rail = document.querySelector("#cxSidebar");
+              return menu
+                && getComputedStyle(menu).display === "none"
+                && rail?.getAttribute("aria-hidden") === "false"
+                && !rail.classList.contains("open")
+                && document.activeElement === document.body
+                && !document.querySelector("#ocxSidebar")?.contains(document.activeElement);
+            }, destination);
+          }
           assert.equal(await page.locator("#ocxSidebar").getAttribute("aria-hidden"), "true");
           assert.equal(await page.locator("#ocxSidebar").evaluate(node => node.inert), true);
           assert.equal(await page.locator("#ocxScrim").isVisible(), false);
