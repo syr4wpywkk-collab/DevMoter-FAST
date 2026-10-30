@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
-import { chmod, lstat, mkdir, open, readFile, rename, unlink } from "node:fs/promises";
+import { chmod, lstat, mkdir, open, rename, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
+import { readHandle, withOpenFile } from "./safe-file.mjs";
 
 const STORE_VERSION = 1;
 const MAX_STORE_BYTES = 1024 * 1024;
@@ -57,20 +58,26 @@ export class TerminalSessionStore {
 
   async load() {
     await this.prepareDirectory();
-    let info;
+    const privateFile = "Terminal session store must be a private regular file.";
+    let raw;
     try {
-      info = await lstat(this.file);
+      // One no-follow open: ownership/mode/size checks and the read use the same file.
+      raw = await withOpenFile(this.file, { noFollow: true }, async (handle, info) => {
+        if (!info.isFile() || !ownedByCurrentUser(info) || (info.mode & 0o077) !== 0) {
+          throw new Error(privateFile);
+        }
+        if (info.size > MAX_STORE_BYTES) throw new Error("Terminal session store exceeds its size limit.");
+        return readHandle(handle, MAX_STORE_BYTES, "utf8");
+      });
     } catch (error) {
       if (error?.code === "ENOENT") return [];
+      if (error?.code === "ELOOP") throw new Error(privateFile);
+      if (error?.code === "EFBIG") throw new Error("Terminal session store exceeds its size limit.");
       throw error;
     }
-    if (!info.isFile() || info.isSymbolicLink() || !ownedByCurrentUser(info) || (info.mode & 0o077) !== 0) {
-      throw new Error("Terminal session store must be a private regular file.");
-    }
-    if (info.size > MAX_STORE_BYTES) throw new Error("Terminal session store exceeds its size limit.");
     let parsed;
     try {
-      parsed = JSON.parse(await readFile(this.file, "utf8"));
+      parsed = JSON.parse(raw);
     } catch {
       throw new Error("Terminal session store is malformed.");
     }

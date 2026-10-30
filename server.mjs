@@ -12,6 +12,7 @@ import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/ope
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { staticSecurityHeaders } from "./server/security-headers.mjs";
+import { readHandle, withOpenFile } from "./server/safe-file.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
 import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
 import { createSessionControl } from "./server/session-control.mjs";
@@ -2371,9 +2372,10 @@ async function serveStatic(req, res) {
   const full = join(DIST, path);
 
   try {
-    const info = await stat(full);
-    if (!info.isFile()) throw new Error("not file");
-    const data = await readFile(full);
+    const data = await withOpenFile(full, {}, async (handle, info) => {
+      if (!info.isFile()) throw new Error("not file");
+      return readHandle(handle);
+    });
     res.writeHead(200, staticSecurityHeaders(MIME[extname(full)] || "application/octet-stream"));
     res.end(data);
   } catch {
