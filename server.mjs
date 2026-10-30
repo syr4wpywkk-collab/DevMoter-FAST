@@ -1763,12 +1763,79 @@ async function materializeCodexUploadInputs(method, params) {
   return { ...params, input };
 }
 
+const OPENCODE_ORIGIN = new URL(OPENCODE_URL).origin;
+const OPENCODE_PROXY_PREFIX = "/api/opencode";
+const OPENCODE_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
+// eslint-disable-next-line no-control-regex
+const OPENCODE_CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
+
+function fullyDecodeOpenCodePath(value) {
+  let current = value;
+  // Undo nested percent-encoding (e.g. %252e) so checks see what OpenCode will.
+  for (let i = 0; i < 4; i += 1) {
+    const next = decodeURIComponent(current);
+    if (next === current) return current;
+    current = next;
+  }
+  return null;
+}
+
+/**
+ * Validate the client path once and build the OpenCode URL from the validated
+ * string. Returns { url } or { error } (400). Only paths under OpenCode's
+ * /api/ on the configured origin can come out of here.
+ */
+export function buildOpenCodeUpstreamUrl(rawRequestUrl) {
+  const raw = String(rawRequestUrl || "");
+  if (!raw.startsWith(OPENCODE_PROXY_PREFIX)) {
+    return { error: "OpenCode proxy path is invalid" };
+  }
+  const rest = raw.slice(OPENCODE_PROXY_PREFIX.length);
+  const queryIndex = rest.indexOf("?");
+  const rawPath = (queryIndex === -1 ? rest : rest.slice(0, queryIndex)) || "/";
+  const rawQuery = queryIndex === -1 ? "" : rest.slice(queryIndex);
+
+  if (!rawPath.startsWith("/")) {
+    return { error: "OpenCode proxy path is invalid" };
+  }
+
+  let decodedPath;
+  try {
+    decodedPath = fullyDecodeOpenCodePath(rawPath);
+  } catch {
+    decodedPath = null;
+  }
+  if (
+    decodedPath === null ||
+    decodedPath.startsWith("//") ||
+    decodedPath.includes("..") ||
+    decodedPath.includes("\\") ||
+    OPENCODE_SCHEME_SEGMENT.test(decodedPath) ||
+    OPENCODE_CONTROL_CHARS.test(decodedPath) ||
+    OPENCODE_CONTROL_CHARS.test(rawPath) ||
+    OPENCODE_CONTROL_CHARS.test(rawQuery) ||
+    rawPath.includes("\\")
+  ) {
+    return { error: "OpenCode proxy path is not allowed" };
+  }
+
+  // rawPath is validated; strip the optional client-side "/api" and pin the
+  // origin and the "/api/" root as literal prefixes of the upstream URL.
+  const apiRelative = (rawPath.startsWith("/api/") ? rawPath.slice("/api/".length) : rawPath.slice(1));
+  const url = new URL(`${OPENCODE_ORIGIN}/api/${apiRelative}${rawQuery}`);
+  if (url.origin !== OPENCODE_ORIGIN || !url.pathname.startsWith("/api/")) {
+    return { error: "OpenCode proxy path is not allowed" };
+  }
+  return { url };
+}
+
 async function proxy(req, res) {
-  const pocketPath = req.url.replace(/^\/api\/opencode/, "") || "/";
-  const upstreamPath = pocketPath.startsWith("/api/")
-    ? pocketPath
-    : `/api${pocketPath}`;
-  const url = new URL(upstreamPath, OPENCODE_URL);
+  const target = buildOpenCodeUpstreamUrl(req.url);
+  if (target.error) {
+    json(res, 400, { error: target.error });
+    return;
+  }
+  const { url } = target;
   const policyPath = url.pathname;
   const sessionId = sessionIdFromOpenCodePath(policyPath);
   const requestedMode = parseAgentMode(req.headers["x-pocket-agent-mode"]);
@@ -3293,7 +3360,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (url.pathname.startsWith("/api/opencode")) {
+    if (url.pathname.startsWith("/api/opencode") || String(req.url || "").startsWith("/api/opencode")) {
       if (
         req.method !== "GET" &&
         req.method !== "HEAD" &&
