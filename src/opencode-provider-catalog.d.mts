@@ -64,6 +64,9 @@ export function filterOpenCodePickerModels(providers: any[], options?: {
     reason: string;
     free: boolean;
   }>;
+  counts: { shown: number; free: number; available: number; needsKey: number };
 };
+
+export function openCodePickerWindow(scrollTop: number, height: number, count: number, rowPx?: number): { start: number; end: number };
 
 export const PROVIDER_CATALOG_TTL_MS: number;

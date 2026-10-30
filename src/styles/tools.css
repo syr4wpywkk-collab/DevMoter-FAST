@@ -1998,26 +1998,70 @@ textarea:focus-visible,
   background: var(--oc-accent-soft, #3a2e24);
 }
 
+.ocx-modal.ocx-runtime-modal .ocx-modal-card {
+  height: calc(var(--dm-viewport-height, 100dvh) - 28px);
+  max-height: calc(var(--dm-viewport-height, 100dvh) - 28px);
+}
+
+.ocx-modal.ocx-runtime-modal .ocx-modal-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ocx-model-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .ocx-model-scroll {
-  max-height: min(46dvh, 420px);
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
 }
 
+.ocx-model-spacer {
+  position: relative;
+  width: 100%;
+}
+
+.ocx-model-window {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+}
+
 .ocx-model-scroll .ocx-picker-row,
-.ocx-model-scroll .ocx-picker-provider {
+.ocx-model-scroll .ocx-picker-provider,
+.ocx-model-scroll .ocx-deprecated-toggle {
   height: 56px;
   min-height: 56px;
+  max-height: 56px;
   box-sizing: border-box;
   overflow: hidden;
 }
 
-.ocx-deprecated-models {
-  margin-top: 8px;
+.ocx-deprecated-toggle {
+  width: 100%;
+  padding: 0 9px;
+  border: 0;
+  background: transparent;
+  color: var(--oc-muted);
+  text-align: left;
+  cursor: pointer;
 }
 
-.ocx-deprecated-models summary {
-  padding: 8px 9px;
-  color: var(--oc-muted);
-  cursor: pointer;
+.ocx-model-scroll .ocx-picker-pricing,
+.ocx-picker-pricing {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
 }
 

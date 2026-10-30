@@ -10,7 +10,7 @@ import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "
 import { createLatestRequestGuard } from "./latest-request.mjs";
 import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
 import { normalizeOpenCodeSessionList } from "./opencode-session-list.mjs";
-import { filterOpenCodePickerModels, normalizeOpenCodeProviderCatalog, openCodeModelChoice } from "./opencode-provider-catalog.mjs";
+import { filterOpenCodePickerModels, normalizeOpenCodeProviderCatalog, openCodePickerWindow } from "./opencode-provider-catalog.mjs";
 import { recoverAfterEventOpen } from "./event-recovery.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
@@ -526,6 +526,9 @@ export function mountOpenCodeRemote(
   let modelPickerFree = false;
   let modelPickerAvailable = false;
   let modelPickerNeedsKey = false;
+  let modelPickerDeprecatedOpen = false;
+  let modelPickerRows: Array<{ kind: "provider"; name: string; id: string } | { kind: "deprecated"; count: number } | { kind: "model"; row: ReturnType<typeof filterOpenCodePickerModels>["active"][number]; pricing: string }> = [];
+  let modelPickerWindowKey = "";
   const MODEL_ROW_PX = 56;
   const PROVIDER_REFRESH_MS = 45_000;
   let liveFallbackTimer: number | null = null;
@@ -616,6 +619,7 @@ export function mountOpenCodeRemote(
     closeSidebar();
     closeComposerMenus();
     window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
+    modal.classList.remove("ocx-runtime-modal");
     modalTitle.textContent = title;
     modalSubtitle.textContent = subtitle;
     modal.classList.remove("hidden");
@@ -626,6 +630,7 @@ export function mountOpenCodeRemote(
   function closeModal() {
     const restoreFocus = modal.contains(document.activeElement);
     runtimePickerVisible = false;
+    modal.classList.remove("ocx-runtime-modal");
     modal.classList.add("hidden");
     syncOverlayState();
     if (restoreFocus) restoreOverlayFocus(modalReturnFocus);
@@ -826,7 +831,7 @@ export function mountOpenCodeRemote(
           enabled: record.enabled,
           status,
           capabilities: record.capabilities,
-          free: record.free === true || (cost?.input === 0 && cost?.output === 0),
+          free: cost?.input === 0 && cost?.output === 0,
           available: typeof record.available === "boolean" ? record.available : connectedProviders.has(provider.id),
           requiresKey,
           deprecated: record.deprecated === true || status === "deprecated"
@@ -3195,113 +3200,137 @@ export function mountOpenCodeRemote(
     });
   }
 
-  function modelOptionButton(row: ReturnType<typeof filterOpenCodePickerModels>["active"][number]) {
+  function flatModelRows(result: ReturnType<typeof filterOpenCodePickerModels>) {
+    const flat: typeof modelPickerRows = [];
+    const pushGroup = (rows: typeof result.active) => {
+      let previous = "";
+      for (const row of rows) {
+        if (row.providerID !== previous) {
+          flat.push({ kind: "provider", name: row.providerName, id: row.providerID });
+          previous = row.providerID;
+        }
+        flat.push({ kind: "model", row, pricing: describeModelPricing(row.model.cost).detail });
+      }
+    };
+    pushGroup(result.active);
+    if (result.deprecated.length) {
+      flat.push({ kind: "deprecated", count: result.deprecated.length });
+      if (modelPickerDeprecatedOpen) pushGroup(result.deprecated);
+    }
+    return flat;
+  }
+
+  function renderModelSlot(item: typeof modelPickerRows[number]) {
+    if (item.kind === "provider") {
+      const heading = document.createElement("div");
+      heading.className = "ocx-picker-provider";
+      const strong = document.createElement("strong");
+      const small = document.createElement("small");
+      strong.textContent = item.name;
+      small.textContent = connectedProviders.has(item.id) ? "available" : "provider unavailable";
+      heading.append(strong, small);
+      return heading;
+    }
+    if (item.kind === "deprecated") {
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "ocx-deprecated-toggle";
+      toggle.setAttribute("aria-expanded", String(modelPickerDeprecatedOpen));
+      toggle.textContent = (modelPickerDeprecatedOpen ? "Deprecated ▾ " : "Deprecated ▸ ") + item.count;
+      toggle.addEventListener("click", () => {
+        modelPickerDeprecatedOpen = !modelPickerDeprecatedOpen;
+        modelPickerRows = flatModelRows(runtimeModelRows());
+        modelPickerWindowKey = "";
+        syncModelWindow(false);
+      });
+      return toggle;
+    }
+    const row = item.row;
     const model = row.model as OpenCodeModel;
-    const choice = openCodeModelChoice(model);
     const selected = selectedModel?.providerID === row.providerID && selectedModel?.modelID === model.id;
     const option = document.createElement("button");
     option.type = "button";
-    option.disabled = !choice.selectable;
-    option.className = "ocx-picker-row " + (selected ? "selected " : "") + (choice.selectable ? "" : "unavailable");
+    option.disabled = !row.selectable;
+    option.className = "ocx-picker-row " + (selected ? "selected " : "") + (row.selectable ? "" : "unavailable");
     const copy = document.createElement("span");
-    copy.innerHTML = "<strong></strong><small></small>";
-    copy.querySelector("strong")!.textContent = model.name || model.id;
+    const title = document.createElement("strong");
+    const detail = document.createElement("small");
+    title.textContent = model.name || model.id;
     const capabilities = model.capabilities && typeof model.capabilities === "object"
       ? Object.entries(model.capabilities).filter(([, value]) => Boolean(value)).map(([key]) => key).slice(0, 4).join(", ")
       : "";
-    const detail = choice.selectable
+    detail.textContent = row.selectable
       ? row.providerID + "/" + model.id + (capabilities ? " · " + capabilities : "")
-      : row.providerID + "/" + model.id + " · " + choice.reason;
-    copy.querySelector("small")!.textContent = detail;
+      : row.providerID + "/" + model.id + " · " + row.reason;
     const pricing = document.createElement("small");
     pricing.className = "ocx-picker-pricing";
-    pricing.textContent = describeModelPricing(model.cost).detail;
-    copy.append(pricing);
+    pricing.textContent = item.pricing;
+    copy.append(title, detail, pricing);
     const mark = document.createElement("span");
-    mark.textContent = selected ? "✓" : choice.selectable ? "›" : "×";
+    mark.textContent = selected ? "✓" : row.selectable ? "›" : "×";
     option.append(copy, mark);
-    if (choice.selectable) {
+    if (row.selectable) {
       option.addEventListener("click", () => {
         void switchModel({ providerID: row.providerID, modelID: model.id })
-          .then(() => paintRuntimePicker())
+          .then(() => paintRuntimePicker(false))
           .catch(() => {});
       });
     }
     return option;
   }
 
-  function groupedModelRows(rows: ReturnType<typeof filterOpenCodePickerModels>["active"]) {
-    const flat: Array<{ kind: "provider"; name: string; id: string } | { kind: "model"; row: typeof rows[number] }> = [];
-    let previous = "";
-    for (const row of rows) {
-      if (row.providerID !== previous) {
-        flat.push({ kind: "provider", name: row.providerName, id: row.providerID });
-        previous = row.providerID;
-      }
-      flat.push({ kind: "model", row });
-    }
-    return flat;
-  }
-
-  function paintVirtualRows(scroller: HTMLElement, rows: ReturnType<typeof groupedModelRows>) {
-    const scrollTop = scroller.scrollTop;
-    scroller.replaceChildren();
+  function syncModelWindow(resetScroll: boolean) {
+    const scroller = modalBody.querySelector<HTMLElement>("#ocxModelScroll");
+    const spacer = scroller?.querySelector<HTMLElement>(".ocx-model-spacer");
+    const windowEl = scroller?.querySelector<HTMLElement>(".ocx-model-window");
+    if (!scroller || !spacer || !windowEl) return;
+    if (resetScroll) scroller.scrollTop = 0;
+    const rows = modelPickerRows;
+    spacer.style.height = `${rows.length * MODEL_ROW_PX}px`;
     if (!rows.length) {
+      windowEl.replaceChildren();
       const empty = document.createElement("div");
       empty.className = "ocx-modal-empty";
       empty.textContent = "No models match";
-      scroller.appendChild(empty);
+      windowEl.appendChild(empty);
+      modelPickerWindowKey = "empty";
       return;
     }
-    const spacer = document.createElement("div");
-    spacer.style.height = `${rows.length * MODEL_ROW_PX}px`;
-    spacer.style.position = "relative";
-    const windowEl = document.createElement("div");
-    windowEl.style.position = "absolute";
-    windowEl.style.left = "0";
-    windowEl.style.right = "0";
-    spacer.appendChild(windowEl);
-    scroller.appendChild(spacer);
-    const draw = () => {
-      const height = scroller.clientHeight || 360;
-      const start = Math.max(0, Math.floor(scroller.scrollTop / MODEL_ROW_PX) - 3);
-      const end = Math.min(rows.length, Math.ceil((scroller.scrollTop + height) / MODEL_ROW_PX) + 4);
-      windowEl.style.transform = `translateY(${start * MODEL_ROW_PX}px)`;
-      windowEl.replaceChildren();
-      for (let index = start; index < end; index++) {
-        const item = rows[index];
-        if (item.kind === "provider") {
-          const heading = document.createElement("div");
-          heading.className = "ocx-picker-provider";
-          const strong = document.createElement("strong");
-          const small = document.createElement("small");
-          strong.textContent = item.name;
-          small.textContent = connectedProviders.has(item.id) ? "available" : "provider unavailable";
-          heading.append(strong, small);
-          windowEl.appendChild(heading);
-        } else {
-          windowEl.appendChild(modelOptionButton(item.row));
-        }
+    const height = scroller.clientHeight;
+    if (height <= 0) {
+      if (scroller.dataset.measuring !== "1") {
+        scroller.dataset.measuring = "1";
+        requestAnimationFrame(() => {
+          scroller.dataset.measuring = "";
+          syncModelWindow(false);
+        });
       }
-    };
-    scroller.addEventListener("scroll", draw, { passive: true });
-    scroller.scrollTop = scrollTop;
-    draw();
-    requestAnimationFrame(draw);
+      return;
+    }
+    const { start, end } = openCodePickerWindow(scroller.scrollTop, height, rows.length, MODEL_ROW_PX);
+    const key = `${start}:${end}:${rows.length}:${modelPickerDeprecatedOpen}:${selectedModel?.providerID || ""}/${selectedModel?.modelID || ""}`;
+    if (key === modelPickerWindowKey) return;
+    modelPickerWindowKey = key;
+    windowEl.style.transform = `translateY(${start * MODEL_ROW_PX}px)`;
+    windowEl.replaceChildren();
+    for (let index = start; index < end; index++) windowEl.appendChild(renderModelSlot(rows[index]));
   }
 
-  function paintRuntimePicker() {
-    const search = modalBody.querySelector<HTMLInputElement>("#ocxModelSearch");
-    const activeScroll = modalBody.querySelector<HTMLElement>("#ocxModelScroll");
-    const deprecatedScroll = modalBody.querySelector<HTMLElement>("#ocxDeprecatedScroll");
-    const deprecatedDetails = modalBody.querySelector<HTMLDetailsElement>("#ocxDeprecatedModels");
-    if (!search || !activeScroll || !deprecatedScroll || !deprecatedDetails) return;
-    const { active, deprecated } = runtimeModelRows();
-    paintVirtualRows(activeScroll, groupedModelRows(active));
-    paintVirtualRows(deprecatedScroll, groupedModelRows(deprecated));
-    const summary = deprecatedDetails.querySelector("summary");
-    if (summary) summary.textContent = `Deprecated (${deprecated.length})`;
-    deprecatedDetails.hidden = deprecated.length === 0;
+  function paintRuntimePicker(resetScroll = false) {
+    const result = runtimeModelRows();
+    modelPickerRows = flatModelRows(result);
+    const heading = modalBody.querySelector("#ocxModelHeading");
+    if (heading) heading.textContent = `Provider · Model · ${result.counts.shown}`;
+    for (const button of modalBody.querySelectorAll<HTMLButtonElement>("[data-model-filter]")) {
+      const filter = button.dataset.modelFilter;
+      const pressed = filter === "free" ? modelPickerFree : filter === "available" ? modelPickerAvailable : modelPickerNeedsKey;
+      const count = filter === "free" ? result.counts.free : filter === "available" ? result.counts.available : result.counts.needsKey;
+      const label = filter === "free" ? "Free" : filter === "available" ? "Available" : "Needs key";
+      button.setAttribute("aria-pressed", String(pressed));
+      button.textContent = `${label} · ${count}`;
+    }
+    modelPickerWindowKey = "";
+    syncModelWindow(resetScroll);
   }
 
   function mountRuntimePicker() {
@@ -3314,22 +3343,25 @@ export function mountOpenCodeRemote(
     search.placeholder = "Search models";
     search.value = modelPickerQuery;
     search.setAttribute("aria-label", "Search models");
-    const filters: Array<[string, () => boolean, (value: boolean) => void]> = [
-      ["Free", () => modelPickerFree, value => { modelPickerFree = value; }],
-      ["Available", () => modelPickerAvailable, value => { modelPickerAvailable = value; }],
-      ["Needs key", () => modelPickerNeedsKey, value => { modelPickerNeedsKey = value; }]
-    ];
     toolbar.appendChild(search);
-    for (const [label, read, write] of filters) {
+    for (const [filter, label] of [["free", "Free"], ["available", "Available"], ["needsKey", "Needs key"]] as const) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "ocx-model-filter";
+      button.dataset.modelFilter = filter;
       button.textContent = label;
-      button.setAttribute("aria-pressed", String(read()));
+      button.setAttribute("aria-pressed", "false");
       button.addEventListener("click", () => {
-        write(!read());
-        button.setAttribute("aria-pressed", String(read()));
-        paintRuntimePicker();
+        if (filter === "free") modelPickerFree = !modelPickerFree;
+        if (filter === "available") {
+          modelPickerAvailable = !modelPickerAvailable;
+          if (modelPickerAvailable) modelPickerNeedsKey = false;
+        }
+        if (filter === "needsKey") {
+          modelPickerNeedsKey = !modelPickerNeedsKey;
+          if (modelPickerNeedsKey) modelPickerAvailable = false;
+        }
+        paintRuntimePicker(true);
       });
       toolbar.appendChild(button);
     }
@@ -3343,8 +3375,7 @@ export function mountOpenCodeRemote(
     toolbar.appendChild(refresh);
     search.addEventListener("input", () => {
       modelPickerQuery = search.value;
-      paintRuntimePicker();
-      search.focus();
+      paintRuntimePicker(true);
     });
     modalBody.appendChild(toolbar);
 
@@ -3359,16 +3390,18 @@ export function mountOpenCodeRemote(
       option.type = "button";
       option.className = "ocx-picker-row " + (selectedAgent === agent.id ? "selected" : "");
       const copy = document.createElement("span");
-      copy.innerHTML = "<strong></strong><small></small>";
-      copy.querySelector("strong")!.textContent = agent.id;
-      copy.querySelector("small")!.textContent = (agent.description || agent.mode || "OpenCode agent") + " · supported";
+      const title = document.createElement("strong");
+      const detail = document.createElement("small");
+      title.textContent = agent.id;
+      detail.textContent = (agent.description || agent.mode || "OpenCode agent") + " · supported";
+      copy.append(title, detail);
       const mark = document.createElement("span");
       mark.textContent = selectedAgent === agent.id ? "✓" : "›";
       option.append(copy, mark);
       option.addEventListener("click", () => {
         void switchAgent(agent.id, selectedMode).then(() => {
           mountRuntimePicker();
-          paintRuntimePicker();
+          paintRuntimePicker(false);
         }).catch(() => {});
       });
       agentSection.appendChild(option);
@@ -3376,25 +3409,30 @@ export function mountOpenCodeRemote(
     modalBody.appendChild(agentSection);
 
     const modelSection = document.createElement("section");
-    modelSection.className = "ocx-picker-section";
+    modelSection.className = "ocx-picker-section ocx-model-section";
     const modelHeading = document.createElement("div");
+    modelHeading.id = "ocxModelHeading";
     modelHeading.className = "ocx-picker-heading";
     modelHeading.textContent = "Provider · Model";
-    const activeScroll = document.createElement("div");
-    activeScroll.id = "ocxModelScroll";
-    activeScroll.className = "ocx-model-scroll";
-    modelSection.append(modelHeading, activeScroll);
-    const deprecatedDetails = document.createElement("details");
-    deprecatedDetails.id = "ocxDeprecatedModels";
-    deprecatedDetails.className = "ocx-deprecated-models";
-    const summary = document.createElement("summary");
-    summary.textContent = "Deprecated";
-    const deprecatedScroll = document.createElement("div");
-    deprecatedScroll.id = "ocxDeprecatedScroll";
-    deprecatedScroll.className = "ocx-model-scroll";
-    deprecatedDetails.append(summary, deprecatedScroll);
-    deprecatedDetails.addEventListener("toggle", () => paintRuntimePicker());
-    modelSection.appendChild(deprecatedDetails);
+    const scroller = document.createElement("div");
+    scroller.id = "ocxModelScroll";
+    scroller.className = "ocx-model-scroll";
+    const spacer = document.createElement("div");
+    spacer.className = "ocx-model-spacer";
+    const windowEl = document.createElement("div");
+    windowEl.className = "ocx-model-window";
+    spacer.appendChild(windowEl);
+    scroller.appendChild(spacer);
+    let scheduled = false;
+    scroller.addEventListener("scroll", () => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        syncModelWindow(false);
+      });
+    }, { passive: true });
+    modelSection.append(modelHeading, scroller);
     modalBody.appendChild(modelSection);
 
     const scope = document.createElement("p");
@@ -3410,10 +3448,13 @@ export function mountOpenCodeRemote(
     const existing = modalBody.querySelector("#ocxModelSearch");
     if (modal.classList.contains("hidden") || !existing) {
       openModal("Provider · Model · Agent", "Choose a compatible OpenCode runtime");
+      modal.classList.add("ocx-runtime-modal");
       mountRuntimePicker();
       void loadProviders(true).catch(error => showToast(error instanceof Error ? error.message : String(error)));
+    } else {
+      modal.classList.add("ocx-runtime-modal");
     }
-    paintRuntimePicker();
+    paintRuntimePicker(false);
   }
 
   function persistImportedThreads() {

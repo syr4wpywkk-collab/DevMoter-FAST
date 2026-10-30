@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { buildOpenCodeProviderCatalog, filterOpenCodePickerModels, normalizeOpenCodeProviderCatalog } from "../src/opencode-provider-catalog.mjs";
+import { buildOpenCodeProviderCatalog, filterOpenCodePickerModels, normalizeOpenCodeProviderCatalog, openCodePickerWindow } from "../src/opencode-provider-catalog.mjs";
 
 test("OpenCode provider catalog normalizes canonical provider metadata", () => {
   const payload = {
@@ -82,6 +82,42 @@ test("provider catalog is built from v1 and only takes v2 status overrides", () 
 
   const free = filterOpenCodePickerModels(catalog.all, { connected: catalog.connected, free: true, available: true });
   assert.deepEqual(free.active.map(row => row.model.id), ["free"]);
+  assert.equal(free.counts.shown, 1);
+});
+
+test("free filter keeps cost-zero rows and does not change availability", () => {
+  const providers = [{
+    id: "agentrouter",
+    name: "AgentRouter",
+    models: {
+      zero: { id: "zero", name: "Zero", cost: { input: 0, output: 0 }, available: false, requiresKey: ["AGENT_ROUTER_API_KEY"], free: false },
+      priced: { id: "priced", name: "Priced", cost: { input: 0, output: 2 }, available: false, requiresKey: ["AGENT_ROUTER_API_KEY"], free: true },
+      unknown: { id: "unknown", name: "Unknown", cost: null, available: true, free: true, status: "active" },
+      usable: { id: "usable", name: "Usable", cost: { input: 0, output: 0 }, available: true, status: "active" }
+    }
+  }];
+  const onlyFree = filterOpenCodePickerModels(providers, { free: true, connected: [] });
+  assert.deepEqual(onlyFree.active.map(row => row.model.id), ["usable", "zero"]);
+  assert.equal(onlyFree.active.find(row => row.model.id === "zero").needsKey, true);
+  assert.equal(onlyFree.active.find(row => row.model.id === "zero").reason, "Needs key (AGENT_ROUTER_API_KEY)");
+  assert.equal(onlyFree.active.find(row => row.model.id === "zero").selectable, false);
+  assert.equal(onlyFree.active.find(row => row.model.id === "usable").selectable, true);
+  assert.equal(onlyFree.counts.shown, 2);
+  assert.equal(onlyFree.counts.needsKey, 1);
+  assert.equal(onlyFree.counts.available, 1);
+
+  const intersection = filterOpenCodePickerModels(providers, { free: true, available: true, needsKey: true, connected: ["agentrouter"] });
+  assert.equal(intersection.counts.shown, 0);
+  assert.deepEqual(intersection.active, []);
+});
+
+test("picker window stays small across a 9k model list", () => {
+  for (const scrollTop of [0, 560, 18000, 56 * 8900]) {
+    const window = openCodePickerWindow(scrollTop, 700, 9000, 56);
+    assert.ok(window.end - window.start <= 20, `${scrollTop} mounted ${window.end - window.start}`);
+    assert.ok(window.start >= 0 && window.end <= 9000);
+  }
+  assert.deepEqual(openCodePickerWindow(0, 0, 9000), { start: 0, end: 0 });
 });
 
 test("OpenCode validates provider payload before replacing the current catalog", async () => {
@@ -98,6 +134,9 @@ test("OpenCode validates provider payload before replacing the current catalog",
   assert.match(source, /Needs key/);
   assert.match(source, /Deprecated/);
   assert.match(source, /ocxModelScroll/);
+  assert.doesNotMatch(source, /ocxDeprecatedScroll/);
+  assert.match(source, /if \(modelPickerNeedsKey\) modelPickerAvailable = false/);
+  assert.match(source, /Provider · Model · /);
   assert.doesNotMatch(source, /async function showModels\(/);
 });
 

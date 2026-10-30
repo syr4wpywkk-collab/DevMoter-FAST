@@ -131,6 +131,8 @@ export function openCodeModelChoice(model) {
   const enabled = model?.enabled !== false && model?.status !== "unavailable";
   const needsKey = !available && requiresKey.length > 0;
   const selectable = available && enabled;
+  const cost = model?.cost;
+  const free = !!cost && cost.input === 0 && cost.output === 0;
   const reason = needsKey
     ? `Needs key (${requiresKey.join(", ")})`
     : !available
@@ -138,14 +140,18 @@ export function openCodeModelChoice(model) {
       : !enabled
         ? "unavailable"
         : "";
-  return { requiresKey, available, deprecated, enabled, needsKey, selectable, reason, free: model?.free === true };
+  return { requiresKey, available, deprecated, enabled, needsKey, selectable, reason, free };
 }
 
 export function filterOpenCodePickerModels(providers, options = {}) {
   const query = String(options.query || "").trim().toLowerCase();
+  const wantFree = Boolean(options.free);
+  const wantAvailable = Boolean(options.available);
+  const wantNeedsKey = Boolean(options.needsKey);
   const connected = new Set((options.connected || []).map(id => String(id)));
   const active = [];
   const deprecated = [];
+  const counts = { shown: 0, free: 0, available: 0, needsKey: 0 };
   const sorted = [...(Array.isArray(providers) ? providers : [])].sort((a, b) => {
     const aConnected = connected.has(a.id) ? 0 : 1;
     const bConnected = connected.has(b.id) ? 0 : 1;
@@ -162,9 +168,13 @@ export function filterOpenCodePickerModels(providers, options = {}) {
       const choice = openCodeModelChoice(model);
       const haystack = `${provider.name || ""} ${provider.id || ""} ${model.name || ""} ${model.id || ""}`.toLowerCase();
       if (query && !haystack.includes(query)) continue;
-      if (options.free && !choice.free) continue;
-      if (options.available && !choice.available) continue;
-      if (options.needsKey && !choice.needsKey) continue;
+      const passesFree = !wantFree || choice.free;
+      const passesAvailability = (!wantAvailable || choice.available) && (!wantNeedsKey || choice.needsKey);
+      if (choice.free && passesAvailability) counts.free += 1;
+      if (choice.available && (!wantFree || choice.free)) counts.available += 1;
+      if (choice.needsKey && (!wantFree || choice.free)) counts.needsKey += 1;
+      if (!passesFree || !passesAvailability) continue;
+      counts.shown += 1;
       const row = {
         providerID: String(provider.id),
         providerName: provider.name || provider.id,
@@ -174,7 +184,14 @@ export function filterOpenCodePickerModels(providers, options = {}) {
       (choice.deprecated ? deprecated : active).push(row);
     }
   }
-  return { active, deprecated };
+  return { active, deprecated, counts };
+}
+
+export function openCodePickerWindow(scrollTop, height, count, rowPx = 56) {
+  if (count <= 0 || height <= 0) return { start: 0, end: 0 };
+  const start = Math.max(0, Math.floor(scrollTop / rowPx) - 2);
+  const end = Math.min(count, Math.ceil((scrollTop + height) / rowPx) + 3);
+  return { start, end };
 }
 
 export { PROVIDER_CATALOG_TTL_MS };
