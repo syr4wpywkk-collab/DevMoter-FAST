@@ -192,6 +192,60 @@ export function filterOpenCodePickerModels(providers, options = {}) {
   return { active, deprecated, counts };
 }
 
+/**
+ * Flatten filtered picker rows into the virtual list. In the Free view, the
+ * "キーが必要" models (thousands of $0 rows across unconnected providers) are
+ * folded to one row per provider; only providers in `expandedKeyProviders`
+ * list their models.
+ */
+export function flattenOpenCodePickerRows(result, options = {}) {
+  const free = Boolean(options.free);
+  const deprecatedOpen = Boolean(options.deprecatedOpen);
+  const expanded = options.expandedKeyProviders instanceof Set ? options.expandedKeyProviders : new Set();
+  const flat = [];
+  const pushGroup = rows => {
+    let previous = "";
+    for (const row of rows) {
+      if (row.providerID !== previous) {
+        flat.push({ kind: "provider", name: row.providerName, id: row.providerID });
+        previous = row.providerID;
+      }
+      flat.push({ kind: "model", row });
+    }
+  };
+  const active = Array.isArray(result?.active) ? result.active : [];
+  if (free) {
+    const ready = active.filter(row => !row.needsKey);
+    const keyed = active.filter(row => row.needsKey);
+    if (ready.length) {
+      flat.push({ kind: "group", name: "使える", count: ready.length });
+      pushGroup(ready);
+    }
+    if (keyed.length) {
+      flat.push({ kind: "group", name: "キーが必要", count: keyed.length });
+      const byProvider = new Map();
+      for (const row of keyed) {
+        const bucket = byProvider.get(row.providerID);
+        if (bucket) bucket.rows.push(row);
+        else byProvider.set(row.providerID, { name: row.providerName, rows: [row] });
+      }
+      for (const [id, { name, rows }] of byProvider) {
+        const open = expanded.has(id);
+        flat.push({ kind: "keyProvider", id, name, count: rows.length, expanded: open });
+        if (open) for (const row of rows) flat.push({ kind: "model", row });
+      }
+    }
+  } else {
+    pushGroup(active);
+  }
+  const deprecated = Array.isArray(result?.deprecated) ? result.deprecated : [];
+  if (deprecatedOpen && deprecated.length) {
+    flat.push({ kind: "group", name: "非推奨", count: deprecated.length });
+    pushGroup(deprecated);
+  }
+  return flat;
+}
+
 export function openCodePickerWindow(scrollTop, height, count, rowPx = 56) {
   if (count <= 0 || height <= 0) return { start: 0, end: 0 };
   const start = Math.max(0, Math.floor(scrollTop / rowPx) - 2);

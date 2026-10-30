@@ -67,6 +67,19 @@ export function filterOpenCodePickerModels(providers: any[], options?: {
   counts: { shown: number; free: number; available: number; needsKey: number };
 };
 
+export type OpenCodePickerRow = ReturnType<typeof filterOpenCodePickerModels>["active"][number];
+
+export type OpenCodePickerItem =
+  | { kind: "group"; name: string; count: number }
+  | { kind: "provider"; name: string; id: string }
+  | { kind: "keyProvider"; name: string; id: string; count: number; expanded: boolean }
+  | { kind: "model"; row: OpenCodePickerRow };
+
+export function flattenOpenCodePickerRows(
+  result: ReturnType<typeof filterOpenCodePickerModels>,
+  options?: { free?: boolean; deprecatedOpen?: boolean; expandedKeyProviders?: Set<string> }
+): OpenCodePickerItem[];
+
 export function openCodePickerWindow(scrollTop: number, height: number, count: number, rowPx?: number): { start: number; end: number };
 
 export const PROVIDER_CATALOG_TTL_MS: number;
