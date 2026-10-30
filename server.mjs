@@ -408,7 +408,14 @@ function redactText(value) {
   return redactSecretsInText(value, REDACTED_SECRETS);
 }
 
+function endIfResponseStarted(res) {
+  if (!res.headersSent && !res.writableEnded && !res.destroyed) return false;
+  if (!res.writableEnded && !res.destroyed) res.end();
+  return true;
+}
+
 function json(res, status, body) {
+  if (endIfResponseStarted(res)) return;
   res.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store"
@@ -419,6 +426,7 @@ function json(res, status, body) {
 }
 
 function jsonWithCookie(res, status, body, cookie) {
+  if (endIfResponseStarted(res)) return;
   res.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
@@ -1755,13 +1763,79 @@ async function materializeCodexUploadInputs(method, params) {
   return { ...params, input };
 }
 
+const OPENCODE_ORIGIN = new URL(OPENCODE_URL).origin;
+const OPENCODE_PROXY_PREFIX = "/api/opencode";
+// Allowlist: RFC 3986 path characters only (percent-escapes allowed, decoded below).
+const OPENCODE_SAFE_PATH = /^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/;
+const OPENCODE_SAFE_QUERY = /^(\?[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*)?$/;
+const OPENCODE_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
+// eslint-disable-next-line no-control-regex
+const OPENCODE_CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
+
+function fullyDecodeOpenCodePath(value) {
+  let current = value;
+  // Undo nested percent-encoding (e.g. %252e) so checks see what OpenCode will.
+  for (let i = 0; i < 4; i += 1) {
+    let next;
+    try {
+      next = decodeURIComponent(current);
+    } catch {
+      return null;
+    }
+    if (next === current) return current;
+    current = next;
+  }
+  return null;
+}
+
+/**
+ * Validate the client path once and build the OpenCode request target as a
+ * plain string: fixed OpenCode origin + "/api/" + allowlisted path (+ query).
+ * Returns { upstreamUrl, policyPath } or { error } (400).
+ */
+export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
+  const raw = String(rawRequestUrl || "");
+  if (!raw.startsWith(OPENCODE_PROXY_PREFIX)) {
+    return { error: "OpenCode proxy path is invalid" };
+  }
+  const rest = raw.slice(OPENCODE_PROXY_PREFIX.length);
+  const queryIndex = rest.indexOf("?");
+  const rawPath = (queryIndex === -1 ? rest : rest.slice(0, queryIndex)) || "/";
+  const rawQuery = queryIndex === -1 ? "" : rest.slice(queryIndex);
+
+  if (!OPENCODE_SAFE_PATH.test(rawPath) || !OPENCODE_SAFE_QUERY.test(rawQuery)) {
+    return { error: "OpenCode proxy path is not allowed" };
+  }
+  const decodedPath = fullyDecodeOpenCodePath(rawPath);
+  if (
+    decodedPath === null ||
+    decodedPath.startsWith("//") ||
+    rawPath.startsWith("//") ||
+    decodedPath.includes("..") ||
+    decodedPath.includes("\\") ||
+    OPENCODE_SCHEME_SEGMENT.test(decodedPath) ||
+    OPENCODE_CONTROL_CHARS.test(decodedPath)
+  ) {
+    return { error: "OpenCode proxy path is not allowed" };
+  }
+
+  // Strip the optional client-side "/api" prefix; the upstream root is fixed.
+  const apiRelative = rawPath.startsWith("/api/") ? rawPath.slice("/api/".length) : rawPath.slice(1);
+  if (apiRelative.startsWith("/")) {
+    return { error: "OpenCode proxy path is not allowed" };
+  }
+  const policyPath = `/api/${apiRelative}`;
+  const upstreamUrl = `${OPENCODE_ORIGIN}/api/${apiRelative}${rawQuery}`;
+  return { upstreamUrl, policyPath };
+}
+
 async function proxy(req, res) {
-  const pocketPath = req.url.replace(/^\/api\/opencode/, "") || "/";
-  const upstreamPath = pocketPath.startsWith("/api/")
-    ? pocketPath
-    : `/api${pocketPath}`;
-  const url = new URL(upstreamPath, OPENCODE_URL);
-  const policyPath = url.pathname;
+  const target = buildOpenCodeUpstreamTarget(req.url);
+  if (target.error) {
+    json(res, 400, { error: target.error });
+    return;
+  }
+  const { upstreamUrl, policyPath } = target;
   const sessionId = sessionIdFromOpenCodePath(policyPath);
   const requestedMode = parseAgentMode(req.headers["x-pocket-agent-mode"]);
   if (sessionId && requestedMode) openCodeSessionModes.set(sessionId, requestedMode);
@@ -1817,40 +1891,66 @@ async function proxy(req, res) {
     policyPath
   );
 
-  const upstream = await fetch(url, {
-    method: req.method,
-    headers: await openCodeHeadersForRequest(req, {
-      "content-type": req.headers["content-type"] || "application/json",
-      "accept": req.headers["accept"] || "*/*"
-    }),
-    body
-  });
+  const upstreamAbort = new AbortController();
+  const abortUpstream = () => {
+    upstreamAbort.abort();
+  };
+  const onClientClosed = () => {
+    if (!res.writableEnded) abortUpstream();
+  };
+  req.on("aborted", abortUpstream);
+  res.on("close", onClientClosed);
 
-  const headers = {};
-  for (const [key, value] of upstream.headers.entries()) {
-    if (![ "content-encoding", "content-length", "transfer-encoding", "connection" ].includes(key)) {
-      headers[key] = value;
+  try {
+    const upstream = await fetch(upstreamUrl, {
+      method: req.method,
+      headers: await openCodeHeadersForRequest(req, {
+        "content-type": req.headers["content-type"] || "application/json",
+        "accept": req.headers["accept"] || "*/*"
+      }),
+      body,
+      signal: upstreamAbort.signal
+    });
+
+    const headers = {};
+    for (const [key, value] of upstream.headers.entries()) {
+      if (![ "content-encoding", "content-length", "transfer-encoding", "connection" ].includes(key)) {
+        headers[key] = value;
+      }
     }
-  }
-  const upstreamContentType = upstream.headers.get("content-type") || "";
-  headers["cache-control"] = upstreamContentType.includes("text/event-stream")
-    ? "no-cache, no-transform"
-    : "no-store";
+    const upstreamContentType = upstream.headers.get("content-type") || "";
+    headers["cache-control"] = upstreamContentType.includes("text/event-stream")
+      ? "no-cache, no-transform"
+      : "no-store";
 
-  res.writeHead(upstream.status, headers);
+    if (endIfResponseStarted(res)) return;
 
-  if (!upstream.body) {
-    res.end();
-    return;
-  }
+    res.writeHead(upstream.status, headers);
 
-  const reader = upstream.body.getReader();
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    res.write(Buffer.from(value));
+    if (!upstream.body) {
+      res.end();
+      return;
+    }
+
+    const reader = upstream.body.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done || res.writableEnded || res.destroyed) break;
+        res.write(Buffer.from(value));
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    endIfResponseStarted(res);
+  } catch (error) {
+    if (endIfResponseStarted(res)) return;
+    throw error;
+  } finally {
+    req.off("aborted", abortUpstream);
+    res.off("close", onClientClosed);
+    abortUpstream();
   }
-  res.end();
 }
 
 async function codexRpc(req, res) {
@@ -3259,7 +3359,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (url.pathname.startsWith("/api/opencode")) {
+    if (url.pathname.startsWith("/api/opencode") || String(req.url || "").startsWith("/api/opencode")) {
       if (
         req.method !== "GET" &&
         req.method !== "HEAD" &&
