@@ -10,7 +10,7 @@ import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "
 import { createLatestRequestGuard } from "./latest-request.mjs";
 import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
 import { normalizeOpenCodeSessionList } from "./opencode-session-list.mjs";
-import { normalizeOpenCodeProviderCatalog } from "./opencode-provider-catalog.mjs";
+import { filterOpenCodePickerModels, normalizeOpenCodeProviderCatalog, openCodePickerWindow } from "./opencode-provider-catalog.mjs";
 import { recoverAfterEventOpen } from "./event-recovery.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
@@ -42,11 +42,16 @@ type OpenCodeModel = {
   status?: string | null;
   capabilities?: Record<string, unknown> | null;
   cost?: ReturnType<typeof normalizeModelPricing>;
+  free?: boolean;
+  available?: boolean;
+  requiresKey?: string[];
+  deprecated?: boolean;
 };
 
 type OpenCodeProvider = {
   id: string;
   name?: string;
+  env?: string[];
   models?: Record<string, Json> | Json[];
 };
 
@@ -515,6 +520,17 @@ export function mountOpenCodeRemote(
   let reconnectTimer: number | null = null;
   let reconnectAttempts = 0;
   let refreshTimer: number | null = null;
+  let providerRefreshTimer: number | null = null;
+  let runtimePickerVisible = false;
+  let modelPickerQuery = "";
+  let modelPickerFree = false;
+  let modelPickerAvailable = false;
+  let modelPickerNeedsKey = false;
+  let modelPickerDeprecatedOpen = false;
+  let modelPickerRows: Array<{ kind: "provider"; name: string; id: string } | { kind: "deprecated"; count: number } | { kind: "model"; row: ReturnType<typeof filterOpenCodePickerModels>["active"][number]; pricing: string }> = [];
+  let modelPickerWindowKey = "";
+  const MODEL_ROW_PX = 56;
+  const PROVIDER_REFRESH_MS = 45_000;
   let liveFallbackTimer: number | null = null;
   let lastLiveEventAt = 0;
   let toastTimer: number | null = null;
@@ -603,6 +619,7 @@ export function mountOpenCodeRemote(
     closeSidebar();
     closeComposerMenus();
     window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
+    modal.classList.remove("ocx-runtime-modal");
     modalTitle.textContent = title;
     modalSubtitle.textContent = subtitle;
     modal.classList.remove("hidden");
@@ -612,6 +629,8 @@ export function mountOpenCodeRemote(
 
   function closeModal() {
     const restoreFocus = modal.contains(document.activeElement);
+    runtimePickerVisible = false;
+    modal.classList.remove("ocx-runtime-modal");
     modal.classList.add("hidden");
     syncOverlayState();
     if (restoreFocus) restoreOverlayFocus(modalReturnFocus);
@@ -794,23 +813,31 @@ export function mountOpenCodeRemote(
   function normalizeModels(provider: OpenCodeProvider): OpenCodeModel[] {
     const raw = provider.models;
     if (!raw) return [];
-
-    if (Array.isArray(raw)) {
-      return raw
-        .map((model: Json) => ({
-          id: String(model.id ?? model.modelID ?? ""),
-          name: String(model.name ?? model.id ?? model.modelID ?? ""),
-          cost: normalizeModelPricing(model.cost), enabled: model.enabled, status: model.status, capabilities: model.capabilities
-        }))
-        .filter(model => model.id);
-    }
-
-    return Object.entries(raw)
-      .map(([id, model]) => ({
-        id,
-        name: String((model as Json)?.name ?? id),
-        cost: normalizeModelPricing(model?.cost), enabled: model?.enabled, status: model?.status, capabilities: model?.capabilities
-      }))
+    const entries = Array.isArray(raw)
+      ? raw.map(model => [String(model.id ?? model.modelID ?? ""), model] as const)
+      : Object.entries(raw);
+    return entries
+      .map(([id, model]) => {
+        const record = (model ?? {}) as Json;
+        const cost = normalizeModelPricing(record.cost);
+        const requiresKey = Array.isArray(record.requiresKey)
+          ? record.requiresKey.map((key: unknown) => String(key)).filter(Boolean)
+          : Array.isArray(provider.env) ? provider.env.map(key => String(key)).filter(Boolean) : [];
+        const status = record.status ?? null;
+        return {
+          id: String(record.id ?? record.modelID ?? id),
+          name: String(record.name ?? record.id ?? id),
+          cost,
+          enabled: record.enabled,
+          status,
+          capabilities: record.capabilities,
+          free: cost?.input === 0 && cost?.output === 0,
+          available: typeof record.available === "boolean" ? record.available : connectedProviders.has(provider.id),
+          requiresKey,
+          deprecated: record.deprecated === true || status === "deprecated"
+        };
+      })
+      .filter(model => model.id)
       .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
   }
 
@@ -1422,9 +1449,9 @@ export function mountOpenCodeRemote(
     }
   }
 
-  async function loadProviders() {
+  async function loadProviders(force = false) {
     const requestGeneration = providerCatalogRequests.begin();
-    const payload = await api<unknown>("/pocket/providers");
+    const payload = await api<unknown>("/pocket/providers" + (force ? "?refresh=1" : ""));
     if (!providerCatalogRequests.isCurrent(requestGeneration)) return;
 
     const catalog = normalizeOpenCodeProviderCatalog(payload);
@@ -1448,6 +1475,21 @@ export function mountOpenCodeRemote(
     }
 
     updateContextUI();
+    if (runtimePickerVisible) paintRuntimePicker();
+  }
+
+  function ensureProviderRefresh() {
+    if (providerRefreshTimer !== null) return;
+    providerRefreshTimer = window.setInterval(() => {
+      if (!online) return;
+      void loadProviders(true).catch(() => {});
+    }, PROVIDER_REFRESH_MS);
+  }
+
+  function stopProviderRefresh() {
+    if (providerRefreshTimer === null) return;
+    window.clearInterval(providerRefreshTimer);
+    providerRefreshTimer = null;
   }
 
   async function loadAgents() {
@@ -2665,6 +2707,11 @@ export function mountOpenCodeRemote(
     const normalized = normalizeOpenCodeEvent(payload);
     const { type, props, sessionID } = normalized;
 
+    if (type === "provider.updated" || type === "config.updated" || type === "auth.updated" || type.startsWith("provider.")) {
+      void loadProviders(true).catch(() => {});
+      return;
+    }
+
     if (
       sessionID &&
       activeSession &&
@@ -3138,69 +3185,199 @@ export function mountOpenCodeRemote(
     modalBody.appendChild(list);
   }
 
-  async function showModels() {
-    openModal("Models", "Choose the model for subsequent work");
-    modalBody.replaceChildren();
-
-    const list = document.createElement("div");
-    list.className = "ocx-picker-list";
-
-    const sortedProviders = [...providers].sort((a, b) => {
-      const aConnected = connectedProviders.has(a.id) ? 0 : 1;
-      const bConnected = connectedProviders.has(b.id) ? 0 : 1;
-      return aConnected - bConnected || (a.name || a.id).localeCompare(b.name || b.id);
+  function runtimeModelRows() {
+    const view = providers.map(provider => ({
+      id: provider.id,
+      name: provider.name || provider.id,
+      models: Object.fromEntries(normalizeModels(provider).map(model => [model.id, model]))
+    }));
+    return filterOpenCodePickerModels(view, {
+      query: modelPickerQuery,
+      free: modelPickerFree,
+      available: modelPickerAvailable,
+      needsKey: modelPickerNeedsKey,
+      connected: [...connectedProviders]
     });
-
-    for (const provider of sortedProviders) {
-      const heading = document.createElement("div");
-      heading.className = "ocx-picker-heading";
-      heading.textContent = provider.name || provider.id;
-      list.appendChild(heading);
-
-      for (const model of normalizeModels(provider)) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = `ocx-picker-row ${
-          selectedModel?.providerID === provider.id &&
-          selectedModel?.modelID === model.id
-            ? "selected"
-            : ""
-        }`;
-
-        const copy = document.createElement("span");
-        copy.innerHTML = "<strong></strong><small></small>";
-        copy.querySelector("strong")!.textContent = model.name || model.id;
-        copy.querySelector("small")!.textContent =
-          `${provider.id}/${model.id}`;
-        const pricing = document.createElement("small"); pricing.className = "ocx-picker-pricing";
-        pricing.textContent = describeModelPricing(model.cost).detail; copy.append(pricing);
-
-        const mark = document.createElement("span");
-        mark.textContent =
-          selectedModel?.providerID === provider.id &&
-          selectedModel?.modelID === model.id
-            ? "✓"
-            : "›";
-
-        button.append(copy, mark);
-        button.addEventListener("click", () => {
-          void switchModel({
-            providerID: provider.id,
-            modelID: model.id
-          })
-            .then(closeModal)
-            .catch(() => {});
-        });
-        list.appendChild(button);
-      }
-    }
-
-    modalBody.appendChild(list);
   }
 
-  async function showRuntimePicker() {
-    openModal("Provider · Model · Agent", "Choose a compatible OpenCode runtime");
+  function flatModelRows(result: ReturnType<typeof filterOpenCodePickerModels>) {
+    const flat: typeof modelPickerRows = [];
+    const pushGroup = (rows: typeof result.active) => {
+      let previous = "";
+      for (const row of rows) {
+        if (row.providerID !== previous) {
+          flat.push({ kind: "provider", name: row.providerName, id: row.providerID });
+          previous = row.providerID;
+        }
+        flat.push({ kind: "model", row, pricing: describeModelPricing(row.model.cost).detail });
+      }
+    };
+    pushGroup(result.active);
+    if (result.deprecated.length) {
+      flat.push({ kind: "deprecated", count: result.deprecated.length });
+      if (modelPickerDeprecatedOpen) pushGroup(result.deprecated);
+    }
+    return flat;
+  }
+
+  function renderModelSlot(item: typeof modelPickerRows[number]) {
+    if (item.kind === "provider") {
+      const heading = document.createElement("div");
+      heading.className = "ocx-picker-provider";
+      const strong = document.createElement("strong");
+      const small = document.createElement("small");
+      strong.textContent = item.name;
+      small.textContent = connectedProviders.has(item.id) ? "available" : "provider unavailable";
+      heading.append(strong, small);
+      return heading;
+    }
+    if (item.kind === "deprecated") {
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "ocx-deprecated-toggle";
+      toggle.setAttribute("aria-expanded", String(modelPickerDeprecatedOpen));
+      toggle.textContent = (modelPickerDeprecatedOpen ? "Deprecated ▾ " : "Deprecated ▸ ") + item.count;
+      toggle.addEventListener("click", () => {
+        modelPickerDeprecatedOpen = !modelPickerDeprecatedOpen;
+        modelPickerRows = flatModelRows(runtimeModelRows());
+        modelPickerWindowKey = "";
+        syncModelWindow(false);
+      });
+      return toggle;
+    }
+    const row = item.row;
+    const model = row.model as OpenCodeModel;
+    const selected = selectedModel?.providerID === row.providerID && selectedModel?.modelID === model.id;
+    const option = document.createElement("button");
+    option.type = "button";
+    option.disabled = !row.selectable;
+    option.className = "ocx-picker-row " + (selected ? "selected " : "") + (row.selectable ? "" : "unavailable");
+    const copy = document.createElement("span");
+    const title = document.createElement("strong");
+    const detail = document.createElement("small");
+    title.textContent = model.name || model.id;
+    const capabilities = model.capabilities && typeof model.capabilities === "object"
+      ? Object.entries(model.capabilities).filter(([, value]) => Boolean(value)).map(([key]) => key).slice(0, 4).join(", ")
+      : "";
+    detail.textContent = row.selectable
+      ? row.providerID + "/" + model.id + (capabilities ? " · " + capabilities : "")
+      : row.providerID + "/" + model.id + " · " + row.reason;
+    const pricing = document.createElement("small");
+    pricing.className = "ocx-picker-pricing";
+    pricing.textContent = item.pricing;
+    copy.append(title, detail, pricing);
+    const mark = document.createElement("span");
+    mark.textContent = selected ? "✓" : row.selectable ? "›" : "×";
+    option.append(copy, mark);
+    if (row.selectable) {
+      option.addEventListener("click", () => {
+        void switchModel({ providerID: row.providerID, modelID: model.id })
+          .then(() => paintRuntimePicker(false))
+          .catch(() => {});
+      });
+    }
+    return option;
+  }
+
+  function syncModelWindow(resetScroll: boolean) {
+    const scroller = modalBody.querySelector<HTMLElement>("#ocxModelScroll");
+    const spacer = scroller?.querySelector<HTMLElement>(".ocx-model-spacer");
+    const windowEl = scroller?.querySelector<HTMLElement>(".ocx-model-window");
+    if (!scroller || !spacer || !windowEl) return;
+    if (resetScroll) scroller.scrollTop = 0;
+    const rows = modelPickerRows;
+    spacer.style.height = `${rows.length * MODEL_ROW_PX}px`;
+    if (!rows.length) {
+      windowEl.replaceChildren();
+      const empty = document.createElement("div");
+      empty.className = "ocx-modal-empty";
+      empty.textContent = "No models match";
+      windowEl.appendChild(empty);
+      modelPickerWindowKey = "empty";
+      return;
+    }
+    const height = scroller.clientHeight;
+    if (height <= 0) {
+      if (scroller.dataset.measuring !== "1") {
+        scroller.dataset.measuring = "1";
+        requestAnimationFrame(() => {
+          scroller.dataset.measuring = "";
+          syncModelWindow(false);
+        });
+      }
+      return;
+    }
+    const { start, end } = openCodePickerWindow(scroller.scrollTop, height, rows.length, MODEL_ROW_PX);
+    const key = `${start}:${end}:${rows.length}:${modelPickerDeprecatedOpen}:${selectedModel?.providerID || ""}/${selectedModel?.modelID || ""}`;
+    if (key === modelPickerWindowKey) return;
+    modelPickerWindowKey = key;
+    windowEl.style.transform = `translateY(${start * MODEL_ROW_PX}px)`;
+    windowEl.replaceChildren();
+    for (let index = start; index < end; index++) windowEl.appendChild(renderModelSlot(rows[index]));
+  }
+
+  function paintRuntimePicker(resetScroll = false) {
+    const result = runtimeModelRows();
+    modelPickerRows = flatModelRows(result);
+    const heading = modalBody.querySelector("#ocxModelHeading");
+    if (heading) heading.textContent = `Provider · Model · ${result.counts.shown}`;
+    for (const button of modalBody.querySelectorAll<HTMLButtonElement>("[data-model-filter]")) {
+      const filter = button.dataset.modelFilter;
+      const pressed = filter === "free" ? modelPickerFree : filter === "available" ? modelPickerAvailable : modelPickerNeedsKey;
+      const count = filter === "free" ? result.counts.free : filter === "available" ? result.counts.available : result.counts.needsKey;
+      const label = filter === "free" ? "Free" : filter === "available" ? "Available" : "Needs key";
+      button.setAttribute("aria-pressed", String(pressed));
+      button.textContent = `${label} · ${count}`;
+    }
+    modelPickerWindowKey = "";
+    syncModelWindow(resetScroll);
+  }
+
+  function mountRuntimePicker() {
     modalBody.replaceChildren();
+    const toolbar = document.createElement("div");
+    toolbar.className = "ocx-model-toolbar";
+    const search = document.createElement("input");
+    search.id = "ocxModelSearch";
+    search.type = "search";
+    search.placeholder = "Search models";
+    search.value = modelPickerQuery;
+    search.setAttribute("aria-label", "Search models");
+    toolbar.appendChild(search);
+    for (const [filter, label] of [["free", "Free"], ["available", "Available"], ["needsKey", "Needs key"]] as const) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "ocx-model-filter";
+      button.dataset.modelFilter = filter;
+      button.textContent = label;
+      button.setAttribute("aria-pressed", "false");
+      button.addEventListener("click", () => {
+        if (filter === "free") modelPickerFree = !modelPickerFree;
+        if (filter === "available") {
+          modelPickerAvailable = !modelPickerAvailable;
+          if (modelPickerAvailable) modelPickerNeedsKey = false;
+        }
+        if (filter === "needsKey") {
+          modelPickerNeedsKey = !modelPickerNeedsKey;
+          if (modelPickerNeedsKey) modelPickerAvailable = false;
+        }
+        paintRuntimePicker(true);
+      });
+      toolbar.appendChild(button);
+    }
+    const refresh = document.createElement("button");
+    refresh.type = "button";
+    refresh.className = "ocx-model-filter";
+    refresh.textContent = "↻ Refresh";
+    refresh.addEventListener("click", () => {
+      void loadProviders(true).catch(error => showToast(error instanceof Error ? error.message : String(error)));
+    });
+    toolbar.appendChild(refresh);
+    search.addEventListener("input", () => {
+      modelPickerQuery = search.value;
+      paintRuntimePicker(true);
+    });
+    modalBody.appendChild(toolbar);
 
     const agentSection = document.createElement("section");
     agentSection.className = "ocx-picker-section";
@@ -3208,110 +3385,54 @@ export function mountOpenCodeRemote(
     agentHeading.className = "ocx-picker-heading";
     agentHeading.textContent = "Agent";
     agentSection.appendChild(agentHeading);
-
     for (const agent of agents) {
       const option = document.createElement("button");
       option.type = "button";
-      option.className =
-        "ocx-picker-row " + (selectedAgent === agent.id ? "selected" : "");
-
+      option.className = "ocx-picker-row " + (selectedAgent === agent.id ? "selected" : "");
       const copy = document.createElement("span");
-      copy.innerHTML = "<strong></strong><small></small>";
-      copy.querySelector("strong")!.textContent = agent.id;
-      copy.querySelector("small")!.textContent =
-        (agent.description || agent.mode || "OpenCode agent") + " · supported";
-
+      const title = document.createElement("strong");
+      const detail = document.createElement("small");
+      title.textContent = agent.id;
+      detail.textContent = (agent.description || agent.mode || "OpenCode agent") + " · supported";
+      copy.append(title, detail);
       const mark = document.createElement("span");
       mark.textContent = selectedAgent === agent.id ? "✓" : "›";
       option.append(copy, mark);
       option.addEventListener("click", () => {
-        void switchAgent(agent.id, selectedMode)
-          .then(() => void showRuntimePicker())
-          .catch(() => {});
+        void switchAgent(agent.id, selectedMode).then(() => {
+          mountRuntimePicker();
+          paintRuntimePicker(false);
+        }).catch(() => {});
       });
       agentSection.appendChild(option);
     }
     modalBody.appendChild(agentSection);
 
     const modelSection = document.createElement("section");
-    modelSection.className = "ocx-picker-section";
+    modelSection.className = "ocx-picker-section ocx-model-section";
     const modelHeading = document.createElement("div");
+    modelHeading.id = "ocxModelHeading";
     modelHeading.className = "ocx-picker-heading";
     modelHeading.textContent = "Provider · Model";
-    modelSection.appendChild(modelHeading);
-
-    const sortedProviders = [...providers].sort((a, b) => {
-      const aConnected = connectedProviders.has(a.id) ? 0 : 1;
-      const bConnected = connectedProviders.has(b.id) ? 0 : 1;
-      return aConnected - bConnected ||
-        (a.name || a.id).localeCompare(b.name || b.id);
-    });
-
-    for (const provider of sortedProviders) {
-      const connected = connectedProviders.has(provider.id);
-      const heading = document.createElement("div");
-      heading.className = "ocx-picker-provider";
-      const strong = document.createElement("strong");
-      const small = document.createElement("small");
-      strong.textContent = provider.name || provider.id;
-      small.textContent = connected ? "available" : "provider unavailable";
-      heading.append(strong, small);
-      modelSection.appendChild(heading);
-
-      for (const model of normalizeModels(provider)) {
-        const supported =
-          connected &&
-          model.enabled !== false &&
-          model.status !== "unavailable";
-        const option = document.createElement("button");
-        option.type = "button";
-        option.disabled = !supported;
-        option.className =
-          "ocx-picker-row " +
-          (
-            selectedModel?.providerID === provider.id &&
-            selectedModel?.modelID === model.id
-              ? "selected "
-              : ""
-          ) +
-          (supported ? "" : "unavailable");
-
-        const copy = document.createElement("span");
-        copy.innerHTML = "<strong></strong><small></small>";
-        copy.querySelector("strong")!.textContent = model.name || model.id;
-
-        const capabilities =
-          model.capabilities && typeof model.capabilities === "object"
-            ? Object.entries(model.capabilities)
-                .filter(([, value]) => Boolean(value))
-                .map(([key]) => key)
-                .slice(0, 4)
-                .join(", ")
-            : "";
-        copy.querySelector("small")!.textContent = supported
-          ? provider.id + "/" + model.id + (capabilities ? " · " + capabilities : "")
-          : provider.id + "/" + model.id + " · unavailable";
-        const pricing = document.createElement("small"); pricing.className = "ocx-picker-pricing";
-        pricing.textContent = describeModelPricing(model.cost).detail; copy.append(pricing);
-
-        const mark = document.createElement("span");
-        mark.textContent =
-          selectedModel?.providerID === provider.id &&
-          selectedModel?.modelID === model.id
-            ? "✓"
-            : supported ? "›" : "×";
-        option.append(copy, mark);
-
-        if (supported) {
-          option.addEventListener("click", () => {
-            void switchModel({ providerID: provider.id, modelID: model.id })
-              .then(() => void showRuntimePicker())
-              .catch(() => {});
-          });
-        }
-        modelSection.appendChild(option);
-      }
-    }
+    const scroller = document.createElement("div");
+    scroller.id = "ocxModelScroll";
+    scroller.className = "ocx-model-scroll";
+    const spacer = document.createElement("div");
+    spacer.className = "ocx-model-spacer";
+    const windowEl = document.createElement("div");
+    windowEl.className = "ocx-model-window";
+    spacer.appendChild(windowEl);
+    scroller.appendChild(spacer);
+    let scheduled = false;
+    scroller.addEventListener("scroll", () => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        syncModelWindow(false);
+      });
+    }, { passive: true });
+    modelSection.append(modelHeading, scroller);
     modalBody.appendChild(modelSection);
 
     const scope = document.createElement("p");
@@ -3320,6 +3441,20 @@ export function mountOpenCodeRemote(
       ? "Changes apply to the active session and persist as next-session defaults."
       : "Selection is saved as the default for the next session.";
     modalBody.appendChild(scope);
+  }
+
+  function showRuntimePicker() {
+    runtimePickerVisible = true;
+    const existing = modalBody.querySelector("#ocxModelSearch");
+    if (modal.classList.contains("hidden") || !existing) {
+      openModal("Provider · Model · Agent", "Choose a compatible OpenCode runtime");
+      modal.classList.add("ocx-runtime-modal");
+      mountRuntimePicker();
+      void loadProviders(true).catch(error => showToast(error instanceof Error ? error.message : String(error)));
+    } else {
+      modal.classList.add("ocx-runtime-modal");
+    }
+    paintRuntimePicker(false);
   }
 
   function persistImportedThreads() {
@@ -3601,12 +3736,14 @@ export function mountOpenCodeRemote(
 
     if (value) {
       connectEvents();
+      ensureProviderRefresh();
       if (changed || executionState === "offline") {
         setExecutionState("reconnecting");
         void refresh();
       }
     } else {
       setExecutionState("offline");
+      stopProviderRefresh();
       disconnectEvents();
     }
   }
