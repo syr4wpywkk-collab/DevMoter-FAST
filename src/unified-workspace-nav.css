@@ -145,11 +145,11 @@ body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app, .ix-app) {
 body.dm-task-first-enabled .dm-shell-menu-trigger { display: none; }
 body.devmoter-shell-menu-open .dm-task-first-nav { pointer-events:none; }
 body.dm-task-first-enabled.devmoter-shell-menu-open .dm-task-first-nav { pointer-events:auto; }
-@media (min-width:681px) {
+@media (min-width:901px) {
   body.dm-task-first-enabled .dm-shell-sidebar { left:208px; width:min(calc(100vw - 208px),460px); }
   body.dm-task-first-enabled .dm-shell-scrim { left:208px; }
 }
-@media(max-width:680px) {
+@media(max-width:900px) {
   body.dm-task-first-enabled {
     --dw-top-height: calc(58px + env(safe-area-inset-top));
     --dw-bottom-height: calc(66px + env(safe-area-inset-bottom));

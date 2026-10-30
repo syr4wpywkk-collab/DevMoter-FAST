@@ -243,8 +243,12 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   let sidebarReturnFocus: HTMLElement | null = null;
   let activeCategory = "All";
   const manualTools = root.querySelector<HTMLDetailsElement>("[data-manual-tools]")!;
+  manualTools.addEventListener("toggle", () => {
+    if (!manualTools.open) return;
+    manualTools.querySelector("summary")?.scrollIntoView?.({ block: "start" });
+  });
   const toolsAi = mountToolsAi(root.querySelector<HTMLElement>("[data-tools-ai-root]")!, {
-    openManual: () => { manualTools.open = true; manualTools.querySelector("summary")?.scrollIntoView?.({ block: "nearest" }); },
+    openManual: () => { manualTools.open = true; },
     openSettings: () => { closeSidebar(); options.switchBackend("api"); window.requestAnimationFrame(() => document.querySelector<HTMLButtonElement>("#apiSettingsTop")?.click()); }
   });
   // Keep the SAME Stop control outside the scrolling content, including while browsing manual tools.

@@ -1623,10 +1623,9 @@ body.opencode-mode #app {
 
 .ocx-picker-heading {
   padding: 12px 9px 5px;
-  color: #776d62;
-  font-size: .56rem;
-  text-transform: uppercase;
-  letter-spacing: .08em;
+  color: var(--oc-muted);
+  font-size: .75rem;
+  letter-spacing: 0;
 }
 
 .ocx-picker-row {

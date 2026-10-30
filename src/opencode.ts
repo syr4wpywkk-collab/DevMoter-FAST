@@ -3352,7 +3352,12 @@ export function mountOpenCodeRemote(
     const result = runtimeModelRows();
     modelPickerRows = flatModelRows(result);
     const heading = modalBody.querySelector("#ocxModelHeading");
-    if (heading) heading.textContent = `Provider · Model · ${result.counts.shown}`;
+    if (heading) {
+      const count = document.createElement("span");
+      count.dataset.i18nSkip = "true";
+      count.textContent = String(result.counts.shown);
+      heading.replaceChildren(document.createTextNode("Provider · Model · "), count);
+    }
     const filterLabels = { free: "無料", available: "使える", needsKey: "キーが必要" } as const;
     for (const button of modalBody.querySelectorAll<HTMLButtonElement>("[data-model-filter]")) {
       const filter = button.dataset.modelFilter;

@@ -112,6 +112,21 @@ const dictionary: Record<string, TranslationSet> = {
   "offline": { en: "offline", ja: "オフライン", "zh-CN": "离线" },
   "No models match": { en: "No models match", ja: "一致するモデルはありません", "zh-CN": "没有匹配的模型" },
   "このエージェントで応答します": { en: "Replies with this agent", ja: "このエージェントで応答します", "zh-CN": "使用此智能体回复" },
+  "Provider · Model · Agent": { en: "Provider · Model · Agent", ja: "モデルとエージェント", "zh-CN": "模型与智能体" },
+  "Provider · Model": { en: "Provider · Model", ja: "モデル", "zh-CN": "模型" },
+  "Provider · Model · ": { en: "Provider · Model · ", ja: "モデル ", "zh-CN": "模型 " },
+  "Selection is saved as the default for the next session.": {
+    en: "Selection is saved as the default for the next session.",
+    ja: "この選択は次のセッションの初期値になります。",
+    "zh-CN": "此选择会保存为下次会话的默认值。"
+  },
+  "Changes apply to the active session and persist as next-session defaults.": {
+    en: "Changes apply to the active session and persist as next-session defaults.",
+    ja: "このセッションに適用し、次の初期値にも保存します。",
+    "zh-CN": "将应用于当前会话，并保存为下次的默认值。"
+  },
+  "available": { en: "available", ja: "使える", "zh-CN": "可用" },
+  "provider unavailable": { en: "provider unavailable", ja: "プロバイダを利用できません", "zh-CN": "Provider 不可用" },
   "非推奨を下に追加": { en: "Show deprecated below", ja: "非推奨を下に追加", "zh-CN": "在下方显示已弃用" },
   "非推奨を表示中": { en: "Showing deprecated", ja: "非推奨を表示中", "zh-CN": "正在显示已弃用" },
   "非推奨": { en: "Deprecated", ja: "非推奨", "zh-CN": "已弃用" },
@@ -291,6 +306,11 @@ function shouldSkip(element: Element | null) {
 
 function translateTextNode(node: Text) {
   if (shouldSkip(node.parentElement)) return;
+  const exact = dictionary[node.data]?.[currentLanguage];
+  if (exact && exact !== node.data) {
+    node.data = exact;
+    return;
+  }
   const match = node.data.match(/^(\s*)(.*?)(\s*)$/s);
   if (!match || !match[2]) return;
   const translated = translateValue(match[2]);
