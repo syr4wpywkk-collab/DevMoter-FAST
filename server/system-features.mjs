@@ -1,3 +1,4 @@
+import { readCookie } from "./cookies.mjs";
 import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import { join } from "node:path";
@@ -47,25 +48,12 @@ async function writeJsonFile(path, value) {
   await rename(tmp, path);
 }
 
-function parseCookies(req) {
-  const result = {};
-  for (const part of String(req?.headers?.cookie || "").split(";")) {
-    const index = part.indexOf("=");
-    if (index <= 0) continue;
-    const key = part.slice(0, index).trim();
-    const value = part.slice(index + 1).trim();
-    if (!key) continue;
-    try { result[key] = decodeURIComponent(value); }
-    catch { result[key] = value; }
-  }
-  return result;
-}
 
 function deviceToken(req) {
   const header = req?.headers?.["x-devmoter-device-token"];
   const headerValue = Array.isArray(header) ? String(header[0] || "").trim() : String(header || "").trim();
   if (headerValue) return headerValue;
-  return String(parseCookies(req)[DEVICE_COOKIE_NAME] || "").trim();
+  return readCookie(req, DEVICE_COOKIE_NAME).trim();
 }
 
 export function deviceSessionCookie(req, token, maxAgeSeconds = DEVICE_COOKIE_MAX_AGE_SECONDS) {
@@ -564,4 +552,4 @@ export function createSystemFeatures({
 }
 
 
-export const systemFeatureInternals = { isLocalBootstrapRequest, requestHostname, parseCookies, deviceToken, DEVICE_COOKIE_NAME };
+export const systemFeatureInternals = { isLocalBootstrapRequest, requestHostname, deviceToken, DEVICE_COOKIE_NAME };

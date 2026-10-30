@@ -170,10 +170,26 @@ test("available sandbox binds project and explicit grants", () => {
 
 test("live preview target resolution cannot escape loopback with scheme-relative paths", () => {
   const safe = resolveLivePreviewTarget("127.0.0.1", 3000, "/assets/app.js", "?v=1");
-  assert.equal(safe.hostname, "127.0.0.1");
-  assert.equal(safe.port, "3000");
-  assert.equal(safe.pathname, "/assets/app.js");
-  assert.equal(safe.search, "?v=1");
+  assert.equal(typeof safe, "string", "fetch receives a string built from a fixed origin");
+  assert.equal(safe, "http://127.0.0.1:3000/assets/app.js?v=1");
+  const parsed = new URL(safe);
+  assert.equal(parsed.hostname, "127.0.0.1");
+  assert.equal(parsed.port, "3000");
+  assert.equal(parsed.pathname, "/assets/app.js");
+  assert.equal(parsed.search, "?v=1");
+  assert.equal(resolveLivePreviewTarget("::1", 5173, "/", ""), "http://[::1]:5173/");
+  assert.equal(resolveLivePreviewTarget("localhost", 5173, "/x", "?q=<a b>"), "http://localhost:5173/x?q=%3Ca%20b%3E");
+  for (const [host, port, path] of [
+    ["169.254.169.254", 80, "/"],
+    ["127.0.0.1.nip.io", 3000, "/"],
+    ["127.0.0.1", "3000@evil.example", "/"],
+    ["127.0.0.1", 70000, "/"]
+  ]) {
+    assert.throws(() => resolveLivePreviewTarget(host, port, path), /not allowed/, `${host}:${port}`);
+  }
+  for (const path of ["/%2f%2fevil.example/", "/%252e%252e/secret", "/../secret", "/http:/evil", "/a\u0000b", "/a b", "relative"]) {
+    assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, path), /Invalid live preview path/, path);
+  }
 
   assert.throws(
     () => resolveLivePreviewTarget("127.0.0.1", 3000, "//169.254.169.254/latest"),
