@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import { errorMessage } from "./error-message.mjs";
 
 const RUN_STATES = new Set([
   "starting",
@@ -327,7 +328,7 @@ export function createAgentRunRegistry({
   async function failRun(run, error) {
     return markRun(run, {
       state: "failed",
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
       pendingApproval: null
     });
   }
@@ -413,7 +414,7 @@ export function createAgentRunRegistry({
         } catch (error) {
           fleet.errors.push({
             at: now(),
-            error: error instanceof Error ? error.message : String(error)
+            error: errorMessage(error)
           });
           fleet.errors = fleet.errors.slice(-50);
         }

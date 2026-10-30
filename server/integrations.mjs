@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
+import { errorMessage } from "./error-message.mjs";
 
 const execFileAsync = promisify(execFile);
 const COMMAND_TIMEOUT_MS = 8_000;
@@ -229,7 +230,7 @@ async function antigravityRemoteStatus() {
     };
   } catch (error) {
     const output = compactOutput(
-      [error?.stdout, error?.stderr, error instanceof Error ? error.message : String(error)]
+      [error?.stdout, error?.stderr, errorMessage(error)]
         .filter(Boolean)
         .join("\n"),
       4_000

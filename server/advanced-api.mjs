@@ -9,6 +9,7 @@ import {
   backendAttachmentCapabilities, fetchUrlAttachment, negotiateAttachments, previewUrlInput
 } from "./attachments.mjs";
 import { createBrowserAutomation, browserAutomationPolicy } from "./browser-tool.mjs";
+import { errorMessage } from "./error-message.mjs";
 
 function sendJson(res, status, body) {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -454,7 +455,7 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
         (String(error?.message || "").toLowerCase().includes("not found") ? 404 : 400)
       );
       sendJson(res, status >= 400 && status < 600 ? status : 500, {
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage(error),
         attempts: error?.attempts
       });
       return true;

@@ -4,6 +4,7 @@ import { writeFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { setTimeout as delay } from "node:timers/promises";
 import { assertCliReady, cliDefinition } from "./cli-launch.mjs";
+import { errorMessage } from "./error-message.mjs";
 
 // The parent passes fixed argv elements. Do not interpret commands through a shell.
 const [ackPath, executable, cwd, ...args] = process.argv.slice(2);
@@ -37,7 +38,7 @@ async function main() {
     try {
       command = (await assertCliReady(executable)).resolvedPath;
     } catch (error) {
-      console.error(error instanceof Error ? error.message : String(error));
+      console.errorerrorMessage(error);
       await report({ ok: false, reason: error?.code || "failed" });
       await holdFailure();
       process.exitCode = 1;

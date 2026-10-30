@@ -4,6 +4,7 @@ import { isAbsolute } from "node:path";
 import { promisify } from "node:util";
 import { spawn as spawnPty } from "node-pty";
 import { TerminalSessionStore } from "./terminal-session-store.mjs";
+import { errorMessage } from "./error-message.mjs";
 
 const OUTPUT_LIMIT_BYTES = 512 * 1024;
 const OUTPUT_LIMIT_CHUNKS = 4000;
@@ -577,7 +578,7 @@ export function createTerminalManager(options = {}) {
         ...(persistent ? {} : { token })
       });
     } catch (error) {
-      json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+      json(res, 400, { error: errorMessage(error) });
     }
   }
 
@@ -608,7 +609,7 @@ export function createTerminalManager(options = {}) {
       session.process.write(data);
       json(res, 200, { ok: true });
     } catch (error) {
-      json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+      json(res, 400, { error: errorMessage(error) });
     }
   }
 

@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { randomBytes, randomUUID, createHmac, timingSafeEqual } from "node:crypto";
+import { errorMessage } from "./error-message.mjs";
 
 const HOST_STATUS_TTL_MS = 10_000;
 const HOST_STATUS_TIMEOUT_MS = 2_500;
@@ -23,6 +24,15 @@ function normalizeUrl(value) {
   parsed.hash = "";
   parsed.search = "";
   return parsed.toString().replace(/\/$/, "");
+}
+
+// Health URL for a registered host, rebuilt from the parsed stored address at
+// request time so a tampered registry cannot inject a scheme, credentials,
+// query or fragment into the outbound request.
+export function hostHealthUrl(address) {
+  const parsed = new URL(normalizeUrl(address));
+  const base = parsed.pathname.replace(/\/+$/, "");
+  return `${parsed.protocol}//${parsed.host}${base}/api/health`;
 }
 
 function normalizeHost(input) {
@@ -266,7 +276,7 @@ export class ControlPlane {
 
     let status;
     try {
-      const response = await fetch(`${host.address}/api/health`, {
+      const response = await fetch(hostHealthUrl(host.address), {
         headers: { accept: "application/json" },
         signal: AbortSignal.timeout(HOST_STATUS_TIMEOUT_MS)
       });
@@ -289,7 +299,7 @@ export class ControlPlane {
       }
     } catch (error) {
       const timeout = error?.name === "TimeoutError" || error?.name === "AbortError";
-      status = { id: host.id, state: timeout ? "timeout" : "offline", online: false, error: error instanceof Error ? error.message : String(error), capabilities: null };
+      status = { id: host.id, state: timeout ? "timeout" : "offline", online: false, error: errorMessage(error), capabilities: null };
     }
 
     status.checkedAt = Date.now();
@@ -528,7 +538,7 @@ export class ControlPlane {
       run.summary = String(result?.summary || "Task started successfully").slice(0, 4000);
     } catch (error) {
       run.status = "failed";
-      run.summary = error instanceof Error ? error.message : String(error);
+      run.summary = errorMessage(error);
     } finally {
       run.endedAt = Date.now();
       await this.#recordRun(run);
@@ -607,7 +617,7 @@ export class ControlPlane {
     } catch (error) {
       if (!runtime.cancelled && !runtime.paused) {
         run.status = "failed";
-        run.summary = error instanceof Error ? error.message : String(error);
+        run.summary = errorMessage(error);
       }
     } finally {
       if (["completed", "failed", "bounded", "cancelled"].includes(run.status)) run.endedAt = Date.now();

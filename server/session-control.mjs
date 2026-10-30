@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { errorMessage } from "./error-message.mjs";
 
 const MAX_BODY = 512 * 1024;
 const MAX_QUEUE_TEXT = 16_000;
@@ -347,7 +348,7 @@ export function createSessionControl({ homeDir, inspectSession, dispatchQueued, 
       json(res, 404, { error: "Session control endpoint not found" });
       return true;
     } catch (error) {
-      json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+      json(res, 400, { error: errorMessage(error) });
       return true;
     }
   }

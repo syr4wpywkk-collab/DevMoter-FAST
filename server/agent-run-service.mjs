@@ -7,6 +7,7 @@ import {
   normalizeCapabilityPolicy,
   scopedPrompt
 } from "../src/subagent-runtime.mjs";
+import { errorMessage } from "./error-message.mjs";
 
 const TERMINAL_STATES = new Set(["completed", "failed", "cancelled"]);
 const APPROVAL_CAPABILITY = new Map([
@@ -132,7 +133,7 @@ export function createAgentRunService({
     persistChain = persistChain
       .then(() => atomicWriteJson(filePath, runtime.exportState()))
       .catch(error => {
-        console.error("Agent run state persistence failed", error instanceof Error ? error.message : String(error));
+        console.error("Agent run state persistence failed", errorMessage(error));
       });
     return persistChain;
   }
@@ -239,7 +240,7 @@ export function createAgentRunService({
         });
       }
     } catch (error) {
-      console.error("Agent run event update failed", error instanceof Error ? error.message : String(error));
+      console.error("Agent run event update failed", errorMessage(error));
     }
   }
 
@@ -267,7 +268,7 @@ export function createAgentRunService({
         }
       });
     } catch (error) {
-      console.error("Agent approval routing failed", error instanceof Error ? error.message : String(error));
+      console.error("Agent approval routing failed", errorMessage(error));
     }
   }
 

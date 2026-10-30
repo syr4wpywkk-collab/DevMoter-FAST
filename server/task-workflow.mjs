@@ -4,6 +4,7 @@ import { chmod, lstat, mkdir, readFile, realpath, rename, rm, stat, writeFile } 
 import { createReadStream } from "node:fs";
 import { dirname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
+import { errorMessage } from "./error-message.mjs";
 
 const execFileAsync = promisify(execFile);
 const MAX_FILE = 512 * 1024;
@@ -733,7 +734,7 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
       if (req.method === "POST" && tail === "github/pr") { send(res, 200, await pullRequest(projectId, await body(req))); return true; }
       send(res, 404, { error: "Workflow endpoint not found" }); return true;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = errorMessage(error);
       const status = /not found/i.test(message) ? 404 : /too large|limit/i.test(message) ? 413 : /drift|dirty|invalid|required|select|choose|pending|apply/i.test(message) ? 409 : 400;
       send(res, status, { error: message }); return true;
     }

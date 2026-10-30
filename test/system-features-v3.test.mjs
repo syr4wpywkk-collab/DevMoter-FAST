@@ -104,7 +104,12 @@ test("server-side push is generic, deep-linked, opt-in, and suppressed for a vis
 
   const first = await features.bootstrapDevice(request(), "Laptop");
   const trusted = request({ token: first.token });
-  const endpoint = "https://push.example.test/device-1";
+  const endpoint = "https://fcm.googleapis.com/fcm/send/device-1";
+
+  // Only known Web Push services are accepted as subscription endpoints.
+  for (const hostile of ["https://push.example.test/device-1", "http://fcm.googleapis.com/x", "https://169.254.169.254/latest", "https://fcm.googleapis.com.evil.test/x", "https://user:pw@fcm.googleapis.com/x", "https://fcm.googleapis.com:8443/x"]) {
+    await assert.rejects(features.subscribePush(trusted, { endpoint: hostile }), /known push service/, hostile);
+  }
 
   await features.subscribePush(trusted, { endpoint });
   await features.updateVisibility(trusted, { endpoint, sessionId: "thread-1", visible: true });

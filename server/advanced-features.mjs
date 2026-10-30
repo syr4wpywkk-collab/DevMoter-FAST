@@ -3,6 +3,7 @@ import { constants as fsConstants } from "node:fs";
 import { basename, extname, isAbsolute, relative, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { errorMessage } from "./error-message.mjs";
 
 export const TEXT_PREVIEW_LIMIT = 1024 * 1024;
 export const IMAGE_PREVIEW_LIMIT = 8 * 1024 * 1024;
@@ -325,7 +326,7 @@ export async function discoverProviderModels(provider, fetchImpl = fetch) {
   } catch (error) {
     return provider.configuredModels.map(id => ({
       id, label: id, providerId: provider.id, local: provider.local, available: false,
-      capabilities: provider.defaultCapabilities, limitation: error instanceof Error ? error.message : String(error)
+      capabilities: provider.defaultCapabilities, limitation: errorMessage(error)
     }));
   }
   return [];
@@ -434,7 +435,7 @@ export async function runWithRouting({ env = process.env, fetchImpl = fetch, mes
     } catch (error) {
       const entry = {
         providerId: candidate.providerId, model: candidate.id, status: Number(error?.status || 0),
-        error: error instanceof Error ? error.message : String(error)
+        error: errorMessage(error)
       };
       attempts.push(entry);
       if (!failover || !isRetryableProviderFailure(error) || index === candidates.length - 1) {

@@ -126,6 +126,24 @@ async function commandStatus(name, args = ["--version"]) {
   }
 }
 
+// Web Push services the browsers DevMoter supports deliver through. A push
+// subscription is only stored, and only ever contacted, on one of these hosts.
+const PUSH_SERVICE_HOSTS = ["fcm.googleapis.com", "push.services.mozilla.com", "push.apple.com", "notify.windows.com"];
+
+/** Normalized HTTPS push endpoint on a known push service, or null. */
+export function pushEndpointUrl(value) {
+  let parsed;
+  try {
+    parsed = new URL(String(value || "").trim());
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.port) return null;
+  const host = parsed.hostname.toLowerCase();
+  if (!PUSH_SERVICE_HOSTS.some(service => host === service || host.endsWith("." + service))) return null;
+  return `https://${host}${parsed.pathname}${parsed.search}`;
+}
+
 function publicKeyFromJwk(jwk) {
   const x = Buffer.from(jwk.x, "base64url");
   const y = Buffer.from(jwk.y, "base64url");
@@ -149,8 +167,10 @@ function jwtForPush(endpoint, vapid) {
 }
 
 async function sendEmptyPush(subscription, vapid) {
-  const token = jwtForPush(subscription.endpoint, vapid);
-  return fetch(subscription.endpoint, {
+  const endpoint = pushEndpointUrl(subscription.endpoint);
+  if (!endpoint) throw new Error("Push subscription endpoint is not a known push service");
+  const token = jwtForPush(endpoint, vapid);
+  return fetch(endpoint, {
     method: "POST",
     headers: {
       TTL: "60",
@@ -359,9 +379,9 @@ export function createSystemFeatures({
 
   async function subscribePush(req, payload) {
     const current = await authenticate(req);
-    const endpoint = String(payload?.endpoint || "").trim();
-    if (!endpoint.startsWith("https://")) {
-      throw Object.assign(new Error("A valid HTTPS push endpoint is required"), { status: 400 });
+    const endpoint = pushEndpointUrl(payload?.endpoint);
+    if (!endpoint) {
+      throw Object.assign(new Error("A valid HTTPS push endpoint on a known push service is required"), { status: 400 });
     }
 
     const subscriptions = await readSubscriptions();
@@ -387,7 +407,7 @@ export function createSystemFeatures({
 
   async function unsubscribePush(req, payload) {
     await authenticate(req);
-    const endpoint = String(payload?.endpoint || "").trim();
+    const endpoint = pushEndpointUrl(payload?.endpoint) || String(payload?.endpoint || "").trim();
     const subscriptions = await readSubscriptions();
     const next = subscriptions.filter(item => item.endpoint !== endpoint);
     await writeSubscriptions(next);
@@ -397,7 +417,7 @@ export function createSystemFeatures({
 
   async function updateVisibility(req, payload) {
     const current = await authenticate(req);
-    const endpoint = String(payload?.endpoint || "").trim();
+    const endpoint = pushEndpointUrl(payload?.endpoint) || String(payload?.endpoint || "").trim();
     if (!endpoint) return { ok: true };
     const subscriptions = await readSubscriptions();
     const item = subscriptions.find(sub => sub.endpoint === endpoint && sub.deviceId === current.id);
@@ -480,7 +500,7 @@ export function createSystemFeatures({
   }
 
   async function takePendingPush(payload) {
-    const endpoint = String(payload?.endpoint || "").trim();
+    const endpoint = pushEndpointUrl(payload?.endpoint) || String(payload?.endpoint || "").trim();
     const pending = pendingNotifications.get(endpoint);
     if (!pending) return { notification: null };
     pendingNotifications.delete(endpoint);

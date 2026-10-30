@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { isAbsolute, resolve } from "node:path";
 import { listContextEntries, resolveContextReferences } from "./context-references.mjs";
+import { errorMessage } from "./error-message.mjs";
 
 export const AUTOMATION_API_VERSION = 1;
 const TASK_TIMEOUT_MS = 10 * 60 * 1000;
@@ -572,7 +573,7 @@ export function createAutomationApi({
       json(res, 200, result);
     } catch (error) {
       const failure = {
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage(error),
         code: error?.code || "task_failed"
       };
       if (wantsStream && streamStarted) {
@@ -638,7 +639,7 @@ export function createAutomationApi({
       return false;
     } catch (error) {
       json(res, Number(error?.status || 400), {
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage(error),
         code: error?.code || "automation_error"
       });
       return true;
