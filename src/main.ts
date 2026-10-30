@@ -208,7 +208,14 @@ async function checkHealth() {
     const res = await fetch("/api/health", { cache: "no-store" });
     const payload = await res.json();
     openCodeRemote.setOnline(Boolean(payload?.backends?.opencode?.online));
-    codexRemote.setOnline(Boolean(payload?.backends?.codex?.online));
+    const codexHealth = payload?.backends?.codex;
+    const codexCode = codexHealth?.code;
+    codexRemote.setOnline(
+      Boolean(codexHealth?.online),
+      codexCode === "not_installed" || codexCode === "not_executable" || codexCode === "failed"
+        ? String(codexHealth?.error || "")
+        : ""
+    );
   } catch {
     openCodeRemote.setOnline(false);
     codexRemote.setOnline(false);

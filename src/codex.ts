@@ -117,7 +117,7 @@ type CodexRemoteOptions = {
 };
 
 export type CodexRemoteController = {
-  setOnline(online: boolean): void;
+  setOnline(online: boolean, notice?: string): void;
   refresh(): Promise<boolean>;
 };
 
@@ -963,6 +963,10 @@ export function mountCodexRemote(
           `Operation ${payload?.operationId || opId} was already seen; the duplicate send was suppressed and the earlier outcome is unknown.`
         );
       }
+      const code = typeof payload?.code === "string" ? payload.code : "";
+      if (code === "not_installed" || code === "not_executable" || code === "failed") {
+        throw Object.assign(new Error(String(payload?.error || "CLIを起動できません")), { code });
+      }
       throw new Error(payload?.error || `HTTP ${res.status}`);
     }
     return payload.result as T;
@@ -1003,7 +1007,7 @@ export function mountCodexRemote(
     }
   }
 
-  function setOnline(next: boolean) {
+  function setOnline(next: boolean, notice = "") {
     const changed = online !== next;
     online = next;
     sideStatus.classList.toggle("offline", !next);
@@ -1026,6 +1030,13 @@ export function mountCodexRemote(
         empty.className = "cx-side-empty";
         empty.textContent = "Codexはオフラインです";
         sidebarThreads.appendChild(empty);
+      }
+      if (notice) {
+        const label = executionStatus.querySelector("span");
+        if (label) label.textContent = notice;
+        executionStatus.title = notice;
+        const welcome = root.querySelector<HTMLElement>(".cx-welcome p");
+        if (welcome) welcome.textContent = notice;
       }
       return;
     }
@@ -3273,6 +3284,32 @@ export function mountCodexRemote(
     }
   }
 
+  function cliPresence(cli: { presence?: string; version?: string | null }) {
+    if (cli.presence === "ready") return cli.version ? `入っている ${cli.version}` : "入っている";
+    if (cli.presence === "missing") return "入っていない";
+    return "動かない";
+  }
+
+  function renderCliStatus(parent: HTMLElement, clis: Array<{ label?: string; presence?: string; version?: string | null }>) {
+    const section = document.createElement("section");
+    section.className = "cx-settings-section";
+    const heading = document.createElement("h3");
+    heading.textContent = "CLI";
+    section.appendChild(heading);
+    for (const cli of clis) {
+      const row = document.createElement("div");
+      row.className = "cx-info-row";
+      const key = document.createElement("span");
+      const val = document.createElement("strong");
+      key.textContent = cli.label || "";
+      val.textContent = cliPresence(cli);
+      val.className = cli.presence === "ready" ? "cx-cli-ready" : "cx-cli-missing";
+      row.append(key, val);
+      section.appendChild(row);
+    }
+    parent.appendChild(section);
+  }
+
   async function showModels() {
     openModal(
       "Provider · Model · Agent",
@@ -3280,9 +3317,19 @@ export function mountCodexRemote(
     );
     modalBody.innerHTML = '<div class="cx-modal-loading">読み込み中…</div>';
 
+    const cliHost = document.createElement("div");
+    try {
+      const response = await fetch("/api/cli", { cache: "no-store" });
+      const payload = await response.json();
+      if (Array.isArray(payload?.clis)) renderCliStatus(cliHost, payload.clis);
+    } catch {
+      cliHost.textContent = "CLIの状態を取得できません";
+    }
+
     try {
       const models = await loadModelCatalog();
       modalBody.replaceChildren();
+      modalBody.appendChild(cliHost);
 
       const runtime = document.createElement("section");
       runtime.className = "cx-settings-section cx-runtime-summary";
@@ -3365,7 +3412,12 @@ export function mountCodexRemote(
 
       modalBody.appendChild(list);
     } catch (error) {
-      modalBody.textContent = error instanceof Error ? error.message : String(error);
+      const message = error instanceof Error ? error.message : String(error);
+      modalBody.replaceChildren(cliHost);
+      const note = document.createElement("p");
+      note.className = "cx-cli-note";
+      note.textContent = message;
+      modalBody.appendChild(note);
     }
   }
 

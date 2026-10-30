@@ -101,6 +101,7 @@ export function mountSettingsPanel() {
   let page: SettingsPage = "root";
   let authStatus: Json = {};
   let diagnostics: Json = {};
+  let cliStatus: Json[] = [];
   let vaultFormElement: HTMLFormElement | null = null;
   let vaultSecrets: Json[] = [];
   let notificationRenderId = 0;
@@ -643,6 +644,21 @@ export function mountSettingsPanel() {
     }).catch(() => {});
   }
 
+  function cliRows() {
+    if (!cliStatus.length) return `<div class="devmoter-settings-health-row"><strong>CLI</strong><small>状態を取得できません</small></div>`;
+    return cliStatus.map((cli: Json) => {
+      const ready = cli?.presence === "ready";
+      const state = ready ? "入っている" : cli?.presence === "missing" ? "入っていない" : "動かない";
+      const detail = ready && cli?.version ? `${state} ${cli.version}` : state;
+      return `
+        <div class="devmoter-settings-health-row">
+          <span class="${ready ? "ok" : "bad"}">${ready ? "✓" : "!"}</span>
+          <strong>${escapeHtml(cli?.label || cli?.command || "")}</strong>
+          <small>${escapeHtml(detail)}</small>
+        </div>`;
+    }).join("");
+  }
+
   function prerequisiteRows() {
     const required = diagnostics?.prerequisites?.required || {};
     return Object.entries(required).map(([name, value]: [string, any]) => `
@@ -666,6 +682,10 @@ export function mountSettingsPanel() {
           <div class="devmoter-settings-detail-row"><span>Projects</span><strong>${escapeHtml(diagnostics?.projects?.count ?? 0)}</strong></div>
           <div class="devmoter-settings-detail-row"><span>Network</span><strong>${diagnostics?.network?.localhostFirst ? "localhost-first" : "custom bind"}</strong></div>
         </div>
+      </section>
+      <section class="devmoter-settings-section">
+        <h2>CLI</h2>
+        <div class="devmoter-settings-card devmoter-settings-health">${cliRows()}</div>
       </section>
       <section class="devmoter-settings-section">
         <h2>ホストの前提条件</h2>
@@ -1081,10 +1101,14 @@ export function mountSettingsPanel() {
   async function refresh() {
     scroll.innerHTML = '<div class="devmoter-settings-loading">設定を読み込んでいます…</div>';
     try {
-      [authStatus, diagnostics] = await Promise.all([
+      const [auth, diag, clis] = await Promise.all([
         request("/api/auth/status"),
-        request("/api/system/diagnostics")
+        request("/api/system/diagnostics"),
+        request("/api/cli").catch(() => ({ clis: [] }))
       ]);
+      authStatus = auth;
+      diagnostics = diag;
+      cliStatus = Array.isArray(clis?.clis) ? clis.clis : [];
     } catch {
       // Keep the shell usable even when one diagnostics endpoint is unavailable.
     }

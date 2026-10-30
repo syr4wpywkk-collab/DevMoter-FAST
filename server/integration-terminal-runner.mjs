@@ -3,6 +3,7 @@ import { once } from "node:events";
 import { writeFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { setTimeout as delay } from "node:timers/promises";
+import { assertCliReady, cliDefinition } from "./cli-launch.mjs";
 
 // The parent passes fixed argv elements. Do not interpret commands through a shell.
 const [ackPath, executable, cwd, ...args] = process.argv.slice(2);
@@ -31,7 +32,19 @@ async function main() {
 
   // Keep this runner attached to the terminal so command errors remain visible.
   // A successful emulator spawn is not sufficient: report only after CLI starts.
-  const child = spawn(executable, args, {
+  let command = executable;
+  if (cliDefinition(executable)) {
+    try {
+      command = (await assertCliReady(executable)).resolvedPath;
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      await report({ ok: false, reason: error?.code || "failed" });
+      await holdFailure();
+      process.exitCode = 1;
+      return;
+    }
+  }
+  const child = spawn(command, args, {
     cwd,
     stdio: "inherit",
     env: process.env,

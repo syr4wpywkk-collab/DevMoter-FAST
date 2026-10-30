@@ -1449,6 +1449,15 @@ body.codex-mode #app {
   font-size: .78rem;
 }
 
+.cx-cli-ready { color: #b7d7b0; }
+.cx-cli-missing { color: #e7b3a1; }
+.cx-cli-note {
+  margin: 8px 10px 0;
+  color: #e7b3a1;
+  font-size: .84rem;
+  line-height: 1.45;
+}
+
 .cx-model-list {
   display: grid;
   gap: 5px;

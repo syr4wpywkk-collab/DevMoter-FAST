@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import readline from "node:readline";
+import { assertCliReady, launchCode } from "./cli-launch.mjs";
 
 const APPROVAL_METHODS = new Set([
   "item/commandExecution/requestApproval",
@@ -18,7 +19,8 @@ export class CodexBridge extends EventEmitter {
   constructor({
     bin = process.env.CODEX_BIN || "codex",
     cwd = process.env.CODEX_CWD || process.cwd(),
-    spawnImpl = spawn
+    spawnImpl = spawn,
+    prepareCli = assertCliReady
   } = {}) {
     super();
     this.bin = bin;
@@ -31,8 +33,10 @@ export class CodexBridge extends EventEmitter {
     this.pending = new Map();
     this.serverRequests = new Map();
     this.lastError = null;
+    this.launchCode = null;
     this.serverInfo = null;
     this.spawnImpl = spawnImpl;
+    this.prepareCli = prepareCli;
   }
 
   async start() {
@@ -50,8 +54,10 @@ export class CodexBridge extends EventEmitter {
   async #spawnAndInitialize() {
     this.ready = false;
     this.lastError = null;
+    this.launchCode = null;
 
-    const child = this.spawnImpl(this.bin, ["app-server", "--listen", "stdio://"], {
+    const ready = await this.prepareCli(this.bin);
+    const child = this.spawnImpl(ready.resolvedPath, ["app-server", "--listen", "stdio://"], {
       cwd: this.cwd,
       env: process.env,
       stdio: ["pipe", "pipe", "pipe"]
@@ -65,9 +71,10 @@ export class CodexBridge extends EventEmitter {
     lines.on("line", line => this.#handleLine(line));
 
     child.once("error", error => {
-      this.lastError = String(error);
+      this.launchCode = launchCode(error);
+      this.lastError = error instanceof Error ? error.message : String(error);
       this.#rejectAll(error);
-      this.emit("offline", { error: this.lastError });
+      this.emit("offline", { error: this.lastError, code: this.launchCode });
     });
 
     child.once("exit", (code, signal) => {
@@ -147,13 +154,15 @@ export class CodexBridge extends EventEmitter {
         serverInfo: info ?? null
       };
     } catch (error) {
-      this.lastError = String(error);
+      this.launchCode = launchCode(error);
+      this.lastError = error instanceof Error ? error.message : String(error);
       return {
         online: false,
         ready: false,
         bin: this.bin,
         cwd: this.cwd,
-        error: this.lastError
+        error: this.lastError,
+        ...(this.launchCode ? { code: this.launchCode } : {})
       };
     }
   }
