@@ -408,7 +408,14 @@ function redactText(value) {
   return redactSecretsInText(value, REDACTED_SECRETS);
 }
 
+function endIfResponseStarted(res) {
+  if (!res.headersSent && !res.writableEnded && !res.destroyed) return false;
+  if (!res.writableEnded && !res.destroyed) res.end();
+  return true;
+}
+
 function json(res, status, body) {
+  if (endIfResponseStarted(res)) return;
   res.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store"
@@ -419,6 +426,7 @@ function json(res, status, body) {
 }
 
 function jsonWithCookie(res, status, body, cookie) {
+  if (endIfResponseStarted(res)) return;
   res.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
@@ -1817,40 +1825,66 @@ async function proxy(req, res) {
     policyPath
   );
 
-  const upstream = await fetch(url, {
-    method: req.method,
-    headers: await openCodeHeadersForRequest(req, {
-      "content-type": req.headers["content-type"] || "application/json",
-      "accept": req.headers["accept"] || "*/*"
-    }),
-    body
-  });
+  const upstreamAbort = new AbortController();
+  const abortUpstream = () => {
+    upstreamAbort.abort();
+  };
+  const onClientClosed = () => {
+    if (!res.writableEnded) abortUpstream();
+  };
+  req.on("aborted", abortUpstream);
+  res.on("close", onClientClosed);
 
-  const headers = {};
-  for (const [key, value] of upstream.headers.entries()) {
-    if (![ "content-encoding", "content-length", "transfer-encoding", "connection" ].includes(key)) {
-      headers[key] = value;
+  try {
+    const upstream = await fetch(url, {
+      method: req.method,
+      headers: await openCodeHeadersForRequest(req, {
+        "content-type": req.headers["content-type"] || "application/json",
+        "accept": req.headers["accept"] || "*/*"
+      }),
+      body,
+      signal: upstreamAbort.signal
+    });
+
+    const headers = {};
+    for (const [key, value] of upstream.headers.entries()) {
+      if (![ "content-encoding", "content-length", "transfer-encoding", "connection" ].includes(key)) {
+        headers[key] = value;
+      }
     }
-  }
-  const upstreamContentType = upstream.headers.get("content-type") || "";
-  headers["cache-control"] = upstreamContentType.includes("text/event-stream")
-    ? "no-cache, no-transform"
-    : "no-store";
+    const upstreamContentType = upstream.headers.get("content-type") || "";
+    headers["cache-control"] = upstreamContentType.includes("text/event-stream")
+      ? "no-cache, no-transform"
+      : "no-store";
 
-  res.writeHead(upstream.status, headers);
+    if (endIfResponseStarted(res)) return;
 
-  if (!upstream.body) {
-    res.end();
-    return;
-  }
+    res.writeHead(upstream.status, headers);
 
-  const reader = upstream.body.getReader();
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    res.write(Buffer.from(value));
+    if (!upstream.body) {
+      res.end();
+      return;
+    }
+
+    const reader = upstream.body.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done || res.writableEnded || res.destroyed) break;
+        res.write(Buffer.from(value));
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    endIfResponseStarted(res);
+  } catch (error) {
+    if (endIfResponseStarted(res)) return;
+    throw error;
+  } finally {
+    req.off("aborted", abortUpstream);
+    res.off("close", onClientClosed);
+    abortUpstream();
   }
-  res.end();
 }
 
 async function codexRpc(req, res) {
