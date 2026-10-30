@@ -7,7 +7,7 @@ import { basename, delimiter, dirname, extname, isAbsolute, join, normalize, rel
 import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
 import { CodexBridge } from "./server/codex-bridge.mjs";
-import { normalizeModelPricing } from "./src/model-pricing.mjs";
+import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/opencode-provider-catalog.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { staticSecurityHeaders } from "./server/security-headers.mjs";
@@ -1135,115 +1135,58 @@ async function opencodeHealth() {
   }
 }
 
-async function opencodeProviders(res) {
-  const unwrapList = payload => {
-    if (Array.isArray(payload)) return payload;
-    if (Array.isArray(payload?.data)) return payload.data;
-    return [];
-  };
+let openCodeProviderCache = { at: 0, payload: null, flight: null };
 
-  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-  try {
-    let providers = [];
-    let models = [];
-    let modelSource = null;
-
-    for (let attempt = 1; attempt <= 8; attempt++) {
-      const providerPayload = await fetchOpenCodeJson("/api/provider");
-      providers = unwrapList(providerPayload);
-
-      models = [];
-      modelSource = null;
-
-      for (const candidate of ["/api/model", "/api/catalog/model"]) {
-        try {
-          const modelPayload = await fetchOpenCodeJson(candidate);
-          const list = unwrapList(modelPayload);
-          if (list.length > 0) {
-            models = list;
-            modelSource = candidate;
-            break;
-          }
-        } catch {
-          // Try the next v2 model endpoint.
-        }
-      }
-
-      if (providers.length > 0 && models.length > 0) break;
-      if (attempt < 8) await sleep(250);
-    }
-
-    const grouped = new Map();
-    for (const model of models) {
-      const providerID =
-        model?.providerID ??
-        model?.provider?.id ??
-        model?.provider?.providerID;
-      const modelID = model?.id ?? model?.modelID;
-      if (!providerID || !modelID) continue;
-
-      if (!grouped.has(String(providerID))) grouped.set(String(providerID), {});
-      grouped.get(String(providerID))[String(modelID)] = {
-        id: String(modelID),
-        modelID: String(model?.modelID ?? modelID),
-        providerID: String(providerID),
-        name: model?.name ?? String(modelID),
-        family: model?.family ?? null,
-        status: model?.status ?? null,
-        enabled: model?.enabled !== false,
-        capabilities: model?.capabilities ?? null,
-        cost: normalizeModelPricing(model?.cost),
-        variants: Array.isArray(model?.variants)
-          ? model.variants.map(variant => ({
-              id: String(variant?.id ?? ""),
-            })).filter(variant => variant.id)
-          : [],
-        limit: model?.limit ?? null
-      };
-    }
-
-    const normalized = providers.map(provider => ({
-      id: String(provider.id),
-      name: provider.name ?? String(provider.id),
-      activation: provider.activation ?? null,
-      integrationID: provider.integrationID ?? null,
-      models: grouped.get(String(provider.id)) ?? {}
-    }));
-
-    const connected = normalized
-      .filter(provider => provider.disabled !== true && provider.enabled !== false)
-      .map(provider => provider.id);
-
-    json(res, 200, {
-      apiVersion: "v2",
-      source: "/api/provider",
-      modelSource,
-      directory: OPENCODE_DIRECTORY,
-      all: normalized,
-      default: {},
-      connected
-    });
-    return;
-  } catch (v2Error) {
+async function readOpenCodeModelOverrides() {
+  for (const candidate of ["/api/model", "/api/catalog/model"]) {
     try {
-      const payload = await fetchOpenCodeJson("/provider");
-      json(res, 200, {
-        apiVersion: "v1",
-        source: "/provider",
-        all: Array.isArray(payload?.all) ? payload.all : [],
-        default: payload?.default ?? {},
-        connected: Array.isArray(payload?.connected) ? payload.connected : []
-      });
-      return;
-    } catch (v1Error) {
-      json(res, 502, {
-        error: "OpenCode provider discovery failed",
-        v2: v2Error instanceof Error ? v2Error.message : String(v2Error),
-        v1: v1Error instanceof Error ? v1Error.message : String(v1Error),
-        directory: OPENCODE_DIRECTORY
-      });
+      const payload = await fetchOpenCodeJson(candidate, { signal: AbortSignal.timeout(15000) });
+      const list = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [];
+      if (list.length > 0) return { list, source: candidate };
+    } catch {
+      // Status overrides are optional. The v1 catalog is the source of models.
     }
+  }
+  return { list: [], source: null };
+}
+
+async function loadOpenCodeProviderCatalog(refresh) {
+  const fresh = openCodeProviderCache.payload && Date.now() - openCodeProviderCache.at < PROVIDER_CATALOG_TTL_MS;
+  if (!refresh && fresh) return openCodeProviderCache.payload;
+  if (!refresh && openCodeProviderCache.flight) return openCodeProviderCache.flight;
+
+  const flight = (async () => {
+    const v1 = await fetchOpenCodeJson("/provider", { signal: AbortSignal.timeout(15000) });
+    const overrides = await readOpenCodeModelOverrides();
+    const payload = buildOpenCodeProviderCatalog({
+      v1,
+      modelOverrides: overrides.list,
+      modelSource: overrides.source,
+      directory: OPENCODE_DIRECTORY
+    });
+    openCodeProviderCache = { at: Date.now(), payload, flight: null };
+    return payload;
+  })();
+
+  openCodeProviderCache.flight = flight;
+  try {
+    return await flight;
+  } catch (error) {
+    if (openCodeProviderCache.flight === flight) openCodeProviderCache.flight = null;
+    throw error;
+  }
+}
+
+async function opencodeProviders(url, res) {
+  try {
+    const payload = await loadOpenCodeProviderCatalog(url.searchParams.get("refresh") === "1");
+    json(res, 200, payload);
+  } catch (error) {
+    json(res, 502, {
+      error: "OpenCode provider discovery failed",
+      detail: error instanceof Error ? error.message : String(error),
+      directory: OPENCODE_DIRECTORY
+    });
   }
 }
 
@@ -3274,7 +3217,7 @@ const server = http.createServer(async (req, res) => {
 
 
     if (req.method === "GET" && url.pathname === "/api/opencode/pocket/providers") {
-      await opencodeProviders(res);
+      await opencodeProviders(url, res);
       return;
     }
 

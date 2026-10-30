@@ -62,19 +62,46 @@ test("health and OpenCode SSE proxy are live without a real OpenCode account", a
   const appPort = await freePort();
   const authPassword = "pwa-integration-password-123";
 
+  let providerHits = 0;
   const upstream = http.createServer((req, res) => {
     if (req.url === "/api/location") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify({ directory: home }));
       return;
     }
-    if (req.url === "/api/provider" || req.url === "/api/model") {
+    if (req.url === "/provider") {
+      providerHits += 1;
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ data: req.url === "/api/provider" ? [{ id: "fixture" }] : [
-        { id: "paid", providerID: "fixture", cost: { input: 2, output: 8, cache_read: 0.1, private: "excluded" } },
-        { id: "zero", providerID: "fixture", cost: { input: 0, output: 0 } },
-        { id: "unknown", providerID: "fixture" }
-      ] })); return;
+      res.end(JSON.stringify({
+        all: [
+          {
+            id: "fixture",
+            name: "Fixture",
+            env: [],
+            models: {
+              paid: { id: "paid", name: "Paid", cost: { input: 2, output: 8, cache_read: 0.1, private: "excluded" } },
+              zero: { id: "zero", name: "Zero", cost: { input: 0, output: 0 } },
+              unknown: { id: "unknown", name: "Unknown" }
+            }
+          },
+          {
+            id: "locked",
+            name: "Locked",
+            env: ["OCI_GENAI_API_KEY"],
+            models: { hidden: { id: "hidden", name: "Hidden", cost: { input: 1, output: 1 } } }
+          }
+        ],
+        default: { fixture: "paid" },
+        connected: ["fixture"]
+      }));
+      return;
+    }
+    if (req.url === "/api/model") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ data: [
+        { id: "paid", providerID: "fixture", status: "active", enabled: true }
+      ] }));
+      return;
     }
     if (req.url === "/api/event") {
       res.writeHead(200, {
@@ -124,6 +151,22 @@ test("health and OpenCode SSE proxy are live without a real OpenCode account", a
     assert.deepEqual(catalog.all[0].models.paid.cost, { input: 2, output: 8, cache_read: 0.1 });
     assert.deepEqual(catalog.all[0].models.zero.cost, { input: 0, output: 0 });
     assert.equal(catalog.all[0].models.unknown.cost, null);
+    assert.equal(catalog.all[0].models.paid.status, "active");
+    assert.deepEqual(catalog.connected, ["fixture"]);
+    assert.equal(catalog.all[1].id, "locked");
+    assert.equal(catalog.all[1].models.hidden.available, false);
+    assert.deepEqual(catalog.all[1].models.hidden.requiresKey, ["OCI_GENAI_API_KEY"]);
+    assert.equal(providerHits, 1);
+
+    const cached = await fetch(`http://127.0.0.1:${appPort}/api/opencode/pocket/providers`, { headers: { authorization }, signal: AbortSignal.timeout(4000) });
+    assert.equal(cached.status, 200);
+    await cached.json();
+    assert.equal(providerHits, 1);
+
+    const refreshed = await fetch(`http://127.0.0.1:${appPort}/api/opencode/pocket/providers?refresh=1`, { headers: { authorization }, signal: AbortSignal.timeout(4000) });
+    assert.equal(refreshed.status, 200);
+    await refreshed.json();
+    assert.equal(providerHits, 2);
 
     const events = await fetch(`http://127.0.0.1:${appPort}/api/opencode/event`, {
       headers: { accept: "text/event-stream", authorization },

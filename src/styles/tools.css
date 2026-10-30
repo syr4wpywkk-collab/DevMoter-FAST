@@ -1965,3 +1965,59 @@ textarea:focus-visible,
   cursor: not-allowed;
 }
 
+.ocx-model-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 4px 8px;
+}
+
+.ocx-model-toolbar input {
+  flex: 1 1 160px;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--oc-line);
+  border-radius: 8px;
+  background: var(--oc-panel-2, #241f1a);
+  color: var(--oc-text);
+}
+
+.ocx-model-filter {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--oc-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--oc-text);
+  font-size: .72rem;
+}
+
+.ocx-model-filter[aria-pressed="true"] {
+  border-color: #c2ab92;
+  background: var(--oc-accent-soft, #3a2e24);
+}
+
+.ocx-model-scroll {
+  max-height: min(46dvh, 420px);
+  overflow-y: auto;
+}
+
+.ocx-model-scroll .ocx-picker-row,
+.ocx-model-scroll .ocx-picker-provider {
+  height: 56px;
+  min-height: 56px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.ocx-deprecated-models {
+  margin-top: 8px;
+}
+
+.ocx-deprecated-models summary {
+  padding: 8px 9px;
+  color: var(--oc-muted);
+  cursor: pointer;
+}
+
