@@ -1,0 +1,111 @@
+---
+description: Unslop standard - avoid generic AI-generated UI looks for any UI/styling work
+globs: src/**/*.{css,ts,tsx},public/**/*.{css,html,js},**/*.{css,html}
+alwaysApply: false
+---
+
+# Unslop UI Standard
+
+Goal: every visual choice is decided for this product, not a default. "Nothing wrong, nothing decided" is a failure.
+
+Symptom list with sources: `docs/design/unslop-features.md`.
+
+Fix root causes in the existing design tokens/styles; never stack overrides, !important, or one-off classes on top.
+Keep existing structure and data unless asked; change the look, not the behavior.
+
+## 0. Pre-flight: decide direction first (before writing code)
+- State in 1-2 lines: product, audience, primary job of this screen.
+- Write a compact token plan: 4-6 named hex colors, 1-2 typefaces with roles, spacing scale, radius scale, layout concept (alignment).
+- Check the plan against the defaults list in §1. If any part looks like what you'd produce for any similar app, revise it and say why.
+- Pick ONE place to be bold. Everything else stays quiet.
+- Reuse existing tokens (CSS variables / theme file). Add or change tokens there, not inline.
+
+## 1. Banned defaults (don't, unless the brief explicitly asks)
+- Purple / neon / purple-to-blue gradients, glowing blobs, floating gradients, neon glow.
+- Heavy glassmorphism / backdrop blur as decoration.
+- Cream bg (~#F4F1EA) + serif display + terracotta (~#D97757) accent.
+- Near-black (#0B0B0B/#111) + single acid-green/vermilion accent as a reflex.
+- Same soft shadow (rgba(0,0,0,.1)) under every card; drop shadows for decoration.
+- Cards nested in cards. Content chopped into identical rounded cards.
+- Pill-shaped cards; one border-radius on everything.
+- Rounded-square icon tile above every heading; emoji as icons; colored circle/square behind icons.
+- Gray text on colored backgrounds.
+- Inter (or any reflex font) for everything.
+- One word in a headline set in italic/bold/another color.
+- Tracked-out ALL-CAPS eyebrow labels; unnecessary labels above content.
+- "A · B · C" meta strings, "WORD — fragment" labels, "→" appended to every link/button, monospace for small labels by reflex.
+- 01/02/03 numbering when content is not a real sequence.
+- Hero = big number + small label + stats + gradient accent.
+- Four KPIs in four identical boxes.
+- Fade-and-slide-up on every section; hover animation on every card.
+- Emoji, "!!", hype copy, colorful badges.
+
+## 2. Color
+- Use the planned 4-6 color palette only; tokens, not literal hex in components.
+- Default to calm neutrals (light or dark); spend color on data and state, not decoration.
+- Text contrast >= WCAG AA (4.5:1 body, 3:1 large).
+
+## 3. Typography
+- 1-2 families, deliberately chosen; if two, clearly distinct.
+- Fixed type scale with intentional weights; clear heading hierarchy, no skipped levels.
+- Line length < 80 characters; serif body gets slightly more line-height.
+- Sentence case for labels and buttons.
+
+## 4. Spacing & layout
+- 4px base unit; use steps 8 / 16 / 24 (and multiples). No arbitrary values (13px, 22px).
+- Vary spacing to show grouping (tight inside a group, larger between groups); not uniform everywhere.
+- Don't over-pad cards or leave gaps too wide; don't cramp either.
+- Equal side margins; no section shoved to one side; no random blank stretches.
+- Avoid the uniform same-size grid by reflex; size areas by importance.
+- Separate viewing UI from editing UI. Non-buttons must not look clickable.
+- First screen has a clear title. Remove anything the screen doesn't need.
+
+## 5. Shape, borders, depth
+- Radius scale by hierarchy (e.g. 4 / 8 / 12px; 8px default for controls/panels). No pills except true chips/tags.
+- Prefer 1px borders in a neutral token over shadows for separation.
+- Flat surfaces; at most one elevation level for overlays (menus, modals).
+
+## 6. Icons & imagery
+- One monochrome icon set, consistent stroke and size, no background tiles.
+- Fewer icons; only where they speed recognition.
+- Real images/photos (credited) over letter-only avatars or generic illustrations.
+
+## 7. Data display
+- Tabular numbers (`font-variant-numeric: tabular-nums`), right-aligned numeric columns, aligned figures.
+- Give each metric the visual that explains it (gauge for a rate, ring for budget used, line/area for trends).
+- Calm, precise status labels instead of colorful badges.
+- Never drop columns on mobile to fit; scroll or restack.
+
+## 8. Motion
+- Motion answers user actions (open, expand, confirm) and shows what changed.
+- At most one orchestrated non-user-triggered moment per page.
+- Respect `prefers-reduced-motion`.
+
+## 9. Copy
+- Plain user words, active voice, no filler, no selling. Name things by what users understand.
+- CTA says what happens ("Save changes", not "Submit"); same action keeps the same name across the flow.
+- Errors say what happened and how to fix it; no apologies, no vagueness. Empty states invite the next action.
+- Cut explanations the UI already makes obvious.
+
+## 10. Japanese UI
+- Specify Japanese font stack and typesetting explicitly; check missing glyphs.
+- Natural line breaks (no orphaned characters); tune letter-spacing.
+- Fix mixed Japanese/Latin spacing and numerals; no leftover English labels; Japanese units and order.
+
+## 11. Accessibility & responsive
+- Visible keyboard focus on every interactive element.
+- Responsive down to 375px; nav folds away on phone.
+- Avoid CSS specificity fights (section vs element selectors cancelling padding/margin).
+- Handle overflow, long text, i18n, error and empty states.
+
+## 12. Final self-review checklist (run before saying done)
+- [ ] Direction + token plan written, and checked against §1.
+- [ ] No item from §1 present (grep for gradients, blur, box-shadow, emoji, uppercase, Inter).
+- [ ] All colors/spacing/radius come from tokens; no new overrides or !important added.
+- [ ] Spacing values are on the 4px grid (8/16/24...).
+- [ ] No card inside a card; borders 1px; radius follows the scale.
+- [ ] Numbers use tabular-nums and align.
+- [ ] Copy: no emoji/hype; CTAs name the result; errors are actionable.
+- [ ] Contrast AA, focus visible, reduced motion respected.
+- [ ] Screenshots taken at desktop, tablet, mobile widths; top 3 problems fixed (up to 3 rounds).
+- [ ] Removed one more unnecessary element before finishing.
