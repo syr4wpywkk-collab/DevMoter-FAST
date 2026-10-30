@@ -38,6 +38,14 @@ body.codex-mode {
   -webkit-backdrop-filter: none;
 }
 
+.cx-app #cxNewChatTop .cx-new-chat-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
 .cx-app .cx-icon-button,
 .cx-app .cx-round-button,
 .cx-app .cx-send-button {
@@ -640,9 +648,9 @@ html[data-devmoter-theme="light"] .cx-app .cx-approval pre { background: #f4ead2
   .cx-app .cx-title-button > small { display: none; }
   .cx-app .cx-title-button > span { font-size: .78rem; color: var(--text-muted); font-weight: 500; }
   .cx-app .cx-topbar-controls .cx-details-toggle { display: none; }
-  .cx-app #cxNewChatTop { width: auto; height: 32px; min-height: 32px; padding: 0 12px; border-radius: 999px; background: #f4f4f5; color: #18181b; font-size: .72rem; }
+  .cx-app #cxNewChatTop { width: auto; height: 32px; min-height: 32px; flex: 0 0 auto; padding: 0 12px; border-radius: 999px; background: #f4f4f5; color: #18181b; font-size: .72rem; white-space: nowrap; }
   .cx-app #cxNewChatTop svg { display: none; }
-  .cx-app #cxNewChatTop::after { content: "新しいチャット"; }
+  .cx-app #cxNewChatTop .cx-new-chat-label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
   .cx-app .cx-main { left: 240px; right: 260px; }
   .cx-app .cx-transcript { padding-inline: max(24px, calc((100% - var(--cx-content-width)) / 2)); }
   .cx-app .cx-composer-wrap { left: 240px; right: 260px; padding-inline: 20px; }

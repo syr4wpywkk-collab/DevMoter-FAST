@@ -200,6 +200,7 @@ export function createTerminalManager(options = {}) {
   const resolveProject = options.resolveProject;
   const password = String(options.authPassword || "");
   const authenticateDevice = typeof options.authenticateDevice === "function" ? options.authenticateDevice : null;
+  const ownerAuthenticated = typeof options.ownerAuthenticated === "function" ? options.ownerAuthenticated : null;
   const isDeviceActive = typeof options.isDeviceActive === "function" ? options.isDeviceActive : null;
   const spawnPtyImpl = options.spawnPty || spawnPty;
   const maxSessions = Math.max(1, Math.min(16, Math.floor(Number(options.maxSessions) || DEFAULT_MAX_SESSIONS)));
@@ -351,7 +352,17 @@ export function createTerminalManager(options = {}) {
     }
   }
 
-  function auth(req, res) {
+  async function auth(req, res) {
+    // A browser that already signed in with the owner session must not be
+    // challenged for Basic credentials. WWW-Authenticate on that 401 makes
+    // Chrome open a native sign-in dialog, and the client then prompts too.
+    if (ownerAuthenticated) {
+      try {
+        if (await ownerAuthenticated(req)) return true;
+      } catch {
+        // Fall through to the legacy password check.
+      }
+    }
     const result = authenticateTerminalRequest(req, password);
     if (result.ok) return true;
     if (result.challenge) {
@@ -384,7 +395,7 @@ export function createTerminalManager(options = {}) {
   }
 
   async function getAuthorizedSession(req, res, id, { allowClosed = true } = {}) {
-    if (!auth(req, res)) return null;
+    if (!await auth(req, res)) return null;
     try {
       await ensureStoreLoaded();
     } catch {
@@ -435,7 +446,7 @@ export function createTerminalManager(options = {}) {
   }
 
   async function create(req, res) {
-    if (!auth(req, res)) return;
+    if (!await auth(req, res)) return;
     try {
       await ensureStoreLoaded();
       if (String(req.headers["x-devmoter-terminal-entry"] || "") !== "explicit") {
@@ -628,7 +639,7 @@ export function createTerminalManager(options = {}) {
   }
 
   async function listSessions(req, res) {
-    if (!auth(req, res)) return;
+    if (!await auth(req, res)) return;
     try {
       await ensureStoreLoaded();
       const device = await trustedDevice(req, res);
@@ -665,7 +676,7 @@ export function createTerminalManager(options = {}) {
   }
 
   async function claimSession(req, res, id) {
-    if (!auth(req, res)) return;
+    if (!await auth(req, res)) return;
     try {
       await ensureStoreLoaded();
       const device = await trustedDevice(req, res);

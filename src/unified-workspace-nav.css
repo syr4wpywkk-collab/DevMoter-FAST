@@ -147,6 +147,10 @@ body.devmoter-shell-menu-open .dm-task-first-nav { pointer-events:none; }
 body.dm-task-first-enabled.devmoter-shell-menu-open .dm-task-first-nav { pointer-events:auto; }
 @media (min-width:681px) {
   body.dm-task-first-enabled .dm-shell-sidebar { left:208px; width:min(calc(100vw - 208px),460px); }
+  /* Closed drawers use translateX(-105%) of their own width. After the
+   * sidebar is shifted right to clear this nav, that shift no longer clears
+   * the viewport, so the right edge stays visible and clipped. */
+  body.dm-task-first-enabled .dm-shell-sidebar:not(.open) { transform: translateX(calc(-100% - 320px)); }
   body.dm-task-first-enabled .dm-shell-scrim { left:208px; }
 }
 html[data-devmoter-theme="light"] .dm-task-first-nav {

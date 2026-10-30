@@ -149,6 +149,7 @@ const dictionary: Record<string, TranslationSet> = {
   "共有できないためコピーしました": { en: "Sharing is unavailable, so it was copied", ja: "共有できないためコピーしました", "zh-CN": "无法直接分享，已复制" },
   "見つかりません": { en: "Not found", ja: "見つかりません", "zh-CN": "未找到" },
   "まだチャットがありません": { en: "No chats yet", ja: "まだチャットがありません", "zh-CN": "还没有对话" },
+  "Codexはオフラインです": { en: "Codex is offline", ja: "Codexはオフラインです", "zh-CN": "Codex 离线" },
   "メッセージを送るとここに会話が表示されます。": { en: "Send a message and the conversation will appear here.", ja: "メッセージを送るとここに会話が表示されます。", "zh-CN": "发送消息后，对话会显示在这里。" },
   "チャットを開けませんでした": { en: "Could not open chat", ja: "チャットを開けませんでした", "zh-CN": "无法打开对话" },
   "新しいチャットを作れませんでした": { en: "Could not create a new chat", ja: "新しいチャットを作れませんでした", "zh-CN": "无法创建新对话" },

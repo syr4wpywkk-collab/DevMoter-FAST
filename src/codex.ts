@@ -202,7 +202,7 @@ export function mountCodexRemote(
         <div class="cx-topbar-controls">
           <button id="cxUsageTop" class="cx-topbar-pill cx-usage-pill" type="button" aria-label="使用量" title="Usage">${cxIcons.usage}<small id="cxUsageLabel">Usage</small></button>
           <button id="cxDetailsTop" class="cx-topbar-pill cx-details-toggle" type="button" aria-label="作業スペース情報を開く" aria-expanded="false">詳細</button>
-          <button id="cxNewChatTop" class="cx-icon-button" type="button" aria-label="新しいチャット">${cxIcons.newChat}</button>
+          <button id="cxNewChatTop" class="cx-icon-button" type="button" aria-label="新しいチャット"><span class="cx-new-chat-label">新しいチャット</span>${cxIcons.newChat}</button>
         </div>
       </header>
 
@@ -1020,6 +1020,13 @@ export function mountCodexRemote(
       events?.close();
       events = null;
       setExecutionState("offline");
+      if (!allThreads.length) {
+        sidebarThreads.replaceChildren();
+        const empty = document.createElement("div");
+        empty.className = "cx-side-empty";
+        empty.textContent = "Codexはオフラインです";
+        sidebarThreads.appendChild(empty);
+      }
       return;
     }
 

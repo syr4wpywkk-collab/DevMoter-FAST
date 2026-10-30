@@ -89,15 +89,16 @@ function panelHarness({ dismissed = false } = {}) {
   };
 }
 
-test("first-run Home retains setup onboarding after the initial surface event", () => {
+test("Home load does not open the system modal", () => {
   const panel = panelHarness();
   panel.surface("home");
-  assert.equal(panel.pendingTimers(), 1);
   panel.tick();
-  assert.equal(panel.modal.classList.contains("hidden"), false);
+  assert.equal(panel.pendingTimers(), 0);
+  assert.equal(panel.modal.classList.contains("hidden"), true);
+  assert.equal(panel.requests(), 0);
 });
 
-test("chat deep links cancel first-run setup before it can cover the chat", () => {
+test("chat surfaces do not auto-open setup", () => {
   for (const surface of ["codex", "opencode", "api"]) {
     const panel = panelHarness();
     panel.surface(surface);
@@ -108,14 +109,14 @@ test("chat deep links cancel first-run setup before it can cover the chat", () =
   }
 });
 
-test("navigating from Home to Codex cancels pending setup but explicit setup still opens", () => {
+test("the system modal opens only from its button and closes on navigation", () => {
   const panel = panelHarness();
   panel.surface("home");
-  panel.surface("codex");
-  panel.tick();
-  assert.equal(panel.modal.classList.contains("hidden"), true);
   panel.openButton.click();
   assert.equal(panel.modal.classList.contains("hidden"), false);
+  panel.surface("codex");
+  assert.equal(panel.modal.classList.contains("hidden"), true);
+  panel.openButton.click();
   panel.surface("home");
   assert.equal(panel.modal.classList.contains("hidden"), true);
   assert.equal(panel.pendingTimers(), 0);

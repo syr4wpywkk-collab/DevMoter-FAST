@@ -196,6 +196,7 @@ const tmuxAvailable = executableAvailable("tmux");
 const terminal = createTerminalManager({
   resolveProject: getProjectById,
   authPassword: DEVMOTER_AUTH_PASSWORD,
+  ownerAuthenticated: req => externalAuth.session(req),
   shell: process.env.SHELL,
   sessionStoreFile: tmuxAvailable ? join(PROJECT_CONFIG_DIR, "terminal-sessions.json") : undefined,
   authenticateDevice: req => systemFeatures.authenticate(req),
