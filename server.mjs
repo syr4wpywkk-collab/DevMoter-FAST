@@ -78,6 +78,12 @@ const OPENCODE_DIRECTORY =
 const PORT = Number(process.env.POCKET_PORT || 8787);
 const HOST = process.env.POCKET_HOST || "127.0.0.1";
 const DIST = fileURLToPath(new URL("./dist/", import.meta.url));
+// The login page is plain static source (not processed by Vite), so it is served
+// straight from public/: sign-in works before the first build, and in tests.
+const LOGIN_ASSETS = new Map([
+  ["/login.html", fileURLToPath(new URL("./public/login.html", import.meta.url))],
+  ["/login.js", fileURLToPath(new URL("./public/login.js", import.meta.url))]
+]);
 const HOME_DIR = process.env.HOME || process.cwd();
 const UPLOAD_DIR = process.env.POCKET_UPLOAD_DIR || join(HOME_DIR, ".local", "state", "opencode-pocket", "uploads");
 const PROJECT_CONFIG_DIR = join(HOME_DIR, ".config", "opencode-pocket");
@@ -2365,6 +2371,22 @@ async function devWorkflowAction(req, res, handler) {
   }
 }
 
+async function serveLoginAsset(req, res, pathname) {
+  const file = LOGIN_ASSETS.get(pathname);
+  let data;
+  try {
+    data = await readFile(file);
+  } catch {
+    json(res, 404, { error: "Login page is missing" });
+    return;
+  }
+  res.writeHead(200, {
+    ...staticSecurityHeaders(MIME[extname(file)] || "application/octet-stream"),
+    "cache-control": "no-store"
+  });
+  res.end(req.method === "HEAD" ? undefined : data);
+}
+
 async function serveStatic(req, res) {
   let path = req.url === "/" ? "/index.html" : req.url.split("?")[0];
   path = normalize(path).replace(/^(\.\.[/\\])+/, "");
@@ -2410,9 +2432,8 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if ((req.method === "GET" || req.method === "HEAD") && ["/login.html", "/login.js"].includes(url.pathname)) {
-      res.setHeader("cache-control", "no-store");
-      await serveStatic(req, res);
+    if ((req.method === "GET" || req.method === "HEAD") && LOGIN_ASSETS.has(url.pathname)) {
+      await serveLoginAsset(req, res, url.pathname);
       return;
     }
 
