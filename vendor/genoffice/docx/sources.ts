@@ -12,12 +12,25 @@ export const SOURCES_NS = 'http://schemas.openxmlformats.org/officeDocument/2006
 export const CUSTOM_XML_REL_TYPE =
   'http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml'
 
+/**
+ * Whether the XML declares `uri` as a namespace (exact match on the declared
+ * value, not a substring search). DevMoter modification (CodeQL).
+ */
+function declaresNamespace(xml: string, uri: string): boolean {
+  const re = /\bxmlns(?::[A-Za-z_][\w.-]*)?\s*=\s*(?:"([^"]*)"|'([^']*)')/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(xml)) !== null) {
+    if ((m[1] ?? m[2]) === uri) return true
+  }
+  return false
+}
+
 /** find the zip path of the existing b:Sources custom xml part, if any */
 export async function findSourcesPart(zip: JSZip): Promise<string | null> {
   for (const name of Object.keys(zip.files)) {
     if (!/^customXml\/item\d+\.xml$/.test(name)) continue
     const xml = await zip.file(name)!.async('string')
-    if (xml.includes('Sources') && xml.includes(SOURCES_NS)) return name
+    if (declaresNamespace(xml, SOURCES_NS) && /<(?:[A-Za-z_][\w.-]*:)?Sources\b/.test(xml)) return name
   }
   return null
 }

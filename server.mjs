@@ -7,11 +7,12 @@ import { basename, delimiter, dirname, extname, isAbsolute, join, normalize, rel
 import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
 import { CodexBridge } from "./server/codex-bridge.mjs";
-import { inspectKnownClis } from "./server/cli-launch.mjs";
+import { inspectKnownClis, launchCode } from "./server/cli-launch.mjs";
 import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/opencode-provider-catalog.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { staticSecurityHeaders } from "./server/security-headers.mjs";
+import { readHandle, withOpenFile } from "./server/safe-file.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
 import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
 import { createSessionControl } from "./server/session-control.mjs";
@@ -2022,8 +2023,8 @@ async function codexRpc(req, res) {
   } catch (error) {
     const message = errorMessage(error);
     const status = Number(error?.status || (message === "Request body too large" ? 413 : 502));
-    const code = ["not_installed", "not_executable", "failed"].includes(error?.code) ? error.code : null;
-    json(res, code ? 503 : status, {
+    const code = launchCode(error);
+    json(res, status, {
       error: message,
       ...(code ? { code } : {})
     });
@@ -2372,9 +2373,10 @@ async function serveStatic(req, res) {
   const full = join(DIST, path);
 
   try {
-    const info = await stat(full);
-    if (!info.isFile()) throw new Error("not file");
-    const data = await readFile(full);
+    const data = await withOpenFile(full, {}, async (handle, info) => {
+      if (!info.isFile()) throw new Error("not file");
+      return readHandle(handle);
+    });
     res.writeHead(200, staticSecurityHeaders(MIME[extname(full)] || "application/octet-stream"));
     res.end(data);
   } catch {
@@ -2402,6 +2404,18 @@ function isLoopbackHost(hostHeader) {
   }
 }
 
+// Files a browser must fetch before (or without) a login: the login page itself
+// and the PWA metadata. Browsers request the web app manifest without
+// credentials, so anything behind auth would come back as the login redirect.
+// Exact paths only; nothing else under dist/ is reachable without auth.
+const PUBLIC_STATIC_PATHS = new Set([
+  "/login.html",
+  "/login.js",
+  "/manifest.webmanifest",
+  "/icon.svg",
+  "/sw.js"
+]);
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
@@ -2411,7 +2425,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if ((req.method === "GET" || req.method === "HEAD") && ["/login.html", "/login.js"].includes(url.pathname)) {
+    if ((req.method === "GET" || req.method === "HEAD") && PUBLIC_STATIC_PATHS.has(url.pathname)) {
       res.setHeader("cache-control", "no-store");
       await serveStatic(req, res);
       return;

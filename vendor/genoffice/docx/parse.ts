@@ -120,6 +120,7 @@ import {
   onOffOf,
   plainText,
   stripHash,
+  stripXmlTags,
   type RelInfo,
 } from './parse-xml-text'
 import {
@@ -1583,7 +1584,7 @@ function crossParagraphZoteroFields(
       const token = match[0]
       if (token.startsWith('<w:instrText')) {
         if (active?.depth === 1) {
-          active.instruction += decodeEntities(token.replace(/<[^>]+>/g, ''))
+          active.instruction += decodeEntities(stripXmlTags(token))
         }
         continue
       }
@@ -6047,7 +6048,7 @@ function hfContentFromXml(
     /<w:fldChar[^>]*w:fldCharType\s*=\s*["']begin["'][^>]*?(?:\/>|>\s*<\/w:fldChar>)[\s\S]*?<w:fldChar[^>]*w:fldCharType\s*=\s*["']end["'][^>]*?(?:\/>|>\s*<\/w:fldChar>)/g,
     (span) => {
       const instr = (span.match(/<w:instrText[^>]*>[\s\S]*?<\/w:instrText>/g) ?? [])
-        .map((m) => m.replace(/<[^>]+>/g, ''))
+        .map((m) => stripXmlTags(m))
         .join('')
       const cached =
         /<w:fldChar[^>]*w:fldCharType\s*=\s*["']separate["'][^>]*?(?:\/>|>\s*<\/w:fldChar>)([\s\S]*)$/.exec(

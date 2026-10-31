@@ -1,6 +1,7 @@
-import { lstat, mkdir, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { basename, extname, isAbsolute, join, relative, sep } from "node:path";
 import { randomUUID } from "node:crypto";
+import { readHandle, withOpenFile } from "./safe-file.mjs";
 
 const DEFAULT_EXCLUDED_DIRS = new Set([
   ".git", "node_modules", "dist", "build", ".next", ".nuxt", ".cache",
@@ -190,46 +191,50 @@ export function createProjectIndex(options = {}) {
         }
         if (!isProbablyText(rel)) continue;
 
-        let info;
         let target;
         try {
-          const entryInfo = await lstat(full);
-          if (entryInfo.isSymbolicLink() || !entryInfo.isFile()) continue;
           target = await realpath(full);
-          const contained = relative(canonicalRoot, target);
-          if (!contained || contained.startsWith("..") || isAbsolute(contained)) {
-            skipped.push({ path: rel, reason: "path-escape" });
-            continue;
-          }
-          info = await stat(target);
-          if (!info.isFile()) continue;
         } catch {
           continue;
         }
-        if (info.size > MAX_FILE_BYTES) {
-          skipped.push({ path: rel, reason: "file-too-large" });
-          continue;
-        }
-        if (indexedBytes + info.size > MAX_INDEXED_BYTES) {
-          skipped.push({ path: rel, reason: "index-byte-budget" });
+        const contained = relative(canonicalRoot, target);
+        if (!contained || contained.startsWith("..") || isAbsolute(contained)) {
+          skipped.push({ path: rel, reason: "path-escape" });
           continue;
         }
 
-        const old = reusable.get(rel);
-        if (old && old.size === info.size && old.mtimeMs === info.mtimeMs && Array.isArray(old.lines)) {
-          files.push(old);
-          indexedBytes += info.size;
+        // One no-follow open: the size/budget/reuse checks and the read all use the same file.
+        let outcome;
+        try {
+          outcome = await withOpenFile(target, { noFollow: true }, async (handle, info) => {
+            if (!info.isFile()) return { kind: "ignore" };
+            if (info.size > MAX_FILE_BYTES) return { kind: "skip", reason: "file-too-large" };
+            if (indexedBytes + info.size > MAX_INDEXED_BYTES) return { kind: "skip", reason: "index-byte-budget" };
+            const old = reusable.get(rel);
+            if (old && old.size === info.size && old.mtimeMs === info.mtimeMs && Array.isArray(old.lines)) {
+              return { kind: "reuse", old };
+            }
+            try {
+              return { kind: "read", info, text: await readHandle(handle, MAX_FILE_BYTES, "utf8") };
+            } catch {
+              return { kind: "skip", reason: "not-utf8-readable" };
+            }
+          });
+        } catch {
+          continue;
+        }
+        if (outcome.kind === "ignore") continue;
+        if (outcome.kind === "skip") {
+          skipped.push({ path: rel, reason: outcome.reason });
+          continue;
+        }
+        if (outcome.kind === "reuse") {
+          files.push(outcome.old);
+          indexedBytes += outcome.old.size;
           reusedFiles += 1;
           continue;
         }
-
-        let text;
-        try {
-          text = await readFile(target, "utf8");
-        } catch {
-          skipped.push({ path: rel, reason: "not-utf8-readable" });
-          continue;
-        }
+        const { info, text } = outcome;
         if (text.includes("\u0000")) {
           skipped.push({ path: rel, reason: "binary-like" });
           continue;

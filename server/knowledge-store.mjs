@@ -1,8 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
-import { constants as fsConstants } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
-import { chmod, mkdir, lstat, open, readFile, readdir, realpath, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, lstat, readdir, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative, sep } from "node:path";
+import { readHandle, withOpenFile } from "./safe-file.mjs";
 
 export const MAX_NOTE_BYTES = 1024 * 1024;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -148,18 +148,18 @@ export function createKnowledgeStore({ rootDir, getProjectById = async () => nul
     if (!Buffer.from(text, "utf8").equals(buffer)) fail("Note is not valid UTF-8", 422);
     return text;
   }
+  // One open (no symlink follow): the size/type check and the read use the same file.
+  async function readNoteFile(path) {
+    return withOpenFile(path, { noFollow: true }, async (handle, info) => {
+      if (!info.isFile() || info.size > MAX_NOTE_BYTES + 4096) return null;
+      return readHandle(handle, MAX_NOTE_BYTES + 4096);
+    });
+  }
   async function load(id) {
     const safe = validId(id);
     const path = await checkedFile(safe);
-    const info = await lstat(path);
-    if (info.size > MAX_NOTE_BYTES + 4096) fail("Stored note exceeds size limit", 413);
-    const handle = await open(path, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW || 0));
-    let buffer;
-    try {
-      const openedInfo = await handle.stat();
-      if (!openedInfo.isFile() || openedInfo.size > MAX_NOTE_BYTES + 4096) fail("Stored note exceeds size limit", 413);
-      buffer = await handle.readFile();
-    } finally { await handle.close(); }
+    const buffer = await readNoteFile(path);
+    if (buffer === null) fail("Stored note exceeds size limit", 413);
     const text = encodeUtf8(buffer);
     const { metadata, content } = parseMarkdown(text, safe);
     const record = row(metadata, content);
@@ -207,9 +207,10 @@ export function createKnowledgeStore({ rootDir, getProjectById = async () => nul
         if (!match) continue;
         const id = validId(match[1]);
         const file = await checkedFile(id);
-        const info = await lstat(file);
-        if (info.size > MAX_NOTE_BYTES + 4096) continue;
-        const parsed = parseMarkdown(encodeUtf8(await readFile(file)), id);
+        const buffer = await readNoteFile(file);
+        if (buffer === null) continue;
+        const raw = encodeUtf8(buffer);
+        const parsed = parseMarkdown(raw, id);
         if (!parsed.metadata.title || typeof parsed.metadata.title !== "string") parsed.metadata.title = `Recovered note ${id.slice(0, 8)}`;
         if (!parsed.metadata.createdAt) parsed.metadata.createdAt = now();
         if (!parsed.metadata.updatedAt) parsed.metadata.updatedAt = now();
@@ -220,7 +221,7 @@ export function createKnowledgeStore({ rootDir, getProjectById = async () => nul
         const record = row(parsed.metadata, parsed.content);
         upsert(record);
         seen.add(id);
-        if (parsed.content === (await readFile(file)).toString("utf8") || parsed.metadata.title.startsWith("Recovered note ")) recovered++;
+        if (parsed.content === raw || parsed.metadata.title.startsWith("Recovered note ")) recovered++;
       }
       const rows = db.prepare("SELECT id FROM notes").all();
       for (const item of rows) if (!seen.has(item.id)) db.prepare("DELETE FROM notes WHERE id=?").run(item.id);

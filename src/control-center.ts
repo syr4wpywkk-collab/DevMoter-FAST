@@ -1216,6 +1216,7 @@ export function mountControlCenter() {
       const projectId = currentProject();
       const revision = projectRevision;
       results.replaceChildren();
+      status.dataset.state = "loading";
       status.textContent = "Loading repository map…";
       showMap.disabled = true;
       try {
@@ -1228,6 +1229,7 @@ export function mountControlCenter() {
           symbols?: Array<{ name: string; kind: string; path: string; line: number }>;
         }>(response);
         if (revision !== projectRevision || projectId !== currentProject()) return;
+        status.dataset.state = "ok";
         status.textContent = "Repository map loaded.";
         const directoryCard = document.createElement("div");
         directoryCard.className = "dm-tools-card";
@@ -1253,7 +1255,10 @@ export function mountControlCenter() {
         symbolCard.append(symbolTitle, symbolText);
         results.append(symbolCard);
       } catch (error) {
-        if (revision === projectRevision) status.textContent = error instanceof Error ? error.message : String(error);
+        if (revision === projectRevision) {
+          status.dataset.state = "error";
+          status.textContent = `Repository map failed: ${error instanceof Error ? error.message : String(error)}`;
+        }
       } finally {
         showMap.disabled = false;
       }

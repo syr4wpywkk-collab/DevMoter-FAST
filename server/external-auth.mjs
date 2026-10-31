@@ -1,3 +1,4 @@
+import { readCookie } from "./cookies.mjs";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { credentialsMatch } from "./auth.mjs";
 import { OwnerSessionStore, OWNER_SESSION_DEFAULT_TTL_MS } from "./owner-session-store.mjs";
@@ -20,14 +21,6 @@ function requestOrigin(req, publicOrigin = "") {
 }
 function requestHost(req, publicOrigin = "") {
   return new URL(requestOrigin(req, publicOrigin)).hostname.replace(/^\[|\]$/g, "").toLowerCase();
-}
-function parseCookies(req) {
-  const result = Object.create(null);
-  for (const part of String(req?.headers?.cookie || "").split(";")) {
-    const i = part.indexOf("="); if (i < 0) continue;
-    try { result[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim()); } catch { /* Invalid cookies never authenticate. */ }
-  }
-  return result;
 }
 function cookie(req, token, maxAgeSeconds, publicOrigin = "", name = COOKIE_NAME) {
   return [`${name}=${encodeURIComponent(token)}`, "Path=/", "HttpOnly", "SameSite=Strict",
@@ -53,7 +46,7 @@ export class ExternalAuth {
     this.githubStarts = 0;
   }
   async load() { return this.identities.load(); }
-  token(req) { return parseCookies(req)[COOKIE_NAME] || ""; }
+  token(req) { return readCookie(req, COOKIE_NAME); }
   host(req) { return requestHost(req, this.publicOrigin); }
   cleanup() {
     for (const [id, flow] of this.githubFlows) if (flow.expiresAt <= Date.now()) this.githubFlows.delete(id);
@@ -129,7 +122,7 @@ export class ExternalAuth {
   async pollGithub(req, flowId) {
     this.cleanup(); const id = String(flowId || ""); const flow = this.githubFlows.get(id);
     if (!flow) throw authError("GitHub login flow expired or is unknown");
-    const binding = parseCookies(req)[`devmoter_github_${id}`];
+    const binding = readCookie(req, `devmoter_github_${id}`);
     if (!binding || sha256(binding) !== flow.bindingHash || this.host(req) !== flow.host) throw authError("GitHub login browser changed", 403);
     if (flow.polling || Date.now() < flow.nextPollAt) return { status: "pending", retryAfterMs: Math.max(1000, flow.nextPollAt - Date.now()) };
     flow.polling = true; flow.nextPollAt = Date.now() + flow.intervalMs;
@@ -177,4 +170,4 @@ export class ExternalAuth {
       ...Object.entries(state.providers).filter(([, identity]) => identity).map(([provider, identity]) => `owner:${provider}:${identity.subject}`)] };
   }
 }
-export const externalAuthInternals = { COOKIE_NAME, parseCookies, requestHost, requestOrigin };
+export const externalAuthInternals = { COOKIE_NAME, requestHost, requestOrigin };
