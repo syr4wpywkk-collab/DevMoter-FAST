@@ -40,7 +40,8 @@ test("Home is a first-class surface and sidebar entry without replacing existing
   assert.ok(main.includes("createSurfaceNavigation"));
   assert.ok(main.includes("mountHomeSurface"));
   assert.ok(home.includes('data-home-app-grid'));
-  assert.ok(home.includes('data-home-continue'));
+  assert.ok(home.includes('data-home-react-pilot'));
+  assert.ok(!home.includes('data-home-continue'));
   // Home is reached from the workspace brand button; the Tools sidebar no longer duplicates it.
   const nav = await source("src/unified-workspace-nav.ts");
   assert.ok(nav.includes('addEventListener("click", actions.openHome)'));

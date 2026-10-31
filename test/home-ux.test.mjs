@@ -26,7 +26,7 @@ async function loadHome() {
   return homePromise;
 }
 
-test("Continue working opens Chat using the same allowlisted launch callback", async () => {
+test("Home has no continue card or footer copy; Chat still opens through the registry launcher", async () => {
   const { mountHomeSurface } = await loadHome();
   const dom = new JSDOM("<main id='home'></main>");
   const root = dom.window.document.querySelector("#home");
@@ -36,15 +36,12 @@ test("Continue working opens Chat using the same allowlisted launch callback", a
     onLaunchApp: id => launches.push(id),
     onPreviewApp: (id, message) => previews.push({ id, message })
   });
-
-  const continueButton = root.querySelector("[data-home-open-chat]");
-  assert.ok(continueButton);
-  assert.equal(continueButton.getAttribute("type"), "button");
-  assert.match(continueButton.getAttribute("aria-label"), /チャット.*ワークスペース/);
-  continueButton.click();
-  assert.deepEqual(launches, ["chat"], "Continue must use the same app registry launch path");
-
+  assert.equal(root.querySelector("[data-home-continue]"), null);
+  assert.equal(root.querySelector("[data-home-open-chat]"), null);
+  assert.equal(root.querySelector("footer"), null);
+  assert.doesNotMatch(root.textContent, /作業を続ける|ローカル開発環境|RECENT ACTIVITY|まだ最近開いたアプリ|Project files, previews/);
   root.querySelector('[data-home-app="chat"]').click();
+  root.querySelector('[data-home-quick-action="chat"]').click();
   assert.deepEqual(launches, ["chat", "chat"]);
   assert.deepEqual(previews, []);
   dom.window.close();
@@ -58,7 +55,6 @@ test("Home copy describes a development workspace without generic AI slogans", a
   assert.equal(root.querySelector("h1")?.textContent, "作業スペース");
   assert.equal(root.querySelector("#dm-home-apps-title")?.textContent, "ツール");
   assert.doesNotMatch(root.textContent, /building with AI|local AI workspace/i);
-  assert.match(root.querySelector("[data-home-open-chat]")?.getAttribute("aria-label") || "", /チャット.*ワークスペース/);
   dom.window.close();
 });
 

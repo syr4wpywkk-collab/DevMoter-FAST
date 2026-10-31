@@ -3,10 +3,10 @@ import { createRoot } from "react-dom/client";
 
 export type ChatBackend = "opencode" | "codex" | "api";
 
-const WORKSPACES: ReadonlyArray<{ id: ChatBackend; title: string; hint: string }> = [
-  { id: "opencode", title: "OpenCode", hint: "セッション" },
-  { id: "codex", title: "Codex", hint: "コードとレビュー" },
-  { id: "api", title: "API Chat", hint: "接続済みプロバイダー" }
+const WORKSPACES: ReadonlyArray<{ id: ChatBackend; title: string }> = [
+  { id: "opencode", title: "OpenCode" },
+  { id: "codex", title: "Codex" },
+  { id: "api", title: "API Chat" }
 ];
 
 type ShortcutsProps = {
@@ -16,7 +16,6 @@ type ShortcutsProps = {
 function BackendShortcuts({ onSelect }: ShortcutsProps) {
   return (
     <nav className="dm-home-quick-switch" aria-label="チャット環境の切り替え">
-      <p className="dm-home-quick-switch-label">CHAT ENVIRONMENTS</p>
       <div className="dm-home-shortcut-grid">
         {WORKSPACES.map(workspace => (
           <button
@@ -27,7 +26,6 @@ function BackendShortcuts({ onSelect }: ShortcutsProps) {
             aria-label={`${workspace.title}のワークスペースを開く`}
           >
             <strong>{workspace.title}</strong>
-            <small>{workspace.hint}</small>
             <span aria-hidden="true">↗</span>
           </button>
         ))}
