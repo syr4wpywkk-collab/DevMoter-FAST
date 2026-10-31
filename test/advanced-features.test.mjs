@@ -27,7 +27,7 @@ test("safe preview treats HTML as inert text and images as image data", async ()
 
   const html = await previewFile(root, "page.html");
   assert.equal(html.kind, "text");
-  assert.match(html.content, /<script>/);
+  assert.equal(html.content, "<script>alert(1)</script><h1>Hello</h1>", "HTML is returned verbatim as inert text");
   assert.equal(html.language, "html");
 
   const image = await previewFile(root, "tiny.png");

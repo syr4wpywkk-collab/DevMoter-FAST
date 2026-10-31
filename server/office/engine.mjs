@@ -9140,6 +9140,22 @@ function decodeNumericCharRefs(text) {
     }
   );
 }
+function stripXmlTags(fragment) {
+  let out = "";
+  let index = 0;
+  while (index < fragment.length) {
+    const open = fragment.indexOf("<", index);
+    if (open === -1) {
+      out += fragment.slice(index);
+      break;
+    }
+    out += fragment.slice(index, open);
+    const close = fragment.indexOf(">", open + 1);
+    if (close === -1) break;
+    index = close + 1;
+  }
+  return out;
+}
 function decodeEntities(text) {
   return decodeNumericCharRefs(text).replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&");
 }
@@ -9971,11 +9987,19 @@ function applyTitlePg(sectPrXml, on) {
 // vendor/genoffice/docx/sources.ts
 var SOURCES_NS = "http://schemas.openxmlformats.org/officeDocument/2006/bibliography";
 var CUSTOM_XML_REL_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml";
+function declaresNamespace(xml, uri) {
+  const re = /\bxmlns(?::[A-Za-z_][\w.-]*)?\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+  let m;
+  while ((m = re.exec(xml)) !== null) {
+    if ((m[1] ?? m[2]) === uri) return true;
+  }
+  return false;
+}
 async function findSourcesPart(zip) {
   for (const name of Object.keys(zip.files)) {
     if (!/^customXml\/item\d+\.xml$/.test(name)) continue;
     const xml = await zip.file(name).async("string");
-    if (xml.includes("Sources") && xml.includes(SOURCES_NS)) return name;
+    if (declaresNamespace(xml, SOURCES_NS) && /<(?:[A-Za-z_][\w.-]*:)?Sources\b/.test(xml)) return name;
   }
   return null;
 }
@@ -11604,14 +11628,35 @@ function resolveRelationshipTargetPath(sourcePath, target) {
   }
   return parts.join("/") || null;
 }
+function stripDoctype(xml) {
+  const start = xml.search(/<!DOCTYPE/i);
+  if (start === -1) return xml;
+  let index = start + "<!DOCTYPE".length;
+  while (index < xml.length) {
+    const ch = xml[index];
+    if (ch === ">") return xml.slice(0, start) + xml.slice(index + 1);
+    if (ch === '"' || ch === "'") {
+      const close = xml.indexOf(ch, index + 1);
+      if (close === -1) return xml;
+      index = close + 1;
+      continue;
+    }
+    if (ch === "[") {
+      const close = xml.indexOf("]", index + 1);
+      if (close === -1) return xml;
+      index = close + 1;
+      continue;
+    }
+    if (ch === "]") return xml;
+    index += 1;
+  }
+  return xml;
+}
 async function parseRels(zip, path) {
   const rels = /* @__PURE__ */ new Map();
   const file = zip.file(path);
   if (!file) return rels;
-  const relsXml = (await file.async("string")).replace(
-    /<!DOCTYPE(?:[^>"'\x5B\x5D]|\[[\s\S]*?\]|"[^"]*"|'[^']*')*>/i,
-    ""
-  );
+  const relsXml = stripDoctype(await file.async("string"));
   const parsed = xmlParser.parse(relsXml);
   const root = parsed.find((n) => nameOf(n) === "Relationships");
   if (!root) return rels;
@@ -12170,8 +12215,25 @@ function mapUriValue(value) {
   return value;
 }
 var XMLNS_DECL_RE = /xmlns(?::([A-Za-z_][\w.-]*))?\s*=\s*(["'])([^"']*)\2/g;
+var STRICT_HOST = new URL(S).host;
+var STRICT_PATH = new URL(S).pathname;
+var ATTR_VALUE_RE = /=\s*(?:"([^"]*)"|'([^']*)')/g;
+function hasStrictOoxmlAttributeValue(xml) {
+  ATTR_VALUE_RE.lastIndex = 0;
+  let m;
+  while ((m = ATTR_VALUE_RE.exec(xml)) !== null) {
+    const value = m[1] ?? m[2] ?? "";
+    if (!value.startsWith("http:")) continue;
+    try {
+      const url = new URL(value);
+      if (url.host === STRICT_HOST && url.pathname.startsWith(STRICT_PATH)) return true;
+    } catch {
+    }
+  }
+  return false;
+}
 function needsOoxmlNormalization(xml) {
-  if (xml.includes(S)) return true;
+  if (hasStrictOoxmlAttributeValue(xml)) return true;
   XMLNS_DECL_RE.lastIndex = 0;
   let m;
   while ((m = XMLNS_DECL_RE.exec(xml)) !== null) {
@@ -14454,7 +14516,7 @@ function onlyOleFields(xml) {
   const instrs = xml.match(/<w:instrText[^>]*>[\s\S]*?<\/w:instrText>/g) ?? [];
   if (instrs.length === 0) return false;
   return instrs.every(
-    (fragment) => /^\s*(EMBED|LINK)\b/.test(decodeEntities(fragment.replace(/<[^>]+>/g, "")))
+    (fragment) => /^\s*(EMBED|LINK)\b/.test(decodeEntities(stripXmlTags(fragment)))
   );
 }
 function onlyXeFields(xml) {
@@ -14472,7 +14534,7 @@ function onlyXeFields(xml) {
   if (!simpleOk) return false;
   let checkboxInstrs = 0;
   const ok = instrs.every((fragment) => {
-    const text = decodeEntities(fragment.replace(/<[^>]+>/g, ""));
+    const text = decodeEntities(stripXmlTags(fragment));
     if (/^\s*FORMCHECKBOX\s*$/.test(text)) {
       checkboxInstrs++;
       return true;
@@ -16504,7 +16566,7 @@ function crossParagraphZoteroFields(bodyElements, documentXml) {
       const token = match[0];
       if (token.startsWith("<w:instrText")) {
         if (active?.depth === 1) {
-          active.instruction += decodeEntities(token.replace(/<[^>]+>/g, ""));
+          active.instruction += decodeEntities(stripXmlTags(token));
         }
         continue;
       }
@@ -19792,7 +19854,7 @@ function hfContentFromXml(xml, kind, theme, styles, tableMedia, compatibilityMod
   cleaned = cleaned.replace(
     /<w:fldChar[^>]*w:fldCharType\s*=\s*["']begin["'][^>]*?(?:\/>|>\s*<\/w:fldChar>)[\s\S]*?<w:fldChar[^>]*w:fldCharType\s*=\s*["']end["'][^>]*?(?:\/>|>\s*<\/w:fldChar>)/g,
     (span) => {
-      const instr = (span.match(/<w:instrText[^>]*>[\s\S]*?<\/w:instrText>/g) ?? []).map((m) => m.replace(/<[^>]+>/g, "")).join("");
+      const instr = (span.match(/<w:instrText[^>]*>[\s\S]*?<\/w:instrText>/g) ?? []).map((m) => stripXmlTags(m)).join("");
       const cached = /<w:fldChar[^>]*w:fldCharType\s*=\s*["']separate["'][^>]*?(?:\/>|>\s*<\/w:fldChar>)([\s\S]*)$/.exec(
         span
       )?.[1];
@@ -22186,7 +22248,7 @@ async function saveDocx(parsed, finalBlocks, options = {}) {
     const rootRelsEntry = zip.file(rootRelsPath);
     if (rootRelsEntry) {
       rootRelsXml = await rootRelsEntry.async("string");
-      if (!rootRelsXml.includes(CUSTOM_PROPERTIES_REL_TYPE)) {
+      if (!relationshipTypes(rootRelsXml).has(CUSTOM_PROPERTIES_REL_TYPE)) {
         const rId = `rId${maxRelId(rootRelsXml) + 1}`;
         rootRelsXml = rootRelsXml.replace(
           "</Relationships>",
@@ -23549,6 +23611,14 @@ function retargetImageBlip(xml, rId) {
   else if (/r:link="/.test(tag2)) tag2 = tag2.replace(/r:link="[^"]*"/, `r:embed="${rId}"`);
   else tag2 = tag2.replace(/<a:blip\b/, `<a:blip r:embed="${rId}"`);
   return (xml.slice(0, blip.index) + tag2 + xml.slice(blip.index + blip[0].length)).replace(/<a:srcRect\b[^>]*\/>/, "").replace(/<a:fillRect\b[^>]+\/>/, "<a:fillRect/>").replace(/<a:ext\b[^>]*>\s*<\w+:svgBlip\b[\s\S]*?<\/a:ext>/, "").replace(/<a:extLst>\s*<\/a:extLst>/, "");
+}
+function relationshipTypes(relsXml) {
+  const types = /* @__PURE__ */ new Set();
+  for (const rel of relsXml.matchAll(/<Relationship\b[^>]*>/g)) {
+    const type = /\bType\s*=\s*(?:"([^"]*)"|'([^']*)')/.exec(rel[0]);
+    if (type) types.add(type[1] ?? type[2] ?? "");
+  }
+  return types;
 }
 export {
   buildBlankDocx,

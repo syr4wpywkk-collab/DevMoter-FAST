@@ -125,6 +125,29 @@ export function decodeNumericCharRefs(text: string): string {
   )
 }
 
+/**
+ * Text content of a raw XML fragment: every `<...>` markup segment is dropped
+ * in one linear scan (no regex replace), so no tag can survive by being split
+ * across another. An unterminated `<` drops the rest of the fragment.
+ * DevMoter modification (CodeQL js/incomplete-multi-character-sanitization).
+ */
+export function stripXmlTags(fragment: string): string {
+  let out = ''
+  let index = 0
+  while (index < fragment.length) {
+    const open = fragment.indexOf('<', index)
+    if (open === -1) {
+      out += fragment.slice(index)
+      break
+    }
+    out += fragment.slice(index, open)
+    const close = fragment.indexOf('>', open + 1)
+    if (close === -1) break
+    index = close + 1
+  }
+  return out
+}
+
 /** Full decode, for raw XML slices that never passed through the parser. */
 export function decodeEntities(text: string): string {
   return decodeNumericCharRefs(text)
