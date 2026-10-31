@@ -1493,6 +1493,12 @@ body.codex-mode #app {
   background: #222;
 }
 
+.cx-model-group {
+  margin: 8px 12px 0;
+  color: #777;
+  font-size: .72rem;
+}
+
 @media (min-width: 760px) {
   .cx-transcript {
     padding-left: max(22px, calc((100vw - 800px) / 2));

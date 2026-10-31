@@ -6,7 +6,7 @@ import { createDevWorkflowPanel } from "./dev-workflows-ui";
 import { isMcpToolItem, mcpToolSummary, normalizeStructuredMcpResult } from "./mcp-result";
 import { setWakeLockExecutionActive } from "./wake-lock";
 import { enrichInstalledPluginEntries, pluginEntries } from "./codex-plugin-metadata.mjs";
-import { applyReasoningToTurnStart, normalizeCodexModels, reasoningChoices, reconcileReasoningMode } from "./codex-reasoning.mjs";
+import { applyReasoningToTurnStart, fetchAllCodexModels, reasoningChoices, reconcileReasoningMode } from "./codex-reasoning.mjs";
 import { normalizeCodexSendError } from "./codex-send-error.mjs";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 import { createLatestRequestGuard } from "./latest-request.mjs";
@@ -727,9 +727,9 @@ export function mountCodexRemote(
 
   async function loadModelCatalog() {
     const requestGeneration = modelCatalogRequests.begin();
-    const result = await rpc<Json>("model/list", { limit: 100 });
+    // Every page, including models the app-server flags hidden (see fetchAllCodexModels).
+    const normalizedModels = await fetchAllCodexModels(params => rpc<Json>("model/list", params)) as CodexModel[];
     if (!modelCatalogRequests.isCurrent(requestGeneration)) return modelCatalog;
-    const normalizedModels = normalizeCodexModels(result) as CodexModel[];
     modelCatalog = normalizedModels;
 
     const migrated = modelCatalog.find(model => model.id === selectedModel && model.model !== selectedModel);
@@ -3412,7 +3412,18 @@ export function mountCodexRemote(
         list.appendChild(auto);
       }
 
-      for (const model of models.filter(model => !model.hidden)) {
+      // Codex's own picker lists only non-hidden models; hidden ones (already
+      // filtered to this account by the app-server) stay selectable below them.
+      const ordered = [...models.filter(model => !model.hidden), ...models.filter(model => model.hidden)];
+      let hiddenGroupShown = false;
+      for (const model of ordered) {
+        if (model.hidden && !hiddenGroupShown) {
+          hiddenGroupShown = true;
+          const group = document.createElement("div");
+          group.className = "cx-model-group";
+          group.textContent = "その他";
+          list.appendChild(group);
+        }
         const value = model.model;
         const name = model.displayName || value;
         const option = document.createElement("button");
