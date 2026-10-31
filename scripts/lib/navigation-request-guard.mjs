@@ -143,6 +143,8 @@ export function isExpectedGet(record, options = {}) {
     "/api/agent-runs", "/api/agent-runs/events", "/api/session-control/state",
     "/api/opencode/pocket/providers", "/api/opencode/agent", "/api/opencode/session/active",
     "/api/opencode/event", "/api/codex/events", "/api/llm/providers", "/api/llm/presets",
+    // Read-only Tools sidebar context, loaded when ?unifiedUI=0 opens the sidebar for the AI switch.
+    "/api/tools-ai/context",
   ]);
   if (noQuery.has(url.pathname)) return !url.search;
   if (url.pathname === "/api/opencode/session") {
