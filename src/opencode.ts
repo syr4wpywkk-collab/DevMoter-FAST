@@ -10,7 +10,7 @@ import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "
 import { createLatestRequestGuard } from "./latest-request.mjs";
 import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
 import { normalizeOpenCodeSessionList } from "./opencode-session-list.mjs";
-import { filterOpenCodePickerModels, normalizeOpenCodeProviderCatalog, openCodePickerWindow } from "./opencode-provider-catalog.mjs";
+import { filterOpenCodePickerModels, flattenOpenCodePickerRows, normalizeOpenCodeProviderCatalog, openCodePickerWindow, type OpenCodePickerItem } from "./opencode-provider-catalog.mjs";
 import { recoverAfterEventOpen } from "./event-recovery.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
@@ -538,7 +538,8 @@ export function mountOpenCodeRemote(
   let modelPickerAvailable = false;
   let modelPickerNeedsKey = false;
   let modelPickerDeprecatedOpen = false;
-  let modelPickerRows: Array<{ kind: "provider"; name: string; id: string } | { kind: "group"; name: string } | { kind: "deprecated"; count: number } | { kind: "model"; row: ReturnType<typeof filterOpenCodePickerModels>["active"][number]; pricing: string }> = [];
+  let modelPickerRows: OpenCodePickerItem[] = [];
+  const modelPickerExpandedKeyProviders = new Set<string>();
   let modelPickerWindowKey = "";
   const MODEL_ROW_PX = 56;
   const PROVIDER_REFRESH_MS = 45_000;
@@ -3219,43 +3220,18 @@ export function mountOpenCodeRemote(
   }
 
   function flatModelRows(result: ReturnType<typeof filterOpenCodePickerModels>) {
-    const flat: typeof modelPickerRows = [];
-    const pushGroup = (rows: typeof result.active) => {
-      let previous = "";
-      for (const row of rows) {
-        if (row.providerID !== previous) {
-          flat.push({ kind: "provider", name: row.providerName, id: row.providerID });
-          previous = row.providerID;
-        }
-        flat.push({ kind: "model", row, pricing: describeModelPricing(row.model.cost).detail });
-      }
-    };
-    if (modelPickerFree) {
-      const ready = result.active.filter(row => !row.needsKey);
-      const keyed = result.active.filter(row => row.needsKey);
-      if (ready.length) {
-        flat.push({ kind: "group", name: "使える" });
-        pushGroup(ready);
-      }
-      if (keyed.length) {
-        flat.push({ kind: "group", name: "キーが必要" });
-        pushGroup(keyed);
-      }
-    } else {
-      pushGroup(result.active);
-    }
-    if (modelPickerDeprecatedOpen && result.deprecated.length) {
-      flat.push({ kind: "group", name: "非推奨" });
-      pushGroup(result.deprecated);
-    }
-    return flat;
+    return flattenOpenCodePickerRows(result, {
+      free: modelPickerFree,
+      deprecatedOpen: modelPickerDeprecatedOpen,
+      expandedKeyProviders: modelPickerExpandedKeyProviders
+    });
   }
 
   function renderModelSlot(item: typeof modelPickerRows[number]) {
     if (item.kind === "group") {
       const heading = document.createElement("div");
       heading.className = "ocx-picker-provider";
-      heading.textContent = item.name;
+      heading.textContent = `${item.name} ${item.count}`;
       return heading;
     }
     if (item.kind === "provider") {
@@ -3268,14 +3244,16 @@ export function mountOpenCodeRemote(
       heading.append(strong, small);
       return heading;
     }
-    if (item.kind === "deprecated") {
+    if (item.kind === "keyProvider") {
       const toggle = document.createElement("button");
       toggle.type = "button";
-      toggle.className = "ocx-deprecated-toggle";
-      toggle.setAttribute("aria-expanded", String(modelPickerDeprecatedOpen));
-      toggle.textContent = (modelPickerDeprecatedOpen ? "Deprecated ▾ " : "Deprecated ▸ ") + item.count;
+      toggle.className = "ocx-deprecated-toggle ocx-key-provider-toggle";
+      toggle.dataset.keyProvider = item.id;
+      toggle.setAttribute("aria-expanded", String(item.expanded));
+      toggle.textContent = `${item.expanded ? "▾" : "▸"} ${item.name} ${item.count}`;
       toggle.addEventListener("click", () => {
-        modelPickerDeprecatedOpen = !modelPickerDeprecatedOpen;
+        if (modelPickerExpandedKeyProviders.has(item.id)) modelPickerExpandedKeyProviders.delete(item.id);
+        else modelPickerExpandedKeyProviders.add(item.id);
         modelPickerRows = flatModelRows(runtimeModelRows());
         modelPickerWindowKey = "";
         syncModelWindow(false);
@@ -3298,7 +3276,7 @@ export function mountOpenCodeRemote(
       : row.reason;
     const pricing = document.createElement("small");
     pricing.className = "ocx-picker-pricing";
-    pricing.textContent = item.pricing;
+    pricing.textContent = describeModelPricing(model.cost).detail;
     copy.append(title, detail, pricing);
     option.append(copy);
     if (row.selectable) {
