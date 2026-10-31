@@ -15,7 +15,7 @@ function apiWith(overrides = {}) {
       return { id: "p1", name: "Demo", path: "/safe/demo", addedAt: 1 };
     },
     normalizeExistingProjectPath: async path => path,
-    fetchOpenCodeJson: async () => [],
+    openCode: { fetchJson: async () => [], info: async () => ({ generation: "v2", version: "2.0.9" }), pendingRequests: async () => ({ permissions: [], questions: [] }) },
     codex,
     json: () => {},
     readJson: async () => ({}),
@@ -42,7 +42,7 @@ test("automation project list and open URL do not expose host paths", async () =
       id: "p1", name: "Demo", path: "/home/private/demo", addedAt: 1
     }),
     normalizeExistingProjectPath: async path => path,
-    fetchOpenCodeJson: async () => [],
+    openCode: { fetchJson: async () => [], info: async () => ({ generation: "v2", version: "2.0.9" }), pendingRequests: async () => ({ permissions: [], questions: [] }) },
     codex: Object.assign(new EventEmitter(), { request: async () => ({}) }),
     json(_res, status, body) {
       writes.push(JSON.stringify({ status, body }));

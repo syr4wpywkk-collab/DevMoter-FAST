@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { isAbsolute, resolve } from "node:path";
 import { listContextEntries, resolveContextReferences } from "./context-references.mjs";
 import { errorMessage } from "./error-message.mjs";
+import { buildOpenCodePromptBody } from "../src/opencode-api-shapes.mjs";
 
 export const AUTOMATION_API_VERSION = 1;
 const TASK_TIMEOUT_MS = 10 * 60 * 1000;
@@ -65,7 +66,7 @@ export function createAutomationApi({
   readProjectRegistry,
   getProjectById,
   normalizeExistingProjectPath,
-  fetchOpenCodeJson,
+  openCode,
   codex,
   json,
   readJson,
@@ -74,6 +75,7 @@ export function createAutomationApi({
   publicOrigin = "",
   taskTimeoutMs = TASK_TIMEOUT_MS
 }) {
+  const fetchOpenCodeJson = (path, init) => openCode.fetchJson(path, init);
   async function resolveRegisteredProject(selector) {
     const value = String(selector || "").trim();
     if (!value) throw httpError("Project is required", 400, "project_required");
@@ -258,23 +260,11 @@ export function createAutomationApi({
       controller.abort();
     }, taskTimeoutMs);
 
+    const pending = () => openCode.pendingRequests(sessionId, { headers })
+      .catch(() => ({ permissions: [], questions: [] }));
+
     const poll = setInterval(() => {
-      void Promise.all([
-        fetchOpenCodeJson("/api/session/" + encodeURIComponent(sessionId) + "/permission", {
-          headers,
-          signal: AbortSignal.timeout(2500)
-        }).catch(() => []),
-        fetchOpenCodeJson("/api/session/" + encodeURIComponent(sessionId) + "/question", {
-          headers,
-          signal: AbortSignal.timeout(2500)
-        }).catch(() => [])
-      ]).then(([permissionPayload, questionPayload]) => {
-        const permissions = Array.isArray(permissionPayload)
-          ? permissionPayload
-          : Array.isArray(permissionPayload?.data) ? permissionPayload.data : [];
-        const questions = Array.isArray(questionPayload)
-          ? questionPayload
-          : Array.isArray(questionPayload?.data) ? questionPayload.data : [];
+      void pending().then(({ permissions, questions }) => {
         if (!blocked && permissions.length) {
           blocked = { reason: "approval_required", approvalType: "permission" };
           controller.abort();
@@ -287,32 +277,18 @@ export function createAutomationApi({
     poll.unref?.();
 
     try {
+      const { generation } = await openCode.info();
       const result = await fetchOpenCodeJson(
         "/api/session/" + encodeURIComponent(sessionId) + "/prompt",
         {
           method: "POST",
           headers,
-          body: JSON.stringify({ text: task }),
+          body: JSON.stringify(buildOpenCodePromptBody(generation, { text: task })),
           signal: controller.signal
         }
       );
 
-      const [permissionPayload, questionPayload] = await Promise.all([
-        fetchOpenCodeJson(
-          "/api/session/" + encodeURIComponent(sessionId) + "/permission",
-          { headers, signal: AbortSignal.timeout(2500) }
-        ).catch(() => []),
-        fetchOpenCodeJson(
-          "/api/session/" + encodeURIComponent(sessionId) + "/question",
-          { headers, signal: AbortSignal.timeout(2500) }
-        ).catch(() => [])
-      ]);
-      const permissions = Array.isArray(permissionPayload)
-        ? permissionPayload
-        : Array.isArray(permissionPayload?.data) ? permissionPayload.data : [];
-      const questions = Array.isArray(questionPayload)
-        ? questionPayload
-        : Array.isArray(questionPayload?.data) ? questionPayload.data : [];
+      const { permissions, questions } = await pending();
       if (permissions.length) {
         blocked = { reason: "approval_required", approvalType: "permission" };
         throw httpError("OpenCode is waiting for approval", 409, "approval_required");

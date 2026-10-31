@@ -85,38 +85,47 @@ echo "$OC_PID" > "$OC_PIDFILE"
 
 OC_DIR="${OPENCODE_DIRECTORY:-$REPO}"
 
-echo "⏳ OpenCode v2 runtime warmup"
+# Readiness is the same contract on OpenCode 1.x and 2.x: the server reports its
+# version on its own version endpoint (2.x: /api/info, 1.x: /global/health),
+# answers /api/location, and lists at least one enabled model on /api/model.
+# (GET /api/provider is not a readiness signal: on 2.x it can be empty while
+# the bundled OpenCode models are already usable.)
+oc_get() {
+  curl -fsS -u "opencode:$PASS" -H "x-opencode-directory: $OC_DIR" "http://127.0.0.1:$OC_PORT$1" 2>/dev/null || true
+}
+
+echo "⏳ OpenCode runtime warmup"
 for i in $(seq 1 80); do
-  PROVIDERS_RAW="$(curl -fsS \
-    -u "opencode:$PASS" \
-    -H "x-opencode-directory: $OC_DIR" \
-    "http://127.0.0.1:$OC_PORT/api/provider" \
-    2>/dev/null || true)"
-
-  MODELS_RAW="$(curl -fsS \
-    -u "opencode:$PASS" \
-    -H "x-opencode-directory: $OC_DIR" \
-    "http://127.0.0.1:$OC_PORT/api/model" \
-    2>/dev/null || true)"
-
-  if [ -n "$PROVIDERS_RAW" ] && [ -n "$MODELS_RAW" ]; then
-    if PROVIDERS_RAW="$PROVIDERS_RAW" MODELS_RAW="$MODELS_RAW" python3 - <<'PY'
+  if INFO_RAW="$(oc_get /api/info)" HEALTH_RAW="$(oc_get /global/health)" \
+     LOCATION_RAW="$(oc_get /api/location)" MODELS_RAW="$(oc_get /api/model)" python3 - 2>/dev/null <<'PY'
 import json, os
-providers = json.loads(os.environ["PROVIDERS_RAW"])
-models = json.loads(os.environ["MODELS_RAW"])
-p = providers.get("data", providers if isinstance(providers, list) else [])
-m = models.get("data", models if isinstance(models, list) else [])
-assert isinstance(p, list) and len(p) > 0
-assert isinstance(m, list) and len(m) > 0
-print(f"✅ OpenCode runtime ready: {len(p)} providers / {len(m)} models")
+
+def parse(name):
+    try:
+        return json.loads(os.environ.get(name) or "")
+    except ValueError:
+        return None
+
+version, api = None, None
+for name, generation in (("INFO_RAW", "v2"), ("HEALTH_RAW", "v1")):
+    payload = parse(name)
+    if isinstance(payload, dict) and isinstance(payload.get("version"), str):
+        version, api = payload["version"], generation
+        break
+assert version, "version endpoint not answering"
+location = parse("LOCATION_RAW")
+assert isinstance(location, dict) and location.get("directory"), "/api/location not ready"
+models = parse("MODELS_RAW")
+m = models.get("data") if isinstance(models, dict) else models
+assert isinstance(m, list) and len(m) > 0, "no models yet"
+print(f"✅ OpenCode {version} (API {api}) ready: {len(m)} models")
 PY
-    then
-      break
-    fi
+  then
+    break
   fi
 
   if [ "$i" -eq 80 ]; then
-    echo "❌ OpenCode v2 runtime failed to become ready"
+    echo "❌ OpenCode runtime failed to become ready (version endpoint, /api/location or /api/model)"
     tail -n 80 "$OC_LOG" || true
     exit 1
   fi
@@ -154,7 +163,7 @@ print(f"🤖 OpenCode models:    {model_count}")
 if not providers or model_count == 0:
     raise SystemExit(2)
 ' || {
-        echo "⚠️ DevMoterはOnlineだけど、OpenCodeのProvider/Model取得が空です"
+        echo "⚠️ DevMoterはOnlineだけど、OpenCodeのProvider/Model取得が空です（/api/opencode/pocket/providers）"
         echo "$PROVIDERS"
         exit 1
       }

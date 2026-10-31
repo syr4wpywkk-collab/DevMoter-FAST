@@ -1,11 +1,53 @@
+import { normalizeOpenCodeQuestions, OPENCODE_API_V1, OPENCODE_API_V2 } from "./opencode-api-shapes.mjs";
+
 function eventProps(payload) {
   if (!payload || typeof payload !== "object") return {};
   return payload.data ?? payload.properties ?? payload;
 }
 
+// OpenCode 1.x (1.19.5) and 2.x (2.0.9) name the same SSE events differently.
+// Map both onto one canonical vocabulary so the UI handles each event once:
+//   1.x session.next.<x>            -> 2.x session.<x>
+//   1.x session.next.agent/model.switched -> session.agent/model.selected
+//   1.x permission.v2.asked/replied -> permission.asked/replied (2.x names)
+//   1.x question.v2.asked, 2.x form.created  -> question.asked (props: normalized question)
+//   1.x question.v2.replied/rejected, 2.x form.replied/cancelled -> question.resolved
+const RENAMED_EVENTS = Object.freeze({
+  "session.next.agent.switched": "session.agent.selected",
+  "session.next.model.switched": "session.model.selected",
+  "permission.v2.asked": "permission.asked",
+  "permission.v2.replied": "permission.replied"
+});
+
+function canonicalEvent(rawType, rawProps) {
+  if (RENAMED_EVENTS[rawType]) return { type: RENAMED_EVENTS[rawType], props: rawProps };
+  if (rawType.startsWith("session.next.")) {
+    const props = { ...rawProps };
+    // 1.x identifies stream parts by textID/reasoningID; 2.x by ordinal.
+    if (props.partID == null) props.partID = props.textID ?? props.reasoningID ?? props.ordinal;
+    return { type: "session." + rawType.slice("session.next.".length), props };
+  }
+  if (rawType === "question.v2.asked") {
+    const question = normalizeOpenCodeQuestions(OPENCODE_API_V1, [rawProps])[0] ?? null;
+    return { type: "question.asked", props: question };
+  }
+  if (rawType === "form.created") {
+    const question = normalizeOpenCodeQuestions(OPENCODE_API_V2, [rawProps?.form])[0] ?? null;
+    return { type: "question.asked", props: question };
+  }
+  if (rawType === "question.v2.replied" || rawType === "question.v2.rejected") {
+    return { type: "question.resolved", props: { sessionID: rawProps?.sessionID, requestID: rawProps?.requestID } };
+  }
+  if (rawType === "form.replied" || rawType === "form.cancelled") {
+    return { type: "question.resolved", props: { sessionID: rawProps?.sessionID, requestID: rawProps?.id } };
+  }
+  return { type: rawType, props: rawProps };
+}
+
 export function normalizeOpenCodeEvent(payload) {
-  const props = eventProps(payload);
-  const type = typeof payload?.type === "string" ? payload.type : "";
+  const rawType = typeof payload?.type === "string" ? payload.type : "";
+  const canonical = canonicalEvent(rawType, eventProps(payload));
+  const { type, props } = canonical;
   const sessionID =
     props?.sessionID ??
     props?.sessionId ??
@@ -71,6 +113,7 @@ export function normalizeOpenCodeEvent(payload) {
 
   return {
     type,
+    rawType,
     props,
     sessionID,
     category,

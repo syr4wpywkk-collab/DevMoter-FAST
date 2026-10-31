@@ -5,17 +5,21 @@ export function normalizeOpenCodeProviderCatalog(payload: unknown): {
 };
 
 export function buildOpenCodeProviderCatalog(input: {
-  v1: unknown;
-  modelOverrides?: unknown;
+  generation: "v1" | "v2";
+  version?: string | null;
+  providers: unknown;
+  models: unknown;
+  integrations?: unknown;
+  defaultModel?: unknown;
   directory?: string | null;
-  modelSource?: string | null;
 }): {
-  apiVersion: string;
+  apiVersion: "v1" | "v2";
+  opencodeVersion: string | null;
   source: string;
-  modelSource: string | null;
+  modelSource: string;
   directory: string | null;
   all: Array<{ id: string; name: string; env: string[]; models: Record<string, any> }>;
-  default: Record<string, unknown>;
+  default: Record<string, string>;
   connected: string[];
   cacheTtlMs: number;
 };

@@ -69,40 +69,25 @@ test("health and OpenCode SSE proxy are live without a real OpenCode account", a
       res.end(JSON.stringify({ directory: home }));
       return;
     }
-    if (req.url === "/provider") {
-      providerHits += 1;
+    const fixtureJson = value => {
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({
-        all: [
-          {
-            id: "fixture",
-            name: "Fixture",
-            env: [],
-            models: {
-              paid: { id: "paid", name: "Paid", cost: { input: 2, output: 8, cache_read: 0.1, private: "excluded" } },
-              zero: { id: "zero", name: "Zero", cost: { input: 0, output: 0 } },
-              unknown: { id: "unknown", name: "Unknown" }
-            }
-          },
-          {
-            id: "locked",
-            name: "Locked",
-            env: ["OCI_GENAI_API_KEY"],
-            models: { hidden: { id: "hidden", name: "Hidden", cost: { input: 1, output: 1 } } }
-          }
-        ],
-        default: { fixture: "paid" },
-        connected: ["fixture"]
-      }));
-      return;
+      res.end(JSON.stringify(value));
+    };
+    if (req.url === "/api/info") return fixtureJson({ version: "2.0.9", pid: 1, urls: [] });
+    if (req.url === "/api/provider") {
+      providerHits += 1;
+      return fixtureJson({ data: [{ id: "fixture", name: "Fixture" }] });
     }
     if (req.url === "/api/model") {
-      res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ data: [
-        { id: "paid", providerID: "fixture", status: "active", enabled: true }
-      ] }));
-      return;
+      return fixtureJson({ data: [
+        { id: "paid", providerID: "fixture", name: "Paid", status: "active", enabled: true, cost: [{ input: 2, output: 8, cache: { read: 0.1, write: 0 }, private: "excluded" }] },
+        { id: "zero", providerID: "fixture", name: "Zero", cost: [{ input: 0, output: 0 }] },
+        { id: "unknown", providerID: "fixture", name: "Unknown" },
+        { id: "bare", providerID: "other", name: "Bare" }
+      ] });
     }
+    if (req.url === "/api/integration") return fixtureJson({ data: [{ id: "other", name: "Other Integration", methods: [{ type: "env", names: ["OTHER_KEY"] }] }] });
+    if (req.url === "/api/model/default") return fixtureJson({ data: { id: "paid", providerID: "fixture" } });
     if (req.url === "/api/event") {
       res.writeHead(200, {
         "content-type": "text/event-stream",
@@ -144,19 +129,27 @@ test("health and OpenCode SSE proxy are live without a real OpenCode account", a
     const healthPayload = await health.json();
     assert.equal(healthPayload.backends.opencode.online, true);
     assert.equal(healthPayload.online, true);
+    assert.equal(healthPayload.backends.opencode.apiVersion, "v2");
 
     const discovery = await fetch(`http://127.0.0.1:${appPort}/api/opencode/pocket/providers`, { headers: { authorization }, signal: AbortSignal.timeout(4000) });
     assert.equal(discovery.status, 200);
     const catalog = await discovery.json();
-    assert.deepEqual(catalog.all[0].models.paid.cost, { input: 2, output: 8, cache_read: 0.1 });
+    assert.equal(catalog.apiVersion, "v2");
+    assert.equal(catalog.opencodeVersion, "2.0.9");
+    assert.deepEqual(catalog.all[0].models.paid.cost, { input: 2, output: 8, cache_read: 0.1, cache_write: 0 });
     assert.deepEqual(catalog.all[0].models.zero.cost, { input: 0, output: 0 });
     assert.equal(catalog.all[0].models.unknown.cost, null);
     assert.equal(catalog.all[0].models.paid.status, "active");
-    assert.deepEqual(catalog.connected, ["fixture"]);
-    assert.equal(catalog.all[1].id, "locked");
-    assert.equal(catalog.all[1].models.hidden.available, false);
-    assert.deepEqual(catalog.all[1].models.hidden.requiresKey, ["OCI_GENAI_API_KEY"]);
+    assert.deepEqual(catalog.default, { fixture: "paid" });
+    assert.deepEqual(catalog.connected, ["fixture", "other"]);
+    assert.equal(catalog.all[1].name, "Other Integration");
+    assert.deepEqual(catalog.all[1].env, ["OTHER_KEY"]);
+    assert.equal(catalog.all[1].models.bare.available, true);
     assert.equal(providerHits, 1);
+
+    const runtime = await fetch(`http://127.0.0.1:${appPort}/api/opencode/pocket/runtime`, { headers: { authorization }, signal: AbortSignal.timeout(4000) });
+    assert.equal(runtime.status, 200);
+    assert.deepEqual(await runtime.json(), { generation: "v2", version: "2.0.9", source: "/api/info" });
 
     const cached = await fetch(`http://127.0.0.1:${appPort}/api/opencode/pocket/providers`, { headers: { authorization }, signal: AbortSignal.timeout(4000) });
     assert.equal(cached.status, 200);

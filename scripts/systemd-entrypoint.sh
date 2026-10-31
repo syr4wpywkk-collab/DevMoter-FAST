@@ -95,31 +95,34 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+# Same readiness contract on OpenCode 1.x and 2.x: a version on the server's own
+# version endpoint (2.x: /api/info, 1.x: /global/health), /api/location, and at
+# least one enabled model on /api/model. /api/provider may be empty on 2.x.
+oc_get() {
+  curl -fsS -u "opencode:$OC_PASS" -H "x-opencode-directory: $OC_DIR" \
+    "http://127.0.0.1:$OC_PORT$1" 2>/dev/null || true
+}
+
 runtime_ready() {
-  local providers_raw models_raw
-  providers_raw="$(curl -fsS \
-    -u "opencode:$OC_PASS" \
-    -H "x-opencode-directory: $OC_DIR" \
-    "http://127.0.0.1:$OC_PORT/api/provider" \
-    2>/dev/null || true)"
-  models_raw="$(curl -fsS \
-    -u "opencode:$OC_PASS" \
-    -H "x-opencode-directory: $OC_DIR" \
-    "http://127.0.0.1:$OC_PORT/api/model" \
-    2>/dev/null || true)"
-
-  if [ -z "$providers_raw" ] || [ -z "$models_raw" ]; then
-    return 1
-  fi
-
-  PROVIDERS_RAW="$providers_raw" MODELS_RAW="$models_raw" python3 - <<'PY' >/dev/null 2>&1
+  INFO_RAW="$(oc_get /api/info)" HEALTH_RAW="$(oc_get /global/health)" \
+  LOCATION_RAW="$(oc_get /api/location)" MODELS_RAW="$(oc_get /api/model)" \
+  python3 - <<'PY' >/dev/null 2>&1
 import json, os
-providers = json.loads(os.environ["PROVIDERS_RAW"])
-models = json.loads(os.environ["MODELS_RAW"])
-p = providers.get("data", providers if isinstance(providers, list) else [])
-m = models.get("data", models if isinstance(models, list) else [])
-if not isinstance(p, list) or not p:
+
+def parse(name):
+    try:
+        return json.loads(os.environ.get(name) or "")
+    except ValueError:
+        return None
+
+versions = [parse(name) for name in ("INFO_RAW", "HEALTH_RAW")]
+if not any(isinstance(p, dict) and isinstance(p.get("version"), str) for p in versions):
     raise SystemExit(1)
+location = parse("LOCATION_RAW")
+if not isinstance(location, dict) or not location.get("directory"):
+    raise SystemExit(1)
+models = parse("MODELS_RAW")
+m = models.get("data") if isinstance(models, dict) else models
 if not isinstance(m, list) or not m:
     raise SystemExit(1)
 PY
@@ -139,7 +142,7 @@ for _ in $(seq 1 120); do
 done
 
 if [ "$READY" -ne 1 ]; then
-  echo "OpenCode failed to become ready (provider/model warmup incomplete)" >&2
+  echo "OpenCode failed to become ready (version endpoint, /api/location or /api/model warmup incomplete)" >&2
   exit 1
 fi
 
