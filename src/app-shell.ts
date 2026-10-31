@@ -286,6 +286,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
       closeSidebar();
       options.switchBackend(next);
     });
+    scroll.prepend(settings);
     settings.after(row);
   }
 
