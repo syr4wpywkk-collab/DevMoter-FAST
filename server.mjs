@@ -9,6 +9,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { CodexBridge } from "./server/codex-bridge.mjs";
 import { inspectKnownClis, launchCode } from "./server/cli-launch.mjs";
 import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/opencode-provider-catalog.mjs";
+import { buildOpenCodePromptBody, openCodePermissionDecision, openCodePromptText, withOpenCodePromptText } from "./src/opencode-api-shapes.mjs";
+import { createOpenCodeClient } from "./server/opencode-api.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, fullyDecodePath, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { staticSecurityHeaders } from "./server/security-headers.mjs";
@@ -59,6 +61,9 @@ import { errorMessage } from "./server/error-message.mjs";
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
 const OPENCODE_PASSWORD = process.env.OPENCODE_SERVER_PASSWORD || "";
+// Hoisted openCodeHeaders() is only invoked per request, after module init.
+const openCode = createOpenCodeClient({ baseUrl: OPENCODE_URL, headers: openCodeHeaders });
+const fetchOpenCodeJson = openCode.fetchJson;
 const DEVMOTER_AUTH_USERNAME = process.env.DEVMOTER_AUTH_USERNAME || "devmoter";
 const DEVMOTER_AUTH_PASSWORD = assertAuthPassword(process.env.DEVMOTER_AUTH_PASSWORD || "");
 const DEVMOTER_PUBLIC_ORIGIN = process.env.DEVMOTER_PUBLIC_ORIGIN || "";
@@ -311,7 +316,7 @@ const automationApi = createAutomationApi({
   readProjectRegistry,
   getProjectById,
   normalizeExistingProjectPath,
-  fetchOpenCodeJson,
+  openCode,
   codex,
   json,
   readJson,
@@ -865,48 +870,6 @@ async function githubFetch(req, res) {
   json(res, 200, await fetchGithubRepo(HOME_DIR, payload?.owner, payload?.repo));
 }
 
-async function fetchOpenCodeJson(path, init = {}) {
-  const upstream = await fetch(new URL(path, OPENCODE_URL), {
-    ...init,
-    headers: openCodeHeaders({
-      accept: "application/json",
-      ...(init.headers || {})
-    }),
-    signal: init.signal || AbortSignal.timeout(4000)
-  });
-
-  const text = await upstream.text();
-  const contentType = upstream.headers.get("content-type") || "";
-
-  let payload = null;
-  if (text) {
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      const preview = text.slice(0, 160).replace(/\s+/g, " ");
-      const error = new Error(
-        `OpenCode returned non-JSON for ${path} (HTTP ${upstream.status}, ${contentType || "unknown content-type"}): ${preview}`
-      );
-      error.status = upstream.status;
-      error.contentType = contentType;
-      throw error;
-    }
-  }
-
-  if (!upstream.ok) {
-    const error = new Error(
-      payload?.error?.data?.message ||
-      payload?.error?.message ||
-      payload?.message ||
-      `OpenCode HTTP ${upstream.status} for ${path}`
-    );
-    error.status = upstream.status;
-    throw error;
-  }
-
-  return payload;
-}
-
 function controlStatus(value) {
   const raw =
     typeof value === "string"
@@ -1008,12 +971,13 @@ async function dispatchControlQueued(backend, sessionId, text) {
     return;
   }
 
+  const { generation } = await openCode.info();
   await fetchOpenCodeJson(
     "/api/session/" + encodeURIComponent(sessionId) + "/prompt",
     {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text })
+      body: JSON.stringify(buildOpenCodePromptBody(generation, { text }))
     }
   );
 }
@@ -1081,12 +1045,8 @@ async function pollOpenCodeNotificationStates() {
       let state = active?.[sessionId] ? "running" : "idle";
 
       if (active?.[sessionId] || prior === "running" || prior === "waiting_for_approval" || prior === "waiting_for_input") {
-        const [permissionRaw, questionRaw] = await Promise.all([
-          fetchOpenCodeJson("/api/session/" + encodeURIComponent(sessionId) + "/permission").catch(() => []),
-          fetchOpenCodeJson("/api/session/" + encodeURIComponent(sessionId) + "/question").catch(() => [])
-        ]);
-        const permissions = Array.isArray(permissionRaw) ? permissionRaw : (Array.isArray(permissionRaw?.data) ? permissionRaw.data : []);
-        const questions = Array.isArray(questionRaw) ? questionRaw : (Array.isArray(questionRaw?.data) ? questionRaw.data : []);
+        const { permissions, questions } = await openCode.pendingRequests(sessionId)
+          .catch(() => ({ permissions: [], questions: [] }));
         if (permissions.length) state = "waiting_for_approval";
         else if (questions.length) state = "waiting_for_input";
       }
@@ -1138,13 +1098,17 @@ async function opencodeHealth() {
       throw new Error("OpenCode /api/location returned no directory");
     }
 
+    const api = await openCode.info().catch(() => null);
     return {
       online: true,
       status: 200,
       directory,
-      project: location?.project ?? null
+      project: location?.project ?? null,
+      version: api?.version ?? null,
+      apiVersion: api?.generation ?? null
     };
   } catch (error) {
+    openCode.invalidate();
     return {
       online: false,
       status: error?.status ?? null,
@@ -1155,33 +1119,14 @@ async function opencodeHealth() {
 
 let openCodeProviderCache = { at: 0, payload: null, flight: null };
 
-async function readOpenCodeModelOverrides() {
-  for (const candidate of ["/api/model", "/api/catalog/model"]) {
-    try {
-      const payload = await fetchOpenCodeJson(candidate, { signal: AbortSignal.timeout(15000) });
-      const list = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [];
-      if (list.length > 0) return { list, source: candidate };
-    } catch {
-      // Status overrides are optional. The v1 catalog is the source of models.
-    }
-  }
-  return { list: [], source: null };
-}
-
 async function loadOpenCodeProviderCatalog(refresh) {
   const fresh = openCodeProviderCache.payload && Date.now() - openCodeProviderCache.at < PROVIDER_CATALOG_TTL_MS;
   if (!refresh && fresh) return openCodeProviderCache.payload;
   if (!refresh && openCodeProviderCache.flight) return openCodeProviderCache.flight;
 
   const flight = (async () => {
-    const v1 = await fetchOpenCodeJson("/provider", { signal: AbortSignal.timeout(15000) });
-    const overrides = await readOpenCodeModelOverrides();
-    const payload = buildOpenCodeProviderCatalog({
-      v1,
-      modelOverrides: overrides.list,
-      modelSource: overrides.source,
-      directory: OPENCODE_DIRECTORY
-    });
+    const inputs = await openCode.catalogInputs();
+    const payload = buildOpenCodeProviderCatalog({ ...inputs, directory: OPENCODE_DIRECTORY });
     openCodeProviderCache = { at: Date.now(), payload, flight: null };
     return payload;
   })();
@@ -1205,6 +1150,17 @@ async function opencodeProviders(url, res) {
       detail: errorMessage(error),
       directory: OPENCODE_DIRECTORY
     });
+  }
+}
+
+// The browser builds generation-specific OpenCode bodies with the same
+// src/opencode-api-shapes.mjs builders; this tells it which generation runs.
+async function opencodeRuntime(url, res) {
+  try {
+    const api = await openCode.info({ refresh: url.searchParams.get("refresh") === "1" });
+    json(res, 200, { generation: api.generation, version: api.version, source: api.source });
+  } catch (error) {
+    json(res, 502, { error: "OpenCode version detection failed", detail: errorMessage(error) });
   }
 }
 
@@ -1349,10 +1305,11 @@ async function executeControlTaskCore(definition, context = {}) {
     };
     context.setCancel?.(cancel);
 
+    const { generation } = await openCode.info();
     const promptResult = await fetchOpenCodeJson("/api/session/" + encodeURIComponent(sessionId) + "/prompt", {
       method: "POST",
       headers,
-      body: JSON.stringify({ text: task }),
+      body: JSON.stringify(buildOpenCodePromptBody(generation, { text: task })),
       signal: AbortSignal.timeout(taskTimeoutMs(context))
     });
     const promptSummary = JSON.stringify(promptResult ?? {}).slice(-4000);
@@ -1722,7 +1679,7 @@ function resolveUploadPath(id) {
   }
 }
 
-function materializeOpenCodeUploadBody(body, contentType, policyPath) {
+function materializeOpenCodeUploadBody(body, contentType, policyPath, generation) {
   if (
     !body ||
     !isPromptRoute(policyPath) ||
@@ -1736,15 +1693,16 @@ function materializeOpenCodeUploadBody(body, contentType, policyPath) {
     return body;
   }
 
-  if (typeof payload?.text !== "string" || !payload.text.includes("devmoter-upload:")) {
+  const text = openCodePromptText(generation, payload);
+  if (text === null || !text.includes("devmoter-upload:")) {
     return body;
   }
 
-  payload.text = payload.text.replace(
+  const materialized = text.replace(
     /devmoter-upload:([0-9a-f-]{36})/gi,
     (_match, id) => resolveUploadPath(id)
   );
-  return Buffer.from(JSON.stringify(payload));
+  return Buffer.from(JSON.stringify(withOpenCodePromptText(generation, payload, materialized)));
 }
 
 async function materializeCodexUploadInputs(method, params) {
@@ -1862,10 +1820,23 @@ async function proxy(req, res) {
     }
   }
 
-  if (!sandboxPolicy.allowed && /\/permission\/[^/]+\/reply$/.test(policyPath) && body?.length) {
+  // Prompt and permission-reply bodies are shaped per OpenCode API generation
+  // (src/opencode-api-shapes.mjs), so policies that read them need it.
+  const isPermissionReply = /\/permission\/[^/]+\/reply$/.test(policyPath);
+  let generation = null;
+  if (body?.length && (isPromptRoute(policyPath) || isPermissionReply)) {
+    try {
+      generation = (await openCode.info()).generation;
+    } catch (error) {
+      json(res, 502, { error: "OpenCode version detection failed", detail: errorMessage(error) });
+      return;
+    }
+  }
+
+  if (!sandboxPolicy.allowed && isPermissionReply && body?.length) {
     try {
       const payload = JSON.parse(body.toString("utf8"));
-      if (String(payload?.reply || "") !== "reject") {
+      if (openCodePermissionDecision(generation, payload) !== "reject") {
         json(res, 409, { error: sandboxPolicy.reason, sandbox: sandboxPolicy });
         return;
       }
@@ -1878,7 +1849,8 @@ async function proxy(req, res) {
   body = materializeOpenCodeUploadBody(
     body,
     req.headers["content-type"] || "",
-    policyPath
+    policyPath,
+    generation
   );
 
   const upstreamAbort = new AbortController();
@@ -3349,6 +3321,11 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/api/opencode/pocket/providers") {
       await opencodeProviders(url, res);
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/opencode/pocket/runtime") {
+      await opencodeRuntime(url, res);
       return;
     }
 

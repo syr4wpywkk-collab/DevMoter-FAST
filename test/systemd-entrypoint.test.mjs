@@ -31,7 +31,9 @@ while :; do sleep 1; done
   await executable(join(fakeBin, "curl"), `#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "$DEVMOTER_CURL_LOG"
 case "$*" in
-  *"/api/provider"*) printf '%s\\n' '{"data":[{"id":"mock-provider"}]}' ;;
+  *"/api/info"*) printf '%s\\n' '{"version":"2.0.9"}' ;;
+  *"/global/health"*) printf '%s\\n' '<!doctype html>' ;;
+  *"/api/location"*) printf '%s\\n' '{"directory":"/srv/project"}' ;;
   *"/api/model"*) printf '%s\\n' '{"data":[{"id":"mock-model"}]}' ;;
   *"/api/health"*) printf '%s\\n' '{"backends":{"opencode":{"online":true},"codex":{"online":true}}}' ;;
 esac
@@ -68,7 +70,9 @@ exit 0
   const log = await readFile(curlLog, "utf8");
   assert.match(log, /-u opencode:/);
   assert.match(log, /-u devmoter:/);
-  assert.match(log, /\/api\/provider/);
+  assert.match(log, /\/api\/info/);
+  assert.match(log, /\/global\/health/);
+  assert.match(log, /\/api\/location/);
   assert.match(log, /\/api\/model/);
   assert.match(log, /\/api\/health/);
 });
@@ -79,7 +83,10 @@ test("manual and systemd launchers keep the same readiness contract", async () =
   const service = await readFile(resolve("scripts/systemd-entrypoint.sh"), "utf8");
 
   for (const source of [manual, service]) {
-    assert.match(source, /\/api\/provider/);
+    // OpenCode 2.x reports its version on /api/info, 1.x on /global/health.
+    assert.match(source, /\/api\/info/);
+    assert.match(source, /\/global\/health/);
+    assert.match(source, /\/api\/location/);
     assert.match(source, /\/api\/model/);
     assert.match(source, /\/api\/health/);
     assert.match(source, /backends.*opencode.*online/s);

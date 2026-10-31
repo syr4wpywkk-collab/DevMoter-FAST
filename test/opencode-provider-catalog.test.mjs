@@ -30,59 +30,36 @@ test("OpenCode rejects malformed or duplicate provider catalogs", () => {
   }
 });
 
-test("provider catalog is built from v1 and only takes v2 status overrides", () => {
+test("provider catalog comes from /api/provider + /api/model and keeps picker semantics", () => {
   const catalog = buildOpenCodeProviderCatalog({
-    v1: {
-      all: [
-        {
-          id: "opencode",
-          name: "OpenCode",
-          env: [],
-          models: {
-            free: { id: "free", name: "Free", cost: { input: 0, output: 0 }, status: "active" },
-            paid: { id: "paid", name: "Paid", cost: { input: 2, output: 8 } }
-          }
-        },
-        {
-          id: "oci",
-          name: "OCI",
-          env: ["OCI_GENAI_API_KEY"],
-          models: {
-            genai: { id: "genai", name: "GenAI", cost: { input: 1, output: 2 }, status: "active" },
-            old: { id: "old", name: "Old", cost: { input: 0, output: 0 } }
-          }
-        }
-      ],
-      default: { opencode: "free" },
-      connected: ["opencode"]
+    generation: "v2",
+    version: "2.0.9",
+    providers: { data: [{ id: "opencode", name: "OpenCode" }] },
+    models: {
+      data: [
+        { id: "free", providerID: "opencode", name: "Free", cost: [{ input: 0, output: 0, cache: { read: 0, write: 0 } }], status: "active", enabled: true },
+        { id: "paid", providerID: "opencode", name: "Paid", cost: [{ input: 2, output: 8 }, { tier: { type: "context", size: 1 }, input: 4, output: 16 }] },
+        { id: "old", providerID: "opencode", name: "Old", cost: [{ input: 0, output: 0 }], status: "deprecated" }
+      ]
     },
-    modelOverrides: [
-      { id: "old", providerID: "oci", status: "deprecated", enabled: false },
-      { id: "free", providerID: "opencode", status: "active", enabled: true }
-    ],
-    modelSource: "/api/model"
+    integrations: { data: [] },
+    defaultModel: { data: { id: "free", providerID: "opencode" } }
   });
 
-  assert.equal(catalog.source, "/provider");
+  assert.equal(catalog.apiVersion, "v2");
   assert.deepEqual(catalog.connected, ["opencode"]);
+  assert.deepEqual(catalog.default, { opencode: "free" });
   assert.equal(catalog.all[0].models.free.free, true);
   assert.equal(catalog.all[0].models.free.available, true);
   assert.equal(catalog.all[0].models.paid.free, false);
-  assert.equal(catalog.all[1].models.genai.available, false);
-  assert.deepEqual(catalog.all[1].models.genai.requiresKey, ["OCI_GENAI_API_KEY"]);
-  assert.equal(catalog.all[1].models.old.deprecated, true);
-  assert.equal(catalog.all[1].models.old.enabled, false);
-  assert.equal(catalog.all[1].models.old.free, true);
-
-  const picked = filterOpenCodePickerModels(catalog.all, { connected: catalog.connected, needsKey: true });
-  assert.deepEqual(picked.active.map(row => row.model.id), ["genai"]);
-  assert.equal(picked.active[0].reason, "Needs key (OCI_GENAI_API_KEY)");
-  assert.equal(picked.active[0].selectable, false);
-  assert.deepEqual(picked.deprecated.map(row => row.model.id), ["old"]);
+  assert.deepEqual(catalog.all[0].models.paid.cost, { input: 2, output: 8 });
+  assert.equal(catalog.all[0].models.old.deprecated, true);
+  assert.deepEqual(normalizeOpenCodeProviderCatalog(catalog).defaults, { opencode: "free" });
 
   const free = filterOpenCodePickerModels(catalog.all, { connected: catalog.connected, free: true, available: true });
   assert.deepEqual(free.active.map(row => row.model.id), ["free"]);
-  assert.equal(free.counts.shown, 1);
+  assert.deepEqual(free.deprecated.map(row => row.model.id), ["old"]);
+  assert.equal(free.counts.needsKey, 0, "OpenCode's /api routes expose no unconnected models");
 });
 
 test("free filter keeps cost-zero rows and does not change availability", () => {
@@ -140,14 +117,16 @@ test("OpenCode validates provider payload before replacing the current catalog",
   assert.doesNotMatch(source, /async function showModels\(/);
 });
 
-test("OpenCode provider route builds one catalog from v1", async () => {
+test("OpenCode provider route builds one catalog from the shared /api routes", async () => {
   const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
   const start = source.indexOf("async function opencodeProviders(");
   const end = source.indexOf("function taskTimeoutMs", start);
   const route = source.slice(start, end);
   assert.match(route, /loadOpenCodeProviderCatalog/);
   assert.match(route, /refresh/);
-  assert.match(source, /fetchOpenCodeJson\("\/provider"/);
+  assert.match(source, /openCode\.catalogInputs\(\)/);
   assert.match(source, /buildOpenCodeProviderCatalog/);
-  assert.doesNotMatch(source, /\/api\/provider/);
+  // The 1.x-only catalog route is gone (2.x serves its web UI there).
+  assert.doesNotMatch(source, /fetchOpenCodeJson\("\/provider"/);
+  assert.doesNotMatch(source, /readOpenCodeModelOverrides/);
 });

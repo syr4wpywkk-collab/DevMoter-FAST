@@ -31,91 +31,127 @@ export function normalizeOpenCodeProviderCatalog(payload) {
   return { providers, defaults, connected };
 }
 
-function modelEntries(models) {
-  if (!models || typeof models !== "object") return [];
-  if (Array.isArray(models)) {
-    return models
-      .map(model => [String(model?.id ?? model?.modelID ?? ""), model])
-      .filter(([id]) => id);
-  }
-  return Object.entries(models);
+function listPayload(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return null;
 }
 
-function envKeys(provider) {
-  const raw = provider?.env ?? provider?.options?.env;
-  const list = Array.isArray(raw) ? raw : typeof raw === "string" ? [raw] : [];
-  return [...new Set(list.map(key => String(key || "").trim()).filter(Boolean))];
+// OpenCode reports model cost as pricing tiers. The base tier is the one
+// without a `tier` qualifier (context-size surcharges carry one).
+function baseCostTier(cost) {
+  if (!Array.isArray(cost)) return cost;
+  return cost.find(tier => tier && typeof tier === "object" && tier.tier == null) ?? cost[0] ?? null;
 }
 
-function indexModelOverrides(models) {
-  const list = Array.isArray(models) ? models : Array.isArray(models?.data) ? models.data : [];
-  const overrides = new Map();
-  for (const model of list) {
-    const providerID = String(model?.providerID ?? model?.provider?.id ?? model?.provider?.providerID ?? "");
-    const modelID = String(model?.id ?? model?.modelID ?? "");
-    if (!providerID || !modelID) continue;
-    const patch = {};
-    if (model && Object.prototype.hasOwnProperty.call(model, "status")) patch.status = model.status ?? null;
-    if (model && Object.prototype.hasOwnProperty.call(model, "enabled")) patch.enabled = model.enabled !== false;
-    overrides.set(`${providerID}\0${modelID}`, patch);
-  }
-  return overrides;
-}
-
-export function buildOpenCodeProviderCatalog({ v1, modelOverrides = [], directory = null, modelSource = null } = {}) {
-  const providers = v1?.all;
-  if (!Array.isArray(providers)) throw new Error("OpenCode /provider catalog is missing");
-  const connected = (Array.isArray(v1?.connected) ? v1.connected : []).map(id => String(id));
-  const connectedSet = new Set(connected);
-  const defaults = v1?.default && typeof v1.default === "object" && !Array.isArray(v1.default) ? v1.default : {};
-  const overrides = indexModelOverrides(modelOverrides);
-
-  const all = [];
-  for (const provider of providers) {
-    const id = String(provider?.id ?? "").trim();
-    if (!id) continue;
-    const keys = envKeys(provider);
-    const available = connectedSet.has(id);
-    const models = {};
-    for (const [key, model] of modelEntries(provider?.models)) {
-      const modelID = String(model?.id ?? model?.modelID ?? key);
-      if (!modelID) continue;
-      const patch = overrides.get(`${id}\0${modelID}`) ?? {};
-      const status = Object.prototype.hasOwnProperty.call(patch, "status") ? patch.status : (model?.status ?? null);
-      const enabled = Object.prototype.hasOwnProperty.call(patch, "enabled") ? patch.enabled : model?.enabled !== false;
-      const cost = normalizeModelPricing(model?.cost);
-      models[modelID] = {
-        id: modelID,
-        modelID: String(model?.modelID ?? modelID),
-        providerID: id,
-        name: model?.name ?? modelID,
-        family: model?.family ?? null,
-        status,
-        enabled,
-        capabilities: model?.capabilities ?? null,
-        cost,
-        variants: Array.isArray(model?.variants)
-          ? model.variants.map(variant => ({ id: String(variant?.id ?? "") })).filter(variant => variant.id)
-          : [],
-        limit: model?.limit ?? null,
-        free: cost?.input === 0 && cost?.output === 0,
-        available,
-        requiresKey: keys,
-        deprecated: status === "deprecated"
-      };
+function integrationEnvKeys(integration) {
+  const keys = [];
+  for (const method of Array.isArray(integration?.methods) ? integration.methods : []) {
+    if (method?.type !== "env" || !Array.isArray(method.names)) continue;
+    for (const name of method.names) {
+      const key = String(name || "").trim();
+      if (key && !keys.includes(key)) keys.push(key);
     }
-    all.push({
+  }
+  return keys;
+}
+
+/**
+ * Build DevMoter's provider/model catalog from OpenCode's `/api` catalog
+ * routes, which have the same meaning on OpenCode 1.x and 2.x:
+ *   GET /api/provider  -> providers that are currently available
+ *   GET /api/model     -> enabled models of available providers
+ * OpenCode 2.x adds GET /api/integration (display names, env keys) and
+ * GET /api/model/default. Neither generation exposes models of providers that
+ * are not connected, so every model in this catalog is usable.
+ */
+export function buildOpenCodeProviderCatalog({
+  generation,
+  version = null,
+  providers,
+  models,
+  integrations = null,
+  defaultModel = null,
+  directory = null
+} = {}) {
+  if (generation !== "v1" && generation !== "v2") throw new Error("OpenCode API generation is unknown");
+  const providerList = listPayload(providers);
+  const modelList = listPayload(models);
+  if (!providerList) throw new Error("OpenCode GET /api/provider returned no provider list");
+  if (!modelList) throw new Error("OpenCode GET /api/model returned no model list");
+
+  const integrationById = new Map();
+  for (const integration of listPayload(integrations) ?? []) {
+    const id = String(integration?.id ?? "");
+    if (id) integrationById.set(id, integration);
+  }
+
+  const entries = new Map();
+  const providerEntry = (id, provider = null) => {
+    let entry = entries.get(id);
+    if (!entry) {
+      const integration = integrationById.get(String(provider?.integrationID ?? id)) ?? integrationById.get(id) ?? null;
+      const name = typeof provider?.name === "string" && provider.name
+        ? provider.name
+        : typeof integration?.name === "string" && integration.name ? integration.name : id;
+      entry = { id, name, env: integrationEnvKeys(integration), models: {} };
+      entries.set(id, entry);
+    } else if (provider && typeof provider.name === "string" && provider.name) {
+      entry.name = provider.name;
+    }
+    return entry;
+  };
+
+  for (const provider of providerList) {
+    const id = String(provider?.id ?? "").trim();
+    if (id) providerEntry(id, provider);
+  }
+
+  for (const model of modelList) {
+    const providerID = String(model?.providerID ?? "").trim();
+    const id = String(model?.id ?? "").trim();
+    if (!providerID || !id) continue;
+    const entry = providerEntry(providerID);
+    const status = typeof model?.status === "string" ? model.status : null;
+    const cost = normalizeModelPricing(baseCostTier(model?.cost));
+    entry.models[id] = {
       id,
-      name: typeof provider?.name === "string" && provider.name ? provider.name : id,
-      env: keys,
-      models
-    });
+      modelID: String(model?.modelID ?? id),
+      providerID,
+      name: typeof model?.name === "string" && model.name ? model.name : id,
+      family: model?.family ?? null,
+      status,
+      enabled: model?.enabled !== false,
+      capabilities: model?.capabilities ?? null,
+      cost,
+      variants: Array.isArray(model?.variants)
+        ? model.variants.map(variant => ({ id: String(variant?.id ?? "") })).filter(variant => variant.id)
+        : [],
+      limit: model?.limit ?? null,
+      free: cost?.input === 0 && cost?.output === 0,
+      available: true,
+      requiresKey: [],
+      deprecated: status === "deprecated"
+    };
+  }
+
+  const all = [...entries.values()];
+  const connected = all.map(provider => provider.id);
+  const defaults = {};
+  const defaultInfo = defaultModel?.data !== undefined ? defaultModel.data : defaultModel;
+  if (defaultInfo && typeof defaultInfo === "object") {
+    const providerID = String(defaultInfo.providerID ?? "");
+    const id = String(defaultInfo.id ?? "");
+    if (providerID && id && entries.get(providerID)?.models[id]) defaults[providerID] = id;
   }
 
   return {
-    apiVersion: "v1",
-    source: "/provider",
-    modelSource,
+    apiVersion: generation,
+    opencodeVersion: version,
+    source: generation === "v2"
+      ? "/api/provider + /api/model + /api/integration + /api/model/default"
+      : "/api/provider + /api/model + /api/integration",
+    modelSource: "/api/model",
     directory,
     all,
     default: defaults,
