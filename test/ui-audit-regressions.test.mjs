@@ -10,7 +10,8 @@ test("audit-facing placeholders and Usage labels stay honest", async () => {
 
   const integrations = await readFile(new URL("../src/integrations.ts", import.meta.url), "utf8");
   assert.doesNotMatch(integrations, /claude:\/\/code/);
-  assert.match(integrations, /Claudeアプリ（準備中）/);
+  // The disabled "Claudeアプリ（準備中）" placeholder and the intro/Project copy are gone.
+  assert.doesNotMatch(integrations, /Claudeアプリ（準備中）|開発ツールをひとつの場所から|ON\/OFFは表示設定|id="ixProject"/);
 });
 
 test("chat history cannot strand global navigation after switching surfaces", async () => {
