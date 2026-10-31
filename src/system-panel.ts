@@ -164,7 +164,7 @@ export function mountSystemPanel() {
       <section class="devmoter-system-section">
         <strong>Host capabilities</strong>
         ${hostRows(hostData)}
-        <p class="devmoter-system-muted">Availability is reported by this Host. Unsupported capabilities stay unavailable.</p>
+        <p class="devmoter-system-muted">Reported by this Host</p>
       </section>
 
       <section class="devmoter-system-section">

@@ -154,7 +154,7 @@ export function mountSetupWizard(root: HTMLDivElement) {
         <p class="dm-setup-eyebrow">DEV MOTER FAST SETUP</p>
         <h1 id="dm-setup-title">Your tools, one clear plan.</h1>
         <p class="dm-setup-lede">Installation should cost time, not expertise.</p>
-        <p class="dm-setup-note">Review first. Only approved Codex/OpenCode npm candidates can be installed automatically, and only into a writable user-owned npm prefix. Other tools remain manual.</p>
+        <p class="dm-setup-note">Review first. Only approved Codex / OpenCode npm packages install automatically, into a user-owned npm prefix. Other tools stay manual.</p>
         <div class="dm-setup-actions" data-selection-actions>
           <button class="dm-setup-rescan" type="button" data-rescan>Rescan</button>
           <button class="dm-setup-review" type="button" data-review disabled>Review install plan</button>
@@ -167,7 +167,7 @@ export function mountSetupWizard(root: HTMLDivElement) {
       </section>
       <section class="dm-setup-selection" aria-labelledby="dm-setup-selection-title" data-selection-view>
         <h2 id="dm-setup-selection-title">Choose what to plan</h2>
-        <p class="dm-setup-section-note">Existing installs are kept. Reviewed Codex/OpenCode candidates can run without sudo; Class C and administrator installs remain manual.</p>
+        <p class="dm-setup-section-note">Existing installs are kept. Class C and administrator installs stay manual.</p>
         <div class="dm-setup-groups" data-tool-groups></div>
       </section>
       <section class="dm-setup-plan-view" aria-labelledby="dm-setup-plan-title" data-plan-view hidden>

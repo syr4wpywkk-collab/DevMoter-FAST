@@ -298,12 +298,12 @@ function createWorkspacePanel() {
     panel.classList.remove("hidden");
     panel.innerHTML =
       panelHead("表示履歴の目安") +
-      `<p>表示テキストからの概算: <strong>${state.used.toLocaleString()}</strong> token相当。実際にAIへ送信したtoken数やモデルの上限は、この画面では取得していません。</p>
+      `<p>表示テキストからの概算: <strong>${state.used.toLocaleString()}</strong> token相当。実際の送信token数やモデルの上限はここでは取得していません。</p>
        <label>表示整理の基準（${state.max.toLocaleString()} token相当）の割合 <input data-threshold type="range" min="0.5" max="0.95" step="0.01" value="${state.threshold}" ${state.eventViewSupported ? "" : "disabled"}><span>${Math.round(state.threshold * 100)}%</span></label>
        <button type="button" data-compact ${state.eventViewSupported ? "" : "disabled"}>イベント表示を整理</button>
-       ${state.eventViewSupported ? "" : "<p>イベント整理はCodex / OpenCodeの会話を選択した場合に利用できます。API Chatの会話履歴はこの機能の対象外です。</p>"}
+       ${state.eventViewSupported ? "" : "<p>Codex / OpenCode の会話のみ。API Chatの会話履歴はこの機能の対象外です。</p>"}
        <small>Last compaction: ${state.lastCompactAt ? new Date(state.lastCompactAt).toLocaleString() : "not yet"}</small>
-       <small data-status>イベントの表示を整理する機能です。AIへ送る会話の圧縮、token削減、料金削減は行いません。元のイベント記録はサーバーに保持され、API Chatの会話履歴とは別です。</small>`;
+       <small data-status>表示だけを整理します。AIへ送る内容の圧縮やtoken・料金削減は行いません。元の記録はサーバーに残ります。</small>`;
     wireClose();
     const threshold = panel.querySelector<HTMLInputElement>("[data-threshold]")!;
     threshold.addEventListener("input", () => {
@@ -333,7 +333,7 @@ function createWorkspacePanel() {
       if (!plan || !Array.isArray(plan.steps) || !plan.steps.length) {
         panel.innerHTML =
           panelHead("Task checkpoints") +
-          "<p>No checkpoint plan is active for this session.</p><small>Agents can create one through the micro-task API; reconnect preserves it.</small>";
+          "<p>No checkpoint plan is active for this session.</p><small>Agents create one via the micro-task API</small>";
         wireClose();
         return;
       }

@@ -444,7 +444,7 @@ export function mountSettingsPanel() {
             <button type="submit">${label}</button>
           </form>
         </section>
-        <p class="devmoter-settings-note">Passphraseはこの画面のメモリ上からAPIへ送られ、保存・表示されない。秘密値は暗号化してHostに保存される。</p>
+        <p class="devmoter-settings-note">Passphraseは保存も再表示もしない。秘密値は暗号化してHostに保存する。</p>
       `;
       scroll.querySelector<HTMLFormElement>("[data-vault-unlock-form]")?.addEventListener("submit", async event => {
         event.preventDefault();
@@ -528,10 +528,10 @@ export function mountSettingsPanel() {
           <label>環境変数名（任意）<input name="envName" autocomplete="off" maxlength="128" placeholder="OPENAI_API_KEY" /></label>
           <fieldset class="devmoter-vault-projects"><legend>利用できるProject（最低1つ）</legend>${projectOptions || '<small>登録済みProjectがないため、先にProjectを追加してね。</small>'}</fieldset>
           <button type="submit" ${projects.length ? "" : "disabled"} data-vault-save>Vaultに保存</button>
-          <small>保存後、Secret valueは画面に戻らない。VaultはAES-256-GCMで暗号化してHostに保存する。</small>
+          <small>保存後は再表示しない。AES-256-GCMで暗号化してHostに保存</small>
         </form>
       </section>
-      <p class="devmoter-settings-note">Secret valueのReveal/CopyとAPI Chat・Agent連携は未対応。この画面は値を再表示しない。</p>
+      <p class="devmoter-settings-note">Reveal / Copy と API Chat・Agent 連携は未対応</p>
     `;
 
     vaultFormElement = scroll.querySelector<HTMLFormElement>("[data-vault-form]");
@@ -700,7 +700,7 @@ export function mountSettingsPanel() {
     scroll.innerHTML = `
       <section class="devmoter-guide-hero">
         <strong>普段使うのは5つでOK</strong>
-        <p>全部覚える必要はありません。Chat / Projects / Activity / Automation / Settings を中心に使えば十分です。</p>
+        <p>Chat / Projects / Activity / Automation / Settings が中心</p>
       </section>
       ${section("基本",
         row("1", "Chat", { value: "Codex / OpenCode / API Chat に指示" }) +
