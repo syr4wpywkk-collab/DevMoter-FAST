@@ -255,18 +255,11 @@ body.dm-task-first-enabled :is(.cx-app #cxPromptInput, .ocx-app #ocxPromptInput,
   color: var(--dw-chat-muted);
   opacity: 1;
 }
-body.dm-task-first-enabled :is(.cx-app .cx-composer-left .cx-topbar-pill, .ocx-app .ocx-context-button, .ocx-app .ocx-mode-switch, .api-app .api-picker-row select) {
+body.dm-task-first-enabled :is(.cx-app .cx-composer-left .cx-topbar-pill, .ocx-app .ocx-context-button, .api-app .api-picker-row select) {
   background: var(--dw-chat-raised);
   color: var(--dw-chat-text);
   border: 1px solid var(--dw-chat-line);
   border-radius: 10px;
-}
-body.dm-task-first-enabled .ocx-app .ocx-mode-switch button.active {
-  background: var(--dw-chat-accent-soft);
-  color: var(--dw-chat-accent);
-}
-body.dm-task-first-enabled .ocx-app .ocx-mode-switch button {
-  min-height: 34px;
 }
 body.dm-task-first-enabled .api-app .api-picker-row select {
   color-scheme: dark;
@@ -346,8 +339,8 @@ body.dm-task-first-enabled :is(.cx-app .cx-approval, .ocx-app .ocx-dock) {
   body.dm-task-first-enabled :is(.cx-app .cx-composer-wrap, .ocx-app .ocx-composer-wrap, .api-app .api-composer-wrap) {
     padding-left: max(8px, env(safe-area-inset-left));
     padding-right: max(8px, env(safe-area-inset-right));
-    /* The docked task navigation owns the safe-area bottom margin. */
-    padding-bottom: 8px;
+    /* No bottom tab bar: the composer owns the home-indicator safe area. */
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
   }
   body.dm-task-first-enabled :is(.cx-app .cx-composer, .ocx-app .ocx-composer, .api-app .api-composer) {
     border-radius: 16px;

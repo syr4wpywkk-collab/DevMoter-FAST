@@ -20,7 +20,7 @@
   z-index: 89;
   inset: 0 auto auto 0;
   width: 100%;
-  height: var(--dm-tools-viewport-height, 100dvh);
+  height: var(--dm-viewport-height, 100dvh);
   border: 0;
   background: rgba(3,5,8,.68);
   backdrop-filter: blur(4px);
@@ -37,7 +37,7 @@
   z-index: 90;
   inset: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) auto
     max(10px, env(safe-area-inset-left));
-  height: max(0px, calc(var(--dm-tools-viewport-height, 100dvh) - max(10px, env(safe-area-inset-top)) - max(10px, env(safe-area-inset-bottom))));
+  height: max(0px, calc(var(--dm-viewport-height, 100dvh) - max(10px, env(safe-area-inset-top)) - max(10px, env(safe-area-inset-bottom))));
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   overflow: hidden;
@@ -361,10 +361,10 @@
 
 @media (min-width: 820px) {
   .dm-tools-panel {
-    inset: calc(var(--dm-tools-viewport-height, 100dvh) / 2) auto auto 50%;
+    inset: calc(var(--dm-viewport-height, 100dvh) / 2) auto auto 50%;
     width: min(920px, calc(100vw - 48px));
-    height: min(900px, calc(var(--dm-tools-viewport-height, 100dvh) - 48px));
-    max-height: calc(var(--dm-tools-viewport-height, 100dvh) - 48px);
+    height: min(900px, calc(var(--dm-viewport-height, 100dvh) - 48px));
+    max-height: calc(var(--dm-viewport-height, 100dvh) - 48px);
     transform: translate(-50%, -50%);
   }
 

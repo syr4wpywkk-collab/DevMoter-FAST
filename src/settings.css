@@ -767,26 +767,10 @@ html[data-devmoter-theme="light"] .devmoter-vault-secret-actions button:last-chi
     pointer-events: auto;
   }
 
-  /* The OpenCode composer keeps the three primary modes visible, while
-     secondary agent/model and slash/status controls move to menus/settings. */
-  .ocx-context-buttons,
+  /* Slash/status controls move to menus/settings on this layout. */
   #ocxSlashButton,
   .ocx-activity {
     display: none !important;
-  }
-
-  .ocx-context-row {
-    justify-content: flex-start !important;
-  }
-
-  .ocx-mode-switch {
-    width: fit-content;
-    max-width: 100%;
-  }
-
-  .ocx-mode-switch button {
-    min-height: 32px;
-    padding-inline: 12px;
   }
 
   .ocx-composer-wrap {

@@ -7,14 +7,11 @@ async function source(path) {
 }
 
 test("unified feature shell exposes the major implemented surfaces", async () => {
-  const [shell, registry] = await Promise.all([source("src/app-shell.ts"), source("src/app-registry.ts")]);
-  for (const label of [
-    "getAppDefinition(appId)", "Mission Control", "Terminal", "Git", "Review", "Agents", "Sessions / Activity",
-    "Projects", "Developer Workflows", "Files & Preview",
-    "Safety", "Project Index", "Hosts", "Automation", "Passkeys",
-    "API Vault", "Trusted devices", "Notifications", "Diagnostics",
-    "Settings", "Setup Wizard"
-  ]) assert.ok(shell.includes(label) || registry.includes(label), label);
+  // Apps launch from Home through the shell allowlist; system tools live in Settings (☰ → 設定).
+  const [shell, registry, settings] = await Promise.all([source("src/app-shell.ts"), source("src/app-registry.ts"), source("src/settings.ts")]);
+  assert.ok(shell.includes("getAppDefinition(id)"));
+  for (const label of ["Mission Control", "Terminal", "Git", "Review", "Agents", "Sessions / Activity", "Projects", "Developer Workflows"]) assert.ok(registry.includes(label), label);
+  for (const label of ["ターミナル", "プロジェクトインデックス", "セーフティスキャン", "API Vault", "Trusted devices", "Passkeys", "ホスト registry", "診断"]) assert.ok(settings.includes(label), label);
 });
 
 test("unified feature shell targets real mounted launchers and navigation IDs", async () => {
@@ -44,11 +41,10 @@ test("Home is a first-class surface and sidebar entry without replacing existing
   assert.ok(main.includes("mountHomeSurface"));
   assert.ok(home.includes('data-home-app-grid'));
   assert.ok(home.includes('data-home-continue'));
-  assert.ok(shell.includes('data-home-nav'));
-  assert.ok(shell.includes('homeLink.setAttribute("aria-current", "page")'));
-  assert.ok(shell.includes('button.classList.toggle("active", active)'));
-  assert.ok(shell.includes('button.setAttribute("aria-pressed", String(active))'));
-  assert.ok(shell.includes('options.openHome()'));
+  // Home is reached from the workspace brand button; the Tools sidebar no longer duplicates it.
+  const nav = await source("src/unified-workspace-nav.ts");
+  assert.ok(nav.includes('addEventListener("click", actions.openHome)'));
+  assert.ok(!shell.includes("data-home-nav"));
   assert.ok(css.includes("env(safe-area-inset-top)"));
   assert.ok(css.includes("env(safe-area-inset-bottom)"));
   assert.ok(css.includes("100svh") && css.includes("100dvh"));
@@ -107,15 +103,13 @@ test("mobile navigation is sidebar-first and no bottom dock remains", async () =
   ]);
   assert.ok(shell.includes("dm-shell-menu-trigger"));
   assert.ok(shell.includes("dm-shell-sidebar"));
-  assert.ok(shell.includes('appActionButtons(["mission-control", "terminal", "git", "review"])'));
   assert.ok(shell.includes('case "mission-control": window.dispatchEvent(new CustomEvent("devmoter:open-mission-control"))'));
   assert.ok(shell.includes('case "terminal": openToolsTab("terminal")'));
   assert.ok(shell.includes('case "git": clickExisting(".pocket-git-trigger")'));
   assert.ok(shell.includes('case "review": clickExisting("#wfLaunch")'));
-  assert.ok(shell.includes('data-backend="opencode"'));
   assert.ok(!shell.includes("dm-shell-dock"));
   assert.ok(!css.includes(".dm-shell-dock"));
-  assert.ok(css.includes(".dm-shell-sidebar {\n  position: fixed;\n  inset: 0 auto auto 0;\n  z-index: 950;\n  width: min(100vw, 460px);\n  height: var(--dm-shell-viewport-height, 100dvh);\n  display: none;"));
+  assert.ok(css.includes(".dm-shell-sidebar {\n  position: fixed;\n  inset: 0 auto auto 0;\n  z-index: 950;\n  width: min(100vw, 460px);\n  height: var(--dm-viewport-height, 100dvh);\n  display: none;"));
   assert.ok(css.includes(".dm-shell-sidebar.open { display: grid; }"));
 });
 
@@ -125,13 +119,13 @@ test("global sidebar follows the visual viewport on mobile Safari", async () => 
     source("src/app-shell.ts"),
     source("src/app-shell.css")
   ]);
-  assert.ok(shell.includes("window.visualViewport?.height ?? window.innerHeight"));
-  assert.ok(shell.includes('root.style.setProperty("--dm-shell-viewport-height"'));
-  assert.ok(shell.includes('window.visualViewport?.addEventListener("resize", syncVisualViewportHeight'));
-  assert.ok(shell.includes('window.visualViewport?.addEventListener("scroll", syncVisualViewportHeight'));
-  assert.ok(shell.includes('window.addEventListener("orientationchange", syncVisualViewportHeight)'));
-  assert.ok(css.includes("--dm-shell-viewport-height: 100dvh"));
-  assert.ok(css.includes("height: var(--dm-shell-viewport-height, 100dvh)"));
+  // The shared visualViewport module (started once in main.ts) publishes --dm-viewport-height.
+  const [main, viewport] = await Promise.all([source("src/main.ts"), source("src/visual-viewport.mjs")]);
+  assert.ok(main.includes("startViewportSync(window)"));
+  assert.ok(viewport.includes('vv?.addEventListener("resize", onResize'));
+  assert.ok(viewport.includes('vv?.addEventListener("scroll", sync'));
+  assert.ok(!shell.includes("visualViewport"));
+  assert.ok(css.includes("height: var(--dm-viewport-height, 100dvh)"));
   assert.ok(css.includes("-webkit-overflow-scrolling: touch"));
 });
 

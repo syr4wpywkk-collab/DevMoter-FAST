@@ -227,7 +227,9 @@
 .pocket-git-overlay {
   position: fixed;
   z-index: 110;
-  inset: 0;
+  /* Sized to the visual viewport; the safe-area padding keeps the last file and pager clear of the home indicator. */
+  inset: var(--dm-viewport-offset-top, 0px) 0 auto 0;
+  height: var(--dm-viewport-height, 100dvh);
   display: grid;
   place-items: center;
   padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
@@ -287,7 +289,9 @@
 .pocket-git-body {
   min-height: 0;
   overflow: auto;
-  padding: 14px;
+  padding: 14px 14px 16px;
+  scroll-padding-bottom: 16px;
+  overscroll-behavior: contain;
 }
 
 .pocket-git-status {
@@ -531,7 +535,7 @@
 @media (max-width: 899px) {
   .pocket-git-panel {
     width: 100%;
-    height: calc(100dvh - max(12px, env(safe-area-inset-top)) - max(12px, env(safe-area-inset-bottom)));
+    height: 100%;
     max-height: none;
     border-radius: 15px;
   }
@@ -572,7 +576,9 @@
 .wf-modal {
   position: fixed;
   z-index: 200;
-  inset: 0;
+  /* Cover the visible (visual) viewport so the iOS keyboard never hides the form. */
+  inset: var(--dm-viewport-offset-top, 0px) 0 auto 0;
+  height: var(--dm-viewport-height, 100dvh);
   padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
   background: rgba(0,0,0,.72);
   backdrop-filter: blur(10px);
@@ -698,7 +704,10 @@
   min-height: 0;
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+  /* Focused fields scroll into view with breathing room (see visual-viewport.mjs). */
+  scroll-padding-block: 16px;
+  overscroll-behavior: contain;
 }
 
 .wf-section-head {

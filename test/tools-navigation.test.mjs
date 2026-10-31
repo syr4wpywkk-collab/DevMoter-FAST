@@ -65,97 +65,25 @@ function tick(dom) {
   return new Promise(resolve => dom.window.setTimeout(resolve, 5));
 }
 
-test("Tools search and category filters update the mounted menu and recover from no results", async () => {
+test("Tools sidebar holds only Tools AI; registered apps still launch through the fixed allowlist", async () => {
   const dom = makeDom();
   const calls = [];
   mount(dom, calls);
-  click(dom, ".dm-shell-menu-trigger");
-  const search = dom.window.document.querySelector("#dmShellToolSearch");
-  const count = dom.window.document.querySelector("[data-tools-count]");
-  const empty = dom.window.document.querySelector("[data-tools-empty]");
-
-  search.value = "  project   index ";
-  search.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
-  assert.equal(count.textContent, "1 tool");
-  assert.equal(dom.window.document.querySelector(".dm-shell-primary").hidden, true);
-  assert.equal(dom.window.document.querySelector('[data-shell-action="index"]').hidden, false);
-  assert.equal(dom.window.document.querySelector('[data-shell-action="safety"]').hidden, true);
-
-  search.value = "ターミナル";
-  search.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
-  assert.equal(count.textContent, "1 tool");
-  assert.equal(dom.window.document.querySelector('[data-shell-app="terminal"]').hidden, false);
-
-  click(dom, '[data-tools-filter="Settings"]');
-  assert.equal(count.textContent, "0 tools");
-  assert.equal(empty.classList.contains("hidden"), false);
-  assert.equal(dom.window.document.querySelector('[data-tools-filter="Settings"]').getAttribute("aria-pressed"), "true");
-
-  click(dom, "[data-tools-clear]");
-  click(dom, '[data-tools-filter="All"]');
-  assert.equal(empty.classList.contains("hidden"), true);
-  assert.equal(dom.window.document.querySelector(".dm-shell-primary").hidden, false);
-  assert.equal(count.textContent, `${dom.window.document.querySelectorAll("[data-tools-item]").length} tools`);
-  assert.equal(dom.window.document.querySelector("[data-tools-clear]").disabled, true);
-  dom.window.close();
-});
-
-test("Every original tool destination remains reachable and filtered controls stay out of the focus cycle", async () => {
-  const dom = makeDom();
-  const calls = [];
-  mount(dom, calls);
-  const items = [...dom.window.document.querySelectorAll("[data-tools-item]")];
-  assert.ok(items.length >= 20);
-  assert.ok(items.every(item => item.dataset.shellApp || item.dataset.shellAction));
-
-  const invoke = selector => {
-    click(dom, ".dm-shell-menu-trigger");
-    dom.window.document.querySelector("[data-manual-tools]").open = true;
-    click(dom, selector);
-  };
-  invoke('[data-shell-app="mission-control"]');
-  invoke('[data-shell-app="terminal"]');
+  const doc = dom.window.document;
+  for (const removed of ["[data-manual-tools]", "#dmShellToolSearch", "[data-tools-item]", "[data-shell-app]", "[data-shell-action]", "[data-home-nav]", ".dm-shell-sidebar [data-backend]"]) {
+    assert.equal(doc.querySelector(removed), null, removed);
+  }
+  const launch = id => dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:launch-app", { detail: { id } }));
+  for (const id of ["mission-control", "terminal", "git", "review", "agents", "sessions", "automation", "projects", "developer-workflows"]) launch(id);
   await tick(dom);
-  invoke('[data-shell-app="git"]');
-  invoke('[data-shell-app="review"]');
-  invoke('[data-shell-app="agents"]');
-  invoke('[data-shell-app="sessions"]');
-  invoke('[data-shell-app="automation"]');
-  await tick(dom);
-  invoke('[data-shell-app="projects"]');
-  await tick(dom);
-  invoke('[data-shell-app="developer-workflows"]');
-  await tick(dom);
-  invoke('[data-shell-action="advanced"]');
-  invoke('[data-shell-action="safety"]');
-  await tick(dom);
-  invoke('[data-shell-action="index"]');
-  await tick(dom);
-  invoke('[data-shell-action="hosts"]');
-  await tick(dom);
-  invoke('[data-shell-action="passkeys"]');
-  await tick(dom);
-  invoke('[data-shell-action="vault"]');
-  invoke('[data-shell-action="devices"]');
-  invoke('[data-shell-action="notifications"]');
-  invoke('[data-shell-action="diagnostics"]');
-  invoke('[data-shell-action="settings"]');
-
-  for (const action of ["mission-control", "terminal-launcher", "tool-tab-0", "git", "review", "agents", "sessions", "remote-automation", "backend-codex", "projects-nav", "workflows-nav", "advanced", "tool-tab-1", "tool-tab-2", "remote-hosts", "remote-passkeys", "settings-vault", "settings-devices", "settings-notifications", "settings-diagnostics", "settings-root"]) {
+  for (const action of ["mission-control", "terminal-launcher", "tool-tab-0", "git", "review", "agents", "sessions", "remote-automation", "backend-codex", "projects-nav", "workflows-nav"]) {
     assert.ok(calls.includes(action), `missing route ${action}`);
   }
 
   click(dom, ".dm-shell-menu-trigger");
-  const search = dom.window.document.querySelector("#dmShellToolSearch");
-  search.value = "terminal";
-  search.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
-  const terminal = dom.window.document.querySelector('[data-shell-app="terminal"]');
-  terminal.focus();
-  dom.window.document.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
-  assert.equal(dom.window.document.activeElement, dom.window.document.querySelector("[data-shell-close]"));
-  dom.window.document.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-  assert.equal(dom.window.document.querySelector(".dm-shell-sidebar").classList.contains("open"), false);
-  assert.equal(dom.window.document.activeElement, dom.window.document.querySelector(".dm-shell-menu-trigger"));
+  assert.equal(doc.querySelector(".dm-shell-sidebar").classList.contains("open"), true);
+  doc.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  assert.equal(doc.querySelector(".dm-shell-sidebar").classList.contains("open"), false);
   dom.window.close();
 });
 

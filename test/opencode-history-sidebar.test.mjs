@@ -69,11 +69,11 @@ test("OpenCode history drawer follows the iOS visual viewport", async () => {
   ]);
   const css = cssModules.join("");
 
-  assert.ok(opencode.includes("window.visualViewport?.height ?? window.innerHeight"));
-  assert.ok(opencode.includes('root.style.setProperty("--ocx-history-viewport-height"'));
-  assert.ok(opencode.includes('window.visualViewport?.addEventListener("resize", syncHistoryViewportHeight'));
-  assert.ok(opencode.includes('window.visualViewport?.addEventListener("scroll", syncHistoryViewportHeight'));
-  assert.ok(css.includes("height: var(--ocx-history-viewport-height, 100dvh)"));
+  // One shared visualViewport listener (src/visual-viewport.mjs) replaces per-surface copies.
+  const main = await source("src/main.ts");
+  assert.ok(main.includes("startViewportSync(window)"));
+  assert.ok(!opencode.includes("visualViewport"), "OpenCode keeps no private viewport listener");
+  assert.ok(css.includes("height: var(--dm-viewport-height, 100dvh)"));
   assert.ok(css.includes("-webkit-overflow-scrolling: touch"));
 });
 
@@ -86,6 +86,8 @@ test("Codex and API Chat remain available globally and via direct OpenCode exits
   assert.ok(main.includes("mountOpenCodeRemote(openCodeMount, {"));
   assert.ok(main.includes('onCodex: () => {'));
   assert.ok(main.includes('onApi: () => {'));
-  assert.ok(shell.includes('data-backend="codex"'));
-  assert.ok(shell.includes('data-backend="api"'));
+  const nav = await source("src/unified-workspace-nav.ts");
+  assert.ok(nav.includes('<option value="codex">Codex</option>'));
+  assert.ok(nav.includes('<option value="api">API Chat</option>'));
+  assert.ok(!shell.includes("data-backend="), "the Tools sidebar no longer duplicates the backend switcher");
 });

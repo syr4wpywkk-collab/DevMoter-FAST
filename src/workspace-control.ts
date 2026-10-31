@@ -585,10 +585,6 @@ function injectStyles() {
         display:none !important;
       }
 
-      .ocx-context-buttons {
-        display:none !important;
-      }
-
       .dm-controlbar {
         right:max(12px,env(safe-area-inset-right));
         bottom:max(12px,env(safe-area-inset-bottom));

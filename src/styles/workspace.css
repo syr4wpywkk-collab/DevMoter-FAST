@@ -803,45 +803,6 @@ body.opencode-mode #app {
     );
 }
 
-.ocx-context-row {
-  width: min(100%, 760px);
-  margin: 0 auto 7px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 7px;
-}
-
-.ocx-mode-switch {
-  display: flex;
-  padding: 3px;
-  border: 1px solid var(--oc-line);
-  border-radius: 8px;
-  background: var(--oc-panel);
-}
-
-.ocx-mode-switch button {
-  min-height: 29px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--oc-muted);
-  font-size: .65rem;
-}
-
-.ocx-mode-switch button.active {
-  background: var(--oc-accent-soft);
-  color: #eda276;
-}
-
-.ocx-context-buttons {
-  min-width: 0;
-  display: flex;
-  justify-content: flex-end;
-  gap: 5px;
-}
-
 .ocx-context-button {
   min-width: 0;
   max-width: 145px;
@@ -1116,7 +1077,7 @@ body.opencode-mode #app {
   left: 0;
   bottom: auto;
   width: min(88vw, 360px);
-  height: var(--ocx-history-viewport-height, 100dvh);
+  height: var(--dm-viewport-height, 100dvh);
   padding:
     calc(11px + env(safe-area-inset-top))
     12px

@@ -2,6 +2,10 @@
  * Task-first workspace (opt-in). Scoped tokens inspired by the user's Stitch
  * dark/cyan system. No generated Tailwind, fonts, sample sessions or fake states.
  */
+body.dm-task-first-enabled {
+  /* One header row at every width; the screen switcher lives behind ☰. */
+  --dw-top-height: calc(56px + env(safe-area-inset-top));
+}
 .dm-task-first-nav {
   --dw-bg: var(--surface-panel);
   --dw-panel: var(--surface-card);
@@ -11,15 +15,14 @@
   --dw-accent: var(--text-primary);
   position: fixed;
   z-index: 2147481999;
-  top: 0;
+  /* Follows the iOS visual viewport while the keyboard pans it (no animation). */
+  top: var(--dm-viewport-offset-top, 0px);
   left: 0;
-  bottom: 0;
-  width: 208px;
-  display: flex;
-  flex-direction: column;
-  padding: max(18px, env(safe-area-inset-top)) 12px max(18px, env(safe-area-inset-bottom));
+  right: 0;
+  height: var(--dw-top-height);
+  padding: env(safe-area-inset-top) max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left));
   box-sizing: border-box;
-  border-right: 1px solid var(--dw-border);
+  border-bottom: 1px solid var(--dw-border);
   background: var(--dw-bg);
   color: var(--dw-text);
   font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", sans-serif;
@@ -29,17 +32,26 @@
 .dm-task-first-nav select {
   font: inherit;
   color: inherit;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
+.dm-task-first-nav button { user-select: none; }
 .dm-task-first-nav button:focus-visible,
 .dm-task-first-nav select:focus-visible {
   outline: 2px solid var(--dw-accent);
   outline-offset: 2px;
 }
-.dm-task-first-header { display: grid; gap: 16px; }
-.dm-task-first-brand {
+.dm-task-first-header {
+  height: 56px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+}
+.dm-task-first-brand {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   min-height: 44px;
   padding: 0;
   border: 0;
@@ -48,203 +60,153 @@
   cursor: pointer;
 }
 .dm-task-first-mark {
-  flex: 0 0 36px;
+  flex: 0 0 32px;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border: 1px solid #28617a;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #123040;
   color: var(--dw-accent);
-  font-size: 23px;
+  font-size: 20px;
 }
-.dm-task-first-brand strong { display:block; font-size: 13px; white-space:nowrap; }
+.dm-task-first-brand strong { display:block; font-size: 12px; white-space:nowrap; }
 .dm-task-first-brand em { font-style:normal; color:var(--dw-accent); }
 .dm-task-first-brand small {
   display: block;
   margin-top: 4px;
   color:var(--dw-muted);
   font-size: 8px;
-  letter-spacing: .08em;
 }
 .dm-task-first-project {
+  flex: 1 1 auto;
+  min-width: 0;
   margin: 0;
-  min-height: 44px;
-  padding: 13px 11px;
-  border:1px solid var(--dw-border);
-  border-radius:12px;
   overflow:hidden;
   white-space:nowrap;
   text-overflow:ellipsis;
   color: var(--dw-muted);
-  background: var(--dw-panel);
   font-size:12px;
 }
-.dm-task-first-backend { display:grid; gap: 7px; }
-.dm-task-first-backend > span {
-  color:var(--dw-muted);
-  font-size: 11px;
-  font-weight:700;
-}
+.dm-task-first-backend { display:block; min-width:0; width:min(39vw,160px); margin-left:auto; }
+.dm-task-first-backend > span { position:absolute; clip-path:inset(50%); height:1px; width:1px; overflow:hidden; }
 .dm-task-first-backend select {
   width: 100%;
   min-height: 44px;
-  padding: 8px 9px;
+  padding: 8px;
   background: var(--dw-panel);
   border:1px solid var(--dw-border);
   border-radius:10px;
-  font-size: 14px;
+  font-size: 16px;
 }
-.dm-task-first-tabs { display: grid; gap: 9px; margin-top:24px; }
-.dm-task-first-tabs button {
+.dm-task-first-menu-button {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--dw-border);
+  border-radius: 10px;
+  background: var(--dw-panel);
+  font-size: 18px;
+  cursor: pointer;
+  transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.dm-task-first-menu-button:active { transform: scale(0.97); }
+.dm-task-first-menu-button[aria-expanded="true"] { border-color: var(--dw-text); }
+.dm-task-first-menu {
+  position: absolute;
+  top: calc(var(--dw-top-height) - 4px);
+  right: max(8px, env(safe-area-inset-right));
+  width: min(240px, calc(100vw - 16px));
+  display: grid;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--dw-border);
+  border-radius: 14px;
+  background: var(--dw-bg);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .4);
+  transform-origin: top right;
+  transition: opacity 160ms cubic-bezier(0.23, 1, 0.32, 1), transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.dm-task-first-menu[hidden] { display: none; }
+@starting-style {
+  .dm-task-first-menu { opacity: 0; transform: scale(0.95); }
+}
+.dm-task-first-menu button {
   width:100%;
-  min-height: 48px;
+  min-height: 44px;
   display:flex;
   gap:12px;
   align-items:center;
-  padding: 10px 13px;
+  padding: 8px 12px;
   border:1px solid transparent;
-  border-radius:12px;
+  border-radius:10px;
   text-align:left;
   background:transparent;
   color:var(--dw-muted);
   cursor:pointer;
 }
-.dm-task-first-tabs button[aria-current="page"] {
+.dm-task-first-menu button[aria-current="page"] {
   border-color:#265c6e;
   background:#123040;
   color:var(--dw-accent);
 }
-/* iOS Safari retains :hover after a tap. Never give an inactive touch tab
- * the same selected background as the real current tab. */
 @media (hover: hover) and (pointer: fine) {
-  .dm-task-first-tabs button:not([aria-current="page"]):hover {
-    color: var(--dw-text);
-    text-decoration: underline;
-  }
+  .dm-task-first-menu button:not([aria-current="page"]):hover { color: var(--dw-text); background: var(--dw-panel); }
 }
-.dm-task-first-tabs button > span { font-size:20px; line-height:1; }
-.dm-task-first-tabs button > strong { font-size: 13px; }
-.dm-task-first-caption {
-  margin:auto 5px 0;
-  color:var(--dw-muted);
-  font-size:11px;
-  line-height:1.6;
+.dm-task-first-menu button > span { width: 20px; flex: 0 0 20px; font-size:16px; line-height:1; text-align: center; }
+.dm-task-first-menu button > strong { font-size: 14px; font-weight: 500; }
+.dm-task-first-menu hr { width: 100%; height: 1px; margin: 0; border: 0; background: var(--dw-border); }
+.dm-task-first-feedback {
+  position: absolute;
+  top: var(--dw-top-height);
+  left: 8px;
+  right: 8px;
+  margin: 4px 0 0;
+  color: var(--dw-muted);
+  font-size: 12px;
+  pointer-events: none;
 }
-.dm-task-first-feedback { margin: 10px 5px 0; color: var(--dw-muted); font-size: 11px; }
+.dm-task-first-feedback:empty { display: none; }
+@media (max-width: 680px) {
+  .dm-task-first-project { display:none; }
+}
 /* Provider roots are fixed to the viewport, so shifting #app alone does
  * NOT reserve space for navigation. Offset the actual fixed surfaces.
  * Provider-owned drawers remain positioned relative to their own roots. */
-body.dm-task-first-enabled #app { width: calc(100% - 208px); margin-left: 208px; }
-body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app, .ix-app) {
-  left: 208px;
-  right: 0;
-  width: calc(100% - 208px);
+body.dm-task-first-enabled #app {
+  width:100%;
+  min-width:0;
+  margin-left:0;
+  margin-top:var(--dw-top-height);
+  height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height));
 }
+/* All four surfaces use position:fixed and must be bounded independently,
+ * sized to the visual viewport so the iOS keyboard never covers them. */
+body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app, .ix-app) {
+  top:calc(var(--dw-top-height) + var(--dm-viewport-offset-top, 0px));
+  left:0;
+  right:0;
+  width:100%;
+  height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height));
+  max-height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height));
+}
+/* History drawers with explicit viewport heights must stay inside the
+ * bounded provider surface. */
+body.dm-task-first-enabled .ocx-app .ocx-sidebar,
+body.dm-task-first-enabled .api-app .api-sidebar { height:100%; }
 body.dm-task-first-enabled .dm-shell-menu-trigger { display: none; }
 body.devmoter-shell-menu-open .dm-task-first-nav { pointer-events:none; }
 body.dm-task-first-enabled.devmoter-shell-menu-open .dm-task-first-nav { pointer-events:auto; }
-@media (min-width:901px) {
-  body.dm-task-first-enabled .dm-shell-sidebar { left:208px; width:min(calc(100vw - 208px),460px); }
-  body.dm-task-first-enabled .dm-shell-scrim { left:208px; }
-}
-@media(max-width:900px) {
-  body.dm-task-first-enabled {
-    --dw-top-height: calc(58px + env(safe-area-inset-top));
-    --dw-bottom-height: calc(66px + env(safe-area-inset-bottom));
-  }
-  .dm-task-first-nav {
-    width:100%;
-    bottom:auto;
-    height:var(--dw-top-height);
-    padding: env(safe-area-inset-top) 10px 0;
-    border-right:0;
-    border-bottom:1px solid var(--dw-border);
-  }
-  .dm-task-first-header {
-    height:52px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:9px;
-  }
-  .dm-task-first-brand { flex:none; }
-  .dm-task-first-mark { width:32px; height:32px; flex-basis:32px; font-size:20px; }
-  .dm-task-first-brand strong { font-size:12px; }
-  .dm-task-first-brand small { font-size:7px; }
-  .dm-task-first-project { display:none; }
-  .dm-task-first-backend { display:block; min-width:0; width:min(39vw,150px); }
-  .dm-task-first-backend > span { position:absolute; clip-path:inset(50%); height:1px; width:1px; overflow:hidden; }
-  .dm-task-first-backend select { min-height:44px; padding:7px; font-size:13px; }
-  .dm-task-first-tabs {
-    position:fixed;
-    left:0;
-    bottom:0;
-    width:100%;
-    height:var(--dw-bottom-height);
-    margin:0;
-    padding:0 0 env(safe-area-inset-bottom);
-    display:grid;
-    grid-template-columns:repeat(4,minmax(0,1fr));
-    gap:0;
-    background:var(--dw-bg);
-    border-top:1px solid var(--dw-border);
-  }
-  .dm-task-first-tabs button {
-    min-width:0;
-    min-height:44px;
-    border:0;
-    border-radius:0;
-    padding:8px 2px;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    gap:3px;
-    text-align:center;
-  }
-  .dm-task-first-tabs button > span { font-size:19px; }
-  .dm-task-first-tabs button > strong { font-size:10px; }
-  .dm-task-first-caption,.dm-task-first-feedback { display:none; }
-  body.dm-task-first-enabled #app {
-    width:100%;
-    min-width:0;
-    margin-left:0;
-    margin-top:var(--dw-top-height);
-    height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - var(--dw-bottom-height));
-  }
-  /* All four surfaces use position:fixed and must be bounded independently.
-   * Otherwise the navigation overlays chat headers, composers and approvals. */
-  body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app, .ix-app) {
-    top:var(--dw-top-height);
-    left:0;
-    right:0;
-    width:100%;
-    height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - var(--dw-bottom-height));
-    max-height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - var(--dw-bottom-height));
-  }
-  /* History drawers with explicit viewport heights must stay inside the
-   * bounded provider surface, rather than spilling beneath the bottom tab. */
-  body.dm-task-first-enabled .ocx-app .ocx-sidebar,
-  body.dm-task-first-enabled .api-app .api-sidebar { height:100%; }
-  /* Preserve space for iOS keyboard: collapse bottom nav while typing. */
-  body.dm-task-first-enabled:has(textarea:focus, input[type="text"]:focus, input[type="search"]:focus, [contenteditable="true"]:focus) {
-    --dw-bottom-height:0px;
-  }
-  body.dm-task-first-enabled:has(textarea:focus, input[type="text"]:focus, input[type="search"]:focus, [contenteditable="true"]:focus) .dm-task-first-tabs { display:none; }
-  /* Workspace panels/scrims must not occupy the bottom tab hit targets.
-   * Keep Tools' high-z-index modal bounded too, rather than raising the nav
-   * above security/approval dialogs globally. */
-  body.dm-task-first-enabled :is(.sc-shell, .wf-modal, .dm-shell-sidebar, .dm-shell-scrim) {
-    top: var(--dw-top-height);
-    bottom: var(--dw-bottom-height);
-    height: calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - var(--dw-bottom-height));
-    max-height: calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - var(--dw-bottom-height));
-  }
-  body.dm-task-first-enabled.devmoter-shell-menu-open .dm-task-first-nav {
-    visibility: visible;
-    pointer-events: auto;
-  }
+/* Workspace panels and scrims sit below the header and above the keyboard. */
+body.dm-task-first-enabled :is(.sc-shell, .wf-modal, .pocket-git-overlay, .dm-shell-sidebar, .dm-shell-scrim) {
+  top: calc(var(--dw-top-height) + var(--dm-viewport-offset-top, 0px));
+  bottom: auto;
+  height: calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height));
+  max-height: calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height));
 }
 @media (prefers-reduced-motion: reduce) {
   .dm-task-first-nav *, .dm-task-first-nav *::before, .dm-task-first-nav *::after { transition: none !important; }
@@ -258,9 +220,7 @@ body.dm-task-first-enabled.devmoter-shell-menu-open .dm-task-first-nav { pointer
 body.dm-task-first-enabled :is(
   .cx-app .dm-agent-switch-shell,
   .api-app .dm-agent-switch-shell,
-  .dm-shell-ai-grid,
-  [data-home-react-pilot],
-  .dm-shell-primary > h2:first-of-type
+  [data-home-react-pilot]
 ) { display: none !important; }
 
 body.dm-task-first-enabled :is(.cx-app, .api-app) .dm-unified-agent-identity {
@@ -301,8 +261,6 @@ body.dm-task-first-enabled .dm-unified-agent-copy small {
 
 /* #411/#402: Review must share the active Unified Workspace canvas. */
 body.dm-task-first-enabled .wf-modal {
-  top: var(--dw-top-height, 0px);
-  bottom: var(--dw-bottom-height, 0px);
   padding: 0;
   background: var(--dw-chat-bg);
   backdrop-filter: none;
@@ -322,7 +280,4 @@ body.dm-task-first-enabled .wf-body { background: var(--dw-chat-bg); }
 body.dm-task-first-enabled :is(.wf-header, .wf-toolbar) {
   background: var(--dw-chat-surface);
   border-color: var(--dw-chat-line);
-}
-@media (min-width: 681px) {
-  body.dm-task-first-enabled .wf-modal { left: 208px; }
 }

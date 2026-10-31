@@ -120,7 +120,7 @@ test("OpenCode runtime modal closes history and attachment menus without stackin
   const { dom, document, query, key } = mount(t);
   const plus = query("#ocxPlus");
   const menu = query("#ocxMenu");
-  const agent = query("#ocxAgentButton");
+  const agent = query("#ocxModelButton");
   // The offline mount deliberately disables runtime selection; enable its existing
   // launcher to exercise the local modal without connecting a backend.
   agent.disabled = false;
@@ -184,7 +184,7 @@ test("global Tools replaces the OpenCode modal and receives keyboard focus", t =
     initialBackend: "opencode", initialSurface: "opencode",
     switchBackend() {}, openHome() {}
   });
-  const agent = query("#ocxAgentButton");
+  const agent = query("#ocxModelButton");
   agent.disabled = false;
   agent.focus();
   agent.click();
@@ -194,7 +194,7 @@ test("global Tools replaces the OpenCode modal and receives keyboard focus", t =
   assert.equal(query(".dm-shell-sidebar").classList.contains("open"), true);
   assert.equal(document.activeElement, query("[data-shell-close]"));
   key("Tab", true);
-  assert.equal(document.activeElement, query('[data-manual-tools] > summary'));
+  assert.equal(document.activeElement, query('[data-ai-model]'), "focus wraps to the last Tools AI control");
   key("Tab");
   assert.equal(document.activeElement, query("[data-shell-close]"));
   key("Escape");

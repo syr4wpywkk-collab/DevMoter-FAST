@@ -27,9 +27,9 @@ test("Knowledge and Browser are truthful previews and System entries stay separa
   const [registry, shell] = await Promise.all([source("app-registry.ts"), source("app-shell.ts")]);
   assert.match(registry, /id: "knowledge"[^\n]+availability: "preview"[^\n]+previewMessage: "Knowledge is not available yet/);
   assert.match(registry, /id: "browser"[^\n]+availability: "preview"[^\n]+previewMessage: "Browser does not have a separate app surface/);
-  assert.ok(shell.includes('systemActionButton("🔐", "API Vault"'));
-  assert.ok(shell.includes('systemActionButton("▣", "Trusted devices"'));
-  assert.ok(shell.includes('systemActionButton("●", "Notifications"'));
+  // System entries (Vault, devices, notifications…) live in Settings, reached from the ☰ menu.
+  const nav = await source("unified-workspace-nav.ts");
+  assert.ok(nav.includes("data-workspace-settings"));
   assert.ok(!registry.includes('title: "Settings"'));
 });
 
@@ -44,11 +44,10 @@ test("Home cards are rendered from the Registry with accessible availability sta
   assert.ok(home.includes("options.onLaunchApp(app.id)"), "available apps delegate to the real shell");
 });
 
-test("Sidebar app-like labels come from Registry and launches are fixed allowlisted behavior", async () => {
+test("Shell launches are fixed allowlisted behavior", async () => {
   const shell = await source("app-shell.ts");
-  assert.ok(shell.includes("getAppDefinition(appId)"));
-  assert.ok(shell.includes('data-shell-app="${appId}"'));
-  assert.ok(shell.includes('appActionButtons(["mission-control", "terminal", "git", "review"])'));
+  assert.ok(shell.includes("getAppDefinition(id)"));
+  assert.ok(!shell.includes("data-shell-app="));
   assert.ok(shell.includes('if (!isAppId(id)) throw new Error("This app is not registered.")'));
   assert.ok(shell.includes('case "terminal": openToolsTab("terminal")'));
   assert.ok(shell.includes('case "git": clickExisting(".pocket-git-trigger")'));

@@ -89,14 +89,16 @@ test("task-first navigator has no fake execution, server state or permission han
   assert.ok(moduleCode.includes('window.addEventListener("devmoter:surface-changed"'));
   assert.ok(!moduleCode.includes("fetch("));
   assert.ok(!moduleCode.includes("innerHTML = response"));
-  assert.ok(css.includes("env(safe-area-inset-bottom)"));
+  const chatCss = await readFile(new URL("../src/unified-workspace-chat.css", import.meta.url), "utf8");
+  assert.ok(chatCss.includes("padding-bottom: calc(8px + env(safe-area-inset-bottom))"), "composers keep the home indicator clear");
   assert.ok(css.includes("min-height:44px") || css.includes("min-height: 44px"));
   // Each provider is fixed to the viewport, not laid out by #app.
   // Prevent mobile navigation from covering headers, composer and approvals.
   assert.ok(css.includes(":is(.cx-app, .ocx-app, .api-app, .ix-app)"));
-  assert.ok(css.includes("top:var(--dw-top-height)"));
-  assert.ok(css.includes("--dw-bottom-height"));
-  assert.ok(css.includes("height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - var(--dw-bottom-height))"));
+  assert.ok(css.includes("top:calc(var(--dw-top-height) + var(--dm-viewport-offset-top, 0px))"));
+  assert.ok(!css.includes("--dw-bottom-height"), "no bottom tab bar reserves space");
+  assert.ok(!moduleCode.includes("dm-task-first-tabs"));
+  assert.ok(css.includes("height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height))"));
   assert.ok(!css.includes("body.dm-task-first-enabled #ocxSidebar,"));
 });
 
@@ -221,7 +223,7 @@ test("untrusted tab URLs cannot launch arbitrary tools or inject project markup"
   }
 });
 
-test("Chat routing reuses provider history entries and focuses the live tab after closing Review", async () => {
+test("Chat routing reuses provider history entries and returns focus to the menu button after closing Review", async () => {
   const dom = new JSDOM('<!doctype html><div id="app"></div>', { url: "https://localhost/?surface=home&project=keep" });
   const prior = { window: globalThis.window, document: globalThis.document, localStorage: globalThis.localStorage };
   Object.assign(globalThis, { window: dom.window, document: dom.window.document, localStorage: dom.window.localStorage });
@@ -252,7 +254,8 @@ test("Chat routing reuses provider history entries and focuses the live tab afte
     assert.equal(new URL(dom.window.location.href).searchParams.get("surface"), "api");
     tab("review").click();
     tab("tasks").click();
-    assert.equal(dom.window.document.activeElement, tab("tasks"), "focus follows the live Tasks tab");
+    assert.equal(dom.window.document.activeElement, root.querySelector("[data-workspace-menu-button]"), "focus returns to the ☰ menu button");
+    assert.equal(tab("tasks").getAttribute("aria-current"), "page");
     nav.destroy();
     navigation.destroy();
   } finally {
@@ -270,4 +273,52 @@ test("Review canvas uses the Unified Workspace theme instead of a detached modal
   assert.match(css, /body\.dm-task-first-enabled \.wf-sheet\s*\{[^}]*background: var\(--dw-chat-bg\)/s);
   assert.match(css, /body\.dm-task-first-enabled \.wf-body\s*\{[^}]*background: var\(--dw-chat-bg\)/s);
   assert.match(workflow, /devmoter:workspace-tab-changing", \(\) => closeReview\(false\)/);
+});
+
+test("☰ menu replaces the bottom tab bar: aria-expanded, Escape, outside tap and current screen", async () => {
+  const dom = new JSDOM('<!doctype html><div id="app"></div><button id="outside">x</button>', { url: "https://localhost/?unifiedUI=1" });
+  const prior = { window: globalThis.window, document: globalThis.document, localStorage: globalThis.localStorage };
+  Object.assign(globalThis, { window: dom.window, document: dom.window.document, localStorage: dom.window.localStorage });
+  try {
+    const mount = await loadNavigator();
+    const opened = [];
+    const nav = mount({
+      initialSurface: "opencode", switchBackend() {}, openHome() {},
+      openTasks: () => opened.push("tasks"), openReview: () => opened.push("review"), openTools: () => opened.push("tools")
+    });
+    const doc = dom.window.document;
+    const button = doc.querySelector("[data-workspace-menu-button]");
+    const menu = doc.getElementById("dmTaskFirstMenu");
+    assert.equal(doc.querySelector(".dm-task-first-tabs"), null, "no bottom tab bar");
+    assert.equal(menu.hidden, true);
+    button.click();
+    assert.equal(button.getAttribute("aria-expanded"), "true");
+    assert.equal(menu.hidden, false);
+    assert.equal(doc.activeElement, menu.querySelector('[aria-current="page"]'), "focus starts on the current screen");
+    assert.equal(doc.activeElement.dataset.workspaceAction, "chat");
+    doc.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    assert.equal(menu.hidden, true);
+    assert.equal(button.getAttribute("aria-expanded"), "false");
+    assert.equal(doc.activeElement, button, "Escape returns focus to ☰");
+    button.click();
+    doc.getElementById("outside").dispatchEvent(new dom.window.Event("pointerdown", { bubbles: true }));
+    assert.equal(menu.hidden, true, "outside tap closes");
+    button.click();
+    menu.querySelector('[data-workspace-action="review"]').click();
+    assert.equal(menu.hidden, true, "choosing a screen closes the menu");
+    assert.deepEqual(opened, ["review"]);
+    assert.equal(menu.querySelector('[aria-current="page"]').dataset.workspaceAction, "review");
+    const settingsOpened = [];
+    dom.window.addEventListener("devmoter:open-settings", event => settingsOpened.push(event.detail.page));
+    button.click();
+    const settings = menu.querySelector("[data-workspace-settings]");
+    assert.equal(settings.hasAttribute("data-workspace-action"), false, "設定 is not a screen tab");
+    settings.click();
+    assert.deepEqual(settingsOpened, ["root"]);
+    assert.equal(menu.hidden, true);
+    nav.destroy();
+  } finally {
+    Object.assign(globalThis, prior);
+    dom.window.close();
+  }
 });

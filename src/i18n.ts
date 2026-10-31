@@ -103,7 +103,6 @@ const dictionary: Record<string, TranslationSet> = {
     "zh-CN": "OpenCode 正在 Chromebook 上运行。"
   },
   "Plan first": { en: "Plan first", ja: "まず計画", "zh-CN": "先规划" },
-  "Ask": { en: "Ask", ja: "質問", "zh-CN": "提问" },
   "Light": { en: "Light", ja: "ライト", "zh-CN": "浅色" },
   "Dark": { en: "Dark", ja: "ダーク", "zh-CN": "深色" },
   "System": { en: "System", ja: "システム", "zh-CN": "系统" },
@@ -147,8 +146,6 @@ const dictionary: Record<string, TranslationSet> = {
   "Type another answer…": { en: "Type another answer…", ja: "別の回答を入力…", "zh-CN": "输入其他答案…" },
   "Skip": { en: "Skip", ja: "スキップ", "zh-CN": "跳过" },
   "Submit": { en: "Submit", ja: "送信", "zh-CN": "提交" },
-  "Plan": { en: "Plan", ja: "計画", "zh-CN": "规划" },
-  "Build": { en: "Build", ja: "実装", "zh-CN": "构建" },
   "agent": { en: "agent", ja: "エージェント", "zh-CN": "智能体" },
   "model": { en: "model", ja: "モデル", "zh-CN": "模型" },
   "Message OpenCode…": { en: "Message OpenCode…", ja: "OpenCodeにメッセージ…", "zh-CN": "给 OpenCode 发消息…" },

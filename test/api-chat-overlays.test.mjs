@@ -205,7 +205,7 @@ test("global Tools replaces API Settings and returns keyboard focus after dismis
   assert.equal(query(".dm-shell-sidebar").classList.contains("open"), true);
   assert.equal(document.activeElement, query("[data-shell-close]"));
   key("Tab", true);
-  assert.equal(document.activeElement, query('[data-manual-tools] > summary'));
+  assert.equal(document.activeElement, query('[data-ai-model]'), "focus wraps to the last Tools AI control");
   key("Escape");
   assert.equal(document.activeElement, opener);
 });

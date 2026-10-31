@@ -306,18 +306,6 @@ export function mountOpenCodeRemote(
             disabled
           ></textarea>
 
-          <div class="ocx-context-row">
-            <div class="ocx-mode-switch" role="group" aria-label="agent mode">
-              <button id="ocxPlanMode" type="button">Plan</button>
-              <button id="ocxAskMode" type="button">Ask</button>
-              <button id="ocxBuildMode" type="button" class="active">Build</button>
-            </div>
-            <div class="ocx-context-buttons">
-              <button id="ocxAgentButton" type="button" class="ocx-context-button">agent</button>
-            </div>
-          </div>
-
-          <p id="ocxModelPricing" class="ocx-model-pricing" role="status"></p>
           <div class="ocx-composer-foot">
             <div class="ocx-composer-left">
               <button id="ocxPlus" type="button" class="ocx-mini-button" aria-label="添付">＋</button>
@@ -354,17 +342,6 @@ export function mountOpenCodeRemote(
       </div>
     </div>
   `;
-
-  const syncHistoryViewportHeight = () => {
-    const height = window.visualViewport?.height ?? window.innerHeight;
-    if (!Number.isFinite(height) || height <= 0) return;
-    root.style.setProperty("--ocx-history-viewport-height", `${Math.max(1, Math.floor(height))}px`);
-  };
-  syncHistoryViewportHeight();
-  window.visualViewport?.addEventListener("resize", syncHistoryViewportHeight, { passive: true });
-  window.visualViewport?.addEventListener("scroll", syncHistoryViewportHeight, { passive: true });
-  window.addEventListener("resize", syncHistoryViewportHeight, { passive: true });
-  window.addEventListener("orientationchange", syncHistoryViewportHeight);
 
   const sidebar = root.querySelector<HTMLElement>("#ocxSidebar")!;
   const scrim = root.querySelector<HTMLElement>("#ocxScrim")!;
@@ -427,10 +404,6 @@ export function mountOpenCodeRemote(
   const questionCustom = root.querySelector<HTMLInputElement>("#ocxQuestionCustom")!;
   const questionReject = root.querySelector<HTMLButtonElement>("#ocxQuestionReject")!;
   const questionSubmit = root.querySelector<HTMLButtonElement>("#ocxQuestionSubmit")!;
-  const planMode = root.querySelector<HTMLButtonElement>("#ocxPlanMode")!;
-  const askMode = root.querySelector<HTMLButtonElement>("#ocxAskMode")!;
-  const buildMode = root.querySelector<HTMLButtonElement>("#ocxBuildMode")!;
-  const agentButton = root.querySelector<HTMLButtonElement>("#ocxAgentButton")!;
   const modelButton = root.querySelector<HTMLButtonElement>("#ocxModelButton")!;
   const slashPalette = root.querySelector<HTMLDivElement>("#ocxSlashPalette")!;
   const contextPalette = root.querySelector<HTMLDivElement>("#ocxContextPalette")!;
@@ -559,15 +532,9 @@ export function mountOpenCodeRemote(
   const liveReasoning = new Map<string, HTMLElement>();
   const livePartKinds = new Map<string, "text" | "reasoning">();
   let directory = "";
-  type AgentMode = "plan" | "ask" | "build";
+  type AgentMode = "plan" | "build";
   let selectedAgent =
     localStorage.getItem("opencode-pocket-opencode-agent") || "build";
-  let selectedMode: AgentMode =
-    localStorage.getItem("opencode-pocket-opencode-mode") === "plan"
-      ? "plan"
-      : localStorage.getItem("opencode-pocket-opencode-mode") === "ask"
-        ? "ask"
-        : "build";
   let selectedModel: { providerID: string; modelID: string } | null = null;
   let pendingAttachments: PendingAttachment[] = [];
   let selectedContextRefs: Array<{ path: string; kind: "file" | "folder" }> = [];
@@ -716,10 +683,6 @@ export function mountOpenCodeRemote(
     send.disabled = !value;
     newSessionSide.disabled = !value;
     newSessionTop.disabled = !value;
-    planMode.disabled = !value;
-    askMode.disabled = !value;
-    buildMode.disabled = !value;
-    agentButton.disabled = !value;
     modelButton.disabled = !value;
     slashButton.disabled = !value;
   }
@@ -869,57 +832,21 @@ export function mountOpenCodeRemote(
     return model?.name || selectedModel.modelID;
   }
 
-  function currentAgentName() {
-    return selectedAgent || "build";
-  }
-
-  function sessionModes() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem("opencode-pocket-opencode-session-modes") || "{}");
-      return parsed && typeof parsed === "object" ? parsed as Record<string, AgentMode> : {};
-    } catch {
-      return {} as Record<string, AgentMode>;
-    }
-  }
-
-  function persistMode(mode: AgentMode) {
-    selectedMode = mode;
-    localStorage.setItem("opencode-pocket-opencode-mode", mode);
-    if (!activeSession?.id) return;
-    const modes = sessionModes();
-    modes[activeSession.id] = mode;
-    localStorage.setItem("opencode-pocket-opencode-session-modes", JSON.stringify(modes));
-  }
-
-  function modeForSession(session: OpenCodeSession): AgentMode {
-    const saved = sessionModes()[session.id];
-    if (saved === "plan" || saved === "ask" || saved === "build") return saved;
-    return session.agent === "plan" ? "plan" : "build";
+  // The composer has no mode toggle: the server-side read-only policy follows
+  // the selected agent ("plan" is read-only, every other agent builds).
+  function agentModeFor(agentID: string): AgentMode {
+    return agentID === "plan" ? "plan" : "build";
   }
 
   function updateContextUI() {
-    agentButton.textContent = currentAgentName();
     modelButton.textContent = currentModelName();
-    agentButton.title = `Agent: ${currentAgentName()}`;
-    agentButton.setAttribute("aria-label", agentButton.title);
     modelButton.title = selectedModel
       ? `${selectedModel.providerID} / ${selectedModel.modelID}`
       : "Default provider / model";
     modelButton.setAttribute("aria-label", `Model: ${modelButton.title}`);
     const pricingProvider = providers.find(item => item.id === selectedModel?.providerID);
     const pricingModel = pricingProvider ? normalizeModels(pricingProvider).find(item => item.id === selectedModel?.modelID) : null;
-    const pricing = describeModelPricing(pricingModel?.cost);
-    const pricingLabel = root.querySelector<HTMLElement>("#ocxModelPricing")!;
-    pricingLabel.textContent = pricing.label + " · 請求条件はproviderで確認";
-    pricingLabel.title = pricing.detail;
-    modelButton.title += " · " + pricing.detail;
-
-    planMode.classList.toggle("active", selectedMode === "plan");
-    askMode.classList.toggle("active", selectedMode === "ask");
-    buildMode.classList.toggle("active", selectedMode === "build");
-    planMode.setAttribute("aria-pressed", String(selectedMode === "plan"));
-    askMode.setAttribute("aria-pressed", String(selectedMode === "ask"));
-    buildMode.setAttribute("aria-pressed", String(selectedMode === "build"));
+    modelButton.title += " · " + describeModelPricing(pricingModel?.cost).detail;
 
     const meta = [
       activeSession?.agent || selectedAgent || "build",
@@ -1742,8 +1669,6 @@ export function mountOpenCodeRemote(
       selectedAgent = session.agent;
       localStorage.setItem("opencode-pocket-opencode-agent", selectedAgent);
     }
-    selectedMode = modeForSession(session);
-    localStorage.setItem("opencode-pocket-opencode-mode", selectedMode);
 
     if (session.model?.providerID && (session.model?.modelID || session.model?.id)) {
       selectedModel = {
@@ -1791,7 +1716,7 @@ export function mountOpenCodeRemote(
       const session = await api<OpenCodeSession>("/session", {
         method: "POST",
         headers: {
-          "x-pocket-agent-mode": selectedMode
+          "x-pocket-agent-mode": agentModeFor(selectedAgent)
         },
         body: JSON.stringify(body)
       });
@@ -1801,7 +1726,6 @@ export function mountOpenCodeRemote(
       sessions.unshift(session);
       activeSession = session;
       localStorage.setItem("opencode-pocket-opencode-session", session.id);
-      persistMode(selectedMode);
 
       sessionTitle.textContent = session.title || "New session";
       updateContextUI();
@@ -1812,11 +1736,9 @@ export function mountOpenCodeRemote(
           <div class="ocx-mark">></div>
           <h2>New session</h2>
           <p>${
-            selectedMode === "ask"
-              ? "Ask mode is active · read-only Q&A."
-              : selectedMode === "plan"
-                ? "Plan mode is active · read-only tools only."
-                : "Build mode is active."
+            agentModeFor(selectedAgent) === "plan"
+              ? "Plan mode is active · read-only tools only."
+              : "Build mode is active."
           }</p>
         </div>
       `;
@@ -1831,16 +1753,14 @@ export function mountOpenCodeRemote(
     }
   }
 
-  async function switchAgent(agentID: string, mode: AgentMode = agentID === "plan" ? "plan" : "build") {
+  async function switchAgent(agentID: string) {
     if (isExecutionActive(executionState)) {
       showToast("Wait for the current run to finish");
       return;
     }
 
     const previous = selectedAgent;
-    const previousMode = selectedMode;
     selectedAgent = agentID;
-    persistMode(mode);
     localStorage.setItem("opencode-pocket-opencode-agent", agentID);
     updateContextUI();
 
@@ -1851,7 +1771,7 @@ export function mountOpenCodeRemote(
           {
             method: "POST",
             headers: {
-              "x-pocket-agent-mode": mode
+              "x-pocket-agent-mode": agentModeFor(agentID)
             },
             body: JSON.stringify({ agent: agentID })
           }
@@ -1861,7 +1781,6 @@ export function mountOpenCodeRemote(
       showToast(`Agent: ${agentID}`);
     } catch (error) {
       selectedAgent = previous;
-      persistMode(previousMode);
       updateContextUI();
       showToast(error instanceof Error ? error.message : "Agent switch failed");
       throw error;
@@ -1909,20 +1828,17 @@ export function mountOpenCodeRemote(
 
   async function setMode(mode: AgentMode) {
     const target =
-      mode === "ask"
-        ? agents.find(agent => agent.id === "plan")?.id ||
-          agents.find(agent => agent.mode === "primary" || agent.mode === "all")?.id
-        : agents.find(agent => agent.id === mode)?.id ||
-          (mode === "build"
-            ? agents.find(agent => agent.mode === "primary" || agent.mode === "all")?.id
-            : undefined);
+      agents.find(agent => agent.id === mode)?.id ||
+      (mode === "build"
+        ? agents.find(agent => agent.mode === "primary" || agent.mode === "all")?.id
+        : undefined);
 
     if (!target) {
       showToast(`${mode} mode is not available`);
       return;
     }
 
-    await switchAgent(target, mode);
+    await switchAgent(target);
   }
 
   function renderSlashPalette(query = "") {
@@ -2217,7 +2133,7 @@ export function mountOpenCodeRemote(
         {
           method: "POST",
           headers: {
-            "x-pocket-agent-mode": selectedMode
+            "x-pocket-agent-mode": agentModeFor(selectedAgent)
           },
           body: JSON.stringify({
             text: promptText,
@@ -3431,7 +3347,7 @@ export function mountOpenCodeRemote(
       mark.textContent = selectedAgent === agent.id ? "✓" : "›";
       option.append(copy, mark);
       option.addEventListener("click", () => {
-        void switchAgent(agent.id, selectedMode).then(() => {
+        void switchAgent(agent.id).then(() => {
           mountRuntimePicker();
           paintRuntimePicker(false);
         }).catch(() => {});
@@ -3844,12 +3760,7 @@ export function mountOpenCodeRemote(
   refreshButton.addEventListener("click", () => void refresh());
 
   sessionTitleButton.addEventListener("click", showSessionDetails);
-  agentButton.addEventListener("click", () => void showRuntimePicker());
   modelButton.addEventListener("click", () => void showRuntimePicker());
-
-  planMode.addEventListener("click", () => void setMode("plan"));
-  askMode.addEventListener("click", () => void setMode("ask"));
-  buildMode.addEventListener("click", () => void setMode("build"));
 
   plus.addEventListener("click", () => {
     attachmentMenu.classList.toggle("hidden");
