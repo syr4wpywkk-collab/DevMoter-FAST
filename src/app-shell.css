@@ -391,3 +391,25 @@ html[data-devmoter-theme="light"] .devmoter-system-error { color: #a52e2e; }
 .pocket-git-panel .pocket-diff-line .old,
 .pocket-git-panel .pocket-diff-line .new,
 .pocket-git-panel .pocket-split-cell .num { color:var(--dm-shared-panel-muted); }
+
+/* ?unifiedUI=0 fallback: Settings lives at the top of the Tools sidebar. */
+.dm-shell-settings-entry {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--dm-shell-border, rgba(255, 255, 255, .08));
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.dm-shell-settings-entry > span { width: 18px; flex: 0 0 18px; text-align: center; }
+.dm-shell-settings-entry > strong { font-size: 14px; font-weight: 500; }
+.dm-shell-settings-entry:active { transform: scale(0.97); }

@@ -137,3 +137,11 @@ test("sidebar remains keyboard dismissible and reports expanded state", async ()
   assert.ok(shell.includes('trigger.setAttribute("aria-expanded", "false")'));
   assert.ok(shell.includes('if (event.key === "Escape") closeSidebar()'));
 });
+
+test("?unifiedUI=0 fallback keeps Settings reachable from the Tools sidebar", async () => {
+  const shell = await source("src/app-shell.ts");
+  assert.ok(shell.includes("function addFallbackSettingsEntry()"));
+  assert.ok(shell.includes('"devmoter:open-settings", { detail: { page: "root" } }'));
+  const fallback = shell.slice(shell.indexOf("if (shouldUseUnifiedWorkspace(window.location.search))"));
+  assert.equal(fallback.match(/addFallbackSettingsEntry\(\)/g)?.length, 2, "rollback branch and failed mount both add it");
+});

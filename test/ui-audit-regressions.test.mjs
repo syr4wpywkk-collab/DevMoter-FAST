@@ -34,11 +34,11 @@ test("theme overrides keep history and workspace controls readable", async () =>
   assert.match(codexCss, /data-devmoter-theme="light"[^\n]*\.cx-app \.cx-search input/);
 
   const openCodeCss = await readFile(new URL("../src/opencode-chat.css", import.meta.url), "utf8");
-  assert.match(openCodeCss, /data-devmoter-theme="dark"[^\n]*#ocxWorkspaceControlsMount \.dm-controlbar > \.dm-theme/);
+  assert.doesNotMatch(openCodeCss, /dm-controlbar|WorkspaceControlsMount/, "the docked workspace button group is gone");
   assert.match(openCodeCss, /background: var\(--oc-panel-2\)/);
 
   const apiCss = await readFile(new URL("../src/api-chat-surface.css", import.meta.url), "utf8");
-  assert.match(apiCss, /data-devmoter-theme="dark"[^\n]*#apiWorkspaceControlsMount \.dm-controlbar > \.dm-theme/);
+  assert.doesNotMatch(apiCss, /dm-controlbar|WorkspaceControlsMount/);
   assert.match(apiCss, /background: var\(--api-composer-surface\)/);
 });
 

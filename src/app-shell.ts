@@ -258,6 +258,23 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
 
   updateBackend(backend);
 
+  // Without the unified ☰ menu (?unifiedUI=0 or a failed mount) Settings is
+  // reached from this sidebar's header instead.
+  function addFallbackSettingsEntry() {
+    const scroll = root.querySelector<HTMLElement>(".dm-shell-sidebar-scroll")!;
+    if (scroll.querySelector("[data-shell-settings]")) return;
+    const settings = document.createElement("button");
+    settings.type = "button";
+    settings.className = "dm-shell-settings-entry";
+    settings.dataset.shellSettings = "";
+    settings.innerHTML = '<span aria-hidden="true">⚙</span><strong>設定</strong>';
+    settings.addEventListener("click", () => {
+      closeSidebar();
+      window.dispatchEvent(new CustomEvent("devmoter:open-settings", { detail: { page: "root" } }));
+    });
+    scroll.prepend(settings);
+  }
+
   // The unified navigator is now the default on the existing URL.
   // ?unifiedUI=0 is an explicit emergency rollback for visual regressions.
   // The native providers retain all streaming, history, permissions and model
@@ -283,6 +300,9 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
           label.hidden = true;
         });
         notify("新UIの読み込みに失敗しました。従来UIで表示しています。");
+        addFallbackSettingsEntry();
       });
+  } else {
+    addFallbackSettingsEntry();
   }
 }

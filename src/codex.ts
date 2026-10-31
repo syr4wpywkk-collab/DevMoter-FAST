@@ -246,7 +246,6 @@ export function mountCodexRemote(
         </section>
         <section class="cx-detail-section cx-workspace-section">
           <div class="cx-detail-heading"><span>WORKSPACE</span></div>
-          <div id="cxWorkspaceControlsMount"></div>
         </section>
       </aside>
 
@@ -3437,7 +3436,6 @@ export function mountCodexRemote(
 
   menu.addEventListener("click", openSidebar);
   detailsToggle.addEventListener("click", toggleDetails);
-  window.addEventListener("devmoter:close-codex-details", () => closeDetails());
   window.addEventListener("devmoter:close-chat-history", () => closeSidebar(false));
   window.addEventListener("devmoter:surface-changed", () => closeSidebar(false));
   document.addEventListener("visibilitychange", () => {

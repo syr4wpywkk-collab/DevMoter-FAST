@@ -22,10 +22,6 @@ async function fixtureServer() {
     mountCodexRemote(document.querySelector('#app'));
     mountTaskWorkflow(document.querySelector('#workflowMount'));
     startWorkspaceControl();
-    const button = document.createElement('button');
-    button.textContent = 'Fixture workspace control';
-    button.id = 'fixtureWorkspaceControl';
-    document.querySelector('#cxWorkspaceControlsMount').append(button);
   `);
   await build({ entryPoints: [entry], outfile: path.join(dir, "fixture.js"), bundle: true, format: "esm", platform: "browser", target: "es2022" });
   const html = '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="stylesheet" href="/fixture.css"></head><body><div id="app"></div><div id="workflowMount"></div><script type="module" src="/fixture.js"></script></body></html>';
@@ -94,17 +90,4 @@ test("mobile Codex details drawer restores focus and removes hidden controls", a
   await page.locator("#cxScrim").click({ position: { x: 8, y: 100 } });
   assert.equal(await details.getAttribute("aria-hidden"), "true");
   assert.notEqual(await details.getAttribute("inert"), null);
-});
-
-test("mobile Review shortcut closes the details focus trap before opening Review", async t => {
-  const page = await setup(t, { width: 390, height: 844 });
-  const details = page.locator("#cxDetailsPanel");
-  await page.locator("#cxDetailsTop").click();
-  await page.locator(".dm-review-shortcut").click({ timeout: 5000 });
-  await page.locator("#wfModal:not(.hidden)").waitFor();
-  assert.equal(await details.getAttribute("aria-hidden"), "true");
-  assert.notEqual(await details.getAttribute("inert"), null);
-  await page.locator("#wfClose").focus();
-  await page.keyboard.press("Tab");
-  assert.equal(await details.evaluate(node => node.contains(document.activeElement)), false);
 });

@@ -213,85 +213,22 @@ function estimateTokens() {
   return Math.ceil(text.length / 4);
 }
 
-function createToolbar() {
-  const host = document.createElement("section");
-  host.className = "dm-controlbar";
-  host.setAttribute("aria-label", "DevMoter control plane");
-  host.innerHTML = `
-    <button type="button" class="dm-mobile-menu-toggle" aria-label="More DevMoter controls" aria-expanded="false">••• <span>More</span></button>
-    <button type="button" class="dm-mobile-shortcut dm-review-shortcut" aria-label="Review changes">⌁ <span>Review</span></button>
-    <button type="button" class="dm-mobile-shortcut dm-agent-shortcut" aria-label="Agent mode">✦ <span>Agent</span></button>
-    <button type="button" class="dm-mobile-shortcut dm-session-shortcut" aria-label="Session activity">◎ <span>Activity</span></button>
-    <button type="button" class="dm-mobile-shortcut dm-settings-shortcut" aria-label="Settings">⚙ <span>Settings</span></button>
-    <button type="button" class="dm-mobile-shortcut dm-git-shortcut" aria-label="Project Git">⑂ <span>Git</span></button>
-    <button type="button" class="dm-theme" aria-label="Theme">◐ <span>System</span></button>
-    <button type="button" class="dm-context" aria-label="Context usage">◒ <span>Context</span></button>
-    <button type="button" class="dm-tasks" aria-label="Task checkpoints">✓ <span>Tasks</span></button>
-    <button type="button" class="dm-extensions" aria-label="Extensions">＋ <span>Extensions</span></button>
-    <div class="dm-panel hidden" role="dialog" aria-label="DevMoter controls"></div>
-  `;
-  document.body.appendChild(host);
+export type WorkspaceCommand = "theme" | "context" | "checkpoints" | "extensions";
+export const WORKSPACE_COMMAND_EVENT = "devmoter:workspace-command";
+const isWorkspaceCommand = (value: unknown): value is WorkspaceCommand =>
+  value === "theme" || value === "context" || value === "checkpoints" || value === "extensions";
 
-  // Keep the existing controls and panel state while chat surfaces house them in their drawers.
-  const placeToolbar = (surface?: string) => {
-    const active = surface || (document.body.classList.contains("codex-mode") ? "codex"
-      : document.body.classList.contains("opencode-mode") ? "opencode"
-      : document.body.classList.contains("api-mode") ? "api" : "");
-    const selector = active === "codex" ? "#cxWorkspaceControlsMount"
-      : active === "opencode" ? "#ocxWorkspaceControlsMount"
-      : active === "api" ? "#apiWorkspaceControlsMount" : null;
-    const drawerMount = selector ? document.querySelector<HTMLElement>(selector) : null;
-    const parent = drawerMount || document.body;
-    if (host.parentElement !== parent) parent.appendChild(host);
-  };
-  const onSurfaceChanged = (event: Event) => {
-    placeToolbar((event as CustomEvent<{ surface?: string }>).detail?.surface);
-  };
-  const onBackendChanged = () => placeToolbar();
-  placeToolbar();
-  window.addEventListener("devmoter:surface-changed", onSurfaceChanged);
-  window.addEventListener("devmoter:backend-changed", onBackendChanged);
-
-  const mobileMenuToggle = host.querySelector<HTMLButtonElement>(".dm-mobile-menu-toggle")!;
-  const reviewShortcut = host.querySelector<HTMLButtonElement>(".dm-review-shortcut")!;
-  const agentShortcut = host.querySelector<HTMLButtonElement>(".dm-agent-shortcut")!;
-  const sessionShortcut = host.querySelector<HTMLButtonElement>(".dm-session-shortcut")!;
-  const settingsShortcut = host.querySelector<HTMLButtonElement>(".dm-settings-shortcut")!;
-  const gitShortcut = host.querySelector<HTMLButtonElement>(".dm-git-shortcut")!;
-  const themeButton = host.querySelector<HTMLButtonElement>(".dm-theme")!;
-  const contextButton = host.querySelector<HTMLButtonElement>(".dm-context")!;
-  const tasksButton = host.querySelector<HTMLButtonElement>(".dm-tasks")!;
-  const extensionsButton = host.querySelector<HTMLButtonElement>(".dm-extensions")!;
-  const panel = host.querySelector<HTMLDivElement>(".dm-panel")!;
-
-  const closeMobileMenu = () => {
-    host.classList.remove("mobile-open");
-    mobileMenuToggle.setAttribute("aria-expanded", "false");
-    mobileMenuToggle.firstChild!.textContent = "••• ";
-  };
-
-  mobileMenuToggle.addEventListener("click", () => {
-    const open = host.classList.toggle("mobile-open");
-    mobileMenuToggle.setAttribute("aria-expanded", String(open));
-    mobileMenuToggle.firstChild!.textContent = open ? "× " : "••• ";
-    if (!open) panel.classList.add("hidden");
-  });
-
-  const openHiddenLauncher = (selector: string) => {
-    closeMobileMenu();
-    // The mobile Codex details drawer owns the toolbar. Release its focus
-    // trap before handing off to a body-mounted dialog or panel.
-    if (host.closest("#cxDetailsPanel.open")) {
-      window.dispatchEvent(new CustomEvent("devmoter:close-codex-details"));
-    }
-    window.setTimeout(() => document.querySelector<HTMLElement>(selector)?.click(), 0);
-  };
-
-  reviewShortcut.addEventListener("click", () => openHiddenLauncher("#wfLaunch"));
-  agentShortcut.addEventListener("click", () => openHiddenLauncher("#devmoterAgentLauncher"));
-  sessionShortcut.addEventListener("click", () => openHiddenLauncher(".sc-fab"));
-  settingsShortcut.addEventListener("click", () => openHiddenLauncher(".devmoter-settings-trigger"));
-  gitShortcut.addEventListener("click", () => openHiddenLauncher(".pocket-git-trigger"));
+/**
+ * Theme, display-history, checkpoint and extension controls are commands, not
+ * a docked button group: the global ☰ menu and Settings dispatch
+ * `devmoter:workspace-command` and the single body-level panel answers.
+ */
+function createWorkspacePanel() {
+  const panel = document.createElement("div");
+  panel.className = "dm-panel hidden";
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-label", "DevMoter controls");
+  document.body.appendChild(panel);
 
   const activeSessionId = () => {
     const backend = localStorage.getItem("opencode-pocket-backend");
@@ -310,18 +247,14 @@ function createToolbar() {
 
   const closePanel = () => panel.classList.add("hidden");
   const panelHead = (title: string) =>
-    `<div class="dm-panel-head"><strong>${escapeHtml(title)}</strong><button type="button" data-close>×</button></div>`;
+    `<div class="dm-panel-head"><strong>${escapeHtml(title)}</strong><button type="button" data-close aria-label="閉じる">×</button></div>`;
   const wireClose = () => panel.querySelector("[data-close]")?.addEventListener("click", closePanel);
 
   const themeModes: ThemeMode[] = ["system", "light", "dark"];
-  themeButton.addEventListener("click", () => {
-    closeMobileMenu();
+  const cycleTheme = () => {
     const current = (localStorage.getItem(THEME_KEY) as ThemeMode) || "system";
-    const next = themeModes[(themeModes.indexOf(current) + 1) % themeModes.length];
-    applyTheme(next);
-    themeButton.querySelector("span")!.textContent =
-      next[0].toUpperCase() + next.slice(1);
-  });
+    applyTheme(themeModes[(themeModes.indexOf(current) + 1) % themeModes.length]);
+  };
 
   let compactInFlight = false;
   async function requestCompaction(mode: "manual" | "auto", status?: HTMLElement) {
@@ -354,18 +287,13 @@ function createToolbar() {
     const ratio = Math.min(1, used / max);
     const lastCompactAt = Number(localStorage.getItem(LAST_COMPACT_KEY)) || 0;
     const eventViewSupported = (document.body.classList.contains("codex-mode") || document.body.classList.contains("opencode-mode")) && activeSessionId() !== "browser";
-    contextButton.querySelector("span")!.textContent = "表示履歴";
-    contextButton.title = "表示中の履歴の目安・イベント表示の整理。モデルの実コンテキスト使用量ではありません。";
-    contextButton.dataset.pressure =
-      ratio >= threshold ? "high" : ratio >= threshold * 0.8 ? "medium" : "low";
     if (eventViewSupported && ratio >= threshold && Date.now() - lastCompactAt > 5 * 60_000) {
       void requestCompaction("auto");
     }
     return { used, max, threshold, ratio, lastCompactAt, eventViewSupported };
   }
 
-  contextButton.addEventListener("click", () => {
-    closeMobileMenu();
+  const openContext = () => {
     const state = renderContext();
     panel.classList.remove("hidden");
     panel.innerHTML =
@@ -388,10 +316,9 @@ function createToolbar() {
       const status = panel.querySelector<HTMLElement>("[data-status]")!;
       void requestCompaction("manual", status);
     });
-  });
+  };
 
-  tasksButton.addEventListener("click", async () => {
-    closeMobileMenu();
+  const openCheckpoints = async () => {
     const parentId = activeSessionId();
     panel.classList.remove("hidden");
     panel.innerHTML = panelHead("Task checkpoints") + "<p>Loading current micro-task…</p>";
@@ -463,17 +390,16 @@ function createToolbar() {
           });
           const saved = await save.json();
           if (!save.ok) throw new Error(saved?.error || "Checkpoint update failed");
-          tasksButton.click();
+          void openCheckpoints();
         });
         actions.appendChild(button);
       }
     } catch (error) {
       panel.append(error instanceof Error ? error.message : String(error));
     }
-  });
+  };
 
-  extensionsButton.addEventListener("click", async () => {
-    closeMobileMenu();
+  const openExtensions = async () => {
     panel.classList.remove("hidden");
     panel.innerHTML = panelHead("Extensions") + "<p>Loading approved catalog…</p>";
     wireClose();
@@ -512,7 +438,7 @@ function createToolbar() {
             const error = await change.json().catch(() => ({}));
             throw new Error(error?.error || "Extension update failed");
           }
-          extensionsButton.click();
+          void openExtensions();
         });
         row.append(copy, button);
         list.appendChild(row);
@@ -520,43 +446,50 @@ function createToolbar() {
     } catch (error) {
       panel.append(error instanceof Error ? error.message : String(error));
     }
-  });
-
-  const syncThemeLabel = () => {
-    const mode = localStorage.getItem(THEME_KEY) || "system";
-    themeButton.querySelector("span")!.textContent = mode[0].toUpperCase() + mode.slice(1);
   };
-  window.addEventListener("devmoter:theme-changed", syncThemeLabel);
-  const initialTheme =
-    ((localStorage.getItem(THEME_KEY) as ThemeMode) || "system");
-  applyTheme(initialTheme);
-  themeButton.querySelector("span")!.textContent =
-    initialTheme[0].toUpperCase() + initialTheme.slice(1);
+
+  const onCommand = (event: Event) => {
+    const command = (event as CustomEvent<{ command?: unknown }>).detail?.command;
+    if (!isWorkspaceCommand(command)) return;
+    if (command === "theme") cycleTheme();
+    else if (command === "context") openContext();
+    else if (command === "checkpoints") void openCheckpoints();
+    else void openExtensions();
+  };
+  window.addEventListener(WORKSPACE_COMMAND_EVENT, onCommand);
+  const onKeydown = (event: KeyboardEvent) => {
+    if (event.key === "Escape" && !panel.classList.contains("hidden")) closePanel();
+  };
+  const ownerDocument = document;
+  ownerDocument.addEventListener("keydown", onKeydown);
+
+  applyTheme((localStorage.getItem(THEME_KEY) as ThemeMode) || "system");
   renderContext();
-  window.setInterval(renderContext, 5000);
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-    if ((localStorage.getItem(THEME_KEY) || "system") === "system") {
-      applyTheme("system");
-    }
-  });
+  const contextTimer = window.setInterval(renderContext, 5000);
+  const colorScheme = matchMedia("(prefers-color-scheme: dark)");
+  const onColorScheme = () => {
+    if ((localStorage.getItem(THEME_KEY) || "system") === "system") applyTheme("system");
+  };
+  colorScheme.addEventListener("change", onColorScheme);
   return () => {
-    window.removeEventListener("devmoter:theme-changed", syncThemeLabel);
-    window.removeEventListener("devmoter:surface-changed", onSurfaceChanged);
-    window.removeEventListener("devmoter:backend-changed", onBackendChanged);
+    window.removeEventListener(WORKSPACE_COMMAND_EVENT, onCommand);
+    ownerDocument.removeEventListener("keydown", onKeydown);
+    window.clearInterval(contextTimer);
+    colorScheme.removeEventListener?.("change", onColorScheme);
+    panel.remove();
   };
 }
 
 function injectStyles() {
   const style = document.createElement("style");
   style.textContent = `
-    .dm-controlbar { position:fixed; z-index:70; right:max(10px,env(safe-area-inset-right)); bottom:max(10px,env(safe-area-inset-bottom)); display:flex; gap:6px; padding:6px; border:1px solid var(--border-hairline); border-radius:12px; background:var(--surface-card); color:var(--text-primary); }
-    .dm-controlbar>button { min-height:38px; border:0; border-radius:10px; padding:0 10px; background:color-mix(in srgb,currentColor 8%,transparent); color:inherit; }
-    .dm-mobile-menu-toggle,.dm-mobile-shortcut { display:none; }
-    .dm-context[data-pressure="high"] { outline:2px solid currentColor; }
-    .dm-panel { position:absolute; right:0; bottom:52px; width:min(380px,calc(100vw - 20px)); max-height:min(70vh,620px); overflow:auto; padding:14px; border:1px solid color-mix(in srgb,currentColor 18%,transparent); border-radius:16px; background:Canvas; color:CanvasText; box-shadow:0 18px 50px rgba(0,0,0,.25); }
+    .dm-panel { position:fixed; z-index:95; right:max(12px,env(safe-area-inset-right)); bottom:max(12px,env(safe-area-inset-bottom)); width:min(380px,calc(100vw - 24px)); max-height:min(70dvh,620px); overflow:auto; overscroll-behavior:contain; padding:14px; border:1px solid color-mix(in srgb,currentColor 10%,transparent); border-radius:16px; background:var(--surface-card,Canvas); color:var(--text-primary,CanvasText); }
     .dm-panel.hidden { display:none; }
     .dm-panel-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
-    .dm-panel-head button { border:0; background:transparent; color:inherit; font-size:20px; }
+    .dm-panel-head { position:sticky; top:-14px; background:inherit; }
+    .dm-panel button { min-height:44px; padding:0 12px; border:1px solid color-mix(in srgb,currentColor 10%,transparent); border-radius:8px; background:color-mix(in srgb,currentColor 6%,transparent); color:inherit; font:inherit; touch-action:manipulation; -webkit-tap-highlight-color:transparent; user-select:none; transition:transform 120ms cubic-bezier(0.23,1,0.32,1); }
+    .dm-panel button:active { transform:scale(.97); }
+    .dm-panel .dm-panel-head button { width:44px; padding:0; border:0; background:transparent; font-size:20px; }
     .dm-panel label,.dm-panel small { display:block; margin:8px 0; }
     .dm-panel p,.dm-panel li,.dm-panel small { color:inherit; }
     .dm-extension-list,.dm-task-list { display:grid; gap:8px; margin:10px 0; }
@@ -565,7 +498,6 @@ function injectStyles() {
     .dm-extension-row small,.dm-task-row small { opacity:.72; overflow-wrap:anywhere; }
     .dm-task-row.current { outline:1px solid color-mix(in srgb,currentColor 35%,transparent); }
     .dm-task-actions { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0; }
-    .dm-task-actions button { min-height:38px; border:0; border-radius:9px; padding:0 10px; }
     .ocx-assistant-text p { margin:.35em 0; white-space:normal; }
     .ocx-assistant-text h1,.ocx-assistant-text h2,.ocx-assistant-text h3 { margin:.7em 0 .35em; }
     .dm-code { overflow:auto; max-height:50vh; padding:12px; border-radius:10px; background:color-mix(in srgb,currentColor 8%,transparent); }
@@ -577,94 +509,6 @@ function injectStyles() {
     .dm-copy-raw { float:right; margin:4px 0; border:0; border-radius:8px; padding:5px 8px; }
     .dm-output-bounded { max-height:46vh; overflow:auto; }
     .dm-virtual-placeholder { width:100%; min-height:40px; border:1px dashed color-mix(in srgb,currentColor 25%,transparent); border-radius:10px; background:transparent; color:inherit; opacity:.78; }
-    @media (max-width:640px) {
-      .wf-launch,
-      .devmoter-agent-launcher,
-      .devmoter-settings-trigger,
-      .sc-fab {
-        display:none !important;
-      }
-
-      .dm-controlbar {
-        right:max(12px,env(safe-area-inset-right));
-        bottom:max(12px,env(safe-area-inset-bottom));
-        padding:5px;
-        border-radius:16px;
-      }
-
-      .dm-controlbar>button {
-        width:44px;
-        min-height:44px;
-        padding:0;
-      }
-
-      .dm-controlbar>button span {
-        display:none;
-      }
-
-      .dm-controlbar .dm-mobile-menu-toggle {
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        font-size:1rem;
-        letter-spacing:.04em;
-      }
-
-      .dm-controlbar:not(.mobile-open)>button:not(.dm-mobile-menu-toggle) {
-        display:none;
-      }
-
-      .dm-controlbar.mobile-open {
-        width:min(330px,calc(100vw - 24px));
-        display:grid;
-        grid-template-columns:repeat(3,minmax(0,1fr));
-        gap:6px;
-        padding:8px;
-        border-radius:20px;
-      }
-
-      .dm-controlbar.mobile-open>button {
-        width:auto;
-        min-width:0;
-        min-height:54px;
-        display:flex;
-        flex-direction:column;
-        align-items:center;
-        justify-content:center;
-        gap:3px;
-        padding:4px 6px;
-      }
-
-      .dm-controlbar.mobile-open>button span {
-        display:block;
-        max-width:100%;
-        overflow:hidden;
-        font-size:.58rem;
-        line-height:1.15;
-        text-overflow:ellipsis;
-        white-space:nowrap;
-      }
-
-      .dm-controlbar.mobile-open .dm-mobile-shortcut {
-        display:flex;
-      }
-
-      .dm-controlbar.mobile-open .dm-mobile-menu-toggle {
-        grid-column:3;
-      }
-
-      .dm-panel {
-        bottom:54px;
-      }
-
-      .dm-controlbar.mobile-open .dm-panel {
-        bottom:calc(100% + 8px);
-      }
-
-      body.devmoter-settings-open .dm-controlbar {
-        display:none !important;
-      }
-    }
   `;
   document.head.appendChild(style);
 }
@@ -678,7 +522,7 @@ function enhanceNow(root: ParentNode = document) {
 
 export function startWorkspaceControl() {
   injectStyles();
-  const stopToolbarPlacement = createToolbar();
+  const stopPanel = createWorkspacePanel();
   let queued = false;
   const queue = () => {
     if (queued) return;
@@ -697,6 +541,6 @@ export function startWorkspaceControl() {
   enhanceNow();
   return () => {
     observer.disconnect();
-    stopToolbarPlacement();
+    stopPanel();
   };
 }

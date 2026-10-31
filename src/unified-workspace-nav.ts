@@ -54,6 +54,11 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
       <button type="button" data-workspace-action="review" aria-label="Review changes"><span aria-hidden="true">⑂</span><strong>Review</strong></button>
       <button type="button" data-workspace-action="tools" aria-label="Open tools"><span aria-hidden="true">⌘</span><strong>Tools</strong></button>
       <hr aria-hidden="true" />
+      <button type="button" data-workspace-command="theme"><span aria-hidden="true">◐</span><strong>テーマ</strong><small data-workspace-theme-value></small></button>
+      <button type="button" data-workspace-command="context"><span aria-hidden="true">◒</span><strong>表示履歴</strong></button>
+      <button type="button" data-workspace-command="checkpoints"><span aria-hidden="true">✓</span><strong>チェックポイント</strong></button>
+      <button type="button" data-workspace-command="extensions"><span aria-hidden="true">＋</span><strong>拡張</strong></button>
+      <hr aria-hidden="true" />
       <button type="button" data-workspace-settings><span aria-hidden="true">⚙</span><strong>設定</strong></button>
     </nav>
     <p class="dm-task-first-feedback" role="status" aria-live="polite" data-workspace-feedback></p>
@@ -91,6 +96,23 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     closeMenu();
     window.dispatchEvent(new window.CustomEvent("devmoter:open-settings", { detail: { page: "root" } }));
   });
+  // Theme / display history / checkpoints / extensions used to be a button
+  // group docked in every chat drawer; they are menu commands now.
+  const themeValue = root.querySelector<HTMLElement>("[data-workspace-theme-value]")!;
+  const THEME_LABELS: Record<string, string> = { system: "システム", light: "ライト", dark: "ダーク" };
+  const syncThemeValue = () => {
+    themeValue.textContent = THEME_LABELS[localStorage.getItem("devmoter-theme") || "system"] || THEME_LABELS.system;
+  };
+  syncThemeValue();
+  window.addEventListener("devmoter:theme-changed", syncThemeValue);
+  for (const button of root.querySelectorAll<HTMLButtonElement>("[data-workspace-command]")) {
+    button.addEventListener("click", () => {
+      const command = button.dataset.workspaceCommand;
+      // Theme cycles in place so the new value stays visible in the open menu.
+      if (command !== "theme") closeMenu();
+      window.dispatchEvent(new window.CustomEvent("devmoter:workspace-command", { detail: { command } }));
+    });
+  }
   const onDocumentKeydown = (event: KeyboardEvent) => {
     if (event.key === "Escape" && isMenuOpen()) { event.stopPropagation(); closeMenu(true); }
   };
@@ -258,6 +280,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     window.removeEventListener("devmoter:backend-changed", onBackendChanged);
     window.removeEventListener("devmoter:workspace-panel-changed", onPanelChanged);
     window.removeEventListener("popstate", restoreTabRoute);
+    window.removeEventListener("devmoter:theme-changed", syncThemeValue);
     document.removeEventListener("keydown", onDocumentKeydown, true);
     document.removeEventListener("pointerdown", onDocumentPointerDown, true);
     for (const label of agentLabels) label.hidden = true;

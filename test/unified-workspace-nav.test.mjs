@@ -316,6 +316,21 @@ test("☰ menu replaces the bottom tab bar: aria-expanded, Escape, outside tap a
     settings.click();
     assert.deepEqual(settingsOpened, ["root"]);
     assert.equal(menu.hidden, true);
+    // The former drawer button group (theme / 表示履歴 / タスク / 拡張) lives in ☰ as commands.
+    const commands = [];
+    dom.window.addEventListener("devmoter:workspace-command", event => commands.push(event.detail.command));
+    button.click();
+    assert.deepEqual([...menu.querySelectorAll("[data-workspace-command]")].map(item => item.dataset.workspaceCommand),
+      ["theme", "context", "checkpoints", "extensions"]);
+    assert.equal(menu.querySelector("[data-workspace-theme-value]").textContent, "システム");
+    menu.querySelector('[data-workspace-command="theme"]').click();
+    assert.equal(menu.hidden, false, "theme cycles in place");
+    dom.window.localStorage.setItem("devmoter-theme", "light");
+    dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:theme-changed"));
+    assert.equal(menu.querySelector("[data-workspace-theme-value]").textContent, "ライト");
+    menu.querySelector('[data-workspace-command="extensions"]').click();
+    assert.equal(menu.hidden, true);
+    assert.deepEqual(commands, ["theme", "extensions"]);
     nav.destroy();
   } finally {
     Object.assign(globalThis, prior);

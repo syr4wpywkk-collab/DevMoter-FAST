@@ -158,7 +158,8 @@ body.dm-task-first-enabled {
   .dm-task-first-menu button:not([aria-current="page"]):hover { color: var(--dw-text); background: var(--dw-panel); }
 }
 .dm-task-first-menu button > span { width: 20px; flex: 0 0 20px; font-size:16px; line-height:1; text-align: center; }
-.dm-task-first-menu button > strong { font-size: 14px; font-weight: 500; }
+.dm-task-first-menu button > strong { min-width: 0; font-size: 14px; font-weight: 500; }
+.dm-task-first-menu button > small { margin-left: auto; color: var(--dw-muted); font-size: 12px; }
 .dm-task-first-menu hr { width: 100%; height: 1px; margin: 0; border: 0; background: var(--dw-border); }
 .dm-task-first-feedback {
   position: absolute;

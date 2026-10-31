@@ -119,43 +119,18 @@ test("mobile history closes on global navigation and surface changes", t => {
   }
 });
 
-test("mobile workspace shortcuts release the Codex details focus trap before opening global panels", t => {
-  const { window, document, query, key, flushTimers } = mount(t);
+test("Codex details drawer holds no workspace shortcuts; workspace commands open a body-level panel", t => {
+  const { window, document, query } = mount(t);
   window.exports = {};
   window.Function("exports", compiledWorkspace)(window.exports);
   const stop = window.exports.startWorkspaceControl();
   t.after(stop);
-  const paths = [
-    [".dm-review-shortcut", "wfLaunch"],
-    [".dm-agent-shortcut", "devmoterAgentLauncher"],
-    [".dm-session-shortcut", "sc-fab"],
-    [".dm-settings-shortcut", "devmoter-settings-trigger"],
-    [".dm-git-shortcut", "pocket-git-trigger"]
-  ];
-  for (const [, target] of paths) {
-    const button = document.createElement("button");
-    if (target === "wfLaunch" || target === "devmoterAgentLauncher") button.id = target;
-    else button.className = target;
-    button.addEventListener("click", () => { button.dataset.opened = "yes"; });
-    document.body.appendChild(button);
-  }
   const panel = query("#cxDetailsPanel");
-  const toggle = query("#cxDetailsTop");
-  for (const [shortcut, target] of paths) {
-    toggle.click();
-    const button = query(shortcut);
-    button.focus();
-    button.click();
-    assert.equal(panel.inert, true, `${shortcut} closes the details drawer`);
-    assert.equal(document.activeElement, toggle, `${shortcut} returns focus to the details toggle`);
-    flushTimers();
-    const launcher = target === "wfLaunch" || target === "devmoterAgentLauncher" ? query(`#${target}`) : query(`.${target}`);
-    assert.equal(launcher.dataset.opened, "yes");
-    launcher.focus();
-    assert.equal(key("Tab"), true, "details drawer no longer intercepts Tab");
+  for (const removed of [".dm-review-shortcut", ".dm-agent-shortcut", ".dm-session-shortcut", ".dm-settings-shortcut", ".dm-git-shortcut", ".dm-context", "#cxWorkspaceControlsMount"]) {
+    assert.equal(document.querySelector(removed), null, removed);
   }
-  toggle.click();
-  query(".dm-context").click();
-  assert.equal(panel.inert, false, "controls rendered inside the drawer keep it open");
-  assert.equal(query(".dm-panel").classList.contains("hidden"), false);
+  window.dispatchEvent(new window.CustomEvent("devmoter:workspace-command", { detail: { command: "context" } }));
+  const controls = query(".dm-panel");
+  assert.equal(controls.classList.contains("hidden"), false);
+  assert.equal(panel.contains(controls), false);
 });

@@ -196,8 +196,8 @@ export function mountSettingsPanel() {
         row("✦", "Activity / Session Control", { action: "existing:.sc-fab", value: "実行中・Queue・Checkpoint・History" }) +
         row("⌁", "Review & Tasks", { action: "existing:#wfLaunch", value: "差分・Worktree・GitHub" }) +
         row("◇", "エージェントモード", { action: "existing:#devmoterAgentLauncher", value: "Mode・Subagent・Fleet" }) +
-        row("◒", "Context", { action: "existing:.dm-context", value: "表示履歴の目安・イベント整理" }) +
-        row("✓", "Task checkpoints", { action: "existing:.dm-tasks", value: "現在のmicro-task" })
+        row("◒", "Context", { action: "command:context", value: "表示履歴の目安・イベント整理" }) +
+        row("✓", "Task checkpoints", { action: "command:checkpoints", value: "現在のmicro-task" })
       )}
 
       ${section("DevMoter をカスタマイズする",
@@ -230,7 +230,7 @@ export function mountSettingsPanel() {
         row("⌘", "ターミナル", { action: "tool:terminal" }) +
         row("▥", "プロジェクトインデックス", { action: "tool:index" }) +
         row("◇", "セーフティスキャン", { action: "tool:safety" }) +
-        row("✦", "拡張機能と Skills", { action: "existing:.dm-extensions" }) +
+        row("✦", "拡張機能と Skills", { action: "command:extensions" }) +
         row("◎", "クラウドブラウザー / Preview", { action: "existing:.adv-fab" }) +
         row("⌁", "診断", { action: "page:diagnostics", value: `v${appVersion}` })
       )}
@@ -885,6 +885,11 @@ export function mountSettingsPanel() {
         }
         if (action.startsWith("tool:")) {
           openTools(action.slice(5) as "terminal" | "safety" | "index");
+          return;
+        }
+        if (action.startsWith("command:")) {
+          close();
+          window.dispatchEvent(new CustomEvent("devmoter:workspace-command", { detail: { command: action.slice(8) } }));
           return;
         }
         if (action.startsWith("existing:")) {

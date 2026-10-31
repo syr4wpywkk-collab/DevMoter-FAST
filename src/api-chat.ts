@@ -137,7 +137,6 @@ export function mountApiChat(
           APIキーはDevMoterサーバー側だけに保存され、保存後ブラウザへ返されません。
         </div>
         </div>
-        <div id="apiWorkspaceControlsMount"></div>
       </aside>
 
       <header class="api-topbar">

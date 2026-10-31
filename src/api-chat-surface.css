@@ -197,23 +197,6 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 .api-app .api-form-message[data-state="error"],
 .api-app .api-provider-danger button { color: #b3261e; }
 
-/* Keep the same workspace controls visible without a floating composer collision. */
-.api-app #apiWorkspaceControlsMount { flex: 0 0 auto; min-width: 0; padding-block: 8px; border-top: 1px solid var(--api-border); }
-.api-app #apiWorkspaceControlsMount .dm-controlbar { position: relative; inset: auto; z-index: 1; width: 100% !important; pointer-events: auto; display: flex; flex-wrap: wrap; gap: 6px; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--api-text); box-shadow: none; backdrop-filter: none; }
-.api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-theme,
-.api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-context,
-.api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-tasks,
-.api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-extensions { display: flex !important; flex: 1 1 calc(50% - 3px); flex-direction: row; align-items: center; justify-content: flex-start; gap: 6px; width: auto; min-width: 0; min-height: 44px; padding: 0 10px; border-radius: 10px; background: #e1e8f2; color: inherit; font-size: .75rem; line-height: 1.3; }
-.api-app #apiWorkspaceControlsMount .dm-controlbar > button span { display: inline; min-width: 0; max-width: 100%; overflow: hidden; font-size: inherit; line-height: inherit; text-overflow: ellipsis; white-space: nowrap; }
-.api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-mobile-menu-toggle,
-.api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-mobile-shortcut { display: none; }
-.api-app #apiWorkspaceControlsMount .dm-panel { right: 0; bottom: calc(100% + 8px); width: 100%; max-width: 100%; max-height: max(88px, min(calc(var(--dm-viewport-height, 100dvh) * .5), calc(var(--dm-viewport-height, 100dvh) - 240px))); padding: 12px; overflow: auto; overscroll-behavior: contain; border-color: var(--api-border); border-radius: 14px; background: #fff; color: var(--api-text); font-size: .8rem; overflow-wrap: anywhere; box-shadow: 0 8px 24px rgba(30, 47, 72, .15); }
-.api-app #apiWorkspaceControlsMount .dm-panel button { min-height: 44px; padding: 7px 10px; border: 1px solid var(--api-border); border-radius: 8px; background: #edf2f8; color: var(--api-text); }
-.api-app #apiWorkspaceControlsMount .dm-panel-head { position: sticky; top: 0; background: #fff; }
-.api-app #apiWorkspaceControlsMount .dm-panel-head button { flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; }
-.api-app #apiWorkspaceControlsMount .dm-panel input:not([type="checkbox"]):not([type="radio"]),
-.api-app #apiWorkspaceControlsMount .dm-panel select { max-width: 100%; min-height: 44px; }
-
 @media (max-width: 899px) {
   body.api-mode .api-app .api-topbar { padding-left: max(12px, env(safe-area-inset-left)); }
 }
@@ -244,9 +227,7 @@ html[data-devmoter-theme="dark"] .api-app {
 }
 html[data-devmoter-theme="dark"] .api-app .api-sidebar,
 html[data-devmoter-theme="dark"] .api-app .api-settings-card,
-html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu,
-html[data-devmoter-theme="dark"] .api-app .dm-panel,
-html[data-devmoter-theme="dark"] .api-app .dm-panel-head { background: var(--api-surface); color: var(--api-text); }
+html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu { background: var(--api-surface); color: var(--api-text); }
 html[data-devmoter-theme="dark"] .api-app .api-picker-row select,
 html[data-devmoter-theme="dark"] .api-app .api-provider-form input,
 html[data-devmoter-theme="dark"] .api-app .api-provider-form textarea,
@@ -258,16 +239,8 @@ html[data-devmoter-theme="dark"] .api-app .api-new-chat,
 html[data-devmoter-theme="dark"] .api-app .api-message.user .api-message-bubble,
 html[data-devmoter-theme="dark"] .api-app .api-history-row.active,
 html[data-devmoter-theme="dark"] .api-app .dm-code-block,
-html[data-devmoter-theme="dark"] .api-app .dm-code-head,
-html[data-devmoter-theme="dark"] .api-app .dm-panel button { background: var(--api-composer-surface); color: var(--api-text); border-color: var(--api-border); color-scheme: dark; }
-html[data-devmoter-theme="dark"] .api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-theme,
-html[data-devmoter-theme="dark"] .api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-context,
-html[data-devmoter-theme="dark"] .api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-tasks,
-html[data-devmoter-theme="dark"] .api-app #apiWorkspaceControlsMount .dm-controlbar > .dm-extensions {
-  background: var(--api-composer-surface);
-  color: var(--api-text);
-  border: 1px solid var(--api-border);
-}
+html[data-devmoter-theme="dark"] .api-app .dm-code-head { background: var(--api-composer-surface); color: var(--api-text); border-color: var(--api-border); color-scheme: dark; }
+
 html[data-devmoter-theme="dark"] .api-app select optgroup { background: var(--api-surface); color: var(--api-text); }
 html[data-devmoter-theme="dark"] .api-app .cx-markdown pre,
 html[data-devmoter-theme="dark"] .api-app .cx-markdown pre code { color: var(--api-text); }

@@ -82,16 +82,17 @@ test("workspace enhancer preserves each chat renderer and source-backed code cop
   assert.deepEqual(copied, [code, code, code]);
 });
 
-test("workspace controls dock only on Codex and retain their existing handlers and panel", async t => {
-  const dom = new JSDOM('<!doctype html><aside><div id="cxWorkspaceControlsMount"></div></aside>', {
+test("workspace commands keep the existing theme, Context, checkpoint and extension handlers", async t => {
+  const dom = new JSDOM('<!doctype html><aside></aside>', {
     url: "https://devmoter.example/chat",
     runScripts: "outside-only"
   });
   t.after(() => dom.window.close());
   const { document, CustomEvent } = dom.window;
   const requests = [];
-  dom.window.matchMedia = () => ({ matches: false, addEventListener() {} });
+  dom.window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
   dom.window.setInterval = () => 1;
+  dom.window.clearInterval = () => {};
   dom.window.setTimeout = () => 1;
   dom.window.Headers = Headers;
   dom.window.fetch = async input => {
@@ -110,46 +111,30 @@ test("workspace controls dock only on Codex and retain their existing handlers a
   dom.window.eval(compiledWorkspace);
   const stop = dom.window.exports.startWorkspaceControl();
   t.after(stop);
+  const command = name => dom.window.dispatchEvent(new CustomEvent("devmoter:workspace-command", { detail: { command: name } }));
+  const panel = document.querySelector(".dm-panel");
+  assert.equal(panel.parentElement, document.body);
+  assert.equal(document.querySelector(".dm-controlbar"), null);
 
-  const mount = document.querySelector("#cxWorkspaceControlsMount");
-  const host = document.querySelector(".dm-controlbar");
-  const panel = host.querySelector(".dm-panel");
-  const buttons = [".dm-theme", ".dm-context", ".dm-tasks", ".dm-extensions"]
-    .map(selector => host.querySelector(selector));
-  assert.equal(host.parentElement, mount, "initial Codex surface docks the actual toolbar");
-
-  buttons[0].click();
+  command("theme");
   assert.equal(dom.window.localStorage.getItem("devmoter-theme"), "light");
-  buttons[1].click();
+  command("context");
   assert.ok(panel.querySelector("[data-threshold]"), "existing Context panel remains functional");
   panel.querySelector("[data-close]").click();
   assert.equal(panel.classList.contains("hidden"), true);
-  buttons[2].click();
+  command("checkpoints");
   await new Promise(resolve => setImmediate(resolve));
   assert.ok(panel.textContent.includes("No checkpoint plan"));
   assert.ok(requests.some(path => path.includes("microtasks?parentId=preserved-thread")));
-  buttons[3].click();
+  command("extensions");
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(panel.querySelector(".dm-extension-row strong").textContent, "Existing extension");
   const existingPanel = panel.innerHTML;
-
-  const surface = value => dom.window.dispatchEvent(new CustomEvent("devmoter:surface-changed", { detail: { surface: value } }));
-  for (const value of ["opencode", "api", "home", "integrations"]) {
-    // The real surface event precedes body class updates; its detail must win.
-    surface(value);
-    assert.equal(host.parentElement, document.body, value);
-    document.body.classList.remove("codex-mode");
-    dom.window.dispatchEvent(new CustomEvent("devmoter:backend-changed"));
-    assert.equal(host.parentElement, document.body, `${value} backend update`);
-    surface("codex");
-    assert.equal(host.parentElement, mount, "Codex event docks before its body class updates");
-    document.body.classList.add("codex-mode");
-    dom.window.dispatchEvent(new CustomEvent("devmoter:backend-changed"));
-    assert.equal(host.parentElement, mount);
+  for (const value of ["opencode", "api", "home", "integrations", "codex"]) {
+    dom.window.dispatchEvent(new CustomEvent("devmoter:surface-changed", { detail: { surface: value } }));
+    assert.equal(panel.parentElement, document.body, value);
   }
-  assert.equal(document.querySelectorAll(".dm-controlbar").length, 1);
-  assert.equal(host.querySelector(".dm-panel"), panel);
+  assert.equal(document.querySelectorAll(".dm-panel").length, 1);
   assert.equal(panel.innerHTML, existingPanel);
   assert.equal(panel.classList.contains("hidden"), false);
-  assert.deepEqual([".dm-theme", ".dm-context", ".dm-tasks", ".dm-extensions"].map(selector => host.querySelector(selector)), buttons);
 });

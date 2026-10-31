@@ -30,7 +30,7 @@ const compile = value => ts.transpileModule(value, {
 }).outputText;
 
 function mount(t, options = {}) {
-  const dom = new JSDOM('<!doctype html><div id="root"></div><div id="cxWorkspaceControlsMount"></div>', {
+  const dom = new JSDOM('<!doctype html><div id="root"></div>', {
     url: "https://devmoter.example/?surface=opencode&unifiedUI=0",
     runScripts: "outside-only"
   });
@@ -202,27 +202,15 @@ test("global Tools replaces the OpenCode modal and receives keyboard focus", t =
   assert.equal(document.activeElement, agent);
 });
 
-test("one existing workspace toolbar moves between OpenCode, Codex and body", t => {
+test("OpenCode drawer has no docked workspace button group; the theme row uses the workspace command", async t => {
   const { dom, document, query } = mount(t);
   dom.window.exports = {};
   dom.window.eval(compiledWorkspace);
   const stop = dom.window.exports.startWorkspaceControl();
   t.after(stop);
-  const host = query(".dm-controlbar");
-  const context = query(".dm-context");
-  const panel = query(".dm-panel");
-  const emit = surface => dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:surface-changed", { detail: { surface } }));
-  assert.equal(host.parentElement, query("#ocxWorkspaceControlsMount"));
-  context.click();
-  assert.equal(panel.classList.contains("hidden"), false);
-  emit("codex");
-  assert.equal(host.parentElement, query("#cxWorkspaceControlsMount"));
-  emit("api");
-  assert.equal(host.parentElement, document.body);
-  emit("opencode");
-  assert.equal(host.parentElement, query("#ocxWorkspaceControlsMount"));
-  assert.equal(query(".dm-context"), context);
-  assert.equal(query(".dm-panel"), panel);
-  assert.equal(panel.classList.contains("hidden"), false);
-  assert.equal(document.querySelectorAll(".dm-controlbar").length, 1);
+  assert.equal(document.querySelector("#ocxWorkspaceControlsMount"), null);
+  assert.equal(document.querySelector(".dm-controlbar"), null);
+  dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:workspace-command", { detail: { command: "context" } }));
+  assert.equal(query(".dm-panel").classList.contains("hidden"), false);
+  assert.equal(query(".dm-panel").parentElement, document.body);
 });

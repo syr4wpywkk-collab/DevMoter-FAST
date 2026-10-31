@@ -219,7 +219,6 @@ export function mountOpenCodeRemote(
         </div>
 
         </div>
-        <div id="ocxWorkspaceControlsMount" class="ocx-workspace-controls"></div>
 
         <div class="ocx-sidebar-foot">
           <label class="pocket-language-setting ocx-language-setting" title="Language">
@@ -3727,7 +3726,7 @@ export function mountOpenCodeRemote(
     window.dispatchEvent(new CustomEvent("devmoter:open-global-nav"));
   });
   themeButton.addEventListener("click", () => {
-    document.querySelector<HTMLButtonElement>(".dm-theme")?.click();
+    window.dispatchEvent(new CustomEvent("devmoter:workspace-command", { detail: { command: "theme" } }));
   });
   prefsButton.addEventListener("click", () => {
     window.dispatchEvent(new CustomEvent("devmoter:open-settings", { detail: { page: "appearance" } }));

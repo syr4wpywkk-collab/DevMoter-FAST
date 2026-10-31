@@ -34,7 +34,6 @@ test("Codex and API Chat keep their legacy switch DOM but use read-only labels i
     ".cx-app .cx-topbar", ".cx-app .cx-side-action.primary",
     ".cx-app .cx-search", ".cx-app .cx-thread-row.active",
     ".cx-app .cx-composer", ".cx-app #cxSend.stop",
-    ".cx-app #cxWorkspaceControlsMount .dm-controlbar",
     ".cx-modal-card"
   ]) {
     assert.ok(sharedCSS.includes(selector), "Codex palette incomplete: " + selector);

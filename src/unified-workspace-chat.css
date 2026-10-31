@@ -361,7 +361,6 @@ body.dm-task-first-enabled :is(.cx-app .cx-approval, .ocx-app .ocx-dock) {
   }
 }
 
-
 /* Stage 3: Codex still carried literal grayscale surfaces in its own
  * history drawer, even though chat and composer already inherited tokens.
  * Complete the opt-in design across all *native* Codex controls. */
@@ -424,25 +423,10 @@ body.dm-task-first-enabled .cx-app .cx-thread-row.active {
   background: var(--dw-chat-accent-soft);
   color: var(--dw-chat-accent);
 }
-body.dm-task-first-enabled .cx-app :is(.cx-sidebar-foot, .cx-side-nav),
-body.dm-task-first-enabled .cx-app #cxWorkspaceControlsMount {
+body.dm-task-first-enabled .cx-app :is(.cx-sidebar-foot, .cx-side-nav) {
   border-color: var(--dw-chat-line);
 }
-body.dm-task-first-enabled .cx-app #cxWorkspaceControlsMount .dm-controlbar > :is(.dm-theme, .dm-context, .dm-tasks, .dm-extensions) {
-  background: var(--dw-chat-raised);
-  border: 1px solid var(--dw-chat-line);
-  color: var(--dw-chat-text);
-}
-body.dm-task-first-enabled .cx-app #cxWorkspaceControlsMount :is(.dm-panel, .dm-panel-head) {
-  border-color: var(--dw-chat-line);
-  background: var(--dw-chat-surface);
-  color: var(--dw-chat-text);
-}
-body.dm-task-first-enabled .cx-app #cxWorkspaceControlsMount .dm-panel button {
-  border: 1px solid var(--dw-chat-line);
-  background: var(--dw-chat-raised);
-  color: var(--dw-chat-text);
-}
+
 body.dm-task-first-enabled .cx-app :is(.cx-modal-card, .cx-feedback-menu, .cx-tool-card, .cx-plus-menu, .cx-context-palette) {
   border-color: var(--dw-chat-line);
   background: var(--dw-chat-surface);
