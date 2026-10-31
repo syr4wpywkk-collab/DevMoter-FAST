@@ -3,6 +3,11 @@ import { planOperation, explainResult } from "./planner.mjs";
 import { safeText } from "./projection.mjs";
 import { TERMINAL } from "./run-store.mjs";
 
+function unavailableReason(result) {
+  const message = result?.data?.message;
+  return typeof message === "string" && message.trim() ? message : "Requested data was unavailable.";
+}
+
 export function createToolsAiService({ store, dispatch, prepareChat, authorize }) {
   const controllers = new Map();
   const publicRun = run => { const { ownerId: _owner, requestId: _request, ...rest } = run; return rest; };
@@ -27,6 +32,17 @@ export function createToolsAiService({ store, dispatch, prepareChat, authorize }
       signal.throwIfAborted();
       const result = await dispatch(proposal, run.context, { signal, secrets: prepared.secrets });
       const current = store.get(run.runId);
+      if (result?.unavailable) {
+        // The helper could not produce the requested data (e.g. repo map with no saved index):
+        // record the step and the run as failed, never as completed.
+        const failure = safeText(unavailableReason(result), prepared.secrets);
+        await store.update(run.runId, {
+          status: "failed",
+          failure,
+          steps: current.steps.map(s => ({ ...s, status: "failed", endedAt: Date.now(), result, failure }))
+        });
+        return;
+      }
       const steps = current.steps.map(s => ({ ...s, status: "completed", endedAt: Date.now(), result }));
       await store.update(run.runId, { steps });
       signal.throwIfAborted();

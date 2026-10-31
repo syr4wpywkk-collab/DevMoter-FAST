@@ -17,6 +17,7 @@ import {
   onOffOf,
   plainText,
   stripHash,
+  stripXmlTags,
 } from './parse-xml-text'
 import type {
   Block,
@@ -390,7 +391,7 @@ export function onlyOleFields(xml: string): boolean {
   const instrs = xml.match(/<w:instrText[^>]*>[\s\S]*?<\/w:instrText>/g) ?? []
   if (instrs.length === 0) return false
   return instrs.every((fragment) =>
-    /^\s*(EMBED|LINK)\b/.test(decodeEntities(fragment.replace(/<[^>]+>/g, ''))),
+    /^\s*(EMBED|LINK)\b/.test(decodeEntities(stripXmlTags(fragment))),
   )
 }
 
@@ -411,7 +412,7 @@ export function onlyXeFields(xml: string): boolean {
   if (!simpleOk) return false
   let checkboxInstrs = 0
   const ok = instrs.every((fragment) => {
-    const text = decodeEntities(fragment.replace(/<[^>]+>/g, ''))
+    const text = decodeEntities(stripXmlTags(fragment))
     if (/^\s*FORMCHECKBOX\s*$/.test(text)) {
       checkboxInstrs++
       return true

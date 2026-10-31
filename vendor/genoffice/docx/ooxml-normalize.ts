@@ -179,9 +179,34 @@ function mapUriValue(value: string): string {
 
 const XMLNS_DECL_RE = /xmlns(?::([A-Za-z_][\w.-]*))?\s*=\s*(["'])([^"']*)\2/g
 
+const STRICT_HOST = new URL(S).host
+const STRICT_PATH = new URL(S).pathname
+const ATTR_VALUE_RE = /=\s*(?:"([^"]*)"|'([^']*)')/g
+
+/**
+ * Whether any attribute value (namespace declaration, relationship Type, ...)
+ * is a strict-OOXML URI, decided by parsing the value as a URL rather than by
+ * substring search. DevMoter modification (CodeQL js/incomplete-url-substring-sanitization).
+ */
+function hasStrictOoxmlAttributeValue(xml: string): boolean {
+  ATTR_VALUE_RE.lastIndex = 0
+  let m: RegExpExecArray | null
+  while ((m = ATTR_VALUE_RE.exec(xml)) !== null) {
+    const value = m[1] ?? m[2] ?? ''
+    if (!value.startsWith('http:')) continue
+    try {
+      const url = new URL(value)
+      if (url.host === STRICT_HOST && url.pathname.startsWith(STRICT_PATH)) return true
+    } catch {
+      // not a URI
+    }
+  }
+  return false
+}
+
 /** Cheap pre-check; normalizeOoxmlXml is only worth calling when this is true. */
 export function needsOoxmlNormalization(xml: string): boolean {
-  if (xml.includes(S)) return true
+  if (hasStrictOoxmlAttributeValue(xml)) return true
   XMLNS_DECL_RE.lastIndex = 0
   let m: RegExpExecArray | null
   while ((m = XMLNS_DECL_RE.exec(xml)) !== null) {

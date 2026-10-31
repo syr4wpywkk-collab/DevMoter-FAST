@@ -1,9 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import { execFile, spawn } from "node:child_process";
-import { chmod, lstat, mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import { dirname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
+import { readHandle, withOpenFile } from "./safe-file.mjs";
 
 const execFileAsync = promisify(execFile);
 const MAX_FILE = 512 * 1024;
@@ -14,6 +15,21 @@ const MAX_WINDOW_LINES = 4000;
 
 function hash(text) {
   return createHash("sha256").update(text).digest("hex");
+}
+
+// One no-follow open: the type/size checks and the read use the same file.
+// ENOENT is passed through so callers can treat a missing file as absent.
+async function readOwnedTextFile(target, messages) {
+  try {
+    return await withOpenFile(target, { noFollow: true }, async (handle, info) => {
+      if (!info.isFile()) throw new Error(messages.notFile);
+      if (messages.tooLarge && info.size > MAX_FILE) throw new Error(messages.tooLarge);
+      return { mode: info.mode & 0o777, text: await readHandle(handle, Number.POSITIVE_INFINITY, "utf8") };
+    });
+  } catch (error) {
+    if (error?.code === "ELOOP") throw new Error(messages.symlink);
+    throw error;
+  }
 }
 
 function send(res, status, body) {
@@ -338,12 +354,11 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
         const p = await projectPath(project, item?.path, true);
         let original = "", originalExists = true, originalMode = null;
         try {
-          const info = await lstat(p.target);
-          if (info.isSymbolicLink()) throw new Error("Symlink paths are not allowed in reviewed changes");
-          if (!info.isFile()) throw new Error("Proposal target must be a regular file: " + p.path);
-          if (info.size > MAX_FILE) throw new Error("Existing file exceeds review limit: " + p.path);
-          originalMode = info.mode & 0o777;
-          original = await readFile(p.target, "utf8");
+          ({ mode: originalMode, text: original } = await readOwnedTextFile(p.target, {
+            symlink: "Symlink paths are not allowed in reviewed changes",
+            notFile: "Proposal target must be a regular file: " + p.path,
+            tooLarge: "Existing file exceeds review limit: " + p.path
+          }));
         } catch (error) {
           if (error?.code === "ENOENT") originalExists = false;
           else throw error;
@@ -432,9 +447,11 @@ export function createTaskWorkflow({ homeDir, getProjectById }) {
       let exists = true;
       let current = "";
       try {
-        const info = await lstat(resolved.target);
-        if (info.isSymbolicLink() || !info.isFile()) throw new Error("Applied path is no longer a regular file: " + path);
-        current = await readFile(resolved.target, "utf8");
+        ({ text: current } = await readOwnedTextFile(resolved.target, {
+          symlink: "Applied path is no longer a regular file: " + path,
+          notFile: "Applied path is no longer a regular file: " + path,
+          tooLarge: null
+        }));
       } catch (error) {
         if (error?.code === "ENOENT") exists = false;
         else throw error;

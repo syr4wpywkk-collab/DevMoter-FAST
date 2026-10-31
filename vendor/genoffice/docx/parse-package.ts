@@ -64,6 +64,37 @@ export function resolveRelationshipTargetPath(sourcePath: string, target: string
   return parts.join('/') || null
 }
 
+/**
+ * Remove the first `<!DOCTYPE ...>` declaration with one linear scan (quoted
+ * literals and an internal `[...]` subset may contain `>`). An unterminated
+ * declaration leaves the text unchanged. Replaces a backtracking regex.
+ * DevMoter modification (CodeQL js/redos).
+ */
+export function stripDoctype(xml: string): string {
+  const start = xml.search(/<!DOCTYPE/i)
+  if (start === -1) return xml
+  let index = start + '<!DOCTYPE'.length
+  while (index < xml.length) {
+    const ch = xml[index]
+    if (ch === '>') return xml.slice(0, start) + xml.slice(index + 1)
+    if (ch === '"' || ch === "'") {
+      const close = xml.indexOf(ch, index + 1)
+      if (close === -1) return xml
+      index = close + 1
+      continue
+    }
+    if (ch === '[') {
+      const close = xml.indexOf(']', index + 1)
+      if (close === -1) return xml
+      index = close + 1
+      continue
+    }
+    if (ch === ']') return xml
+    index += 1
+  }
+  return xml
+}
+
 export async function parseRels(zip: JSZip, path: string): Promise<Map<string, RelInfo>> {
   const rels = new Map<string, RelInfo>()
   const file = zip.file(path)
@@ -71,10 +102,7 @@ export async function parseRels(zip: JSZip, path: string): Promise<Map<string, R
   // fast-xml-parser rejects a DOCTYPE declaring external entities; drop the
   // prologue instead of failing the whole document (entities never resolve —
   // XXE-safe — and Relationship elements carry everything in attributes)
-  const relsXml = (await file.async('string')).replace(
-    /<!DOCTYPE(?:[^>"'\x5B\x5D]|\[[\s\S]*?\]|"[^"]*"|'[^']*')*>/i,
-    '',
-  )
+  const relsXml = stripDoctype(await file.async('string'))
   const parsed = xmlParser.parse(relsXml) as XNode[]
   const root = parsed.find((n) => nameOf(n) === 'Relationships')
   if (!root) return rels

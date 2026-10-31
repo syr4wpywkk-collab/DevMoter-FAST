@@ -14,6 +14,7 @@ import {
   testMultiApiProvider
 } from "../server/multi-api.mjs";
 import { createMultiApiAttachmentStore } from "../server/multi-api-attachments.mjs";
+import { readHandle, withOpenFile } from "../server/safe-file.mjs";
 
 test("provider presets include expanded verified compatibility targets without duplicate ids", () => {
   const ids = MULTI_API_PRESETS.map(provider => provider.id);
@@ -134,10 +135,14 @@ test("file-backed provider store uses private permissions and never exposes keys
     assert.equal(saved.ready, true);
     assert.equal(JSON.stringify(saved).includes("file-secret"), false);
 
-    const mode = (await stat(filePath)).mode & 0o777;
+    // Mode and contents come from one open of the saved file.
+    const { mode, text } = await withOpenFile(filePath, {}, async (handle, info) => ({
+      mode: info.mode & 0o777,
+      text: await readHandle(handle, Number.POSITIVE_INFINITY, "utf8")
+    }));
     assert.equal(mode, 0o600);
 
-    const disk = JSON.parse(await readFile(filePath, "utf8"));
+    const disk = JSON.parse(text);
     assert.equal(disk.providers[0].apiKey, "file-secret");
 
     const resolved = await store.listResolved();

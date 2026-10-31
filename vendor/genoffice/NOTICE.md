@@ -8,3 +8,6 @@ The original TypeScript sources are retained here. DevMoter's adapter exports
 only parsing, preservation-based saving and paragraph text patching.
 Modification: ZIP limits reduced to 2,000 parts / 16MB per part / 64MB total.
 Modification: XML/rels parts containing DTD/entity declarations are rejected.
+Modification: field-instruction text uses a linear tag scanner (stripXmlTags) instead of a single-pass regex replace.
+Modification: rels DOCTYPE removal uses a linear scanner (stripDoctype) instead of a backtracking regex.
+Modification: strict-OOXML / bibliography-namespace / relationship-type checks compare parsed values exactly instead of substring search.

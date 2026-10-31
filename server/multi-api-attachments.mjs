@@ -1,6 +1,7 @@
-import { chmod, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { readHandle, withOpenFile } from "./safe-file.mjs";
 
 const ALLOWED_IMAGE_TYPES = new Map([
   ["image/jpeg", ".jpg"],
@@ -90,18 +91,20 @@ export function createMultiApiAttachmentStore({
     if (record.extension !== expectedExtension) throw new Error("Invalid attachment extension");
 
     const imagePath = join(directory, `${id}${expectedExtension}`);
-    const info = await stat(imagePath);
-    if (!info.isFile() || info.size <= 0 || info.size > maxBytes) {
-      throw new Error("Invalid attachment file");
-    }
+    const { size, buffer } = await withOpenFile(imagePath, { noFollow: true }, async (handle, info) => {
+      if (!info.isFile() || info.size <= 0 || info.size > maxBytes) {
+        throw new Error("Invalid attachment file");
+      }
+      return { size: info.size, buffer: await readHandle(handle, maxBytes) };
+    });
 
     return {
       id,
       name: safeDisplayName(record.name),
       mime: record.mime,
-      size: info.size,
+      size,
       createdAt: Number(record.createdAt) || 0,
-      buffer: await readFile(imagePath)
+      buffer
     };
   }
 
