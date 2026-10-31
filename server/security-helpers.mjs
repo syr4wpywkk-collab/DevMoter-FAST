@@ -1,6 +1,11 @@
 import { basename, dirname, isAbsolute, join, relative, resolve, normalize } from "node:path";
 import { randomUUID } from "node:crypto";
 
+// ASCII control characters (C0 range and DEL). Shared by every path/target
+// check that must reject them after percent-decoding.
+// eslint-disable-next-line no-control-regex
+export const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
+
 export function isInsideHome(homeDir, path) {
   const rel = relative(resolve(homeDir), resolve(path));
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));

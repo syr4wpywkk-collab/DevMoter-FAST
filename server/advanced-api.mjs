@@ -11,6 +11,7 @@ import {
 import { createBrowserAutomation, browserAutomationPolicy } from "./browser-tool.mjs";
 import { errorMessage } from "./error-message.mjs";
 import { readHandle, withOpenFile } from "./safe-file.mjs";
+import { CONTROL_CHARS } from "./security-helpers.mjs";
 
 const ARTIFACT_DOWNLOAD_LIMIT = 64 * 1024 * 1024;
 
@@ -62,8 +63,6 @@ const LOOPBACK_ORIGINS = new Map([
 const PREVIEW_SAFE_PATH = /^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/;
 const PREVIEW_QUERY_CHAR = /[^A-Za-z0-9._~!$&'()*+,;=:@%/?-]/g;
 const PREVIEW_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
-// eslint-disable-next-line no-control-regex
-const PREVIEW_CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
 
 function fullyDecodePreviewPath(value) {
   let current = value;
@@ -100,7 +99,7 @@ export function resolveLivePreviewTarget(host, port, suffix, search = "") {
     decoded.includes("\\") ||
     decoded.split("/").includes("..") ||
     PREVIEW_SCHEME_SEGMENT.test(decoded) ||
-    PREVIEW_CONTROL_CHARS.test(decoded)
+    CONTROL_CHARS.test(decoded)
   ) {
     throw Object.assign(new Error("Invalid live preview path"), { statusCode: 400 });
   }

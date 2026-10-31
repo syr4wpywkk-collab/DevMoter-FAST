@@ -10,7 +10,7 @@ import { CodexBridge } from "./server/codex-bridge.mjs";
 import { inspectKnownClis, launchCode } from "./server/cli-launch.mjs";
 import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/opencode-provider-catalog.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
-import { assertSafeMarkdownRelativePath, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
+import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { staticSecurityHeaders } from "./server/security-headers.mjs";
 import { readHandle, withOpenFile } from "./server/safe-file.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
@@ -1777,8 +1777,6 @@ const OPENCODE_PROXY_PREFIX = "/api/opencode";
 const OPENCODE_SAFE_PATH = /^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/;
 const OPENCODE_SAFE_QUERY = /^(\?[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*)?$/;
 const OPENCODE_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
-// eslint-disable-next-line no-control-regex
-const OPENCODE_CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
 
 function fullyDecodeOpenCodePath(value) {
   let current = value;
@@ -1822,7 +1820,7 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
     decodedPath.includes("..") ||
     decodedPath.includes("\\") ||
     OPENCODE_SCHEME_SEGMENT.test(decodedPath) ||
-    OPENCODE_CONTROL_CHARS.test(decodedPath)
+    CONTROL_CHARS.test(decodedPath)
   ) {
     return { error: "OpenCode proxy path is not allowed" };
   }
