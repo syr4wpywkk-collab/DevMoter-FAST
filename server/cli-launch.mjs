@@ -27,6 +27,8 @@ export class CliLaunchError extends Error {
     super(result.message);
     this.name = "CliLaunchError";
     this.code = result.code;
+    // The local CLI is missing or broken: the service is unavailable, not a bad gateway.
+    this.status = 503;
     this.cli = publicCli(result);
   }
 }
@@ -187,4 +189,23 @@ export async function inspectKnownClis(options = {}) {
 
 export function launchCode(error) {
   return LAUNCH_CODES.has(error?.code) ? error.code : null;
+}
+
+const SPAWN_ERROR_CODES = Object.freeze({ ENOENT: "not_installed", EACCES: "not_executable", EPERM: "not_executable" });
+
+/**
+ * Turn a child_process spawn error (the CLI vanished or lost +x after the
+ * readiness check) into the same CliLaunchError the readiness check throws.
+ */
+export function cliLaunchErrorFromSpawn(commandOrId, error) {
+  if (error instanceof CliLaunchError) return error;
+  const code = SPAWN_ERROR_CODES[error?.code];
+  if (!code) return null;
+  const definition = cliDefinition(commandOrId);
+  const command = commandName(commandOrId, definition);
+  const install = definition?.install || `${command} の公式の手順でインストールしてください`;
+  const message = code === "not_installed"
+    ? `${command} が見つからないよ。入れ方: ${install}`
+    : `${command} はあるけど実行できないよ。入れ方: ${install}`;
+  return new CliLaunchError(failure(definition, command, code, message));
 }

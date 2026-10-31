@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import readline from "node:readline";
-import { assertCliReady, launchCode } from "./cli-launch.mjs";
+import { assertCliReady, cliLaunchErrorFromSpawn, launchCode } from "./cli-launch.mjs";
 
 const APPROVAL_METHODS = new Set([
   "item/commandExecution/requestApproval",
@@ -70,7 +70,8 @@ export class CodexBridge extends EventEmitter {
     this.readline = lines;
     lines.on("line", line => this.#handleLine(line));
 
-    child.once("error", error => {
+    child.once("error", spawnError => {
+      const error = cliLaunchErrorFromSpawn(this.bin, spawnError) || spawnError;
       this.launchCode = launchCode(error);
       this.lastError = error instanceof Error ? error.message : String(error);
       this.#rejectAll(error);
