@@ -1949,10 +1949,6 @@ textarea:focus-visible,
   gap: 4px;
 }
 
-.ocx-picker-section + .ocx-picker-section {
-  margin-top: 10px;
-}
-
 .ocx-picker-provider {
   display: flex;
   align-items: baseline;
@@ -1974,44 +1970,50 @@ textarea:focus-visible,
   cursor: not-allowed;
 }
 
+/* Model picker toolbar: one row — search, one filter select, a small refresh icon. */
 .ocx-model-toolbar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
   padding: 4px 4px 8px;
 }
 
-.ocx-model-toolbar input {
-  flex: 1 1 160px;
+.ocx-model-toolbar input,
+.ocx-model-filter {
   min-width: 0;
-  min-height: 36px;
+  height: 36px;
   padding: 0 10px;
   border: 1px solid var(--oc-line);
   border-radius: 8px;
   background: var(--oc-panel-2, #241f1a);
   color: var(--oc-text);
+  font-size: 16px;
 }
 
-.ocx-model-filter {
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--oc-line);
-  border-radius: 999px;
+.ocx-model-toolbar input { flex: 1 1 auto; }
+.ocx-model-filter { flex: 0 1 128px; max-width: 128px; }
+
+.ocx-model-refresh {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
   background: transparent;
-  color: var(--oc-text);
-  font-size: .72rem;
+  color: var(--oc-muted);
+  font-size: 16px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.ocx-model-filter[aria-pressed="true"] {
-  border-color: var(--oc-accent);
-  background: var(--oc-accent);
-  color: var(--canvas-base);
-}
+.ocx-model-refresh:active { transform: scale(0.97); }
 
 .ocx-modal.ocx-runtime-modal {
   background: transparent;
   place-items: start center;
-  padding: 56px 12px 12px;
+  padding: 56px 12px calc(12px + env(safe-area-inset-bottom));
 }
 .ocx-modal.ocx-runtime-modal .ocx-modal-card {
   width: min(100%, 420px);
@@ -2040,6 +2042,18 @@ textarea:focus-visible,
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Fixed 56px virtual rows: two single-line texts that truncate, never wrap into the next row. */
+.ocx-model-scroll .ocx-picker-row > span:first-child { min-width: 0; }
+.ocx-model-scroll .ocx-picker-row strong,
+.ocx-model-scroll .ocx-picker-row small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ocx-model-spacer {
@@ -2072,14 +2086,5 @@ textarea:focus-visible,
   color: var(--oc-muted);
   text-align: left;
   cursor: pointer;
-}
-
-.ocx-model-scroll .ocx-picker-pricing,
-.ocx-picker-pricing {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow-wrap: normal;
 }
 

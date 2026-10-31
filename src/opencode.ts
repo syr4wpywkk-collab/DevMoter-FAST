@@ -11,6 +11,7 @@ import { createLatestRequestGuard } from "./latest-request.mjs";
 import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
 import { normalizeOpenCodeSessionList } from "./opencode-session-list.mjs";
 import { openCodeSessionLabel } from "./opencode-session-title.mjs";
+import { shortModelName } from "./opencode-model-label.mjs";
 import { filterOpenCodePickerModels, flattenOpenCodePickerRows, normalizeOpenCodeProviderCatalog, openCodePickerWindow, type OpenCodePickerItem } from "./opencode-provider-catalog.mjs";
 import { recoverAfterEventOpen } from "./event-recovery.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
@@ -497,6 +498,19 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   let modelPickerAvailable = false;
   let modelPickerNeedsKey = false;
   let modelPickerDeprecatedOpen = false;
+  type ModelPickerFilter = "all" | "free" | "available" | "needsKey" | "deprecated";
+  const MODEL_FILTERS: ModelPickerFilter[] = ["all", "free", "available", "needsKey", "deprecated"];
+  const MODEL_FILTER_LABELS: Record<ModelPickerFilter, string> = {
+    all: "すべて", free: "無料", available: "使える", needsKey: "キーが必要", deprecated: "非推奨も表示"
+  };
+  const currentModelFilter = (): ModelPickerFilter =>
+    modelPickerFree ? "free" : modelPickerAvailable ? "available" : modelPickerNeedsKey ? "needsKey" : modelPickerDeprecatedOpen ? "deprecated" : "all";
+  function applyModelFilter(value: ModelPickerFilter) {
+    modelPickerFree = value === "free";
+    modelPickerAvailable = value === "available";
+    modelPickerNeedsKey = value === "needsKey";
+    modelPickerDeprecatedOpen = value === "deprecated";
+  }
   let modelPickerRows: OpenCodePickerItem[] = [];
   const modelPickerExpandedKeyProviders = new Set<string>();
   let modelPickerWindowKey = "";
@@ -3080,39 +3094,6 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     eventSource = null;
   }
 
-  async function showAgents() {
-    openModal("Agents", "Choose how OpenCode should work");
-    modalBody.replaceChildren();
-
-    const list = document.createElement("div");
-    list.className = "ocx-picker-list";
-
-    for (const agent of agents) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `ocx-picker-row ${selectedAgent === agent.id ? "selected" : ""}`;
-
-      const copy = document.createElement("span");
-      copy.innerHTML = "<strong></strong><small></small>";
-      copy.querySelector("strong")!.textContent = agent.id;
-      copy.querySelector("small")!.textContent =
-        "このエージェントで応答します";
-
-      const mark = document.createElement("span");
-      mark.textContent = selectedAgent === agent.id ? "✓" : "›";
-
-      button.append(copy, mark);
-      button.addEventListener("click", () => {
-        void switchAgent(agent.id)
-          .then(closeModal)
-          .catch(() => {});
-      });
-      list.appendChild(button);
-    }
-
-    modalBody.appendChild(list);
-  }
-
   function runtimeModelRows() {
     const view = providers.map(provider => ({
       id: provider.id,
@@ -3179,14 +3160,14 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     const copy = document.createElement("span");
     const title = document.createElement("strong");
     const detail = document.createElement("small");
-    title.textContent = model.name || model.id;
+    title.textContent = shortModelName(model.name, model.id);
+    // Provider (or why the model can't be picked) is the one muted line; the full id and
+    // pricing stay available on long-press / hover without crowding the row.
     detail.textContent = row.selectable
-      ? row.providerID + "/" + model.id
+      ? (providers.find(provider => provider.id === row.providerID)?.name || row.providerID)
       : row.reason;
-    const pricing = document.createElement("small");
-    pricing.className = "ocx-picker-pricing";
-    pricing.textContent = describeModelPricing(model.cost).detail;
-    copy.append(title, detail, pricing);
+    option.title = `${row.providerID}/${model.id} · ${describeModelPricing(model.cost).detail}`;
+    copy.append(title, detail);
     option.append(copy);
     if (row.selectable) {
       option.addEventListener("click", () => {
@@ -3238,26 +3219,20 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   function paintRuntimePicker(resetScroll = false) {
     const result = runtimeModelRows();
     modelPickerRows = flatModelRows(result);
-    const heading = modalBody.querySelector("#ocxModelHeading");
-    if (heading) {
-      const count = document.createElement("span");
-      count.dataset.i18nSkip = "true";
-      count.textContent = String(result.counts.shown);
-      heading.replaceChildren(document.createTextNode("Provider · Model · "), count);
-    }
-    const filterLabels = { free: "無料", available: "使える", needsKey: "キーが必要" } as const;
-    for (const button of modalBody.querySelectorAll<HTMLButtonElement>("[data-model-filter]")) {
-      const filter = button.dataset.modelFilter;
-      if (filter === "deprecated") {
-        button.setAttribute("aria-pressed", String(modelPickerDeprecatedOpen));
-        button.textContent = (modelPickerDeprecatedOpen ? "非推奨を表示中 " : "非推奨を下に追加 ") + result.deprecated.length;
-        continue;
+    const filterSelect = modalBody.querySelector<HTMLSelectElement>("#ocxModelFilter");
+    if (filterSelect) {
+      const counts: Record<ModelPickerFilter, number> = {
+        all: result.counts.shown,
+        free: result.counts.free,
+        available: result.counts.available,
+        needsKey: result.counts.needsKey,
+        deprecated: result.deprecated.length
+      };
+      for (const option of filterSelect.options) {
+        const filter = option.value as ModelPickerFilter;
+        option.textContent = `${MODEL_FILTER_LABELS[filter]} ${counts[filter]}`;
       }
-      const pressed = filter === "free" ? modelPickerFree : filter === "available" ? modelPickerAvailable : modelPickerNeedsKey;
-      const count = filter === "free" ? result.counts.free : filter === "available" ? result.counts.available : result.counts.needsKey;
-      const label = filter === "free" || filter === "available" || filter === "needsKey" ? filterLabels[filter] : filter;
-      button.setAttribute("aria-pressed", String(pressed));
-      button.textContent = `${label} ${count}`;
+      filterSelect.value = currentModelFilter();
     }
     modelPickerWindowKey = "";
     syncModelWindow(resetScroll);
@@ -3274,42 +3249,29 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     search.value = modelPickerQuery;
     search.setAttribute("aria-label", "Search models");
     toolbar.appendChild(search);
-    for (const [filter, label] of [["free", "Free"], ["available", "Available"], ["needsKey", "Needs key"]] as const) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "ocx-model-filter";
-      button.dataset.modelFilter = filter;
-      button.textContent = label;
-      button.setAttribute("aria-pressed", "false");
-      button.addEventListener("click", () => {
-        if (filter === "free") modelPickerFree = !modelPickerFree;
-        if (filter === "available") {
-          modelPickerAvailable = !modelPickerAvailable;
-          if (modelPickerAvailable) modelPickerNeedsKey = false;
-        }
-        if (filter === "needsKey") {
-          modelPickerNeedsKey = !modelPickerNeedsKey;
-          if (modelPickerNeedsKey) modelPickerAvailable = false;
-        }
-        paintRuntimePicker(true);
-      });
-      toolbar.appendChild(button);
+    // One compact filter control replaces the four toggle chips (free / ready / needs key / deprecated).
+    const filter = document.createElement("select");
+    filter.id = "ocxModelFilter";
+    filter.className = "ocx-model-filter";
+    filter.setAttribute("aria-label", "Filter models");
+    for (const value of MODEL_FILTERS) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = MODEL_FILTER_LABELS[value];
+      filter.appendChild(option);
     }
-    const deprecated = document.createElement("button");
-    deprecated.type = "button";
-    deprecated.className = "ocx-model-filter";
-    deprecated.dataset.modelFilter = "deprecated";
-    deprecated.textContent = "Deprecated";
-    deprecated.setAttribute("aria-pressed", String(modelPickerDeprecatedOpen));
-    deprecated.addEventListener("click", () => {
-      modelPickerDeprecatedOpen = !modelPickerDeprecatedOpen;
+    filter.value = currentModelFilter();
+    filter.addEventListener("change", () => {
+      applyModelFilter(filter.value as ModelPickerFilter);
       paintRuntimePicker(true);
     });
-    toolbar.appendChild(deprecated);
+    toolbar.appendChild(filter);
     const refresh = document.createElement("button");
     refresh.type = "button";
-    refresh.className = "ocx-model-filter";
-    refresh.textContent = "更新";
+    refresh.className = "ocx-model-refresh";
+    refresh.textContent = "↻";
+    refresh.title = "Refresh";
+    refresh.setAttribute("aria-label", "Refresh models");
     refresh.addEventListener("click", () => {
       void loadProviders(true).catch(error => showToast(error instanceof Error ? error.message : String(error)));
     });
@@ -3320,41 +3282,8 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     });
     modalBody.appendChild(toolbar);
 
-    const agentSection = document.createElement("section");
-    agentSection.className = "ocx-picker-section";
-    const agentHeading = document.createElement("div");
-    agentHeading.className = "ocx-picker-heading";
-    agentHeading.textContent = "エージェント";
-    agentSection.appendChild(agentHeading);
-    for (const agent of agents) {
-      const option = document.createElement("button");
-      option.type = "button";
-      option.className = "ocx-picker-row " + (selectedAgent === agent.id ? "selected" : "");
-      const copy = document.createElement("span");
-      const title = document.createElement("strong");
-      const detail = document.createElement("small");
-      title.textContent = agent.id;
-      detail.textContent = "このエージェントで応答します";
-      copy.append(title, detail);
-      const mark = document.createElement("span");
-      mark.textContent = selectedAgent === agent.id ? "✓" : "›";
-      option.append(copy, mark);
-      option.addEventListener("click", () => {
-        void switchAgent(agent.id).then(() => {
-          mountRuntimePicker();
-          paintRuntimePicker(false);
-        }).catch(() => {});
-      });
-      agentSection.appendChild(option);
-    }
-    modalBody.appendChild(agentSection);
-
     const modelSection = document.createElement("section");
     modelSection.className = "ocx-picker-section ocx-model-section";
-    const modelHeading = document.createElement("div");
-    modelHeading.id = "ocxModelHeading";
-    modelHeading.className = "ocx-picker-heading";
-    modelHeading.textContent = "Provider · Model";
     const scroller = document.createElement("div");
     scroller.id = "ocxModelScroll";
     scroller.className = "ocx-model-scroll";
@@ -3373,15 +3302,8 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         syncModelWindow(false);
       });
     }, { passive: true });
-    modelSection.append(modelHeading, scroller);
+    modelSection.append(scroller);
     modalBody.appendChild(modelSection);
-
-    const scope = document.createElement("p");
-    scope.className = "ocx-modal-empty";
-    scope.textContent = activeSession
-      ? "Changes apply to the active session and persist as next-session defaults."
-      : "Selection is saved as the default for the next session.";
-    modalBody.appendChild(scope);
   }
 
   function showRuntimePicker() {
@@ -3394,7 +3316,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       }
       closeComposerMenus();
       modal.classList.add("ocx-runtime-modal");
-      modalTitle.textContent = "Provider · Model · Agent";
+      modalTitle.textContent = "Provider · Model";
       modalSubtitle.textContent = "";
       modal.classList.remove("hidden");
       syncOverlayState();

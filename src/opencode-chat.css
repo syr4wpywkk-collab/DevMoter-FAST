@@ -262,8 +262,10 @@ body.opencode-mode .sc-panel:not(.open) { box-shadow: none; }
 .ocx-app .ocx-modal-head p { font-size: .75rem; }
 .ocx-app .ocx-picker-heading { color: var(--oc-muted); font-size: .7rem; }
 .ocx-app .ocx-picker-row { min-height: 56px; border-radius: 10px; }
-.ocx-app .ocx-picker-row.selected,
-.ocx-app .ocx-picker-row:hover { border-color: var(--oc-line); background: var(--oc-accent-soft); }
+.ocx-app .ocx-picker-row.selected { border-color: var(--oc-line); background: var(--oc-panel-2); }
+@media (hover: hover) and (pointer: fine) {
+  .ocx-app .ocx-picker-row:not(.selected):not(:disabled):hover { background: var(--oc-panel-2); }
+}
 .ocx-app .ocx-picker-row strong,
 .ocx-app .ocx-skill-row strong { color: var(--oc-text); font-size: .85rem; }
 .ocx-app .ocx-picker-row small,
@@ -304,4 +306,3 @@ body.opencode-mode .sc-panel:not(.open) { box-shadow: none; }
 
 html[data-devmoter-theme="dark"] .ocx-app .cx-markdown a,
 html[data-devmoter-theme="dark"] .ocx-app .ocx-eyebrow { color: var(--oc-text); }
-.ocx-app .ocx-picker-pricing { display: block; font-size: .75rem; color: var(--oc-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

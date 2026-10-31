@@ -110,24 +110,12 @@ const dictionary: Record<string, TranslationSet> = {
   "Extensions": { en: "Extensions", ja: "拡張", "zh-CN": "扩展" },
   "offline": { en: "offline", ja: "オフライン", "zh-CN": "离线" },
   "No models match": { en: "No models match", ja: "一致するモデルはありません", "zh-CN": "没有匹配的模型" },
-  "このエージェントで応答します": { en: "Replies with this agent", ja: "このエージェントで応答します", "zh-CN": "使用此智能体回复" },
   "Provider · Model · Agent": { en: "Provider · Model · Agent", ja: "モデルとエージェント", "zh-CN": "模型与智能体" },
   "Provider · Model": { en: "Provider · Model", ja: "モデル", "zh-CN": "模型" },
-  "Provider · Model · ": { en: "Provider · Model · ", ja: "モデル ", "zh-CN": "模型 " },
-  "Selection is saved as the default for the next session.": {
-    en: "Selection is saved as the default for the next session.",
-    ja: "この選択は次のセッションの初期値になります。",
-    "zh-CN": "此选择会保存为下次会话的默认值。"
-  },
-  "Changes apply to the active session and persist as next-session defaults.": {
-    en: "Changes apply to the active session and persist as next-session defaults.",
-    ja: "このセッションに適用し、次の初期値にも保存します。",
-    "zh-CN": "将应用于当前会话，并保存为下次的默认值。"
-  },
+  "Filter models": { en: "Filter models", ja: "モデルを絞り込む", "zh-CN": "筛选模型" },
+  "Refresh models": { en: "Refresh models", ja: "モデルを更新", "zh-CN": "刷新模型" },
   "available": { en: "available", ja: "使える", "zh-CN": "可用" },
   "provider unavailable": { en: "provider unavailable", ja: "プロバイダを利用できません", "zh-CN": "Provider 不可用" },
-  "非推奨を下に追加": { en: "Show deprecated below", ja: "非推奨を下に追加", "zh-CN": "在下方显示已弃用" },
-  "非推奨を表示中": { en: "Showing deprecated", ja: "非推奨を表示中", "zh-CN": "正在显示已弃用" },
   "非推奨": { en: "Deprecated", ja: "非推奨", "zh-CN": "已弃用" },
   "Plan, ask, and build in your workspace.": {
     en: "Plan, ask, and build in your workspace.",
@@ -237,7 +225,6 @@ const dictionary: Record<string, TranslationSet> = {
   "No sessions yet": { en: "No sessions yet", ja: "まだセッションがありません", "zh-CN": "还没有会话" },
   "OpenCode command": { en: "OpenCode command", ja: "OpenCodeコマンド", "zh-CN": "OpenCode 命令" },
   "OpenCode needs input": { en: "OpenCode needs input", ja: "OpenCodeが入力を求めています", "zh-CN": "OpenCode 需要输入" },
-  "Choose how OpenCode should work": { en: "Choose how OpenCode should work", ja: "OpenCodeの動作方法を選択", "zh-CN": "选择 OpenCode 的工作方式" },
   "Choose the model for subsequent work": { en: "Choose the model for subsequent work", ja: "以降の作業で使うモデルを選択", "zh-CN": "选择后续工作使用的模型" },
   "OpenCode skill": { en: "OpenCode skill", ja: "OpenCodeスキル", "zh-CN": "OpenCode 技能" },
   "loading": { en: "loading", ja: "読み込み中", "zh-CN": "加载中" },
