@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import readline from "node:readline";
 import { assertCliReady, cliDefinition } from "./cli-launch.mjs";
+import { errorMessage } from "./error-message.mjs";
 
 export class AcpAdapter extends EventEmitter {
   constructor({ command, args = [], cwd = process.cwd(), spawnImpl = spawn } = {}) {
@@ -222,7 +223,7 @@ export class AcpAdapter extends EventEmitter {
     for (const pending of this.pending.values()) pending.reject(error);
     this.pending.clear();
     this.initialized = null;
-    this.emit("offline", { error: error instanceof Error ? error.message : String(error) });
+    this.emit("offline", { error: errorMessage(error) });
   }
 }
 

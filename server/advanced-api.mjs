@@ -9,6 +9,7 @@ import {
   backendAttachmentCapabilities, fetchUrlAttachment, negotiateAttachments, previewUrlInput
 } from "./attachments.mjs";
 import { createBrowserAutomation, browserAutomationPolicy } from "./browser-tool.mjs";
+import { errorMessage } from "./error-message.mjs";
 import { readHandle, withOpenFile } from "./safe-file.mjs";
 
 const ARTIFACT_DOWNLOAD_LIMIT = 64 * 1024 * 1024;
@@ -500,7 +501,7 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
         (String(error?.message || "").toLowerCase().includes("not found") ? 404 : 400)
       );
       sendJson(res, status >= 400 && status < 600 ? status : 500, {
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage(error),
         attempts: error?.attempts
       });
       return true;

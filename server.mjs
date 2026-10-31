@@ -54,6 +54,7 @@ import { createRunStore } from "./server/tools-ai/run-store.mjs";
 import { createToolsAiService } from "./server/tools-ai/service.mjs";
 import { boundedProviderFetch, PLANNER_CANCELLATION } from "./server/tools-ai/planner.mjs";
 import { safeText } from "./server/tools-ai/projection.mjs";
+import { errorMessage } from "./server/error-message.mjs";
 
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
@@ -125,13 +126,13 @@ const agentRunService = createAgentRunService({
   codex
 });
 void agentRunService.ready().catch(error => {
-  console.error("Agent run service initialization failed", redactText(error instanceof Error ? error.message : String(error)));
+  console.error("Agent run service initialization failed", redactTexterrorMessage(error));
 });
 const multiApiStore = createMultiApiStore({ filePath: MULTI_API_FILE, env: process.env });
 const secretStore = createSecretStore({ filePath: SECRET_VAULT_FILE });
 const multiApiAttachments = createMultiApiAttachmentStore({ directory: MULTI_API_IMAGE_DIR });
 void multiApiAttachments.cleanup().catch(error => {
-  console.warn("multi-api attachment cleanup failed", redactText(error instanceof Error ? error.message : String(error)));
+  console.warn("multi-api attachment cleanup failed", redactTexterrorMessage(error));
 });
 const passkeys = new PasskeyAuth({
   configDir: PROJECT_CONFIG_DIR, publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
@@ -150,7 +151,7 @@ const controlPlane = new ControlPlane({
       status: run?.status ?? null,
       endedAt: run?.endedAt ?? null
     }).catch(error => {
-      console.error("Control-plane lifecycle dispatch failed", redactText(error instanceof Error ? error.message : String(error)));
+      console.error("Control-plane lifecycle dispatch failed", redactTexterrorMessage(error));
     });
   }
 });
@@ -349,7 +350,7 @@ codex.on("notification", event => {
       backend: "codex",
       payload: { method, params: event?.params ?? null }
     }).catch(error => {
-      console.error("Workspace event append failed", redactText(error instanceof Error ? error.message : String(error)));
+      console.error("Workspace event append failed", redactTexterrorMessage(error));
     });
   }
 
@@ -369,7 +370,7 @@ codex.on("notification", event => {
       method,
       itemId: event?.params?.item?.id ?? event?.params?.itemId ?? null
     }).catch(error => {
-      console.error("after-tool hook failed", redactText(error instanceof Error ? error.message : String(error)));
+      console.error("after-tool hook failed", redactTexterrorMessage(error));
     });
   }
 });
@@ -390,7 +391,7 @@ codex.on("server-request", request => {
     backend: "codex",
     payload: { id: request?.id ?? null, method, params: request?.params ?? null }
   }).catch(error => {
-    console.error("Workspace request event append failed", redactText(error instanceof Error ? error.message : String(error)));
+    console.error("Workspace request event append failed", redactTexterrorMessage(error));
   });
 
   if (method === "item/commandExecution/requestApproval" || method === "item/fileChange/requestApproval") {
@@ -449,7 +450,7 @@ async function featureJson(res, task, successStatus = 200) {
     json(res, successStatus, await task());
   } catch (error) {
     json(res, Number(error?.status || 400), {
-      error: error instanceof Error ? error.message : String(error)
+      error: errorMessage(error)
     });
   }
 }
@@ -691,7 +692,7 @@ async function projectsList(res) {
 
     json(res, 200, { projects: sanitized });
   } catch (error) {
-    json(res, 500, { error: error instanceof Error ? error.message : String(error) });
+    json(res, 500, { error: errorMessage(error) });
   }
 }
 
@@ -727,7 +728,7 @@ async function projectsCreateOrAdd(req, res) {
     await writeProjectRegistry(projects);
     json(res, 201, { project, existed: false });
   } catch (error) {
-    json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+    json(res, 400, { error: errorMessage(error) });
   }
 }
 
@@ -742,7 +743,7 @@ async function projectRemove(id, res) {
     await writeProjectRegistry(next);
     json(res, 200, { ok: true });
   } catch (error) {
-    json(res, 500, { error: error instanceof Error ? error.message : String(error) });
+    json(res, 500, { error: errorMessage(error) });
   }
 }
 
@@ -752,7 +753,7 @@ async function projectDocs(id, res) {
     const files = await scanMarkdownFiles(project);
     json(res, 200, { project, files });
   } catch (error) {
-    json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+    json(res, 400, { error: errorMessage(error) });
   }
 }
 
@@ -785,7 +786,7 @@ async function projectReadFile(id, path, res) {
   try {
     json(res, 200, await readProjectMarkdown(await getProjectById(id), path));
   } catch (error) {
-    json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+    json(res, 400, { error: errorMessage(error) });
   }
 }
 
@@ -809,7 +810,7 @@ async function projectWriteFile(id, req, res) {
       updatedAt: info.mtimeMs
     });
   } catch (error) {
-    json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+    json(res, 400, { error: errorMessage(error) });
   }
 }
 
@@ -819,7 +820,7 @@ async function projectGitStatus(id, res) {
     const project = await getProjectById(id);
     json(res, 200, await getGitStatus(project.path));
   } catch (error) {
-    json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+    json(res, 400, { error: errorMessage(error) });
   }
 }
 
@@ -830,7 +831,7 @@ async function projectGitFiles(id, url, res) {
     const offset = Number(url.searchParams.get("offset") || 0);
     json(res, 200, await listChangedFiles(project.path, { limit, offset }));
   } catch (error) {
-    json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+    json(res, 400, { error: errorMessage(error) });
   }
 }
 
@@ -842,7 +843,7 @@ async function projectGitDiff(id, url, res) {
     if (!path) throw new Error("Git diff path is required");
     json(res, 200, await getFileDiff(project.path, path, { scope }));
   } catch (error) {
-    json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+    json(res, 400, { error: errorMessage(error) });
   }
 }
 
@@ -1147,7 +1148,7 @@ async function opencodeHealth() {
     return {
       online: false,
       status: error?.status ?? null,
-      error: error instanceof Error ? error.message : String(error)
+      error: errorMessage(error)
     };
   }
 }
@@ -1201,7 +1202,7 @@ async function opencodeProviders(url, res) {
   } catch (error) {
     json(res, 502, {
       error: "OpenCode provider discovery failed",
-      detail: error instanceof Error ? error.message : String(error),
+      detail: errorMessage(error),
       directory: OPENCODE_DIRECTORY
     });
   }
@@ -1292,7 +1293,7 @@ async function executeControlTask(definition, context = {}) {
     return await executeControlTaskCore(definition, context);
   } finally {
     void userAutomation?.emitHook("after-run", hookPayload).catch(error => {
-      console.error("after-run hook failed", redactText(error instanceof Error ? error.message : String(error)));
+      console.error("after-run hook failed", redactTexterrorMessage(error));
     });
   }
 }
@@ -1570,7 +1571,7 @@ async function passkeyRoute(req, res, url) {
     }
     json(res, 404, { error: "Unknown passkey endpoint" });
   } catch (error) {
-    json(res, error?.status === 429 ? 429 : 400, { error: error instanceof Error ? error.message : String(error) });
+    json(res, error?.status === 429 ? 429 : 400, { error: errorMessage(error) });
   }
   return true;
 }
@@ -1681,7 +1682,7 @@ async function controlRoute(req, res, url) {
 
     json(res, 404, { error: "Unknown control endpoint" });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     json(res, message === "Request body too large" ? 413 : 400, { error: message });
   }
   return true;
@@ -1705,7 +1706,7 @@ async function githubWebhookRoute(req, res) {
     );
     json(res, 202, { accepted: runIds.length });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     const status = Number(error?.status || (message === "Request body too large" ? 413 : 400));
     json(res, status, { error: "Webhook rejected" });
   }
@@ -1976,7 +1977,7 @@ async function codexRpc(req, res) {
         assertExternalBackendExecutionAllowed("codex");
       } catch (error) {
         json(res, Number(error?.statusCode || 409), {
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMessage(error),
           code: error?.code || "DEVMOTER_SANDBOX_REQUIRED"
         });
         return;
@@ -2026,7 +2027,7 @@ async function codexRpc(req, res) {
     );
     json(res, 200, { result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     const status = Number(error?.status || (message === "Request body too large" ? 413 : 502));
     const code = launchCode(error);
     json(res, status, {
@@ -2065,7 +2066,7 @@ async function codexUpload(req, res) {
     });
   } catch (error) {
     json(res, 400, {
-      error: error instanceof Error ? error.message : String(error)
+      error: errorMessage(error)
     });
   }
 }
@@ -2083,7 +2084,7 @@ async function codexApproval(req, res) {
     json(res, 200, { ok: true });
   } catch (error) {
     json(res, Number(error?.statusCode || 400), {
-      error: error instanceof Error ? error.message : String(error)
+      error: errorMessage(error)
     });
   }
 }
@@ -2134,7 +2135,7 @@ async function codexEvents(req, res) {
 
 
 function multiApiErrorStatus(error) {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = errorMessage(error);
   const upstreamStatus = Number(error?.status);
   return error?.name === "TimeoutError" ? 504 :
     Number.isInteger(upstreamStatus) && upstreamStatus >= 400 && upstreamStatus < 600
@@ -2202,7 +2203,7 @@ async function multiApiProviderSave(req, res) {
     const provider = await multiApiStore.upsert(payload);
     json(res, 200, { provider });
   } catch (error) {
-    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+    json(res, multiApiErrorStatus(error), { error: errorMessage(error) });
   }
 }
 
@@ -2214,7 +2215,7 @@ async function multiApiProviderDelete(req, providerId, res) {
     }
     json(res, 200, await multiApiStore.remove(providerId));
   } catch (error) {
-    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+    json(res, multiApiErrorStatus(error), { error: errorMessage(error) });
   }
 }
 
@@ -2279,7 +2280,7 @@ async function migrateMultiApiProviderToVault(req, providerId, res) {
     json(res, 200, { provider: migrated, migrated: true });
   } catch (error) {
     if (createdReference) await secretStore.remove(createdReference).catch(() => {});
-    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+    json(res, multiApiErrorStatus(error), { error: errorMessage(error) });
   } finally {
     if (migrationClaimed) multiApiVaultMigrations.delete(providerId);
   }
@@ -2301,7 +2302,7 @@ async function multiApiProviderTest(req, res) {
     }
     json(res, 200, await testMultiApiProvider(payload));
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     json(res, multiApiErrorStatus(error), { error: redactSecretsInText(message, [vaultSecretValue]) });
   }
 }
@@ -2317,7 +2318,7 @@ async function multiApiAttachmentUpload(req, res) {
     const attachment = await multiApiAttachments.save({ name, mime, buffer });
     json(res, 200, { attachment });
   } catch (error) {
-    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+    json(res, multiApiErrorStatus(error), { error: errorMessage(error) });
   }
 }
 
@@ -2325,7 +2326,7 @@ async function multiApiAttachmentDelete(attachmentId, res) {
   try {
     json(res, 200, await multiApiAttachments.remove(attachmentId));
   } catch (error) {
-    json(res, multiApiErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+    json(res, multiApiErrorStatus(error), { error: errorMessage(error) });
   }
 }
 
@@ -2356,7 +2357,7 @@ async function multiApiChat(req, res) {
       ? { ...result, message: { ...result.message, content: redactSecretsInText(result.message.content, [vaultSecretValue]) } }
       : result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     json(res, multiApiErrorStatus(error), { error: redactSecretsInText(message, [vaultSecretValue]) });
   }
 }
@@ -2367,7 +2368,7 @@ async function devWorkflowAction(req, res, handler) {
     json(res, 200, await handler(payload));
   } catch (error) {
     json(res, 400, {
-      error: error instanceof Error ? error.message : String(error)
+      error: errorMessage(error)
     });
   }
 }
@@ -2772,7 +2773,7 @@ const server = http.createServer(async (req, res) => {
       try {
         json(res, 200, await devWorkflows.sessionContext(url.searchParams.get("projectId")));
       } catch (error) {
-        json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+        json(res, 400, { error: errorMessage(error) });
       }
       return;
     }
@@ -2781,7 +2782,7 @@ const server = http.createServer(async (req, res) => {
       try {
         json(res, 200, await devWorkflows.capabilities(url.searchParams.get("projectId")));
       } catch (error) {
-        json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+        json(res, 400, { error: errorMessage(error) });
       }
       return;
     }
@@ -2819,7 +2820,7 @@ const server = http.createServer(async (req, res) => {
           configured: result?.configured !== false,
           timedOut: result?.timedOut === true
         }).catch(error => {
-          console.error("verification-complete hook failed", redactText(error instanceof Error ? error.message : String(error)));
+          console.error("verification-complete hook failed", redactTexterrorMessage(error));
         });
         return result;
       });
@@ -2978,7 +2979,7 @@ const server = http.createServer(async (req, res) => {
         const { tokenHash: _tokenHash, ...publicDevice } = device;
         jsonWithCookie(res, 201, { device: publicDevice }, deviceSessionCookie(req, token));
       } catch (error) {
-        json(res, Number(error?.status || 400), { error: error instanceof Error ? error.message : String(error) });
+        json(res, Number(error?.status || 400), { error: errorMessage(error) });
       }
       return;
     }
@@ -2999,7 +3000,7 @@ const server = http.createServer(async (req, res) => {
           json(res, 200, result);
         }
       } catch (error) {
-        json(res, Number(error?.status || 400), { error: error instanceof Error ? error.message : String(error) });
+        json(res, Number(error?.status || 400), { error: errorMessage(error) });
       }
       return;
     }
@@ -3024,7 +3025,7 @@ const server = http.createServer(async (req, res) => {
           deviceSessionCookie(req, token)
         );
       } catch (error) {
-        json(res, Number(error?.status || 400), { error: error instanceof Error ? error.message : String(error) });
+        json(res, Number(error?.status || 400), { error: errorMessage(error) });
       }
       return;
     }
@@ -3110,7 +3111,7 @@ const server = http.createServer(async (req, res) => {
         const payload = await readJson(req);
         json(res, 201, { rule: await safety.permissions.grant(payload) });
       } catch (error) {
-        json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+        json(res, 400, { error: errorMessage(error) });
       }
       return;
     }
@@ -3243,7 +3244,7 @@ const server = http.createServer(async (req, res) => {
           const payload = await readJson(req);
           json(res, 200, await projectIndex.rebuild(projectId, { exclude: payload?.exclude }));
         } catch (error) {
-          json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+          json(res, 400, { error: errorMessage(error) });
         }
         return;
       }
@@ -3255,7 +3256,7 @@ const server = http.createServer(async (req, res) => {
         try {
           json(res, 200, await projectIndex.search(projectId, url.searchParams.get("q") || "", Number(url.searchParams.get("limit") || 30)));
         } catch (error) {
-          json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+          json(res, 400, { error: errorMessage(error) });
         }
         return;
       }
@@ -3271,7 +3272,7 @@ const server = http.createServer(async (req, res) => {
       try {
         json(res, 200, await projectIndex.repoMap(decodeURIComponent(projectMapMatch[1])));
       } catch (error) {
-        json(res, 400, { error: error instanceof Error ? error.message : String(error) });
+        json(res, 400, { error: errorMessage(error) });
       }
       return;
     }
@@ -3439,6 +3440,6 @@ server.listen(PORT, HOST, () => {
     host: HOST,
     port: PORT
   }).catch(error => {
-    console.error("Control-plane startup event failed", redactText(error instanceof Error ? error.message : String(error)));
+    console.error("Control-plane startup event failed", redactTexterrorMessage(error));
   });
 });

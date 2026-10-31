@@ -1,7 +1,21 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 
-function digest(value) {
-  return createHash("sha256").update(String(value), "utf8").digest();
+// Credentials are compared, never stored, so no hashing is involved: both
+// sides are copied into fixed-size buffers and compared in constant time.
+// Anything longer than the cap never matches.
+export const MAX_CREDENTIAL_BYTES = 1024;
+
+function constantTimeEqual(actual, expected) {
+  const left = Buffer.from(String(actual ?? ""), "utf8");
+  const right = Buffer.from(String(expected ?? ""), "utf8");
+  const a = Buffer.alloc(MAX_CREDENTIAL_BYTES);
+  const b = Buffer.alloc(MAX_CREDENTIAL_BYTES);
+  left.copy(a, 0, 0, MAX_CREDENTIAL_BYTES);
+  right.copy(b, 0, 0, MAX_CREDENTIAL_BYTES);
+  const sameBytes = timingSafeEqual(a, b);
+  const sameLength = left.length === right.length;
+  const withinCap = left.length <= MAX_CREDENTIAL_BYTES && right.length <= MAX_CREDENTIAL_BYTES;
+  return sameBytes && sameLength && withinCap;
 }
 
 function firstHeaderValue(value) {
@@ -13,6 +27,9 @@ export function assertAuthPassword(value) {
   const password = String(value || "");
   if (password.length < 16) {
     throw new Error("DEVMOTER_AUTH_PASSWORD must be set to at least 16 characters");
+  }
+  if (Buffer.byteLength(password, "utf8") > MAX_CREDENTIAL_BYTES) {
+    throw new Error(`DEVMOTER_AUTH_PASSWORD must be at most ${MAX_CREDENTIAL_BYTES} bytes`);
   }
   return password;
 }
@@ -40,14 +57,8 @@ export function parseBasicAuthorization(value) {
 
 export function credentialsMatch(credentials, expected) {
   if (!credentials) return false;
-  const userMatches = timingSafeEqual(
-    digest(credentials.username),
-    digest(expected.username)
-  );
-  const passwordMatches = timingSafeEqual(
-    digest(credentials.password),
-    digest(expected.password)
-  );
+  const userMatches = constantTimeEqual(credentials.username, expected.username);
+  const passwordMatches = constantTimeEqual(credentials.password, expected.password);
   return userMatches && passwordMatches;
 }
 

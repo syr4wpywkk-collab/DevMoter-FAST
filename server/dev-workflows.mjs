@@ -4,6 +4,7 @@ import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { createHash, randomUUID } from "node:crypto";
 import { AcpAdapter, createAgentAdapterRegistry } from "./acp-adapter.mjs";
+import { errorMessage } from "./error-message.mjs";
 
 const execFileAsync = promisify(execFile);
 const TERMINAL = new Set(["completed", "failed", "cancelled", "canceled", "interrupted", "aborted"]);
@@ -975,7 +976,7 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
         state: "unavailable",
         checks: [],
         logs: [],
-        error: error instanceof Error ? error.message : String(error)
+        error: errorMessage(error)
       };
     }
   }
@@ -1074,7 +1075,7 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
         return {
           ok: false,
           state: "error",
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMessage(error),
           server: maskSecrets(server)
         };
       }
@@ -1092,7 +1093,7 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
       return {
         ok: false,
         state: "missing",
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage(error),
         server: maskSecrets(server)
       };
     }
@@ -1123,7 +1124,7 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
         ok: false,
         state: "error",
         protocol: "ACP v1",
-        error: error instanceof Error ? error.message : String(error)
+        error: errorMessage(error)
       };
     } finally {
       adapter.close();

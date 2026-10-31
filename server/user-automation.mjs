@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
 import { buildBubblewrapCommand, sandboxStatus } from "./advanced-features.mjs";
 import { sanitizeChildEnv } from "./integrations.mjs";
+import { errorMessage } from "./error-message.mjs";
 
 const execFileAsync = promisify(execFile);
 export const HOOK_SCHEMA_VERSION = 1;
@@ -281,7 +282,7 @@ export function createUserAutomationService({ configDir, resolveProject, execute
           stderr: String(result.stderr || "").slice(0, 4000)
         };
       } catch (error) {
-        return { id: hook.id, status: "failed", error: String(error?.message || error).slice(0, 2000) };
+        return { id: hook.id, status: "failed", error: errorMessage(error).slice(0, 2000) };
       }
     }));
     return { schema, results };
@@ -374,7 +375,7 @@ export function createUserAutomationService({ configDir, resolveProject, execute
         ok: false,
         startedAt: Date.now(),
         endedAt: Date.now(),
-        summary: String(error?.message || error).slice(0, 4000)
+        summary: errorMessage(error).slice(0, 4000)
       });
     } finally {
       cancelHandlers.delete(run.id);

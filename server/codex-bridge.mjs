@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import readline from "node:readline";
 import { assertCliReady, cliLaunchErrorFromSpawn, launchCode } from "./cli-launch.mjs";
+import { errorMessage } from "./error-message.mjs";
 
 const APPROVAL_METHODS = new Set([
   "item/commandExecution/requestApproval",
@@ -73,7 +74,7 @@ export class CodexBridge extends EventEmitter {
     child.once("error", spawnError => {
       const error = cliLaunchErrorFromSpawn(this.bin, spawnError) || spawnError;
       this.launchCode = launchCode(error);
-      this.lastError = error instanceof Error ? error.message : String(error);
+      this.lastError = errorMessage(error);
       this.#rejectAll(error);
       this.emit("offline", { error: this.lastError, code: this.launchCode });
     });
@@ -156,7 +157,7 @@ export class CodexBridge extends EventEmitter {
       };
     } catch (error) {
       this.launchCode = launchCode(error);
-      this.lastError = error instanceof Error ? error.message : String(error);
+      this.lastError = errorMessage(error);
       return {
         online: false,
         ready: false,

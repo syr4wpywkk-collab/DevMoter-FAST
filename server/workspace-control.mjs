@@ -1,6 +1,7 @@
 import { appendFile, constants as FS, lstat, mkdir, open, readFile, readdir, realpath, rename, stat, writeFile } from "node:fs/promises";
 import { extname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
+import { errorMessage } from "./error-message.mjs";
 
 const DEFAULT_LOCK_TTL_MS = 5 * 60_000;
 const MAX_EVENT_PAYLOAD_BYTES = 256 * 1024;
@@ -735,7 +736,7 @@ export async function handleWorkspaceControlRequest(req, res, url, control, { au
     sendJson(res, 404, { error: "Unknown control-plane endpoint" });
     return true;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     const status = Number.isInteger(error?.status) && error.status >= 400 && error.status < 600
       ? error.status
       : message === "Request body too large" ? 413 : 400;
