@@ -10,7 +10,7 @@ import { CodexBridge } from "./server/codex-bridge.mjs";
 import { inspectKnownClis, launchCode } from "./server/cli-launch.mjs";
 import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/opencode-provider-catalog.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
-import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
+import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, fullyDecodePath, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { staticSecurityHeaders } from "./server/security-headers.mjs";
 import { readHandle, withOpenFile } from "./server/safe-file.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
@@ -1778,22 +1778,6 @@ const OPENCODE_SAFE_PATH = /^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/;
 const OPENCODE_SAFE_QUERY = /^(\?[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*)?$/;
 const OPENCODE_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
 
-function fullyDecodeOpenCodePath(value) {
-  let current = value;
-  // Undo nested percent-encoding (e.g. %252e) so checks see what OpenCode will.
-  for (let i = 0; i < 4; i += 1) {
-    let next;
-    try {
-      next = decodeURIComponent(current);
-    } catch {
-      return null;
-    }
-    if (next === current) return current;
-    current = next;
-  }
-  return null;
-}
-
 /**
  * Validate the client path once and build the OpenCode request target as a
  * plain string: fixed OpenCode origin + "/api/" + allowlisted path (+ query).
@@ -1812,7 +1796,7 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   if (!OPENCODE_SAFE_PATH.test(rawPath) || !OPENCODE_SAFE_QUERY.test(rawQuery)) {
     return { error: "OpenCode proxy path is not allowed" };
   }
-  const decodedPath = fullyDecodeOpenCodePath(rawPath);
+  const decodedPath = fullyDecodePath(rawPath);
   if (
     decodedPath === null ||
     decodedPath.startsWith("//") ||

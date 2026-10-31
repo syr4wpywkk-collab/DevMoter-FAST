@@ -11,7 +11,7 @@ import {
 import { createBrowserAutomation, browserAutomationPolicy } from "./browser-tool.mjs";
 import { errorMessage } from "./error-message.mjs";
 import { readHandle, withOpenFile } from "./safe-file.mjs";
-import { CONTROL_CHARS } from "./security-helpers.mjs";
+import { CONTROL_CHARS, fullyDecodePath } from "./security-helpers.mjs";
 
 const ARTIFACT_DOWNLOAD_LIMIT = 64 * 1024 * 1024;
 
@@ -64,21 +64,6 @@ const PREVIEW_SAFE_PATH = /^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/;
 const PREVIEW_QUERY_CHAR = /[^A-Za-z0-9._~!$&'()*+,;=:@%/?-]/g;
 const PREVIEW_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
 
-function fullyDecodePreviewPath(value) {
-  let current = value;
-  for (let i = 0; i < 4; i += 1) {
-    let next;
-    try {
-      next = decodeURIComponent(current);
-    } catch {
-      return null;
-    }
-    if (next === current) return current;
-    current = next;
-  }
-  return null;
-}
-
 /**
  * Build the live preview request target as a plain string from a fixed
  * loopback origin, the approved port, and an allowlisted path and query.
@@ -91,7 +76,7 @@ export function resolveLivePreviewTarget(host, port, suffix, search = "") {
     throw Object.assign(new Error("Preview port is not allowed"), { statusCode: 403 });
   }
   const rawSuffix = String(suffix || "/");
-  const decoded = PREVIEW_SAFE_PATH.test(rawSuffix) ? fullyDecodePreviewPath(rawSuffix) : null;
+  const decoded = PREVIEW_SAFE_PATH.test(rawSuffix) ? fullyDecodePath(rawSuffix) : null;
   if (
     decoded === null ||
     rawSuffix.startsWith("//") ||

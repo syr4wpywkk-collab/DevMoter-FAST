@@ -6,6 +6,24 @@ import { randomUUID } from "node:crypto";
 // eslint-disable-next-line no-control-regex
 export const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
 
+// Undo nested percent-encoding (e.g. %252e) so path checks see what the
+// upstream will. Returns the fully decoded string, or null when the input is
+// malformed or still changes after 4 rounds.
+export function fullyDecodePath(value) {
+  let current = value;
+  for (let i = 0; i < 4; i += 1) {
+    let next;
+    try {
+      next = decodeURIComponent(current);
+    } catch {
+      return null;
+    }
+    if (next === current) return current;
+    current = next;
+  }
+  return null;
+}
+
 export function isInsideHome(homeDir, path) {
   const rel = relative(resolve(homeDir), resolve(path));
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
