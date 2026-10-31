@@ -1,3 +1,4 @@
+import { readCookie } from "./cookies.mjs";
 import { chmod, lstat, mkdir, open, rename, unlink } from "node:fs/promises";
 import { constants } from "node:fs";
 import { join } from "node:path";
@@ -73,15 +74,6 @@ function explicitBootstrapEnabled() {
   return process.env.DEVMOTER_PASSKEY_BOOTSTRAP === "1";
 }
 
-function parseCookies(req) {
-  const result = {};
-  for (const part of String(req?.headers?.cookie || "").split(";")) {
-    const index = part.indexOf("=");
-    if (index < 0) continue;
-    try { result[part.slice(0, index).trim()] = decodeURIComponent(part.slice(index + 1).trim()); } catch { /* Invalid cookies do not authenticate. */ }
-  }
-  return result;
-}
 
 function sessionCookie(req, token, maxAgeSeconds) {
   const secure = requestOrigin(req).startsWith("https://");
@@ -221,7 +213,7 @@ export class PasskeyAuth {
   async session(req) {
     if (this.sessionResolver) return this.sessionResolver(req);
     this.cleanup();
-    const token = parseCookies(req)[COOKIE_NAME];
+    const token = readCookie(req, COOKIE_NAME);
     if (!token) return null;
     const session = this.sessions.get(sha256(Buffer.from(token)));
     if (!session || session.expiresAt <= Date.now() || session.rpId !== this.host(req)) return null;
@@ -438,7 +430,7 @@ export class PasskeyAuth {
   }
 
   async logout(req) {
-    const token = parseCookies(req)[COOKIE_NAME];
+    const token = readCookie(req, COOKIE_NAME);
     if (token) this.sessions.delete(sha256(Buffer.from(token)));
     return sessionCookie(this.publicOrigin ? { ...req, headers: { ...req.headers, origin: this.publicOrigin } } : req, "", 0);
   }

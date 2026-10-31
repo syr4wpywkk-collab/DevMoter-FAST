@@ -47,23 +47,64 @@ function loopbackHost(host) {
 
 const LIVE_PREVIEW_LIMIT = 20 * 1024 * 1024;
 
-function previewBaseUrl(host, port) {
-  const safeHost = host === "::1" ? "[::1]" : host;
-  return new URL("http://" + safeHost + ":" + port + "/");
+// Fixed origins per approved loopback host. The fetch target is always one of
+// these constant strings + a validated port + an allowlisted path/query.
+const LOOPBACK_ORIGINS = new Map([
+  ["127.0.0.1", "http://127.0.0.1"],
+  ["localhost", "http://localhost"],
+  ["::1", "http://[::1]"],
+  ["[::1]", "http://[::1]"]
+]);
+const PREVIEW_SAFE_PATH = /^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/;
+const PREVIEW_QUERY_CHAR = /[^A-Za-z0-9._~!$&'()*+,;=:@%/?-]/g;
+const PREVIEW_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
+// eslint-disable-next-line no-control-regex
+const PREVIEW_CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
+
+function fullyDecodePreviewPath(value) {
+  let current = value;
+  for (let i = 0; i < 4; i += 1) {
+    let next;
+    try {
+      next = decodeURIComponent(current);
+    } catch {
+      return null;
+    }
+    if (next === current) return current;
+    current = next;
+  }
+  return null;
 }
 
+/**
+ * Build the live preview request target as a plain string from a fixed
+ * loopback origin, the approved port, and an allowlisted path and query.
+ */
 export function resolveLivePreviewTarget(host, port, suffix, search = "") {
-  if (!loopbackHost(host)) throw Object.assign(new Error("Preview host is not allowed"), { statusCode: 403 });
+  const origin = LOOPBACK_ORIGINS.get(String(host));
+  if (!origin) throw Object.assign(new Error("Preview host is not allowed"), { statusCode: 403 });
+  const portNumber = Number(port);
+  if (!Number.isInteger(portNumber) || portNumber < 1 || portNumber > 65535) {
+    throw Object.assign(new Error("Preview port is not allowed"), { statusCode: 403 });
+  }
   const rawSuffix = String(suffix || "/");
-  if (!rawSuffix.startsWith("/") || rawSuffix.startsWith("//") || rawSuffix.includes("\\") || /%5c/i.test(rawSuffix)) {
+  const decoded = PREVIEW_SAFE_PATH.test(rawSuffix) ? fullyDecodePreviewPath(rawSuffix) : null;
+  if (
+    decoded === null ||
+    rawSuffix.startsWith("//") ||
+    decoded.startsWith("//") ||
+    decoded.includes("\\") ||
+    decoded.split("/").includes("..") ||
+    PREVIEW_SCHEME_SEGMENT.test(decoded) ||
+    PREVIEW_CONTROL_CHARS.test(decoded)
+  ) {
     throw Object.assign(new Error("Invalid live preview path"), { statusCode: 400 });
   }
-  const target = new URL("." + rawSuffix, previewBaseUrl(host, port));
-  target.search = search;
-  if (!loopbackHost(target.hostname) || Number(target.port || port) !== Number(port)) {
-    throw Object.assign(new Error("Preview target escaped the approved loopback endpoint"), { statusCode: 403 });
-  }
-  return target;
+  const rawSearch = String(search || "");
+  const query = rawSearch && rawSearch !== "?"
+    ? "?" + rawSearch.replace(/^\?/, "").replace(PREVIEW_QUERY_CHAR, character => encodeURIComponent(character))
+    : "";
+  return `${origin}:${portNumber}${rawSuffix}${query}`;
 }
 
 export async function readBoundedResponseBody(response, limit = LIVE_PREVIEW_LIMIT) {
