@@ -10,6 +10,8 @@ import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "
 import { createLatestRequestGuard } from "./latest-request.mjs";
 import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
 import { normalizeOpenCodeSessionList } from "./opencode-session-list.mjs";
+import { openCodeSessionLabel } from "./opencode-session-title.mjs";
+import { shortModelName } from "./opencode-model-label.mjs";
 import { filterOpenCodePickerModels, flattenOpenCodePickerRows, normalizeOpenCodeProviderCatalog, openCodePickerWindow, type OpenCodePickerItem } from "./opencode-provider-catalog.mjs";
 import { recoverAfterEventOpen } from "./event-recovery.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
@@ -157,15 +159,7 @@ export type OpenCodeController = {
   refresh(): Promise<boolean>;
 };
 
-type OpenCodeRemoteOptions = {
-  onCodex?: () => void;
-  onApi?: () => void;
-};
-
-export function mountOpenCodeRemote(
-  root: HTMLElement,
-  options: OpenCodeRemoteOptions = {}
-): OpenCodeController {
+export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   root.innerHTML = `
     <div class="ocx-app">
       <div id="ocxScrim" class="ocx-scrim hidden"></div>
@@ -175,7 +169,10 @@ export function mountOpenCodeRemote(
           <div class="ocx-history-identity">
             <span class="ocx-history-icon" aria-hidden="true">◈</span>
             <span class="ocx-history-copy">
-              <strong>OpenCode</strong>
+              <span class="ocx-history-title">
+                <strong>OpenCode</strong>
+                <span id="ocxSideStatus" class="ocx-side-status" data-state="offline" role="status" aria-label="Offline"><i aria-hidden="true"></i><span>Offline</span></span>
+              </span>
               <small id="ocxSidebarDirectory">workspace</small>
             </span>
           </div>
@@ -186,11 +183,6 @@ export function mountOpenCodeRemote(
           <span>新しいチャット</span>
         </button>
 
-        <nav class="ocx-quick-switch" aria-label="Switch AI workspace">
-          <button id="ocxQuickCodex" type="button" aria-label="Switch from OpenCode to Codex">Codex</button>
-          <button id="ocxQuickApi" type="button" aria-label="Switch from OpenCode to API Chat">API Chat</button>
-        </nav>
-
         <div class="ocx-sidebar-scroll">
 
         <label class="ocx-search">
@@ -200,7 +192,6 @@ export function mountOpenCodeRemote(
 
         <div class="ocx-session-toolbar">
           <label>
-            <span>Sort history</span>
             <select id="ocxSessionSort" aria-label="Sort conversation history">
               <option value="recent">Recent activity</option>
               <option value="created">Created time</option>
@@ -212,30 +203,17 @@ export function mountOpenCodeRemote(
         <div id="ocxAttention" class="ocx-attention hidden" aria-label="Session attention overview"></div>
 
         <div class="ocx-side-section">
-          <div class="ocx-side-label">CONVERSATION HISTORY</div>
+          <div class="ocx-side-label">
+            <span>CONVERSATION HISTORY</span>
+            <button id="ocxRefresh" class="ocx-icon ocx-refresh" type="button" aria-label="Refresh" title="Refresh">↻</button>
+          </div>
           <div id="ocxSessions" class="ocx-sessions">
             <div class="ocx-empty">Connecting…</div>
           </div>
         </div>
 
         </div>
-        <div id="ocxWorkspaceControlsMount" class="ocx-workspace-controls"></div>
 
-        <div class="ocx-sidebar-foot">
-          <label class="pocket-language-setting ocx-language-setting" title="Language">
-            <span aria-hidden="true">◎</span>
-            <select data-language-select aria-label="Language">
-              <option value="en">English</option>
-              <option value="ja">日本語</option>
-              <option value="zh-CN">简体中文</option>
-            </select>
-          </label>
-          <button id="ocxTheme" type="button" class="ocx-refresh">表示</button>
-          <button id="ocxToolsNav" type="button" class="ocx-refresh">開発ツール</button>
-          <button id="ocxPrefs" type="button" class="ocx-refresh">設定</button>
-          <button id="ocxRefresh" type="button" class="ocx-refresh">更新</button>
-          <span id="ocxSideStatus" class="ocx-side-status offline"><i></i> Offline</span>
-        </div>
       </aside>
 
       <header class="ocx-topbar">
@@ -306,18 +284,6 @@ export function mountOpenCodeRemote(
             disabled
           ></textarea>
 
-          <div class="ocx-context-row">
-            <div class="ocx-mode-switch" role="group" aria-label="agent mode">
-              <button id="ocxPlanMode" type="button">Plan</button>
-              <button id="ocxAskMode" type="button">Ask</button>
-              <button id="ocxBuildMode" type="button" class="active">Build</button>
-            </div>
-            <div class="ocx-context-buttons">
-              <button id="ocxAgentButton" type="button" class="ocx-context-button">agent</button>
-            </div>
-          </div>
-
-          <p id="ocxModelPricing" class="ocx-model-pricing" role="status"></p>
           <div class="ocx-composer-foot">
             <div class="ocx-composer-left">
               <button id="ocxPlus" type="button" class="ocx-mini-button" aria-label="添付">＋</button>
@@ -355,17 +321,6 @@ export function mountOpenCodeRemote(
     </div>
   `;
 
-  const syncHistoryViewportHeight = () => {
-    const height = window.visualViewport?.height ?? window.innerHeight;
-    if (!Number.isFinite(height) || height <= 0) return;
-    root.style.setProperty("--ocx-history-viewport-height", `${Math.max(1, Math.floor(height))}px`);
-  };
-  syncHistoryViewportHeight();
-  window.visualViewport?.addEventListener("resize", syncHistoryViewportHeight, { passive: true });
-  window.visualViewport?.addEventListener("scroll", syncHistoryViewportHeight, { passive: true });
-  window.addEventListener("resize", syncHistoryViewportHeight, { passive: true });
-  window.addEventListener("orientationchange", syncHistoryViewportHeight);
-
   const sidebar = root.querySelector<HTMLElement>("#ocxSidebar")!;
   const scrim = root.querySelector<HTMLElement>("#ocxScrim")!;
   const sidebarDirectory = root.querySelector<HTMLElement>("#ocxSidebarDirectory")!;
@@ -377,11 +332,6 @@ export function mountOpenCodeRemote(
   const sessionsEl = root.querySelector<HTMLDivElement>("#ocxSessions")!;
   const sessionSort = root.querySelector<HTMLSelectElement>("#ocxSessionSort")!;
   const attention = root.querySelector<HTMLDivElement>("#ocxAttention")!;
-  const toolsNav = root.querySelector<HTMLButtonElement>("#ocxToolsNav")!;
-  const themeButton = root.querySelector<HTMLButtonElement>("#ocxTheme")!;
-  const prefsButton = root.querySelector<HTMLButtonElement>("#ocxPrefs")!;
-  const quickCodex = root.querySelector<HTMLButtonElement>("#ocxQuickCodex")!;
-  const quickApi = root.querySelector<HTMLButtonElement>("#ocxQuickApi")!;
   const refreshButton = root.querySelector<HTMLButtonElement>("#ocxRefresh")!;
   const sideStatus = root.querySelector<HTMLElement>("#ocxSideStatus")!;
   const sessionTitleButton = root.querySelector<HTMLButtonElement>("#ocxSessionTitleButton")!;
@@ -427,10 +377,6 @@ export function mountOpenCodeRemote(
   const questionCustom = root.querySelector<HTMLInputElement>("#ocxQuestionCustom")!;
   const questionReject = root.querySelector<HTMLButtonElement>("#ocxQuestionReject")!;
   const questionSubmit = root.querySelector<HTMLButtonElement>("#ocxQuestionSubmit")!;
-  const planMode = root.querySelector<HTMLButtonElement>("#ocxPlanMode")!;
-  const askMode = root.querySelector<HTMLButtonElement>("#ocxAskMode")!;
-  const buildMode = root.querySelector<HTMLButtonElement>("#ocxBuildMode")!;
-  const agentButton = root.querySelector<HTMLButtonElement>("#ocxAgentButton")!;
   const modelButton = root.querySelector<HTMLButtonElement>("#ocxModelButton")!;
   const slashPalette = root.querySelector<HTMLDivElement>("#ocxSlashPalette")!;
   const contextPalette = root.querySelector<HTMLDivElement>("#ocxContextPalette")!;
@@ -518,6 +464,20 @@ export function mountOpenCodeRemote(
   let sessionSortMode = (localStorage.getItem("opencode-pocket-session-sort") || "recent") as SessionSortMode;
   if (!["recent", "created", "messages"].includes(sessionSortMode)) sessionSortMode = "recent";
   const sessionMessageCounts = new Map<string, number>();
+  // First user prompt per session, used only for display labels (stored titles stay untouched).
+  const sessionFirstPrompts = new Map<string, string>();
+  const sessionLabel = (session: Json | null | undefined) =>
+    openCodeSessionLabel(session, { firstPrompt: session?.id ? sessionFirstPrompts.get(session.id) : undefined });
+  function noteFirstPrompt(text: string) {
+    if (!activeSession?.id || !text.trim() || sessionFirstPrompts.has(activeSession.id)) return false;
+    sessionFirstPrompts.set(activeSession.id, text);
+    return true;
+  }
+  function syncSessionLabels() {
+    if (activeSession) sessionTitle.textContent = sessionLabel(activeSession);
+    renderSessions();
+    renderAttention();
+  }
   const sessionStates = new Map<string, ExecutionState>();
   let importedThreads: ImportedThread[] = [];
   try {
@@ -538,6 +498,19 @@ export function mountOpenCodeRemote(
   let modelPickerAvailable = false;
   let modelPickerNeedsKey = false;
   let modelPickerDeprecatedOpen = false;
+  type ModelPickerFilter = "all" | "free" | "available" | "needsKey" | "deprecated";
+  const MODEL_FILTERS: ModelPickerFilter[] = ["all", "free", "available", "needsKey", "deprecated"];
+  const MODEL_FILTER_LABELS: Record<ModelPickerFilter, string> = {
+    all: "すべて", free: "無料", available: "使える", needsKey: "キーが必要", deprecated: "非推奨も表示"
+  };
+  const currentModelFilter = (): ModelPickerFilter =>
+    modelPickerFree ? "free" : modelPickerAvailable ? "available" : modelPickerNeedsKey ? "needsKey" : modelPickerDeprecatedOpen ? "deprecated" : "all";
+  function applyModelFilter(value: ModelPickerFilter) {
+    modelPickerFree = value === "free";
+    modelPickerAvailable = value === "available";
+    modelPickerNeedsKey = value === "needsKey";
+    modelPickerDeprecatedOpen = value === "deprecated";
+  }
   let modelPickerRows: OpenCodePickerItem[] = [];
   const modelPickerExpandedKeyProviders = new Set<string>();
   let modelPickerWindowKey = "";
@@ -559,15 +532,9 @@ export function mountOpenCodeRemote(
   const liveReasoning = new Map<string, HTMLElement>();
   const livePartKinds = new Map<string, "text" | "reasoning">();
   let directory = "";
-  type AgentMode = "plan" | "ask" | "build";
+  type AgentMode = "plan" | "build";
   let selectedAgent =
     localStorage.getItem("opencode-pocket-opencode-agent") || "build";
-  let selectedMode: AgentMode =
-    localStorage.getItem("opencode-pocket-opencode-mode") === "plan"
-      ? "plan"
-      : localStorage.getItem("opencode-pocket-opencode-mode") === "ask"
-        ? "ask"
-        : "build";
   let selectedModel: { providerID: string; modelID: string } | null = null;
   let pendingAttachments: PendingAttachment[] = [];
   let selectedContextRefs: Array<{ path: string; kind: "file" | "folder" }> = [];
@@ -618,7 +585,7 @@ export function mountOpenCodeRemote(
     sidebarClose.focus({ preventScroll: true });
   }
 
-  function closeSidebar(restoreTriggerFocus = true) {
+  function closeSidebar() {
     const restoreFocus = sidebar.contains(document.activeElement);
     sidebar.classList.remove("open");
     sidebar.setAttribute("aria-hidden", "true");
@@ -626,7 +593,7 @@ export function mountOpenCodeRemote(
     sidebar.removeAttribute("role");
     sidebar.removeAttribute("aria-modal");
     syncOverlayState();
-    if (restoreFocus && restoreTriggerFocus) restoreOverlayFocus(sidebarReturnFocus);
+    if (restoreFocus) restoreOverlayFocus(sidebarReturnFocus);
     sidebarReturnFocus = null;
   }
 
@@ -716,10 +683,6 @@ export function mountOpenCodeRemote(
     send.disabled = !value;
     newSessionSide.disabled = !value;
     newSessionTop.disabled = !value;
-    planMode.disabled = !value;
-    askMode.disabled = !value;
-    buildMode.disabled = !value;
-    agentButton.disabled = !value;
     modelButton.disabled = !value;
     slashButton.disabled = !value;
   }
@@ -869,57 +832,21 @@ export function mountOpenCodeRemote(
     return model?.name || selectedModel.modelID;
   }
 
-  function currentAgentName() {
-    return selectedAgent || "build";
-  }
-
-  function sessionModes() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem("opencode-pocket-opencode-session-modes") || "{}");
-      return parsed && typeof parsed === "object" ? parsed as Record<string, AgentMode> : {};
-    } catch {
-      return {} as Record<string, AgentMode>;
-    }
-  }
-
-  function persistMode(mode: AgentMode) {
-    selectedMode = mode;
-    localStorage.setItem("opencode-pocket-opencode-mode", mode);
-    if (!activeSession?.id) return;
-    const modes = sessionModes();
-    modes[activeSession.id] = mode;
-    localStorage.setItem("opencode-pocket-opencode-session-modes", JSON.stringify(modes));
-  }
-
-  function modeForSession(session: OpenCodeSession): AgentMode {
-    const saved = sessionModes()[session.id];
-    if (saved === "plan" || saved === "ask" || saved === "build") return saved;
-    return session.agent === "plan" ? "plan" : "build";
+  // The composer has no mode toggle: the server-side read-only policy follows
+  // the selected agent ("plan" is read-only, every other agent builds).
+  function agentModeFor(agentID: string): AgentMode {
+    return agentID === "plan" ? "plan" : "build";
   }
 
   function updateContextUI() {
-    agentButton.textContent = currentAgentName();
     modelButton.textContent = currentModelName();
-    agentButton.title = `Agent: ${currentAgentName()}`;
-    agentButton.setAttribute("aria-label", agentButton.title);
     modelButton.title = selectedModel
       ? `${selectedModel.providerID} / ${selectedModel.modelID}`
       : "Default provider / model";
     modelButton.setAttribute("aria-label", `Model: ${modelButton.title}`);
     const pricingProvider = providers.find(item => item.id === selectedModel?.providerID);
     const pricingModel = pricingProvider ? normalizeModels(pricingProvider).find(item => item.id === selectedModel?.modelID) : null;
-    const pricing = describeModelPricing(pricingModel?.cost);
-    const pricingLabel = root.querySelector<HTMLElement>("#ocxModelPricing")!;
-    pricingLabel.textContent = pricing.label + " · 請求条件はproviderで確認";
-    pricingLabel.title = pricing.detail;
-    modelButton.title += " · " + pricing.detail;
-
-    planMode.classList.toggle("active", selectedMode === "plan");
-    askMode.classList.toggle("active", selectedMode === "ask");
-    buildMode.classList.toggle("active", selectedMode === "build");
-    planMode.setAttribute("aria-pressed", String(selectedMode === "plan"));
-    askMode.setAttribute("aria-pressed", String(selectedMode === "ask"));
-    buildMode.setAttribute("aria-pressed", String(selectedMode === "build"));
+    modelButton.title += " · " + describeModelPricing(pricingModel?.cost).detail;
 
     const meta = [
       activeSession?.agent || selectedAgent || "build",
@@ -985,7 +912,7 @@ export function mountOpenCodeRemote(
       glyph.textContent = stateGlyph(state);
       const copy = document.createElement("span");
       const title = document.createElement("strong");
-      title.textContent = session.title || "Untitled session";
+      title.textContent = sessionLabel(session);
       const meta = document.createElement("small");
       meta.textContent = stateLabel(state);
       copy.append(title, meta);
@@ -1001,6 +928,7 @@ export function mountOpenCodeRemote(
       .filter(session =>
         !q ||
         (session.title || "").toLowerCase().includes(q) ||
+        sessionLabel(session).toLowerCase().includes(q) ||
         session.id.toLowerCase().includes(q)
       )
       .slice(0, 80);
@@ -1025,7 +953,7 @@ export function mountOpenCodeRemote(
       copy.className = "ocx-session-copy";
 
       const title = document.createElement("strong");
-      title.textContent = session.title || "Untitled session";
+      title.textContent = sessionLabel(session);
 
       const meta = document.createElement("small");
       const state = sessionStates.get(session.id) || "idle";
@@ -1045,7 +973,7 @@ export function mountOpenCodeRemote(
           }).format(new Date(historyTime))
         : "";
       meta.textContent = [
-        stateLabel(state),
+        state === "idle" ? "" : stateLabel(state),
         count ? String(count) + " msgs" : "",
         historyLabel
       ].filter(Boolean).join(" · ");
@@ -1341,6 +1269,7 @@ export function mountOpenCodeRemote(
     if (!message) return;
 
     if (message.type === "user") {
+      noteFirstPrompt(String(message.text || ""));
       addUserMessage(String(message.text || ""));
       return;
     }
@@ -1404,6 +1333,7 @@ export function mountOpenCodeRemote(
           .filter((part: Json) => part?.type === "text")
           .map((part: Json) => String(part.text || ""))
           .join("");
+        noteFirstPrompt(text);
         addUserMessage(text);
       } else {
         for (const part of parts) {
@@ -1440,9 +1370,11 @@ export function mountOpenCodeRemote(
     transcript.replaceChildren();
     clearLiveStreams();
 
+    const knewPrompt = sessionFirstPrompts.has(activeSession.id);
     for (const message of list) {
       renderMessage(message);
     }
+    if (!knewPrompt && sessionFirstPrompts.has(activeSession.id)) syncSessionLabels();
 
     if (!transcript.childElementCount) {
       transcript.innerHTML = `
@@ -1452,7 +1384,7 @@ export function mountOpenCodeRemote(
           <p>Send a prompt to start working.</p>
         </div>
       `;
-      transcript.querySelector("h2")!.textContent = activeSession.title || "New session";
+      transcript.querySelector("h2")!.textContent = sessionLabel(activeSession);
     }
 
     followLatest();
@@ -1637,7 +1569,7 @@ export function mountOpenCodeRemote(
           localStorage.setItem("opencode-pocket-model", JSON.stringify(selectedModel));
         }
 
-        sessionTitle.textContent = fresh.title || "Untitled session";
+        sessionTitle.textContent = sessionLabel(fresh);
         updateContextUI();
       } else {
         // The session list may lag a just-created or long-running session.
@@ -1742,8 +1674,6 @@ export function mountOpenCodeRemote(
       selectedAgent = session.agent;
       localStorage.setItem("opencode-pocket-opencode-agent", selectedAgent);
     }
-    selectedMode = modeForSession(session);
-    localStorage.setItem("opencode-pocket-opencode-mode", selectedMode);
 
     if (session.model?.providerID && (session.model?.modelID || session.model?.id)) {
       selectedModel = {
@@ -1753,7 +1683,7 @@ export function mountOpenCodeRemote(
       localStorage.setItem("opencode-pocket-model", JSON.stringify(selectedModel));
     }
 
-    sessionTitle.textContent = session.title || "Untitled session";
+    sessionTitle.textContent = sessionLabel(session);
     sidebarDirectory.textContent = sessionDirectory(session) || directory || "workspace";
     updateContextUI();
     renderSessions();
@@ -1791,7 +1721,7 @@ export function mountOpenCodeRemote(
       const session = await api<OpenCodeSession>("/session", {
         method: "POST",
         headers: {
-          "x-pocket-agent-mode": selectedMode
+          "x-pocket-agent-mode": agentModeFor(selectedAgent)
         },
         body: JSON.stringify(body)
       });
@@ -1801,9 +1731,8 @@ export function mountOpenCodeRemote(
       sessions.unshift(session);
       activeSession = session;
       localStorage.setItem("opencode-pocket-opencode-session", session.id);
-      persistMode(selectedMode);
 
-      sessionTitle.textContent = session.title || "New session";
+      sessionTitle.textContent = sessionLabel(session);
       updateContextUI();
       renderSessions();
 
@@ -1812,11 +1741,9 @@ export function mountOpenCodeRemote(
           <div class="ocx-mark">></div>
           <h2>New session</h2>
           <p>${
-            selectedMode === "ask"
-              ? "Ask mode is active · read-only Q&A."
-              : selectedMode === "plan"
-                ? "Plan mode is active · read-only tools only."
-                : "Build mode is active."
+            agentModeFor(selectedAgent) === "plan"
+              ? "Plan mode is active · read-only tools only."
+              : "Build mode is active."
           }</p>
         </div>
       `;
@@ -1831,16 +1758,14 @@ export function mountOpenCodeRemote(
     }
   }
 
-  async function switchAgent(agentID: string, mode: AgentMode = agentID === "plan" ? "plan" : "build") {
+  async function switchAgent(agentID: string) {
     if (isExecutionActive(executionState)) {
       showToast("Wait for the current run to finish");
       return;
     }
 
     const previous = selectedAgent;
-    const previousMode = selectedMode;
     selectedAgent = agentID;
-    persistMode(mode);
     localStorage.setItem("opencode-pocket-opencode-agent", agentID);
     updateContextUI();
 
@@ -1851,7 +1776,7 @@ export function mountOpenCodeRemote(
           {
             method: "POST",
             headers: {
-              "x-pocket-agent-mode": mode
+              "x-pocket-agent-mode": agentModeFor(agentID)
             },
             body: JSON.stringify({ agent: agentID })
           }
@@ -1861,7 +1786,6 @@ export function mountOpenCodeRemote(
       showToast(`Agent: ${agentID}`);
     } catch (error) {
       selectedAgent = previous;
-      persistMode(previousMode);
       updateContextUI();
       showToast(error instanceof Error ? error.message : "Agent switch failed");
       throw error;
@@ -1909,20 +1833,17 @@ export function mountOpenCodeRemote(
 
   async function setMode(mode: AgentMode) {
     const target =
-      mode === "ask"
-        ? agents.find(agent => agent.id === "plan")?.id ||
-          agents.find(agent => agent.mode === "primary" || agent.mode === "all")?.id
-        : agents.find(agent => agent.id === mode)?.id ||
-          (mode === "build"
-            ? agents.find(agent => agent.mode === "primary" || agent.mode === "all")?.id
-            : undefined);
+      agents.find(agent => agent.id === mode)?.id ||
+      (mode === "build"
+        ? agents.find(agent => agent.mode === "primary" || agent.mode === "all")?.id
+        : undefined);
 
     if (!target) {
       showToast(`${mode} mode is not available`);
       return;
     }
 
-    await switchAgent(target, mode);
+    await switchAgent(target);
   }
 
   function renderSlashPalette(query = "") {
@@ -2199,7 +2120,9 @@ export function mountOpenCodeRemote(
           .join("\n")
       : "";
     followsBottom = true;
+    const firstPrompt = noteFirstPrompt(text);
     addUserMessage((text + displayAttachmentText).trim());
+    if (firstPrompt) syncSessionLabels();
     followLatest();
 
     promptInput.value = "";
@@ -2217,7 +2140,7 @@ export function mountOpenCodeRemote(
         {
           method: "POST",
           headers: {
-            "x-pocket-agent-mode": selectedMode
+            "x-pocket-agent-mode": agentModeFor(selectedAgent)
           },
           body: JSON.stringify({
             text: promptText,
@@ -3171,39 +3094,6 @@ export function mountOpenCodeRemote(
     eventSource = null;
   }
 
-  async function showAgents() {
-    openModal("Agents", "Choose how OpenCode should work");
-    modalBody.replaceChildren();
-
-    const list = document.createElement("div");
-    list.className = "ocx-picker-list";
-
-    for (const agent of agents) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `ocx-picker-row ${selectedAgent === agent.id ? "selected" : ""}`;
-
-      const copy = document.createElement("span");
-      copy.innerHTML = "<strong></strong><small></small>";
-      copy.querySelector("strong")!.textContent = agent.id;
-      copy.querySelector("small")!.textContent =
-        "このエージェントで応答します";
-
-      const mark = document.createElement("span");
-      mark.textContent = selectedAgent === agent.id ? "✓" : "›";
-
-      button.append(copy, mark);
-      button.addEventListener("click", () => {
-        void switchAgent(agent.id)
-          .then(closeModal)
-          .catch(() => {});
-      });
-      list.appendChild(button);
-    }
-
-    modalBody.appendChild(list);
-  }
-
   function runtimeModelRows() {
     const view = providers.map(provider => ({
       id: provider.id,
@@ -3270,14 +3160,14 @@ export function mountOpenCodeRemote(
     const copy = document.createElement("span");
     const title = document.createElement("strong");
     const detail = document.createElement("small");
-    title.textContent = model.name || model.id;
+    title.textContent = shortModelName(model.name, model.id);
+    // Provider (or why the model can't be picked) is the one muted line; the full id and
+    // pricing stay available on long-press / hover without crowding the row.
     detail.textContent = row.selectable
-      ? row.providerID + "/" + model.id
+      ? (providers.find(provider => provider.id === row.providerID)?.name || row.providerID)
       : row.reason;
-    const pricing = document.createElement("small");
-    pricing.className = "ocx-picker-pricing";
-    pricing.textContent = describeModelPricing(model.cost).detail;
-    copy.append(title, detail, pricing);
+    option.title = `${row.providerID}/${model.id} · ${describeModelPricing(model.cost).detail}`;
+    copy.append(title, detail);
     option.append(copy);
     if (row.selectable) {
       option.addEventListener("click", () => {
@@ -3329,26 +3219,20 @@ export function mountOpenCodeRemote(
   function paintRuntimePicker(resetScroll = false) {
     const result = runtimeModelRows();
     modelPickerRows = flatModelRows(result);
-    const heading = modalBody.querySelector("#ocxModelHeading");
-    if (heading) {
-      const count = document.createElement("span");
-      count.dataset.i18nSkip = "true";
-      count.textContent = String(result.counts.shown);
-      heading.replaceChildren(document.createTextNode("Provider · Model · "), count);
-    }
-    const filterLabels = { free: "無料", available: "使える", needsKey: "キーが必要" } as const;
-    for (const button of modalBody.querySelectorAll<HTMLButtonElement>("[data-model-filter]")) {
-      const filter = button.dataset.modelFilter;
-      if (filter === "deprecated") {
-        button.setAttribute("aria-pressed", String(modelPickerDeprecatedOpen));
-        button.textContent = (modelPickerDeprecatedOpen ? "非推奨を表示中 " : "非推奨を下に追加 ") + result.deprecated.length;
-        continue;
+    const filterSelect = modalBody.querySelector<HTMLSelectElement>("#ocxModelFilter");
+    if (filterSelect) {
+      const counts: Record<ModelPickerFilter, number> = {
+        all: result.counts.shown,
+        free: result.counts.free,
+        available: result.counts.available,
+        needsKey: result.counts.needsKey,
+        deprecated: result.deprecated.length
+      };
+      for (const option of filterSelect.options) {
+        const filter = option.value as ModelPickerFilter;
+        option.textContent = `${MODEL_FILTER_LABELS[filter]} ${counts[filter]}`;
       }
-      const pressed = filter === "free" ? modelPickerFree : filter === "available" ? modelPickerAvailable : modelPickerNeedsKey;
-      const count = filter === "free" ? result.counts.free : filter === "available" ? result.counts.available : result.counts.needsKey;
-      const label = filter === "free" || filter === "available" || filter === "needsKey" ? filterLabels[filter] : filter;
-      button.setAttribute("aria-pressed", String(pressed));
-      button.textContent = `${label} ${count}`;
+      filterSelect.value = currentModelFilter();
     }
     modelPickerWindowKey = "";
     syncModelWindow(resetScroll);
@@ -3365,42 +3249,29 @@ export function mountOpenCodeRemote(
     search.value = modelPickerQuery;
     search.setAttribute("aria-label", "Search models");
     toolbar.appendChild(search);
-    for (const [filter, label] of [["free", "Free"], ["available", "Available"], ["needsKey", "Needs key"]] as const) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "ocx-model-filter";
-      button.dataset.modelFilter = filter;
-      button.textContent = label;
-      button.setAttribute("aria-pressed", "false");
-      button.addEventListener("click", () => {
-        if (filter === "free") modelPickerFree = !modelPickerFree;
-        if (filter === "available") {
-          modelPickerAvailable = !modelPickerAvailable;
-          if (modelPickerAvailable) modelPickerNeedsKey = false;
-        }
-        if (filter === "needsKey") {
-          modelPickerNeedsKey = !modelPickerNeedsKey;
-          if (modelPickerNeedsKey) modelPickerAvailable = false;
-        }
-        paintRuntimePicker(true);
-      });
-      toolbar.appendChild(button);
+    // One compact filter control replaces the four toggle chips (free / ready / needs key / deprecated).
+    const filter = document.createElement("select");
+    filter.id = "ocxModelFilter";
+    filter.className = "ocx-model-filter";
+    filter.setAttribute("aria-label", "Filter models");
+    for (const value of MODEL_FILTERS) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = MODEL_FILTER_LABELS[value];
+      filter.appendChild(option);
     }
-    const deprecated = document.createElement("button");
-    deprecated.type = "button";
-    deprecated.className = "ocx-model-filter";
-    deprecated.dataset.modelFilter = "deprecated";
-    deprecated.textContent = "Deprecated";
-    deprecated.setAttribute("aria-pressed", String(modelPickerDeprecatedOpen));
-    deprecated.addEventListener("click", () => {
-      modelPickerDeprecatedOpen = !modelPickerDeprecatedOpen;
+    filter.value = currentModelFilter();
+    filter.addEventListener("change", () => {
+      applyModelFilter(filter.value as ModelPickerFilter);
       paintRuntimePicker(true);
     });
-    toolbar.appendChild(deprecated);
+    toolbar.appendChild(filter);
     const refresh = document.createElement("button");
     refresh.type = "button";
-    refresh.className = "ocx-model-filter";
-    refresh.textContent = "更新";
+    refresh.className = "ocx-model-refresh";
+    refresh.textContent = "↻";
+    refresh.title = "Refresh";
+    refresh.setAttribute("aria-label", "Refresh models");
     refresh.addEventListener("click", () => {
       void loadProviders(true).catch(error => showToast(error instanceof Error ? error.message : String(error)));
     });
@@ -3411,41 +3282,8 @@ export function mountOpenCodeRemote(
     });
     modalBody.appendChild(toolbar);
 
-    const agentSection = document.createElement("section");
-    agentSection.className = "ocx-picker-section";
-    const agentHeading = document.createElement("div");
-    agentHeading.className = "ocx-picker-heading";
-    agentHeading.textContent = "エージェント";
-    agentSection.appendChild(agentHeading);
-    for (const agent of agents) {
-      const option = document.createElement("button");
-      option.type = "button";
-      option.className = "ocx-picker-row " + (selectedAgent === agent.id ? "selected" : "");
-      const copy = document.createElement("span");
-      const title = document.createElement("strong");
-      const detail = document.createElement("small");
-      title.textContent = agent.id;
-      detail.textContent = "このエージェントで応答します";
-      copy.append(title, detail);
-      const mark = document.createElement("span");
-      mark.textContent = selectedAgent === agent.id ? "✓" : "›";
-      option.append(copy, mark);
-      option.addEventListener("click", () => {
-        void switchAgent(agent.id, selectedMode).then(() => {
-          mountRuntimePicker();
-          paintRuntimePicker(false);
-        }).catch(() => {});
-      });
-      agentSection.appendChild(option);
-    }
-    modalBody.appendChild(agentSection);
-
     const modelSection = document.createElement("section");
     modelSection.className = "ocx-picker-section ocx-model-section";
-    const modelHeading = document.createElement("div");
-    modelHeading.id = "ocxModelHeading";
-    modelHeading.className = "ocx-picker-heading";
-    modelHeading.textContent = "Provider · Model";
     const scroller = document.createElement("div");
     scroller.id = "ocxModelScroll";
     scroller.className = "ocx-model-scroll";
@@ -3464,15 +3302,8 @@ export function mountOpenCodeRemote(
         syncModelWindow(false);
       });
     }, { passive: true });
-    modelSection.append(modelHeading, scroller);
+    modelSection.append(scroller);
     modalBody.appendChild(modelSection);
-
-    const scope = document.createElement("p");
-    scope.className = "ocx-modal-empty";
-    scope.textContent = activeSession
-      ? "Changes apply to the active session and persist as next-session defaults."
-      : "Selection is saved as the default for the next session.";
-    modalBody.appendChild(scope);
   }
 
   function showRuntimePicker() {
@@ -3485,7 +3316,7 @@ export function mountOpenCodeRemote(
       }
       closeComposerMenus();
       modal.classList.add("ocx-runtime-modal");
-      modalTitle.textContent = "Provider · Model · Agent";
+      modalTitle.textContent = "Provider · Model";
       modalSubtitle.textContent = "";
       modal.classList.remove("hidden");
       syncOverlayState();
@@ -3704,7 +3535,7 @@ export function mountOpenCodeRemote(
       return;
     }
 
-    openModal(activeSession.title || "Session", activeSession.id);
+    openModal(sessionLabel(activeSession), activeSession.id);
     modalBody.innerHTML = `
       <div class="ocx-detail-grid"></div>
       <div class="ocx-detail-actions">
@@ -3738,6 +3569,7 @@ export function mountOpenCodeRemote(
   async function refresh(): Promise<boolean> {
     if (!online) return false;
 
+    setSideStatus("syncing");
     try {
       setActivity("syncing");
       await Promise.all([
@@ -3765,15 +3597,23 @@ export function mountOpenCodeRemote(
       setActivity("error");
       showToast(error instanceof Error ? error.message : String(error));
       return false;
+    } finally {
+      setSideStatus(online ? "idle" : "offline");
     }
+  }
+
+  // Quiet drawer status: a muted dot when idle, short text only while syncing or offline.
+  function setSideStatus(state: "idle" | "syncing" | "offline") {
+    sideStatus.dataset.state = state;
+    const text = state === "syncing" ? "Syncing" : state === "offline" ? "Offline" : "";
+    sideStatus.setAttribute("aria-label", text || "Ready");
+    sideStatus.querySelector("span")!.textContent = text;
   }
 
   function setOnline(value: boolean) {
     const changed = online !== value;
     online = value;
-    sideStatus.classList.toggle("online", value);
-    sideStatus.classList.toggle("offline", !value);
-    sideStatus.innerHTML = `<i></i> ${value ? "Connected" : "Offline"}`;
+    setSideStatus(value ? "idle" : "offline");
     setControlsEnabled(value);
 
     if (value) {
@@ -3793,28 +3633,6 @@ export function mountOpenCodeRemote(
   menu.addEventListener("click", () => {
     if (sidebar.classList.contains("open")) closeSidebar();
     else openSidebar();
-  });
-  quickCodex.hidden = !options.onCodex;
-  quickApi.hidden = !options.onApi;
-  quickCodex.addEventListener("click", () => {
-    if (!options.onCodex) return;
-    closeSidebar(false);
-    options.onCodex();
-  });
-  quickApi.addEventListener("click", () => {
-    if (!options.onApi) return;
-    closeSidebar(false);
-    options.onApi();
-  });
-  toolsNav.addEventListener("click", () => {
-    closeSidebar();
-    window.dispatchEvent(new CustomEvent("devmoter:open-global-nav"));
-  });
-  themeButton.addEventListener("click", () => {
-    document.querySelector<HTMLButtonElement>(".dm-theme")?.click();
-  });
-  prefsButton.addEventListener("click", () => {
-    window.dispatchEvent(new CustomEvent("devmoter:open-settings", { detail: { page: "appearance" } }));
   });
   window.addEventListener("resize", () => syncOverlayState());
   window.addEventListener("devmoter:close-chat-history", () => closeSidebar());
@@ -3844,12 +3662,7 @@ export function mountOpenCodeRemote(
   refreshButton.addEventListener("click", () => void refresh());
 
   sessionTitleButton.addEventListener("click", showSessionDetails);
-  agentButton.addEventListener("click", () => void showRuntimePicker());
   modelButton.addEventListener("click", () => void showRuntimePicker());
-
-  planMode.addEventListener("click", () => void setMode("plan"));
-  askMode.addEventListener("click", () => void setMode("ask"));
-  buildMode.addEventListener("click", () => void setMode("build"));
 
   plus.addEventListener("click", () => {
     attachmentMenu.classList.toggle("hidden");

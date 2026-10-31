@@ -46,9 +46,11 @@ test("mode and session route parsing are strict and query-safe", () => {
   assert.equal(isDirectMutationRoute("/api/session/abc/shell-extra?x=1"), false);
 });
 
-test("Ask mode does not persist a hidden instruction prefix in the user prompt", async () => {
+test("OpenCode sends the read-only mode derived from the agent, without a prompt prefix or mode toggle", async () => {
   const source = await readFile(new URL("../src/opencode.ts", import.meta.url), "utf8");
   assert.doesNotMatch(source, /DevMoter Ask mode:/);
-  assert.match(source, /"x-pocket-agent-mode": selectedMode/);
+  assert.match(source, /"x-pocket-agent-mode": agentModeFor\(selectedAgent\)/);
+  assert.match(source, /return agentID === "plan" \? "plan" : "build";/);
+  assert.doesNotMatch(source, /ocxPlanMode|ocxAskMode|ocxBuildMode|ocxAgentButton|ocxModelPricing|opencode-pocket-opencode-mode/);
   assert.match(source, /text: promptText/);
 });

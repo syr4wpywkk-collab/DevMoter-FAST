@@ -46,14 +46,28 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
           <option value="api">API Chat</option>
         </select>
       </label>
+      <button type="button" class="dm-task-first-menu-button" data-workspace-menu-button aria-haspopup="true" aria-expanded="false" aria-controls="dmTaskFirstMenu" aria-label="Switch screen">☰</button>
     </header>
-    <nav class="dm-task-first-tabs" aria-label="DevMoter workspace">
-      <button type="button" data-workspace-action="tasks" aria-label="Tasks and sessions"><span aria-hidden="true">▤</span><strong>Tasks</strong></button>
+    <nav id="dmTaskFirstMenu" class="dm-task-first-menu" aria-label="DevMoter workspace" hidden>
+      <button type="button" data-workspace-action="tasks" aria-label="Tasks and sessions"><span aria-hidden="true">▤</span><strong>タスク</strong></button>
       <button type="button" data-workspace-action="chat" aria-label="Current chat and conversation history"><span aria-hidden="true">◇</span><strong>Chat</strong></button>
       <button type="button" data-workspace-action="review" aria-label="Review changes"><span aria-hidden="true">⑂</span><strong>Review</strong></button>
       <button type="button" data-workspace-action="tools" aria-label="Open tools"><span aria-hidden="true">⌘</span><strong>Tools</strong></button>
+      <hr aria-hidden="true" />
+      <button type="button" data-workspace-command="theme"><span aria-hidden="true">◐</span><strong>テーマ</strong><small data-workspace-theme-value></small></button>
+      <button type="button" data-workspace-command="context"><span aria-hidden="true">◒</span><strong>表示履歴</strong></button>
+      <button type="button" data-workspace-command="checkpoints"><span aria-hidden="true">✓</span><strong>チェックポイント</strong></button>
+      <button type="button" data-workspace-command="extensions"><span aria-hidden="true">＋</span><strong>拡張</strong></button>
+      <hr aria-hidden="true" />
+      <button type="button" data-workspace-settings><span aria-hidden="true">⚙</span><strong>設定</strong></button>
+      <label class="dm-task-first-menu-row"><span aria-hidden="true">◎</span><strong>言語</strong>
+        <select data-language-select aria-label="Language">
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+          <option value="zh-CN">简体中文</option>
+        </select>
+      </label>
     </nav>
-    <p class="dm-task-first-caption">タスク・会話・レビューを一か所から</p>
     <p class="dm-task-first-feedback" role="status" aria-live="polite" data-workspace-feedback></p>
   `;
   document.body.append(root);
@@ -67,6 +81,59 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   const backendSelect = root.querySelector<HTMLSelectElement>("[data-workspace-backend]")!;
   const projectLabel = root.querySelector<HTMLElement>("[data-workspace-project]")!;
   const feedback = root.querySelector<HTMLElement>("[data-workspace-feedback]")!;
+  const menuButton = root.querySelector<HTMLButtonElement>("[data-workspace-menu-button]")!;
+  const menu = root.querySelector<HTMLElement>(".dm-task-first-menu")!;
+
+  const isMenuOpen = () => !menu.hidden;
+  function closeMenu(restoreFocus = false) {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    root.classList.remove("menu-open");
+    menuButton.setAttribute("aria-expanded", "false");
+    if (restoreFocus) menuButton.focus({ preventScroll: true });
+  }
+  function openMenu() {
+    menu.hidden = false;
+    root.classList.add("menu-open");
+    menuButton.setAttribute("aria-expanded", "true");
+    const current = menu.querySelector<HTMLButtonElement>('[aria-current="page"]') || menu.querySelector<HTMLButtonElement>("button");
+    current?.focus({ preventScroll: true });
+  }
+  menuButton.addEventListener("click", () => (isMenuOpen() ? closeMenu(true) : openMenu()));
+  // Settings (account, logout, vault, devices…) is an action, not a screen tab.
+  root.querySelector<HTMLButtonElement>("[data-workspace-settings]")!.addEventListener("click", () => {
+    closeMenu();
+    window.dispatchEvent(new window.CustomEvent("devmoter:open-settings", { detail: { page: "root" } }));
+  });
+  // Theme / display history / checkpoints / extensions used to be a button
+  // group docked in every chat drawer; they are menu commands now.
+  const themeValue = root.querySelector<HTMLElement>("[data-workspace-theme-value]")!;
+  const THEME_LABELS: Record<string, string> = { system: "システム", light: "ライト", dark: "ダーク" };
+  const syncThemeValue = () => {
+    themeValue.textContent = THEME_LABELS[localStorage.getItem("devmoter-theme") || "system"] || THEME_LABELS.system;
+  };
+  syncThemeValue();
+  window.addEventListener("devmoter:theme-changed", syncThemeValue);
+  for (const button of root.querySelectorAll<HTMLButtonElement>("[data-workspace-command]")) {
+    button.addEventListener("click", () => {
+      const command = button.dataset.workspaceCommand;
+      // Theme cycles in place so the new value stays visible in the open menu.
+      if (command !== "theme") closeMenu();
+      window.dispatchEvent(new window.CustomEvent("devmoter:workspace-command", { detail: { command } }));
+    });
+  }
+  const onDocumentKeydown = (event: KeyboardEvent) => {
+    if (event.key === "Escape" && isMenuOpen()) { event.stopPropagation(); closeMenu(true); }
+  };
+  const onDocumentPointerDown = (event: Event) => {
+    if (isMenuOpen() && !root.contains(event.target as Node)) closeMenu();
+  };
+  document.addEventListener("keydown", onDocumentKeydown, true);
+  document.addEventListener("pointerdown", onDocumentPointerDown, true);
+  menu.addEventListener("focusout", event => {
+    const next = (event as FocusEvent).relatedTarget as Node | null;
+    if (next && !menu.contains(next) && next !== menuButton) closeMenu();
+  });
 
   let surface: MainSurface = actions.initialSurface;
   // Preserve the last real backend when starting on Home or Integrations.
@@ -172,9 +239,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
         writeTabRoute(tab, providerRouteChanged ? "replace" : historyMode);
         // Closing Review/Tools may move focus to their old trigger. Keep it on
         // the destination when no new modal takes ownership of focus.
-        if (tab === "tasks" || tab === "chat") {
-          root.querySelector<HTMLButtonElement>(`[data-workspace-action="${tab}"]`)?.focus({ preventScroll: true });
-        }
+        if (tab === "tasks" || tab === "chat") menuButton.focus({ preventScroll: true });
       }
     } finally {
       changingTab = false;
@@ -209,6 +274,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     button.addEventListener("click", () => {
       const tab = button.dataset.workspaceAction;
       if (!isWorkspaceTab(tab)) return;
+      closeMenu();
       // Preserve the established Chat history shortcut only on the Chat screen.
       if (tab === "chat" && activeTab === "chat") openNativeHistory();
       else if (tab !== activeTab) selectTab(tab, "push");
@@ -223,6 +289,9 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     window.removeEventListener("devmoter:backend-changed", onBackendChanged);
     window.removeEventListener("devmoter:workspace-panel-changed", onPanelChanged);
     window.removeEventListener("popstate", restoreTabRoute);
+    window.removeEventListener("devmoter:theme-changed", syncThemeValue);
+    document.removeEventListener("keydown", onDocumentKeydown, true);
+    document.removeEventListener("pointerdown", onDocumentPointerDown, true);
     for (const label of agentLabels) label.hidden = true;
     root.remove();
     document.body.classList.remove("dm-task-first-enabled");

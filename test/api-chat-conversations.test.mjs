@@ -7,6 +7,7 @@ import { renderChatMarkdown } from "../src/chat-markdown.mjs";
 import * as fetchTimeout from "../src/fetch-with-timeout.mjs";
 import * as providerCatalog from "../src/api-provider-catalog.mjs";
 import * as apiAttachment from "../src/api-attachment.mjs";
+import * as apiModelLabel from "../src/api-model-label.mjs";
 
 const source = await readFile(new URL("../src/api-chat.ts", import.meta.url), "utf8");
 const compiled = ts.transpileModule(source, {
@@ -85,7 +86,8 @@ async function harness(t, { rejectOnAbort = false } = {}) {
     "./chat-markdown.mjs": { renderChatMarkdown },
     "./fetch-with-timeout.mjs": fetchTimeout,
     "./api-provider-catalog.mjs": providerCatalog,
-    "./api-attachment.mjs": apiAttachment
+    "./api-attachment.mjs": apiAttachment,
+    "./api-model-label.mjs": apiModelLabel
   };
   window.Function("require", "exports", compiled)(name => {
     if (name.endsWith(".css")) return {};
@@ -134,9 +136,10 @@ test("provider refresh failure preserves choices but blocks send until retry suc
   const previousProvider = provider.value;
   const previousModel = model.value;
   assert.ok(provider.options.length > 1);
-  const billingNotice = ui.root.querySelector("#apiBillingNotice");
-  assert.equal(billingNotice.hidden, false);
-  assert.match(billingNotice.textContent, /Free use is unverified/);
+  // No billing disclaimer and no "· Ready" line: the foot holds the selectors.
+  assert.equal(ui.root.querySelector("#apiBillingNotice"), null);
+  assert.equal(ui.root.querySelector("#apiStatus").textContent, "");
+  assert.ok(ui.root.querySelector(".api-composer-foot .api-picker-row #apiModel"));
 
   ui.failProviderFetch(true);
   await ui.controller.refresh();
@@ -286,7 +289,8 @@ test("API conversations restore raw messages and provider choices with safe Mark
   assert.deepEqual(selects.map(select => select.value), ["beta", "beta-2", "medium"]);
   assert.match(ui.root.querySelector(".api-message.assistant").textContent, /Second answer/);
   assert.ok(ui.history().some(row => row.classList.contains("active") || row.getAttribute("aria-current") === "true"));
-  assert.match(ui.root.querySelector("#apiSidebar").textContent, /this tab|current tab|このタブ|当前标签/i);
+  // History is still tab-scoped (never persisted below), but the drawer no longer explains it in copy.
+  assert.doesNotMatch(ui.root.querySelector("#apiSidebar").textContent, /このタブの会話|再読み込みするまで|SETTINGS|DevMoterサーバー側だけ/);
   for (const key of Object.keys(ui.window.localStorage)) assert.doesNotMatch(key, /conversation|history/i);
 
   ui.root.querySelector("#apiSettingsTop").click();

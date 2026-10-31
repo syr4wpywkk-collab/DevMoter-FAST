@@ -365,7 +365,6 @@ html[data-devmoter-theme="light"] .devmoter-settings-row-copy small {
   color: #73737a;
 }
 
-
 .devmoter-settings-back {
   width: 40px;
   height: 40px;
@@ -741,52 +740,20 @@ html[data-devmoter-theme="light"] .devmoter-vault-secret-actions button:last-chi
   color: #ad312a;
 }
 
-
 /* Mobile workspace declutter: keep one primary floating entry point and move
    secondary controls behind Settings. Their panels remain mounted so Settings
    can open them programmatically without duplicating functionality. */
 @media (max-width: 620px) {
   .wf-launch,
   .devmoter-agent-launcher,
-  .sc-fab,
-  .dm-controlbar > button {
+  .sc-fab {
     display: none !important;
   }
 
-  .dm-controlbar {
-    width: 0 !important;
-    min-width: 0 !important;
-    padding: 0 !important;
-    border: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    pointer-events: none;
-  }
-
-  .dm-controlbar .dm-panel {
-    pointer-events: auto;
-  }
-
-  /* The OpenCode composer keeps the three primary modes visible, while
-     secondary agent/model and slash/status controls move to menus/settings. */
-  .ocx-context-buttons,
+  /* Slash/status controls move to menus/settings on this layout. */
   #ocxSlashButton,
   .ocx-activity {
     display: none !important;
-  }
-
-  .ocx-context-row {
-    justify-content: flex-start !important;
-  }
-
-  .ocx-mode-switch {
-    width: fit-content;
-    max-width: 100%;
-  }
-
-  .ocx-mode-switch button {
-    min-height: 32px;
-    padding-inline: 12px;
   }
 
   .ocx-composer-wrap {

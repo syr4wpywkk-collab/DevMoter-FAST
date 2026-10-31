@@ -77,12 +77,15 @@ test("recent application cards use validated local app IDs and persist safely", 
   const launched = [];
   const options = { onLaunchApp: id => launched.push(id), onPreviewApp: () => {} };
   mountHomeSurface(root, options);
-  assert.match(root.querySelector("[data-home-recent]").textContent, /まだ最近開いたアプリ/);
+  // No recents yet: the section is absent, with no empty-state copy.
+  assert.equal(root.querySelector("[data-home-recent-section]").hidden, true);
+  assert.equal(root.querySelector("[data-home-recent]").textContent, "");
   root.querySelector('[data-home-app="git"]').click();
   root.querySelector('[data-home-app="chat"]').click();
   mountHomeSurface(root, options);
   assert.equal(root.querySelectorAll("[data-home-recent]").length, 1);
   assert.deepEqual([...root.querySelectorAll(".dm-home-recent-card")].map(node => node.dataset.homeRecentApp), ["chat", "git"]);
+  assert.equal(root.querySelector("[data-home-recent-section]").hidden, false);
   root.querySelector('[data-home-recent-app="git"]').click();
   assert.deepEqual(launched, ["git", "chat", "git"]);
   // Simulate tampered storage; bogus actions and markup must not be injected.

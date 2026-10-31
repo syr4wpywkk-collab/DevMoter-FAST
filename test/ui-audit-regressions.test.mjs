@@ -6,11 +6,13 @@ test("audit-facing placeholders and Usage labels stay honest", async () => {
   const codex = await readFile(new URL("../src/codex.ts", import.meta.url), "utf8");
   assert.doesNotMatch(codex, /cxUsageLabel">0 tok/);
   assert.match(codex, /cxUsageLabel">Usage/);
-  assert.match(codex, /ライブラリ · 準備中/);
+  // The Library placeholder and the Settings / DevMoter tools rows (duplicated by ☰) left the Codex drawer.
+  assert.doesNotMatch(codex, /ライブラリ · 準備中|id="cxLibraryNav"|id="cxSettingsNav"|id="cxToolsNav"/);
 
   const integrations = await readFile(new URL("../src/integrations.ts", import.meta.url), "utf8");
   assert.doesNotMatch(integrations, /claude:\/\/code/);
-  assert.match(integrations, /Claudeアプリ（準備中）/);
+  // The disabled "Claudeアプリ（準備中）" placeholder and the intro/Project copy are gone.
+  assert.doesNotMatch(integrations, /Claudeアプリ（準備中）|開発ツールをひとつの場所から|ON\/OFFは表示設定|id="ixProject"/);
 });
 
 test("chat history cannot strand global navigation after switching surfaces", async () => {
@@ -22,8 +24,11 @@ test("chat history cannot strand global navigation after switching surfaces", as
   assert.doesNotMatch(shellCss, /\.devmoter-system-modal:not\(\.hidden\),\s*\.api-sidebar\.open/);
 
   const opencode = await readFile(new URL("../src/opencode.ts", import.meta.url), "utf8");
-  assert.match(opencode, /id="ocxToolsNav"/);
-  assert.match(opencode, /devmoter:open-global-nav/);
+  // The drawer's own 開発ツール button left with its footer row; the global shell's in-flow Tools entry remains.
+  assert.doesNotMatch(opencode, /id="ocxToolsNav"/);
+  const shell = await readFile(new URL("../src/app-shell.ts", import.meta.url), "utf8");
+  assert.match(shell, /#ocxSidebar \.ocx-sidebar-head/);
+  assert.match(shell, /dataset\.openTools/);
 
 });
 
@@ -34,11 +39,11 @@ test("theme overrides keep history and workspace controls readable", async () =>
   assert.match(codexCss, /data-devmoter-theme="light"[^\n]*\.cx-app \.cx-search input/);
 
   const openCodeCss = await readFile(new URL("../src/opencode-chat.css", import.meta.url), "utf8");
-  assert.match(openCodeCss, /data-devmoter-theme="dark"[^\n]*#ocxWorkspaceControlsMount \.dm-controlbar > \.dm-theme/);
+  assert.doesNotMatch(openCodeCss, /dm-controlbar|WorkspaceControlsMount/, "the docked workspace button group is gone");
   assert.match(openCodeCss, /background: var\(--oc-panel-2\)/);
 
   const apiCss = await readFile(new URL("../src/api-chat-surface.css", import.meta.url), "utf8");
-  assert.match(apiCss, /data-devmoter-theme="dark"[^\n]*#apiWorkspaceControlsMount \.dm-controlbar > \.dm-theme/);
+  assert.doesNotMatch(apiCss, /dm-controlbar|WorkspaceControlsMount/);
   assert.match(apiCss, /background: var\(--api-composer-surface\)/);
 });
 
@@ -53,16 +58,14 @@ test("API Chat welcome and composer use a restrained workspace treatment", async
   assert.doesNotMatch(css, /\.api-app \.api-welcome h1[^\n]*linear-gradient/);
   assert.match(css, /\.api-app \.api-composer \{[^}]*border-radius: 14px/);
   assert.match(css, /\.api-app \.api-picker-row select[^\n]*border-radius: 8px/);
-  assert.match(css, /\.api-app #apiSend \{ background: var\(--api-accent\); color: #fff; \}/);
+  // Text on the accent fill follows --api-on-accent so it stays readable when the accent is near-white (dark).
+  assert.match(css, /\.api-app #apiSend \{ background: var\(--api-accent\); color: var\(--api-on-accent, #fff\); \}/);
 });
 
 test("global workspace navigation uses neutral state cues instead of backend brand colors", async () => {
   const shell = await readFile(new URL("../src/app-shell.ts", import.meta.url), "utf8");
   assert.match(shell, /<strong>開発ツール<\/strong>/);
-  assert.match(shell, /<small>作業環境と機能<\/small>/);
-  assert.match(shell, /<h2>Chat workspaces<\/h2>/);
-  assert.match(shell, /aria-label="Chat workspaces"/);
-  assert.match(shell, /button\.setAttribute\("aria-pressed", String\(active\)\)/);
+  assert.doesNotMatch(shell, /作業環境と機能|Chat workspaces/, "Tools header is name-only and has no duplicate backend grid");
 
   const css = await readFile(new URL("../src/app-shell.css", import.meta.url), "utf8");
   assert.doesNotMatch(css, /\.dm-shell-menu-trigger\[data-backend=/);
@@ -72,13 +75,13 @@ test("global workspace navigation uses neutral state cues instead of backend bra
 
 test("Tools assistant reads like a project inspection utility instead of a chat prompt", async () => {
   const tools = await readFile(new URL("../src/tools-ai.ts", import.meta.url), "utf8");
-  assert.match(tools, /プロジェクトを調べる/);
-  assert.match(tools, /読み取り専用で調べます/);
   assert.match(tools, /調査を開始/);
+  assert.match(tools, /例：現在の変更点を整理/);
+  assert.doesNotMatch(tools, /読み取り専用で調べます|読み取り専用の調査|依頼と必要なProject内容|ツールを直接開く|data-ai-suggestion/);
   assert.doesNotMatch(tools, /tools-ai-spark|何をしたいですか|AIに頼めます/);
 
   const css = await readFile(new URL("../src/app-shell.css", import.meta.url), "utf8");
-  assert.match(css, /\.tools-ai-welcome \{ padding: 18px 4px 14px; text-align: left; \}/);
+  assert.doesNotMatch(css, /\.tools-ai-welcome|\.tools-ai-suggestions|\.tools-ai-settings/);
   assert.doesNotMatch(css, /\.tools-ai-composer \{[^}]*linear-gradient/);
   assert.match(css, /\.tools-ai-composer \{[^}]*border-radius: 12px/);
 });

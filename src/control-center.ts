@@ -254,19 +254,6 @@ export function mountControlCenter() {
   let modalOpen = false;
   let returnFocusTarget: HTMLElement | null = null;
   const inertSnapshots = new Map<HTMLElement, { inert: boolean; ariaHidden: string | null }>();
-  const syncToolsViewport = () => {
-    const height = window.visualViewport?.height ?? window.innerHeight;
-    if (Number.isFinite(height) && height > 0) {
-      const value = `${Math.max(1, Math.floor(height))}px`;
-      panel.style.setProperty("--dm-tools-viewport-height", value);
-      scrim.style.setProperty("--dm-tools-viewport-height", value);
-    }
-  };
-  syncToolsViewport();
-  window.visualViewport?.addEventListener("resize", syncToolsViewport, { passive: true });
-  window.visualViewport?.addEventListener("scroll", syncToolsViewport, { passive: true });
-  window.addEventListener("resize", syncToolsViewport, { passive: true });
-  window.addEventListener("orientationchange", syncToolsViewport);
   let safetyInitialized = false;
   let indexInitialized = false;
   let safetyRevision = 0;

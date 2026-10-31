@@ -84,34 +84,17 @@ export function mountIntegrations(
 ): IntegrationsController {
   let integrations: IntegrationInfo[] = [];
   let projects: ProjectSummary[] = [];
-  let selectedProjectId = localStorage.getItem(PROJECT_KEY) || "";
   const enabled = loadEnabled();
 
   root.innerHTML = `
     <div class="ix-app">
       <header class="ix-topbar">
         <button id="ixOpenCode" class="ix-icon" type="button" aria-label="OpenCodeへ戻る">◈</button>
-        <div class="ix-title">
-          <strong>Integrations</strong>
-          <small>DevMoter launcher & handoff</small>
-        </div>
+        <h1 class="ix-title">Integrations</h1>
         <button id="ixCodex" class="ix-icon" type="button" aria-label="Codexへ戻る">⌘</button>
       </header>
 
       <main class="ix-main">
-        <section class="ix-hero">
-          <span class="ix-kicker">TOOLS</span>
-          <h1>開発ツールをひとつの場所から。</h1>
-          <p>使うものだけ表示。認証情報の抜き取りや非公式proxyはせず、各ツールの公式CLI・公式Web導線を使います。</p>
-          <p class="ix-security-note">ON/OFFは表示設定です。アクセス制御はDevMoterの認証・same-origin境界で行います。</p>
-        </section>
-
-        <section class="ix-project-panel">
-          <label for="ixProject">Project</label>
-          <select id="ixProject"></select>
-          <small id="ixProjectPath">Loading projects…</small>
-        </section>
-
         <div id="ixNotice" class="ix-notice hidden"></div>
         <section id="ixCards" class="ix-cards">
           <div class="ix-loading">Loading integrations…</div>
@@ -122,8 +105,6 @@ export function mountIntegrations(
 
   const cards = root.querySelector<HTMLElement>("#ixCards")!;
   const notice = root.querySelector<HTMLElement>("#ixNotice")!;
-  const projectSelect = root.querySelector<HTMLSelectElement>("#ixProject")!;
-  const projectPath = root.querySelector<HTMLElement>("#ixProjectPath")!;
 
   root.querySelector<HTMLButtonElement>("#ixOpenCode")!.addEventListener("click", () => {
     options.onOpenCode?.();
@@ -132,34 +113,21 @@ export function mountIntegrations(
     options.onCodex?.();
   });
 
+  // No Project card: launches use the workspace's current project (the one the
+  // header shows), then the last Integrations choice, then the first project.
   function selectedProject() {
-    return projects.find(project => project.id === selectedProjectId) || projects[0] || null;
+    const current = (localStorage.getItem("opencode-pocket-project") || "").replace(/\\/g, "/").replace(/\/+$/, "");
+    const stored = localStorage.getItem(PROJECT_KEY) || "";
+    return projects.find(project => current && project.path.replace(/\\/g, "/").replace(/\/+$/, "") === current)
+      || projects.find(project => project.id === stored)
+      || projects[0]
+      || null;
   }
 
   function showNotice(message: string, tone: "ok" | "error" = "ok") {
     notice.textContent = message;
     notice.className = `ix-notice ${tone}`;
     window.setTimeout(() => notice.classList.add("hidden"), 4200);
-  }
-
-  function renderProjects() {
-    if (projects.length === 0) {
-      projectSelect.innerHTML = `<option value="">No project</option>`;
-      projectSelect.disabled = true;
-      projectPath.textContent = "Add a project from Codex first.";
-      return;
-    }
-
-    projectSelect.disabled = false;
-    if (!projects.some(project => project.id === selectedProjectId)) {
-      selectedProjectId = projects[0].id;
-      localStorage.setItem(PROJECT_KEY, selectedProjectId);
-    }
-    projectSelect.innerHTML = projects
-      .map(project => `<option value="${project.id}">${escapeHtml(project.name)}</option>`)
-      .join("");
-    projectSelect.value = selectedProjectId;
-    projectPath.textContent = selectedProject()?.path || "";
   }
 
   function toggleIntegration(id: IntegrationId) {
@@ -189,6 +157,7 @@ export function mountIntegrations(
       const version = info.version ? `<small class="ix-version">${escapeHtml(info.version)}</small>` : "";
       const installClass = info.installed ? "ready" : "missing";
       const remoteUrl = info.remote?.remoteUrl || info.remote?.dashboardUrl || info.webUrl || "";
+      // One column of actions per card.
       const antigravityActions = info.id === "antigravity"
         ? `
           <div class="ix-actions">
@@ -196,8 +165,6 @@ export function mountIntegrations(
             <button class="primary" data-action="${info.remote?.running ? "remote-stop" : "remote-start"}" data-id="antigravity" ${!info.installed || !isEnabled ? "disabled" : ""}>
               ${info.remote?.running ? "Remote停止" : "Remote開始"}
             </button>
-          </div>
-          <div class="ix-actions">
             <button data-action="open-url" data-url="${escapeAttr(remoteUrl)}" ${!remoteUrl || !isEnabled ? "disabled" : ""}>Remoteを開く</button>
             <button data-action="qr" data-id="antigravity" ${!isEnabled ? "disabled" : ""}>QR表示</button>
           </div>
@@ -210,9 +177,6 @@ export function mountIntegrations(
           <div class="ix-actions">
             <button data-action="launch" data-id="claude" ${!info.installed || !isEnabled ? "disabled" : ""}>PCで開く</button>
             <button class="primary" data-action="open-url" data-url="https://claude.ai/code" ${!isEnabled ? "disabled" : ""}>Claude Code Web</button>
-          </div>
-          <div class="ix-actions">
-            <button disabled title="公式モバイル起動先の対応確認中">Claudeアプリ（準備中）</button>
             <button data-action="qr" data-id="claude" ${!isEnabled ? "disabled" : ""}>QR表示</button>
           </div>
           <div id="ixQr-claude" class="ix-qr hidden">
@@ -227,7 +191,7 @@ export function mountIntegrations(
             <div>
               <div class="ix-name-row">
                 <h2>${escapeHtml(info.name)}</h2>
-                <span class="ix-pill ${installClass}">${escapeHtml(statusText(info))}</span>
+                <span class="ix-pill ${installClass}" title="${escapeAttr(statusText(info))}">${escapeHtml(statusText(info))}</span>
               </div>
               ${version}
             </div>
@@ -275,7 +239,7 @@ export function mountIntegrations(
     if (action === "launch" && id) {
       const project = selectedProject();
       if (!project) {
-        showNotice("先にProjectを選んでね。", "error");
+        showNotice("Projectがありません。Codexで追加してください。", "error");
         return;
       }
       button.disabled = true;
@@ -316,12 +280,6 @@ export function mountIntegrations(
     }
   }
 
-  projectSelect.addEventListener("change", () => {
-    selectedProjectId = projectSelect.value;
-    localStorage.setItem(PROJECT_KEY, selectedProjectId);
-    projectPath.textContent = selectedProject()?.path || "";
-  });
-
   async function refreshIntegrations() {
     const result = await api<{ integrations?: IntegrationInfo[] }>("/api/integrations/status", {
       method: "POST",
@@ -338,7 +296,6 @@ export function mountIntegrations(
         refreshIntegrations()
       ]);
       projects = (projectResult.projects || []).filter(project => project.available !== false);
-      renderProjects();
     } catch (error) {
       cards.innerHTML = `<div class="ix-loading error">${escapeHtml(error instanceof Error ? error.message : String(error))}</div>`;
     }

@@ -107,32 +107,32 @@ async function fixtureServer() {
   return { url: `http://127.0.0.1:${address.port}/?unifiedUI=1&surface=codex`, async close() { await new Promise(resolve => server.close(resolve)); await rm(dir, { recursive: true, force: true }); } };
 }
 
+async function openMenu(page) {
+  const button = page.locator("[data-workspace-menu-button]");
+  if (await button.getAttribute("aria-expanded") !== "true") await button.click();
+  await page.locator("#dmTaskFirstMenu:not([hidden])").waitFor();
+}
+
 async function assertNavAndHitTargets(page, device) {
+  await openMenu(page);
   await page.evaluate(() => Promise.all(document.getAnimations().map(animation => animation.finished.catch(() => {}))));
-  const current = page.locator(".dm-task-first-tabs [aria-current='page']");
+  const current = page.locator("#dmTaskFirstMenu [aria-current='page']");
   assert.equal(await current.count(), 1, "exactly one workspace destination is current");
-  const backgrounds = await page.locator('.dm-task-first-tabs button').evaluateAll(buttons => buttons.map(button => ({
+  const backgrounds = await page.locator('#dmTaskFirstMenu button[data-workspace-action]').evaluateAll(buttons => buttons.map(button => ({
     current: button.getAttribute('aria-current') === 'page', background: getComputedStyle(button).backgroundColor
   })));
   const selectedBackground = backgrounds.find(button => button.current).background;
-  assert.equal(backgrounds.filter(button => button.background === selectedBackground).length, 1, 'only the selected tab has the selected background, including after touch hover');
-  const buttons = page.locator(".dm-task-first-tabs button");
+  assert.equal(backgrounds.filter(button => button.background === selectedBackground).length, 1, 'only the selected item has the selected background, including after touch hover');
+  const buttons = page.locator("#dmTaskFirstMenu button[data-workspace-action]");
   const count = await buttons.count();
-  const boxes = [];
   for (let i = 0; i < count; i++) {
     const box = await buttons.nth(i).boundingBox();
-    assert.ok(box && box.width >= 44 && box.height >= 44, "every tab has a usable hit target");
-    boxes.push(box);
-    {
-      const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest("button[data-workspace-action]")?.dataset.workspaceAction, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
-      assert.equal(hit, ["tasks", "chat", "review", "tools"][i], "each tab center hits that same tab");
-    }
+    assert.ok(box && box.width >= 44 && box.height >= 44, "every menu item has a usable hit target");
+    const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest("button[data-workspace-action]")?.dataset.workspaceAction, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    assert.equal(hit, ["tasks", "chat", "review", "tools"][i], "each item center hits that same item");
   }
-  for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
-    const a = boxes[i], b = boxes[j];
-    const overlap = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
-    assert.equal(overlap, 0, "tab button bounds do not overlap");
-  }
+  await page.keyboard.press("Escape");
+  assert.equal(await page.locator("[data-workspace-menu-button]").getAttribute("aria-expanded"), "false", "Escape closes the menu");
 }
 
 for (const device of [
@@ -167,13 +167,14 @@ for (const device of [
       return route.continue();
     });
     await page.goto(server.url);
-    await page.locator(".dm-task-first-tabs").waitFor();
+    await page.locator("[data-workspace-menu-button]").waitFor();
     await page.waitForFunction(() => Boolean(document.querySelector("#dmTaskFirstWorkspace")));
-    const tab = name => page.locator(`.dm-task-first-tabs [data-workspace-action='${name}']`);
+    const tab = name => page.locator(`#dmTaskFirstMenu [data-workspace-action='${name}']`);
     const select = async name => {
+      await openMenu(page);
       await tab(name).click();
       await page.waitForFunction(expected => new URL(location.href).searchParams.get("workspaceTab") === expected, name);
-      assert.equal(await page.locator('.dm-task-first-tabs [aria-current="page"]').getAttribute('data-workspace-action'), name);
+      assert.equal(await page.locator('#dmTaskFirstMenu [aria-current="page"]').getAttribute('data-workspace-action'), name);
       assert.equal(await page.locator('#wfModal').isVisible(), name === 'review', 'only Review shows the Review modal');
       assert.equal(await page.locator('.sc-panel.open').count(), name === 'tasks' ? 1 : 0);
       assert.equal(await page.locator('.dm-shell-sidebar.open').count(), name === 'tools' ? 1 : 0);
@@ -218,7 +219,7 @@ for (const device of [
         await page[direction]();
         await page.waitForFunction(expected => new URL(location.href).searchParams.get("workspaceTab") === expected, name);
         await page.waitForLoadState("networkidle");
-        assert.equal(await page.locator('.dm-task-first-tabs [aria-current="page"]').getAttribute("data-workspace-action"), name);
+        assert.equal(await page.locator('#dmTaskFirstMenu [aria-current="page"]').getAttribute("data-workspace-action"), name);
         assert.equal(await page.locator("#wfModal").isVisible(), name === "review");
         assert.equal(await page.locator(".sc-panel.open").count(), name === "tasks" ? 1 : 0);
         assert.equal(await page.locator(".dm-shell-sidebar.open").count(), name === "tools" ? 1 : 0);

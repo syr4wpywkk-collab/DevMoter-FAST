@@ -29,8 +29,8 @@ const compile = value => ts.transpileModule(value, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
 }).outputText;
 
-function mount(t, options = {}) {
-  const dom = new JSDOM('<!doctype html><div id="root"></div><div id="cxWorkspaceControlsMount"></div>', {
+function mount(t) {
+  const dom = new JSDOM('<!doctype html><div id="root"></div>', {
     url: "https://devmoter.example/?surface=opencode&unifiedUI=0",
     runScripts: "outside-only"
   });
@@ -64,7 +64,7 @@ function mount(t, options = {}) {
   dom.window.exports = {};
   dom.window.eval(compiled);
   document.body.classList.add("opencode-mode");
-  dom.window.exports.mountOpenCodeRemote(document.querySelector("#root"), options);
+  dom.window.exports.mountOpenCodeRemote(document.querySelector("#root"));
   const query = selector => document.querySelector(selector);
   const key = (value, shiftKey = false) => {
     const event = new dom.window.KeyboardEvent("keydown", { key: value, shiftKey, bubbles: true, cancelable: true });
@@ -99,28 +99,23 @@ test("OpenCode history traps Tab, blocks background interaction and restores its
   assert.equal(document.activeElement, menu);
 });
 
-test("OpenCode direct quick switches are pinned above scrolling history and do not restore focus into a hidden surface", t => {
-  const routes = [];
-  const { document, query } = mount(t, { onCodex: () => routes.push("codex"), onApi: () => routes.push("api") });
-  const sidebar = query("#ocxSidebar");
-  assert.equal(query("#ocxQuickCodex").closest(".ocx-sidebar-scroll"), null);
-  assert.equal(query("#ocxQuickApi").closest(".ocx-sidebar-scroll"), null);
-  query("#ocxMenu").click();
-  query("#ocxQuickCodex").focus();
-  query("#ocxQuickCodex").click();
-  assert.deepEqual(routes, ["codex"]);
-  assert.equal(sidebar.inert, true);
-  assert.notEqual(document.activeElement, query("#ocxMenu"), "do not move focus back to a surface that is being hidden");
-  query("#ocxMenu").click();
-  query("#ocxQuickApi").click();
-  assert.deepEqual(routes, ["codex", "api"]);
+test("OpenCode history shows a quiet status and keeps refresh beside the history label", t => {
+  const { query } = mount(t);
+  const status = query("#ocxSideStatus");
+  assert.equal(status.dataset.state, "offline");
+  assert.equal(status.textContent.trim(), "Offline");
+  assert.equal(status.closest(".ocx-sidebar-head") !== null, true);
+  assert.equal(query("#ocxRefresh").closest(".ocx-side-label") !== null, true);
+  for (const removed of ["#ocxQuickCodex", "#ocxQuickApi", ".ocx-sidebar-foot", "#ocxTheme", "#ocxToolsNav", "#ocxPrefs", "#ocxSidebar [data-language-select]"]) {
+    assert.equal(query(removed), null, removed);
+  }
 });
 
 test("OpenCode runtime modal closes history and attachment menus without stacking overlays", t => {
   const { dom, document, query, key } = mount(t);
   const plus = query("#ocxPlus");
   const menu = query("#ocxMenu");
-  const agent = query("#ocxAgentButton");
+  const agent = query("#ocxModelButton");
   // The offline mount deliberately disables runtime selection; enable its existing
   // launcher to exercise the local modal without connecting a backend.
   agent.disabled = false;
@@ -184,7 +179,7 @@ test("global Tools replaces the OpenCode modal and receives keyboard focus", t =
     initialBackend: "opencode", initialSurface: "opencode",
     switchBackend() {}, openHome() {}
   });
-  const agent = query("#ocxAgentButton");
+  const agent = query("#ocxModelButton");
   agent.disabled = false;
   agent.focus();
   agent.click();
@@ -194,7 +189,7 @@ test("global Tools replaces the OpenCode modal and receives keyboard focus", t =
   assert.equal(query(".dm-shell-sidebar").classList.contains("open"), true);
   assert.equal(document.activeElement, query("[data-shell-close]"));
   key("Tab", true);
-  assert.equal(document.activeElement, query('[data-manual-tools] > summary'));
+  assert.equal(document.activeElement, query('[data-ai-model]'), "focus wraps to the last Tools AI control");
   key("Tab");
   assert.equal(document.activeElement, query("[data-shell-close]"));
   key("Escape");
@@ -202,27 +197,15 @@ test("global Tools replaces the OpenCode modal and receives keyboard focus", t =
   assert.equal(document.activeElement, agent);
 });
 
-test("one existing workspace toolbar moves between OpenCode, Codex and body", t => {
+test("OpenCode drawer has no docked workspace button group; the theme row uses the workspace command", async t => {
   const { dom, document, query } = mount(t);
   dom.window.exports = {};
   dom.window.eval(compiledWorkspace);
   const stop = dom.window.exports.startWorkspaceControl();
   t.after(stop);
-  const host = query(".dm-controlbar");
-  const context = query(".dm-context");
-  const panel = query(".dm-panel");
-  const emit = surface => dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:surface-changed", { detail: { surface } }));
-  assert.equal(host.parentElement, query("#ocxWorkspaceControlsMount"));
-  context.click();
-  assert.equal(panel.classList.contains("hidden"), false);
-  emit("codex");
-  assert.equal(host.parentElement, query("#cxWorkspaceControlsMount"));
-  emit("api");
-  assert.equal(host.parentElement, document.body);
-  emit("opencode");
-  assert.equal(host.parentElement, query("#ocxWorkspaceControlsMount"));
-  assert.equal(query(".dm-context"), context);
-  assert.equal(query(".dm-panel"), panel);
-  assert.equal(panel.classList.contains("hidden"), false);
-  assert.equal(document.querySelectorAll(".dm-controlbar").length, 1);
+  assert.equal(document.querySelector("#ocxWorkspaceControlsMount"), null);
+  assert.equal(document.querySelector(".dm-controlbar"), null);
+  dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:workspace-command", { detail: { command: "context" } }));
+  assert.equal(query(".dm-panel").classList.contains("hidden"), false);
+  assert.equal(query(".dm-panel").parentElement, document.body);
 });

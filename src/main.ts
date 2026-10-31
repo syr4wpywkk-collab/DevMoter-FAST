@@ -17,12 +17,16 @@ import { startWorkspaceControl } from "./workspace-control";
 import { mountSettingsPanel } from "./settings";
 import { mountSetupWizard } from "./setup-wizard";
 import { mountUnifiedFeatureShell } from "./app-shell";
+import { startViewportSync } from "./visual-viewport.mjs";
 import { mountHomeSurface } from "./home";
 import { mountMissionControl } from "./mission-control";
 import { createSurfaceNavigation, type MainSurface } from "./surface-navigation.mjs";
 import "./zcode-theme.css";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
+// One visualViewport listener publishes --dm-viewport-height / --dm-keyboard-inset
+// and keeps focused fields above the iOS keyboard for every surface.
+startViewportSync(window);
 const startupParams = new URLSearchParams(window.location.search);
 
 const requestedProject = startupParams.get("project");
@@ -152,16 +156,7 @@ surfaceNavigation = createSurfaceNavigation({
   onSurface: applySurface
 });
 
-const openCodeRemote = mountOpenCodeRemote(openCodeMount, {
-  onCodex: () => {
-    setBackend("codex");
-    window.requestAnimationFrame(() => codexView.querySelector<HTMLElement>("#cxMenu")?.focus({ preventScroll: true }));
-  },
-  onApi: () => {
-    setBackend("api");
-    window.requestAnimationFrame(() => apiView.querySelector<HTMLElement>("#apiMenu")?.focus({ preventScroll: true }));
-  }
-});
+const openCodeRemote = mountOpenCodeRemote(openCodeMount);
 const codexRemote = mountCodexRemote(codexMount, {
   onOpenCode: () => setBackend("opencode"),
   onApi: () => setBackend("api"),
