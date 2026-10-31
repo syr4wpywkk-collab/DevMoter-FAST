@@ -62,13 +62,13 @@ test("desktop Codex sidebar remains clickable before and after a modal", async t
   assert.equal(await sidebar.isVisible(), true);
   assert.equal(await sidebar.getAttribute("aria-hidden"), "false");
   assert.equal(await sidebar.getAttribute("inert"), null);
-  await page.locator("#cxLibraryNav").click({ timeout: 5000 });
+  await page.locator("#cxReasoningTop").click({ timeout: 5000 });
   assert.equal(await page.locator("#cxModal").isVisible(), true);
   assert.notEqual(await sidebar.getAttribute("inert"), null);
   await page.locator("#cxModalClose").click();
   assert.equal(await sidebar.getAttribute("aria-hidden"), "false");
   assert.equal(await sidebar.getAttribute("inert"), null);
-  await page.locator("#cxLibraryNav").click({ timeout: 5000 });
+  await page.locator("#cxReasoningTop").click({ timeout: 5000 });
   assert.equal(await page.locator("#cxModal").isVisible(), true);
 });
 

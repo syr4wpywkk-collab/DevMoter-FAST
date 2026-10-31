@@ -102,15 +102,17 @@ test("OpenCode history keeps a direct Tools escape owned by the global shell", a
   dom.window.document.querySelector("[data-shell-close]").click();
 });
 
-test("API history keeps an in-flow Tools entry while the floating trigger yields to history", async t => {
+test("API history has no in-flow Tools entry; the ☰ menu opens Tools while the drawer exists", async t => {
   const dom = makeDom();
   dom.window.document.body.insertAdjacentHTML('beforeend', '<aside id="apiSidebar"><nav class="api-agent-nav"></nav></aside>');
   t.after(() => dom.window.close());
   const calls = [];
   mount(dom, calls);
-  const entry = dom.window.document.querySelector('#apiSidebar [data-open-tools]');
-  assert.ok(entry);
-  entry.click();
+  // The API drawer's Tools link was removed on purpose (PR #500, item J): ☰ is the one Tools entry.
+  assert.equal(dom.window.document.querySelector('#apiSidebar [data-open-tools]'), null);
+  click(dom, '.dm-shell-menu-trigger');
   assert.equal(dom.window.document.querySelector('.dm-shell-sidebar').classList.contains('open'), true);
+  assert.equal(dom.window.document.querySelector('.dm-shell-menu-trigger').getAttribute('aria-expanded'), 'true');
   dom.window.document.querySelector('[data-shell-close]').click();
+  assert.equal(dom.window.document.querySelector('.dm-shell-sidebar').classList.contains('open'), false);
 });

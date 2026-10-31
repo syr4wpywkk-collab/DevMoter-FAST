@@ -165,22 +165,19 @@ export function mountCodexRemote(
 
         <div class="cx-sidebar-scroll">
         <button id="cxNewChatSide" class="cx-side-action primary" type="button">
-          <span>✎</span><span>新しいチャット</span>
+          <span aria-hidden="true">✎</span><span>新しいチャット</span>
         </button>
 
         <label class="cx-search">
-          <span>⌕</span>
+          <span aria-hidden="true">⌕</span>
           <input id="cxThreadSearch" type="search" placeholder="チャットを検索" />
         </label>
 
         <nav class="cx-side-nav">
-          <button id="cxPluginsQuick" class="cx-nav-item" type="button"><span>◇</span><span>Plugins</span></button>
-          <button id="cxLibraryNav" class="cx-nav-item" type="button"><span>▦</span><span>ライブラリ · 準備中</span></button>
-          <button id="cxProjectsNav" class="cx-nav-item" type="button"><span>▱</span><span>Projects</span></button>
-          <button id="cxIntegrationsNav" class="cx-nav-item" type="button"><span>⌁</span><span>Integrations</span></button>
-          <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button"><span>◇</span><span>Developer workflows</span></button>
-          <button id="cxSettingsNav" class="cx-nav-item" type="button"><span>⚙</span><span>Settings</span></button>
-          <button id="cxToolsNav" class="cx-nav-item" type="button"><span>☷</span><span>DevMoter tools</span></button>
+          <button id="cxProjectsNav" class="cx-nav-item" type="button"><span aria-hidden="true">▱</span><span>Projects</span></button>
+          <button id="cxPluginsQuick" class="cx-nav-item" type="button"><span aria-hidden="true">◇</span><span>Plugins</span></button>
+          <button id="cxIntegrationsNav" class="cx-nav-item" type="button"><span aria-hidden="true">⌁</span><span>Integrations</span></button>
+          <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button"><span aria-hidden="true">⑂</span><span>Developer workflows</span></button>
         </nav>
 
         <div class="cx-side-section">
@@ -324,15 +321,12 @@ export function mountCodexRemote(
   const sidebarClose = root.querySelector<HTMLButtonElement>("#cxSidebarClose")!;
   const agentSwitchButton = root.querySelector<HTMLButtonElement>("#cxAgentSwitchButton")!;
   const agentSwitchMenu = root.querySelector<HTMLDivElement>("#cxAgentSwitchMenu")!;
-  const settingsNav = root.querySelector<HTMLButtonElement>("#cxSettingsNav")!;
-  const toolsNav = root.querySelector<HTMLButtonElement>("#cxToolsNav")!;
   const menu = root.querySelector<HTMLButtonElement>("#cxMenu")!;
   const newChatSide = root.querySelector<HTMLButtonElement>("#cxNewChatSide")!;
   const newChatTop = root.querySelector<HTMLButtonElement>("#cxNewChatTop")!;
   const threadSearch = root.querySelector<HTMLInputElement>("#cxThreadSearch")!;
   const sidebarThreads = root.querySelector<HTMLDivElement>("#cxSidebarThreads")!;
   const projectsNav = root.querySelector<HTMLButtonElement>("#cxProjectsNav")!;
-  const libraryNav = root.querySelector<HTMLButtonElement>("#cxLibraryNav")!;
   const devWorkflowsNav = root.querySelector<HTMLButtonElement>("#cxDevWorkflowsNav")!;
   const integrationsNav = root.querySelector<HTMLButtonElement>("#cxIntegrationsNav")!;
   const voice = root.querySelector<HTMLButtonElement>("#cxVoice")!;
@@ -703,18 +697,6 @@ export function mountCodexRemote(
       });
       list.appendChild(button);
     }
-  }
-
-  function showLibrary() {
-    closeSidebar();
-    openModal("ライブラリ", "DevMoterに保存された素材と添付ファイル");
-    modalBody.innerHTML = `
-      <section class="cx-library-empty">
-        <div>▦</div>
-        <strong>ライブラリは準備中</strong>
-        <p>会話で使った画像・ファイル・生成物を、ここから探せるようにする予定。</p>
-      </section>
-    `;
   }
 
   function persistSelectedModel(value: string) {
@@ -3470,16 +3452,6 @@ export function mountCodexRemote(
     closeSidebar();
     options.onIntegrations?.();
   });
-  settingsNav.addEventListener("click", () => {
-    closeSidebar();
-    window.dispatchEvent(new CustomEvent("devmoter:open-settings"));
-  });
-  toolsNav.addEventListener("click", () => {
-    closeSidebar();
-    window.dispatchEvent(new CustomEvent("devmoter:open-global-nav"));
-  });
-
-  libraryNav.addEventListener("click", showLibrary);
   root.querySelectorAll<HTMLButtonElement>(".cx-agent-option").forEach(button => {
     button.addEventListener("click", () => {
       const agent = button.dataset.agent || "codex";

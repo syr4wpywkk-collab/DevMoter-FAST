@@ -6,7 +6,8 @@ test("audit-facing placeholders and Usage labels stay honest", async () => {
   const codex = await readFile(new URL("../src/codex.ts", import.meta.url), "utf8");
   assert.doesNotMatch(codex, /cxUsageLabel">0 tok/);
   assert.match(codex, /cxUsageLabel">Usage/);
-  assert.match(codex, /ライブラリ · 準備中/);
+  // The Library placeholder and the Settings / DevMoter tools rows (duplicated by ☰) left the Codex drawer.
+  assert.doesNotMatch(codex, /ライブラリ · 準備中|id="cxLibraryNav"|id="cxSettingsNav"|id="cxToolsNav"/);
 
   const integrations = await readFile(new URL("../src/integrations.ts", import.meta.url), "utf8");
   assert.doesNotMatch(integrations, /claude:\/\/code/);

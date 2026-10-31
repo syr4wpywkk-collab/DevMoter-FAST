@@ -388,7 +388,6 @@ body.codex-mode {
 .cx-app .cx-nav-item:hover,
 .cx-app .cx-thread-row:hover,
 .cx-app .cx-thread-row.active { background: #2c2c2c; }
-.cx-app .cx-thread-row { min-height: 44px; }
 .cx-app .cx-thread-row { display: flex; align-items: center; gap: 6px; }
 .cx-app .cx-thread-row > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cx-app .cx-thread-age { flex: 0 0 auto; margin-left: auto; color: var(--text-muted); font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -527,10 +526,6 @@ html[data-devmoter-theme="light"] .cx-app .cx-approval pre { background: #f4ead2
   }
   .cx-app .cx-sidebar-head { display: none; }
   .cx-app .cx-sidebar-scroll { display: flex; flex-direction: column; }
-  .cx-app .cx-side-action.primary { min-height: 38px; border-radius: var(--radius-control); }
-  .cx-app .cx-search { height: 34px; margin: 8px 0; border-radius: var(--radius-control); }
-  .cx-app .cx-nav-item, .cx-app .cx-thread-row { min-height: 30px; border-radius: var(--radius-control); font-size: .74rem; }
-  .cx-app .cx-side-label { margin: 10px 8px 5px; font-size: .65rem; }
   .cx-app .cx-topbar {
     left: 240px;
     right: 260px;

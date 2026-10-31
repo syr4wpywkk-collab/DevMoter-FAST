@@ -68,7 +68,7 @@ test("desktop sidebar stays interactive until a modal opens, including after a r
   const sidebar = query("#cxSidebar");
   assert.equal(sidebar.inert, false);
   assert.equal(sidebar.getAttribute("aria-hidden"), "false");
-  query("#cxLibraryNav").click();
+  query("#cxReasoningTop").click();
   assert.equal(sidebar.inert, true, "modal blocks the desktop sidebar");
   query("#cxModalClose").click();
   assert.equal(sidebar.inert, false);
