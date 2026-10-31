@@ -89,7 +89,8 @@ test("API history traps Tab, blocks its background and closes through the scrim"
   const sidebar = query("#apiSidebar");
   const close = query("#apiSidebarClose");
   const first = query("#apiAgentSwitchButton");
-  const last = query("#apiSettingsSide");
+  // API Providers moved to the header gear; the drawer ends with the chat list.
+  const last = query("#apiNewChat");
   assert.equal(sidebar.inert, true);
   menu.focus();
   menu.click();
@@ -131,7 +132,7 @@ test("API Providers replaces history, retains its actual form and restores the o
   const menu = query("#apiMenu");
   menu.focus();
   menu.click();
-  query("#apiSettingsSide").click();
+  query("#apiSettingsTop").click();
   const modal = query("#apiSettingsModal");
   const close = query("#apiSettingsClose");
   assert.equal(query("#apiSidebar").classList.contains("open"), false);

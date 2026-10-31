@@ -61,7 +61,7 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 .api-app .api-brand strong { font-size: 1.05rem; font-weight: 500; }
 .api-app .api-brand small { display: block; color: var(--api-muted); font-size: .7rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .api-app .api-header-actions { grid-column: 3; grid-row: 1; display: flex; align-items: center; justify-content: flex-end; gap: 4px; min-width: 0; }
-.api-app .api-surface-label { display: inline-flex; align-items: center; min-height: 30px; padding: 0 9px; border: 1px solid var(--api-border); border-radius: 999px; background: var(--api-composer-surface); color: var(--api-text); font-size: .7rem; font-weight: 700; white-space: nowrap; }
+
 .api-app #apiSettingsTop { grid-area: auto; align-self: center; height: 44px; }
 .api-app .api-main { position: absolute; top: var(--api-header-height); right: 0; bottom: 0; left: 0; display: block; overflow: hidden; }
 .api-app .api-transcript {
@@ -128,19 +128,22 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 .api-app .api-composer:focus-within { border-color: #c7d5e8; }
 .api-app .api-composer textarea { min-height: 44px; max-height: min(160px, calc(var(--dm-viewport-height, 100dvh) * .25)); padding: 6px 8px 8px; font-size: 16px; line-height: 1.5; }
 .api-app .api-composer textarea::placeholder { color: var(--api-muted); }
-.api-app .api-picker-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, .75fr); grid-template-areas: none; width: 100%; margin: 4px 0; gap: 6px; }
+.api-app .api-picker-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, .75fr); grid-template-areas: none; width: 100%; min-width: 0; margin: 0; gap: 6px; }
 .api-app .api-picker-row select { grid-area: auto; min-width: 0; width: 100%; max-width: none; height: 44px; min-height: 44px; padding: 0 28px 0 12px; border: 1px solid var(--api-border); border-radius: 8px; background: var(--api-bg); color: var(--api-text); font-size: .8rem; text-overflow: ellipsis; color-scheme: light; }
 .api-app #apiProvider,
 .api-app #apiModel,
 .api-app #apiReasoning { grid-area: auto; min-width: 0; }
 .api-app select option,
 .api-app select optgroup { background: #fff; color: var(--api-text); }
-.api-app .api-composer-foot { min-height: 48px; margin-top: 4px; gap: 8px; }
+/* Composer foot: attach · provider / model / reasoning · send (the old "Provider · Ready" line is gone). */
+.api-app .api-composer-foot { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: end; min-height: 48px; margin-top: 4px; gap: 8px; }
 .api-app .api-composer-foot button { width: 44px; height: 44px; min-height: 44px; flex: 0 0 44px; }
 .api-app #apiAttachImage { border: 0; background: transparent; color: var(--api-text); }
 .api-app #apiAttachImage:hover:not(:disabled) { background: #dfe7f3; }
-.api-app #apiSend { background: var(--api-accent); color: #fff; }
-.api-app .api-composer-foot span { font-size: .75rem; }
+.api-app #apiSend { background: var(--api-accent); color: var(--api-on-accent, #fff); }
+.api-app .api-status { font-size: .75rem; }
+/* Ready has no status text; errors, loading and missing-key states still show. */
+.api-app .api-status:empty { display: none; }
 .api-app .api-attachment-chip { height: 60px; max-width: 250px; border-color: #d2ddeb; background: #fff; }
 .api-app .api-attachment-chip button { width: 44px; height: 44px; min-height: 44px; }
 .api-app .api-attachment-chip span { font-size: .75rem; }
@@ -153,7 +156,7 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 .api-app .api-new-chat { flex: 0 0 auto; }
 .api-app .api-sidebar-scroll { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
 .api-app .api-new-chat { width: 100%; min-height: 44px; background: #e1e8f2; font-size: .85rem; font-weight: 500; }
-.api-app .api-nav-label { margin: 18px 8px 6px; color: var(--api-muted); font-size: .7rem; font-weight: 500; letter-spacing: .04em; }
+
 .api-app #apiHistory { display: grid; gap: 2px; }
 .api-app .api-history-row { display: block; width: 100%; min-height: 44px; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--api-text); text-align: left; font-size: .85rem; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .api-app .api-history-row:hover,
@@ -162,9 +165,7 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 .api-app .api-history-row small { display: block; overflow: hidden; text-overflow: ellipsis; }
 .api-app .api-history-row strong { font-weight: 500; }
 .api-app .api-history-row small { color: var(--api-muted); font-size: .7rem; }
-.api-app .api-history-empty { padding: 0 8px; color: var(--api-muted); font-size: .8rem; }
-.api-app .api-agent-nav button { min-height: 44px; font-size: .85rem; }
-.api-app .api-sidebar-note { margin-top: 16px; color: var(--api-muted); font-size: .75rem; }
+
 .api-app .dm-agent-switch-menu { background: #fff; border-color: #d5deeb; color: var(--api-text); }
 .api-app .dm-agent-switch-menu > button { color: var(--api-text); }
 .api-app .dm-agent-switch-menu > button:hover,
@@ -222,7 +223,7 @@ html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active 
 html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active > span:last-child { color: #b5c9ff; }
 html[data-devmoter-theme="dark"] .api-app {
   --api-bg: #13151a; --api-surface: #1e222b; --api-text: #e8eaf0; --api-muted: #b7bfcd;
-  --api-border: #424a44; --api-accent: #9ab49f; --api-composer-surface: #202522;
+  --api-border: #424a44; --api-accent: #9ab49f; --api-on-accent: #13151a; --api-composer-surface: #202522;
   color-scheme: dark;
 }
 html[data-devmoter-theme="dark"] .api-app .api-sidebar,
@@ -249,14 +250,4 @@ html[data-devmoter-theme="dark"] .api-app .cx-markdown th { background: var(--ap
 html[data-devmoter-theme="light"] .api-app select,
 html[data-devmoter-theme="light"] .api-app select option,
 html[data-devmoter-theme="light"] .api-app select optgroup { color-scheme: light; background: #f9fbff; color: var(--api-text); }
-.api-billing-notice {
-  display: block;
-  padding: 0 12px 6px;
-  color: var(--api-muted, #a1a1aa);
-  font-size: 11px;
-  line-height: 1.35;
-}
 
-.api-billing-notice[hidden] {
-  display: none;
-}

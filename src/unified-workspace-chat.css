@@ -62,6 +62,9 @@ body.dm-task-first-enabled .api-app {
   --api-muted: var(--dw-chat-muted);
   --api-border: var(--dw-chat-line);
   --api-accent: var(--dw-chat-accent);
+  /* Text on accent fills: the accent flips between near-black (light) and
+   * near-white (dark), so white text vanished on "+ APIを追加" / 更新 in dark. */
+  --api-on-accent: var(--dw-chat-bg);
   --api-composer-surface: var(--dw-chat-input);
   --api-content-width: 800px;
 }

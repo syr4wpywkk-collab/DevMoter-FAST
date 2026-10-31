@@ -53,7 +53,8 @@ test("API Chat welcome and composer use a restrained workspace treatment", async
   assert.doesNotMatch(css, /\.api-app \.api-welcome h1[^\n]*linear-gradient/);
   assert.match(css, /\.api-app \.api-composer \{[^}]*border-radius: 14px/);
   assert.match(css, /\.api-app \.api-picker-row select[^\n]*border-radius: 8px/);
-  assert.match(css, /\.api-app #apiSend \{ background: var\(--api-accent\); color: #fff; \}/);
+  // Text on the accent fill follows --api-on-accent so it stays readable when the accent is near-white (dark).
+  assert.match(css, /\.api-app #apiSend \{ background: var\(--api-accent\); color: var\(--api-on-accent, #fff\); \}/);
 });
 
 test("global workspace navigation uses neutral state cues instead of backend brand colors", async () => {

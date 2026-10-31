@@ -243,15 +243,6 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     openCodeNavigation.insertBefore(toolsLink, close);
   }
 
-  const apiNavigation = document.querySelector<HTMLElement>("#apiSidebar .api-agent-nav");
-  if (apiNavigation && !apiNavigation.querySelector("[data-open-tools]")) {
-    const toolsLink = document.createElement("button");
-    toolsLink.type = "button";
-    toolsLink.dataset.openTools = "";
-    toolsLink.textContent = "Tools";
-    toolsLink.addEventListener("click", openSidebar);
-    apiNavigation.prepend(toolsLink);
-  }
   window.addEventListener("devmoter:workspace-tab-changing", closeSidebar);
   window.addEventListener("devmoter:close-global-nav", closeSidebar);
   window.addEventListener("devmoter:open-global-nav", openSidebar);
