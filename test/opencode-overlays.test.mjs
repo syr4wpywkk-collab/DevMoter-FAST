@@ -29,7 +29,7 @@ const compile = value => ts.transpileModule(value, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
 }).outputText;
 
-function mount(t, options = {}) {
+function mount(t) {
   const dom = new JSDOM('<!doctype html><div id="root"></div>', {
     url: "https://devmoter.example/?surface=opencode&unifiedUI=0",
     runScripts: "outside-only"
@@ -64,7 +64,7 @@ function mount(t, options = {}) {
   dom.window.exports = {};
   dom.window.eval(compiled);
   document.body.classList.add("opencode-mode");
-  dom.window.exports.mountOpenCodeRemote(document.querySelector("#root"), options);
+  dom.window.exports.mountOpenCodeRemote(document.querySelector("#root"));
   const query = selector => document.querySelector(selector);
   const key = (value, shiftKey = false) => {
     const event = new dom.window.KeyboardEvent("keydown", { key: value, shiftKey, bubbles: true, cancelable: true });
@@ -99,21 +99,16 @@ test("OpenCode history traps Tab, blocks background interaction and restores its
   assert.equal(document.activeElement, menu);
 });
 
-test("OpenCode direct quick switches are pinned above scrolling history and do not restore focus into a hidden surface", t => {
-  const routes = [];
-  const { document, query } = mount(t, { onCodex: () => routes.push("codex"), onApi: () => routes.push("api") });
-  const sidebar = query("#ocxSidebar");
-  assert.equal(query("#ocxQuickCodex").closest(".ocx-sidebar-scroll"), null);
-  assert.equal(query("#ocxQuickApi").closest(".ocx-sidebar-scroll"), null);
-  query("#ocxMenu").click();
-  query("#ocxQuickCodex").focus();
-  query("#ocxQuickCodex").click();
-  assert.deepEqual(routes, ["codex"]);
-  assert.equal(sidebar.inert, true);
-  assert.notEqual(document.activeElement, query("#ocxMenu"), "do not move focus back to a surface that is being hidden");
-  query("#ocxMenu").click();
-  query("#ocxQuickApi").click();
-  assert.deepEqual(routes, ["codex", "api"]);
+test("OpenCode history shows a quiet status and keeps refresh beside the history label", t => {
+  const { query } = mount(t);
+  const status = query("#ocxSideStatus");
+  assert.equal(status.dataset.state, "offline");
+  assert.equal(status.textContent.trim(), "Offline");
+  assert.equal(status.closest(".ocx-sidebar-head") !== null, true);
+  assert.equal(query("#ocxRefresh").closest(".ocx-side-label") !== null, true);
+  for (const removed of ["#ocxQuickCodex", "#ocxQuickApi", ".ocx-sidebar-foot", "#ocxTheme", "#ocxToolsNav", "#ocxPrefs", "#ocxSidebar [data-language-select]"]) {
+    assert.equal(query(removed), null, removed);
+  }
 });
 
 test("OpenCode runtime modal closes history and attachment menus without stacking overlays", t => {

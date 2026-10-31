@@ -10,6 +10,7 @@ import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "
 import { createLatestRequestGuard } from "./latest-request.mjs";
 import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
 import { normalizeOpenCodeSessionList } from "./opencode-session-list.mjs";
+import { openCodeSessionLabel } from "./opencode-session-title.mjs";
 import { filterOpenCodePickerModels, flattenOpenCodePickerRows, normalizeOpenCodeProviderCatalog, openCodePickerWindow, type OpenCodePickerItem } from "./opencode-provider-catalog.mjs";
 import { recoverAfterEventOpen } from "./event-recovery.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
@@ -157,15 +158,7 @@ export type OpenCodeController = {
   refresh(): Promise<boolean>;
 };
 
-type OpenCodeRemoteOptions = {
-  onCodex?: () => void;
-  onApi?: () => void;
-};
-
-export function mountOpenCodeRemote(
-  root: HTMLElement,
-  options: OpenCodeRemoteOptions = {}
-): OpenCodeController {
+export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   root.innerHTML = `
     <div class="ocx-app">
       <div id="ocxScrim" class="ocx-scrim hidden"></div>
@@ -175,7 +168,10 @@ export function mountOpenCodeRemote(
           <div class="ocx-history-identity">
             <span class="ocx-history-icon" aria-hidden="true">◈</span>
             <span class="ocx-history-copy">
-              <strong>OpenCode</strong>
+              <span class="ocx-history-title">
+                <strong>OpenCode</strong>
+                <span id="ocxSideStatus" class="ocx-side-status" data-state="offline" role="status" aria-label="Offline"><i aria-hidden="true"></i><span>Offline</span></span>
+              </span>
               <small id="ocxSidebarDirectory">workspace</small>
             </span>
           </div>
@@ -186,11 +182,6 @@ export function mountOpenCodeRemote(
           <span>新しいチャット</span>
         </button>
 
-        <nav class="ocx-quick-switch" aria-label="Switch AI workspace">
-          <button id="ocxQuickCodex" type="button" aria-label="Switch from OpenCode to Codex">Codex</button>
-          <button id="ocxQuickApi" type="button" aria-label="Switch from OpenCode to API Chat">API Chat</button>
-        </nav>
-
         <div class="ocx-sidebar-scroll">
 
         <label class="ocx-search">
@@ -200,7 +191,6 @@ export function mountOpenCodeRemote(
 
         <div class="ocx-session-toolbar">
           <label>
-            <span>Sort history</span>
             <select id="ocxSessionSort" aria-label="Sort conversation history">
               <option value="recent">Recent activity</option>
               <option value="created">Created time</option>
@@ -212,7 +202,10 @@ export function mountOpenCodeRemote(
         <div id="ocxAttention" class="ocx-attention hidden" aria-label="Session attention overview"></div>
 
         <div class="ocx-side-section">
-          <div class="ocx-side-label">CONVERSATION HISTORY</div>
+          <div class="ocx-side-label">
+            <span>CONVERSATION HISTORY</span>
+            <button id="ocxRefresh" class="ocx-icon ocx-refresh" type="button" aria-label="Refresh" title="Refresh">↻</button>
+          </div>
           <div id="ocxSessions" class="ocx-sessions">
             <div class="ocx-empty">Connecting…</div>
           </div>
@@ -220,21 +213,6 @@ export function mountOpenCodeRemote(
 
         </div>
 
-        <div class="ocx-sidebar-foot">
-          <label class="pocket-language-setting ocx-language-setting" title="Language">
-            <span aria-hidden="true">◎</span>
-            <select data-language-select aria-label="Language">
-              <option value="en">English</option>
-              <option value="ja">日本語</option>
-              <option value="zh-CN">简体中文</option>
-            </select>
-          </label>
-          <button id="ocxTheme" type="button" class="ocx-refresh">表示</button>
-          <button id="ocxToolsNav" type="button" class="ocx-refresh">開発ツール</button>
-          <button id="ocxPrefs" type="button" class="ocx-refresh">設定</button>
-          <button id="ocxRefresh" type="button" class="ocx-refresh">更新</button>
-          <span id="ocxSideStatus" class="ocx-side-status offline"><i></i> Offline</span>
-        </div>
       </aside>
 
       <header class="ocx-topbar">
@@ -353,11 +331,6 @@ export function mountOpenCodeRemote(
   const sessionsEl = root.querySelector<HTMLDivElement>("#ocxSessions")!;
   const sessionSort = root.querySelector<HTMLSelectElement>("#ocxSessionSort")!;
   const attention = root.querySelector<HTMLDivElement>("#ocxAttention")!;
-  const toolsNav = root.querySelector<HTMLButtonElement>("#ocxToolsNav")!;
-  const themeButton = root.querySelector<HTMLButtonElement>("#ocxTheme")!;
-  const prefsButton = root.querySelector<HTMLButtonElement>("#ocxPrefs")!;
-  const quickCodex = root.querySelector<HTMLButtonElement>("#ocxQuickCodex")!;
-  const quickApi = root.querySelector<HTMLButtonElement>("#ocxQuickApi")!;
   const refreshButton = root.querySelector<HTMLButtonElement>("#ocxRefresh")!;
   const sideStatus = root.querySelector<HTMLElement>("#ocxSideStatus")!;
   const sessionTitleButton = root.querySelector<HTMLButtonElement>("#ocxSessionTitleButton")!;
@@ -490,6 +463,20 @@ export function mountOpenCodeRemote(
   let sessionSortMode = (localStorage.getItem("opencode-pocket-session-sort") || "recent") as SessionSortMode;
   if (!["recent", "created", "messages"].includes(sessionSortMode)) sessionSortMode = "recent";
   const sessionMessageCounts = new Map<string, number>();
+  // First user prompt per session, used only for display labels (stored titles stay untouched).
+  const sessionFirstPrompts = new Map<string, string>();
+  const sessionLabel = (session: Json | null | undefined) =>
+    openCodeSessionLabel(session, { firstPrompt: session?.id ? sessionFirstPrompts.get(session.id) : undefined });
+  function noteFirstPrompt(text: string) {
+    if (!activeSession?.id || !text.trim() || sessionFirstPrompts.has(activeSession.id)) return false;
+    sessionFirstPrompts.set(activeSession.id, text);
+    return true;
+  }
+  function syncSessionLabels() {
+    if (activeSession) sessionTitle.textContent = sessionLabel(activeSession);
+    renderSessions();
+    renderAttention();
+  }
   const sessionStates = new Map<string, ExecutionState>();
   let importedThreads: ImportedThread[] = [];
   try {
@@ -584,7 +571,7 @@ export function mountOpenCodeRemote(
     sidebarClose.focus({ preventScroll: true });
   }
 
-  function closeSidebar(restoreTriggerFocus = true) {
+  function closeSidebar() {
     const restoreFocus = sidebar.contains(document.activeElement);
     sidebar.classList.remove("open");
     sidebar.setAttribute("aria-hidden", "true");
@@ -592,7 +579,7 @@ export function mountOpenCodeRemote(
     sidebar.removeAttribute("role");
     sidebar.removeAttribute("aria-modal");
     syncOverlayState();
-    if (restoreFocus && restoreTriggerFocus) restoreOverlayFocus(sidebarReturnFocus);
+    if (restoreFocus) restoreOverlayFocus(sidebarReturnFocus);
     sidebarReturnFocus = null;
   }
 
@@ -911,7 +898,7 @@ export function mountOpenCodeRemote(
       glyph.textContent = stateGlyph(state);
       const copy = document.createElement("span");
       const title = document.createElement("strong");
-      title.textContent = session.title || "Untitled session";
+      title.textContent = sessionLabel(session);
       const meta = document.createElement("small");
       meta.textContent = stateLabel(state);
       copy.append(title, meta);
@@ -927,6 +914,7 @@ export function mountOpenCodeRemote(
       .filter(session =>
         !q ||
         (session.title || "").toLowerCase().includes(q) ||
+        sessionLabel(session).toLowerCase().includes(q) ||
         session.id.toLowerCase().includes(q)
       )
       .slice(0, 80);
@@ -951,7 +939,7 @@ export function mountOpenCodeRemote(
       copy.className = "ocx-session-copy";
 
       const title = document.createElement("strong");
-      title.textContent = session.title || "Untitled session";
+      title.textContent = sessionLabel(session);
 
       const meta = document.createElement("small");
       const state = sessionStates.get(session.id) || "idle";
@@ -971,7 +959,7 @@ export function mountOpenCodeRemote(
           }).format(new Date(historyTime))
         : "";
       meta.textContent = [
-        stateLabel(state),
+        state === "idle" ? "" : stateLabel(state),
         count ? String(count) + " msgs" : "",
         historyLabel
       ].filter(Boolean).join(" · ");
@@ -1267,6 +1255,7 @@ export function mountOpenCodeRemote(
     if (!message) return;
 
     if (message.type === "user") {
+      noteFirstPrompt(String(message.text || ""));
       addUserMessage(String(message.text || ""));
       return;
     }
@@ -1330,6 +1319,7 @@ export function mountOpenCodeRemote(
           .filter((part: Json) => part?.type === "text")
           .map((part: Json) => String(part.text || ""))
           .join("");
+        noteFirstPrompt(text);
         addUserMessage(text);
       } else {
         for (const part of parts) {
@@ -1366,9 +1356,11 @@ export function mountOpenCodeRemote(
     transcript.replaceChildren();
     clearLiveStreams();
 
+    const knewPrompt = sessionFirstPrompts.has(activeSession.id);
     for (const message of list) {
       renderMessage(message);
     }
+    if (!knewPrompt && sessionFirstPrompts.has(activeSession.id)) syncSessionLabels();
 
     if (!transcript.childElementCount) {
       transcript.innerHTML = `
@@ -1378,7 +1370,7 @@ export function mountOpenCodeRemote(
           <p>Send a prompt to start working.</p>
         </div>
       `;
-      transcript.querySelector("h2")!.textContent = activeSession.title || "New session";
+      transcript.querySelector("h2")!.textContent = sessionLabel(activeSession);
     }
 
     followLatest();
@@ -1563,7 +1555,7 @@ export function mountOpenCodeRemote(
           localStorage.setItem("opencode-pocket-model", JSON.stringify(selectedModel));
         }
 
-        sessionTitle.textContent = fresh.title || "Untitled session";
+        sessionTitle.textContent = sessionLabel(fresh);
         updateContextUI();
       } else {
         // The session list may lag a just-created or long-running session.
@@ -1677,7 +1669,7 @@ export function mountOpenCodeRemote(
       localStorage.setItem("opencode-pocket-model", JSON.stringify(selectedModel));
     }
 
-    sessionTitle.textContent = session.title || "Untitled session";
+    sessionTitle.textContent = sessionLabel(session);
     sidebarDirectory.textContent = sessionDirectory(session) || directory || "workspace";
     updateContextUI();
     renderSessions();
@@ -1726,7 +1718,7 @@ export function mountOpenCodeRemote(
       activeSession = session;
       localStorage.setItem("opencode-pocket-opencode-session", session.id);
 
-      sessionTitle.textContent = session.title || "New session";
+      sessionTitle.textContent = sessionLabel(session);
       updateContextUI();
       renderSessions();
 
@@ -2114,7 +2106,9 @@ export function mountOpenCodeRemote(
           .join("\n")
       : "";
     followsBottom = true;
+    const firstPrompt = noteFirstPrompt(text);
     addUserMessage((text + displayAttachmentText).trim());
+    if (firstPrompt) syncSessionLabels();
     followLatest();
 
     promptInput.value = "";
@@ -3619,7 +3613,7 @@ export function mountOpenCodeRemote(
       return;
     }
 
-    openModal(activeSession.title || "Session", activeSession.id);
+    openModal(sessionLabel(activeSession), activeSession.id);
     modalBody.innerHTML = `
       <div class="ocx-detail-grid"></div>
       <div class="ocx-detail-actions">
@@ -3653,6 +3647,7 @@ export function mountOpenCodeRemote(
   async function refresh(): Promise<boolean> {
     if (!online) return false;
 
+    setSideStatus("syncing");
     try {
       setActivity("syncing");
       await Promise.all([
@@ -3680,15 +3675,23 @@ export function mountOpenCodeRemote(
       setActivity("error");
       showToast(error instanceof Error ? error.message : String(error));
       return false;
+    } finally {
+      setSideStatus(online ? "idle" : "offline");
     }
+  }
+
+  // Quiet drawer status: a muted dot when idle, short text only while syncing or offline.
+  function setSideStatus(state: "idle" | "syncing" | "offline") {
+    sideStatus.dataset.state = state;
+    const text = state === "syncing" ? "Syncing" : state === "offline" ? "Offline" : "";
+    sideStatus.setAttribute("aria-label", text || "Ready");
+    sideStatus.querySelector("span")!.textContent = text;
   }
 
   function setOnline(value: boolean) {
     const changed = online !== value;
     online = value;
-    sideStatus.classList.toggle("online", value);
-    sideStatus.classList.toggle("offline", !value);
-    sideStatus.innerHTML = `<i></i> ${value ? "Connected" : "Offline"}`;
+    setSideStatus(value ? "idle" : "offline");
     setControlsEnabled(value);
 
     if (value) {
@@ -3708,28 +3711,6 @@ export function mountOpenCodeRemote(
   menu.addEventListener("click", () => {
     if (sidebar.classList.contains("open")) closeSidebar();
     else openSidebar();
-  });
-  quickCodex.hidden = !options.onCodex;
-  quickApi.hidden = !options.onApi;
-  quickCodex.addEventListener("click", () => {
-    if (!options.onCodex) return;
-    closeSidebar(false);
-    options.onCodex();
-  });
-  quickApi.addEventListener("click", () => {
-    if (!options.onApi) return;
-    closeSidebar(false);
-    options.onApi();
-  });
-  toolsNav.addEventListener("click", () => {
-    closeSidebar();
-    window.dispatchEvent(new CustomEvent("devmoter:open-global-nav"));
-  });
-  themeButton.addEventListener("click", () => {
-    window.dispatchEvent(new CustomEvent("devmoter:workspace-command", { detail: { command: "theme" } }));
-  });
-  prefsButton.addEventListener("click", () => {
-    window.dispatchEvent(new CustomEvent("devmoter:open-settings", { detail: { page: "appearance" } }));
   });
   window.addEventListener("resize", () => syncOverlayState());
   window.addEventListener("devmoter:close-chat-history", () => closeSidebar());

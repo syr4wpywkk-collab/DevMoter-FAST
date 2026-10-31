@@ -312,7 +312,6 @@
   }
 }
 
-
 /* Assistant response actions */
 
 .cx-message-actions {
@@ -420,7 +419,6 @@
   opacity: 1;
   transform: translate(-50%, 0);
 }
-
 
 /* ──────────────────────────────────────────
    OpenCode work console — DevMoter mobile surface
@@ -1146,35 +1144,6 @@ body.opencode-mode #app {
   white-space: nowrap;
 }
 
-.ocx-backend-switch {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  margin: 7px 0 4px;
-  padding: 4px;
-  border: 1px solid var(--oc-line-soft);
-  border-radius: 9px;
-  background: #11100d;
-}
-
-.ocx-backend-switch button {
-  min-width: 0;
-  min-height: 36px;
-  padding: 0 7px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--oc-dim);
-  font-size: .62rem;
-  white-space: nowrap;
-}
-
-.ocx-backend-switch button.active {
-  background: #2e2018;
-  color: #efb28b;
-  box-shadow: inset 0 0 0 1px #6d452f;
-}
-
 .ocx-new-session {
   width: 100%;
   min-height: 44px;
@@ -1216,38 +1185,6 @@ body.opencode-mode #app {
   font-size: .7rem;
 }
 
-.ocx-side-nav {
-  display: grid;
-  gap: 1px;
-  padding-bottom: 9px;
-  border-bottom: 1px solid var(--oc-line-soft);
-}
-
-.ocx-side-nav button {
-  width: 100%;
-  min-height: 40px;
-  padding: 0 8px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: #b4ab9f;
-  text-align: left;
-  font-size: .7rem;
-}
-
-.ocx-side-nav button:active {
-  background: var(--oc-panel);
-}
-
-.ocx-side-nav button span:first-child {
-  width: 22px;
-  color: #8d8175;
-  text-align: center;
-}
-
 .ocx-side-section {
   min-height: 0;
   flex: 1;
@@ -1287,14 +1224,6 @@ body.opencode-mode #app {
   text-align: left;
 }
 
-.ocx-session-row:active,
-.ocx-session-row.active {
-  background: #221d18;
-}
-
-.ocx-session-row.active {
-  box-shadow: inset 2px 0 0 var(--oc-accent);
-}
 
 .ocx-session-copy {
   min-width: 0;
@@ -1329,45 +1258,6 @@ body.opencode-mode #app {
   padding: 14px 7px;
   color: var(--oc-dim);
   font-size: .65rem;
-}
-
-.ocx-sidebar-foot {
-  flex: 0 0 auto;
-  padding-top: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  border-top: 1px solid var(--oc-line-soft);
-}
-
-.ocx-refresh {
-  min-height: 33px;
-  padding: 0 8px;
-  border: 1px solid var(--oc-line-soft);
-  border-radius: 6px;
-  background: var(--oc-panel);
-  color: var(--oc-muted);
-  font-size: .6rem;
-}
-
-.ocx-side-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--oc-muted);
-  font-size: .58rem;
-}
-
-.ocx-side-status i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--oc-red);
-}
-
-.ocx-side-status.online i {
-  background: var(--oc-green);
 }
 
 .ocx-dock {
@@ -1724,7 +1614,6 @@ body.opencode-mode #app {
   .ocx-app.ocx-history-docked .ocx-scrim { display: none; }
 }
 
-
 .ocx-question-card {
   display: grid;
   gap: 7px;
@@ -1758,7 +1647,6 @@ body.opencode-mode #app {
   gap: 6px;
 }
 
-
 .cx-plugin-state {
   flex: 0 0 auto;
   color: #777;
@@ -1769,7 +1657,6 @@ body.opencode-mode #app {
   width: 22px;
   text-align: center;
 }
-
 
 .cx-github-filters,
 .cx-github-pager {
@@ -1809,7 +1696,6 @@ body.opencode-mode #app {
   width: 100%;
 }
 
-
 /* Compact language setting shared by both coding-agent sidebars. */
 .pocket-language-setting {
   min-width: 0;
@@ -1847,22 +1733,6 @@ body.opencode-mode #app {
   background: #fff;
   color: #111;
 }
-
-.ocx-sidebar-foot {
-  flex-wrap: wrap;
-}
-
-.ocx-language-setting {
-  border-color: var(--oc-line-soft);
-  border-radius: 6px;
-  background: var(--oc-panel);
-  color: var(--oc-muted);
-}
-
-.ocx-language-setting > span {
-  color: var(--oc-dim);
-}
-
 
 /* ──────────────────────────────────────────
    DevMoter integrations hub

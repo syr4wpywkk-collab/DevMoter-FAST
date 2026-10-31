@@ -160,6 +160,12 @@ body.dm-task-first-enabled {
 .dm-task-first-menu button > span { width: 20px; flex: 0 0 20px; font-size:16px; line-height:1; text-align: center; }
 .dm-task-first-menu button > strong { min-width: 0; font-size: 14px; font-weight: 500; }
 .dm-task-first-menu button > small { margin-left: auto; color: var(--dw-muted); font-size: 12px; }
+/* Language row: same rhythm as the menu buttons, with a native select on the right. */
+.dm-task-first-menu-row { min-height: 44px; display: flex; gap: 12px; align-items: center; padding: 0 8px 0 12px; border-radius: 10px; color: var(--dw-muted); }
+.dm-task-first-menu-row > span { width: 20px; flex: 0 0 20px; font-size: 16px; line-height: 1; text-align: center; }
+.dm-task-first-menu-row > strong { min-width: 0; font-size: 14px; font-weight: 500; }
+.dm-task-first-menu-row > select { min-width: 0; max-width: 112px; min-height: 32px; margin-left: auto; padding: 0 8px; border: 1px solid var(--dw-border); border-radius: 8px; background: var(--dw-panel); color: var(--dw-text); font: inherit; font-size: 16px; }
+.dm-task-first-menu-row > select:focus-visible { outline: 2px solid var(--dw-accent); outline-offset: 2px; }
 .dm-task-first-menu hr { width: 100%; height: 1px; margin: 0; border: 0; background: var(--dw-border); }
 .dm-task-first-feedback {
   position: absolute;

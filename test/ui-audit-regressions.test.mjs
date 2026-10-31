@@ -24,8 +24,11 @@ test("chat history cannot strand global navigation after switching surfaces", as
   assert.doesNotMatch(shellCss, /\.devmoter-system-modal:not\(\.hidden\),\s*\.api-sidebar\.open/);
 
   const opencode = await readFile(new URL("../src/opencode.ts", import.meta.url), "utf8");
-  assert.match(opencode, /id="ocxToolsNav"/);
-  assert.match(opencode, /devmoter:open-global-nav/);
+  // The drawer's own 開発ツール button left with its footer row; the global shell's in-flow Tools entry remains.
+  assert.doesNotMatch(opencode, /id="ocxToolsNav"/);
+  const shell = await readFile(new URL("../src/app-shell.ts", import.meta.url), "utf8");
+  assert.match(shell, /#ocxSidebar \.ocx-sidebar-head/);
+  assert.match(shell, /dataset\.openTools/);
 
 });
 

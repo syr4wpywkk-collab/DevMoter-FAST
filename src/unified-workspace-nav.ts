@@ -60,6 +60,13 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
       <button type="button" data-workspace-command="extensions"><span aria-hidden="true">＋</span><strong>拡張</strong></button>
       <hr aria-hidden="true" />
       <button type="button" data-workspace-settings><span aria-hidden="true">⚙</span><strong>設定</strong></button>
+      <label class="dm-task-first-menu-row"><span aria-hidden="true">◎</span><strong>言語</strong>
+        <select data-language-select aria-label="Language">
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+          <option value="zh-CN">简体中文</option>
+        </select>
+      </label>
     </nav>
     <p class="dm-task-first-feedback" role="status" aria-live="polite" data-workspace-feedback></p>
   `;

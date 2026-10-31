@@ -1085,12 +1085,6 @@
   .pocket-git-trigger {
     display: none !important;
   }
-
-  .ocx-backend-switch {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-  }
 }
 
 /* Shared ChatGPT-style agent switcher used by Codex, OpenCode and API Chat sidebars. */

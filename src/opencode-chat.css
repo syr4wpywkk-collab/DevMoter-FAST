@@ -173,42 +173,47 @@ body.opencode-mode .sc-panel:not(.open) { box-shadow: none; }
 .ocx-app .ocx-command-row span { font-size: .75rem; }
 
 .ocx-app .ocx-sidebar { background: var(--oc-panel); box-shadow: none; }
-.ocx-app .ocx-sidebar-head,
-.ocx-app .ocx-sidebar-foot { flex: 0 0 auto; }
+.ocx-app .ocx-sidebar-head { flex: 0 0 auto; }
 .ocx-app .ocx-sidebar-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .ocx-app .ocx-sidebar-scroll .ocx-new-session { width: 100%; }
 .ocx-app .ocx-sidebar-scroll .ocx-side-section { flex: 0 0 auto; min-height: 0; }
 .ocx-app .ocx-sidebar-scroll .ocx-sessions { overflow: visible; }
 .ocx-app .ocx-history-icon { background: var(--oc-accent-soft); color: var(--oc-text); }
-.ocx-app .ocx-sidebar-head small { font-size: .7rem; }
+.ocx-app .ocx-sidebar-head small { font-size: 12px; }
+.ocx-app .ocx-history-title { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.ocx-app .ocx-side-status { min-width: 0; display: inline-flex; align-items: center; color: var(--oc-dim); font-size: 12px; font-weight: 400; white-space: nowrap; }
+.ocx-app .ocx-side-status i { width: 6px; height: 6px; flex: 0 0 6px; margin-right: 4px; border-radius: 50%; background: var(--oc-dim); opacity: .6; }
+.ocx-app .ocx-side-status[data-state="idle"] i { background: var(--oc-green); opacity: .7; }
+.ocx-app .ocx-refresh { width: 32px; height: 32px; min-height: 32px; flex: 0 0 32px; border-radius: 8px; border-color: transparent; background: transparent; color: var(--oc-muted); font-size: 16px; }
 .ocx-app .ocx-global-tools-entry {
   flex: 0 0 auto;
-  min-width: 58px;
-  min-height: 44px;
+  min-height: 36px;
   padding: 0 10px;
   border: 1px solid var(--oc-line);
   border-radius: 10px;
   background: var(--oc-panel);
   color: var(--oc-text);
-  font-size: .72rem;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 500;
 }
-.ocx-app .ocx-new-session { background: var(--oc-panel); border-color: var(--oc-line); color: var(--oc-text); border-radius: 10px; }
-.ocx-app .ocx-quick-switch { flex: 0 0 auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 12px 12px; }
-.ocx-app .ocx-quick-switch button { min-width: 0; min-height: 44px; border: 1px solid var(--oc-line); border-radius: 10px; background: var(--oc-panel); color: var(--oc-text); font: inherit; font-size: .8rem; font-weight: 650; cursor: pointer; }
-.ocx-app .ocx-quick-switch button:hover { background: var(--oc-panel-2); }
-.ocx-app .ocx-quick-switch button:focus-visible { outline: 2px solid var(--oc-accent); outline-offset: 2px; }
-.ocx-app .ocx-quick-switch button[hidden] { display: none; }
-.ocx-app .ocx-search { min-height: 44px; background: var(--oc-panel-2); border-radius: 10px; }
-.ocx-app .ocx-search input { min-height: 42px; font-size: .8rem; }
-.ocx-app .ocx-session-toolbar label { color: var(--oc-muted); }
-.ocx-app .ocx-session-toolbar select { min-height: 44px; border-color: var(--oc-line); background: var(--oc-panel); color: var(--oc-text); }
-.ocx-app .ocx-side-label { color: var(--oc-muted); font-size: .75rem; letter-spacing: 0; }
-.ocx-app .ocx-session-row { min-height: 56px; border-radius: 10px; }
-.ocx-app .ocx-session-row.active,
-.ocx-app .ocx-session-row:hover { background: #e7e0d4; }
-.ocx-app .ocx-session-copy strong { font-size: .8rem; }
-.ocx-app .ocx-session-copy small { font-size: .7rem; }
+/* History drawer rhythm: 36px controls, 48px two-line rows with 2px gaps, 14 / 12px text, hairline dividers. */
+.ocx-app .ocx-new-session { min-height: 36px; margin: 4px 0 8px; padding: 0 10px; background: var(--oc-panel-2); border-color: var(--oc-line); color: var(--oc-text); border-radius: 10px; font-size: 14px; font-weight: 500; }
+.ocx-app .ocx-search { min-height: 36px; margin: 0 0 8px; padding: 0 10px; background: var(--oc-panel-2); border-color: var(--oc-line); border-radius: 10px; }
+.ocx-app .ocx-search input { min-height: 34px; font-size: 16px; }
+.ocx-app .ocx-session-toolbar { margin: 0 0 8px; }
+.ocx-app .ocx-session-toolbar select { width: 100%; min-height: 36px; border-color: var(--oc-line); border-radius: 10px; background: var(--oc-panel); color: var(--oc-text); font-size: 16px; }
+.ocx-app .ocx-side-section { gap: 2px; padding-top: 8px; border-top: 1px solid var(--oc-line); }
+.ocx-app .ocx-side-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 0 0 10px; color: var(--oc-dim); font-size: 12px; font-weight: 500; letter-spacing: 0; }
+.ocx-app .ocx-sessions { display: grid; gap: 2px; }
+.ocx-app .ocx-session-row { min-height: 48px; padding: 6px 10px; border: 1px solid transparent; border-radius: 10px; color: var(--oc-text); box-shadow: none; }
+/* Selected = one surface step + hairline; text keeps the primary role so it stays readable in dark and light. */
+.ocx-app .ocx-session-row.active { background: var(--oc-panel-2); border-color: var(--oc-line); color: var(--oc-text); }
+.ocx-app .ocx-session-row:active { background: var(--oc-panel-2); }
+@media (hover: hover) and (pointer: fine) {
+  .ocx-app .ocx-session-row:not(.active):hover { background: var(--oc-panel-2); }
+}
+.ocx-app .ocx-session-copy strong { color: var(--oc-text); font-size: 14px; font-weight: 500; }
+.ocx-app .ocx-session-copy small { color: var(--oc-dim); font-size: 12px; font-variant-numeric: tabular-nums; }
 .ocx-app .ocx-attention { background: var(--oc-panel); border-color: var(--oc-line); }
 .ocx-app .ocx-attention-row { min-height: 44px; }
 .ocx-app .ocx-attention-row:hover { background: var(--oc-panel-2); }
@@ -223,10 +228,6 @@ body.opencode-mode .sc-panel:not(.open) { box-shadow: none; }
 .ocx-app .ocx-session-dot[data-state="failed"] { color: var(--oc-red); }
 .ocx-app .ocx-attention-row.completed .ocx-attention-glyph,
 .ocx-app .ocx-session-dot[data-state="completed"] { color: #416782; }
-.ocx-app .ocx-sidebar-foot { flex-wrap: wrap; }
-.ocx-app .ocx-refresh { min-height: 44px; font-size: .75rem; }
-.ocx-app .ocx-side-status { font-size: .7rem; }
-.ocx-app .ocx-language-setting select { min-height: 44px; color: var(--oc-text); background: var(--oc-panel); }
 
 .ocx-app .ocx-dock {
   bottom: calc(var(--ocx-composer-height, 250px) + 8px);

@@ -155,6 +155,7 @@ const dictionary: Record<string, TranslationSet> = {
   "⌑ ファイル": { en: "⌑ File", ja: "⌑ ファイル", "zh-CN": "⌑ 文件" },
   "Connected": { en: "Connected", ja: "接続済み", "zh-CN": "已连接" },
   "Offline": { en: "Offline", ja: "オフライン", "zh-CN": "离线" },
+  "Syncing": { en: "Syncing", ja: "同期中", "zh-CN": "同步中" },
   "Transport": { en: "Transport", ja: "通信方式", "zh-CN": "传输方式" },
   "Access": { en: "Access", ja: "アクセス", "zh-CN": "访问" },
   "GitHub repositories": { en: "GitHub repositories", ja: "GitHubリポジトリ", "zh-CN": "GitHub 仓库" },
