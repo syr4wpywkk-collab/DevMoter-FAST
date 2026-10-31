@@ -1,4 +1,4 @@
-import { readFile, realpath, stat } from "node:fs/promises";
+import { realpath, stat } from "node:fs/promises";
 import { basename, extname, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 import {
@@ -9,6 +9,9 @@ import {
   backendAttachmentCapabilities, fetchUrlAttachment, negotiateAttachments, previewUrlInput
 } from "./attachments.mjs";
 import { createBrowserAutomation, browserAutomationPolicy } from "./browser-tool.mjs";
+import { readHandle, withOpenFile } from "./safe-file.mjs";
+
+const ARTIFACT_DOWNLOAD_LIMIT = 64 * 1024 * 1024;
 
 function sendJson(res, status, body) {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -427,11 +430,13 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
       const artifactDownload = url.pathname.match(/^\/api\/artifacts\/([^/]+)\/download$/);
       if (artifactDownload && req.method === "GET") {
         const { artifact, resolved } = await artifacts.get(decodeURIComponent(artifactDownload[1]));
-        const info = await stat(resolved.target);
-        if (info.size > 64 * 1024 * 1024) {
-          throw Object.assign(new Error("Artifact is too large to download through DevMoter"), { statusCode: 413 });
-        }
-        const data = await readFile(resolved.target);
+        const data = await withOpenFile(resolved.target, {}, async (handle, info) => {
+          if (!info.isFile()) throw Object.assign(new Error("Artifact is not a regular file"), { statusCode: 404 });
+          if (info.size > ARTIFACT_DOWNLOAD_LIMIT) {
+            throw Object.assign(new Error("Artifact is too large to download through DevMoter"), { statusCode: 413 });
+          }
+          return readHandle(handle, ARTIFACT_DOWNLOAD_LIMIT);
+        });
         res.writeHead(200, {
           "content-type": mimeForDownload(resolved.target),
           "content-length": String(data.length),

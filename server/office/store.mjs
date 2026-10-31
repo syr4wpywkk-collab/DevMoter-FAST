@@ -1,6 +1,5 @@
 import {
   mkdir,
-  readFile,
   writeFile,
   rename,
   lstat,
@@ -9,6 +8,7 @@ import {
 } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID, createHash } from "node:crypto";
+import { readHandle, withOpenFile } from "../safe-file.mjs";
 import {
   parseDocx,
   saveDocx,
@@ -120,17 +120,20 @@ export function createOfficeStore({ rootDir }) {
     if (!uuid(id)) throw fail("文書IDが不正です。");
     return join(rootDir, id);
   };
-  const read = async (path) => {
-    const info = await lstat(path);
-    if (
-      !info.isFile() ||
-      info.isSymbolicLink() ||
-      (info.mode & 0o077) !== 0 ||
-      info.size > OFFICE_LIMITS.uploadBytes
-    )
-      throw fail("文書を読み込めません。");
-    return readFile(path);
-  };
+  // One no-follow open: the type/mode/size checks and the read use the same file.
+  const read = (path) =>
+    withOpenFile(path, { noFollow: true }, async (handle, info) => {
+      if (
+        !info.isFile() ||
+        (info.mode & 0o077) !== 0 ||
+        info.size > OFFICE_LIMITS.uploadBytes
+      )
+        throw fail("文書を読み込めません。");
+      return readHandle(handle, OFFICE_LIMITS.uploadBytes);
+    }).catch((error) => {
+      if (error?.code === "ELOOP" || error?.code === "EFBIG") throw fail("文書を読み込めません。");
+      throw error;
+    });
   const metadata = async (id) => {
     const target = dir(id);
     const info = await lstat(target);

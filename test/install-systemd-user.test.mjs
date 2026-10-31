@@ -5,6 +5,7 @@ import { chmod, lstat, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readHandle, withOpenFile } from "../server/safe-file.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const installer = join(root, "scripts/install-systemd-user.sh");
@@ -55,10 +56,14 @@ test("first install is atomic and private; repeated install is idempotent", asyn
   const first = invoke(f.env);
   assert.equal(first.status, 0, first.stderr);
   assert.match(first.stdout, /DevMoter service: installed/);
-  const content = await readFile(f.unitPath, "utf8");
+  // Contents and mode come from one no-follow open of the unit file.
+  const { content, mode } = await withOpenFile(f.unitPath, { noFollow: true }, async (handle, info) => ({
+    content: await readHandle(handle, Number.POSITIVE_INFINITY, "utf8"),
+    mode: info.isFile() ? info.mode & 0o777 : null
+  }));
   assert.match(content, /Managed by DevMoter FAST Installer v2/);
   assert.ok(content.includes(root + "/scripts/systemd-entrypoint.sh"));
-  assert.equal((await lstat(f.unitPath)).mode & 0o777, 0o600);
+  assert.equal(mode, 0o600);
   assert.equal(await auditLog(f.log), "--user daemon-reload\n");
 
   const second = invoke(f.env);

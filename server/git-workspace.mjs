@@ -1,7 +1,8 @@
 import { execFile } from "node:child_process";
-import { lstat, readFile, realpath, stat } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
 import { promisify } from "node:util";
+import { readHandle, withOpenFile } from "./safe-file.mjs";
 
 const execFileAsync = promisify(execFile);
 const DEFAULT_FILE_LIMIT = 100;
@@ -217,20 +218,20 @@ async function untrackedDiff(projectPath, path) {
     if (!lexical || lexical.startsWith("..") || isAbsolute(lexical)) {
       throw new Error("Untracked path escapes the active project");
     }
-    const entry = await lstat(full);
-    if (entry.isSymbolicLink() || !entry.isFile()) {
-      throw new Error("Untracked path is not a regular file");
-    }
     const actual = await realpath(full);
     const actualRelative = relative(root, actual);
-    if (!actualRelative || actualRelative.startsWith("..") || isAbsolute(actualRelative)) {
-      throw new Error("Untracked file escapes the active project");
+    // Same path as requested: no symlink anywhere below the project root.
+    if (actualRelative !== lexical) {
+      throw new Error("Untracked path is not a regular file inside the active project");
     }
-    const info = await stat(actual);
-    if (!info.isFile() || info.size > MAX_DIFF_BYTES) {
+    const read = await withOpenFile(actual, { noFollow: true }, async (handle, info) => {
+      if (!info.isFile() || info.size > MAX_DIFF_BYTES) return null;
+      return readHandle(handle, MAX_DIFF_BYTES, "utf8");
+    });
+    if (read === null) {
       return "diff --git a/" + path + " b/" + path + "\nnew file mode 100644\nUntracked file is too large or not a regular file\n";
     }
-    content = await readFile(actual, "utf8");
+    content = read;
   } catch {
     return "diff --git a/" + path + " b/" + path + "\nnew file mode 100644\nBinary or unreadable untracked file\n";
   }

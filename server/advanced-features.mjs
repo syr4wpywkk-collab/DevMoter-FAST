@@ -3,6 +3,7 @@ import { constants as fsConstants } from "node:fs";
 import { basename, extname, isAbsolute, relative, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { readHandle, withOpenFile } from "./safe-file.mjs";
 
 export const TEXT_PREVIEW_LIMIT = 1024 * 1024;
 export const IMAGE_PREVIEW_LIMIT = 8 * 1024 * 1024;
@@ -66,30 +67,31 @@ export async function previewFile(root, relativePath) {
   assertPublicProjectPath(relativePath);
   const resolved = await resolveInsideRoot(root, relativePath);
   assertPublicProjectPath(relative(resolved.root, resolved.target));
-  const info = await stat(resolved.target);
-  if (!info.isFile()) throw new Error("Preview target is not a file");
-  const ext = extname(resolved.target).toLowerCase();
-  const imageMime = SAFE_IMAGE_MIME.get(ext);
+  return withOpenFile(resolved.target, {}, async (handle, info) => {
+    if (!info.isFile()) throw new Error("Preview target is not a file");
+    const ext = extname(resolved.target).toLowerCase();
+    const imageMime = SAFE_IMAGE_MIME.get(ext);
 
-  if (imageMime) {
-    if (info.size > IMAGE_PREVIEW_LIMIT) {
-      return { kind: "binary", name: basename(resolved.target), path: resolved.relativePath, size: info.size, reason: "image-too-large" };
+    if (imageMime) {
+      if (info.size > IMAGE_PREVIEW_LIMIT) {
+        return { kind: "binary", name: basename(resolved.target), path: resolved.relativePath, size: info.size, reason: "image-too-large" };
+      }
+      const data = await readHandle(handle, IMAGE_PREVIEW_LIMIT);
+      return { kind: "image", name: basename(resolved.target), path: resolved.relativePath, size: info.size, mime: imageMime, data: data.toString("base64") };
     }
-    const data = await readFile(resolved.target);
-    return { kind: "image", name: basename(resolved.target), path: resolved.relativePath, size: info.size, mime: imageMime, data: data.toString("base64") };
-  }
 
-  if (info.size > TEXT_PREVIEW_LIMIT) {
-    return { kind: "binary", name: basename(resolved.target), path: resolved.relativePath, size: info.size, reason: "file-too-large" };
-  }
-  const data = await readFile(resolved.target);
-  if (looksBinary(data) || (!TEXT_EXTENSIONS.has(ext) && ext !== "")) {
-    return { kind: "binary", name: basename(resolved.target), path: resolved.relativePath, size: info.size, reason: "binary-or-unsupported" };
-  }
-  return {
-    kind: "text", name: basename(resolved.target), path: resolved.relativePath, size: info.size,
-    language: languageForPath(resolved.target), content: data.toString("utf8")
-  };
+    if (info.size > TEXT_PREVIEW_LIMIT) {
+      return { kind: "binary", name: basename(resolved.target), path: resolved.relativePath, size: info.size, reason: "file-too-large" };
+    }
+    const data = await readHandle(handle, TEXT_PREVIEW_LIMIT);
+    if (looksBinary(data) || (!TEXT_EXTENSIONS.has(ext) && ext !== "")) {
+      return { kind: "binary", name: basename(resolved.target), path: resolved.relativePath, size: info.size, reason: "binary-or-unsupported" };
+    }
+    return {
+      kind: "text", name: basename(resolved.target), path: resolved.relativePath, size: info.size,
+      language: languageForPath(resolved.target), content: data.toString("utf8")
+    };
+  });
 }
 
 const FILE_BROWSER_LIMIT = 250;
