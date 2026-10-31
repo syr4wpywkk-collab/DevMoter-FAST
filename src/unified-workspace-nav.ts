@@ -88,11 +88,13 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   function closeMenu(restoreFocus = false) {
     if (menu.hidden) return;
     menu.hidden = true;
+    root.classList.remove("menu-open");
     menuButton.setAttribute("aria-expanded", "false");
     if (restoreFocus) menuButton.focus({ preventScroll: true });
   }
   function openMenu() {
     menu.hidden = false;
+    root.classList.add("menu-open");
     menuButton.setAttribute("aria-expanded", "true");
     const current = menu.querySelector<HTMLButtonElement>('[aria-current="page"]') || menu.querySelector<HTMLButtonElement>("button");
     current?.focus({ preventScroll: true });

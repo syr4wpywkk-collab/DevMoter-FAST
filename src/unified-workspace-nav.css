@@ -132,6 +132,9 @@ body.dm-task-first-enabled {
   transition: opacity 160ms cubic-bezier(0.23, 1, 0.32, 1), transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .dm-task-first-menu[hidden] { display: none; }
+/* The open ☰ menu drops over the Tools sidebar (.dm-shell, z 2147482000), so the
+ * nav is lifted above it only while the menu is open. */
+.dm-task-first-nav.menu-open { z-index: 2147482001; }
 @starting-style {
   .dm-task-first-menu { opacity: 0; transform: scale(0.95); }
 }
