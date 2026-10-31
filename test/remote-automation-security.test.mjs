@@ -6,7 +6,8 @@ test("only the exact GitHub webhook bypasses owner auth outside explicit login r
   const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
   const handler = source.indexOf("const server = http.createServer");
   const webhook = source.indexOf('req.method === "POST" && url.pathname === "/api/control/events/github"', handler);
-  const login = source.indexOf("PUBLIC_STATIC_PATHS.has(url.pathname)", handler);
+  const login = source.indexOf("LOGIN_ASSETS.has(url.pathname)", handler);
+  const publicStatic = source.indexOf("PUBLIC_STATIC_PATHS.has(url.pathname)", handler);
   const owner = source.indexOf("if (!basicAuthenticated && !ownerSession)", handler);
   const origin = source.indexOf("requireSameOriginMutation(req, res, DEVMOTER_PUBLIC_ORIGIN)", owner);
   const passkey = source.indexOf("if (await passkeyRoute(req, res, url)) return", handler);
@@ -14,7 +15,8 @@ test("only the exact GitHub webhook bypasses owner auth outside explicit login r
 
   assert.ok(handler >= 0);
   assert.ok(webhook > handler && webhook < login, "exact HMAC webhook must be routed before login/auth handling");
-  assert.ok(owner > login, "owner auth must follow only explicit login routes");
+  assert.ok(publicStatic > login, "the PWA allowlist follows the login assets");
+  assert.ok(owner > publicStatic, "owner auth must follow only explicit login and PWA routes");
   assert.ok(origin > owner, "normal mutations must still pass same-origin checks");
   assert.ok(passkey > origin, "passkey ceremonies must remain behind owner + same-origin auth");
   assert.ok(control > passkey, "normal control-plane routes must remain behind both auth layers");
