@@ -329,7 +329,7 @@ export function mountControlCenter() {
     modalOpen = true;
     lockBackground();
     close.focus({ preventScroll: true });
-    window.dispatchEvent(new CustomEvent("devmoter:workspace-panel-changed", { detail: { tab: "terminal", open: true } }));
+    window.dispatchEvent(new window.CustomEvent("devmoter:workspace-panel-changed", { detail: { tab: "terminal", open: true } }));
     void loadProjects().then(() => {
       renderProjectOptions();
       if (indexInitialized && !indexSection.classList.contains("hidden")) void refreshIndexView?.();
@@ -350,7 +350,7 @@ export function mountControlCenter() {
     scrim.classList.add("hidden");
     launcher.setAttribute("aria-expanded", "false");
     disconnectTerminalSocket();
-    if (wasOpen) window.dispatchEvent(new CustomEvent("devmoter:workspace-panel-changed", { detail: { tab: "terminal", open: false } }));
+    if (wasOpen) window.dispatchEvent(new window.CustomEvent("devmoter:workspace-panel-changed", { detail: { tab: "terminal", open: false } }));
     if (wasOpen && options.restoreFocus !== false) {
       const isVisible = (element: HTMLElement | null): element is HTMLElement => Boolean(
         element?.isConnected && !element.closest("[inert], [aria-hidden='true']") && element.getClientRects().length
