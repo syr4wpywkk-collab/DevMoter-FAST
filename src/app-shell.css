@@ -37,6 +37,12 @@
 .dm-shell-menu-trigger > span { font-size: 18px; line-height: 1; font-weight: 800; }
 .dm-shell-menu-trigger > small { font-size: 8px; line-height: 1; font-weight: 800; }
 
+/* Home sits at the top of the viewport only without the unified header, so
+ * clear the floating ☰ trigger (top 10px + 44px) and the safe area there. */
+body:not(.dm-task-first-enabled) .dm-home-shell {
+  padding-top: calc(64px + env(safe-area-inset-top));
+}
+
 /* Codex exposes the same Tools menu from its conversation drawer. */
 body.codex-mode .dm-shell-menu-trigger { display: none; }
 

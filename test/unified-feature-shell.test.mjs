@@ -46,7 +46,10 @@ test("Home is a first-class surface and sidebar entry without replacing existing
   const nav = await source("src/unified-workspace-nav.ts");
   assert.ok(nav.includes('addEventListener("click", actions.openHome)'));
   assert.ok(!shell.includes("data-home-nav"));
-  assert.ok(css.includes("env(safe-area-inset-top)"));
+  // Under the unified header the top safe area belongs to the header; only the
+  // legacy ☰ view clears it (app-shell.css), so home.css never adds it twice.
+  assert.ok(!css.includes("env(safe-area-inset-top)"));
+  assert.match(await source("src/app-shell.css"), /body:not\(\.dm-task-first-enabled\) \.dm-home-shell \{\s*padding-top: calc\(64px \+ env\(safe-area-inset-top\)\);/);
   assert.ok(css.includes("env(safe-area-inset-bottom)"));
   assert.ok(css.includes("100svh") && css.includes("100dvh"));
   assert.ok(css.includes("prefers-reduced-motion"));

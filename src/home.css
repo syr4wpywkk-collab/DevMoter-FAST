@@ -36,7 +36,7 @@
   min-height: 100svh;
   min-height: 100dvh;
   margin-inline: auto;
-  padding: calc(34px + env(safe-area-inset-top)) max(22px, env(safe-area-inset-right)) calc(120px + env(safe-area-inset-bottom)) max(22px, env(safe-area-inset-left));
+  padding: 24px max(22px, env(safe-area-inset-right)) calc(120px + env(safe-area-inset-bottom)) max(22px, env(safe-area-inset-left));
   display: flex;
   flex-direction: column;
 }
@@ -47,7 +47,8 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 24px;
-  padding-bottom: 30px;
+  /* Own the whole box: the global `header` rule in styles/base.css adds 8px on top. */
+  padding: 0 0 30px;
   border-bottom: 1px solid var(--hm-border);
   margin-bottom: 38px;
 }
@@ -382,7 +383,7 @@ body.devmoter-home-mode #app { min-height: 100svh; min-height: 100dvh; }
 }
 @media (max-width: 640px) {
   .dm-home-shell {
-    padding: calc(76px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) calc(115px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    padding: 16px max(14px,env(safe-area-inset-right)) calc(115px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   }
   .dm-home-header { gap: 17px; padding-bottom: 22px; margin-bottom: 27px; min-height: 0; }
   .dm-home-brand-mark { flex-basis: 40px; width: 40px; height: 40px; }
@@ -406,7 +407,6 @@ body.devmoter-home-mode #app { min-height: 100svh; min-height: 100dvh; }
   .dm-home-history-link { font-size: 11px; }
 }
 @media (max-height: 520px) and (orientation: landscape) {
-  .dm-home-shell { padding-top: calc(66px + env(safe-area-inset-top)); }
   .dm-home-app-card { min-height: 56px; }
 }
 @media (prefers-reduced-motion: reduce) {
