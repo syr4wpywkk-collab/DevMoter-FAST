@@ -228,7 +228,7 @@ export function createOfficeEditor(page: HTMLElement, options: OfficeEditorOptio
       if (["B", "STRONG"].includes(child.nodeName)) next.bold = true;
       if (["I", "EM"].includes(child.nodeName)) next.italic = true;
       if (child.nodeName === "U") next.underline = true;
-      if (child.nodeName === "A") next.href = child.dataset.href || child.getAttribute("href") || undefined;
+      if (child.nodeName === "A") next.href = child.getAttribute("href") || child.dataset.href || undefined;
       const style = child.style;
       if (style?.fontWeight) {
         const weight = style.fontWeight === "bold" ? 700 : style.fontWeight === "normal" ? 400 : Number(style.fontWeight);
@@ -289,7 +289,7 @@ export function createOfficeEditor(page: HTMLElement, options: OfficeEditorOptio
         if (!keep) el.removeAttribute(attr.name);
       }
       if (el.nodeName === "A") {
-        const href = el.dataset.href || el.getAttribute("href") || "";
+        const href = el.getAttribute("href") || el.dataset.href || "";
         if (!SAFE_HREF.test(href)) el.removeAttribute("href");
         if (!href) el.replaceWith(...el.childNodes);
       }
@@ -751,25 +751,20 @@ export function createOfficeEditor(page: HTMLElement, options: OfficeEditorOptio
     }
     if (!SAFE_HREF.test(href)) throw new Error("http(s)またはmailtoのURLを入力してください。");
     if (existing && range?.collapsed) {
-      commit(() => {
-        existing.setAttribute("href", href);
-        existing.dataset.href = href;
-      });
-      return;
-    }
-    if (range?.collapsed) {
-      const a = doc.createElement("a");
-      a.setAttribute("href", href);
-      a.dataset.href = href;
-      a.textContent = href;
-      range.insertNode(a);
-      range.setStartAfter(a);
-      range.collapse(true);
-      changed(true);
-      return;
+      // caret inside a link: change that whole link
+      const whole = doc.createRange();
+      whole.selectNodeContents(existing);
+      win.getSelection()?.removeAllRanges();
+      win.getSelection()?.addRange(whole);
+    } else if (range?.collapsed) {
+      // no selection: type the URL as the link text, select it, then link it like a selection
+      const before = caret();
+      doc.execCommand?.("insertText", false, href);
+      normalize();
+      if (before)
+        setCaret({ block: before.block, offset: before.offset, endBlock: before.block, endOffset: before.offset + href.length });
     }
     doc.execCommand?.("createLink", false, href);
-    for (const a of page.querySelectorAll<HTMLAnchorElement>("a[href]")) if (a.getAttribute("href") === href) a.dataset.href = href;
     changed(true);
   };
   const move = (delta: -1 | 1) =>
@@ -964,7 +959,7 @@ export function createOfficeEditor(page: HTMLElement, options: OfficeEditorOptio
     move,
     state,
     hasSelection: () => !!currentRange(),
-    linkHref: () => linkAt()?.dataset.href || linkAt()?.getAttribute("href") || "",
+    linkHref: () => linkAt()?.getAttribute("href") || linkAt()?.dataset.href || "",
   };
 }
 export type OfficeEditor = ReturnType<typeof createOfficeEditor>;
