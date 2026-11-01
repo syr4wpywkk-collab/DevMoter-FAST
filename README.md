@@ -1,265 +1,185 @@
-# DevMoter FAST v2
+# DevMoter FAST
 
-**Your coding agents. One pocket-sized control plane. 📱**
+**A self-hosted control plane for AI-assisted software engineering.**  
+Run agents and developer tools on your own machine. Operate, coordinate, and review the work from the device in your pocket.
 
 [![CI](https://github.com/syr4wpywkk-collab/DevMoter-FAST/actions/workflows/ci.yml/badge.svg)](https://github.com/syr4wpywkk-collab/DevMoter-FAST/actions/workflows/ci.yml)
 
 **English** · [日本語](./README.ja.md) · [简体中文](./README.zh-CN.md)
 
-> **Version track:** v2.0.0-alpha series  
-> **Status:** active development / pre-release
+> **Product generation:** v3.0.0-alpha  
+> **Release status:** pre-release / active development  
+> **npm package version:** `0.2.0` (private package metadata; independent of the product generation)
 
-The alpha track describes the product/release maturity. `package.json` currently reports `0.2.0`, the independent npm package version; it is not the v2 product track or a published stable release.
+DevMoter FAST is an **open-source, self-hosted, mobile-first control plane for AI-assisted software engineering**. It brings coding agents, projects, Git workflows, reviews, developer tools, and host integrations into one coordinated workspace while keeping execution and credentials on the machine you control.
 
-DevMoter FAST is an **open-source, self-hosted, mobile-first control plane for coding agents and developer tools**.
-
-Keep Codex, OpenCode, repositories, credentials, terminals, Git workflows, and host integrations on your Linux machine. Use a phone, tablet, PWA, or browser as the control surface.
-
-DevMoter v2 is no longer just a remote chat wrapper. It is evolving into a host-local control plane that connects **agent sessions, projects, Git/GitHub workflows, reviewed changes, model routing, automation, local tools, and explicit safety boundaries** behind one mobile-first interface.
+This is a new product generation—not simply a remote chat client with more buttons. DevMoter is designed to become the operational layer between you, your coding agents, your repositories, and the host that runs them.
 
 > [!IMPORTANT]
-> DevMoter FAST is an unofficial community project. It is not affiliated with, sponsored by, or endorsed by OpenAI, OpenCode, GitHub, Anthropic, Google, Tailscale, or other referenced providers.
+> DevMoter FAST is an independent community project. It is not affiliated with, sponsored by, or endorsed by OpenAI, OpenCode, GitHub, Anthropic, Google, Tailscale, or any other provider mentioned here.
 
 > [!WARNING]
-> DevMoter is currently designed for a **single-user private host / private network**. Keep it bound to localhost and use private HTTPS access such as Tailscale Serve. Do not expose DevMoter or agent backends directly to the public internet.
+> The current security model is **single-owner and host-local**. Keep the server bound to localhost and use a private network such as Tailscale for remote access. Do not expose DevMoter, agent backends, or host-control endpoints directly to the public internet.
 
-## Why v2?
+## The idea
 
-The first generation proved the core idea: start a coding agent on a Linux host and control it from your phone.
+Your development machine remains the execution environment. DevMoter provides the control and coordination layer.
 
-The v2 generation expands that idea into a broader control plane:
+- **You** decide what should happen and approve important actions.
+- **Agents** perform coding, investigation, and supported workflow tasks.
+- **Projects** provide registered, scoped access to repositories and context.
+- **Reviews and Git workflows** make proposed changes inspectable before they are applied.
+- **The host** owns processes, files, credentials, and local integrations.
+- **Your phone or browser** becomes the mobile-first control surface.
 
-- multiple agent backends instead of one chat surface;
-- project-aware sessions instead of arbitrary browser-provided working directories;
-- Git/GitHub workflows instead of copy-pasting patches;
-- reviewed changes, worktrees, and PR-oriented task flows;
-- model/provider routing and API-model chat;
-- persistent terminal and project context tools;
-- local host integrations and bounded automation;
-- stronger origin, filesystem, RPC, credential, and approval boundaries;
-- a mobile UI designed as the primary control surface rather than a desktop page squeezed onto a phone.
+The goal:
 
-The goal is simple:
+**Keep the engineering environment running. Take its control plane with you.**
 
-**leave the coding machine running; carry the control plane with you.**
+## What DevMoter brings together
 
-## Architecture at a glance
+| Area | What it does | Maturity |
+| --- | --- | --- |
+| Agent workspace | OpenCode and Codex sessions, streaming, model/agent selection, approvals and interruption | Shipped; upstream-dependent |
+| Projects | Registered project identities, project switching, bounded file and Markdown access | Shipped |
+| GitHub workspace | Host-authenticated repository discovery and managed repository operations | Shipped; scope-limited |
+| Tools AI | Natural-language requests routed to bounded project and host observations | Experimental |
+| Reviewed Changes | Diff proposals, file/hunk review, drift checks, explicit apply and commit flows | Experimental |
+| Session control | Follow-ups, handoff, checkpoints, forks, transcript search and background-run controls | Experimental |
+| Terminal | Authenticated, project-scoped persistent terminal with bounded replay and reconnect | Experimental |
+| API Chat and routing | Configurable providers/models, reasoning controls, attachments and routing/failover | Experimental |
+| Developer workflows | Skills, rules, MCP management, optional ACP, extensions and configured verification/review workflows | Mixed; see docs |
+| Host protocol | Versioned capability discovery across host adapters | v1 discovery contract; adapters vary |
+| Automation and integrations | Host registry, bounded triggers/schedules and selected integration handoffs | Experimental |
+| Web/PWA | Responsive mobile-first control surface and installable web shell | Shipped |
+| iOS client | Native wrapper for connecting to an existing DevMoter server over HTTPS | Experimental; device validation required |
+
+**Maturity labels matter.** Shipped means a real backend path exists; Experimental means implementation exists but still needs hardening or broader validation; Planned means it is not available as a shipped feature. A UI entry or design document is not proof that a capability works.
+
+## How it fits together
 
 ```text
-Phone / tablet / browser / PWA
-              │
-              │ private HTTPS
-              ▼
-       ┌───────────────────┐
-       │   DevMoter FAST   │
-       │ mobile control    │
-       │      plane        │
-       └─────────┬─────────┘
-                 │
-       ┌─────────┼─────────┐
-       ▼         ▼         ▼
-     Codex    OpenCode   API Chat
-       │         │         │
-       └─────────┼─────────┘
-                 ▼
-     Projects · Git · Reviews
-      Terminal · Tools · Tasks
-                 │
-                 ▼
-             Linux host
+ Phone · Tablet · Browser · PWA · iOS client
+                    │
+                    │ private HTTPS
+                    ▼
+          ┌──────────────────────┐
+          │     DevMoter FAST    │
+          │  Auth · UI · Routing │
+          │  Projects · Reviews │
+          │  Host capability API │
+          └──────────┬───────────┘
+                     │
+          ┌──────────┼───────────┐
+          ▼          ▼           ▼
+       OpenCode    Codex      API providers
+       localhost   stdio       HTTPS
+          │          │           │
+          └──────────┼───────────┘
+                     ▼
+        Projects · Git · Tools · Tasks
+         Terminal · Integrations · State
+                     │
+                     ▼
+               Your host machine
 ```
 
-The browser is the controller, not the coding machine. Local paths, agent processes, provider credentials, repository state, and host tooling remain on the host.
+The browser is a controller, not a remote shell with unrestricted authority. It sends authenticated, bounded requests; the server resolves registered resources and applies the relevant checks. Agent processes, repository data, local paths, and provider credentials remain on the host wherever the integration permits.
 
-## Core workflow
+## A typical workflow
 
-### Tools AI v1
+1. Register or select a project.
+2. Start or resume a supported agent session.
+3. Work from your phone or browser while the host runs the agent.
+4. Inspect progress, tool activity, and bounded project context.
+5. Interrupt, follow up, or hand off work when supported.
+6. Review proposed diffs and check for context drift.
+7. Explicitly apply or commit changes when the workflow supports it.
+8. Continue through GitHub and configured verification/review tools.
 
-Tools now opens with a natural-language goal input. Select an existing API Chat provider/model and a registered project to inspect Git changes, search a saved index, view its project map, read Markdown, or observe fixed host diagnostics. Results come from existing server helpers; saved-index timestamps and excluded/truncated content are shown. The original 20 manual destinations remain under **ツールを直接開く**.
+Not every surface has the same maturity. Consult the status table and linked contracts before relying on an experimental workflow.
 
-This version supports bounded observations only. Stop prevents later operations and aborts model requests; an already-running read helper or the provider's internal work may finish. Reconnect restores the same run, and unfinished runs become `unknown` after a host restart. See [Tools AI v1 contracts and validation](./docs/tools-ai-v1.md) for configuration, schemas, data sharing, cancellation, and limitations.
-
-A typical DevMoter workflow looks like this:
-
-**start work on the host → leave the desk → inspect progress → approve or interrupt → switch agent/model/project → review changes → continue from your phone.**
-
-This model is especially useful for:
-
-- Linux workstations;
-- Chromebook + Crostini environments;
-- home servers;
-- always-on development machines;
-- users who want local tooling without carrying the full desktop UI everywhere.
-
-## Capability status
-
-DevMoter deliberately distinguishes **shipped**, **experimental**, and **planned** features. A visible button or repository document does not automatically mean a capability is production-ready.
-
-| Surface | Status | Current scope |
-| --- | --- | --- |
-| OpenCode | ✅ Shipped | sessions, agents, models/providers, modes, commands, skills, streaming, permissions/questions, interrupt |
-| Codex | ✅ Shipped | threads, resume/fork, dynamic model discovery, reasoning effort, streaming, approvals, attachments, plugins/MCP inventory |
-| Projects | ✅ Shipped | registered working directories, project switching, bounded Markdown browsing/editing |
-| GitHub workspace | ✅ Shipped | host-`gh` repository discovery, managed clone/open, branch/fetch safety checks |
-| Session control | 🧪 Experimental | handoff, follow-ups, checkpoints, rewind/fork flows, transcript search, background-run controls |
-| Reviewed changes / tasks | 🧪 Experimental | proposal review, hunk decisions, drift checks, apply/commit, worktree, PR flow |
-| Project context / local index | 🧪 Experimental | bounded project search, structure/symbol context, local indexing |
-| Persistent terminal | 🧪 Experimental | authenticated project-scoped terminal with bounded replay and reconnect |
-| API Chat / model routing | 🧪 Experimental | configurable providers/models, reasoning modes, routing/failover, image attachments |
-| Automation / control plane | 🧪 Experimental | host registry, schedules/triggers, bounded automation primitives |
-| Antigravity / Claude integrations | 🧪 Experimental | local integration discovery and selected launch/remote handoff flows |
-| PWA / mobile UI | ✅ Shipped | responsive UI, backend switching, reconnect state, installable shell |
-| Passkey / device controls | 🧪 Experimental | optional secondary controls; not a public multi-user authorization system |
-| Library | 🗺️ Planned | not yet a shipped storage/library surface |
-| Google / Microsoft sign-in | ✅ Available | OpenID Connect + PKCE; requires host OAuth app configuration |
-
-> [!NOTE]
-> Upstream capabilities are dynamic. For example, the Codex model picker uses models advertised by the installed Codex app-server instead of inventing model availability.
-
-## Agent surfaces
-
-### Codex
-
-DevMoter talks to the local Codex app-server over stdio/JSONL.
-
-Current integrations include:
-
-- thread creation, history, resume and fork;
-- streamed turns and interruption;
-- approvals;
-- attachments;
-- dynamic model discovery;
-- model-advertised reasoning effort;
-- plugin/MCP inventory;
-- usage/rate-limit metadata where exposed by the upstream app-server.
-
-Codex RPC methods cross an explicit server-side allowlist. Authentication remains owned by the local Codex CLI.
+## Agent and developer surfaces
 
 ### OpenCode
 
-DevMoter proxies a localhost OpenCode runtime while keeping its backend credentials away from the browser.
+DevMoter connects to a local OpenCode runtime and keeps its backend authentication material on the server side. The workspace supports sessions, agents, provider/model selection, modes, commands, skills, streaming activity, permission requests, questions, and interruption, subject to the installed OpenCode version.
 
-The mobile surface supports:
+### Codex
 
-- sessions and agents;
-- Plan / Ask / Build modes;
-- provider and model selection;
-- commands and skills;
-- live text, reasoning and tool activity;
-- permission requests and questions;
-- interruption.
+DevMoter communicates with the local Codex app-server over stdio/JSONL. Supported integration areas include threads, history, resume/fork, streamed turns, interruption, approvals, attachments, dynamic model discovery, reasoning effort, and plugin/MCP inventory. RPC access is restricted by a server-side allowlist. Authentication remains with the local Codex CLI.
 
-### API Chat
+### API Chat and model routing
 
-The experimental API Chat surface provides a compact multi-provider interface with configurable models, reasoning controls, routing, and attachments.
+The experimental API Chat surface supports configured providers and models, reasoning controls, attachments, and routing/failover behavior. Provider credentials are stored server-side and are not returned to the frontend after configuration.
 
-Stored provider credentials remain server-side and are not returned to the frontend after configuration.
+### Projects, Git, and reviewed changes
 
-## Projects, Git and reviewed changes
+The browser selects a registered Project ID rather than supplying an arbitrary working directory. Project operations are bounded by server-side path checks. The managed GitHub workspace uses the host's authenticated `gh` session and applies managed-path and worktree safety checks.
 
-DevMoter uses a registered **Project ID** instead of accepting an arbitrary browser-supplied `cwd`.
+The experimental review flow is designed around inspectability:
 
-Important boundaries include:
+- propose a change;
+- inspect files and individual hunks;
+- validate that the original context has not drifted;
+- explicitly apply the accepted change;
+- validate before commit;
+- use managed task worktrees and PR-oriented flows where available.
 
-- registered projects stay inside the user's home directory;
-- traversal and project-root escapes are rejected;
-- symlink boundaries are checked around sensitive file operations;
-- local project reads are bounded;
-- mobile editor writes are intentionally constrained;
-- GitHub clones use a managed repository root;
-- dirty worktrees block destructive or unsafe reuse operations where appropriate.
+### Tools AI and local context
 
-The experimental reviewed-changes workflow adds:
+Tools AI accepts a natural-language goal and can route it to supported, bounded observations such as Git changes, saved-index search, project maps, Markdown reads, and fixed host diagnostics. It is not an unrestricted autonomous shell. Run state, cancellation behavior, reconnect behavior, and limitations are documented in the [Tools AI contract](./docs/tools-ai-v1.md).
 
-1. proposed changes;
-2. per-file / per-hunk review;
-3. context-drift validation;
-4. explicit apply;
-5. commit validation;
-6. managed task worktrees;
-7. PR-oriented task flows.
+Local indexing and project-context features are experimental. Sensitive/vendor exclusions and bounded reads are part of the design; availability depends on the host's indexed state.
 
-The goal is not to make autonomous mutation invisible. The goal is to make important mutations **inspectable and bounded**.
+### Terminal, integrations, and automation
 
-## Local context and terminal
+The persistent terminal is authenticated and project-scoped, with bounded output replay and reconnect behavior. Host integrations and automation use registered resources and bounded operations. Repository-provided files are treated as untrusted input: discovering a manifest, skill, or rule does not mean its commands are automatically executed.
 
-DevMoter v2 also adds host-local developer surfaces beyond chat.
+Developer workflows include explicit controls for skills, rules, MCP servers, optional ACP adapters, extension declarations, verification commands, and read-only AI review. See [Developer workflows](./docs/developer-workflows.md).
 
-Experimental capabilities include:
+## Host protocol and platform support
 
-- project structure and symbol context;
-- bounded local full-text indexing;
-- sensitive/vendor path exclusions;
-- reconnectable project-scoped terminal sessions;
-- bounded terminal output replay;
-- mobile-friendly terminal controls.
+The authenticated `GET /api/host` endpoint exposes a versioned capability snapshot. Clients must use the advertised capability state rather than infer support from the operating system.
 
-These features are designed around registered project boundaries rather than unrestricted browser-side shell access.
+Host Protocol v1 is a **discovery contract**, not a universal replacement for all existing APIs. Some capability families are unavailable or only partially implemented on particular adapters. For example, the current documentation identifies Linux support, constrained WSL behavior, and an unimplemented native macOS adapter. The Secret Vault management surface also has documented limits and is not yet a general provider/agent secret-injection system.
 
-## Automation and integrations
-
-The v2 architecture includes an experimental control-plane layer for host integrations and automation.
-
-This includes pieces such as:
-
-- host registry;
-- bounded schedules and triggers;
-- explicit integration discovery;
-- selected launch/remote handoff flows;
-- routing between supported agent/model surfaces.
-
-Automation is not treated as an excuse to bypass authorization boundaries. High-impact operations should remain explicit, scoped, and auditable.
+See [Host Protocol v1](./docs/HOST_PROTOCOL.md) for the exact contract and limitations.
 
 ## Security model
 
-DevMoter currently assumes that **the authenticated user is the owner of the host**. It is not a public multi-tenant SaaS authorization system.
+DevMoter is built around a private, single-owner host—not public multi-tenant hosting.
 
-Key boundaries include:
+Core principles include:
 
-- localhost binding by default;
-- DevMoter-native authentication;
-- exact-origin checks for state-changing browser requests;
-- `no-store` handling for secret-bearing/API responses;
-- provider credentials retained server-side;
-- OpenCode credentials kept away from the browser;
-- Codex reached over stdio with RPC allowlisting;
-- registered-project filesystem boundaries;
-- realpath/symlink containment checks around sensitive paths;
-- host-local attachment storage;
-- GitHub credentials retained in the host `gh` session;
-- fixed-argument host integration launchers instead of browser-provided shell commands;
-- bounded approval and task workflows.
+- bind the server to localhost by default;
+- use DevMoter authentication and exact-origin checks for state-changing browser requests;
+- keep provider and upstream credentials server-side;
+- use explicit Codex RPC allowlists;
+- resolve filesystem access through registered project identities;
+- enforce path containment and symlink checks around sensitive operations;
+- bound request sizes, reads, output, and long-running workflows;
+- treat repository-provided content as untrusted;
+- require explicit approval for important mutations;
+- avoid arbitrary browser-supplied shell commands.
 
-Read **[SECURITY.md](./SECURITY.md)** and **[THREAT_MODEL.md](./THREAT_MODEL.md)** before remote deployment.
+These controls reduce exposure; they do not make an internet-facing deployment safe. Read [SECURITY.md](./SECURITY.md) and [THREAT_MODEL.md](./THREAT_MODEL.md) before remote use.
 
-### Alpha caveats
-
-The v2.0.0-alpha line is still development software.
-
-Security and integration auditing is active. Experimental surfaces may change, and upstream Codex/OpenCode/CLI behavior can evolve independently of DevMoter.
-
-Treat `main` as a development branch, not as a hardened public service.
-
-## Quick start
+## Install
 
 ### Requirements
 
-- Linux
-- Node.js 22 + npm
+- Linux host
+- Node.js 22 or newer and npm
 - Git
 - Python 3
 - `curl`
 - OpenCode CLI
 - OpenAI Codex CLI
 
-Optional:
+Optional integrations include GitHub CLI (`gh`) and Tailscale. Authenticate upstream CLIs using their own supported flows before starting DevMoter.
 
-- GitHub CLI (`gh`) for repository integration;
-- Tailscale for private phone access.
-
-Authenticate upstream CLIs using their own supported flows before starting DevMoter.
-
-### Install
+### Quick start
 
 ```bash
 git clone https://github.com/syr4wpywkk-collab/DevMoter-FAST.git
@@ -268,21 +188,17 @@ npm ci
 bash scripts/start-pocket.sh
 ```
 
-Then open:
+Open:
 
 ```text
 http://127.0.0.1:8787
 ```
 
-The normal launcher builds the app, prepares local authentication, starts the local runtime pieces, starts DevMoter, and performs readiness checks.
+For the supported installer, update flow, and user service, see [Operations](./docs/operations.md) and [Fast Install](./fastinstall.MD).
 
-For the shortest supported setup, see **[Fast Install](./fastinstall.MD)**. For systemd and update operations, see **[Operations](./docs/operations.md)**.
+### Private access from a phone
 
-## Private phone access
-
-DevMoter is intended to remain on localhost.
-
-With Tailscale installed:
+Keep DevMoter on localhost and use a private HTTPS transport such as Tailscale Serve:
 
 ```bash
 tailscale serve reset
@@ -290,90 +206,61 @@ tailscale serve --bg http://127.0.0.1:8787
 tailscale serve status
 ```
 
-Open the resulting private HTTPS URL from a device on the same tailnet.
+Open the private HTTPS address from a device on the same tailnet. Do not use Tailscale Funnel or an arbitrary public tunnel as a substitute for a public-ready authorization model.
 
-> [!CAUTION]
-> Tailscale Funnel and arbitrary public tunnels are not the recommended deployment model for the current alpha. DevMoter's login is a single-user access boundary, not public-SaaS authorization.
+### iOS client
 
-## Documentation
+The repository includes an iOS client that connects to an already-running DevMoter server over HTTPS. It does **not** run the Linux server or coding agents on the iPhone. IPA generation is handled by GitHub Actions; installation/signing and real-device checks are separate steps. See [iPhone / AltStore instructions](./docs/ios-altstore.md) and the [Linux-to-iPhone guide](./docs/iphone-linux.ja.md). Do not treat a successful Linux build or an IPA artifact as proof of physical-device compatibility.
 
-| Document | Purpose |
-| --- | --- |
-| [Architecture](./ARCHITECTURE.md) | process, browser, agent and filesystem boundaries |
-| [Security](./SECURITY.md) | deployment assumptions and vulnerability reporting |
-| [Threat model](./THREAT_MODEL.md) | trust boundaries and attacker model |
-| [Fast Install](./fastinstall.MD) | shortest supported install path |
-| [Operations](./docs/operations.md) | systemd, update and operational commands |
-| [Owner sign-in / Auth v2](./docs/auth-v2.md) | Google and Microsoft OAuth setup, owner sessions and passkey policy |
-| [Developer workflows](./docs/developer-workflows.md) | extensions, MCP, ACP, skills and rules |
-| [Browser automation sandbox](./docs/BROWSER_AUTOMATION_SANDBOX.md) | browser automation boundary |
-| [Remote-control security](./docs/remote-control-security.md) | host registry / automation security |
-| [Release smoke](./RELEASE_SMOKE.md) | real-device release checklist |
-| [Roadmap](./ROADMAP.md) | current direction and maturity gates |
-
-## Development
+## Development and validation
 
 ```bash
-npm install
+npm ci
 npm run typecheck
 npm run lint
 npm test
 npm run build
 ```
 
-Coverage:
+Optional coverage report:
 
 ```bash
 npm run test:coverage
 ```
 
-CI covers automated checks. Real Chromebook/Crostini + iPhone behavior is still covered by the manual [Release Smoke](./RELEASE_SMOKE.md) checklist.
+CI covers automated checks. Chromebook/Crostini and iPhone behavior still require the documented manual release-smoke checks where equivalent device automation is unavailable. A passing unit test suite does not establish upstream protocol compatibility or real-device behavior.
 
-## Compatibility
+## Documentation
 
-DevMoter integrates with upstream tools whose protocols can evolve.
-
-Compatibility handling exists for areas such as:
-
-- event envelopes;
-- streaming;
-- approvals;
-- images and attachments;
-- model changes;
-- plugins and MCP inventory;
-- provider metadata;
-- version-sensitive RPC behavior.
-
-When reporting a compatibility problem, include:
-
-- DevMoter commit;
-- relevant Codex/OpenCode version;
-- browser/PWA environment;
-- exact error text;
-- the action that triggered it.
-
-Do **not** include API keys, tokens, generated passwords, private repository contents, or other secrets.
+| Document | Purpose |
+| --- | --- |
+| [Architecture](./ARCHITECTURE.md) | Server, browser, agent, and filesystem boundaries |
+| [Security](./SECURITY.md) | Deployment assumptions and vulnerability reporting |
+| [Threat model](./THREAT_MODEL.md) | Trust boundaries and attacker model |
+| [Fast Install](./fastinstall.MD) | Quick setup |
+| [Operations](./docs/operations.md) | Installer, updates, systemd user service, health checks |
+| [Host Protocol v1](./docs/HOST_PROTOCOL.md) | Capability discovery and adapter limits |
+| [Tools AI v1](./docs/tools-ai-v1.md) | Tools AI contracts, cancellation, data handling, limitations |
+| [Developer workflows](./docs/developer-workflows.md) | Skills, rules, MCP, ACP, extensions, verification and review |
+| [iOS / AltStore](./docs/ios-altstore.md) | iOS client build and installation |
+| [Linux to iPhone](./docs/iphone-linux.ja.md) | Linux-based iPhone installation walkthrough |
+| [Browser automation sandbox](./docs/BROWSER_AUTOMATION_SANDBOX.md) | Browser automation boundary |
+| [Remote-control security](./docs/remote-control-security.md) | Host registry and automation security |
+| [Release smoke](./RELEASE_SMOKE.md) | Manual release validation |
+| [Roadmap](./ROADMAP.md) | Maturity gates and future direction |
 
 ## Project principles
 
-1. **Host-local by default.** Credentials and coding processes stay on your machine.
-2. **Mobile is a first-class control surface.** This is not a desktop page squeezed onto a phone.
-3. **Agent actions need boundaries.** Filesystem, Git, RPC, automation, approvals, and host integrations should fail closed.
-4. **Important mutations should be inspectable.** Review and explicit consent beat invisible automation.
-5. **No fake capability.** Planned or upstream-dependent features should be labeled honestly.
-6. **Interoperability over lock-in.** DevMoter connects existing developer tools rather than pretending to replace all of them.
-
-## AI-assisted development
-
-DevMoter FAST is built with heavy AI assistance for implementation, debugging, protocol research, testing, review, and iteration.
-
-Product direction, requirements, real-device validation, release decisions, and maintenance remain human-directed.
+1. **Host-owned execution.** Keep coding processes and local resources on the machine that owns them.
+2. **Mobile-first control.** The phone is a first-class workspace, not a shrunken desktop page.
+3. **Least authority.** Agents and browser clients receive only bounded, scoped capabilities.
+4. **Human approval for consequential changes.** Make mutations inspectable and deliberate.
+5. **Honest maturity labels.** Do not describe planned or unvalidated behavior as shipped.
+6. **Interoperability.** Coordinate existing developer tools instead of forcing a single provider or agent.
 
 ## Contributing
 
-Issues, compatibility findings, documentation improvements, security reports, and pull requests are welcome.
-
-Security vulnerabilities should follow **[SECURITY.md](./SECURITY.md)** instead of being posted with exploit details in a public issue.
+Issues, compatibility reports, documentation improvements, and pull requests are welcome. For security vulnerabilities, follow [SECURITY.md](./SECURITY.md) rather than publishing exploit details in a public issue. Never include API keys, tokens, passwords, or private repository data in bug reports.
 
 ## License
 
@@ -381,4 +268,4 @@ MIT. See [LICENSE](./LICENSE).
 
 ---
 
-**DevMoter FAST v2 — leave the coding machine running; carry the control plane with you.**
+**DevMoter FAST v3 — your engineering environment, under your control.**

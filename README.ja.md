@@ -1,264 +1,191 @@
-# DevMoter FAST v2
+# DevMoter FAST
 
-**コーディングエージェントを、ポケットサイズのコントロールプレーンへ。📱**
+**AI開発エージェントと開発環境を、一つのコントロールプレーンへ。**  
+エージェントや開発ツールは自分のマシンで動かす。操作・連携・レビューは、手元のスマートフォンから。
 
 [![CI](https://github.com/syr4wpywkk-collab/DevMoter-FAST/actions/workflows/ci.yml/badge.svg)](https://github.com/syr4wpywkk-collab/DevMoter-FAST/actions/workflows/ci.yml)
 
 [English](./README.md) · **日本語** · [简体中文](./README.zh-CN.md)
 
-> **Version track:** v2.0.0-alpha 系列  
-> **Status:** active development / pre-release
+> **製品世代:** v3.0.0-alpha  
+> **リリース状態:** 開発中 / プレリリース  
+> **npm package version:** `0.2.0`（private package metadata。製品世代とは独立）
 
-Alpha表記は製品のリリース成熟度を示します。`package.json` の `0.2.0` は独立したnpmパッケージ版で、v2製品トラックや安定版リリースを示すものではありません。
+DevMoter FASTは、**AIを活用したソフトウェア開発のための、オープンソース・セルフホスト・モバイルファーストなコントロールプレーン**です。
 
-DevMoter FAST は、コーディングエージェントと開発ツールをまとめて操作するための **オープンソース・セルフホスト・mobile-first コントロールプレーン**です。
+コーディングエージェント、Projects、Gitワークフロー、変更レビュー、開発者ツール、ホスト連携を一つのワークスペースにまとめながら、実行環境と認証情報は自分が管理するマシンに保持します。
 
-Codex、OpenCode、リポジトリ、認証情報、ターミナル、Gitワークフロー、ホスト連携はLinuxマシン側に残したまま、スマホ・タブレット・PWA・ブラウザを操作面として使います。
-
-iPhone向けの接続クライアントを `ios/` に追加しました。GitHub ActionsでAltStore Classic用IPAを生成する構成、インストール手順、接続プロファイルごとのログイン状態の保存については [iPhone / AltStore手順](./docs/ios-altstore.md) を参照してください。iOSビルド・実機検証は別途必要です。
-
-LinuxのPCだけで導入する場合は、[LinuxからiPhone 16に入れる手順（日本語）](./docs/iphone-linux.ja.md) を参照してください。
-
-DevMoter v2 は、もう単なる「遠隔チャットUI」ではありません。**エージェントセッション、Projects、Git/GitHub、Reviewed Changes、モデルルーティング、Automation、ローカルツール、安全境界**を一つのmobile-first UIへまとめる、host-localなコントロールプレーンへ進化しています。
+これは単なる遠隔チャットUIの機能追加ではありません。DevMoterは、ユーザー・コーディングエージェント・リポジトリ・実行ホストの間をつなぐ、開発運用レイヤーへと再設計されています。
 
 > [!IMPORTANT]
-> DevMoter FAST は非公式コミュニティプロジェクトです。OpenAI、OpenCode、GitHub、Anthropic、Google、Tailscale その他の提供元とは提携・スポンサー・承認関係にありません。
+> DevMoter FASTは独立したコミュニティプロジェクトです。OpenAI、OpenCode、GitHub、Anthropic、Google、Tailscaleその他の記載された提供元とは、提携・スポンサー・承認関係にありません。
 
 > [!WARNING]
-> 現在のDevMoterは **単一ユーザーのプライベートホスト / プライベートネットワーク** 向けです。localhostを基本とし、外部から使う場合はTailscale ServeなどのプライベートHTTPSを利用してください。DevMoterやエージェントbackendを公開インターネットへ直接露出しないでください。
+> 現在のセキュリティモデルは **単一所有者・ホストローカル運用** を前提としています。サーバーはlocalhostにbindし、リモートアクセスにはTailscaleなどのプライベートネットワークを利用してください。DevMoter、Agent backend、ホスト制御APIを公開インターネットへ直接公開しないでください。
 
-## なぜ v2 なのか
+## DevMoterが目指すもの
 
-初期世代では、「LinuxホストでCoding Agentを動かし、その作業をスマホから操作する」という中核アイデアを成立させました。
+開発マシンは、実際に処理を実行する場所です。DevMoterは、その操作と連携を担うコントロールレイヤーです。
 
-v2では、その考え方をさらに広げて **コントロールプレーン化** しています。
+- **ユーザー**が目的を決め、重要な操作を承認する。
+- **Agent**がコーディング、調査、対応するワークフローを実行する。
+- **Projects**がリポジトリと開発コンテキストへの登録済み・限定的なアクセスを提供する。
+- **Review / Git workflow**が変更を適用する前に可視化する。
+- **Host**がプロセス、ファイル、認証情報、ローカル連携を管理する。
+- **スマートフォンやブラウザ**がモバイルファーストの操作面になる。
 
-- 1つのチャット面ではなく、複数のAgent backendを扱う
-- ブラウザから任意cwdを渡すのではなく、Project単位でセッションを管理する
-- patchのコピペではなく、Git/GitHubワークフローまで扱う
-- Reviewed Changes、worktree、PR-oriented task flowを持つ
-- model/provider routingとAPI Chatを扱う
-- persistent terminalとproject context toolを持つ
-- host integrationとbounded automationを持つ
-- Origin、filesystem、RPC、credential、approvalの境界を強化する
-- desktop UIを縮小した画面ではなく、最初からmobile-firstで設計する
+目標は明確です。
 
-目標はシンプルです。
+**開発環境は動かしたまま、そのコントロールプレーンを持ち歩く。**
 
-**開発マシンは動かしたまま、コントロールプレーンだけ持ち歩く。**
+## 統合する機能
 
-## 30秒で分かる構成
+| 領域 | 機能 | 成熟度 |
+| --- | --- | --- |
+| Agent Workspace | OpenCode / Codexのセッション、ストリーミング、モデル・Agent選択、承認、割り込み | 実装済み・上流依存 |
+| Projects | Project登録、切替、制限付きファイル・Markdownアクセス | 実装済み |
+| GitHub Workspace | ホスト認証を使ったRepository検索と管理対象Repository操作 | 実装済み・範囲限定 |
+| Tools AI | 自然言語の目的を、制限されたProject / Host観測へルーティング | 実験的 |
+| Reviewed Changes | Diff提案、ファイル・Hunkレビュー、Context drift確認、明示的Apply / Commit | 実験的 |
+| Session Control | Follow-up、Handoff、Checkpoint、Fork、履歴検索、Background run制御 | 実験的 |
+| Terminal | 認証付きProject単位の永続Terminal、出力制限、再接続 | 実験的 |
+| API Chat / Routing | Provider / Model設定、Reasoning制御、添付、Routing / Failover | 実験的 |
+| Developer Workflows | Skills、Rules、MCP管理、任意ACP、Extension、検証・レビュー設定 | 機能ごとに異なる |
+| Host Protocol | Host adapterのバージョン付きCapability discovery | v1探索契約・Adapterごとに差あり |
+| Automation / Integrations | Host registry、制限付きTrigger / Schedule、一部Integration handoff | 実験的 |
+| Web / PWA | レスポンシブなモバイルUI、インストール可能なWeb shell | 実装済み |
+| iOS Client | 既存DevMoterサーバーへHTTPS接続するNative wrapper | 実験的・実機検証が必要 |
+
+**成熟度の表記は重要です。**「実装済み」は実際のbackend経路があること、「実験的」は実装済みだが追加の堅牢化・検証が必要なこと、「計画中」はまだ提供機能ではないことを示します。UIにボタンがあることや設計書が存在することだけでは、機能の動作を保証しません。
+
+## システム構成
 
 ```text
-スマホ / タブレット / ブラウザ / PWA
-                 │
-                 │ private HTTPS
-                 ▼
-        ┌───────────────────┐
-        │   DevMoter FAST   │
-        │ mobile control    │
-        │      plane        │
-        └─────────┬─────────┘
-                  │
-        ┌─────────┼─────────┐
-        ▼         ▼         ▼
-      Codex    OpenCode   API Chat
-        │         │         │
-        └─────────┼─────────┘
-                  ▼
-       Projects · Git · Reviews
-        Terminal · Tools · Tasks
-                  │
-                  ▼
-              Linux host
+ スマホ · タブレット · Browser · PWA · iOS client
+                       │
+                       │ private HTTPS
+                       ▼
+             ┌──────────────────────┐
+             │     DevMoter FAST    │
+             │ Auth · UI · Routing  │
+             │ Projects · Reviews  │
+             │ Host capability API │
+             └──────────┬───────────┘
+                        │
+             ┌──────────┼───────────┐
+             ▼          ▼           ▼
+          OpenCode    Codex      API providers
+          localhost   stdio        HTTPS
+             │          │           │
+             └──────────┼───────────┘
+                        ▼
+          Projects · Git · Tools · Tasks
+           Terminal · Integrations · State
+                        │
+                        ▼
+                 自分のHost machine
 ```
 
-ブラウザは「開発マシン」ではなく「コントローラー」です。ローカルパス、Agentプロセス、provider credential、repository state、host toolはホスト側に残ります。
+ブラウザは、無制限の権限を持つ遠隔Shellではなくコントローラーです。認証済みの制限されたリクエストを送り、特権リソースの解決と検証はサーバー側で行います。Agent process、Repository data、ローカルパス、Provider credentialは、連携方式が許す限りホスト側に保持されます。
 
-## 基本ワークフロー
+## 典型的なワークフロー
 
-典型的な使い方はこうです。
+1. Projectを登録または選択する。
+2. 対応するAgent sessionを開始・再開する。
+3. ホスト上でAgentを動かしながら、スマートフォンやブラウザから操作する。
+4. 進捗、Tool activity、制限されたProject contextを確認する。
+5. 対応機能に応じてInterrupt、Follow-up、Handoffを行う。
+6. 提案されたDiffを確認し、Context driftを検証する。
+7. 対応するworkflowで、承認した変更を明示的にApply / Commitする。
+8. GitHubや設定済みの検証・レビュー機能へ進む。
 
-**ホストで作業開始 → 席を離れる → 進捗確認 → 承認/割り込み → Agent・Model・Project切替 → 変更レビュー → スマホから継続**
+すべての機能が同じ成熟度ではありません。実験的なworkflowを利用する前に、機能ステータスと各仕様書を確認してください。
 
-特に次のような環境を想定しています。
-
-- Linux workstation
-- Chromebook + Crostini
-- home server
-- 常時起動の開発マシン
-- ローカル開発環境を維持しながら、操作面だけ持ち歩きたいユーザー
-
-## 機能ステータス
-
-DevMoterでは **Shipped / Experimental / Planned** を明確に分けます。画面に入口があることや、repositoryに設計書があることは、その機能がproduction readyであることを意味しません。
-
-| 機能 | 状態 | 現在の範囲 |
-| --- | --- | --- |
-| OpenCode | ✅ Shipped | sessions、agents、models/providers、modes、commands、skills、streaming、permissions/questions、interrupt |
-| Codex | ✅ Shipped | threads、resume/fork、動的model discovery、reasoning effort、streaming、approvals、attachments、plugins/MCP inventory |
-| Projects | ✅ Shipped | registered working directory、project切替、境界付きMarkdown閲覧/編集 |
-| GitHub workspace | ✅ Shipped | host-`gh` repo discovery、managed clone/open、branch/fetch safety check |
-| Session control | 🧪 Experimental | handoff、follow-up、checkpoint、rewind/fork、transcript search、background-run control |
-| Reviewed Changes / Tasks | 🧪 Experimental | proposal review、hunk decision、drift check、apply/commit、worktree、PR flow |
-| Project context / local index | 🧪 Experimental | bounded project search、structure/symbol context、local indexing |
-| Persistent terminal | 🧪 Experimental | authenticated project-scoped terminal、bounded replay、reconnect |
-| API Chat / model routing | 🧪 Experimental | configurable provider/model、reasoning mode、routing/failover、image attachment |
-| Automation / control plane | 🧪 Experimental | host registry、schedule/trigger、bounded automation primitive |
-| Antigravity / Claude連携 | 🧪 Experimental | local integration discovery、一部launch/remote handoff flow |
-| PWA / mobile UI | ✅ Shipped | responsive UI、backend switching、reconnect、installable shell |
-| Passkey / device controls | 🧪 Experimental | 補助的な端末制御。公開multi-user認可ではありません |
-| Library | 🗺️ Planned | storage/library surfaceは未実装 |
-| Google / Microsoftログイン | ✅ Available | OAuthアプリ設定が必要。OIDC + PKCE。詳細は[Auth v2](./docs/auth-v2.md) |
-| Appleログイン | 🗺️ Planned | 未実装 |
-
-> [!NOTE]
-> 上流が提供する能力は動的です。たとえばCodexのmodel pickerは、インストール済みCodex app-serverが公開するmodelを利用し、存在しないmodel availabilityをDevMoter側で捏造しません。
-
-## Agent surfaces
-
-### Codex
-
-DevMoterはローカルCodex app-serverとstdio/JSONLで通信します。
-
-現在の主な連携:
-
-- thread作成、history、resume、fork
-- streamed turnとinterrupt
-- approval
-- attachment
-- dynamic model discovery
-- model-advertised reasoning effort
-- plugin/MCP inventory
-- upstream app-serverが提供する範囲でusage/rate-limit metadata
-
-Codex RPCは明示的なserver-side allowlistを通ります。認証自体はローカルCodex CLIが保持します。
+## Agent / Developer surfaces
 
 ### OpenCode
 
-DevMoterはlocalhost上のOpenCode runtimeをproxyし、backend credentialをブラウザへ返しません。
+localhost上のOpenCode runtimeへ接続し、backend認証情報をブラウザへ返さない構成です。Session、Agent、Provider / Model選択、Mode、Command、Skill、Streaming activity、Permission request、Question、Interruptなどを扱います。利用可能な機能はインストール済みOpenCodeのバージョンに依存します。
 
-mobile surfaceでは次を扱います。
+### Codex
 
-- sessions / agents
-- Plan / Ask / Build
-- provider / model selection
-- commands / skills
-- live text / reasoning / tool activity
-- permission request / question
-- interrupt
+ローカルCodex app-serverとstdio/JSONLで通信します。Thread、History、Resume / Fork、Streaming turn、Interrupt、Approval、Attachment、Dynamic model discovery、Reasoning effort、Plugin / MCP inventoryなどに対応します。RPCアクセスはserver-side allowlistで制限し、認証はローカルCodex CLIが保持します。
 
-### API Chat
+### API Chat / Model Routing
 
-Experimentalなmulti-provider向けUIです。model、reasoning control、routing、attachmentを一つのcompactなsurfaceで扱います。
+実験的なAPI Chatは、設定済みProvider / Model、Reasoning control、Attachment、Routing / Failoverを扱います。Provider credentialはserver-sideに保存され、設定後にfrontendへ返されません。
 
-保存されたprovider credentialはserver-sideに保持され、設定後にfrontendへ返しません。
+### Projects / Git / Reviewed Changes
 
-## Projects / Git / Reviewed Changes
+ブラウザから任意の作業ディレクトリを渡すのではなく、登録済みProject IDを利用します。Project操作はserver-sideのpath checkで制限されます。GitHub Workspaceはホストの認証済み`gh` sessionを利用し、管理対象パスやworktreeの安全性を確認します。
 
-DevMoterはブラウザから任意の`cwd`を受け取るのではなく、登録済み **Project ID** を使います。
+実験的なReview workflowは、変更を見える状態に保つことを重視します。
 
-主な境界:
+- 変更を提案する
+- ファイル単位・Hunk単位で確認する
+- 元のContextからずれていないか検証する
+- 承認した変更だけを明示的にApplyする
+- Commit前に検証する
+- 対応範囲で管理対象WorktreeやPR workflowを使う
 
-- registered projectはuser home directory配下に制約
-- traversal / project-root escapeを拒否
-- sensitiveなfile operationではsymlink boundaryを確認
-- local project readはbounded
-- mobile editor writeは意図的に制限
-- GitHub cloneはmanaged repository rootへ限定
-- dirty worktreeは危険な再利用や破壊操作を必要に応じてblock
+### Tools AI / Local Context
 
-ExperimentalなReviewed Changes workflowでは次の流れを扱います。
+Tools AIは自然言語の目的を受け取り、Git変更、保存済みIndexの検索、Project map、Markdown読み取り、固定されたHost diagnosticsなど、対応する制限付き観測へルーティングします。無制限の自律Shellではありません。
 
-1. proposed changes
-2. file / hunk単位のreview
-3. context drift validation
-4. explicit apply
-5. commit validation
-6. managed task worktree
-7. PR-oriented task flow
+Run state、Cancelの挙動、Reconnect、データ共有、制限事項は [Tools AI v1仕様](./docs/tools-ai-v1.md) を参照してください。
 
-重要なmutationを見えない自動化にするのではなく、**inspectableかつboundedな操作**にすることを重視しています。
+Local indexingとProject contextは実験的機能です。機密・vendor pathの除外や読み取り上限を設けていますが、利用可否はHost側のIndex状態に依存します。
 
-## Local context / Terminal
+### Terminal / Integrations / Automation
 
-v2ではchat以外のhost-local developer surfaceも増えています。
+Persistent Terminalは認証付き・Project単位で、出力の再生量と再接続動作に制限があります。Host integrationとAutomationは登録済みリソースと制限された操作を前提にしています。
 
-Experimentalな機能:
+Repository由来のファイルは信頼できない入力として扱います。Manifest、Skill、Ruleを発見しただけで、その中のCommandを自動実行することはありません。
 
-- project structure / symbol context
-- bounded local full-text index
-- sensitive/vendor path exclusion
-- reconnect可能なproject-scoped terminal
-- bounded terminal output replay
-- mobile-friendly terminal control
+Developer Workflowsでは、Skills、Rules、MCP server、任意ACP Adapter、Extension declaration、検証Command、読み取り専用AI Reviewを明示的に管理します。詳細は [Developer workflows](./docs/developer-workflows.md) を参照してください。
 
-これらはunrestrictedなbrowser-side shellではなく、registered project boundaryを前提に設計されています。
+## Host Protocol / Platform support
 
-## Automation / Integrations
+認証済みの`GET /api/host` endpointは、バージョン付きCapability snapshotを返します。ClientはOS名から対応機能を推測せず、広告されたCapability stateに従う必要があります。
 
-v2 architectureには、host integrationとautomationを扱うExperimentalなcontrol-plane layerがあります。
+Host Protocol v1は **Capability discoveryの契約** です。既存のすべてのAPIを置き換える共通実行APIではありません。Adapterによって未対応・部分対応の機能があります。現行ドキュメントではLinux対応、制約付きWSL動作、未実装のnative macOS adapterが明記されています。Secret Vaultにも管理API上の制限があり、Provider / Agentへの一般的なSecret injection機構としてはまだ統合されていません。
 
-例:
-
-- host registry
-- bounded schedule / trigger
-- explicit integration discovery
-- selected launch / remote handoff
-- supported agent/model surface間のrouting
-
-Automationはauthorization boundaryを飛び越えるための仕組みではありません。高い影響を持つ操作ほど、explicit・scoped・auditableであることを重視します。
+正確な仕様と制限は [Host Protocol v1](./docs/HOST_PROTOCOL.md) を参照してください。
 
 ## セキュリティモデル
 
-DevMoterは現在、**認証済みユーザー = ホスト所有者** を前提としています。公開multi-tenant SaaS向けのauthorization systemではありません。
+DevMoterは、公開multi-tenant hostingではなく、**単一所有者のプライベートHost** を前提に設計されています。
 
-主な境界:
+主な原則:
 
-- localhost bindが既定
-- DevMoter独自認証
-- state-changing requestのexact-origin check
-- secret-bearing/API responseの`no-store`
-- provider credentialはserver-side
-- OpenCode credentialをbrowserへ返さない
-- Codexはstdio + RPC allowlist
-- registered-project filesystem boundary
-- sensitive pathのrealpath/symlink containment check
-- attachmentはhost-local
-- GitHub credentialはhostの`gh` sessionに保持
-- browserから任意shell commandを受け取らず、host integrationはfixed-argument launcherを使用
-- bounded approval / task workflow
+- 既定でlocalhostにbindする
+- DevMoter認証と、状態変更リクエストに対するexact-origin checkを行う
+- Provider / upstream credentialをserver-sideに保持する
+- Codex RPCを明示的なallowlistで制限する
+- 登録済みProject IDを通じてFilesystem accessを解決する
+- 機密操作でpath containmentとsymlink checkを行う
+- Request、Read、Output、長時間workflowに上限を設ける
+- Repository由来の内容をuntrustedとして扱う
+- 重要な変更に明示的な承認を要求する
+- Browserから任意のShell commandを受け取らない
 
-remote deployment前に **[SECURITY.md](./SECURITY.md)** と **[THREAT_MODEL.md](./THREAT_MODEL.md)** を読んでください。
+これらはリスクを抑えるための境界であり、インターネットへ公開してよいことを意味しません。リモート利用前に [SECURITY.md](./SECURITY.md) と [THREAT_MODEL.md](./THREAT_MODEL.md) を確認してください。
 
-### Alphaであることについて
-
-v2.0.0-alpha系はまだdevelopment softwareです。
-
-Security / integration auditは継続中で、Experimental surfaceは変更される可能性があります。またCodex/OpenCode/CLIなど上流の挙動もDevMoterとは独立して変化します。
-
-`main`はhardened public serviceではなく、development branchとして扱ってください。
-
-## 最短起動
+## インストール
 
 ### 必要環境
 
-- Linux
-- Node.js 22 + npm
+- Linux host
+- Node.js 22以上 / npm
 - Git
 - Python 3
 - `curl`
 - OpenCode CLI
 - OpenAI Codex CLI
 
-任意:
+任意の連携としてGitHub CLI (`gh`) とTailscaleを利用できます。起動前に各upstream CLIを、それぞれの正式な認証フローでログインしてください。
 
-- repository integration用のGitHub CLI (`gh`)
-- private phone access用のTailscale
-
-DevMoter起動前に、各upstream CLIはそれぞれの公式な認証フローでログインしてください。
-
-### Install
+### Quick start
 
 ```bash
 git clone https://github.com/syr4wpywkk-collab/DevMoter-FAST.git
@@ -267,21 +194,17 @@ npm ci
 bash scripts/start-pocket.sh
 ```
 
-その後、次を開きます。
+ブラウザで開きます。
 
 ```text
 http://127.0.0.1:8787
 ```
 
-通常launcherはbuild、local auth準備、必要なlocal runtime起動、DevMoter起動、readiness checkまで行います。
+正式なInstaller、Update flow、systemd user serviceについては [Operations](./docs/operations.md) と [Fast Install](./fastinstall.MD) を参照してください。
 
-最短セットアップは **[Fast Install](./fastinstall.MD)**、systemdやupdate operationは **[Operations](./docs/operations.md)** を参照してください。
+### スマートフォンからのPrivate access
 
-## スマホからのprivate access
-
-DevMoterはlocalhost運用を基本にしています。
-
-Tailscaleを利用する場合:
+DevMoterはlocalhost運用を維持し、Tailscale ServeなどのPrivate HTTPS transportを利用してください。
 
 ```bash
 tailscale serve reset
@@ -289,94 +212,68 @@ tailscale serve --bg http://127.0.0.1:8787
 tailscale serve status
 ```
 
-同じtailnetの端末から、表示されたprivate HTTPS URLを開きます。
+同じtailnet上の端末からPrivate HTTPS URLを開きます。Tailscale Funnelや任意のPublic tunnelを、公開サービス向け認可モデルの代わりに使用しないでください。
 
-> [!CAUTION]
-> 現在のAlphaではTailscale Funnelや任意のpublic tunnelを推奨しません。DevMoterのloginはsingle-user access boundaryであり、public SaaS向け認可ではありません。
+### iOS Client
 
-## ドキュメント
+Repositoryには、既に起動しているDevMoter serverへHTTPS接続するiOS clientが含まれています。iPhone上でLinux serverやCoding Agentを実行するものではありません。
 
-| Document | 内容 |
-| --- | --- |
-| [Architecture](./ARCHITECTURE.md) | process / browser / agent / filesystem boundary |
-| [Security](./SECURITY.md) | deployment assumption / vulnerability reporting |
-| [Threat model](./THREAT_MODEL.md) | trust boundary / attacker model |
-| [Fast Install](./fastinstall.MD) | 最短セットアップ |
-| [Operations](./docs/operations.md) | systemd / update / operation |
-| [Developer workflows](./docs/developer-workflows.md) | extensions / MCP / ACP / skills / rules |
-| [Browser automation sandbox](./docs/BROWSER_AUTOMATION_SANDBOX.md) | browser automation boundary |
-| [Remote-control security](./docs/remote-control-security.md) | host registry / automation security |
-| [Release smoke](./RELEASE_SMOKE.md) | 実機release checklist |
-| [Roadmap](./ROADMAP.md) | 今後の方向性 / maturity gate |
+IPA生成はGitHub Actionsで行いますが、署名・インストール・実機検証は別工程です。詳細は [iPhone / AltStore手順](./docs/ios-altstore.md) と [LinuxからiPhoneへ](./docs/iphone-linux.ja.md) を参照してください。Linux buildやIPA artifactの生成だけで、実機互換性が確認されたことにはなりません。
 
-## 開発
+## 開発・検証
 
 ```bash
-npm install
+npm ci
 npm run typecheck
 npm run lint
 npm test
 npm run build
 ```
 
-Coverage:
+Coverage report:
 
 ```bash
 npm run test:coverage
 ```
 
-CIは自動checkを担当します。Chromebook/Crostini + iPhoneの実機挙動は、引き続きmanualの [Release Smoke](./RELEASE_SMOKE.md) で確認します。
+CIは自動テストを担当します。Chromebook / CrostiniやiPhoneの挙動は、同等の自動化がない範囲で [Release Smoke](./RELEASE_SMOKE.md) による実機確認が必要です。Unit testの成功だけでは、Upstream protocol互換性や実機動作を保証しません。
 
-## Compatibility
+## ドキュメント
 
-DevMoterが接続するupstream toolのprotocolは変化する可能性があります。
+| Document | 内容 |
+| --- | --- |
+| [Architecture](./ARCHITECTURE.md) | Server / Browser / Agent / Filesystemの境界 |
+| [Security](./SECURITY.md) | 運用前提と脆弱性報告 |
+| [Threat model](./THREAT_MODEL.md) | Trust boundaryと攻撃者モデル |
+| [Fast Install](./fastinstall.MD) | Quick setup |
+| [Operations](./docs/operations.md) | Installer、Update、systemd user service、Health check |
+| [Host Protocol v1](./docs/HOST_PROTOCOL.md) | Capability discoveryとAdapter制限 |
+| [Tools AI v1](./docs/tools-ai-v1.md) | Tools AIの契約、Cancel、データ処理、制限 |
+| [Developer workflows](./docs/developer-workflows.md) | Skills、Rules、MCP、ACP、Extension、検証・Review |
+| [iOS / AltStore](./docs/ios-altstore.md) | iOS clientのBuild / Install |
+| [Linux to iPhone](./docs/iphone-linux.ja.md) | LinuxからiPhoneへの導入手順 |
+| [Browser automation sandbox](./docs/BROWSER_AUTOMATION_SANDBOX.md) | Browser automationの境界 |
+| [Remote-control security](./docs/remote-control-security.md) | Host registryとAutomationの安全性 |
+| [Release smoke](./RELEASE_SMOKE.md) | 手動Release validation |
+| [Roadmap](./ROADMAP.md) | 成熟度ゲートと今後の方向性 |
 
-互換性対応の対象例:
+## 開発原則
 
-- event envelope
-- streaming
-- approval
-- image / attachment
-- model change
-- plugin / MCP inventory
-- provider metadata
-- version-sensitive RPC behavior
-
-互換性Issueを報告する場合は次を含めてください。
-
-- DevMoter commit
-- relevant Codex/OpenCode version
-- browser/PWA environment
-- exact error text
-- 問題が発生した操作
-
-API key、token、generated password、private repository内容などのsecretは含めないでください。
-
-## Project principles
-
-1. **Host-local by default.** Credentialとcoding processは自分のmachineに残す。
-2. **Mobile is a first-class control surface.** Desktop pageをスマホ幅へ押し込んだだけのUIにしない。
-3. **Agent actions need boundaries.** Filesystem、Git、RPC、automation、approval、host integrationはfail closedを基本にする。
-4. **Important mutations should be inspectable.** 見えない自動化より、reviewとexplicit consentを優先する。
-5. **No fake capability.** Plannedやupstream-dependentな機能は正直にラベル付けする。
-6. **Interoperability over lock-in.** 既存のdeveloper toolを無理に置き換えず、つなぐことを優先する。
-
-## AI-assisted development
-
-DevMoter FASTは実装、debug、protocol research、test、review、iterationでAIを積極的に利用しています。
-
-一方、製品方向、要件、実機validation、release判断、maintenanceは人間主導です。
+1. **Host-owned execution.** Coding processとローカルリソースは、それを所有するマシンに置く。
+2. **Mobile-first control.** スマートフォンを縮小版Desktopではなく、第一級の操作面として設計する。
+3. **Least authority.** AgentとBrowser clientには、必要な範囲の限定されたCapabilityだけを与える。
+4. **Human approval for consequential changes.** 重要な変更は可視化し、意図的な承認を求める。
+5. **Honest maturity labels.** 未実装・未検証の機能を実装済みとして説明しない。
+6. **Interoperability.** 特定ProviderやAgentへの固定ではなく、既存の開発ツールを連携させる。
 
 ## Contributing
 
-Issue、compatibility finding、documentation improvement、security report、Pull Requestを歓迎します。
-
-脆弱性は公開Issueへexploit detailを書くのではなく、**[SECURITY.md](./SECURITY.md)** の手順に従ってください。
+Issue、互換性報告、ドキュメント改善、Pull Requestを歓迎します。脆弱性は公開Issueにexploit detailを書かず、[SECURITY.md](./SECURITY.md) の手順に従ってください。API key、Token、Password、Private repository dataを報告に含めないでください。
 
 ## License
 
-MIT。詳しくは [LICENSE](./LICENSE)。
+MIT。詳細は [LICENSE](./LICENSE) を参照してください。
 
 ---
 
-**DevMoter FAST v2 — 開発マシンは動かしたまま、コントロールプレーンだけ持ち歩く。**
+**DevMoter FAST v3 — 開発環境を、自分の手の中でコントロールする。**
