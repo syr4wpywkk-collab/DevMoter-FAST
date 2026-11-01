@@ -160,7 +160,8 @@ export function mountControlCenter() {
   scrim.tabIndex = -1;
 
   const panel = document.createElement("aside");
-  panel.className = "dm-tools-panel hidden";
+  // The shared sheet frame (zcode-theme.css) starts below the unified header.
+  panel.className = "dm-tools-panel dm-sheet-frame hidden";
   panel.setAttribute("aria-label", "DevMoter tools");
   panel.setAttribute("role", "dialog");
   panel.setAttribute("aria-modal", "true");

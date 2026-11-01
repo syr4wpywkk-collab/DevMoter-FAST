@@ -430,8 +430,7 @@ body.codex-mode {
 
 /* Bounded by the modal (the area under the app header), never by the viewport,
  * so the title and close button can't slide under the header. */
-.cx-app .cx-modal-card { max-height: min(720px, 100%); background: #262626; border-color: #464646; }
-.cx-app .cx-modal-head { border-bottom-color: #404040; }
+.cx-app .cx-modal-card { max-height: min(720px, 100%); }
 .cx-app .cx-choice-row.selected { background: #3a3a3a; border-color: #777; }
 .cx-app .cx-approval {
   bottom: calc(var(--cx-composer-height, 152px) + 8px);
@@ -483,7 +482,6 @@ html[data-devmoter-theme="light"] .cx-app a:focus-visible,
 html[data-devmoter-theme="light"] .cx-app input:focus-visible,
 html[data-devmoter-theme="light"] .cx-app select:focus-visible { outline-color: #505050; }
 html[data-devmoter-theme="light"] .cx-app .cx-sidebar,
-html[data-devmoter-theme="light"] .cx-app .cx-modal-card,
 html[data-devmoter-theme="light"] .cx-app .cx-feedback-menu,
 html[data-devmoter-theme="light"] .cx-app .cx-tool-card { background: #f8f8f8; color: var(--cx-text); border-color: #d6d6d6; }
 
