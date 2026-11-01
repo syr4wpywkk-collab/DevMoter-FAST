@@ -1,3 +1,4 @@
+import { apiModelLabel } from "./api-model-label.mjs";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 
 type Provider = { id: string; name: string; ready: boolean; models: string[]; projectId?: string; secretRef?: string };
@@ -98,7 +99,7 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
   function fillModels() {
     const provider = providers.find(p => p.id === providerSelect.value);
     modelSelect.replaceChildren();
-    for (const model of provider?.models || []) modelSelect.append(option(model, model));
+    for (const model of provider?.models || []) modelSelect.append(option(apiModelLabel(model), model));
     const saved = localStorage.getItem(`devmoter-tools-ai-model:${provider?.id}`) || localStorage.getItem(`devmoter-api-model:${provider?.id}`);
     if (saved && provider?.models.includes(saved)) modelSelect.value = saved;
     updateAvailability();

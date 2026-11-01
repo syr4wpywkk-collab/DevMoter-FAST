@@ -1,8 +1,5 @@
 /* API Chat presentation; native provider capabilities and form actions stay intact. */
 body.api-mode { padding: 0; overflow: hidden; background: #fff; }
-/* Closed global drawers must not cast a shadow across the conversation. */
-body.api-mode .dm-shell-sidebar:not(.open),
-body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 
 .api-app {
   --api-bg: #fff;
@@ -183,7 +180,6 @@ body.api-mode .sc-panel:not(.open) { box-shadow: none; }
 .api-app .api-settings-toolbar { flex-wrap: wrap; gap: 10px; }
 .api-app .api-settings-toolbar button,
 .api-app .api-settings-back,
-.api-app .api-provider-migrate,
 .api-app .api-provider-form-actions button,
 .api-app .api-provider-danger button { min-height: 44px; }
 .api-app .api-provider-row { background: #f7f9fd; }

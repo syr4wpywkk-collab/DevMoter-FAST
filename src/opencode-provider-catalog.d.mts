@@ -24,6 +24,7 @@ export function buildOpenCodeProviderCatalog(input: {
   cacheTtlMs: number;
 };
 
+export function openCodeRunnerUnsupported(generation: string, model: any): string;
 export function openCodeModelChoice(model: any): {
   requiresKey: string[];
   available: boolean;

@@ -114,6 +114,7 @@ export function buildOpenCodeProviderCatalog({
     const entry = providerEntry(providerID);
     const status = typeof model?.status === "string" ? model.status : null;
     const cost = normalizeModelPricing(baseCostTier(model?.cost));
+    const unsupported = openCodeRunnerUnsupported(generation, model);
     entry.models[id] = {
       id,
       modelID: String(model?.modelID ?? id),
@@ -121,7 +122,8 @@ export function buildOpenCodeProviderCatalog({
       name: typeof model?.name === "string" && model.name ? model.name : id,
       family: model?.family ?? null,
       status,
-      enabled: model?.enabled !== false,
+      enabled: model?.enabled !== false && !unsupported,
+      ...(unsupported ? { unsupported } : {}),
       capabilities: model?.capabilities ?? null,
       cost,
       variants: Array.isArray(model?.variants)
@@ -160,6 +162,18 @@ export function buildOpenCodeProviderCatalog({
   };
 }
 
+/**
+ * OpenCode 1.x runs `/api/session/{id}/prompt` on its new session runner,
+ * which only drives AI SDK models. A model whose catalog entry says
+ * `api.type: "native"` (most OpenCode Zen / Go models, e.g.
+ * deepseek-v4.1-flash-free) is accepted by the prompt route, then the runner
+ * throws `UnsupportedApiError` into its own log and never emits a step, so the
+ * chat waits forever. OpenCode 2.x runs native models on the same route.
+ */
+export function openCodeRunnerUnsupported(generation, model) {
+  return generation === "v1" && model?.api?.type === "native" ? "OpenCode 1.xでは動かない (2.xで使える)" : "";
+}
+
 export function openCodeModelChoice(model) {
   const requiresKey = Array.isArray(model?.requiresKey) ? model.requiresKey.map(key => String(key)).filter(Boolean) : [];
   const available = model?.available === true;
@@ -174,7 +188,7 @@ export function openCodeModelChoice(model) {
     : !available
       ? "provider unavailable"
       : !enabled
-        ? "unavailable"
+        ? (typeof model?.unsupported === "string" && model.unsupported) || "unavailable"
         : "";
   return { requiresKey, available, deprecated, enabled, needsKey, selectable, reason, free };
 }

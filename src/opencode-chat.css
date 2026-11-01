@@ -1,8 +1,5 @@
 /* OpenCode presentation only: preserve the existing agent, mode and action IDs. */
 body.opencode-mode { background: var(--canvas-base); }
-/* Closed global drawers must not cast a shadow across the conversation. */
-body.opencode-mode .dm-shell-sidebar:not(.open),
-body.opencode-mode .sc-panel:not(.open) { box-shadow: none; }
 
 .ocx-app {
   --oc-bg: var(--canvas-base);

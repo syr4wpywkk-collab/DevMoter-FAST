@@ -1,4 +1,5 @@
 import "./office.css";
+import { apiModelLabel } from "./api-model-label.mjs";
 
 type Run = {
   text: string;
@@ -361,12 +362,12 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     model.replaceChildren();
     const selected = providers.find((p) => p.id === provider.value);
     for (const value of selected?.models || [])
-      model.append(new Option(value, value));
+      model.append(new Option(apiModelLabel(value), value));
     const saved = localStorage.getItem(`devmoter-api-model:${provider.value}`);
     if (saved && [...model.options].some((o) => o.value === saved))
       model.value = saved;
     get("[data-provider-notice]").textContent = selected?.ready
-      ? `使用するAI: ${selected.name} / ${model.value}`
+      ? `使用するAI: ${selected.name} / ${apiModelLabel(model.value)}`
       : "AIは未設定です。手動編集はそのまま利用できます。「使用するAIと共有対象」からAI設定を開いてください。";
   };
   provider.addEventListener("change", fillModels);
@@ -374,7 +375,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     const selected = providers.find((p) => p.id === provider.value);
     if (selected?.ready)
       get("[data-provider-notice]").textContent =
-        `使用するAI: ${selected.name} / ${model.value}`;
+        `使用するAI: ${selected.name} / ${apiModelLabel(model.value)}`;
   });
   const renderRun = () => {
     const status = {

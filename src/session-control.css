@@ -2,8 +2,10 @@
 .sc-fab { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: calc(92px + env(safe-area-inset-bottom)); width: 48px; height: 48px; min-height: 48px; padding: 0; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; background: rgba(30,30,34,.94); color: #f5f5f7; box-shadow: 0 12px 34px rgba(0,0,0,.4); pointer-events: auto; backdrop-filter: blur(16px); }
 .sc-scrim { position: absolute; inset: 0; background: rgba(0,0,0,.5); pointer-events: auto; }
 .sc-scrim.hidden, .sc-toast.hidden { display: none; }
-.sc-panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(96vw, 620px); display: flex; flex-direction: column; transform: translateX(104%); transition: transform .2s ease; border-left: 1px solid rgba(255,255,255,.09); background: #121214; color: #f4f4f5; box-shadow: -24px 0 70px rgba(0,0,0,.45); pointer-events: auto; }
-.sc-panel.open { transform: translateX(0); }
+.sc-panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(96vw, 620px); display: flex; flex-direction: column; transform: translateX(104%); visibility: hidden; transition: transform .2s cubic-bezier(0.32, 0.72, 0, 1), visibility 0s linear .2s; border-left: 1px solid rgba(255,255,255,.09); background: #121214; color: #f4f4f5; box-shadow: -24px 0 70px rgba(0,0,0,.45); pointer-events: auto; }
+/* Closed = not rendered: an off-canvas panel (and its shadow) otherwise bleeds into
+ * the right edge and widens the iOS Safari layout viewport. */
+.sc-panel.open { transform: translateX(0); visibility: visible; transition: transform .2s cubic-bezier(0.32, 0.72, 0, 1); }
 .sc-head { min-height: calc(52px + env(safe-area-inset-top)); padding: calc(4px + env(safe-area-inset-top)) 8px 4px 16px; display: flex; align-items: center; gap: 4px; border-bottom: 1px solid rgba(255,255,255,.08); }
 .sc-head strong { flex: 1; min-width: 0; font-size: .98rem; font-weight: 500; }
 .sc-close, .sc-refresh { width: 44px; height: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: #b4b4bc; font-size: 18px; -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1); }

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
+import * as apiModelLabelModule from "../src/api-model-label.mjs";
 
 const source = await readFile(
   new URL("../src/office.ts", import.meta.url),
@@ -21,7 +22,7 @@ function mount(t, fetch) {
     { url: "http://localhost", runScripts: "outside-only" },
   );
   t.after(() => dom.window.close());
-  dom.window.require = () => ({});
+  dom.window.require = (name) => (name === "./api-model-label.mjs" ? apiModelLabelModule : {});
   dom.window.exports = {};
   dom.window.fetch = fetch;
   dom.window.confirm = () => true;
@@ -125,4 +126,23 @@ test("Office reconnects unknown run after restart without automatic resubmission
     /照合できません/,
   );
   assert.equal(w.document.querySelector("[data-top-stop]").hidden, true);
+});
+
+test("Office model list shows Gemini ids without the models/ prefix but sends the full id", async (t) => {
+  const dom = mount(t, async (path) => {
+    if (path.endsWith("/context"))
+      return response({
+        projects: [],
+        providers: [{ id: "gemini", name: "Google Gemini", ready: true, models: ["models/gemini-2.5-flash"] }],
+      });
+    return response(path === "/api/office/documents" ? [doc] : doc);
+  });
+  const w = dom.window;
+  w.localStorage.setItem("devmoter-office-document", doc.id);
+  w.exports.openOffice();
+  await tick();
+  const option = w.document.querySelector("[data-model] option");
+  assert.equal(option.textContent, "gemini-2.5-flash");
+  assert.equal(option.value, "models/gemini-2.5-flash");
+  assert.match(w.document.querySelector("[data-provider-notice]").textContent, /Google Gemini \/ gemini-2\.5-flash$/);
 });

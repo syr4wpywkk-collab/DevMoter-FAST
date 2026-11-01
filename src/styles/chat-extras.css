@@ -499,18 +499,23 @@
 
 .api-provider-migrate {
   justify-self: end;
-  min-height: 36px;
-  padding: 0 12px;
+  min-height: 44px;
+  padding: 0 14px;
   border: 1px solid var(--api-border);
-  border-radius: 12px;
-  color: var(--api-accent);
+  border-radius: 10px;
+  background: var(--api-surface);
+  color: var(--api-text);
   font: inherit;
-  font-size: 12px;
-  font-weight: 650;
+  font-size: 14px;
+  font-weight: 500;
 }
 
+/* Disabled keeps full opacity (the global button rule fades it to 50%) so the
+ * label stays readable; only the text steps down to the muted role. */
 .api-provider-migrate:disabled {
-  opacity: 0.5;
+  opacity: 1;
+  color: var(--api-muted);
+  border-style: dashed;
 }
 
 .api-provider-migrate-error {
