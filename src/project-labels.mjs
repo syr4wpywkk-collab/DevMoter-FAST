@@ -47,3 +47,20 @@ export function projectOptionLabels(projects) {
   }
   return labels;
 }
+
+/**
+ * Short form of a project path for list rows: home becomes "~" and only the
+ * last two directories are kept ("~/…/workspace/OpenCode-Pocket"). The full
+ * path stays available to callers (e.g. as a title attribute).
+ */
+export function shortProjectPath(path) {
+  const text = String(path || "");
+  const home = text.match(/^(\/home\/[^/]+|\/Users\/[^/]+|\/root)(?=\/|$)/);
+  const rest = home ? text.slice(home[0].length) : text;
+  const parts = segments(rest);
+  const prefix = home ? "~" : text.startsWith("/") ? "" : null;
+  if (!parts.length) return home ? "~" : text;
+  if (parts.length <= 2) return prefix === null ? parts.join("/") : `${prefix}/${parts.join("/")}`;
+  const tail = parts.slice(-2).join("/");
+  return prefix === null ? `…/${tail}` : `${prefix}/…/${tail}`;
+}

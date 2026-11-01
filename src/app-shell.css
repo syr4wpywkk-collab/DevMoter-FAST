@@ -390,7 +390,7 @@ html[data-devmoter-theme="light"] .devmoter-system-error { color: #a52e2e; }
   :is(.adv-drawer,.sc-panel,.devmoter-settings-modal,.dm-control-modal,.wf-modal,.devmoter-agent-panel) button { min-width:44px; }
   :is(.adv-drawer,.devmoter-agent-panel,.wf-modal) summary { min-height:44px; padding-block:10px; }
 }
-:is(.adv-drawer,.sc-panel,.devmoter-settings-modal,.dm-control-modal,.wf-modal,.devmoter-agent-panel,.devmoter-system-modal,.pocket-git-panel) :is(button,a,input,select,textarea,summary):focus-visible { outline:2px solid #7d9edc; outline-offset:3px; }
+:is(.adv-drawer,.sc-panel,.devmoter-settings-modal,.dm-control-modal,.wf-modal,.devmoter-agent-panel,.devmoter-system-modal,.pocket-git-panel) :is(button,a,input,select,textarea,summary):focus-visible { outline:2px solid var(--border-focus); outline-offset:3px; }
 .pocket-git-empty button { display:block; min-height:44px; margin:14px auto 0; padding:8px 14px; border:1px solid var(--dm-shared-panel-border); border-radius:10px; background:var(--dm-shared-panel-surface); color:var(--dm-shared-panel-text); }
 .pocket-git-panel .pocket-diff-line.meta,
 .pocket-git-panel .pocket-diff-line .old,

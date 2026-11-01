@@ -213,3 +213,94 @@ body.dm-task-first-enabled { --dm-sheet-top: calc(var(--dw-top-height) + 8px); }
     transform: translateX(-50%);
   }
 }
+
+/* Shared sheet header (src/sheet-header.mjs): title / subtitle, optional
+   icon actions, optional primary button, close. Same place and look in every
+   sheet; sheets only set the surface they sit on. */
+.dm-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 60px;
+  padding: 8px 8px 8px 16px;
+  border-bottom: 1px solid var(--border-hairline);
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+.dm-sheet-head-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.dm-sheet-head-title {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font: 600 17px/1.3 var(--font-ui);
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dm-sheet-head-subtitle {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font: 400 12px/1.4 var(--font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dm-sheet-head-actions { display: flex; gap: 4px; }
+.dm-sheet-head-actions:empty { display: none; }
+.dm-sheet-head :is(.dm-sheet-head-close, .dm-sheet-head-actions > button) {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-secondary);
+  font: 400 18px/1 var(--font-ui);
+  box-shadow: none;
+}
+.dm-sheet-head .dm-sheet-head-primary {
+  min-height: 36px;
+  margin: 0 4px;
+  padding: 0 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-control);
+  background: var(--accent);
+  color: var(--canvas-base);
+  font: 500 14px/1 var(--font-ui);
+  white-space: nowrap;
+}
+.dm-sheet-head .dm-sheet-head-primary[hidden] { display: none; }
+.dm-sheet-head button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  cursor: pointer;
+  transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1), background-color 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.dm-sheet-head button:active:not(:disabled) { transform: scale(0.97); }
+.dm-sheet-head button:focus-visible { outline: 2px solid var(--border-focus); outline-offset: -2px; }
+@media (hover: hover) {
+  .dm-sheet-head :is(.dm-sheet-head-close, .dm-sheet-head-actions > button):hover { background: var(--surface-hover); color: var(--text-primary); }
+}
+@media (prefers-reduced-motion: reduce) { .dm-sheet-head button { transition: none; } }
+
+/* Folded sections inside sheets ("詳細", "New schedule", …): one chevron that
+   turns when open, since a flex summary drops the native marker. */
+:is(.dm-tools-details, .devmoter-agent-details, .devmoter-model-routing, .dm-collapsible) > summary { list-style: none; }
+:is(.dm-tools-details, .devmoter-agent-details, .devmoter-model-routing, .dm-collapsible) > summary::-webkit-details-marker { display: none; }
+:is(.dm-tools-details, .devmoter-agent-details, .devmoter-model-routing, .dm-collapsible) > summary::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin: 0 4px 0 auto;
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+:is(.dm-tools-details, .devmoter-agent-details, .devmoter-model-routing, .dm-collapsible)[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
