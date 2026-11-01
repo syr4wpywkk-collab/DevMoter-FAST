@@ -2486,10 +2486,13 @@ const server = http.createServer(async (req, res) => {
           if (docMatch[2]) {
             const { meta, bytes } = await officeStore.download(docMatch[1], url.searchParams.get("revision"));
             res.writeHead(200, { "content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "content-disposition": `attachment; filename="document.docx"; filename*=UTF-8''${encodeURIComponent(meta.name)}`, "cache-control": "no-store", "x-content-type-options": "nosniff" }); res.end(bytes);
-          } else json(res, 200, await officeStore.get(docMatch[1]));
+          } else json(res, 200, await officeStore.open(docMatch[1]));
           return;
         }
-        if (docMatch && !docMatch[2] && req.method === "PATCH") { const payload = await readJson(req, 2 * 1024 * 1024); json(res, 200, await officeStore.save(docMatch[1], payload.revision, payload.edits)); return; }
+        if (docMatch && !docMatch[2] && req.method === "PATCH") { const payload = await readJson(req, 4 * 1024 * 1024); json(res, 200, await officeStore.save(docMatch[1], payload.revision, payload.blocks)); return; }
+        if (docMatch && !docMatch[2] && req.method === "DELETE") { json(res, 200, await officeStore.remove(docMatch[1])); return; }
+        const renameMatch = path.match(/^\/api\/office\/documents\/([a-f0-9-]{36})\/rename$/);
+        if (renameMatch && req.method === "POST") { const payload = await readJson(req, 2000); json(res, 200, await officeStore.rename(renameMatch[1], payload.name)); return; }
         const restoreMatch = path.match(/^\/api\/office\/documents\/([a-f0-9-]{36})\/restore$/);
         if (restoreMatch && req.method === "POST") { const payload = await readJson(req, 1000); json(res, 200, await officeStore.restore(restoreMatch[1], payload.revision, payload.target)); return; }
         if (path === "/api/office/ai/runs" && req.method === "POST") { json(res, 202, await officeAi.start(await readJson(req, 8000), identity)); return; }
