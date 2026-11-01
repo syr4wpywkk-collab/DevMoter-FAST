@@ -1,0 +1,287 @@
+{
+ "_note": "Captured from a live OpenCode v1.19.5 server (opencode serve), trimmed. Paths are GET requests.",
+ "/api/info": "<non-JSON (HTML web UI fallthrough)>",
+ "/global/health": {
+  "healthy": true,
+  "version": "1.19.5"
+ },
+ "/api/location": {
+  "directory": "/workspace/work/dm/oc2/proj",
+  "project": {
+   "id": "global",
+   "directory": "/workspace/work/dm/oc2/proj"
+  }
+ },
+ "/api/provider": {
+  "location": {
+   "directory": "/workspace/work/dm/oc2/proj",
+   "project": {
+    "id": "global",
+    "directory": "/workspace/work/dm/oc2/proj"
+   }
+  },
+  "data": [
+   {
+    "id": "opencode",
+    "name": "OpenCode",
+    "api": {
+     "type": "aisdk",
+     "package": "@ai-sdk/openai-compatible",
+     "url": "https://opencode.ai/inference/openai/v1"
+    },
+    "request": {
+     "headers": {},
+     "body": {}
+    }
+   },
+   {
+    "id": "opencode-go",
+    "name": "OpenCode Go",
+    "api": {
+     "type": "aisdk",
+     "package": "@ai-sdk/openai-compatible",
+     "url": "https://opencode.ai/inference/go/openai/v1"
+    },
+    "request": {
+     "headers": {},
+     "body": {}
+    }
+   }
+  ]
+ },
+ "/api/model": {
+  "location": {
+   "directory": "/workspace/work/dm/oc2/proj",
+   "project": {
+    "id": "global",
+    "directory": "/workspace/work/dm/oc2/proj"
+   }
+  },
+  "data": [
+   {
+    "id": "iceman-contributor-free",
+    "providerID": "opencode-go",
+    "name": "Iceman Contributor Free",
+    "api": {
+     "id": "iceman-contributor-free",
+     "type": "native",
+     "url": "https://opencode.ai/inference/go/openai/v1",
+     "settings": {}
+    },
+    "capabilities": {
+     "tools": true,
+     "input": [
+      "text"
+     ],
+     "output": [
+      "text"
+     ]
+    },
+    "request": {
+     "headers": {},
+     "body": {}
+    },
+    "variants": [],
+    "time": {
+     "released": 1792800000000
+    },
+    "cost": [
+     {
+      "input": 0,
+      "output": 0,
+      "cache": {
+       "read": 0,
+       "write": 0
+      }
+     }
+    ],
+    "status": "active",
+    "enabled": true,
+    "limit": {
+     "context": 262144,
+     "output": 131072
+    }
+   },
+   {
+    "id": "claude-haiku-5-5",
+    "providerID": "opencode",
+    "family": "claude-haiku",
+    "name": "Claude Haiku 5.5",
+    "api": {
+     "id": "claude-haiku-5-5",
+     "type": "aisdk",
+     "package": "@ai-sdk/anthropic",
+     "url": "https://opencode.ai/inference/anthropic/v1",
+     "settings": {}
+    },
+    "capabilities": {
+     "tools": true,
+     "input": [
+      "text",
+      "image",
+      "pdf"
+     ],
+     "output": [
+      "text"
+     ]
+    },
+    "request": {
+     "headers": {},
+     "body": {}
+    },
+    "variants": [],
+    "time": {
+     "released": 1791331200000
+    },
+    "cost": [
+     {
+      "input": 0.1,
+      "output": 0.5,
+      "cache": {
+       "read": 0.01,
+       "write": 0.125
+      }
+     },
+     {
+      "tier": {
+       "type": "context",
+       "size": 100000
+      },
+      "input": 0.5,
+      "output": 2.5,
+      "cache": {
+       "read": 0.05,
+       "write": 0.625
+      }
+     }
+    ],
+    "status": "active",
+    "enabled": true,
+    "limit": {
+     "context": 1000000,
+     "output": 128000
+    }
+   },
+   {
+    "id": "flint-40b-free",
+    "providerID": "opencode",
+    "family": "flint",
+    "name": "Flint 40B Free",
+    "api": {
+     "id": "flint-40b-free",
+     "type": "native",
+     "url": "https://opencode.ai/inference/openai/v1",
+     "settings": {}
+    },
+    "capabilities": {
+     "tools": true,
+     "input": [
+      "text"
+     ],
+     "output": [
+      "text"
+     ]
+    },
+    "request": {
+     "headers": {},
+     "body": {}
+    },
+    "variants": [],
+    "time": {
+     "released": 1792540800000
+    },
+    "cost": [
+     {
+      "input": 0,
+      "output": 0,
+      "cache": {
+       "read": 0,
+       "write": 0
+      }
+     }
+    ],
+    "status": "active",
+    "enabled": true,
+    "limit": {
+     "context": 262144,
+     "output": 65536
+    }
+   }
+  ]
+ },
+ "/api/integration": {
+  "location": {
+   "directory": "/workspace/work/dm/oc2/proj",
+   "project": {
+    "id": "global",
+    "directory": "/workspace/work/dm/oc2/proj"
+   }
+  },
+  "data": [
+   {
+    "id": "anthropic",
+    "name": "Anthropic",
+    "methods": [
+     {
+      "type": "key"
+     },
+     {
+      "type": "env",
+      "names": [
+       "ANTHROPIC_API_KEY"
+      ]
+     }
+    ],
+    "connections": []
+   },
+   {
+    "id": "opencode",
+    "name": "OpenCode",
+    "methods": [
+     {
+      "type": "key",
+      "label": "API key (service account)"
+     },
+     {
+      "type": "env",
+      "names": [
+       "OPENCODE_API_KEY"
+      ]
+     },
+     {
+      "id": "device",
+      "type": "oauth",
+      "label": "OpenCode Console account"
+     }
+    ],
+    "connections": [
+     {
+      "type": "env",
+      "name": "OPENCODE_API_KEY"
+     }
+    ]
+   },
+   {
+    "id": "opencode-go",
+    "name": "OpenCode Go",
+    "methods": [
+     {
+      "type": "key"
+     },
+     {
+      "type": "env",
+      "names": [
+       "OPENCODE_API_KEY"
+      ]
+     }
+    ],
+    "connections": [
+     {
+      "type": "env",
+      "name": "OPENCODE_API_KEY"
+     }
+    ]
+   }
+  ]
+ }
+}

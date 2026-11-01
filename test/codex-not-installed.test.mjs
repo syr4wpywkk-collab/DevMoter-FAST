@@ -233,7 +233,7 @@ test("automation Codex task reports a missing CLI as 503 not_installed instead o
     readProjectRegistry: async () => [{ id: "p1", name: "Demo", path: "/safe/demo", addedAt: 1 }],
     getProjectById: async () => ({ id: "p1", name: "Demo", path: "/safe/demo", addedAt: 1 }),
     normalizeExistingProjectPath: async path => path,
-    fetchOpenCodeJson: async () => [],
+    openCode: { fetchJson: async () => [], info: async () => ({ generation: "v2", version: "2.0.9" }), pendingRequests: async () => ({ permissions: [], questions: [] }) },
     codex,
     json: (_res, status, body) => responses.push({ status, body }),
     readJson: async () => ({ project: "p1", agent: "codex", task: "run", backend: "codex" }),

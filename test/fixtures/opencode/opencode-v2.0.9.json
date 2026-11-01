@@ -1,0 +1,480 @@
+{
+ "_note": "Captured from a live OpenCode v2.0.9 server (opencode serve), trimmed. Paths are GET requests.",
+ "/api/info": {
+  "version": "2.0.9",
+  "pid": 6031,
+  "urls": [
+   "http://127.0.0.1:49401"
+  ],
+  "paths": {
+   "tmp": "/tmp/opencode"
+  }
+ },
+ "/global/health": "<non-JSON (HTML web UI fallthrough)>",
+ "/api/location": {
+  "directory": "/workspace/work/dm/oc2/proj",
+  "project": {
+   "id": "global",
+   "directory": "/workspace/work/dm/oc2/proj",
+   "canonical": "/workspace/work/dm/oc2/proj"
+  }
+ },
+ "/api/provider": {
+  "location": {
+   "directory": "/workspace/work/dm/oc2/proj"
+  },
+  "data": [
+   {
+    "id": "opencode-go",
+    "integrationID": "opencode-go",
+    "name": "OpenCode Go",
+    "activation": "auto",
+    "package": "@opencode/ai/providers/openai-compatible",
+    "settings": {
+     "baseURL": "https://opencode.ai/inference/go/openai/v1"
+    }
+   },
+   {
+    "id": "opencode",
+    "integrationID": "opencode",
+    "name": "Personal / OpenCode",
+    "activation": "auto",
+    "package": "@opencode/ai/providers/openai-compatible",
+    "settings": {
+     "baseURL": "https://opencode.ai/inference/openai/v1"
+    },
+    "headers": {
+     "x-opencode-org-id": "org_01M5Q975ZV1GJCK3CY4D0TAJSX"
+    }
+   }
+  ]
+ },
+ "/api/model": {
+  "location": {
+   "directory": "/workspace/work/dm/oc2/proj"
+  },
+  "data": [
+   {
+    "id": "iceman-contributor-free",
+    "modelID": "iceman-contributor-free",
+    "providerID": "opencode-go",
+    "name": "Iceman Contributor Free",
+    "package": "@opencode/ai/providers/openai-compatible",
+    "settings": {
+     "baseURL": "https://opencode.ai/inference/go/openai/v1",
+     "provider": "opencode-go"
+    },
+    "capabilities": {
+     "tools": true,
+     "input": [
+      "text"
+     ],
+     "output": [
+      "text"
+     ]
+    },
+    "variants": [],
+    "time": {
+     "released": 1792800000000
+    },
+    "cost": [
+     {
+      "input": 0,
+      "output": 0,
+      "cache": {
+       "read": 0,
+       "write": 0
+      }
+     }
+    ],
+    "status": "active",
+    "enabled": true,
+    "limit": {
+     "context": 262144,
+     "output": 131072
+    }
+   },
+   {
+    "id": "claude-haiku-5-5",
+    "modelID": "claude-haiku-5-5",
+    "providerID": "opencode-go",
+    "family": "claude-haiku",
+    "name": "Claude Haiku 5.5",
+    "package": "@opencode/ai/providers/anthropic",
+    "settings": {
+     "baseURL": "https://opencode.ai/inference/go/anthropic/v1"
+    },
+    "capabilities": {
+     "tools": true,
+     "input": [
+      "text",
+      "image",
+      "pdf"
+     ],
+     "output": [
+      "text"
+     ]
+    },
+    "variants": [
+     {
+      "id": "none",
+      "settings": {
+       "thinking": {
+        "type": "disabled"
+       }
+      }
+     },
+     {
+      "id": "low",
+      "settings": {
+       "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+       },
+       "effort": "low"
+      }
+     },
+     {
+      "id": "medium",
+      "settings": {
+       "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+       },
+       "effort": "medium"
+      }
+     },
+     {
+      "id": "high",
+      "settings": {
+       "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+       },
+       "effort": "high"
+      }
+     },
+     {
+      "id": "xhigh",
+      "settings": {
+       "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+       },
+       "effort": "xhigh"
+      }
+     },
+     {
+      "id": "max",
+      "settings": {
+       "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+       },
+       "effort": "max"
+      }
+     }
+    ],
+    "time": {
+     "released": 1791331200000
+    },
+    "cost": [
+     {
+      "input": 0.1,
+      "output": 0.5,
+      "cache": {
+       "read": 0.01,
+       "write": 0.125
+      }
+     },
+     {
+      "tier": {
+       "type": "context",
+       "size": 100000
+      },
+      "input": 0.5,
+      "output": 2.5,
+      "cache": {
+       "read": 0.05,
+       "write": 0.625
+      }
+     }
+    ],
+    "status": "active",
+    "enabled": true,
+    "limit": {
+     "context": 1000000,
+     "output": 128000
+    }
+   },
+   {
+    "id": "kimi-k3.1-pro",
+    "modelID": "kimi-k3.1-pro",
+    "providerID": "opencode-go",
+    "family": "kimi-k3",
+    "name": "Kimi K3.1 Pro",
+    "compatibility": {
+     "reasoningField": "reasoning_content"
+    },
+    "package": "@opencode/ai/providers/openai-compatible",
+    "settings": {
+     "baseURL": "https://opencode.ai/inference/go/openai/v1",
+     "provider": "opencode-go"
+    },
+    "capabilities": {
+     "tools": true,
+     "input": [
+      "text",
+      "image",
+      "video"
+     ],
+     "output": [
+      "text"
+     ]
+    },
+    "variants": [
+     {
+      "id": "low",
+      "settings": {
+       "reasoningEffort": "low"
+      }
+     },
+     {
+      "id": "high",
+      "settings": {
+       "reasoningEffort": "high"
+      }
+     },
+     {
+      "id": "max",
+      "settings": {
+       "reasoningEffort": "max"
+      }
+     }
+    ],
+    "time": {
+     "released": 1792713600000
+    },
+    "cost": [
+     {
+      "input": 2,
+      "output": 10,
+      "cache": {
+       "read": 0.2,
+       "write": 2
+      }
+     }
+    ],
+    "status": "active",
+    "enabled": true,
+    "limit": {
+     "context": 1048576,
+     "output": 131072
+    }
+   },
+   {
+    "id": "flint-40b-free",
+    "modelID": "flint-40b-free",
+    "providerID": "opencode",
+    "family": "flint",
+    "name": "Flint 40B Free",
+    "compatibility": {
+     "reasoningField": "reasoning_content"
+    },
+    "package": "@opencode/ai/providers/openai-compatible",
+    "settings": {
+     "baseURL": "https://opencode.ai/inference/openai/v1",
+     "provider": "opencode"
+    },
+    "headers": {
+     "x-opencode-org-id": "org_01M5Q975ZV1GJCK3CY4D0TAJSX"
+    },
+    "capabilities": {
+     "tools": true,
+     "input": [
+      "text"
+     ],
+     "output": [
+      "text"
+     ]
+    },
+    "variants": [
+     {
+      "id": "low",
+      "settings": {
+       "reasoningEffort": "low"
+      }
+     },
+     {
+      "id": "medium",
+      "settings": {
+       "reasoningEffort": "medium"
+      }
+     },
+     {
+      "id": "high",
+      "settings": {
+       "reasoningEffort": "high"
+      }
+     },
+     {
+      "id": "xhigh",
+      "settings": {
+       "reasoningEffort": "xhigh"
+      }
+     },
+     {
+      "id": "max",
+      "settings": {
+       "reasoningEffort": "max"
+      }
+     }
+    ],
+    "time": {
+     "released": 1792540800000
+    },
+    "cost": [
+     {
+      "input": 0,
+      "output": 0,
+      "cache": {
+       "read": 0,
+       "write": 0
+      }
+     }
+    ],
+    "status": "active",
+    "enabled": true,
+    "limit": {
+     "context": 262144,
+     "output": 65536
+    }
+   }
+  ]
+ },
+ "/api/model/default": {
+  "location": {
+   "directory": "/workspace/work/dm/oc2/proj"
+  },
+  "data": {
+   "id": "iceman-contributor-free",
+   "modelID": "iceman-contributor-free",
+   "providerID": "opencode-go",
+   "name": "Iceman Contributor Free",
+   "package": "@opencode/ai/providers/openai-compatible",
+   "settings": {
+    "baseURL": "https://opencode.ai/inference/go/openai/v1",
+    "provider": "opencode-go"
+   },
+   "capabilities": {
+    "tools": true,
+    "input": [
+     "text"
+    ],
+    "output": [
+     "text"
+    ]
+   },
+   "variants": [],
+   "time": {
+    "released": 1792800000000
+   },
+   "cost": [
+    {
+     "input": 0,
+     "output": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    }
+   ],
+   "status": "active",
+   "enabled": true,
+   "limit": {
+    "context": 262144,
+    "output": 131072
+   }
+  }
+ },
+ "/api/integration": {
+  "location": {
+   "directory": "/workspace/work/dm/oc2/proj"
+  },
+  "data": [
+   {
+    "id": "anthropic",
+    "name": "Anthropic",
+    "methods": [
+     {
+      "type": "key"
+     },
+     {
+      "type": "env",
+      "names": [
+       "ANTHROPIC_API_KEY"
+      ]
+     }
+    ],
+    "connections": []
+   },
+   {
+    "id": "opencode",
+    "name": "OpenCode",
+    "methods": [
+     {
+      "type": "key",
+      "label": "API key (service account)"
+     },
+     {
+      "type": "env",
+      "names": [
+       "OPENCODE_API_KEY"
+      ]
+     },
+     {
+      "id": "device",
+      "type": "oauth",
+      "label": "OpenCode Console account",
+      "form": [
+       {
+        "key": "server",
+        "hidden": true,
+        "type": "string",
+        "format": "uri",
+        "default": "https://opencode.ai/console"
+       }
+      ]
+     }
+    ],
+    "connections": [
+     {
+      "type": "env",
+      "name": "OPENCODE_API_KEY"
+     }
+    ]
+   },
+   {
+    "id": "opencode-go",
+    "name": "OpenCode Go",
+    "methods": [
+     {
+      "type": "key"
+     },
+     {
+      "type": "env",
+      "names": [
+       "OPENCODE_API_KEY"
+      ]
+     }
+    ],
+    "connections": [
+     {
+      "type": "env",
+      "name": "OPENCODE_API_KEY"
+     }
+    ]
+   }
+  ]
+ }
+}
