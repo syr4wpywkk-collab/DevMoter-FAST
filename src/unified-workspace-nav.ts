@@ -117,6 +117,8 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     root.classList.toggle("menu-open", next);
     menuButton.setAttribute("aria-expanded", String(next));
     if (next) {
+      // Short screens scroll the menu; it always opens at the top (Home first).
+      menu.scrollTop = 0;
       const current = menu.querySelector<HTMLButtonElement>('[aria-current="page"]') || menu.querySelector<HTMLButtonElement>("button");
       current?.focus({ preventScroll: true });
     } else if (restoreFocus) menuButton.focus({ preventScroll: true });
