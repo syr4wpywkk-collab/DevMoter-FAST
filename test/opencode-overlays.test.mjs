@@ -16,6 +16,8 @@ const modules = new Map(await Promise.all(ts.preProcessFile(source).importedFile
 modules.set("./unified-ui-mode.mjs", await import("../src/unified-ui-mode.mjs"));
 modules.set("./opencode/status", await loadPureTypeScript("opencode/status.ts"));
 modules.set("./opencode/tools", await loadPureTypeScript("opencode/tools.ts"));
+// tools-ai.ts (Global Tools) labels API model ids through the shared helper.
+modules.set("./api-model-label.mjs", await import("../src/api-model-label.mjs"));
 const workspaceSource = await readFile(new URL("../src/workspace-control.ts", import.meta.url), "utf8");
 const compiledWorkspace = ts.transpileModule(workspaceSource, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }

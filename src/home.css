@@ -213,7 +213,7 @@
   cursor: pointer;
 }
 .dm-home-quick-action strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
-.dm-home-quick-action-icon { color: var(--hm-accent); font-size: 19px; }
+.dm-home-quick-action-icon { display: inline-flex; color: var(--hm-accent); }
 .dm-home-quick-action:focus-visible { outline: 2px solid var(--hm-accent); outline-offset: 3px; }
 .dm-home-quick-action:hover:not(:disabled) { background: var(--hm-surface-hover); border-color: var(--hm-accent); }
 .dm-home-quick-action:disabled { cursor: not-allowed; opacity: .6; }
@@ -273,13 +273,16 @@
   border-radius: 10px;
   color: var(--hm-muted);
   background: var(--hm-surface);
-  font-size: 22px;
-  font-weight: 650;
 }
-.dm-home-card-icon[data-app-icon="chat"] { color: var(--hm-green); }
-.dm-home-card-icon[data-app-icon="terminal"] { color: var(--hm-accent); }
-.dm-home-card-icon[data-app-icon="agents"] { color: #95aaff; }
-.dm-home-card-icon[data-app-icon="projects"] { color: #a8d2f5; }
+.dm-home-view :is(.dm-home-card-icon, .dm-home-quick-action-icon, .dm-home-recent-icon) > svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .dm-home-card-copy { min-width: 0; }
 .dm-home-card-copy strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--hm-text); font-size: 14px; font-weight: 690; line-height: 1.4; }
 .dm-home-card-arrow { color: #90a4bd; font-size: 19px; transition: color .18s ease, transform .18s ease; }
@@ -345,7 +348,7 @@
 }
 .dm-home-recent-card:hover { border-color: #24718d; background: var(--hm-surface-hover); }
 .dm-home-recent-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
-.dm-home-recent-icon { color: var(--hm-accent); font-size: 17px; }
+.dm-home-recent-icon { display: inline-flex; color: var(--hm-accent); }
 .dm-home-recent-top time { color: var(--hm-muted); font-size: 11px; font-family: ui-monospace,monospace; white-space: nowrap; }
 .dm-home-recent-card > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; line-height: 1.5; }
 

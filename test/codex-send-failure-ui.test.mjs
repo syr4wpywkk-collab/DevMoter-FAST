@@ -20,6 +20,7 @@ const modules = new Map(await Promise.all(ts.preProcessFile(source).importedFile
   .map(async ({ fileName }) => [fileName, await import(new URL("../src/" + fileName.slice(2), import.meta.url))])));
 modules.set("./codex/presentation", await loadPureTypeScript("codex/presentation.ts"));
 modules.set("./codex/icons", await loadPureTypeScript("codex/icons.ts"));
+modules.set("./app-registry", await loadPureTypeScript("app-registry.ts"));
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
 test("native failed turn reason reaches the Codex failure UI", () => {

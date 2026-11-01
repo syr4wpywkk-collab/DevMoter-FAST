@@ -909,21 +909,24 @@
 
 
 /* Developer workflows / MCP management */
-.cx-dev-section {
-  position: relative;
+.cx-dev-section-head {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.cx-dev-section > h3 {
-  padding-right: 96px;
+.cx-dev-section-head > h3 {
+  min-width: 0;
+  margin: 0;
 }
 
-.cx-dev-section-action {
-  position: absolute;
-  top: 12px;
-  right: 12px;
+.cx-dev-section-head > button {
+  flex: 0 0 auto;
   width: auto;
-  min-height: 36px;
-  padding: 0 10px;
+  min-height: 44px;
+  padding: 0 14px;
 }
 
 .cx-dev-pr-row,
@@ -942,18 +945,19 @@
 .cx-dev-pr-row input {
   flex: 1 1 90px;
   min-width: 90px;
-  min-height: 42px;
-  border: 1px solid #2a2a2a;
+  min-height: 44px;
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   padding: 0 12px;
-  color: inherit;
-  background: #0d0d0d;
+  color: var(--text-primary);
+  background: var(--canvas-base);
+  font-size: 16px;
 }
 
 .cx-dev-pr-row button,
 .cx-dev-inline-actions button {
   width: auto;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 12px;
 }
 
@@ -1636,10 +1640,18 @@ textarea:focus-visible,
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   overflow: hidden;
-  border: 1px solid #333;
+  border: 1px solid var(--border-hairline);
   border-radius: 22px;
-  background: #111;
+  background: var(--surface-panel);
+  color: var(--text-primary);
   box-shadow: 0 24px 70px rgba(0,0,0,.55);
+}
+
+/* Buttons inside the sheet follow the theme instead of the global dark button. */
+.dm-control-card button {
+  border: 1px solid var(--border-hairline);
+  background: var(--surface-card);
+  color: var(--text-primary);
 }
 
 .dm-control-head {
@@ -1649,7 +1661,7 @@ textarea:focus-visible,
   align-items: center;
   gap: 12px;
   justify-content: space-between;
-  border-bottom: 1px solid #252525;
+  border-bottom: 1px solid var(--border-hairline);
 }
 
 .dm-control-head > div {
@@ -1658,13 +1670,9 @@ textarea:focus-visible,
   gap: 2px;
 }
 
-.dm-control-head strong {
-  color: #fff;
-}
-
 .dm-control-head small {
   overflow: hidden;
-  color: #888;
+  color: var(--text-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1680,7 +1688,7 @@ textarea:focus-visible,
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
   padding: 8px 10px;
-  border-bottom: 1px solid #222;
+  border-bottom: 1px solid var(--border-hairline);
 }
 
 .dm-control-tabs button {
@@ -1691,8 +1699,8 @@ textarea:focus-visible,
 }
 
 .dm-control-tabs button[aria-selected="true"] {
-  background: #f0f0f0;
-  color: #111;
+  background: var(--text-primary);
+  color: var(--surface-panel);
 }
 
 .dm-control-body {
@@ -1708,7 +1716,7 @@ textarea:focus-visible,
 }
 
 .dm-section-title span {
-  color: #909090;
+  color: var(--text-secondary);
   font-size: .78rem;
   line-height: 1.45;
 }
@@ -1725,9 +1733,9 @@ textarea:focus-visible,
   align-items: center;
   gap: 8px;
   padding: 10px;
-  border: 1px solid #282828;
+  border: 1px solid var(--border-hairline);
   border-radius: 14px;
-  background: #161616;
+  background: var(--surface-card);
 }
 
 .dm-row-copy {
@@ -1738,22 +1746,22 @@ textarea:focus-visible,
 }
 
 .dm-row-copy small {
-  color: #858585;
+  color: var(--text-secondary);
   font-size: .7rem;
 }
 
 .dm-state {
   flex: 0 0 auto;
   padding: 5px 8px;
-  border: 1px solid #333;
+  border: 1px solid var(--border-hairline);
   border-radius: 999px;
-  color: #bbb;
+  color: var(--text-secondary);
   font-size: .68rem;
 }
 
 .dm-state.online::before { content: "● "; }
 .dm-state.timeout::before { content: "◷ "; }
-.dm-state.auth-required::before { content: "🔒 "; }
+.dm-state.auth-required::before { content: "◐ "; }
 .dm-state.offline::before { content: "○ "; }
 
 .dm-mini {
@@ -1767,9 +1775,9 @@ textarea:focus-visible,
   display: grid;
   gap: 10px;
   padding: 12px;
-  border: 1px solid #282828;
+  border: 1px solid var(--border-hairline);
   border-radius: 16px;
-  background: #141414;
+  background: var(--surface-card);
 }
 
 .dm-form.compact {
@@ -1783,7 +1791,7 @@ textarea:focus-visible,
 }
 
 .dm-field > span {
-  color: #999;
+  color: var(--text-secondary);
   font-size: .7rem;
 }
 
@@ -1793,10 +1801,11 @@ textarea:focus-visible,
   width: 100%;
   min-height: 44px;
   padding: 9px 10px;
-  border: 1px solid #303030;
+  border: 1px solid var(--border-subtle);
   border-radius: 11px;
-  background: #0d0d0d;
-  color: #f5f5f5;
+  background: var(--canvas-base);
+  color: var(--text-primary);
+  font-size: 16px;
 }
 
 .dm-field textarea {
@@ -1806,7 +1815,7 @@ textarea:focus-visible,
 
 .dm-control-body details {
   margin-top: 12px;
-  border-top: 1px solid #242424;
+  border-top: 1px solid var(--border-hairline);
   padding-top: 10px;
 }
 
@@ -1822,9 +1831,9 @@ textarea:focus-visible,
   display: grid;
   gap: 10px;
   padding: 14px;
-  border: 1px solid #2b2b2b;
+  border: 1px solid var(--border-hairline);
   border-radius: 16px;
-  background: #151515;
+  background: var(--surface-card);
 }
 
 .dm-passkey-card p {
@@ -1834,16 +1843,16 @@ textarea:focus-visible,
 .dm-control-toast {
   margin: 0 12px 12px;
   padding: 9px 11px;
-  border: 1px solid #363636;
+  border: 1px solid var(--border-hairline);
   border-radius: 12px;
-  background: #191919;
-  color: #ddd;
+  background: var(--surface-card);
+  color: var(--text-primary);
   font-size: .75rem;
   overflow-wrap: anywhere;
 }
 
 .dm-error {
-  color: #ffb3b3;
+  color: var(--status-error);
 }
 
 @media (min-width: 760px) {

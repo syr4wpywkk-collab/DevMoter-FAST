@@ -163,7 +163,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       top.className = "dm-home-recent-top";
       const icon = document.createElement("span");
       icon.className = "dm-home-recent-icon";
-      icon.textContent = app.icon;
+      icon.innerHTML = app.icon; // static SVG from the App Registry
       icon.setAttribute("aria-hidden", "true");
       const opened = document.createElement("time");
       opened.dateTime = new Date(entry.openedAt).toISOString();
@@ -188,7 +188,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     button.setAttribute("aria-label", app.title + " を開く");
     const icon = document.createElement("span");
     icon.className = "dm-home-quick-action-icon";
-    icon.textContent = app.icon;
+    icon.innerHTML = app.icon; // static SVG from the App Registry
     icon.setAttribute("aria-hidden", "true");
     const title = document.createElement("strong");
     title.textContent = app.title;
@@ -216,7 +216,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     icon.className = "dm-home-card-icon";
     icon.dataset.appIcon = app.id;
     icon.setAttribute("aria-hidden", "true");
-    icon.textContent = app.icon;
+    icon.innerHTML = app.icon; // static SVG from the App Registry
     const copy = document.createElement("span");
     copy.className = "dm-home-card-copy";
     const heading = document.createElement("strong");

@@ -1,7 +1,9 @@
 .dm-office {
   --office-line: var(--border, #30323b);
   box-sizing: border-box;
-  width: 100vw;
+  /* Top-layer dialog: 100% is the initial containing block, which excludes
+   * scrollbars and can't grow with an overflowing page the way 100vw can. */
+  width: 100%;
   max-width: none;
   height: 100dvh;
   max-height: none;

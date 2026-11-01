@@ -1,4 +1,5 @@
 import { formatCodexResetTime as formatResetTime, codexFeedbackKey as feedbackKey } from "./codex/presentation";
+import { getAppDefinition } from "./app-registry";
 import { cxIcons } from "./codex/icons";
 import { codexThreadStatusToExecutionState, codexTurnStatusToExecutionState, isExecutionActive, type ExecutionState } from "./execution-state.mjs";
 import { speechRecognitionLanguage } from "./i18n";
@@ -174,10 +175,10 @@ export function mountCodexRemote(
         </label>
 
         <nav class="cx-side-nav">
-          <button id="cxProjectsNav" class="cx-nav-item" type="button"><span aria-hidden="true">▱</span><span>Projects</span></button>
-          <button id="cxPluginsQuick" class="cx-nav-item" type="button"><span aria-hidden="true">◇</span><span>Plugins</span></button>
-          <button id="cxIntegrationsNav" class="cx-nav-item" type="button"><span aria-hidden="true">⌁</span><span>Integrations</span></button>
-          <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button"><span aria-hidden="true">⑂</span><span>Developer workflows</span></button>
+          <button id="cxProjectsNav" class="cx-nav-item" type="button">${getAppDefinition("projects").icon}<span>Projects</span></button>
+          <button id="cxPluginsQuick" class="cx-nav-item" type="button">${cxIcons.plugins}<span>Plugins</span></button>
+          <button id="cxIntegrationsNav" class="cx-nav-item" type="button">${cxIcons.integrations}<span>Integrations</span></button>
+          <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button">${getAppDefinition("developer-workflows").icon}<span>Developer workflows</span></button>
         </nav>
 
         <div class="cx-side-section">
@@ -289,8 +290,8 @@ export function mountCodexRemote(
         </form>
 
         <div id="cxPlusMenu" class="cx-plus-menu hidden">
-          <button id="cxPhoto" type="button"><span>▧</span><span>画像送信</span></button>
-          <button id="cxFile" type="button"><span>⌑</span><span>ファイル</span></button>
+          <button id="cxPhoto" type="button">${cxIcons.image}<span>画像送信</span></button>
+          <button id="cxFile" type="button">${cxIcons.file}<span>ファイル</span></button>
         </div>
 
         <input id="cxPhotoInput" type="file" accept="image/*" multiple hidden />

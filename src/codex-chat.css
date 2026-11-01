@@ -362,19 +362,49 @@ body.codex-mode {
 .cx-app .cx-attachment-chip { height: 60px; max-width: 230px; background: #303030; border-color: #494949; }
 .cx-app .cx-attachment-chip button { flex: 0 0 44px; width: 44px; height: 44px; min-height: 44px; background: transparent; }
 .cx-app .cx-plus-menu {
+  position: absolute;
+  z-index: 50;
   bottom: calc(100% - 4px);
   left: max(12px, calc((100% - var(--cx-content-width)) / 2));
-  width: min(300px, calc(100% - 24px));
+  width: min(280px, calc(100% - 24px));
   margin: 0;
+  padding: 6px;
   display: grid;
-  grid-template-columns: 1fr;
-  border-color: #464646;
-  background: #2f2f2f;
+  gap: 2px;
+  border: 1px solid var(--cx-border, #464646);
   border-radius: 16px;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  background: var(--cx-raised);
+  color: var(--cx-text);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .28);
 }
-.cx-app .cx-plus-menu button { flex-direction: row; justify-content: flex-start; min-height: 44px; font-size: .85rem; }
+.cx-app .cx-plus-menu button {
+  min-height: 48px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.cx-app .cx-plus-menu button > svg { flex: 0 0 20px; width: 20px; height: 20px; stroke-width: 1.5; }
+.cx-app .cx-plus-menu button:active { transform: scale(0.97); background: var(--surface-hover, rgba(127, 127, 127, .16)); }
+.cx-app .cx-plus-menu button:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
+@media (hover: hover) {
+  .cx-app .cx-plus-menu button:hover { background: var(--surface-hover, rgba(127, 127, 127, .16)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cx-app .cx-plus-menu button { transition: none; }
+}
 .cx-app .cx-context-palette {
   width: min(100%, var(--cx-content-width));
   max-height: min(160px, calc(var(--dm-viewport-height, 100dvh) * .2));
@@ -398,7 +428,9 @@ body.codex-mode {
 .cx-app .cx-sidebar-foot,
 .cx-app .cx-side-nav { border-color: #303030; }
 
-.cx-app .cx-modal-card { max-height: min(720px, calc(var(--dm-viewport-height, 100dvh) - 32px)); background: #262626; border-color: #464646; }
+/* Bounded by the modal (the area under the app header), never by the viewport,
+ * so the title and close button can't slide under the header. */
+.cx-app .cx-modal-card { max-height: min(720px, 100%); background: #262626; border-color: #464646; }
 .cx-app .cx-modal-head { border-bottom-color: #404040; }
 .cx-app .cx-choice-row.selected { background: #3a3a3a; border-color: #777; }
 .cx-app .cx-approval {
@@ -445,8 +477,6 @@ html[data-devmoter-theme="light"] .cx-app {
 }
 html[data-devmoter-theme="dark"] .cx-app { color-scheme: dark; }
 .cx-app .cx-title-button { color: var(--cx-text); }
-body.codex-mode .dm-shell-sidebar:not(.open),
-body.codex-mode .sc-panel:not(.open),
 .cx-app .cx-sidebar:not(.open) { box-shadow: none; }
 html[data-devmoter-theme="light"] .cx-app button:focus-visible,
 html[data-devmoter-theme="light"] .cx-app a:focus-visible,
@@ -550,16 +580,14 @@ html[data-devmoter-theme="light"] .cx-app .cx-approval pre { background: #f4ead2
   .cx-app .cx-scrim { display: none !important; }
 }
 
-@media (min-width: 760px) and (max-width: 1099px) {
-  .cx-app .cx-details-panel { z-index: 970; width: min(320px, 88vw); transform: translateX(105%); transition: transform .2s ease; box-shadow: -18px 0 48px rgba(0,0,0,.32); }
-  .cx-app .cx-details-panel.open { transform: translateX(0); }
+@media (max-width: 1099px) {
+  /* Closed = not rendered, so the off-canvas panel and its shadow never widen the page. */
+  .cx-app .cx-details-panel { z-index: 970; width: min(320px, 88vw); transform: translateX(105%); visibility: hidden; transition: transform .2s cubic-bezier(0.32, 0.72, 0, 1), visibility 0s linear .2s; box-shadow: -18px 0 48px rgba(0,0,0,.32); }
+  .cx-app .cx-details-panel.open { transform: translateX(0); visibility: visible; transition: transform .2s cubic-bezier(0.32, 0.72, 0, 1); }
   .cx-app .cx-details-toggle { display: inline-flex; }
 }
-
 @media (max-width: 759px) {
-  .cx-app .cx-details-panel { z-index: 970; top: var(--cx-header-height); width: min(320px, 88vw); transform: translateX(105%); transition: transform .2s ease; box-shadow: -18px 0 48px rgba(0,0,0,.32); }
-  .cx-app .cx-details-panel.open { transform: translateX(0); }
-  .cx-app .cx-details-toggle { display: inline-flex; }
+  .cx-app .cx-details-panel { top: var(--cx-header-height); }
 }
 
 @media (prefers-reduced-motion: reduce) { .cx-app .cx-details-panel { transition: none; } }

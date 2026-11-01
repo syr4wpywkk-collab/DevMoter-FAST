@@ -59,7 +59,7 @@ body.codex-mode .dm-shell-menu-trigger { display: none; }
   position: fixed;
   inset: 0 auto auto 0;
   z-index: 950;
-  width: min(100vw, 460px);
+  width: min(100%, 460px);
   height: var(--dm-viewport-height, 100dvh);
   display: none;
   grid-template-rows: auto minmax(0, 1fr);
@@ -207,7 +207,7 @@ body.opencode-mode:has(.ocx-sidebar.open) .dm-shell-menu-trigger {
 
 @media (max-width: 520px) {
   .dm-shell-sidebar-scroll { padding-right: 10px; padding-left: 10px; }
-  .dm-shell-sidebar { width: min(100vw, 460px); }
+  .dm-shell-sidebar { width: min(100%, 460px); }
   
   
 }

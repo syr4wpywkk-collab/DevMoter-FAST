@@ -132,12 +132,18 @@ export function createDevWorkflowPanel(options: PanelOptions) {
     return button;
   }
 
-  function section(titleValue: string, subtitle = "") {
+  // Title row: heading + optional action on one line. The explanation is a
+  // tooltip, not body text.
+  function section(titleValue: string, subtitle = "", action?: HTMLButtonElement) {
     const node = document.createElement("section");
     node.className = "cx-settings-section cx-dev-section";
+    const head = document.createElement("div");
+    head.className = "cx-dev-section-head";
     const heading = text("h3", titleValue);
-    node.appendChild(heading);
-    if (subtitle) node.appendChild(text("p", subtitle, "cx-muted"));
+    if (subtitle) heading.title = subtitle;
+    head.appendChild(heading);
+    if (action) head.appendChild(action);
+    node.appendChild(head);
     return node;
   }
 
@@ -188,11 +194,11 @@ export function createDevWorkflowPanel(options: PanelOptions) {
         link.href = String(finding.locationUrl);
         link.target = "_blank";
         link.rel = "noopener noreferrer";
-        link.textContent = "GitHubで位置を開く";
+        link.textContent = "GitHubで開く";
         actions.appendChild(link);
       }
       if (result.mode === "pr" && requestedPr) {
-        actions.appendChild(makeAction("この指摘だけPRへ投稿", async button => {
+        actions.appendChild(makeAction("PRに投稿", async button => {
           if (!confirm("このレビュー指摘をGitHub PRへコメント投稿しますか？")) return;
           const project = projectRequired();
           await api("/review/comment", {
@@ -397,10 +403,9 @@ export function createDevWorkflowPanel(options: PanelOptions) {
   function renderCapabilities(capabilities: Json, settings: Json) {
     const project = projectRequired();
 
-    const mcpSection = section("MCP servers", "Global / Project scope、接続先、状態をここから管理できます。");
-    const add = makeAction("＋ MCP server", async () => editMcpServer(null), true);
-    add.classList.add("cx-dev-section-action");
-    mcpSection.appendChild(add);
+    const add = makeAction("追加", async () => editMcpServer(null), true);
+    add.setAttribute("aria-label", "MCP serverを追加");
+    const mcpSection = section("MCP servers", "Global / Project scope、接続先、状態をここから管理できます。", add);
 
     const servers = Array.isArray(capabilities.mcp) ? capabilities.mcp : [];
     if (!servers.length) mcpSection.appendChild(text("p", "設定済みMCP serverはありません。", "cx-muted"));
@@ -418,7 +423,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
       const actions = document.createElement("div");
       actions.className = "cx-dev-inline-actions";
       actions.append(
-        makeAction("Test", async button => {
+        makeAction("テスト", async button => {
           const result = await api<Json>("/mcp/test", {
             method: "POST",
             body: JSON.stringify({ projectId: project.id, serverId: server.id })
@@ -556,13 +561,13 @@ export function createDevWorkflowPanel(options: PanelOptions) {
           "Filesystem / network / shell / credentials / adapters / browser permissions are explicit. New or expanded permissions require approval again.",
           "cx-dev-warning"
         ));
-        extensionSection.appendChild(makeAction("Approve declared permissions", async button => {
+        extensionSection.appendChild(makeAction("権限を承認", async button => {
           if (!confirm("このProject extensionの宣言済みpermissionsを承認しますか？ 変更・追加された場合は再承認が必要です。")) return;
           await api("/extension/approve", {
             method: "POST",
             body: JSON.stringify({ projectId: project.id })
           });
-          button.textContent = "Approved ✓";
+          button.textContent = "承認済み";
           await show();
         }, true));
       } else if (extension.valid) {
@@ -585,7 +590,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
     }
     const acpConfig = settings?.adapters?.acp;
     if (acpConfig?.enabled) {
-      adapterSection.appendChild(makeAction("ACP接続テスト", async button => {
+      adapterSection.appendChild(makeAction("接続テスト", async button => {
         const result = await api<Json>("/acp/probe", {
           method: "POST",
           body: JSON.stringify({ projectId: project.id })
@@ -631,7 +636,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
         if (prNumber) localStorage.setItem("devmoter-pr-number", prNumber);
         else localStorage.removeItem("devmoter-pr-number");
       });
-      const reviewButton = makeAction("AI Review", async () => {
+      const reviewButton = makeAction("AIレビュー", async () => {
         const value = prInput.value.trim();
         if (!/^\d+$/.test(value)) throw new Error("PR番号を入力してください");
         reviewResult.innerHTML = '<div class="cx-modal-loading">read-only reviewer実行中…</div>';
@@ -654,7 +659,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
       prRow.append(prInput, reviewButton, ciButton);
       reviewSection.appendChild(prRow);
 
-      const finalButton = makeAction("Local diffをFinal Review", async () => {
+      const finalButton = makeAction("差分をレビュー", async () => {
         reviewResult.innerHTML = '<div class="cx-modal-loading">final reviewer実行中…</div>';
         const result = await api<Json>("/review", {
           method: "POST",
@@ -677,7 +682,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
       const verifyResult = document.createElement("div");
       verifyResult.className = "cx-dev-result";
       verifyActions.append(
-        makeAction("Lint / Test / Typecheck", async () => {
+        makeAction("検証", async () => {
           verifyResult.innerHTML = '<div class="cx-modal-loading">verification実行中…</div>';
           const result = await api<Json>("/verify", {
             method: "POST",
@@ -685,7 +690,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
           });
           renderVerification(result, verifyResult);
         }, true),
-        makeAction("Auto repair", async () => {
+        makeAction("自動修正", async () => {
           verifyResult.innerHTML = '<div class="cx-modal-loading">bounded repair loop実行中…</div>';
           const result = await api<Json>("/repair", {
             method: "POST",

@@ -59,6 +59,7 @@ type OpenCodeModel = {
   available?: boolean;
   requiresKey?: string[];
   deprecated?: boolean;
+  unsupported?: string;
 };
 
 type OpenCodeProvider = {
@@ -848,6 +849,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
           name: String(record.name ?? record.id ?? id),
           cost,
           enabled: record.enabled,
+          ...(typeof record.unsupported === "string" && record.unsupported ? { unsupported: record.unsupported } : {}),
           status,
           capabilities: record.capabilities,
           free: cost?.input === 0 && cost?.output === 0,
@@ -858,6 +860,15 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       })
       .filter(model => model.id)
       .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
+  }
+
+  // A model the connected OpenCode cannot run (see openCodeRunnerUnsupported)
+  // must not be sent: OpenCode would accept the prompt and never answer.
+  function selectedModelBlockReason() {
+    if (!selectedModel) return "";
+    const provider = providers.find(item => item.id === selectedModel?.providerID);
+    const model = provider ? normalizeModels(provider).find(item => item.id === selectedModel?.modelID) : null;
+    return model?.unsupported || "";
   }
 
   function currentModelName() {
@@ -2106,6 +2117,11 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   async function sendMessageUnlocked() {
     const text = promptInput.value.trim();
     if (!text && !pendingAttachments.length) return;
+    const blocked = selectedModelBlockReason();
+    if (blocked) {
+      showToast(`${currentModelName()}: ${blocked}`);
+      return;
+    }
 
     if (text) {
       try {

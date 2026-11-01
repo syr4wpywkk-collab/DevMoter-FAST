@@ -430,7 +430,7 @@ body.dm-task-first-enabled .cx-app :is(.cx-sidebar-foot, .cx-side-nav) {
   border-color: var(--dw-chat-line);
 }
 
-body.dm-task-first-enabled .cx-app :is(.cx-modal-card, .cx-feedback-menu, .cx-tool-card, .cx-plus-menu, .cx-context-palette) {
+body.dm-task-first-enabled .cx-app :is(.cx-modal-card, .cx-feedback-menu, .cx-tool-card, .cx-context-palette) {
   border-color: var(--dw-chat-line);
   background: var(--dw-chat-surface);
   color: var(--dw-chat-text);
