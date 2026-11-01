@@ -127,7 +127,8 @@ test("workspace commands keep the existing theme, Context, checkpoint and extens
   assert.equal(panel.classList.contains("hidden"), true);
   command("checkpoints");
   await new Promise(resolve => setImmediate(resolve));
-  assert.ok(panel.textContent.includes("No checkpoint plan"));
+  assert.ok(panel.textContent.includes("チェックポイントがありません"));
+  assert.equal(panel.querySelector(".dm-panel-head strong").textContent, "チェックポイント");
   assert.ok(requests.some(path => path.includes("microtasks?parentId=preserved-thread")));
   command("extensions");
   await new Promise(resolve => setImmediate(resolve));
