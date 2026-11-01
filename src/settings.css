@@ -151,7 +151,7 @@
   height: 20px;
 }
 
-.devmoter-settings-chevron.external svg {
+.devmoter-settings-chevron.external > svg {
   flex-shrink: 0;
 }
 
@@ -234,7 +234,8 @@
 
 .devmoter-settings-icon > svg,
 .devmoter-settings-trigger > svg,
-.devmoter-settings-health-row > span > svg {
+.devmoter-settings-health-row > span > svg,
+.devmoter-settings-chevron.external > svg {
   width: 18px;
   height: 18px;
   fill: none;
@@ -670,14 +671,6 @@ html[data-devmoter-theme="light"] .devmoter-settings-row-copy small {
 .devmoter-settings-device button[data-action="account:disconnect"],
 .devmoter-settings-device button[data-action="account:revoke-session"] {
   color: var(--status-error);
-}
-
-/* A provider this host can't use stays legible instead of fading to grey. */
-.devmoter-settings-device button:disabled {
-  opacity: 1;
-  border-style: dashed;
-  background: transparent;
-  color: var(--text-secondary);
 }
 
 .devmoter-settings-row,

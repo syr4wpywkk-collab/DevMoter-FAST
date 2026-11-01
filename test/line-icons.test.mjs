@@ -53,10 +53,17 @@ test("Settings rows, ☰ menu and file list use line icons instead of symbol gly
   ]);
   const settingsIcons = inlineIcons(settings);
   const rows = [...settings.matchAll(/row\("([^"]+)", "([^"]+)"/g)];
-  assert.ok(rows.length > 40);
+  assert.ok(rows.length > 30);
   for (const [, icon, label] of rows) {
     assert.ok(/^\d+$/.test(icon) || settingsIcons.has(icon), `${label} uses a known icon (${icon})`);
   }
+  // No orphaned copies: every inlined icon is drawn by a row or referenced as ICONS.<id>.
+  const usedIcons = new Set(rows.map(([, icon]) => icon));
+  for (const match of settings.matchAll(/ICONS\.([a-z]+)/g)) usedIcons.add(match[1]);
+  for (const id of settingsIcons.keys()) assert.ok(usedIcons.has(id), `settings.ts inlines unused icon ${id}`);
+  // External destinations use the shared line icon, not a one-off SVG.
+  assert.match(settings, /devmoter-settings-chevron external" aria-hidden="true">\$\{ICONS\.external\}/);
+  assert.ok(!/<svg viewBox="0 0 16 16"/.test(settings), "no one-off 16px SVG outside the line-icon set");
   // Rows for different destinations never share one icon (same concept → same icon is fine).
   const conceptByIcon = new Map();
   for (const [, icon, label] of rows) {

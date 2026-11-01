@@ -140,7 +140,7 @@ test("rows merged or removed in #504 keep #504's set; their copy is unified and 
   assert.equal(new Set(labels).size, labels.length, labels.join(","));
   // Merged rows use the polite Japanese label, and the sheet they open carries the same title.
   assert.ok(labels.includes("テーマと表示") && settings.includes('setHeader("テーマと表示"'));
-  assert.ok(settings.includes('row("▱", "信頼済み端末", { action: "page:devices", value: "端末の登録とペアリングコード" })'));
+  assert.ok(settings.includes('row("device", "信頼済み端末", { action: "page:devices", value: "端末の登録とペアリングコード" })'));
   assert.ok(settings.includes('setHeader("信頼済み端末"'));
   assert.ok(settings.includes('value: "GitHub の Issue を開く", external: "GitHub"'));
   for (const text of ["テーマと表示", "端末の登録とペアリングコード", "不具合を報告", "GitHub の Issue を開く"]) {
