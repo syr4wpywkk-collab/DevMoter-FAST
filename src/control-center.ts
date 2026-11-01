@@ -2,6 +2,7 @@ import "./control-center.css";
 import type { Terminal as XTerm } from "@xterm/xterm";
 import type { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
+import { createDeviceGate, isDeviceAuthError } from "./device-gate.mjs";
 
 type ProjectSummary = {
   id: string;
@@ -419,33 +420,24 @@ export function mountControlCenter() {
     terminalSection.querySelector("[data-terminal-device-gate]")?.remove();
   }
 
-  function showTerminalLoadError(error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    terminalStatus.textContent = `Could not load sessions · ${message}`;
+  // Unregistered or revoked devices get the shared registration gate, not the raw 401 text.
+  function showTerminalError(prefix: string, error: unknown) {
     clearTrustedDeviceGate();
-    if (!/trusted device/i.test(message)) return;
-
-    const gate = document.createElement("div");
-    gate.className = "dm-tools-card";
-    gate.dataset.terminalDeviceGate = "true";
-
-    const title = document.createElement("strong");
-    title.textContent = "This browser is not a Trusted device";
-
-    const copy = document.createElement("small");
-    copy.textContent =
-      "Terminal access is device-bound. Pair this browser first, then reopen Terminal.";
-
-    const openDevices = button("Open Trusted devices");
-    openDevices.addEventListener("click", () => {
-      closePanel({ restoreFocus: false });
-      window.dispatchEvent(new CustomEvent("devmoter:open-settings", {
-        detail: { page: "devices" }
-      }));
+    if (!isDeviceAuthError(error)) {
+      terminalStatus.textContent = `${prefix} · ${error instanceof Error ? error.message : String(error)}`;
+      return;
+    }
+    terminalStatus.textContent = "";
+    const gate = createDeviceGate(document, {
+      className: "dm-tools-card",
+      onRegister: () => closePanel({ restoreFocus: false })
     });
-
-    gate.append(title, copy, openDevices);
+    gate.dataset.terminalDeviceGate = "true";
     terminalStatus.after(gate);
+  }
+
+  function showTerminalLoadError(error: unknown) {
+    showTerminalError("Could not load sessions", error);
   }
 
   async function refreshTerminalSessions() {
@@ -598,7 +590,7 @@ export function mountControlCenter() {
       setTerminalControlsBusy(true);
       terminalStatus.textContent = "Preparing terminal…";
       void startOrReattachTerminal().catch(error => {
-        terminalStatus.textContent = `Could not start terminal · ${error instanceof Error ? error.message : String(error)}`;
+        showTerminalError("Could not start terminal", error);
       }).finally(() => { setTerminalControlsBusy(false); });
     });
     kill.addEventListener("click", () => {
@@ -834,7 +826,7 @@ export function mountControlCenter() {
       void connectTerminalSocket();
       await refreshTerminalSessions();
     } catch (error) {
-      terminalStatus.textContent = `Could not attach session · ${error instanceof Error ? error.message : String(error)}`;
+      showTerminalError("Could not attach session", error);
     } finally {
       setTerminalControlsBusy(false);
     }
