@@ -220,6 +220,10 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     if (!isAppId(detail?.id)) return;
     const app = getAppDefinition(detail.id);
     if (app.availability === "available") return;
+    if (detail.id === "browser") {
+      run(() => launchApp(detail.id));
+      return;
+    }
     notify(typeof detail.message === "string" ? detail.message : app.previewMessage || `${app.title} is not available yet.`);
   });
 

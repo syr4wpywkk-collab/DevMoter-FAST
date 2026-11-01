@@ -68,11 +68,18 @@ test("Home still treats non-shipped applications as previews, never launches the
     onLaunchApp: id => launches.push(id),
     onPreviewApp: (id, message) => previews.push({ id, message })
   });
+  const browserCard = root.querySelector('[data-home-app="browser"]');
+  assert.equal(browserCard.getAttribute("aria-disabled"), null);
+  assert.equal(browserCard.disabled, false);
+  assert.equal(root.querySelector('[data-home-app="knowledge"]').getAttribute("aria-disabled"), "true");
   root.querySelector('[data-home-app="knowledge"]').click();
+  browserCard.click();
   assert.deepEqual(launches, []);
-  assert.equal(previews.length, 1);
+  assert.equal(previews.length, 2);
   assert.equal(previews[0].id, "knowledge");
   assert.match(previews[0].message, /not available yet/i);
+  assert.equal(previews[1].id, "browser");
+  assert.match(previews[1].message, /Open Files & Preview/i);
   dom.window.close();
 });
 
