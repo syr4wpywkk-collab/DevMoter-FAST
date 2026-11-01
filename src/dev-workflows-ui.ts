@@ -1,3 +1,5 @@
+import { getAppDefinition, SYSTEM_ICONS } from "./app-registry";
+
 type Json = Record<string, any>;
 
 type ProjectRef = {
@@ -11,6 +13,8 @@ type PanelOptions = {
   openModal(title: string, subtitle?: string): void;
   closeSidebar(): void;
   getActiveProject(): ProjectRef | null;
+  /** Resolves once the owner has loaded the saved Project selection. */
+  whenProjectReady?(): Promise<unknown>;
   getActiveThreadId(): string | null;
   showToast(message: string): void;
   uid(): string;
@@ -33,6 +37,32 @@ function details(title: string, value: string, open = false) {
   pre.textContent = value;
   wrapper.append(summary, pre);
   return wrapper;
+}
+
+// JSON is reference material: it stays folded under one 「詳細」 per section.
+function jsonDetails(blocks: Array<[string, string]>) {
+  const wrapper = document.createElement("details");
+  wrapper.className = "cx-dev-details";
+  const summary = document.createElement("summary");
+  summary.textContent = "詳細";
+  wrapper.appendChild(summary);
+  for (const [label, value] of blocks) {
+    wrapper.appendChild(text("strong", label, "cx-dev-details-label"));
+    const pre = document.createElement("pre");
+    pre.textContent = value;
+    wrapper.appendChild(pre);
+  }
+  return wrapper;
+}
+
+// One empty / loading / error presentation for every section and result.
+type ViewState = "empty" | "loading" | "error";
+function stateView(kind: ViewState, message: string) {
+  const node = text("p", message, "cx-dev-state");
+  node.dataset.state = kind;
+  if (kind === "loading") node.setAttribute("aria-busy", "true");
+  if (kind === "error") node.setAttribute("role", "alert");
+  return node;
 }
 
 function statusBadge(value: string) {
@@ -134,12 +164,17 @@ export function createDevWorkflowPanel(options: PanelOptions) {
 
   // Title row: heading + optional action on one line. The explanation is a
   // tooltip, not body text.
-  function section(titleValue: string, subtitle = "", action?: HTMLButtonElement) {
+  function section(titleValue: string, icon: string, subtitle = "", action?: HTMLButtonElement) {
     const node = document.createElement("section");
     node.className = "cx-settings-section cx-dev-section";
     const head = document.createElement("div");
     head.className = "cx-dev-section-head";
-    const heading = text("h3", titleValue);
+    const heading = document.createElement("h3");
+    const iconBox = document.createElement("span");
+    iconBox.className = "cx-dev-section-icon";
+    iconBox.setAttribute("aria-hidden", "true");
+    iconBox.innerHTML = icon; // static, code-owned SVG from the icon registry
+    heading.append(iconBox, document.createTextNode(titleValue));
     if (subtitle) heading.title = subtitle;
     head.appendChild(heading);
     if (action) head.appendChild(action);
@@ -235,7 +270,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
       return;
     }
     const checks = Array.isArray(result.checks) ? result.checks : [];
-    if (!checks.length) target.appendChild(text("p", "このPRには取得できるcheckがありません。", "cx-muted"));
+    if (!checks.length) target.appendChild(stateView("empty", "このPRには取得できるcheckがありません。"));
 
     for (const check of checks) {
       const row = document.createElement("div");
@@ -403,12 +438,12 @@ export function createDevWorkflowPanel(options: PanelOptions) {
   function renderCapabilities(capabilities: Json, settings: Json) {
     const project = projectRequired();
 
-    const add = makeAction("追加", async () => editMcpServer(null), true);
+    const add = makeAction("追加", async () => editMcpServer(null));
     add.setAttribute("aria-label", "MCP serverを追加");
-    const mcpSection = section("MCP servers", "Global / Project scope、接続先、状態をここから管理できます。", add);
+    const mcpSection = section("MCP servers", SYSTEM_ICONS.hosts, "Global / Project scope、接続先、状態をここから管理できます。", add);
 
     const servers = Array.isArray(capabilities.mcp) ? capabilities.mcp : [];
-    if (!servers.length) mcpSection.appendChild(text("p", "設定済みMCP serverはありません。", "cx-muted"));
+    if (!servers.length) mcpSection.appendChild(stateView("empty", "設定済みMCP serverはありません。"));
     for (const server of servers) {
       const card = document.createElement("div");
       card.className = "cx-dev-mcp-card";
@@ -452,7 +487,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
     }
     modalBody.appendChild(mcpSection);
 
-    const capabilitySection = section("Skills / Rules", "Skillはproject/session単位で明示的に有効化。発見だけではコードを実行しません。");
+    const capabilitySection = section("Skills / Rules", SYSTEM_ICONS.guide, "Skillはproject/session単位で明示的に有効化。発見だけではコードを実行しません。");
     const skills = Array.isArray(capabilities.skills) ? capabilities.skills : [];
     const rules = Array.isArray(capabilities.rules) ? capabilities.rules : [];
     const activeThreadId = getActiveThreadId();
@@ -529,21 +564,15 @@ export function createDevWorkflowPanel(options: PanelOptions) {
       precedence: rule.precedence,
       preview: String(rule.content || "").slice(0, 240)
     }));
-    capabilitySection.append(
-      details("Effective Skills · " + skills.length, pretty({
-        precedence: capabilities.skillsPrecedence,
-        skills: skillDetails
-      })),
-      details("Effective Rules · " + rules.length, pretty({
-        precedence: capabilities.rulesPrecedence,
-        rules: ruleDetails
-      }))
-    );
+    capabilitySection.append(jsonDetails([
+      ["Effective Skills · " + skills.length, pretty({ precedence: capabilities.skillsPrecedence, skills: skillDetails })],
+      ["Effective Rules · " + rules.length, pretty({ precedence: capabilities.rulesPrecedence, rules: ruleDetails })]
+    ]));
     modalBody.appendChild(capabilitySection);
 
-    const extensionSection = section("Extension manifest", "devmoter.extension.json · manifestVersion 1");
+    const extensionSection = section("Extension manifest", SYSTEM_ICONS.extensions, "devmoter.extension.json · manifestVersion 1");
     if (!capabilities.extension?.present) {
-      extensionSection.appendChild(text("p", "このProjectにmanifestはありません。", "cx-muted"));
+      extensionSection.appendChild(stateView("empty", "このProjectにmanifestはありません。"));
     } else {
       const extension = capabilities.extension;
       extensionSection.append(
@@ -576,7 +605,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
     }
     modalBody.appendChild(extensionSection);
 
-    const adapterSection = section("Agent adapters", "Native adaptersを優先し、ACPは明示設定時のみ有効になります。");
+    const adapterSection = section("Agent adapters", getAppDefinition("agents").icon, "Native adaptersを優先し、ACPは明示設定時のみ有効になります。");
     for (const adapter of Array.isArray(capabilities.adapters) ? capabilities.adapters : []) {
       const row = document.createElement("div");
       row.className = "cx-dev-check-row";
@@ -598,15 +627,20 @@ export function createDevWorkflowPanel(options: PanelOptions) {
         button.textContent = result.ok ? "ACP connected ✓" : ("ACP: " + String(result.error || result.state));
       }));
     }
-    adapterSection.appendChild(details("Negotiation", pretty(capabilities.negotiation)));
+    adapterSection.appendChild(jsonDetails([["Negotiation", pretty(capabilities.negotiation)]]));
     modalBody.appendChild(adapterSection);
   }
 
   async function show() {
     closeSidebar();
+    // Opened from ☰ / Home right after the chat surface mounts, the saved
+    // Project may still be loading. Decide only after the owner has resolved it,
+    // so a selected Project never flashes 「Projectを選択してください」.
+    openModal("Developer workflows", getActiveProject()?.name || "");
+    modalBody.replaceChildren(stateView("loading", "読み込み中…"));
+    if (!getActiveProject() && options.whenProjectReady) await options.whenProjectReady().catch(() => undefined);
     const project = getActiveProject();
     openModal("Developer workflows", project ? project.name : "Projectを選択してください");
-    modalBody.innerHTML = '<div class="cx-modal-loading">読み込み中…</div>';
 
     if (!project) {
       modalBody.replaceChildren(text("p", "Review / CI / verification / MCPはProject単位で動きます。先にProjectsから作業対象を選んでください。", "cx-muted"));
@@ -622,7 +656,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
 
       modalBody.replaceChildren();
 
-      const reviewSection = section("Review & CI", "AI reviewはread-only。GitHubへのコメント投稿だけは別の明示操作です。");
+      const reviewSection = section("Review & CI", getAppDefinition("review").icon, "AI reviewはread-only。GitHubへのコメント投稿だけは別の明示操作です。");
       const prRow = document.createElement("div");
       prRow.className = "cx-dev-pr-row";
       const prInput = document.createElement("input");
@@ -639,7 +673,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
       const reviewButton = makeAction("AIレビュー", async () => {
         const value = prInput.value.trim();
         if (!/^\d+$/.test(value)) throw new Error("PR番号を入力してください");
-        reviewResult.innerHTML = '<div class="cx-modal-loading">read-only reviewer実行中…</div>';
+        reviewResult.replaceChildren(stateView("loading", "read-only reviewer実行中…"));
         const result = await api<Json>("/review", {
           method: "POST",
           body: JSON.stringify({ projectId: project.id, prNumber: value, mode: "pr" })
@@ -649,7 +683,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
       const ciButton = makeAction("CI", async () => {
         const value = prInput.value.trim();
         if (!/^\d+$/.test(value)) throw new Error("PR番号を入力してください");
-        ciResult.innerHTML = '<div class="cx-modal-loading">checksを取得中…</div>';
+        ciResult.replaceChildren(stateView("loading", "checksを取得中…"));
         const result = await api<Json>("/ci", {
           method: "POST",
           body: JSON.stringify({ projectId: project.id, prNumber: value, includeLogs: true })
@@ -660,7 +694,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
       reviewSection.appendChild(prRow);
 
       const finalButton = makeAction("差分をレビュー", async () => {
-        reviewResult.innerHTML = '<div class="cx-modal-loading">final reviewer実行中…</div>';
+        reviewResult.replaceChildren(stateView("loading", "final reviewer実行中…"));
         const result = await api<Json>("/review", {
           method: "POST",
           body: JSON.stringify({ projectId: project.id, mode: "final" })
@@ -676,14 +710,14 @@ export function createDevWorkflowPanel(options: PanelOptions) {
       reviewSection.append(reviewResult, ciResult);
       modalBody.appendChild(reviewSection);
 
-      const verifySection = section("Verification & repair", "実行コマンドはProjectから自動採用せず、信頼済みDevMoter設定だけを使います。");
+      const verifySection = section("Verification", SYSTEM_ICONS.check, "Verification & repair: 実行コマンドはProjectから自動採用せず、信頼済みDevMoter設定だけを使います。");
       const verifyActions = document.createElement("div");
       verifyActions.className = "cx-dev-inline-actions";
       const verifyResult = document.createElement("div");
       verifyResult.className = "cx-dev-result";
       verifyActions.append(
         makeAction("検証", async () => {
-          verifyResult.innerHTML = '<div class="cx-modal-loading">verification実行中…</div>';
+          verifyResult.replaceChildren(stateView("loading", "verification実行中…"));
           const result = await api<Json>("/verify", {
             method: "POST",
             body: JSON.stringify({ projectId: project.id })
@@ -691,7 +725,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
           renderVerification(result, verifyResult);
         }, true),
         makeAction("自動修正", async () => {
-          verifyResult.innerHTML = '<div class="cx-modal-loading">bounded repair loop実行中…</div>';
+          verifyResult.replaceChildren(stateView("loading", "bounded repair loop実行中…"));
           const result = await api<Json>("/repair", {
             method: "POST",
             body: JSON.stringify({ projectId: project.id })
@@ -707,7 +741,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
 
       renderCapabilities(capabilities, settings);
     } catch (error) {
-      modalBody.replaceChildren(text("p", error instanceof Error ? error.message : String(error), "cx-dev-warning"));
+      modalBody.replaceChildren(stateView("error", error instanceof Error ? error.message : String(error)));
     }
   }
 
