@@ -7,16 +7,33 @@
 //   2. info(): the OpenCode API generation, detected from the version endpoint
 //      each generation documents — GET /api/info (2.x) and GET /global/health
 //      (1.x) — and cached until OpenCode goes offline or the cache expires.
-//   3. Generation-aware helpers built on src/opencode-api-shapes.mjs.
+//   3. The DevMoter session operations (prompt, context, status, interrupt,
+//      permissions, questions), translated per generation by
+//      server/opencode-adapter.mjs. Callers never see a generation.
 
 import {
+  buildOpenCodePermissionReply,
+  buildOpenCodePromptRequests,
+  buildOpenCodeQuestionReject,
+  buildOpenCodeQuestionReply,
+  classicMessagesToContext,
+  listOf,
+  mergeOpenCodeContexts,
+  normalizeOpenCodeActive,
+  normalizeOpenCodePermissions,
   normalizeOpenCodeQuestions,
+  openCodeActivePath,
+  openCodeEventPath,
   openCodeGenerationFromVersion,
+  openCodeInterruptRequest,
   openCodePermissionListPath,
+  openCodeQuestionDetailPath,
   openCodeQuestionListPath,
   OPENCODE_API_V1,
   OPENCODE_API_V2
-} from "../src/opencode-api-shapes.mjs";
+} from "./opencode-adapter.mjs";
+
+export { listOf };
 
 export const OPENCODE_INFO_TTL_MS = 60_000;
 
@@ -37,12 +54,6 @@ function isConnectivityError(error) {
   if (error.status !== undefined) return false;
   return error.name === "TypeError" || error.name === "AbortError" || error.name === "TimeoutError" ||
     /ECONNREFUSED|ECONNRESET|EHOSTUNREACH|fetch failed/i.test(String(error.message || "") + String(error.cause?.code || ""));
-}
-
-export function listOf(payload) {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.data)) return payload.data;
-  return [];
 }
 
 export function createOpenCodeClient({
@@ -156,29 +167,161 @@ export function createOpenCodeClient({
     }
   }
 
-  async function pendingRequests(sessionId, { headers: extra = {}, signal } = {}) {
-    const { generation } = await info();
-    const timeout = () => signal || AbortSignal.timeout(2500);
-    const [permissions, questions] = await Promise.all([
-      fetchJson("/api" + openCodePermissionListPath(sessionId), { headers: extra, signal: timeout() }).then(listOf),
-      fetchJson("/api" + openCodeQuestionListPath(generation, sessionId), { headers: extra, signal: timeout() })
-        .then(payload => normalizeOpenCodeQuestions(generation, payload))
-    ]);
-    return { permissions, questions };
+  async function send(spec, { headers: extra = {}, signal } = {}) {
+    return fetchJson(spec.path, {
+      method: spec.method,
+      headers: { ...(spec.body ? { "content-type": "application/json" } : {}), ...extra },
+      ...(spec.body ? { body: JSON.stringify(spec.body) } : {}),
+      ...(signal ? { signal } : {})
+    });
   }
 
-  // Catalog routes shared by both generations; /api/model/default is 2.x only.
+  const sessionPath = sessionID => "/api/session/" + encodeURIComponent(String(sessionID));
+
+  async function session(sessionID, options = {}) {
+    const payload = await fetchJson(sessionPath(sessionID), { headers: options.headers || {}, ...(options.signal ? { signal: options.signal } : {}) });
+    return payload?.data !== undefined ? payload.data : payload;
+  }
+
+  /** Create a session; `body` is { agent?, model?: { id, providerID } } on both generations. */
+  async function createSession(body = {}, { headers: extra = {}, signal } = {}) {
+    const payload = await send({ method: "POST", path: "/api/session", body }, { headers: extra, signal });
+    return payload?.data !== undefined ? payload.data : payload;
+  }
+
+  /** Deliver a DevMoter prompt ({ text, model?, agent?, delivery? }). */
+  async function prompt(sessionID, input, { headers: extra = {}, signal, readOnlyTools = null } = {}) {
+    const { generation } = await info();
+    // The session supplies the model/agent a prompt does not name (1.x), and
+    // lets 2.x skip re-selecting what the session already uses.
+    const needsSession = generation === OPENCODE_API_V2 ? Boolean(input.model || input.agent) : !(input.model && input.agent);
+    const current = needsSession ? await session(sessionID, { headers: extra }).catch(() => null) : null;
+    let result = null;
+    for (const spec of buildOpenCodePromptRequests(generation, sessionID, input, { session: current, readOnlyTools })) {
+      result = await send(spec, { headers: extra, signal });
+    }
+    return result;
+  }
+
+  async function active({ headers: extra = {}, signal } = {}) {
+    const { generation } = await info();
+    const payload = await fetchJson(openCodeActivePath(generation), { headers: extra, ...(signal ? { signal } : {}) });
+    return normalizeOpenCodeActive(generation, payload);
+  }
+
+  async function context(sessionID, { headers: extra = {}, signal } = {}) {
+    const { generation } = await info();
+    const timeout = () => signal || AbortSignal.timeout(15000);
+    if (generation === OPENCODE_API_V2) {
+      return listOf(await fetchJson(sessionPath(sessionID) + "/context", { headers: extra, signal: timeout() }));
+    }
+    const [messages, status, earlier] = await Promise.all([
+      fetchJson("/session/" + encodeURIComponent(String(sessionID)) + "/message", { headers: extra, signal: timeout() }),
+      fetchJson(openCodeActivePath(generation), { headers: extra, signal: timeout() }).catch(() => ({})),
+      // Turns an earlier DevMoter release sent through the 1.x new runner.
+      fetchJson(sessionPath(sessionID) + "/context", { headers: extra, signal: timeout() }).then(listOf).catch(() => [])
+    ]);
+    const busy = Boolean(normalizeOpenCodeActive(generation, status)[String(sessionID)]);
+    return mergeOpenCodeContexts(earlier, classicMessagesToContext(messages, { busy }));
+  }
+
+  async function interrupt(sessionID, { headers: extra = {}, signal } = {}) {
+    const { generation } = await info();
+    await send(openCodeInterruptRequest(generation, sessionID), { headers: extra, signal });
+  }
+
+  async function permissions(sessionID, { headers: extra = {}, signal } = {}) {
+    const { generation } = await info();
+    const payload = await fetchJson(openCodePermissionListPath(generation, sessionID), { headers: extra, signal: signal || AbortSignal.timeout(2500) });
+    return normalizeOpenCodePermissions(generation, sessionID, payload);
+  }
+
+  async function replyPermission(sessionID, requestID, decision, message, { headers: extra = {}, signal } = {}) {
+    const { generation } = await info();
+    await send(buildOpenCodePermissionReply(generation, sessionID, requestID, decision, message), { headers: extra, signal });
+  }
+
+  async function questions(sessionID, { headers: extra = {}, signal } = {}) {
+    const { generation } = await info();
+    const payload = await fetchJson(openCodeQuestionListPath(generation, sessionID), { headers: extra, signal: signal || AbortSignal.timeout(2500) });
+    return normalizeOpenCodeQuestions(generation, sessionID, payload);
+  }
+
+  async function replyQuestion(sessionID, requestID, answers, { headers: extra = {}, signal } = {}) {
+    const { generation } = await info();
+    const detail = openCodeQuestionDetailPath(generation, sessionID, requestID);
+    const form = detail ? await fetchJson(detail, { headers: extra, ...(signal ? { signal } : {}) }) : null;
+    await send(buildOpenCodeQuestionReply(generation, sessionID, requestID, answers, form), { headers: extra, signal });
+  }
+
+  async function rejectQuestion(sessionID, requestID, { headers: extra = {}, signal } = {}) {
+    const { generation } = await info();
+    await send(buildOpenCodeQuestionReject(generation, sessionID, requestID), { headers: extra, signal });
+  }
+
+  async function pendingRequests(sessionID, options = {}) {
+    const [permissionList, questionList] = await Promise.all([permissions(sessionID, options), questions(sessionID, options)]);
+    return { permissions: permissionList, questions: questionList };
+  }
+
+  /** Resolve once the session stops executing (or `signal` aborts). */
+  async function waitForIdle(sessionID, { headers: extra = {}, signal, pollMs = 750 } = {}) {
+    const id = String(sessionID);
+    // A prompt is admitted before the run shows as active; give it a moment.
+    let seenActive = false;
+    for (let attempt = 0; ; attempt += 1) {
+      signal?.throwIfAborted?.();
+      const running = Boolean((await active({ headers: extra }))[id]);
+      if (running) seenActive = true;
+      else if (seenActive || attempt >= 3) return;
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(resolve, pollMs);
+        signal?.addEventListener?.("abort", () => {
+          clearTimeout(timer);
+          reject(signal.reason ?? new Error("aborted"));
+        }, { once: true });
+      });
+    }
+  }
+
+  async function eventPath() {
+    return openCodeEventPath((await info()).generation);
+  }
+
+  // Catalog: the shared /api routes give model metadata on both generations;
+  // /api/model/default is 2.x only. On 1.x DevMoter runs prompts on the classic
+  // runner, so GET /provider (the runner's own catalog) says which models run.
   async function catalogInputs({ signal } = {}) {
     const { generation, version } = await info();
     const timeout = () => signal || AbortSignal.timeout(15000);
-    const [providers, models, integrations, defaultModel] = await Promise.all([
+    const [providers, models, integrations, defaultModel, runnerCatalog] = await Promise.all([
       fetchJson("/api/provider", { signal: timeout() }),
       fetchJson("/api/model", { signal: timeout() }),
       fetchJson("/api/integration", { signal: timeout() }),
-      generation === OPENCODE_API_V2 ? fetchJson("/api/model/default", { signal: timeout() }) : null
+      generation === OPENCODE_API_V2 ? fetchJson("/api/model/default", { signal: timeout() }) : null,
+      generation === OPENCODE_API_V1 ? fetchJson("/provider", { signal: timeout() }) : null
     ]);
-    return { generation, version, providers, models, integrations, defaultModel };
+    return { generation, version, providers, models, integrations, defaultModel, runnerCatalog };
   }
 
-  return { fetchJson, info, invalidate, pendingRequests, catalogInputs };
+  return {
+    fetchJson,
+    info,
+    invalidate,
+    session,
+    createSession,
+    prompt,
+    active,
+    context,
+    interrupt,
+    permissions,
+    replyPermission,
+    questions,
+    replyQuestion,
+    rejectQuestion,
+    pendingRequests,
+    waitForIdle,
+    eventPath,
+    catalogInputs
+  };
 }

@@ -1,5 +1,5 @@
 {
- "_note": "Captured from a live OpenCode v1.19.5 server (opencode serve), trimmed. Paths are GET requests.",
+ "_note": "Captured from a live OpenCode v1.19.5 server (opencode serve), trimmed. Paths are GET requests. \"/provider\" is the classic runner catalog (GET /provider), trimmed to the models above plus one unconnected provider; gemini-3-pro is listed by /api/model as deprecated but no longer resolved by the runner.",
  "/api/info": "<non-JSON (HTML web UI fallthrough)>",
  "/global/health": {
   "healthy": true,
@@ -206,6 +206,80 @@
      "context": 262144,
      "output": 65536
     }
+   },
+   {
+    "id": "gemini-3-pro",
+    "providerID": "opencode",
+    "family": "gemini-pro",
+    "name": "Gemini 3 Pro",
+    "api": {
+     "id": "gemini-3-pro",
+     "type": "aisdk",
+     "package": "@ai-sdk/google",
+     "url": "https://opencode.ai/inference/google/v1beta",
+     "settings": {}
+    },
+    "capabilities": {
+     "tools": true,
+     "input": [
+      "text",
+      "image",
+      "video",
+      "audio",
+      "pdf"
+     ],
+     "output": [
+      "text"
+     ]
+    },
+    "request": {
+     "headers": {},
+     "body": {}
+    },
+    "variants": [],
+    "time": {
+     "released": 1763424000000
+    },
+    "cost": [
+     {
+      "input": 2,
+      "output": 12,
+      "cache": {
+       "read": 0.2,
+       "write": 0
+      }
+     },
+     {
+      "tier": {
+       "type": "context",
+       "size": 200000
+      },
+      "input": 4,
+      "output": 18,
+      "cache": {
+       "read": 0.4,
+       "write": 0
+      }
+     },
+     {
+      "tier": {
+       "type": "context",
+       "size": 200000
+      },
+      "input": 4,
+      "output": 18,
+      "cache": {
+       "read": 0.4,
+       "write": 0
+      }
+     }
+    ],
+    "status": "deprecated",
+    "enabled": true,
+    "limit": {
+     "context": 1048576,
+     "output": 65536
+    }
    }
   ]
  },
@@ -282,6 +356,119 @@
      }
     ]
    }
+  ]
+ },
+ "/provider": {
+  "all": [
+   {
+    "id": "anthropic",
+    "name": "Anthropic",
+    "source": "custom",
+    "env": [
+     "ANTHROPIC_API_KEY"
+    ],
+    "models": {
+     "claude-sonnet-4-5": {
+      "id": "claude-sonnet-4-5",
+      "providerID": "anthropic",
+      "name": "Claude Sonnet 4.5 (latest)",
+      "status": "active",
+      "cost": {
+       "input": 3,
+       "output": 15,
+       "cache": {
+        "read": 0.3,
+        "write": 3.75
+       }
+      }
+     }
+    }
+   },
+   {
+    "id": "opencode",
+    "name": "OpenCode",
+    "source": "env",
+    "env": [
+     "OPENCODE_API_KEY"
+    ],
+    "models": {
+     "claude-haiku-5-5": {
+      "id": "claude-haiku-5-5",
+      "providerID": "opencode",
+      "name": "Claude Haiku 5.5",
+      "status": "active",
+      "cost": {
+       "input": 0.1,
+       "output": 0.5,
+       "cache": {
+        "read": 0.01,
+        "write": 0.125
+       },
+       "tiers": [
+        {
+         "input": 0.5,
+         "output": 2.5,
+         "cache": {
+          "read": 0.05,
+          "write": 0.625
+         },
+         "tier": {
+          "type": "context",
+          "size": 100000
+         }
+        }
+       ]
+      }
+     },
+     "flint-40b-free": {
+      "id": "flint-40b-free",
+      "providerID": "opencode",
+      "name": "Flint 40B Free",
+      "status": "active",
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cache": {
+        "read": 0,
+        "write": 0
+       }
+      }
+     }
+    }
+   },
+   {
+    "id": "opencode-go",
+    "name": "OpenCode Go",
+    "source": "env",
+    "env": [
+     "OPENCODE_API_KEY"
+    ],
+    "models": {
+     "iceman-contributor-free": {
+      "id": "iceman-contributor-free",
+      "providerID": "opencode-go",
+      "name": "Iceman Contributor Free",
+      "status": "active",
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cache": {
+        "read": 0,
+        "write": 0
+       }
+      }
+     }
+    }
+   }
+  ],
+  "default": {
+   "opencode": "big-pickle",
+   "opencode-go": "gpt-5.6-luna",
+   "anthropic": "claude-sonnet-4-6"
+  },
+  "connected": [
+   "opencode",
+   "opencode-go"
   ]
  }
 }
