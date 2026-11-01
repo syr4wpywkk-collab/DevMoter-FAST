@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
+import * as deviceGate from "../src/device-gate.mjs";
 import { renderChatMarkdown } from "../src/chat-markdown.mjs";
 
 const workspaceSource = await readFile(new URL("../src/workspace-control.ts", import.meta.url), "utf8");
@@ -39,6 +40,7 @@ test("workspace enhancer preserves each chat renderer and source-backed code cop
   dom.window.setInterval = () => 1;
   dom.window.setTimeout = callback => timers.push(callback);
   dom.window.exports = {};
+  dom.window.require = name => name === "./device-gate.mjs" ? deviceGate : undefined;
   dom.window.eval(compiledWorkspace);
   const stop = dom.window.exports.startWorkspaceControl();
   t.after(stop);
@@ -108,6 +110,7 @@ test("workspace commands keep the existing theme, Context, checkpoint and extens
   dom.window.localStorage.setItem("opencode-pocket-codex-thread", "preserved-thread");
   document.body.classList.add("codex-mode");
   dom.window.exports = {};
+  dom.window.require = name => name === "./device-gate.mjs" ? deviceGate : undefined;
   dom.window.eval(compiledWorkspace);
   const stop = dom.window.exports.startWorkspaceControl();
   t.after(stop);

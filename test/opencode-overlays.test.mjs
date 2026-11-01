@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
+import * as deviceGate from "../src/device-gate.mjs";
 import { loadPureTypeScript } from "./helpers/ts-pure-modules.mjs";
 
 const source = await readFile(new URL("../src/opencode.ts", import.meta.url), "utf8");
@@ -53,6 +54,7 @@ function mount(t) {
   const noop = () => {};
   dom.window.require = name => {
     if (modules.has(name)) return modules.get(name);
+    if (name === "./device-gate.mjs") return deviceGate;
     if (name.endsWith(".css")) return {};
     if (name === "./i18n") return { speechRecognitionLanguage: () => "en-US" };
     if (name === "./wake-lock") return {

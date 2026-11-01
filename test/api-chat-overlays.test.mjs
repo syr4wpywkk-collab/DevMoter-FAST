@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
+import * as deviceGate from "../src/device-gate.mjs";
 
 const compile = source => ts.transpileModule(source, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
@@ -66,6 +67,7 @@ function mount(t, { deferPresets = false } = {}) {
   dom.window.require = name => {
     if (name === "./i18n") return { getLanguage: () => "en" };
     if (name.endsWith(".css")) return {};
+    if (name === "./device-gate.mjs") return deviceGate;
     if (modules.has(name)) return modules.get(name);
     throw new Error(`Unexpected dependency: ${name}`);
   };
