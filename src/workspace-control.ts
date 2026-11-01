@@ -1,3 +1,5 @@
+import { createDeviceGate, isDeviceAuthError, responseError } from "./device-gate.mjs";
+
 type ThemeMode = "system" | "light" | "dark";
 type Json = Record<string, any>;
 
@@ -249,6 +251,18 @@ function createWorkspacePanel() {
   const panelHead = (title: string) =>
     `<div class="dm-panel-head"><strong>${escapeHtml(title)}</strong><button type="button" data-close aria-label="閉じる">×</button></div>`;
   const wireClose = () => panel.querySelector("[data-close]")?.addEventListener("click", closePanel);
+  // Device-bound panels show one registration gate instead of a raw 401/403 message.
+  const showFailure = (title: string, error: unknown) => {
+    panel.innerHTML = panelHead(title);
+    wireClose();
+    if (isDeviceAuthError(error)) {
+      panel.append(createDeviceGate(document, { onRegister: closePanel }));
+      return;
+    }
+    const message = document.createElement("p");
+    message.textContent = error instanceof Error ? error.message : String(error);
+    panel.append(message);
+  };
 
   const themeModes: ThemeMode[] = ["system", "light", "dark"];
   const cycleTheme = () => {
@@ -297,12 +311,12 @@ function createWorkspacePanel() {
     const state = renderContext();
     panel.classList.remove("hidden");
     panel.innerHTML =
-      panelHead("表示履歴の目安") +
+      panelHead("表示履歴") +
       `<p>表示テキストからの概算: <strong>${state.used.toLocaleString()}</strong> token相当。実際の送信token数やモデルの上限はここでは取得していません。</p>
        <label>表示整理の基準（${state.max.toLocaleString()} token相当）の割合 <input data-threshold type="range" min="0.5" max="0.95" step="0.01" value="${state.threshold}" ${state.eventViewSupported ? "" : "disabled"}><span>${Math.round(state.threshold * 100)}%</span></label>
        <button type="button" data-compact ${state.eventViewSupported ? "" : "disabled"}>イベント表示を整理</button>
        ${state.eventViewSupported ? "" : "<p>Codex / OpenCode の会話のみ。API Chatの会話履歴はこの機能の対象外です。</p>"}
-       <small>Last compaction: ${state.lastCompactAt ? new Date(state.lastCompactAt).toLocaleString() : "not yet"}</small>
+       <small>前回の整理: ${state.lastCompactAt ? new Date(state.lastCompactAt).toLocaleString() : "まだありません"}</small>
        <small data-status>表示だけを整理します。AIへ送る内容の圧縮やtoken・料金削減は行いません。元の記録はサーバーに残ります。</small>`;
     wireClose();
     const threshold = panel.querySelector<HTMLInputElement>("[data-threshold]")!;
@@ -321,19 +335,19 @@ function createWorkspacePanel() {
   const openCheckpoints = async () => {
     const parentId = activeSessionId();
     panel.classList.remove("hidden");
-    panel.innerHTML = panelHead("Task checkpoints") + "<p>Loading current micro-task…</p>";
+    panel.innerHTML = panelHead("チェックポイント") + "<p>現在のタスクを読み込んでいます…</p>";
     wireClose();
     try {
       const res = await workspaceControlFetch(
         `/api/workspace-control/microtasks?parentId=${encodeURIComponent(parentId)}`
       );
       const payload = await res.json();
-      if (!res.ok) throw new Error(payload?.error || "Could not load task plan");
+      if (!res.ok) throw responseError(res.status, payload?.error || "Could not load task plan");
       const plan = payload?.plan as Json | null;
       if (!plan || !Array.isArray(plan.steps) || !plan.steps.length) {
         panel.innerHTML =
-          panelHead("Task checkpoints") +
-          "<p>No checkpoint plan is active for this session.</p><small>Agents create one via the micro-task API</small>";
+          panelHead("チェックポイント") +
+          "<p>このセッションにはチェックポイントがありません</p>";
         wireClose();
         return;
       }
@@ -342,8 +356,8 @@ function createWorkspacePanel() {
         Math.min(Number(plan.current) || 0, plan.steps.length - 1)
       );
       panel.innerHTML =
-        panelHead(String(plan.title || "Task")) +
-        `<div class="dm-task-list"></div><div class="dm-task-actions"></div><small>Step ${currentIndex + 1} of ${plan.steps.length}</small>`;
+        panelHead("チェックポイント") +
+        `<p><strong>${escapeHtml(String(plan.title || "タスク"))}</strong></p><div class="dm-task-list"></div><div class="dm-task-actions"></div><small>Step ${currentIndex + 1} of ${plan.steps.length}</small>`;
       wireClose();
       const list = panel.querySelector<HTMLElement>(".dm-task-list")!;
       plan.steps.forEach((step: Json, index: number) => {
@@ -395,22 +409,22 @@ function createWorkspacePanel() {
         actions.appendChild(button);
       }
     } catch (error) {
-      panel.append(error instanceof Error ? error.message : String(error));
+      showFailure("チェックポイント", error);
     }
   };
 
   const openExtensions = async () => {
     panel.classList.remove("hidden");
-    panel.innerHTML = panelHead("Extensions") + "<p>Loading approved catalog…</p>";
+    panel.innerHTML = panelHead("拡張機能") + "<p>読み込み中…</p>";
     wireClose();
     try {
       const res = await workspaceControlFetch("/api/workspace-control");
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Could not load extensions");
+      if (!res.ok) throw responseError(res.status, data?.error || "Could not load extensions");
       const installed = data.extensions?.installed || {};
       const items = data.extensions?.catalog || [];
       panel.innerHTML =
-        panelHead("Extensions") + '<div class="dm-extension-list"></div>';
+        panelHead("拡張機能") + '<div class="dm-extension-list"></div>';
       wireClose();
       const list = panel.querySelector<HTMLElement>(".dm-extension-list")!;
       for (const item of items) {
@@ -444,7 +458,7 @@ function createWorkspacePanel() {
         list.appendChild(row);
       }
     } catch (error) {
-      panel.append(error instanceof Error ? error.message : String(error));
+      showFailure("拡張機能", error);
     }
   };
 
@@ -497,6 +511,8 @@ function injectStyles() {
     .dm-extension-row div,.dm-task-row div { display:grid; gap:2px; min-width:0; }
     .dm-extension-row small,.dm-task-row small { opacity:.72; overflow-wrap:anywhere; }
     .dm-task-row.current { outline:1px solid color-mix(in srgb,currentColor 35%,transparent); }
+    .dm-device-gate { display:grid; gap:8px; justify-items:start; margin:12px 0 0; }
+    .dm-device-gate small { margin:0; opacity:.72; }
     .dm-task-actions { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0; }
     .ocx-assistant-text p { margin:.35em 0; white-space:normal; }
     .ocx-assistant-text h1,.ocx-assistant-text h2,.ocx-assistant-text h3 { margin:.7em 0 .35em; }

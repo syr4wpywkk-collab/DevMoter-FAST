@@ -4,9 +4,10 @@ import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
+import * as deviceGate from "../src/device-gate.mjs";
 
 const source = await readFile(new URL("../src/control-center.ts", import.meta.url), "utf8");
-const compiled = ts.transpileModule(source.replace(/^import .*;\s*$/gm, ""), {
+const compiled = ts.transpileModule(source.replace(/^import (?!.*device-gate).*;\s*$/gm, ""), {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
 }).outputText;
 const settle = async () => {
@@ -68,7 +69,7 @@ test("Tools panel exposes an accessible modal and keeps real safety/index workfl
   const exports = {};
   const module = { exports };
   vm.runInNewContext(compiled, {
-    exports, module, require: () => ({}), window, document: window.document,
+    exports, module, require: name => name === "./device-gate.mjs" ? deviceGate : {}, window, document: window.document,
     HTMLElement: window.HTMLElement, HTMLDivElement: window.HTMLDivElement,
     localStorage: window.localStorage, sessionStorage: window.sessionStorage,
     fetch: window.fetch, Headers, crypto: window.crypto, btoa: window.btoa.bind(window),

@@ -11,7 +11,7 @@ test("unified feature shell exposes the major implemented surfaces", async () =>
   const [shell, registry, settings] = await Promise.all([source("src/app-shell.ts"), source("src/app-registry.ts"), source("src/settings.ts")]);
   assert.ok(shell.includes("getAppDefinition(id)"));
   for (const label of ["Mission Control", "Terminal", "Git", "Review", "Agents", "Sessions / Activity", "Projects", "Developer Workflows"]) assert.ok(registry.includes(label), label);
-  for (const label of ["ターミナル", "プロジェクトインデックス", "セーフティスキャン", "API Vault", "Trusted devices", "Passkeys", "ホスト registry", "診断"]) assert.ok(settings.includes(label), label);
+  for (const label of ["ターミナル", "プロジェクトインデックス", "セーフティスキャン", "API Vault", "信頼済み端末", "パスキー", "ホスト一覧", "診断"]) assert.ok(settings.includes(label), label);
 });
 
 test("unified feature shell targets real mounted launchers and navigation IDs", async () => {

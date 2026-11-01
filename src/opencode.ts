@@ -467,7 +467,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   // First user prompt per session, used only for display labels (stored titles stay untouched).
   const sessionFirstPrompts = new Map<string, string>();
   const sessionLabel = (session: Json | null | undefined) =>
-    openCodeSessionLabel(session, { firstPrompt: session?.id ? sessionFirstPrompts.get(session.id) : undefined });
+    openCodeSessionLabel(session, { firstPrompt: session?.id ? sessionFirstPrompts.get(session.id) : undefined, language: document.documentElement.lang });
   function noteFirstPrompt(text: string) {
     if (!activeSession?.id || !text.trim() || sessionFirstPrompts.has(activeSession.id)) return false;
     sessionFirstPrompts.set(activeSession.id, text);

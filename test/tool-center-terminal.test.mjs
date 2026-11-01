@@ -4,9 +4,10 @@ import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
+import * as deviceGate from "../src/device-gate.mjs";
 
 const source = await readFile(new URL("../src/control-center.ts", import.meta.url), "utf8");
-const compiled = ts.transpileModule(source.replace(/^import .*;\s*$/gm, ""), {
+const compiled = ts.transpileModule(source.replace(/^import (?!.*device-gate).*;\s*$/gm, ""), {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
 }).outputText;
 
@@ -95,7 +96,7 @@ function mount({ fetch, confirm = () => true, prompt = () => null, storedRecord 
   vm.runInNewContext(compiled, {
     exports,
     module,
-    require: name => name === "@xterm/xterm"
+    require: name => name === "./device-gate.mjs" ? deviceGate : name === "@xterm/xterm"
       ? { Terminal: FakeTerminal }
       : name === "@xterm/addon-fit"
         ? { FitAddon: FakeFitAddon }
@@ -140,8 +141,15 @@ test("mounting and opening Tools only lists sessions and shows the Trusted-devic
   app.document.querySelector(".dm-tools-launcher").click();
   await settle();
 
-  assert.ok(app.document.querySelector("[data-terminal-device-gate]"));
-  assert.match(app.document.querySelector(".dm-terminal-status").textContent, /Trusted device required/);
+  const gate = app.document.querySelector("[data-terminal-device-gate]");
+  assert.ok(gate);
+  // The raw server error is replaced by the shared gate, not shown next to it.
+  assert.equal(app.document.querySelector(".dm-terminal-status").textContent, "");
+  assert.equal(gate.querySelector("[data-device-gate-register]").textContent, "端末を登録");
+  const opened = [];
+  app.window.addEventListener("devmoter:open-settings", event => opened.push(event.detail));
+  gate.querySelector("[data-device-gate-register]").click();
+  assert.deepEqual(opened, [{ page: "devices" }]);
   assert.ok(requests.filter(item => item.url === "/api/terminal/sessions").length > 0);
   assert.ok(requests.filter(item => item.url === "/api/terminal/sessions").every(item => item.method === "GET"));
   assert.equal(requests.some(item => item.method === "POST" || item.method === "DELETE"), false);

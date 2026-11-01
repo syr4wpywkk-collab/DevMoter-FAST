@@ -5,6 +5,9 @@ type Json = Record<string, any>;
 type SettingsPage = "root" | "appearance" | "account" | "devices" | "vault" | "notifications" | "diagnostics" | "guide";
 
 const THEME_KEY = "devmoter-theme";
+// Inline so the settings module stays loadable standalone in tests.
+const EXTERNAL_ICON = '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5 7 9M12 9.5v3a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3"/></svg>';
+const SETUP_GUIDE_URL = "https://github.com/syr4wpywkk-collab/DevMoter-FAST/blob/main/docs/auth-v2.md";
 const DENSITY_KEY = "devmoter-settings-density";
 
 function escapeHtml(value: unknown) {
@@ -60,6 +63,31 @@ function themeLabel(mode: string) {
 
 function densityLabel(value: string) {
   return value === "compact" ? "コンパクト" : "標準";
+}
+
+/** "3f2b9c1e…8b9c" for a long ID such as the owner UUID. Display only; copy uses the full value. */
+function shortId(value: string, head = 8, tail = 4) {
+  const text = value.trim();
+  return text.length <= head + tail + 1 ? text : `${text.slice(0, head)}…${text.slice(-tail)}`;
+}
+
+async function copyText(text: string) {
+  if (!text) return false;
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Clipboard API needs a secure context; plain-http LAN hosts fall back to execCommand.
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+    document.body.appendChild(area);
+    area.select();
+    const copied = document.execCommand("copy");
+    area.remove();
+    return copied;
+  }
 }
 
 function isLoopbackBrowser() {
@@ -126,6 +154,8 @@ export function mountSettingsPanel() {
     badge?: string;
     danger?: boolean;
     disabled?: boolean;
+    /** Leaves the app (new tab): trailing external icon instead of the chevron. */
+    external?: string;
   } = {}) {
     return `
       <button
@@ -133,6 +163,7 @@ export function mountSettingsPanel() {
         type="button"
         ${options.action ? `data-action="${escapeHtml(options.action)}"` : ""}
         ${options.disabled ? "disabled" : ""}
+        ${options.external ? `aria-label="${escapeHtml(`${label}（${options.external}が新しいタブで開きます）`)}"` : ""}
       >
         <span class="devmoter-settings-icon" aria-hidden="true">${icon}</span>
         <span class="devmoter-settings-row-copy">
@@ -140,7 +171,9 @@ export function mountSettingsPanel() {
           ${options.value ? `<small>${escapeHtml(options.value)}</small>` : ""}
         </span>
         ${options.badge ? `<span class="devmoter-settings-badge">${escapeHtml(options.badge)}</span>` : ""}
-        <span class="devmoter-settings-chevron" aria-hidden="true">›</span>
+        ${options.external
+          ? `<span class="devmoter-settings-chevron external" aria-hidden="true">${EXTERNAL_ICON}</span>`
+          : '<span class="devmoter-settings-chevron" aria-hidden="true">›</span>'}
       </button>
     `;
   }
@@ -180,7 +213,6 @@ export function mountSettingsPanel() {
         ? "接続できます"
         : "未設定";
     const appVersion = diagnostics?.app?.version || "0.2.0";
-    const projectCount = diagnostics?.projects?.count ?? 0;
 
     scroll.innerHTML = `
       <button class="devmoter-settings-profile" type="button" data-action="page:account">
@@ -193,57 +225,41 @@ export function mountSettingsPanel() {
       </button>
 
       ${section("ワークスペース",
-        row("✦", "Activity / Session Control", { action: "existing:.sc-fab", value: "実行中・Queue・Checkpoint・History" }) +
-        row("⌁", "Review & Tasks", { action: "existing:#wfLaunch", value: "差分・Worktree・GitHub" }) +
-        row("◇", "エージェントモード", { action: "existing:#devmoterAgentLauncher", value: "Mode・Subagent・Fleet" }) +
-        row("◒", "Context", { action: "command:context", value: "表示履歴の目安・イベント整理" }) +
-        row("✓", "Task checkpoints", { action: "command:checkpoints", value: "現在のmicro-task" })
+        row("✦", "アクティビティ", { action: "existing:.sc-fab", value: "実行中・キュー・チェックポイント・履歴" }) +
+        row("⌁", "レビューとタスク", { action: "existing:#wfLaunch", value: "差分・ワークツリー・GitHub" }) +
+        row("◇", "エージェントモード", { action: "existing:#devmoterAgentLauncher", value: "モード・サブエージェント・フリート" }) +
+        row("◒", "表示履歴", { action: "command:context", value: "表示量の目安と整理" }) +
+        row("✓", "チェックポイント", { action: "command:checkpoints", value: "現在のタスク" })
       )}
 
       ${section("DevMoter をカスタマイズする",
-        row("▣", "表示とレイアウト", { action: "page:appearance", value: densityLabel(density) }) +
-        row("◐", "テーマ", { action: "page:appearance", value: themeLabel(theme) }) +
+        row("◐", "テーマと表示", { action: "page:appearance", value: `${themeLabel(theme)} · ${densityLabel(density)}` }) +
         row("♢", "通知", { action: "page:notifications" })
       )}
 
-      ${section("アカウント",
-        row("◎", "サインイン", { action: "page:account", value: `${provider} · ${login}` }) +
-        row("◈", "サインイン方法", { action: "page:account", value: "アカウントとセッションを管理" }) +
-        row("◌", "使用状況と制限", { action: "page:diagnostics", value: `${projectCount} Projects` })
-      )}
-
       ${section("セキュリティとログイン",
-        row("◎", "サインイン方法", { action: "page:account" }) +
-        row("◆", "Passkeys", { action: "remote:passkeys" }) +
-        row("▱", "Trusted devices", { action: "page:devices" }) +
-        row("◇", "API Vault", { action: "page:vault", value: "Hostで暗号化して管理" })
+        row("◆", "パスキー", { action: "remote:passkeys" }) +
+        row("▱", "信頼済み端末", { action: "page:devices", value: "端末の登録とペアリングコード" }) +
+        row("◇", "API Vault", { action: "page:vault", value: "ホストで暗号化して保存" })
       )}
 
       ${section("リモートと自動化",
-        row("▤", "ホスト registry", { action: "remote:hosts" }) +
-        row("◷", "Automation / Schedules", { action: "remote:automation" }) +
-        row("⌁", "ペアリングコード", { action: "page:devices" }) +
-        row("♢", "通知設定", { action: "page:notifications" })
+        row("▤", "ホスト一覧", { action: "remote:hosts" }) +
+        row("◷", "自動化", { action: "remote:automation" })
       )}
 
       ${section("開発者ツール",
         row("⌘", "ターミナル", { action: "tool:terminal" }) +
         row("▥", "プロジェクトインデックス", { action: "tool:index" }) +
         row("◇", "セーフティスキャン", { action: "tool:safety" }) +
-        row("✦", "拡張機能と Skills", { action: "command:extensions" }) +
-        row("◎", "クラウドブラウザー / Preview", { action: "existing:.adv-fab" }) +
+        row("✦", "拡張機能", { action: "command:extensions" }) +
+        row("◎", "ファイルとプレビュー", { action: "existing:.adv-fab" }) +
         row("⌁", "診断", { action: "page:diagnostics", value: `v${appVersion}` })
-      )}
-
-      ${section("データ管理",
-        row("▰", "ストレージ", { action: "existing:.adv-fab" }) +
-        row("◫", "データコントロール", { action: "page:diagnostics" })
       )}
 
       ${section("ヘルプ",
         row("?", "使い方ガイド", { action: "page:guide" }) +
-        row("⚑", "不具合を報告", { action: "report" }) +
-        row("ⓘ", "詳細", { action: "page:diagnostics", value: `DevMoter FAST v${appVersion}` })
+        row("⚑", "不具合を報告", { action: "report", value: "GitHub の Issue を開く", external: "GitHub" })
       )}
 
       <div class="devmoter-settings-card devmoter-settings-logout-card">
@@ -254,7 +270,7 @@ export function mountSettingsPanel() {
   }
 
   function renderAppearance() {
-    setHeader("表示とレイアウト", "DevMoter FAST をカスタマイズ");
+    setHeader("テーマと表示", "DevMoter FAST をカスタマイズ");
     const theme = currentTheme();
     const density = localStorage.getItem(DENSITY_KEY) || "comfortable";
     scroll.innerHTML = `
@@ -278,10 +294,11 @@ export function mountSettingsPanel() {
     const displayIdentity = identity?.login || identity?.email || identity?.name || "接続済み";
     return '<div class="devmoter-settings-device"><span><strong>' + escapeHtml(label) + '</strong><small>' +
       (linked ? escapeHtml(displayIdentity) : configured ? "未接続" : "このホストでは利用できません") +
-      '</small>' + (configured || linked ? "" : '<a href="https://github.com/syr4wpywkk-collab/DevMoter-FAST/blob/main/docs/auth-v2.md" target="_blank" rel="noopener noreferrer">管理者向けセットアップ案内</a>') +
-      '</span>' + (linked
+      '</small></span>' + (linked
         ? '<button type="button" aria-label="' + escapeHtml(label) + 'の接続を解除" data-action="account:disconnect" data-provider="' + provider + '">接続解除</button>'
-        : '<button type="button" aria-label="' + escapeHtml(label) + 'を接続" data-action="account:connect" data-provider="' + provider + '"' + (configured ? "" : " disabled") + '>接続</button>') +
+        : configured
+          ? '<button type="button" aria-label="' + escapeHtml(label) + 'を接続" data-action="account:connect" data-provider="' + provider + '">接続</button>'
+          : '<a class="devmoter-settings-link-button" href="' + SETUP_GUIDE_URL + '" target="_blank" rel="noopener noreferrer" aria-label="' + escapeHtml(label) + 'の管理者向けセットアップ案内">セットアップ案内</a>') +
       '</div>';
   }
 
@@ -294,7 +311,7 @@ export function mountSettingsPanel() {
       };
       const identity = session.identity?.login || session.identity?.email || session.identity?.name || "";
       return '<div class="devmoter-settings-device"><span><strong>' +
-        escapeHtml((session.current ? "このセッション · " : "") + (session.provider || "Owner") + " · " + identity) +
+        escapeHtml((session.current ? "このセッション · " : "") + (session.provider || "オーナー") + " · " + identity) +
         '</strong><small>' + escapeHtml(session.host || "") + " · 作成 " + escapeHtml(date(session.createdAt)) +
         " · 最終使用 " + escapeHtml(date(session.lastUsedAt)) + " · 期限 " + escapeHtml(date(session.expiresAt)) +
         '</small></span>' + (session.current
@@ -321,22 +338,24 @@ export function mountSettingsPanel() {
       providerButton("google", "Google", Boolean(providers.google?.configured), Boolean(providers.google?.linked), providers.google?.identity) +
       providerButton("microsoft", "Microsoft", Boolean(providers.microsoft?.configured), Boolean(providers.microsoft?.linked), providers.microsoft?.identity);
     const passkey = accountData?.passkey || {};
+    const ownerId = String(accountData?.ownerId || "");
     scroll.innerHTML = `
       <div class="devmoter-settings-profile detail">
         <span class="devmoter-settings-avatar">DM</span>
         <span>
           <strong>${escapeHtml(identity?.login || "devmoter")}</strong>
-          <small>DevMoter owner · ${escapeHtml(accountData?.ownerId || "")}</small>
+          <small>オーナーID <span class="devmoter-settings-mono" title="${escapeHtml(ownerId)}">${escapeHtml(shortId(ownerId))}</span></small>
         </span>
+        ${ownerId ? '<button type="button" class="devmoter-settings-copy" data-action="account:copy-owner" aria-label="オーナーIDをコピー">コピー</button>' : ""}
       </div>
       <section class="devmoter-settings-section"><h2>サインイン方法</h2><div class="devmoter-settings-card">
         ${providerRows}
-        <div class="devmoter-settings-device"><span><strong>Passkey</strong><small>${passkey.available ? "このホストで利用可能 · Face ID / Touch ID / Windows Hello" : "このホストでは登録済みPasskeyがありません"}</small></span><button type="button" data-action="remote:passkeys">管理</button></div>
+        <div class="devmoter-settings-device"><span><strong>パスキー</strong><small>${passkey.available ? "このホストで利用可能 · Face ID / Touch ID / Windows Hello" : "このホストには登録済みのパスキーがありません"}</small></span><button type="button" data-action="remote:passkeys">管理</button></div>
         <div class="devmoter-settings-device"><span><strong>ローカル復旧</strong><small>${accountData?.localRecovery ? "利用可能" : "利用できません"}</small></span><span class="devmoter-settings-badge">復旧用</span></div>
       </div></section>
       ${githubLink ? '<section class="devmoter-settings-section"><h2>GitHub接続</h2><div class="devmoter-settings-card devmoter-settings-detail-card"><p>GitHubでこのコードを入力してください。</p><strong>' +
         escapeHtml(githubLink.userCode || "") + '</strong><div class="devmoter-settings-actions"><button type="button" data-action="account:github-open">GitHubを開く</button><button type="button" data-action="account:github-cancel">キャンセル</button></div><small>このコードはログイン情報です。共有しないでください。</small></div></section>' : ""}
-      <section class="devmoter-settings-section"><h2>Owner sessions</h2><div class="devmoter-settings-card">${renderSessions(sessions)}</div>
+      <section class="devmoter-settings-section"><h2>ログイン中のセッション</h2><div class="devmoter-settings-card">${renderSessions(sessions)}</div>
         ${sessions.some((session: Json) => !session.current) ? '<div class="devmoter-settings-actions"><button type="button" data-action="account:revoke-others">他のセッションをすべて解除</button></div>' : ""}
       </section>
       <div class="devmoter-settings-card devmoter-settings-logout-card">
@@ -347,7 +366,7 @@ export function mountSettingsPanel() {
   }
 
   async function renderDevices() {
-    setHeader("Trusted devices", "端末の信頼とペアリング");
+    setHeader("信頼済み端末", "端末の信頼とペアリング");
     let deviceData: Json | null = null;
     try {
       deviceData = await request("/api/devices", {}, true);
@@ -359,22 +378,22 @@ export function mountSettingsPanel() {
     const localBootstrap = isLoopbackBrowser();
     const trustedDeviceCount = Number(diagnostics?.deviceSecurity?.trustedDevices || 0);
     const untrustedGuidance = localBootstrap
-      ? "このlocalhostブラウザを最初のTrusted deviceとして登録できます。"
+      ? "このブラウザ（localhost）を最初の信頼済み端末として登録できます。"
       : trustedDeviceCount > 0
-        ? "この端末はリモート接続中です。既存のTrusted deviceでペアリングコードを作成し、下に入力してください。"
-        : "最初のTrusted deviceはセキュリティ上localhost / 127.0.0.1から作成する必要があります。その後、この端末を6桁コードでペアリングできます。";
+        ? "この端末はリモート接続中です。信頼済み端末でペアリングコードを作成し、下に入力してください。"
+        : "最初の信頼済み端末は、セキュリティのため localhost（127.0.0.1）から登録してください。その後、この端末を6桁のコードでペアリングできます。";
     scroll.innerHTML = `
       <section class="devmoter-settings-section">
         <h2>この端末</h2>
         <div class="devmoter-settings-card devmoter-settings-detail-card">
           <div class="devmoter-settings-detail-row">
-            <span>状態</span><strong>${trusted ? "Trusted" : "未登録"}</strong>
+            <span>状態</span><strong>${trusted ? "信頼済み" : "未登録"}</strong>
           </div>
           <div class="devmoter-settings-actions">
             ${trusted
               ? '<button type="button" data-action="device:create-code">ペアリングコードを作成</button>'
               : localBootstrap
-                ? '<button type="button" data-action="device:bootstrap">このlocalhostブラウザを信頼する</button>'
+                ? '<button type="button" data-action="device:bootstrap">このブラウザを信頼する</button>'
                 : ''}
           </div>
           ${trusted ? "" : `<div class="devmoter-settings-note">${escapeHtml(untrustedGuidance)}</div>`}
@@ -394,7 +413,7 @@ export function mountSettingsPanel() {
         <div class="devmoter-settings-card">
           ${devices.length ? devices.map((device: Json) => `
             <div class="devmoter-settings-device">
-              <span><strong>${escapeHtml(device.label || "Device")}</strong><small>${device.current ? "この端末 · " : ""}最終使用 ${escapeHtml(new Date(device.lastUsedAt).toLocaleString())}</small></span>
+              <span><strong>${escapeHtml(device.label || "端末")}</strong><small>${device.current ? "この端末 · " : ""}最終使用 ${escapeHtml(new Date(device.lastUsedAt).toLocaleString())}</small></span>
               <button type="button" data-action="device:revoke" data-device-id="${escapeHtml(device.id)}">解除</button>
             </div>
           `).join("") : '<div class="devmoter-settings-empty">登録済み端末はありません。</div>'}
@@ -406,11 +425,11 @@ export function mountSettingsPanel() {
   }
 
   async function renderVault() {
-    setHeader("API Vault", "Host側で暗号化する認証情報");
+    setHeader("API Vault", "ホスト側で暗号化する認証情報");
     const trusted = await request("/api/devices", {}, true).then(() => true).catch(() => false);
     if (!trusted) {
       scroll.innerHTML = `
-        <div class="devmoter-settings-note">Vaultを使うには、このブラウザをTrusted deviceとして登録してね。</div>
+        <div class="devmoter-settings-note">Vaultを使うには、このブラウザを信頼済み端末として登録してください。</div>
         <div class="devmoter-settings-card devmoter-settings-action-card">
           <button type="button" data-action="page:devices">端末の登録へ</button>
         </div>
@@ -438,13 +457,13 @@ export function mountSettingsPanel() {
         <section class="devmoter-settings-section">
           <h2>${status.initialized ? "Vaultはロック中" : "新しいVault"}</h2>
           <form class="devmoter-settings-card devmoter-settings-form-card" data-vault-unlock-form>
-            <label for="devmoterVaultPassphrase">Vault passphrase</label>
+            <label for="devmoterVaultPassphrase">パスフレーズ</label>
             <input id="devmoterVaultPassphrase" data-vault-passphrase type="password" autocomplete="current-password" minlength="12" maxlength="1024" required />
-            <small>12文字以上。忘れると復元できないので、パスワードマネージャーへ保管してね。</small>
+            <small>12文字以上。忘れると復元できないため、パスワードマネージャーに保管してください。</small>
             <button type="submit">${label}</button>
           </form>
         </section>
-        <p class="devmoter-settings-note">Passphraseは保存も再表示もしない。秘密値は暗号化してHostに保存する。</p>
+        <p class="devmoter-settings-note">パスフレーズは保存も再表示もしません。シークレットは暗号化してホストに保存します。</p>
       `;
       scroll.querySelector<HTMLFormElement>("[data-vault-unlock-form]")?.addEventListener("submit", async event => {
         event.preventDefault();
@@ -456,7 +475,7 @@ export function mountSettingsPanel() {
             method: "POST",
             body: JSON.stringify({ passphrase })
           }, true);
-          toast(action === "initialize" ? "Vaultを作成してロック解除したよ。" : "Vaultのロックを解除したよ。");
+          toast(action === "initialize" ? "Vaultを作成してロックを解除しました。" : "Vaultのロックを解除しました。");
           await renderVault();
         } catch (error) {
           toast(error instanceof Error ? error.message : String(error));
@@ -496,21 +515,21 @@ export function mountSettingsPanel() {
         <div class="devmoter-vault-secret-main">
           <strong>${escapeHtml(secret.provider)}/${escapeHtml(secret.name)}</strong>
           <small>•••••••• · ${escapeHtml(secret.purpose || "用途未設定")}</small>
-          <small>${Array.isArray(secret.projectIds) ? secret.projectIds.length : 0} Projects · 最終使用 ${escapeHtml(secret.lastUsedAt ? new Date(secret.lastUsedAt).toLocaleString() : "未使用")}</small>
-          ${secret.duplicate ? '<small class="devmoter-vault-warning">同じ値のSecretが他にも登録されている</small>' : ""}
+          <small>プロジェクト ${Array.isArray(secret.projectIds) ? secret.projectIds.length : 0}件 · 最終使用 ${escapeHtml(secret.lastUsedAt ? new Date(secret.lastUsedAt).toLocaleString() : "未使用")}</small>
+          ${secret.duplicate ? '<small class="devmoter-vault-warning">同じ値のシークレットが他にも登録されています</small>' : ""}
         </div>
         <div class="devmoter-vault-secret-actions">
           <button type="button" data-action="vault:edit" data-vault-reference="${escapeHtml(secret.reference)}">更新</button>
           <button type="button" data-action="vault:delete" data-vault-reference="${escapeHtml(secret.reference)}">削除</button>
         </div>
       </article>
-    `).join("") : '<div class="devmoter-settings-empty">登録済みのSecretはありません。</div>';
+    `).join("") : '<div class="devmoter-settings-empty">登録済みのシークレットはありません。</div>';
 
     scroll.innerHTML = `
       <section class="devmoter-settings-section">
         <h2>Vaultの状態</h2>
         <div class="devmoter-settings-card devmoter-settings-detail-card">
-          <div class="devmoter-settings-detail-row"><span>状態</span><strong>Unlocked · ${escapeHtml(status.count ?? secrets.length)}件</strong></div>
+          <div class="devmoter-settings-detail-row"><span>状態</span><strong>ロック解除中 · ${escapeHtml(status.count ?? secrets.length)}件</strong></div>
           <div class="devmoter-settings-actions"><button type="button" data-action="vault:lock">Vaultをロック</button></div>
         </div>
       </section>
@@ -519,19 +538,19 @@ export function mountSettingsPanel() {
         <div class="devmoter-settings-card devmoter-vault-list">${secretRows}</div>
       </section>
       <section class="devmoter-settings-section">
-        <h2 data-vault-form-title>Secretを追加</h2>
+        <h2 data-vault-form-title>シークレットを追加</h2>
         <form class="devmoter-settings-card devmoter-settings-form-card" data-vault-form>
-          <label>Provider ID<input name="provider" autocomplete="off" maxlength="80" required placeholder="openai" /></label>
-          <label>Secret name<input name="name" autocomplete="off" maxlength="80" required placeholder="personal" /></label>
-          <label>Secret value<input name="value" type="password" autocomplete="new-password" maxlength="16384" required /></label>
-          <label>用途<input name="purpose" autocomplete="off" maxlength="200" placeholder="Build / API chat など" /></label>
+          <label>プロバイダーID<input name="provider" autocomplete="off" maxlength="80" required placeholder="openai" /></label>
+          <label>名前<input name="name" autocomplete="off" maxlength="80" required placeholder="personal" /></label>
+          <label>値<input name="value" type="password" autocomplete="new-password" maxlength="16384" required /></label>
+          <label>用途<input name="purpose" autocomplete="off" maxlength="200" placeholder="ビルド、API Chat など" /></label>
           <label>環境変数名（任意）<input name="envName" autocomplete="off" maxlength="128" placeholder="OPENAI_API_KEY" /></label>
-          <fieldset class="devmoter-vault-projects"><legend>利用できるProject（最低1つ）</legend>${projectOptions || '<small>登録済みProjectがないため、先にProjectを追加してね。</small>'}</fieldset>
+          <fieldset class="devmoter-vault-projects"><legend>利用できるプロジェクト（1つ以上）</legend>${projectOptions || '<small>登録済みのプロジェクトがありません。先にプロジェクトを追加してください。</small>'}</fieldset>
           <button type="submit" ${projects.length ? "" : "disabled"} data-vault-save>Vaultに保存</button>
-          <small>保存後は再表示しない。AES-256-GCMで暗号化してHostに保存</small>
+          <small>保存後は再表示しません。AES-256-GCMで暗号化してホストに保存します</small>
         </form>
       </section>
-      <p class="devmoter-settings-note">Reveal / Copy と API Chat・Agent 連携は未対応</p>
+      <p class="devmoter-settings-note">値の表示・コピーと、API Chat・エージェントとの連携には未対応です</p>
     `;
 
     vaultFormElement = scroll.querySelector<HTMLFormElement>("[data-vault-form]");
@@ -545,10 +564,10 @@ export function mountSettingsPanel() {
       const reference = `secret://${provider}/${name}`;
       const replacing = secrets.some(secret => secret.reference === reference);
       if (!projectIds.length) {
-        toast("利用するProjectを1つ以上選んでね。");
+        toast("利用するプロジェクトを1つ以上選んでください。");
         return;
       }
-      if (replacing && !window.confirm(`${reference} の値を置き換える？`)) return;
+      if (replacing && !window.confirm(`${reference} の値を置き換えますか？`)) return;
       const saveButton = form.querySelector<HTMLButtonElement>("[data-vault-save]");
       if (saveButton) saveButton.disabled = true;
       try {
@@ -565,7 +584,7 @@ export function mountSettingsPanel() {
           })
         }, true);
         form.reset();
-        toast("Secretを暗号化して保存したよ。");
+        toast("シークレットを暗号化して保存しました。");
         await renderVault();
       } catch (error) {
         if (saveButton) saveButton.disabled = false;
@@ -601,17 +620,17 @@ export function mountSettingsPanel() {
         : state === "denied" ? "通知権限が拒否されています"
         : "状態を確認できません";
       const explanation = state === "loading" ? "通知とService Workerの状態を確認しています。"
-        : state === "ready" ? subscription ? "通知はこの端末で有効です。" : "この端末でPush通知を有効にできます。"
-        : state === "unsupported" ? "このブラウザではPush通知を利用できません。"
+        : state === "ready" ? subscription ? "通知はこの端末で有効です。" : "この端末でプッシュ通知を有効にできます。"
+        : state === "unsupported" ? "このブラウザではプッシュ通知を利用できません。"
         : state === "unregistered" ? "アプリを再読み込みして状態を再確認してください。Service Workerが登録されると通知を有効にできます。"
         : state === "denied" ? "ブラウザのサイト設定で通知を許可してから「状態を再確認」を押してください。"
         : "状態を確認できませんでした。少し待って「状態を再確認」してください。";
       const canEnable = state === "ready" && !subscription;
       const canDisable = state === "ready" && !!subscription;
       scroll.innerHTML = `
-      ${section("Push 通知",
+      ${section("プッシュ通知",
         row("♢", "通知の状態", { value: status }) +
-        row("▱", "Trusted device", { action: "page:devices", value: trusted ? "登録済み" : "先に登録が必要" })
+        row("▱", "信頼済み端末", { action: "page:devices", value: trusted ? "登録済み" : "先に登録が必要" })
       )}
       <div class="devmoter-settings-note">${escapeHtml(explanation)}</div>
       <div class="devmoter-settings-card devmoter-settings-action-card">
@@ -648,7 +667,7 @@ export function mountSettingsPanel() {
     if (!cliStatus.length) return `<div class="devmoter-settings-health-row"><strong>CLI</strong><small>状態を取得できません</small></div>`;
     return cliStatus.map((cli: Json) => {
       const ready = cli?.presence === "ready";
-      const state = ready ? "入っている" : cli?.presence === "missing" ? "入っていない" : "動かない";
+      const state = ready ? "インストール済み" : cli?.presence === "missing" ? "未インストール" : "エラー";
       const detail = ready && cli?.version ? `${state} ${cli.version}` : state;
       return `
         <div class="devmoter-settings-health-row">
@@ -665,7 +684,7 @@ export function mountSettingsPanel() {
       <div class="devmoter-settings-health-row">
         <span class="${value?.available ? "ok" : "bad"}">${value?.available ? "✓" : "!"}</span>
         <strong>${escapeHtml(name)}</strong>
-        <small>${escapeHtml(value?.version || (value?.available ? "available" : "missing"))}</small>
+        <small>${escapeHtml(value?.version || (value?.available ? "あり" : "なし"))}</small>
       </div>
     `).join("");
   }
@@ -676,11 +695,11 @@ export function mountSettingsPanel() {
       <section class="devmoter-settings-section">
         <h2>ステータス</h2>
         <div class="devmoter-settings-card devmoter-settings-detail-card">
-          <div class="devmoter-settings-detail-row"><span>App</span><strong>${escapeHtml(diagnostics?.app?.version || "unknown")}</strong></div>
-          <div class="devmoter-settings-detail-row"><span>OpenCode</span><strong>${diagnostics?.backends?.opencode?.online ? "online" : "offline"}</strong></div>
-          <div class="devmoter-settings-detail-row"><span>Codex</span><strong>${diagnostics?.backends?.codex?.online ? "online" : "offline"}</strong></div>
-          <div class="devmoter-settings-detail-row"><span>Projects</span><strong>${escapeHtml(diagnostics?.projects?.count ?? 0)}</strong></div>
-          <div class="devmoter-settings-detail-row"><span>Network</span><strong>${diagnostics?.network?.localhostFirst ? "localhost-first" : "custom bind"}</strong></div>
+          <div class="devmoter-settings-detail-row"><span>アプリ</span><strong>${escapeHtml(diagnostics?.app?.version || "不明")}</strong></div>
+          <div class="devmoter-settings-detail-row"><span>OpenCode</span><strong>${diagnostics?.backends?.opencode?.online ? "オンライン" : "オフライン"}</strong></div>
+          <div class="devmoter-settings-detail-row"><span>Codex</span><strong>${diagnostics?.backends?.codex?.online ? "オンライン" : "オフライン"}</strong></div>
+          <div class="devmoter-settings-detail-row"><span>プロジェクト</span><strong>${escapeHtml(diagnostics?.projects?.count ?? 0)}</strong></div>
+          <div class="devmoter-settings-detail-row"><span>ネットワーク</span><strong>${diagnostics?.network?.localhostFirst ? "localhost優先" : "カスタム"}</strong></div>
         </div>
       </section>
       <section class="devmoter-settings-section">
@@ -696,23 +715,23 @@ export function mountSettingsPanel() {
   }
 
   function renderGuide() {
-    setHeader("使い方ガイド", "迷ったらここ");
+    setHeader("使い方ガイド", "基本の使い方");
     scroll.innerHTML = `
       <section class="devmoter-guide-hero">
-        <strong>普段使うのは5つでOK</strong>
-        <p>Chat / Projects / Activity / Automation / Settings が中心</p>
+        <strong>よく使う5つの機能</strong>
+        <p>チャット・プロジェクト・アクティビティ・自動化・レビュー</p>
       </section>
       ${section("基本",
-        row("1", "Chat", { value: "Codex / OpenCode / API Chat に指示" }) +
-        row("2", "Projects", { value: "作業するrepo・cwdを選ぶ" }) +
-        row("3", "Activity", { value: "実行中・Queue・Checkpoint・Handoff" }) +
-        row("4", "Automation", { action: "remote:automation", value: "Schedules / Event triggers / Autopilot" }) +
-        row("5", "Review / Git", { value: "AIが変えた差分を人間が確認" })
+        row("1", "チャット", { value: "Codex・OpenCode・API Chat に指示" }) +
+        row("2", "プロジェクト", { value: "作業するリポジトリとフォルダを選ぶ" }) +
+        row("3", "アクティビティ", { value: "実行中・キュー・チェックポイント・引き継ぎ" }) +
+        row("4", "自動化", { action: "remote:automation", value: "スケジュール・イベントトリガー・オートパイロット" }) +
+        row("5", "レビュー", { value: "AIが変えた差分を確認" })
       )}
       ${section("困ったとき",
         row("⌁", "診断を見る", { action: "page:diagnostics" }) +
-        row("◇", "Safety", { action: "tool:safety", value: "危険コマンドや remembered approvals" }) +
-        row("⌘", "Terminal", { action: "tool:terminal", value: "登録Project上のPTY" })
+        row("◇", "セーフティスキャン", { action: "tool:safety", value: "危険なコマンドと記憶した承認" }) +
+        row("⌘", "ターミナル", { action: "tool:terminal", value: "登録済みプロジェクトで開く" })
       )}
     `;
     wireRows();
@@ -802,12 +821,12 @@ export function mountSettingsPanel() {
   async function enablePush() {
     const trusted = await request("/api/devices", {}, true).then(() => true).catch(() => false);
     if (!trusted) {
-      toast("先にこの端末をTrusted deviceとして登録してください。");
+      toast("先にこの端末を信頼済み端末として登録してください。");
       setPage("devices");
       return;
     }
     if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
-      toast("このブラウザはPush通知に対応していません。");
+      toast("このブラウザはプッシュ通知に対応していません。");
       return;
     }
     const readiness = await inspectPushReadiness(navigator.serviceWorker, Notification.permission);
@@ -815,7 +834,7 @@ export function mountSettingsPanel() {
       const message = readiness.state === "unregistered"
         ? "通知用Service Workerが登録されていません。アプリを再読み込みしてから再試行してください。"
         : readiness.state === "unsupported"
-          ? "このブラウザはPush通知に対応していません。"
+          ? "このブラウザはプッシュ通知に対応していません。"
           : readiness.state === "denied"
             ? "ブラウザ設定で通知権限を許可してから再試行してください。"
           : "Service Workerの準備を確認できませんでした。少し待って再試行してください。";
@@ -925,6 +944,11 @@ export function mountSettingsPanel() {
           }
           return;
         }
+        if (action === "account:copy-owner") {
+          const ownerId = String(accountData?.ownerId || "");
+          toast(await copyText(ownerId) ? "オーナーIDをコピーしました。" : "コピーできませんでした。");
+          return;
+        }
         if (action === "account:disconnect") {
           const provider = button.dataset.provider || "";
           if (!window.confirm(`${provider}との接続を解除しますか？`)) return;
@@ -982,7 +1006,7 @@ export function mountSettingsPanel() {
               method: "POST",
               body: JSON.stringify({ label: navigator.userAgent.includes("Mobile") ? "Mobile browser" : "Browser" })
             });
-            toast("このブラウザをTrusted deviceに登録しました。");
+            toast("このブラウザを信頼済み端末に登録しました。");
             await renderDevices();
           } catch (error) {
             toast(error instanceof Error ? error.message : String(error));
@@ -1028,7 +1052,7 @@ export function mountSettingsPanel() {
         if (action === "vault:lock") {
           try {
             await request("/api/secrets/lock", { method: "POST", body: "{}" }, true);
-            toast("Vaultをロックしたよ。");
+            toast("Vaultをロックしました。");
             await renderVault();
           } catch (error) {
             toast(error instanceof Error ? error.message : String(error));
@@ -1037,7 +1061,7 @@ export function mountSettingsPanel() {
         }
         if (action === "vault:delete") {
           const reference = button.dataset.vaultReference || "";
-          if (window.prompt(`削除するには次の参照を入力してね:\n${reference}`) !== reference) return;
+          if (window.prompt(`削除するには次の参照を入力してください:\n${reference}`) !== reference) return;
           const match = reference.match(/^secret:\/\/([^/]+)\/([^/]+)$/);
           if (!match) return;
           try {
@@ -1045,7 +1069,7 @@ export function mountSettingsPanel() {
               method: "DELETE",
               body: JSON.stringify({ confirmReference: reference })
             }, true);
-            toast("Secretを削除したよ。");
+            toast("シークレットを削除しました。");
             await renderVault();
           } catch (error) {
             toast(error instanceof Error ? error.message : String(error));

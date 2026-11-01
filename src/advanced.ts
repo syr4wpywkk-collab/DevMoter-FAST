@@ -89,7 +89,7 @@ export function mountAdvancedTools() {
   drawer.setAttribute("role", "dialog");
   drawer.setAttribute("aria-modal", "true");
   drawer.innerHTML =
-    '<div class="adv-head"><div><strong>DevMoter Tools</strong><small>Preview · Models · Gallery · Sandbox</small></div><button type="button" data-close aria-label="Close Files & Preview">×</button></div>' +
+    '<div class="adv-head"><div><strong>Files & preview</strong></div><button type="button" data-close aria-label="Close">×</button></div>' +
     '<div class="adv-scroll">' +
     '<section class="adv-section"><label>Project<select data-project></select></label><div class="adv-status" data-project-status></div></section>' +
     '<section class="adv-section"><h3>Project files</h3><div class="adv-row"><button type="button" data-browser-up>↑ Up</button><code data-browser-path>/</code><button type="button" data-browser-refresh>Refresh</button></div><div class="adv-list" data-file-browser></div></section>' +

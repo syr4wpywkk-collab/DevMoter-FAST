@@ -91,8 +91,13 @@ test("PWA files are served without login, and nothing else is", async t => {
   for (const icon of parsed.icons) {
     const response = await rawGet(server.port, icon.src);
     assert.equal(response.status, 200, `${icon.src} must be public`);
-    assert.match(String(response.headers["content-type"]), /image\/svg\+xml/);
+    assert.match(String(response.headers["content-type"]), /image\/png/);
   }
+  // iOS ignores manifest icons for the home screen; it reads apple-touch-icon.
+  assert.ok(parsed.icons.some(icon => icon.purpose === "maskable" && icon.sizes === "512x512"));
+  const touch = await rawGet(server.port, "/apple-touch-icon.png");
+  assert.equal(touch.status, 200, "/apple-touch-icon.png must be public");
+  assert.match(String(touch.headers["content-type"]), /image\/png/);
 
   const worker = await rawGet(server.port, "/sw.js");
   assert.equal(worker.status, 200);
@@ -111,7 +116,8 @@ test("PWA files are served without login, and nothing else is", async t => {
     "/sw.js/../index.html",
     "/manifest.webmanifest/../index.html",
     "/%2e%2e/index.html",
-    "/icon.svg/",
+    "/icon-192.png/",
+    "/icon.svg",
     "/MANIFEST.WEBMANIFEST",
     "/manifest.webmanifest.bak"
   ]) {
