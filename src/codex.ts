@@ -6,7 +6,7 @@ import { createDevWorkflowPanel } from "./dev-workflows-ui";
 import { isMcpToolItem, mcpToolSummary, normalizeStructuredMcpResult } from "./mcp-result";
 import { setWakeLockExecutionActive } from "./wake-lock";
 import { enrichInstalledPluginEntries, pluginEntries } from "./codex-plugin-metadata.mjs";
-import { applyReasoningToTurnStart, normalizeCodexModels, reasoningChoices, reconcileReasoningMode } from "./codex-reasoning.mjs";
+import { applyReasoningToTurnStart, fetchAllCodexModels, reasoningChoices, reconcileReasoningMode } from "./codex-reasoning.mjs";
 import { normalizeCodexSendError } from "./codex-send-error.mjs";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 import { createLatestRequestGuard } from "./latest-request.mjs";
@@ -165,22 +165,19 @@ export function mountCodexRemote(
 
         <div class="cx-sidebar-scroll">
         <button id="cxNewChatSide" class="cx-side-action primary" type="button">
-          <span>✎</span><span>新しいチャット</span>
+          <span aria-hidden="true">✎</span><span>新しいチャット</span>
         </button>
 
         <label class="cx-search">
-          <span>⌕</span>
+          <span aria-hidden="true">⌕</span>
           <input id="cxThreadSearch" type="search" placeholder="チャットを検索" />
         </label>
 
         <nav class="cx-side-nav">
-          <button id="cxPluginsQuick" class="cx-nav-item" type="button"><span>◇</span><span>Plugins</span></button>
-          <button id="cxLibraryNav" class="cx-nav-item" type="button"><span>▦</span><span>ライブラリ · 準備中</span></button>
-          <button id="cxProjectsNav" class="cx-nav-item" type="button"><span>▱</span><span>Projects</span></button>
-          <button id="cxIntegrationsNav" class="cx-nav-item" type="button"><span>⌁</span><span>Integrations</span></button>
-          <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button"><span>◇</span><span>Developer workflows</span></button>
-          <button id="cxSettingsNav" class="cx-nav-item" type="button"><span>⚙</span><span>Settings</span></button>
-          <button id="cxToolsNav" class="cx-nav-item" type="button"><span>☷</span><span>DevMoter tools</span></button>
+          <button id="cxProjectsNav" class="cx-nav-item" type="button"><span aria-hidden="true">▱</span><span>Projects</span></button>
+          <button id="cxPluginsQuick" class="cx-nav-item" type="button"><span aria-hidden="true">◇</span><span>Plugins</span></button>
+          <button id="cxIntegrationsNav" class="cx-nav-item" type="button"><span aria-hidden="true">⌁</span><span>Integrations</span></button>
+          <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button"><span aria-hidden="true">⑂</span><span>Developer workflows</span></button>
         </nav>
 
         <div class="cx-side-section">
@@ -246,7 +243,6 @@ export function mountCodexRemote(
         </section>
         <section class="cx-detail-section cx-workspace-section">
           <div class="cx-detail-heading"><span>WORKSPACE</span></div>
-          <div id="cxWorkspaceControlsMount"></div>
         </section>
       </aside>
 
@@ -325,15 +321,12 @@ export function mountCodexRemote(
   const sidebarClose = root.querySelector<HTMLButtonElement>("#cxSidebarClose")!;
   const agentSwitchButton = root.querySelector<HTMLButtonElement>("#cxAgentSwitchButton")!;
   const agentSwitchMenu = root.querySelector<HTMLDivElement>("#cxAgentSwitchMenu")!;
-  const settingsNav = root.querySelector<HTMLButtonElement>("#cxSettingsNav")!;
-  const toolsNav = root.querySelector<HTMLButtonElement>("#cxToolsNav")!;
   const menu = root.querySelector<HTMLButtonElement>("#cxMenu")!;
   const newChatSide = root.querySelector<HTMLButtonElement>("#cxNewChatSide")!;
   const newChatTop = root.querySelector<HTMLButtonElement>("#cxNewChatTop")!;
   const threadSearch = root.querySelector<HTMLInputElement>("#cxThreadSearch")!;
   const sidebarThreads = root.querySelector<HTMLDivElement>("#cxSidebarThreads")!;
   const projectsNav = root.querySelector<HTMLButtonElement>("#cxProjectsNav")!;
-  const libraryNav = root.querySelector<HTMLButtonElement>("#cxLibraryNav")!;
   const devWorkflowsNav = root.querySelector<HTMLButtonElement>("#cxDevWorkflowsNav")!;
   const integrationsNav = root.querySelector<HTMLButtonElement>("#cxIntegrationsNav")!;
   const voice = root.querySelector<HTMLButtonElement>("#cxVoice")!;
@@ -706,18 +699,6 @@ export function mountCodexRemote(
     }
   }
 
-  function showLibrary() {
-    closeSidebar();
-    openModal("ライブラリ", "DevMoterに保存された素材と添付ファイル");
-    modalBody.innerHTML = `
-      <section class="cx-library-empty">
-        <div>▦</div>
-        <strong>ライブラリは準備中</strong>
-        <p>会話で使った画像・ファイル・生成物を、ここから探せるようにする予定。</p>
-      </section>
-    `;
-  }
-
   function persistSelectedModel(value: string) {
     selectedModel = value;
     if (value) localStorage.setItem("opencode-pocket-codex-model", value);
@@ -727,9 +708,9 @@ export function mountCodexRemote(
 
   async function loadModelCatalog() {
     const requestGeneration = modelCatalogRequests.begin();
-    const result = await rpc<Json>("model/list", { limit: 100 });
+    // Every page, including models the app-server flags hidden (see fetchAllCodexModels).
+    const normalizedModels = await fetchAllCodexModels(params => rpc<Json>("model/list", params)) as CodexModel[];
     if (!modelCatalogRequests.isCurrent(requestGeneration)) return modelCatalog;
-    const normalizedModels = normalizeCodexModels(result) as CodexModel[];
     modelCatalog = normalizedModels;
 
     const migrated = modelCatalog.find(model => model.id === selectedModel && model.model !== selectedModel);
@@ -3315,75 +3296,16 @@ export function mountCodexRemote(
     }
   }
 
-  function cliPresence(cli: { presence?: string; version?: string | null }) {
-    if (cli.presence === "ready") return cli.version ? `入っている ${cli.version}` : "入っている";
-    if (cli.presence === "missing") return "入っていない";
-    return "動かない";
-  }
-
-  function renderCliStatus(parent: HTMLElement, clis: Array<{ label?: string; presence?: string; version?: string | null }>) {
-    const section = document.createElement("section");
-    section.className = "cx-settings-section";
-    const heading = document.createElement("h3");
-    heading.textContent = "CLI";
-    section.appendChild(heading);
-    for (const cli of clis) {
-      const row = document.createElement("div");
-      row.className = "cx-info-row";
-      const key = document.createElement("span");
-      const val = document.createElement("strong");
-      key.textContent = cli.label || "";
-      val.textContent = cliPresence(cli);
-      val.className = cli.presence === "ready" ? "cx-cli-ready" : "cx-cli-missing";
-      row.append(key, val);
-      section.appendChild(row);
-    }
-    parent.appendChild(section);
-  }
-
   async function showModels() {
     openModal(
       "Provider · Model · Agent",
-      activeThreadId ? "このチャットの実行環境を変更" : "次のチャットで使う実行環境"
+      activeThreadId ? "このチャット" : "次のチャット"
     );
     modalBody.innerHTML = '<div class="cx-modal-loading">読み込み中…</div>';
-
-    const cliHost = document.createElement("div");
-    try {
-      const response = await fetch("/api/cli", { cache: "no-store" });
-      const payload = await response.json();
-      if (Array.isArray(payload?.clis)) renderCliStatus(cliHost, payload.clis);
-    } catch {
-      cliHost.textContent = "CLIの状態を取得できません";
-    }
 
     try {
       const models = await loadModelCatalog();
       modalBody.replaceChildren();
-      modalBody.appendChild(cliHost);
-
-      const runtime = document.createElement("section");
-      runtime.className = "cx-settings-section cx-runtime-summary";
-      const heading = document.createElement("h3");
-      heading.textContent = "Runtime";
-      runtime.appendChild(heading);
-
-      const runtimeRows: Array<[string, string]> = [
-        ["Provider", "Codex · " + (online ? "available" : "offline")],
-        ["Agent", "codex · supported"],
-        ["Scope", activeThreadId ? "session" : activeProject ? "project" : "default"]
-      ];
-      for (const [label, value] of runtimeRows) {
-        const row = document.createElement("div");
-        row.className = "cx-info-row";
-        const key = document.createElement("span");
-        const val = document.createElement("strong");
-        key.textContent = label;
-        val.textContent = value;
-        row.append(key, val);
-        runtime.appendChild(row);
-      }
-      modalBody.appendChild(runtime);
 
       const list = document.createElement("div");
       list.className = "cx-model-list";
@@ -3412,7 +3334,18 @@ export function mountCodexRemote(
         list.appendChild(auto);
       }
 
-      for (const model of models.filter(model => !model.hidden)) {
+      // Codex's own picker lists only non-hidden models; hidden ones (already
+      // filtered to this account by the app-server) stay selectable below them.
+      const ordered = [...models.filter(model => !model.hidden), ...models.filter(model => model.hidden)];
+      let hiddenGroupShown = false;
+      for (const model of ordered) {
+        if (model.hidden && !hiddenGroupShown) {
+          hiddenGroupShown = true;
+          const group = document.createElement("div");
+          group.className = "cx-model-group";
+          group.textContent = "その他";
+          list.appendChild(group);
+        }
         const value = model.model;
         const name = model.displayName || value;
         const option = document.createElement("button");
@@ -3444,7 +3377,7 @@ export function mountCodexRemote(
       modalBody.appendChild(list);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      modalBody.replaceChildren(cliHost);
+      modalBody.replaceChildren();
       const note = document.createElement("p");
       note.className = "cx-cli-note";
       note.textContent = message;
@@ -3485,7 +3418,6 @@ export function mountCodexRemote(
 
   menu.addEventListener("click", openSidebar);
   detailsToggle.addEventListener("click", toggleDetails);
-  window.addEventListener("devmoter:close-codex-details", () => closeDetails());
   window.addEventListener("devmoter:close-chat-history", () => closeSidebar(false));
   window.addEventListener("devmoter:surface-changed", () => closeSidebar(false));
   document.addEventListener("visibilitychange", () => {
@@ -3520,16 +3452,6 @@ export function mountCodexRemote(
     closeSidebar();
     options.onIntegrations?.();
   });
-  settingsNav.addEventListener("click", () => {
-    closeSidebar();
-    window.dispatchEvent(new CustomEvent("devmoter:open-settings"));
-  });
-  toolsNav.addEventListener("click", () => {
-    closeSidebar();
-    window.dispatchEvent(new CustomEvent("devmoter:open-global-nav"));
-  });
-
-  libraryNav.addEventListener("click", showLibrary);
   root.querySelectorAll<HTMLButtonElement>(".cx-agent-option").forEach(button => {
     button.addEventListener("click", () => {
       const agent = button.dataset.agent || "codex";

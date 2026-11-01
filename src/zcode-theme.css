@@ -158,7 +158,7 @@ body.dm-task-first-enabled .dm-task-first-nav {
   font-family: var(--font-ui);
 }
 body.dm-task-first-enabled .dm-task-first-mark,
-body.dm-task-first-enabled .dm-task-first-tabs button[aria-current="page"] {
+body.dm-task-first-enabled .dm-task-first-menu button[aria-current="page"] {
   border-color: var(--border-subtle);
   border-radius: var(--radius-control);
   background: var(--surface-hover);

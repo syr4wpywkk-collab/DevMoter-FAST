@@ -1,3 +1,5 @@
+import { projectOptionLabels } from "./project-labels.mjs";
+
 type Json = Record<string, any>;
 
 type Project = {
@@ -257,8 +259,9 @@ export function mountTaskWorkflow(root: HTMLElement) {
       activeProjectId = localStorage.getItem("devmoter-workflow-project") || projects[0]?.id || "";
     }
     if (!projects.some(item => item.id === activeProjectId)) activeProjectId = projects[0]?.id || "";
-    projectSelect.innerHTML = projects.map(item =>
-      `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} — ${escapeHtml(item.path)}</option>`
+    const labels = projectOptionLabels(projects);
+    projectSelect.innerHTML = projects.map((item, index) =>
+      `<option value="${escapeHtml(item.id)}">${escapeHtml(labels[index])}</option>`
     ).join("");
     projectSelect.value = activeProjectId;
     const current = project();

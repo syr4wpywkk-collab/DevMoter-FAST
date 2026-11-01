@@ -50,6 +50,8 @@ test("context resolution failure preserves the composer draft and runtime picker
   assert.ok(openResolve >= 0 && openFailure > openResolve && openClear > openFailure);
 
   assert.match(codex, /Provider · Model · Agent/);
-  assert.match(opencode, /Provider · Model · Agent/);
+  // OpenCode's picker is model-only (PR #500 item N); the default build agent stays internal.
+  assert.match(opencode, /"Provider · Model"/);
+  assert.doesNotMatch(opencode, /このエージェントで応答します|このセッションに適用し/);
   assert.match(opencode, /provider unavailable/);
 });

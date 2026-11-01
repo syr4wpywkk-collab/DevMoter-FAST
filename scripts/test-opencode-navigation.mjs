@@ -68,44 +68,22 @@ try {
         const expectedHmr = `ws://127.0.0.1:${server.config.server.port}/?token=${server.config.webSocketToken}`;
         assert.ok(initialWebSockets.length <= 1 && initialWebSockets.every(url => url === expectedHmr), "only Vite's exact local startup socket may be attempted before navigation");
         assert.deepEqual(wsGuard.records.frames, [], "startup must not attempt WebSocket frames");
-        for (const [button, surface, destination] of [["#ocxQuickCodex", "codex", "#cxMenu"], ["#ocxQuickApi", "api", "#apiMenu"]]) {
+        // PR #500 item M: the drawer's Codex / API Chat buttons are gone. The header AI
+        // dropdown switches mode; ?unifiedUI=0 keeps the switch in the Tools sidebar.
+        for (const surface of ["codex", "api"]) {
           await page.locator("#ocxMenu").click();
           await page.locator("#ocxSidebar.open").waitFor();
-          await page.evaluate(() => Promise.all(document.getAnimations().map(animation => animation.finished.catch(() => {}))));
-          await page.evaluate(() => {
-            const scroll = document.querySelector(".ocx-sidebar-scroll");
-            const content = document.createElement("div");
-            content.style.height = "3000px";
-            content.textContent = "Synthetic long history";
-            scroll.append(content);
-            scroll.scrollTop = scroll.scrollHeight;
-          });
-          for (const selector of ["#ocxQuickCodex", "#ocxQuickApi"]) {
-            const box = await page.locator(selector).boundingBox();
-            assert.ok(box && box.width >= 44 && box.height >= 44 && box.y >= 0 && box.y + box.height <= viewport.height);
-            const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest("button")?.id, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
-            assert.equal(hit, selector.slice(1));
-          }
-          await page.locator(button).click();
-          await page.waitForFunction(expected => new URL(location.href).searchParams.get("surface") === expected, surface);
-          // #481's desktop Codex rail (min-width 1100px) hides #cxMenu and keeps
-          // history on screen. Focusing that hidden button leaves focus on body.
-          // Narrow layouts still move focus onto the visible history button.
-          const destinationShown = await page.locator(destination).evaluate(node => getComputedStyle(node).display !== "none" && node.getClientRects().length > 0);
-          if (destinationShown) {
-            await page.waitForFunction(selector => document.activeElement === document.querySelector(selector), destination);
+          assert.equal(await page.locator("#ocxSidebar #ocxQuickCodex, #ocxSidebar #ocxQuickApi, #ocxSidebar .ocx-sidebar-foot").count(), 0);
+          await page.keyboard.press("Escape");
+          await page.waitForFunction(() => document.querySelector("#ocxSidebar")?.getAttribute("aria-hidden") === "true");
+          if (unified === "1") {
+            await page.locator("[data-workspace-backend]").selectOption(surface);
           } else {
-            await page.waitForFunction(selector => {
-              const menu = document.querySelector(selector);
-              const rail = document.querySelector("#cxSidebar");
-              return menu
-                && getComputedStyle(menu).display === "none"
-                && rail?.getAttribute("aria-hidden") === "false"
-                && !rail.classList.contains("open")
-                && document.activeElement === document.body
-                && !document.querySelector("#ocxSidebar")?.contains(document.activeElement);
-            }, destination);
+            await page.locator(".dm-shell-menu-trigger").click();
+            await page.locator(".dm-shell-sidebar.open").waitFor();
+            await page.locator("[data-fallback-backend]").selectOption(surface);
           }
+          await page.waitForFunction(expected => new URL(location.href).searchParams.get("surface") === expected, surface);
           assert.equal(await page.locator("#ocxSidebar").getAttribute("aria-hidden"), "true");
           assert.equal(await page.locator("#ocxSidebar").evaluate(node => node.inert), true);
           assert.equal(await page.locator("#ocxScrim").isVisible(), false);
@@ -129,7 +107,7 @@ try {
         assert.deepEqual(external, [], "no request may leave the synthetic same-origin backend");
         if (violations.length) console.error("Rejected synthetic paths:", requests.filter(record => record.findings.length).map(({ path, method, findings }) => ({ path, method, findings })));
         assert.deepEqual(violations, [], "all HTTP phases must preserve authentication, draft, attachment and mutation boundaries");
-        console.log(`PASS unifiedUI=${unified}, viewport=${viewport.width}x${viewport.height}: pinned 44px exits, real routing/focus, Back/Forward, retained draft/session/attachment, mocked send boundary`);
+        console.log(`PASS unifiedUI=${unified}, viewport=${viewport.width}x${viewport.height}: header / fallback AI switch routing, Back/Forward, retained draft/session/attachment, mocked send boundary`);
       } finally {
         await context.close();
       }

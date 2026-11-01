@@ -84,9 +84,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
         '<div class="dm-home-identity">',
           '<div class="dm-home-brand-mark" aria-hidden="true">D</div>',
           '<div class="dm-home-brand-copy">',
-            '<p class="dm-home-eyebrow"><span>DEV MOTER FAST</span><span class="dm-home-eyebrow-slash">/</span><span>UNIFIED WORKSPACE</span></p>',
             '<h1 id="devmoterHomeTitle" tabindex="-1">作業スペース</h1>',
-            '<p class="dm-home-subtitle">開発環境の入口。ツールやプロジェクトにすぐ移動できます。</p>',
           '</div>',
         '</div>',
         '<div class="dm-home-header-actions">',
@@ -105,32 +103,26 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       '</div>',
       '<section class="dm-home-section dm-home-quick-section" aria-labelledby="dm-home-quick-title">',
         '<div class="dm-home-section-heading">',
-          '<div><p class="dm-home-eyebrow">ONE TAP</p><h2 id="dm-home-quick-title">クイックアクション</h2></div>',
+          '<h2 id="dm-home-quick-title">クイックアクション</h2>',
         '</div>',
         '<div class="dm-home-quick-actions" data-home-quick-actions></div>',
+        '<div data-home-react-pilot></div>',
       '</section>',
       '<section class="dm-home-section" aria-labelledby="dm-home-apps-title">',
         '<div class="dm-home-section-heading">',
-          '<div><p class="dm-home-eyebrow">WORKSPACE</p><h2 id="dm-home-apps-title">ツール</h2></div>',
+          '<h2 id="dm-home-apps-title">ツール</h2>',
           '<span class="dm-home-section-note" data-home-app-count></span>',
         '</div>',
         '<div class="dm-home-app-grid" data-home-app-grid></div>',
         '<p class="dm-home-empty hidden" data-home-no-results>該当するアプリはありません。</p>',
       '</section>',
-      '<section class="dm-home-section dm-home-activity" aria-labelledby="dm-home-activity-title">',
+      '<section class="dm-home-section dm-home-activity" aria-labelledby="dm-home-activity-title" data-home-recent-section hidden>',
         '<div class="dm-home-section-heading">',
-          '<div><p class="dm-home-eyebrow">RECENT ACTIVITY</p><h2 id="dm-home-activity-title">最近使ったアプリ</h2></div>',
-          '<button type="button" class="dm-home-history-link" data-home-sessions>セッション履歴を見る <span aria-hidden="true">↗</span></button>',
+          '<h2 id="dm-home-activity-title">最近</h2>',
+          '<button type="button" class="dm-home-history-link" data-home-sessions>セッション履歴 <span aria-hidden="true">↗</span></button>',
         '</div>',
-        '<p class="dm-home-section-context">このブラウザで実際に開いたアプリを表示します。サンプルの活動履歴は使用しません。</p>',
         '<div class="dm-home-recent-grid" data-home-recent></div>',
-        '<div class="dm-home-continue" data-home-continue>',
-          '<div><h3>作業を続ける</h3><p>前回使ったチャットやツールを開けます。</p></div>',
-          '<button type="button" class="dm-home-text-action" data-home-open-chat aria-label="チャットのワークスペースを開く">チャットを開く <span aria-hidden="true">↗</span></button>',
-          '<div data-home-react-pilot></div>',
-        '</div>',
       '</section>',
-       '<footer class="dm-home-footer"><span>DevMoter FAST</span><span>ローカル開発環境</span></footer>',
     '</div>'
   ].join("");
 
@@ -139,6 +131,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
   const noResults = target.querySelector<HTMLElement>("[data-home-no-results]")!;
   const count = target.querySelector<HTMLElement>("[data-home-app-count]")!;
   const recentsHost = target.querySelector<HTMLElement>("[data-home-recent]")!;
+  const recentSection = target.querySelector<HTMLElement>("[data-home-recent-section]")!;
   const searchPanel = target.querySelector<HTMLElement>("#dmHomeSearchPanel")!;
   const searchInput = target.querySelector<HTMLInputElement>("[data-home-search]")!;
   const searchToggle = target.querySelector<HTMLButtonElement>("[data-home-search-toggle]")!;
@@ -156,13 +149,8 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
 
   const renderRecents = () => {
     recentsHost.replaceChildren();
-    if (recent.length === 0) {
-      const empty = document.createElement("p");
-      empty.className = "dm-home-recent-empty";
-      empty.textContent = "まだ最近開いたアプリはありません。上のランチャーから始められます。";
-      recentsHost.appendChild(empty);
-      return;
-    }
+    // Nothing opened yet: the section is simply absent instead of an empty-state message.
+    recentSection.hidden = recent.length === 0;
     for (const entry of recent) {
       const app = APP_REGISTRY.find(candidate => candidate.id === entry.id);
       if (!app || app.availability !== "available") continue;
@@ -183,12 +171,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       top.append(icon, opened);
       const heading = document.createElement("strong");
       heading.textContent = app.title;
-      const description = document.createElement("small");
-      description.textContent = app.shortDescription;
-      const arrow = document.createElement("span");
-      arrow.className = "dm-home-recent-open";
-      arrow.textContent = "再開 ↗";
-      button.append(top, heading, description, arrow);
+      button.append(top, heading);
       button.addEventListener("click", () => launch(app));
       recentsHost.appendChild(button);
     }
@@ -238,9 +221,8 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     copy.className = "dm-home-card-copy";
     const heading = document.createElement("strong");
     heading.textContent = app.title;
-    const hint = document.createElement("small");
-    hint.textContent = app.shortDescription;
-    copy.append(heading, hint);
+    button.title = app.shortDescription;
+    copy.append(heading);
     if (state) {
       const badge = document.createElement("em");
       badge.className = "dm-home-app-state";
@@ -301,10 +283,6 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
   document.addEventListener("keydown", onKeydown);
   disposers.push(() => document.removeEventListener("keydown", onKeydown));
 
-  target.querySelector<HTMLButtonElement>("[data-home-open-chat]")?.addEventListener("click", () => {
-    const chat = APP_REGISTRY.find(app => app.id === "chat")!;
-    launch(chat);
-  });
   target.querySelector<HTMLButtonElement>("[data-home-sessions]")?.addEventListener("click", () => {
     const sessions = APP_REGISTRY.find(app => app.id === "sessions")!;
     launch(sessions);

@@ -26,6 +26,32 @@ export function normalizeCodexModels(payload) {
   return models;
 }
 
+const MAX_MODEL_PAGES = 20;
+
+/**
+ * Codex app-server `model/list` (codex-rs app-server-protocol v2 ModelListParams:
+ * cursor, limit, includeHidden) is cursor-paginated and omits models flagged
+ * `hidden` unless `includeHidden` is sent. Reading only the first page (and then
+ * dropping `hidden` rows in the picker) made available models unselectable.
+ * Follow `nextCursor` until it is null and keep every model.
+ */
+export async function fetchAllCodexModels(request, pageSize = 100) {
+  const pages = [];
+  let cursor = null;
+  const seen = new Set();
+  for (let page = 0; page < MAX_MODEL_PAGES; page += 1) {
+    const result = await request({ limit: pageSize, includeHidden: true, ...(cursor ? { cursor } : {}) });
+    pages.push(...normalizeCodexModels(result));
+    const next = typeof result?.nextCursor === "string" && result.nextCursor ? result.nextCursor : null;
+    if (!next || seen.has(next)) break;
+    seen.add(next);
+    cursor = next;
+  }
+  const byValue = new Map();
+  for (const model of pages) if (!byValue.has(model.model)) byValue.set(model.model, model);
+  return [...byValue.values()];
+}
+
 export function reconcileReasoningMode(savedMode, model) {
   const mode = String(savedMode || "auto");
   const supported = Array.isArray(model?.supportedReasoningEfforts)

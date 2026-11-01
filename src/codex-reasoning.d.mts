@@ -5,6 +5,7 @@ export type CodexReasoningModel = {
   supportedReasoningEfforts?: CodexReasoningEffort[];
 };
 export function normalizeCodexModels(payload: any): CodexReasoningModel[];
+export function fetchAllCodexModels(request: (params: { limit: number; includeHidden: true; cursor?: string }) => Promise<any>, pageSize?: number): Promise<CodexReasoningModel[]>;
 export function reconcileReasoningMode(savedMode: string, model?: CodexReasoningModel | null): string;
 export function reasoningChoices(model?: CodexReasoningModel | null): Array<{ value: string; description: string }>;
 export function applyReasoningToTurnStart<T extends Record<string, any>>(params: T, mode: string): T & { effort?: string };

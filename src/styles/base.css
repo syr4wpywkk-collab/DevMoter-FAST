@@ -946,9 +946,6 @@ body.codex-mode #app {
 .cx-choice-row.selected { border-color: #8d72df; background: rgba(111,79,202,.2); }
 .cx-choice-row small { color: #96969e; }
 
-.cx-library-empty { padding: 34px 12px; text-align: center; }
-.cx-library-empty > div { margin-bottom: 12px; color: #a98cff; font-size: 2rem; }
-.cx-library-empty p { margin: 8px auto 0; max-width: 30ch; color: #92929a; font-size: .84rem; }
 
 @media (max-width: 430px) {
   .cx-topbar { padding-inline: 8px; }
@@ -1175,14 +1172,28 @@ body.codex-mode #app {
   text-align: left;
 }
 
+.cx-library-empty { padding: 34px 12px; text-align: center; }
+.cx-library-empty p { margin: 8px auto 0; max-width: 30ch; color: #92929a; font-size: .84rem; }
+
+/* Codex history drawer: one row rhythm (36 / 34px rows, 2px gaps, 18px icon box, 14px text). */
 .cx-side-action {
-  min-height: 48px;
-  padding: 0 13px;
+  min-height: 36px;
+  padding: 0 10px;
   display: flex;
   align-items: center;
   gap: 10px;
-  border-radius: 13px;
+  border-radius: 10px;
   background: #1d1d1d;
+  font-size: 14px;
+}
+.cx-side-action > span:first-child,
+.cx-search > span,
+.cx-nav-item > span:first-child {
+  width: 18px;
+  flex: 0 0 18px;
+  font-size: 16px;
+  line-height: 1;
+  text-align: center;
 }
 
 .cx-side-action.primary {
@@ -1191,14 +1202,14 @@ body.codex-mode #app {
 }
 
 .cx-search {
-  height: 44px;
-  margin: 10px 0;
-  padding: 0 11px;
+  height: 36px;
+  margin: 4px 0 8px;
+  padding: 0 10px;
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   border: 1px solid #292929;
-  border-radius: 13px;
+  border-radius: 10px;
   background: #141414;
 }
 
@@ -1214,18 +1225,20 @@ body.codex-mode #app {
 .cx-side-nav {
   display: grid;
   gap: 2px;
-  padding-bottom: 10px;
+  padding: 8px 0;
+  border-top: 1px solid #242424;
   border-bottom: 1px solid #242424;
 }
 
 .cx-nav-item {
-  min-height: 44px;
+  min-height: 34px;
   padding: 0 10px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  border-radius: 11px;
+  gap: 10px;
+  border-radius: 10px;
   background: transparent;
+  font-size: 14px;
 }
 
 .cx-nav-item:active,
@@ -1233,24 +1246,21 @@ body.codex-mode #app {
   background: #1d1d1d;
 }
 
-.cx-nav-item span:first-child {
-  width: 23px;
-  text-align: center;
-}
 
 .cx-side-section {
   min-height: 0;
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  padding-top: 12px;
+  gap: 2px;
+  padding-top: 8px;
 }
 
 .cx-side-label {
-  padding: 0 8px 7px;
+  padding: 0 10px 4px;
   color: #777;
-  font-size: .72rem;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .cx-sidebar-threads {
@@ -1259,10 +1269,11 @@ body.codex-mode #app {
 }
 
 .cx-thread-row {
-  min-height: 43px;
+  min-height: 34px;
   padding: 0 10px;
   border-radius: 10px;
   background: transparent;
+  font-size: 14px;
 }
 
 .cx-thread-row span {
@@ -1284,7 +1295,7 @@ body.codex-mode #app {
 
 .cx-sidebar-foot {
   flex: 0 0 auto;
-  padding-top: 10px;
+  padding-top: 8px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1457,8 +1468,6 @@ body.codex-mode #app {
   font-size: .78rem;
 }
 
-.cx-cli-ready { color: #b7d7b0; }
-.cx-cli-missing { color: #e7b3a1; }
 .cx-cli-note {
   margin: 8px 10px 0;
   color: #e7b3a1;
@@ -1491,6 +1500,12 @@ body.codex-mode #app {
 .cx-model-row.selected {
   border-color: #4a4a4a;
   background: #222;
+}
+
+.cx-model-group {
+  margin: 8px 12px 0;
+  color: #777;
+  font-size: .72rem;
 }
 
 @media (min-width: 760px) {

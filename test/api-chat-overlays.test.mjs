@@ -29,7 +29,7 @@ const providers = [{
 }];
 
 function mount(t, { deferPresets = false } = {}) {
-  const dom = new JSDOM('<!doctype html><div id="root"></div><div id="cxWorkspaceControlsMount"></div><div id="ocxWorkspaceControlsMount"></div>', {
+  const dom = new JSDOM('<!doctype html><div id="root"></div>', {
     url: "https://devmoter.example/?surface=api&unifiedUI=0", runScripts: "outside-only"
   });
   t.after(() => dom.window.close());
@@ -89,7 +89,8 @@ test("API history traps Tab, blocks its background and closes through the scrim"
   const sidebar = query("#apiSidebar");
   const close = query("#apiSidebarClose");
   const first = query("#apiAgentSwitchButton");
-  const last = query("#apiSettingsSide");
+  // API Providers moved to the header gear; the drawer ends with the chat list.
+  const last = query("#apiNewChat");
   assert.equal(sidebar.inert, true);
   menu.focus();
   menu.click();
@@ -131,7 +132,7 @@ test("API Providers replaces history, retains its actual form and restores the o
   const menu = query("#apiMenu");
   menu.focus();
   menu.click();
-  query("#apiSettingsSide").click();
+  query("#apiSettingsTop").click();
   const modal = query("#apiSettingsModal");
   const close = query("#apiSettingsClose");
   assert.equal(query("#apiSidebar").classList.contains("open"), false);
@@ -205,39 +206,34 @@ test("global Tools replaces API Settings and returns keyboard focus after dismis
   assert.equal(query(".dm-shell-sidebar").classList.contains("open"), true);
   assert.equal(document.activeElement, query("[data-shell-close]"));
   key("Tab", true);
-  assert.equal(document.activeElement, query('[data-manual-tools] > summary'));
+  assert.equal(document.activeElement, query('[data-ai-model]'), "focus wraps to the last Tools AI control");
   key("Escape");
   assert.equal(document.activeElement, opener);
 });
 
-test("one workspace toolbar moves between all three chat drawers and body", async t => {
+test("workspace commands open one body-level panel; no button group is docked in chat drawers", async t => {
   const { dom, document, query } = mount(t);
   await settle();
   dom.window.exports = {};
   dom.window.eval(compile(workspaceSource));
   const stop = dom.window.exports.startWorkspaceControl();
   t.after(stop);
-  const host = query(".dm-controlbar");
-  const context = query(".dm-context");
+  assert.equal(document.querySelector(".dm-controlbar"), null);
+  assert.equal(document.querySelector("#apiWorkspaceControlsMount"), null);
   const panel = query(".dm-panel");
-  const emit = surface => dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:surface-changed", { detail: { surface } }));
-  assert.equal(host.parentElement, query("#apiWorkspaceControlsMount"));
-  context.click();
+  assert.equal(panel.parentElement, document.body);
+  const command = name => dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:workspace-command", { detail: { command: name } }));
+  command("context");
   assert.equal(panel.classList.contains("hidden"), false);
-  for (const [surface, selector] of [["codex", "#cxWorkspaceControlsMount"], ["opencode", "#ocxWorkspaceControlsMount"], ["api", "#apiWorkspaceControlsMount"]]) {
-    emit(surface);
-    assert.equal(host.parentElement, query(selector), surface);
+  for (const surface of ["codex", "opencode", "home", "api"]) {
+    dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:surface-changed", { detail: { surface } }));
+    assert.equal(panel.parentElement, document.body, surface);
   }
-  emit("home");
-  assert.equal(host.parentElement, document.body);
-  emit("api");
-  assert.equal(host.parentElement, query("#apiWorkspaceControlsMount"));
-  assert.equal(query(".dm-context"), context);
-  assert.equal(query(".dm-panel"), panel);
-  assert.equal(panel.classList.contains("hidden"), false);
-  assert.equal(document.querySelectorAll(".dm-controlbar").length, 1);
+  command("unknown");
+  assert.equal(document.querySelectorAll(".dm-panel").length, 1);
+  dom.window.document.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape" }));
+  assert.equal(panel.classList.contains("hidden"), true);
 });
-
 test("API header follows the actual selected provider/model", async t => {
   const { dom, query } = mount(t); await settle();
   assert.match(query('#apiModelTopLabel').textContent, /Existing provider.*existing-model/);
@@ -253,13 +249,12 @@ test("theme controls follow external Settings changes and Context describes disp
   const stop = dom.window.exports.startWorkspaceControl(); t.after(stop);
   dom.window.localStorage.setItem('devmoter-theme','dark');
   dom.window.dispatchEvent(new dom.window.CustomEvent('devmoter:theme-changed'));
-  assert.match(query('.dm-theme').textContent, /Dark/);
-  query('.dm-theme').click();
+  const command = name => dom.window.dispatchEvent(new dom.window.CustomEvent('devmoter:workspace-command', { detail: { command: name } }));
+  command('theme');
   assert.equal(dom.window.document.documentElement.dataset.devmoterThemeMode,'system');
-  query('.dm-context').click();
+  command('context');
   assert.equal(query('.dm-panel [data-compact]').disabled, true);
   assert.match(query('.dm-panel').textContent, /API Chatの会話履歴はこの機能の対象外/);
   assert.match(query('.dm-panel').textContent, /モデルの上限.*取得していません/);
   assert.match(query('.dm-panel').textContent, /料金削減は行いません/);
-  assert.doesNotMatch(query('.dm-context').textContent, /%/);
 });

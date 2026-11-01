@@ -195,9 +195,10 @@
   min-height: 38px;
 }
 
-.api-composer-foot span {
+.api-status {
+  display: block;
   min-width: 0;
-  flex: 1;
+  padding: 0 8px 4px;
   color: var(--api-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -212,7 +213,7 @@
   border: 0;
   border-radius: 9px;
   background: var(--api-accent);
-  color: white;
+  color: var(--api-on-accent, #fff);
   font-size: 20px;
   cursor: pointer;
 }
@@ -252,8 +253,7 @@
   font-size: 19px;
 }
 
-.api-new-chat,
-.api-agent-nav button {
+.api-new-chat {
   min-height: 46px;
   border: 0;
   border-radius: 16px;
@@ -267,38 +267,6 @@
 .api-new-chat {
   background: #e3e7ee;
   font-weight: 650;
-}
-
-.api-nav-label {
-  margin: 12px 8px 0;
-  color: var(--api-muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-
-.api-agent-nav {
-  display: grid;
-  gap: 3px;
-}
-
-.api-agent-nav button {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.api-agent-nav button:hover,
-.api-agent-nav button.active {
-  background: rgba(66, 133, 244, 0.10);
-}
-
-.api-sidebar-note {
-  margin-top: auto;
-  padding: 12px;
-  color: var(--api-muted);
-  font-size: 12px;
-  line-height: 1.55;
 }
 
 @media (max-width: 680px) {
@@ -346,6 +314,7 @@
     --api-muted: #9aa0a6;
     --api-border: rgba(232, 234, 237, 0.13);
     --api-accent: #9ab49f;
+    --api-on-accent: #111412;
     background: var(--api-bg);
   }
 
@@ -369,7 +338,6 @@
     background: #2b3037;
   }
 }
-
 
 /* ---------- Multi-API provider settings ---------- */
 
@@ -516,7 +484,7 @@
 .api-provider-form-actions button.primary {
   border-color: transparent;
   background: var(--api-accent);
-  color: white;
+  color: var(--api-on-accent, #fff);
 }
 
 .api-provider-list {
@@ -776,7 +744,6 @@
   }
 }
 
-
 /* ---------- Simplified API setup ---------- */
 
 .api-provider-form-simple {
@@ -847,7 +814,7 @@
   border: 0;
   border-radius: 17px;
   background: var(--api-accent);
-  color: white;
+  color: var(--api-on-accent, #fff);
   font: inherit;
   font-size: 15px;
   font-weight: 750;
@@ -880,7 +847,6 @@
     min-height: 54px;
   }
 }
-
 
 /* ---------- API reasoning + binary image attachments ---------- */
 
@@ -1038,7 +1004,6 @@
   }
 }
 
-
 /* P0: keep native provider/model pickers readable in dark UI. */
 @media (prefers-color-scheme: dark) {
   .api-app,
@@ -1063,7 +1028,6 @@
     color: #e8eaed;
   }
 }
-
 
 /* P0: custom provider chooser avoids bright OS-native select popovers. */
 .api-preset-select-hidden {
@@ -1117,19 +1081,11 @@
   }
 }
 
-
 @media (max-width: 640px) {
   .pocket-git-trigger {
     display: none !important;
   }
-
-  .ocx-backend-switch {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-  }
 }
-
 
 /* Shared ChatGPT-style agent switcher used by Codex, OpenCode and API Chat sidebars. */
 .dm-agent-head {
@@ -1297,7 +1253,6 @@
     width: min(320px, calc(100vw - 54px));
   }
 }
-
 
 /* Codex account usage cards */
 .cx-usage-card {

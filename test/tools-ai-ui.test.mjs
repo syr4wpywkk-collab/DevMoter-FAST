@@ -18,7 +18,7 @@ const context = { projects: [project, { id: "p2", name: "Project B", path: "/b" 
 const baseRun = { runId: "01234567-0123-0123-0123-012345678901", rawGoal: "今の変更を調べて", status: "planning", updatedAt: 1, context: { project, hostId: "local", backend: "tools-ai-read" }, planner: { providerId: "planner", providerName: "Configured provider", model: "configured-model" }, steps: [], failure: null, cancellation: { requested: false }, explanation: null };
 const response = body => new Response(JSON.stringify(body), { headers: { "content-type": "application/json" } });
 
-test("AI is default, selected target is captured, close/reopen restores the SAME run and manual tools remain alongside Office", async () => {
+test("Tools shows only the input and an always-visible model picker; the default target is captured and close/reopen restores the SAME run", async () => {
   let current = structuredClone(baseRun); let sent;
   const { dom, $, calls } = setup(async (url, options) => {
     if (url.endsWith("/context")) return response(context);
@@ -28,28 +28,25 @@ test("AI is default, selected target is captured, close/reopen restores the SAME
   });
   try {
     $(".dm-shell-menu-trigger").click(); await tick();
-    assert.equal($("#toolsAiTitle").textContent, "プロジェクトを調べる");
-    assert.equal($(".tools-ai-spark"), null);
-    assert.match($(".tools-ai-welcome").textContent, /読み取り専用/);
-    assert.equal($("[data-ai-submit]").textContent.trim(), "調査を開始 →");
-    assert.equal($("[data-manual-tools]").open, false);
-    assert.equal(dom.window.document.querySelectorAll("[data-tools-item]").length, 21);
-    assert.match($("[data-ai-availability]").textContent, /Configured provider.*configured-model/);
+    assert.equal($("[data-ai-submit]").textContent.trim(), "調査を開始");
+    assert.equal($("[data-ai-goal]").placeholder, "例：現在の変更点を整理");
+    for (const removed of [".tools-ai-welcome", "[data-manual-tools]", "[data-tools-item]", "[data-ai-suggestion]", ".tools-ai-sharing", ".tools-ai-settings", "[data-ai-project]", "[data-ai-manual]", "[data-ai-availability]", "[data-ai-settings]"]) assert.equal($(removed), null, removed);
+    assert.equal($("[data-ai-provider]").closest("details"), null, "model picker is not collapsed");
+    assert.equal($("[data-ai-model]").value, "configured-model");
+    assert.doesNotMatch($(".dm-shell-sidebar").textContent, /作業環境と機能|読み取り専用の調査|ツールを直接開く/);
     $("[data-ai-goal]").value = "今の変更を調べて";
     $("[data-ai-form]").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true })); await tick();
     assert.equal(sent.projectId, "p1"); assert.equal(sent.providerId, "planner");
-    $("[data-ai-project]").value = "p2"; $("[data-ai-project]").dispatchEvent(new dom.window.Event("change"));
     assert.match($("[data-ai-progress]").textContent, /今回の対象: Project A/);
     assert.equal($("[data-ai-stop]").closest(".dm-shell-sidebar-head") !== null, true);
     $("[data-shell-close]").click(); $(".dm-shell-menu-trigger").click(); await tick();
     assert.equal(dom.window.localStorage.getItem("devmoter-tools-ai-run"), current.runId);
     assert.match($("[data-ai-progress]").textContent, /Project A/);
-    $("[data-ai-manual]").click(); assert.equal($("[data-manual-tools]").open, true);
     $("[data-ai-stop]").click(); await tick(); assert.match($("[data-ai-progress]").textContent, /停止要求済み/);
-    $("[data-ai-settings]").click(); assert.equal(calls.at(-1), "api");
+    assert.deepEqual(calls, []);
   } finally { dom.window.close(); }
 });
-test("unconfigured planner keeps explicit settings/manual paths and no submission", async () => {
+test("unconfigured planner keeps the explicit settings path and no submission", async () => {
   let posts = 0;
   const { dom, $, calls } = setup(async (_url, options) => {
     if (options.method === "POST") posts++;
@@ -63,11 +60,8 @@ test("unconfigured planner keeps explicit settings/manual paths and no submissio
     $("[data-ai-goal]").value = "今の変更を調べて";
     $("[data-ai-submit]").click(); await tick();
     assert.equal(posts, 0);
-    assert.equal($(".tools-ai-settings").open, true);
     assert.equal($("[data-ai-error]").hidden, false);
     $("[data-ai-configure]").click(); assert.equal(calls.at(-1), "api");
-    $("[data-ai-manual]").click(); assert.equal($("[data-manual-tools]").open, true);
-    assert.ok($("[data-ai-settings]"));
   } finally { dom.window.close(); }
 });
 
@@ -75,7 +69,7 @@ test("missing credential, model, and Vault project binding produce actionable pr
   for (const [provider, reason, recoverySelector, configureHidden] of [
     [{ ...context.providers[0], ready: false }, /credentialが未設定/, "[data-ai-configure]", false],
     [{ ...context.providers[0], models: [] }, /modelが未設定/, "[data-ai-model]", false],
-    [{ ...context.providers[0], projectId: "p2" }, /紐付いたProject/, "[data-ai-project]", true]
+    [{ ...context.providers[0], projectId: "p-missing" }, /紐付いたProject/, "[data-ai-provider]", true]
   ]) {
     let posts = 0;
     const { dom, $ } = setup(async (_url, options) => { if (options.method === "POST") posts++; return response({ ...context, providers: [provider] }); });
@@ -84,7 +78,6 @@ test("missing credential, model, and Vault project binding produce actionable pr
       assert.match($("[data-ai-setup-message]").textContent, reason);
       $("[data-ai-goal]").value = "今の変更を調べて"; $("[data-ai-submit]").click(); await tick();
       assert.equal(posts, 0); assert.match($("[data-ai-error]").textContent, reason);
-      assert.equal($(".tools-ai-settings").open, true);
       assert.equal($("[data-ai-configure]").hidden, configureHidden);
       assert.equal(document.activeElement, $(recoverySelector));
     } finally { dom.window.close(); }
@@ -203,7 +196,7 @@ test("an old reconnect response cannot replace a newly submitted run", async () 
   } finally { dom.window.close(); }
 });
 
-test("conversation entry keeps settings quiet, chips only fill input, and summary precedes collapsed source data", async () => {
+test("saved provider/model are restored and the summary precedes collapsed source data", async () => {
   let posts = 0;
   const current = { ...structuredClone(baseRun), status: "completed", updatedAt: 5,
     steps: [{ operationId: "git.inspect", status: "completed", result: { type: "git", source: "actual-git", builtAt: null, sharing: { excluded: false, truncated: false }, data: { status: { branch: "main" }, files: { total: 1, files: [{ path: "README.md", status: "modified" }] }, diffs: [{ path: "README.md", diff: "+ npm start" }] } } }],
@@ -213,17 +206,29 @@ test("conversation entry keeps settings quiet, chips only fill input, and summar
     localStorage.setItem("opencode-pocket-project", "p2"); localStorage.setItem("devmoter-api-provider", "planner"); localStorage.setItem("devmoter-api-model:planner", "configured-model");
     localStorage.setItem("devmoter-tools-ai-run", current.runId);
     $(".dm-shell-menu-trigger").click(); await tick();
-    assert.equal($(".tools-ai-settings").open, false);
-    assert.equal($("[data-ai-project]").value, "p2");
     assert.equal($("[data-ai-provider]").value, "planner");
     assert.equal($("[data-ai-model]").value, "configured-model");
-    const chips = [...document.querySelectorAll("[data-ai-suggestion]")]; assert.equal(chips.length, 5);
-    for (const chip of chips) { chip.click(); assert.equal($("[data-ai-goal]").value, chip.textContent); }
-    assert.equal(posts, 0); assert.equal(document.activeElement, $("[data-ai-goal]"));
+    assert.equal(posts, 0);
     assert.equal($("[data-ai-results]").firstElementChild.classList.contains("tools-ai-explanation"), true);
     assert.equal($(".tools-ai-result-details").open, false);
     assert.match($(".tools-ai-result-details").textContent, /actual-git.*main/s);
     assert.match($(".tools-ai-result-details").textContent, /npm start/);
     assert.equal($(".tools-ai-run-details").open, false);
+  } finally { dom.window.close(); }
+});
+
+test("a Vault-bound provider runs against its own Project; otherwise the saved Project is used", async () => {
+  let sent;
+  const bound = { ...context.providers[0], projectId: "p2" };
+  const { dom, $ } = setup(async (url, options) => {
+    if (url.endsWith("/context")) return response({ ...context, providers: [bound] });
+    if (options.method === "POST") { sent = JSON.parse(options.body); return response(baseRun); }
+    return response(baseRun);
+  });
+  try {
+    $(".dm-shell-menu-trigger").click(); await tick();
+    assert.equal($("[data-ai-setup-notice]").hidden, true);
+    $("[data-ai-goal]").value = "今の変更を調べて"; $("[data-ai-submit]").click(); await tick();
+    assert.equal(sent.projectId, "p2");
   } finally { dom.window.close(); }
 });

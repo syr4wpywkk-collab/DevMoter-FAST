@@ -140,14 +140,6 @@ export function mountRemoteControlCenter() {
   `;
   document.body.appendChild(shell);
 
-  const syncViewportHeight = () => {
-    const height = window.visualViewport?.height ?? window.innerHeight;
-    document.documentElement.style.setProperty("--dm-viewport-height", `${Math.round(height)}px`);
-  };
-  syncViewportHeight();
-  window.addEventListener("resize", syncViewportHeight, { passive: true });
-  window.visualViewport?.addEventListener("resize", syncViewportHeight, { passive: true });
-
   const trigger = shell.querySelector<HTMLButtonElement>(".dm-control-trigger")!;
   const modal = shell.querySelector<HTMLElement>(".dm-control-modal")!;
   const close = shell.querySelector<HTMLButtonElement>(".dm-control-close")!;
