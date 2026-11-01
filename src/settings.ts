@@ -5,6 +5,8 @@ type Json = Record<string, any>;
 type SettingsPage = "root" | "appearance" | "account" | "devices" | "vault" | "notifications" | "diagnostics" | "guide";
 
 const THEME_KEY = "devmoter-theme";
+// Inline so the settings module stays loadable standalone in tests.
+const EXTERNAL_ICON = '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5 7 9M12 9.5v3a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3"/></svg>';
 const DENSITY_KEY = "devmoter-settings-density";
 
 function escapeHtml(value: unknown) {
@@ -126,6 +128,8 @@ export function mountSettingsPanel() {
     badge?: string;
     danger?: boolean;
     disabled?: boolean;
+    /** Leaves the app (new tab): trailing external icon instead of the chevron. */
+    external?: string;
   } = {}) {
     return `
       <button
@@ -133,6 +137,7 @@ export function mountSettingsPanel() {
         type="button"
         ${options.action ? `data-action="${escapeHtml(options.action)}"` : ""}
         ${options.disabled ? "disabled" : ""}
+        ${options.external ? `aria-label="${escapeHtml(`${label}（${options.external}が新しいタブで開きます）`)}"` : ""}
       >
         <span class="devmoter-settings-icon" aria-hidden="true">${icon}</span>
         <span class="devmoter-settings-row-copy">
@@ -140,7 +145,9 @@ export function mountSettingsPanel() {
           ${options.value ? `<small>${escapeHtml(options.value)}</small>` : ""}
         </span>
         ${options.badge ? `<span class="devmoter-settings-badge">${escapeHtml(options.badge)}</span>` : ""}
-        <span class="devmoter-settings-chevron" aria-hidden="true">›</span>
+        ${options.external
+          ? `<span class="devmoter-settings-chevron external" aria-hidden="true">${EXTERNAL_ICON}</span>`
+          : '<span class="devmoter-settings-chevron" aria-hidden="true">›</span>'}
       </button>
     `;
   }
@@ -180,7 +187,6 @@ export function mountSettingsPanel() {
         ? "接続できます"
         : "未設定";
     const appVersion = diagnostics?.app?.version || "0.2.0";
-    const projectCount = diagnostics?.projects?.count ?? 0;
 
     scroll.innerHTML = `
       <button class="devmoter-settings-profile" type="button" data-action="page:account">
@@ -201,29 +207,19 @@ export function mountSettingsPanel() {
       )}
 
       ${section("DevMoter をカスタマイズする",
-        row("▣", "表示とレイアウト", { action: "page:appearance", value: densityLabel(density) }) +
-        row("◐", "テーマ", { action: "page:appearance", value: themeLabel(theme) }) +
+        row("◐", "テーマと表示", { action: "page:appearance", value: `${themeLabel(theme)} · ${densityLabel(density)}` }) +
         row("♢", "通知", { action: "page:notifications" })
       )}
 
-      ${section("アカウント",
-        row("◎", "サインイン", { action: "page:account", value: `${provider} · ${login}` }) +
-        row("◈", "サインイン方法", { action: "page:account", value: "アカウントとセッションを管理" }) +
-        row("◌", "使用状況と制限", { action: "page:diagnostics", value: `${projectCount} Projects` })
-      )}
-
       ${section("セキュリティとログイン",
-        row("◎", "サインイン方法", { action: "page:account" }) +
         row("◆", "Passkeys", { action: "remote:passkeys" }) +
-        row("▱", "Trusted devices", { action: "page:devices" }) +
+        row("▱", "Trusted devices", { action: "page:devices", value: "端末の登録とペアリングコード" }) +
         row("◇", "API Vault", { action: "page:vault", value: "Hostで暗号化して管理" })
       )}
 
       ${section("リモートと自動化",
         row("▤", "ホスト registry", { action: "remote:hosts" }) +
-        row("◷", "Automation / Schedules", { action: "remote:automation" }) +
-        row("⌁", "ペアリングコード", { action: "page:devices" }) +
-        row("♢", "通知設定", { action: "page:notifications" })
+        row("◷", "Automation / Schedules", { action: "remote:automation" })
       )}
 
       ${section("開発者ツール",
@@ -235,15 +231,9 @@ export function mountSettingsPanel() {
         row("⌁", "診断", { action: "page:diagnostics", value: `v${appVersion}` })
       )}
 
-      ${section("データ管理",
-        row("▰", "ストレージ", { action: "existing:.adv-fab" }) +
-        row("◫", "データコントロール", { action: "page:diagnostics" })
-      )}
-
       ${section("ヘルプ",
         row("?", "使い方ガイド", { action: "page:guide" }) +
-        row("⚑", "不具合を報告", { action: "report" }) +
-        row("ⓘ", "詳細", { action: "page:diagnostics", value: `DevMoter FAST v${appVersion}` })
+        row("⚑", "不具合を報告", { action: "report", value: "GitHub の Issue を開く", external: "GitHub" })
       )}
 
       <div class="devmoter-settings-card devmoter-settings-logout-card">
@@ -254,7 +244,7 @@ export function mountSettingsPanel() {
   }
 
   function renderAppearance() {
-    setHeader("表示とレイアウト", "DevMoter FAST をカスタマイズ");
+    setHeader("テーマと表示", "DevMoter FAST をカスタマイズ");
     const theme = currentTheme();
     const density = localStorage.getItem(DENSITY_KEY) || "comfortable";
     scroll.innerHTML = `

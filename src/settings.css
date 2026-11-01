@@ -144,6 +144,17 @@
   font-size: 1.35rem;
 }
 
+.devmoter-settings-chevron.external {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+}
+
+.devmoter-settings-chevron.external svg {
+  flex-shrink: 0;
+}
+
 .devmoter-settings-avatar {
   width: 52px;
   height: 52px;
