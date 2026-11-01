@@ -121,17 +121,17 @@ export function mountRemoteControlCenter() {
   const shell = document.createElement("div");
   shell.className = "dm-control-shell";
   shell.innerHTML = `
-    <button class="dm-control-trigger" type="button" aria-label="DevMoter remote and automation control center" aria-haspopup="dialog" aria-expanded="false">⚙</button>
+    <button class="dm-control-trigger" type="button" aria-label="Remote & automation" aria-haspopup="dialog" aria-expanded="false">⚙</button>
     <div class="dm-control-modal hidden" role="dialog" aria-modal="true" aria-labelledby="dmControlTitle">
       <div class="dm-control-card">
         <header class="dm-control-head">
-          <div><strong id="dmControlTitle">Remote & Automation</strong><small>${location.host}</small></div>
-          <button class="dm-control-close" type="button" aria-label="Close control center">×</button>
+          <div><strong id="dmControlTitle">Hosts</strong><small>${location.host}</small></div>
+          <button class="dm-control-close" type="button" aria-label="Close">×</button>
         </header>
-        <div class="dm-control-tabs" role="tablist" aria-label="Control center sections">
-          <button type="button" role="tab" data-tab="hosts" aria-selected="true">Hosts</button>
-          <button type="button" role="tab" data-tab="automation" aria-selected="false">Automation</button>
-          <button type="button" role="tab" data-tab="passkeys" aria-selected="false">Passkeys</button>
+        <div class="dm-control-tabs" role="tablist" aria-label="Remote & automation">
+          <button type="button" role="tab" data-tab="hosts" data-title="Hosts" aria-selected="true">Hosts</button>
+          <button type="button" role="tab" data-tab="automation" data-title="Automation" aria-selected="false">Automation</button>
+          <button type="button" role="tab" data-tab="passkeys" data-title="Passkeys" aria-selected="false">Passkeys</button>
         </div>
         <div class="dm-control-body" tabindex="-1"></div>
         <div class="dm-control-toast hidden" role="status" aria-live="polite"></div>
@@ -145,8 +145,10 @@ export function mountRemoteControlCenter() {
   const close = shell.querySelector<HTMLButtonElement>(".dm-control-close")!;
   const body = shell.querySelector<HTMLElement>(".dm-control-body")!;
   const toast = shell.querySelector<HTMLElement>(".dm-control-toast")!;
+  const title = shell.querySelector<HTMLElement>("#dmControlTitle")!;
   const tabs = Array.from(shell.querySelectorAll<HTMLButtonElement>("[data-tab]"));
   let activeTab = "hosts";
+  let renderGeneration = 0;
   let lastFocus: HTMLElement | null = null;
 
   function showToast(message: string) {
@@ -206,26 +208,30 @@ export function mountRemoteControlCenter() {
     });
   }
 
+  // The sheet title is the label of the section that is showing, so it matches
+  // the Settings row (ホスト一覧 / 自動化 / パスキー) that opened it.
   async function render() {
-    body.replaceChildren();
+    const generation = ++renderGeneration;
+    const tab = tabs.find(item => item.dataset.tab === activeTab);
+    title.textContent = tab?.dataset.title || "Hosts";
+    // Build off-DOM and swap in only if no newer render started meanwhile:
+    // Settings opens the sheet and selects a tab back to back, and two renders
+    // appending into the same body duplicated every row ("This host" twice).
+    const view = document.createDocumentFragment();
     try {
-      if (activeTab === "hosts") await renderHosts();
-      else if (activeTab === "automation") await renderAutomation();
-      else await renderPasskeys();
+      if (activeTab === "hosts") await renderHosts(view);
+      else if (activeTab === "automation") await renderAutomation(view);
+      else await renderPasskeys(view);
     } catch (error) {
       const p = document.createElement("p");
       p.className = "dm-error";
       p.textContent = error instanceof Error ? error.message : String(error);
-      body.appendChild(p);
+      view.appendChild(p);
     }
+    if (generation === renderGeneration) body.replaceChildren(view);
   }
 
-  async function renderHosts() {
-    const title = document.createElement("div");
-    title.className = "dm-section-title";
-    title.innerHTML = "<strong>Host registry</strong><span>Host → project → agent/session. Credentials stay on each host.</span>";
-    body.appendChild(title);
-
+  async function renderHosts(body: DocumentFragment) {
     const status = await api<{ hosts: Array<{host: Json; status: Json}> }>("/api/control/hosts/status");
     const list = document.createElement("div");
     list.className = "dm-list";
@@ -237,7 +243,13 @@ export function mountRemoteControlCenter() {
       const strong = document.createElement("strong");
       strong.textContent = item.host.label || item.host.id;
       const small = document.createElement("small");
-      small.textContent = `${item.host.address || location.origin} · ${item.host.trustState} · ${fmtState(item.status.state)}`;
+      // The state badge already shows online/offline; the line under the name is where and how trusted.
+      small.textContent = item.host.address || location.origin;
+      if (item.host.trustState && item.host.trustState !== "local") {
+        const trust = document.createElement("span");
+        trust.textContent = item.host.trustState === "trusted" ? "Trusted" : "Unverified";
+        small.append(" · ", trust);
+      }
       const state = document.createElement("span");
       state.className = `dm-state ${item.status.state || "offline"}`;
       state.textContent = fmtState(item.status.state);
@@ -277,18 +289,13 @@ export function mountRemoteControlCenter() {
     body.appendChild(form);
   }
 
-  async function renderAutomation() {
+  async function renderAutomation(body: DocumentFragment) {
     const [schedules, triggers, runs, projects] = await Promise.all([
       api<{ schedules: Json[] }>("/api/control/schedules"),
       api<{ triggers: Json[] }>("/api/control/triggers"),
       api<{ runs: Json[] }>("/api/control/runs"),
       api<{ projects: Json[] }>("/api/projects")
     ]);
-
-    const intro = document.createElement("div");
-    intro.className = "dm-section-title";
-    intro.innerHTML = "<strong>Bounded automation</strong><span>Every schedule, trigger, and autopilot run is visible here. Approval policy remains normal.</span>";
-    body.appendChild(intro);
 
     const projectOptions: Array<[string, string]> = [["", "No project"]];
     for (const project of projects.projects || []) projectOptions.push([project.id, `${project.name} · ${project.hostId && project.hostId !== "local" ? project.hostId : location.host}`]);
@@ -460,31 +467,33 @@ export function mountRemoteControlCenter() {
     body.appendChild(detailsAutopilot);
   }
 
-  async function renderPasskeys() {
+  async function renderPasskeys(body: DocumentFragment) {
     const status = await api<Json>("/api/auth/passkey/status");
     const webauthnAvailable = "credentials" in navigator && typeof PublicKeyCredential !== "undefined";
-    const intro = document.createElement("div");
-    intro.className = "dm-section-title";
-    intro.innerHTML = "<strong>Passkeys</strong><span>Sign in directly with Face ID, Touch ID or Windows Hello. New passkeys can be registered after owner sign-in and are scoped to this DevMoter host.</span>";
-    body.appendChild(intro);
-
     const card = document.createElement("div");
     card.className = "dm-passkey-card";
+    // Static words sit in their own text nodes so the i18n dictionary can translate them.
     const state = document.createElement("p");
-    state.textContent = status.enabled
-      ? `${status.credentialCount} passkey(s) registered for ${status.rpId}. ${status.authenticated ? "Authenticated." : "Login required."}`
-      : `No passkey registered for ${status.rpId}.`;
+    if (status.enabled) {
+      const count = document.createElement("strong");
+      count.textContent = String(status.credentialCount ?? 0);
+      const signedIn = document.createElement("span");
+      signedIn.textContent = status.authenticated ? "Signed in" : "Sign-in required";
+      state.append(document.createTextNode("Registered passkeys"), " ", count, " · ", signedIn);
+    } else {
+      state.textContent = "No passkeys registered";
+    }
     card.appendChild(state);
 
     if (!webauthnAvailable) {
       const unsupported = document.createElement("p");
       unsupported.className = "dm-error";
-      unsupported.textContent = "This browser does not expose WebAuthn/passkey APIs.";
+      unsupported.textContent = "This browser does not support passkeys";
       card.appendChild(unsupported);
     }
 
     if (webauthnAvailable && status.enabled && !status.authenticated) {
-      const login = button("Login with passkey", "primary");
+      const login = button("Sign in with passkey", "primary");
       login.addEventListener("click", async () => {
         const options = await api<Json>("/api/auth/passkey/login/options", { method: "POST" });
         const publicKey = options.publicKey;
@@ -500,7 +509,7 @@ export function mountRemoteControlCenter() {
             response: authenticationResponseJSON(credential)
           })
         });
-        showToast("Passkey login complete");
+        showToast("Signed in with passkey");
         await render();
       });
       card.appendChild(login);
@@ -533,7 +542,7 @@ export function mountRemoteControlCenter() {
     }
 
     if (status.authenticated) {
-      const logout = button("Logout", "dm-mini");
+      const logout = button("Sign out", "dm-mini");
       logout.addEventListener("click", async () => {
         await api("/api/auth/passkey/logout", { method: "POST" });
         location.replace("/login.html");
