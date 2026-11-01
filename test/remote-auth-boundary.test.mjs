@@ -34,7 +34,7 @@ test("webhook and explicit login endpoints are routed before the owner auth boun
   const setEnd = source.indexOf("]);", setStart);
   assert.ok(setStart >= 0 && setStart < serverStart);
   const publicPaths = [...source.slice(setStart, setEnd).matchAll(/"([^"]+)"/g)].map(match => match[1]);
-  assert.deepEqual(publicPaths.sort(), ["/icon.svg", "/manifest.webmanifest", "/sw.js"]);
+  assert.deepEqual(publicPaths.sort(), ["/apple-touch-icon.png", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/manifest.webmanifest", "/sw.js"]);
   assert.equal(source.indexOf("PUBLIC_STATIC_PATHS.has(url.pathname)", publicStatic + 1), -1);
 });
 

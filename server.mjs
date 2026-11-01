@@ -2386,7 +2386,10 @@ function isLoopbackHost(hostHeader) {
 // redirect. Exact paths only; nothing else under dist/ is reachable without auth.
 const PUBLIC_STATIC_PATHS = new Set([
   "/manifest.webmanifest",
-  "/icon.svg",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/icon-maskable-512.png",
+  "/apple-touch-icon.png",
   "/sw.js"
 ]);
 
