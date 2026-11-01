@@ -126,3 +126,37 @@ test("Remote & automation renders each section once even when opened and switche
     window.close();
   }
 });
+
+test("rows merged or removed in #504 keep #504's set; their copy is unified and translated", async () => {
+  const labels = rootRowLabels();
+  // Removed / merged rows stay gone, with no orphaned dictionary entries for the old gate.
+  for (const removed of ["使用状況と制限", "データコントロール", "詳細", "ストレージ", "データ管理", "サインイン", "サインイン方法", "テーマ", "表示とレイアウト", "通知設定", "ペアリングコード"]) {
+    assert.ok(!labels.includes(removed), removed);
+  }
+  for (const orphan of ["This browser is not a Trusted device", "Open Trusted devices"]) {
+    assert.ok(!dictionary.has(orphan), orphan);
+  }
+  // Each row label appears once.
+  assert.equal(new Set(labels).size, labels.length, labels.join(","));
+  // Merged rows use the polite Japanese label, and the sheet they open carries the same title.
+  assert.ok(labels.includes("テーマと表示") && settings.includes('setHeader("テーマと表示"'));
+  assert.ok(settings.includes('row("▱", "信頼済み端末", { action: "page:devices", value: "端末の登録とペアリングコード" })'));
+  assert.ok(settings.includes('setHeader("信頼済み端末"'));
+  assert.ok(settings.includes('value: "GitHub の Issue を開く", external: "GitHub"'));
+  for (const text of ["テーマと表示", "端末の登録とペアリングコード", "不具合を報告", "GitHub の Issue を開く"]) {
+    assert.ok(dictionary.has(text), text);
+    assert.doesNotMatch(en(text), /[ぁ-んァ-ン一-龯]/, text);
+  }
+  // The device gate speaks the same words as the row it opens.
+  const gate = await source("src/device-gate.mjs");
+  for (const text of ["この端末は未登録です", "端末を登録すると使えます", "端末を登録"]) {
+    assert.ok(gate.includes(`"${text}"`), text);
+    assert.equal(ja(text), text);
+    assert.doesNotMatch(en(text), /[ぁ-んァ-ン一-龯]/, text);
+  }
+  // Device-bound sheets title their gate with the Settings row label, not the old English title.
+  const workspace = await source("src/workspace-control.ts");
+  assert.ok(workspace.includes('showFailure("チェックポイント", error)'));
+  assert.ok(workspace.includes('showFailure("拡張機能", error)'));
+  assert.ok(!workspace.includes('"Task checkpoints"'));
+});

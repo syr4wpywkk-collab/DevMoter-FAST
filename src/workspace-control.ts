@@ -409,7 +409,7 @@ function createWorkspacePanel() {
         actions.appendChild(button);
       }
     } catch (error) {
-      showFailure("Task checkpoints", error);
+      showFailure("チェックポイント", error);
     }
   };
 
@@ -458,7 +458,7 @@ function createWorkspacePanel() {
         list.appendChild(row);
       }
     } catch (error) {
-      showFailure("Extensions", error);
+      showFailure("拡張機能", error);
     }
   };
 

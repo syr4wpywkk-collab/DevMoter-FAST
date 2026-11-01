@@ -282,9 +282,14 @@ const dictionary: Record<string, TranslationSet> = {
   "Safety scan": { en: "Safety scan", ja: "セーフティスキャン", "zh-CN": "安全扫描" },
   "Index": { en: "Index", ja: "インデックス", "zh-CN": "索引" },
   "Project index": { en: "Project index", ja: "プロジェクトインデックス", "zh-CN": "项目索引" },
-  "This browser is not a Trusted device": { en: "This browser is not a trusted device", ja: "このブラウザは信頼済み端末ではありません", "zh-CN": "此浏览器不是受信任设备" },
-  "Terminal access is device-bound. Pair this browser first, then reopen Terminal.": { en: "Terminal access is device-bound. Pair this browser first, then reopen Terminal.", ja: "ターミナルは信頼済み端末でのみ使えます。先にこのブラウザをペアリングしてください。", "zh-CN": "终端仅限受信任设备使用。请先配对此浏览器。" },
-  "Open Trusted devices": { en: "Open trusted devices", ja: "信頼済み端末を開く", "zh-CN": "打开受信任设备" },
+  // Rows and gate merged in #504 (theme + density, devices + pairing, external bug report).
+  "テーマと表示": { en: "Theme & display", ja: "テーマと表示", "zh-CN": "主题与显示" },
+  "端末の登録とペアリングコード": { en: "Register this device · pairing code", ja: "端末の登録とペアリングコード", "zh-CN": "注册设备与配对码" },
+  "不具合を報告": { en: "Report a bug", ja: "不具合を報告", "zh-CN": "报告问题" },
+  "GitHub の Issue を開く": { en: "Opens a GitHub issue", ja: "GitHub の Issue を開く", "zh-CN": "打开 GitHub Issue" },
+  "この端末は未登録です": { en: "This device is not registered", ja: "この端末は未登録です", "zh-CN": "此设备尚未注册" },
+  "端末を登録すると使えます": { en: "Register this device to use it", ja: "端末を登録すると使えます", "zh-CN": "注册此设备后即可使用" },
+  "端末を登録": { en: "Register device", ja: "端末を登録", "zh-CN": "注册设备" },
   // Activity sheet (session-control.ts)
   "Queue": { en: "Queue", ja: "キュー", "zh-CN": "队列" },
   "History": { en: "History", ja: "履歴", "zh-CN": "历史" },
