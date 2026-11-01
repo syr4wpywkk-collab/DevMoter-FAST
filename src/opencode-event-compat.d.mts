@@ -1,5 +1,6 @@
 export type NormalizedOpenCodeEvent = {
   type: string;
+  rawType: string;
   props: any;
   sessionID: any;
   category: "other" | "part" | "tool" | "status";

@@ -14,6 +14,7 @@ import * as sessionList from "../src/opencode-session-list.mjs";
 import * as eventRecovery from "../src/event-recovery.mjs";
 import * as fetchTimeout from "../src/fetch-with-timeout.mjs";
 import * as providerCatalog from "../src/opencode-provider-catalog.mjs";
+import * as apiShapes from "../src/opencode-api-shapes.mjs";
 import { renderChatMarkdown } from "../src/chat-markdown.mjs";
 import { loadPureTypeScript } from "./helpers/ts-pure-modules.mjs";
 
@@ -58,6 +59,7 @@ async function harness(t, initialContext = []) {
     let payload = [];
     if (path === "/api/opencode/location") payload = { directory: "/workspace/project" };
     else if (path === "/api/opencode/pocket/providers") payload = { all: [], connected: [] };
+    else if (path === "/api/opencode/pocket/runtime") payload = { generation: "v2", version: "2.0.9" };
     else if (path === "/api/opencode/agent") payload = [{ id: "build" }, { id: "plan" }];
     else if (path === "/api/opencode/session") payload = [session];
     else if (path === "/api/opencode/session/active") payload = {};
@@ -83,6 +85,7 @@ async function harness(t, initialContext = []) {
     "./event-recovery.mjs": eventRecovery,
     "./fetch-with-timeout.mjs": fetchTimeout,
     "./opencode-provider-catalog.mjs": providerCatalog,
+    "./opencode-api-shapes.mjs": apiShapes,
     "./chat-markdown.mjs": { renderChatMarkdown },
     "./bounded-transcript": bounds,
     "./opencode-chat.css": {},
