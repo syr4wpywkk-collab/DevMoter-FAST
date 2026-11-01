@@ -24,8 +24,13 @@ test("terminal device-auth failures use the shared registration gate", async () 
   const start = control.indexOf("function showTerminalError(");
   const end = control.indexOf("async function refreshTerminalSessions()", start);
   const body = control.slice(start, end);
-  assert.ok(body.includes("isDeviceAuthError(error)"));
-  assert.ok(body.includes("createDeviceGate(document"));
+  // Terminal, Safety and Index share one section gate (Group G): a device-token
+  // refusal replaces the whole tab with the 信頼済み端末 button.
+  assert.ok(body.includes("showSectionGate(terminalSection, error)"));
+  const gateStart = control.indexOf("function showSectionGate(");
+  const gate = control.slice(gateStart, control.indexOf("function clearSectionGate(", gateStart));
+  assert.ok(gate.includes("isDeviceAuthError(error)"));
+  assert.ok(gate.includes("createDeviceGate(document, { compact: true"));
   assert.ok(body.includes('showTerminalError("Could not load sessions", error)'));
   // The raw 401 text is not shown alongside the gate, and the old bespoke gate is gone.
   assert.ok(!control.includes("This browser is not a Trusted device"));

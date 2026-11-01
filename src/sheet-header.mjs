@@ -12,6 +12,8 @@
 //   sheet.prepend(head.element);
 //   head.setTitle("…"); head.setSubtitle(""); head.setPrimary(null);
 //
+// Shape: three slots — title, primary (e.g. 新規), close — plus optional icon
+// actions; the root carries data-sheet-header.
 // Extra icon buttons (e.g. refresh) go in head.actions, between the title and
 // the primary/close buttons. Sheets must not build their own header row.
 // Loaded standalone by tests, so the close icon is inline SVG.
@@ -26,6 +28,9 @@ const CLOSE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" 
 export function createSheetHeader(doc, { title, subtitle = "", titleId = "", closeLabel = "閉じる", onClose, primary = null } = {}) {
   const element = doc.createElement("header");
   element.className = "dm-sheet-head";
+  // Same marker as the Office dialog's three-slot header (#509), so a header
+  // laid out by hand there can be swapped for this one without CSS changes.
+  element.dataset.sheetHeader = "";
 
   const heading = doc.createElement("div");
   heading.className = "dm-sheet-head-text";

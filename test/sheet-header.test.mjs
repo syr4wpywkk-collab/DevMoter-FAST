@@ -18,6 +18,7 @@ test("shared sheet header: title, one-line subtitle, optional primary, close", (
   doc.body.append(head.element);
   assert.equal(head.element.tagName, "HEADER");
   assert.equal(head.element.className, "dm-sheet-head");
+  assert.ok(head.element.hasAttribute("data-sheet-header"), "same marker as the Office dialog header (#509)");
   assert.equal(doc.getElementById("wfTitle").textContent, "Review & Tasks");
   assert.equal(head.subtitleEl.hidden, true, "no subtitle → no empty line");
   assert.equal(head.primaryButton.hidden, true, "no primary → hidden");
