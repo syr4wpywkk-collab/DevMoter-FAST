@@ -121,6 +121,10 @@ body.dm-task-first-enabled {
   top: calc(var(--dw-top-height) - 4px);
   right: max(8px, env(safe-area-inset-right));
   width: min(240px, calc(100vw - 16px));
+  /* Short phones (320×568): the menu scrolls instead of running off-screen. */
+  max-height: calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - 8px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: grid;
   gap: 4px;
   padding: 4px;
