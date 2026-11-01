@@ -784,7 +784,22 @@ export function mountCodexRemote(
     return payload as T;
   }
 
-  async function loadProjects() {
+  // The in-flight Project load, so panels opened during startup can wait for
+  // the saved selection instead of rendering an empty state first.
+  let projectsLoading: Promise<void> | null = null;
+  function loadProjects() {
+    const run = loadProjectsNow().finally(() => {
+      if (projectsLoading === run) projectsLoading = null;
+    });
+    projectsLoading = run;
+    return run;
+  }
+  function whenProjectReady() {
+    if (activeProject) return Promise.resolve();
+    return projectsLoading ?? loadProjects();
+  }
+
+  async function loadProjectsNow() {
     const result = await projectApi<{ projects?: ProjectSummary[] }>("");
     projects = (result.projects ?? []).filter(project => project.available !== false);
 
@@ -3444,6 +3459,7 @@ export function mountCodexRemote(
     openModal,
     closeSidebar,
     getActiveProject: () => activeProject,
+    whenProjectReady,
     getActiveThreadId: () => activeThreadId,
     showToast,
     uid

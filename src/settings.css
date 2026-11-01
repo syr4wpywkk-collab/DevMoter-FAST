@@ -151,7 +151,7 @@
   height: 20px;
 }
 
-.devmoter-settings-chevron.external svg {
+.devmoter-settings-chevron.external > svg {
   flex-shrink: 0;
 }
 
@@ -225,10 +225,37 @@
 
 .devmoter-settings-icon {
   width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
-  color: #f2f2f3;
-  font-size: .93rem;
+  /* Icons use the row's body text color in both themes. */
+  color: currentColor;
+}
+
+.devmoter-settings-icon > svg,
+.devmoter-settings-trigger > svg,
+.devmoter-settings-health-row > span > svg,
+.devmoter-settings-chevron.external > svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Guide steps: numbers in a hairline ring, readable in light and dark. */
+.devmoter-settings-step {
+  width: 24px;
+  height: 24px;
+  margin: 2px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .devmoter-settings-row-copy {
@@ -411,7 +438,7 @@ html[data-devmoter-theme="light"] .devmoter-settings-row-copy small {
 .devmoter-settings-note,
 .devmoter-guide-hero {
   margin: 12px 8px 18px;
-  color: #a4a4aa;
+  color: var(--text-secondary);
   font-size: .72rem;
   line-height: 1.55;
 }
@@ -635,8 +662,36 @@ html[data-devmoter-theme="light"] .devmoter-settings-row-copy small {
 }
 
 .devmoter-settings-device button {
-  min-height: 36px;
-  color: #ff9b95;
+  min-height: 44px;
+  border-color: var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+
+.devmoter-settings-device button[data-action="account:disconnect"],
+.devmoter-settings-device button[data-action="account:revoke-session"] {
+  color: var(--status-error);
+}
+
+.devmoter-settings-row,
+.devmoter-settings-profile,
+.devmoter-settings-device button,
+.devmoter-settings-actions button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.devmoter-settings-row:active:not(:disabled),
+.devmoter-settings-profile:active,
+.devmoter-settings-device button:active:not(:disabled),
+.devmoter-settings-actions button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.devmoter-settings-form-card input {
+  font-size: 16px;
 }
 
 .devmoter-settings-empty {

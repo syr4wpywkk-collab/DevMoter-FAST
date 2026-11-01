@@ -21,6 +21,7 @@ html[data-devmoter-theme="dark"] {
   --user-bubble: #303030;
   --status-error: #f08b8b;
   --status-warning: #e0b15a;
+  --status-success: #7fd19b;
 }
 
 html[data-devmoter-theme="light"] {
@@ -43,6 +44,7 @@ html[data-devmoter-theme="light"] {
   --user-bubble: #f4f4f4;
   --status-error: #b42318;
   --status-warning: #8a6116;
+  --status-success: #1f7a3d;
 }
 
 html, body { background: var(--canvas-base); color: var(--text-primary); }
@@ -183,3 +185,31 @@ html[data-devmoter-theme="light"] body.dm-task-first-enabled {
 /* Keep the existing compact console geometry and safe-area padding. */
 .cx-app .cx-topbar, .ocx-app .ocx-topbar { border-bottom: 1px solid var(--border-hairline); }
 .cx-app .cx-topbar-pill, .ocx-app .ocx-context-button { border-radius: var(--radius-control); }
+
+/* Shared sheet frame. Every full-height sheet starts below the unified header
+   (--dw-top-height) instead of under it, and fits the visual viewport, so a
+   sheet title can never hide behind the header. Used by DevMoter Tools
+   (Terminal / Safety / Project index); Settings can adopt the same class or
+   read --dm-sheet-top / --dm-sheet-bottom. */
+body {
+  --dm-sheet-top: max(10px, env(safe-area-inset-top));
+  --dm-sheet-bottom: max(10px, env(safe-area-inset-bottom));
+}
+body.dm-task-first-enabled { --dm-sheet-top: calc(var(--dw-top-height) + 8px); }
+.dm-sheet-frame {
+  position: fixed;
+  top: calc(var(--dm-sheet-top) + var(--dm-viewport-offset-top, 0px));
+  right: max(10px, env(safe-area-inset-right));
+  bottom: auto;
+  left: max(10px, env(safe-area-inset-left));
+  height: max(0px, calc(var(--dm-viewport-height, 100dvh) - var(--dm-sheet-top) - var(--dm-sheet-bottom)));
+}
+@media (min-width: 820px) {
+  .dm-sheet-frame {
+    right: auto;
+    left: 50%;
+    width: min(920px, calc(100vw - 48px));
+    max-height: 900px;
+    transform: translateX(-50%);
+  }
+}

@@ -26,22 +26,22 @@
 .cx-section-heading button,
 .cx-project-form button,
 .cx-register-remove {
-  min-height: 42px;
+  min-height: 44px;
   padding: 0 12px;
-  border: 1px solid #303030;
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
-  background: #202020;
-  color: #f3f3f3;
+  background: var(--surface-card);
+  color: var(--text-primary);
 }
 
 .cx-project-actions .primary,
 .cx-project-toolbar .primary,
 .cx-md-toolbar .primary,
 .cx-project-form .primary {
-  border-color: #f1f1f1;
-  background: #f1f1f1;
-  color: #111;
-  font-weight: 700;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--canvas-base);
+  font-weight: 600;
 }
 
 .cx-project-list {
@@ -117,7 +117,7 @@
 }
 
 .cx-project-form label > span {
-  color: #999;
+  color: var(--text-secondary);
   font-size: .74rem;
 }
 
@@ -125,15 +125,19 @@
   width: 100%;
   min-height: 46px;
   padding: 0 12px;
-  border: 1px solid #303030;
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   outline: none;
-  background: #101010;
-  color: #f5f5f5;
+  background: var(--canvas-base);
+  color: var(--text-primary);
+  font-size: 16px;
 }
 
+.cx-project-form input::placeholder,
+.cx-project-form textarea::placeholder { color: var(--text-muted); }
+
 .cx-project-form input:focus {
-  border-color: #666;
+  border-color: var(--border-focus);
 }
 
 .cx-back-button {

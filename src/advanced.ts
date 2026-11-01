@@ -1,5 +1,13 @@
 import "./advanced.css";
 
+// File-list icons from the shared line-icon set. Exact copies of APP_REGISTRY /
+// SYSTEM_ICONS (app-registry.ts); tests load this module standalone, so it cannot
+// import them (test/line-icons.test.mjs keeps them equal).
+const ICONS: Record<string, string> = {
+  "file": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>',
+  "projects": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>',
+};
+
 type Project = { id: string; name: string; path: string; available?: boolean };
 type Model = {
   id: string; label: string; providerId: string; local: boolean; available: boolean;
@@ -185,7 +193,9 @@ export function mountAdvancedTools() {
         const row = element("div", "adv-item");
         const open = element("button");
         open.type = "button";
-        open.textContent = (item.kind === "directory" ? "📁 " : "📄 ") + item.name;
+        // Line icon (same set as Home/Settings) instead of emoji; the name stays text.
+        open.innerHTML = item.kind === "directory" ? ICONS.projects : ICONS.file;
+        open.append(document.createTextNode(item.name));
         open.addEventListener("click", () => {
           if (item.kind === "directory") void loadFileBrowser(item.path);
           else if (item.previewable) {

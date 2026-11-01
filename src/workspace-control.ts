@@ -502,7 +502,10 @@ function injectStyles() {
     .dm-panel-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
     .dm-panel-head { position:sticky; top:-14px; background:inherit; }
     .dm-panel button { min-height:44px; padding:0 12px; border:1px solid color-mix(in srgb,currentColor 10%,transparent); border-radius:8px; background:color-mix(in srgb,currentColor 6%,transparent); color:inherit; font:inherit; touch-action:manipulation; -webkit-tap-highlight-color:transparent; user-select:none; transition:transform 120ms cubic-bezier(0.23,1,0.32,1); }
-    .dm-panel button:active { transform:scale(.97); }
+    .dm-panel button:active:not(:disabled) { transform:scale(.97); }
+    .dm-panel button:disabled { opacity:1; border-style:dashed; background:transparent; color:var(--text-secondary,GrayText); cursor:not-allowed; }
+    .dm-panel input[type="range"] { display:block; width:100%; min-height:44px; margin:4px 0 0; accent-color:var(--text-primary,CanvasText); }
+    .dm-panel input[type="range"]:disabled { opacity:1; }
     .dm-panel .dm-panel-head button { width:44px; padding:0; border:0; background:transparent; font-size:20px; }
     .dm-panel label,.dm-panel small { display:block; margin:8px 0; }
     .dm-panel p,.dm-panel li,.dm-panel small { color:inherit; }

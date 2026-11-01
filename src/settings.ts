@@ -5,10 +5,49 @@ type Json = Record<string, any>;
 type SettingsPage = "root" | "appearance" | "account" | "devices" | "vault" | "notifications" | "diagnostics" | "guide";
 
 const THEME_KEY = "devmoter-theme";
-// Inline so the settings module stays loadable standalone in tests.
-const EXTERNAL_ICON = '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5 7 9M12 9.5v3a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3"/></svg>';
 const SETUP_GUIDE_URL = "https://github.com/syr4wpywkk-collab/DevMoter-FAST/blob/main/docs/auth-v2.md";
 const DENSITY_KEY = "devmoter-settings-density";
+
+// One line-icon set shared with Home and the ☰ menu. Exact copies of
+// APP_REGISTRY / SYSTEM_ICONS in app-registry.ts: this module is loaded
+// standalone by tests, so it cannot import them (test/line-icons.test.mjs).
+const ICONS: Record<string, string> = {
+  "agents": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="7" width="14" height="12" rx="3"/><path d="M12 3v4M9 12h.01M15 12h.01M9 16h6"/></svg>',
+  "automation": '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>',
+  "browser": '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
+  "check": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>',
+  "checkpoint": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></svg>',
+  "context": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5Z"/><path d="m3 13 9 5 9-5"/></svg>',
+  "dark": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>',
+  "density-comfortable": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="6" rx="1.5"/><rect x="4" y="13" width="16" height="6" rx="1.5"/></svg>',
+  "density-compact": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>',
+  "device": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></svg>',
+  "diagnostics": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18a8 8 0 1 1 16 0"/><path d="m12 14 4-4"/></svg>',
+  "external": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg>',
+  "extensions": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h4a2 2 0 1 1 4 0h4v4a2 2 0 1 1 0 4v4H4Z"/></svg>',
+  "guide": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7c-2-2-5-2-8-2v13c3 0 6 0 8 2 2-2 5-2 8-2V5c-3 0-6 0-8 2Z"/><path d="M12 7v13"/></svg>',
+  "hosts": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="7" rx="1.5"/><rect x="4" y="13" width="16" height="7" rx="1.5"/><path d="M8 7.5h.01M8 16.5h.01"/></svg>',
+  "index": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h5"/><path d="M13 3v5h6v3M13 3l6 5"/><circle cx="16" cy="17" r="3"/><path d="m18.2 19.2 2.3 2.3"/></svg>',
+  "light": '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg>',
+  "logout": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4"/><path d="M9 12h11M16 8l4 4-4 4"/></svg>',
+  "notifications": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4Z"/><path d="M10 21h4"/></svg>',
+  "passkey": '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M14 9l2 2"/></svg>',
+  "report": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 20h18Z"/><path d="M12 10v4M12 17h.01"/></svg>',
+  "review": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>',
+  "safety": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6Z"/></svg>',
+  "sessions": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>',
+  "settings": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+  "system": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="10" rx="1.5"/><path d="M3 19h18"/></svg>',
+  "terminal": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M12 15h5"/></svg>',
+  "theme": '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M12 8h5M12 12h6M12 16h5"/></svg>',
+  "vault": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+};
+
+function rowIcon(icon: string) {
+  // Guide steps are numbers, not pictograms.
+  if (/^\d+$/.test(icon)) return `<span class="devmoter-settings-icon devmoter-settings-step" aria-hidden="true">${icon}</span>`;
+  return `<span class="devmoter-settings-icon" aria-hidden="true">${ICONS[icon] ?? ""}</span>`;
+}
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -99,7 +138,7 @@ export function mountSettingsPanel() {
   const root = document.createElement("div");
   root.className = "devmoter-settings-root";
   root.innerHTML = `
-    <button class="devmoter-settings-trigger" type="button" aria-label="設定を開く">⚙</button>
+    <button class="devmoter-settings-trigger" type="button" aria-label="設定を開く">${ICONS.settings}</button>
     <div class="devmoter-settings-modal hidden" role="dialog" aria-modal="true" aria-label="DevMoter FAST 設定">
       <section class="devmoter-settings-sheet">
         <header class="devmoter-settings-head">
@@ -165,14 +204,14 @@ export function mountSettingsPanel() {
         ${options.disabled ? "disabled" : ""}
         ${options.external ? `aria-label="${escapeHtml(`${label}（${options.external}が新しいタブで開きます）`)}"` : ""}
       >
-        <span class="devmoter-settings-icon" aria-hidden="true">${icon}</span>
+        ${rowIcon(icon)}
         <span class="devmoter-settings-row-copy">
           <strong>${escapeHtml(label)}</strong>
           ${options.value ? `<small>${escapeHtml(options.value)}</small>` : ""}
         </span>
         ${options.badge ? `<span class="devmoter-settings-badge">${escapeHtml(options.badge)}</span>` : ""}
         ${options.external
-          ? `<span class="devmoter-settings-chevron external" aria-hidden="true">${EXTERNAL_ICON}</span>`
+          ? `<span class="devmoter-settings-chevron external" aria-hidden="true">${ICONS.external}</span>`
           : '<span class="devmoter-settings-chevron" aria-hidden="true">›</span>'}
       </button>
     `;
@@ -225,45 +264,45 @@ export function mountSettingsPanel() {
       </button>
 
       ${section("ワークスペース",
-        row("✦", "アクティビティ", { action: "existing:.sc-fab", value: "実行中・キュー・チェックポイント・履歴" }) +
-        row("⌁", "レビューとタスク", { action: "existing:#wfLaunch", value: "差分・ワークツリー・GitHub" }) +
-        row("◇", "エージェントモード", { action: "existing:#devmoterAgentLauncher", value: "モード・サブエージェント・フリート" }) +
-        row("◒", "表示履歴", { action: "command:context", value: "表示量の目安と整理" }) +
-        row("✓", "チェックポイント", { action: "command:checkpoints", value: "現在のタスク" })
+        row("sessions", "アクティビティ", { action: "existing:.sc-fab", value: "実行中・キュー・チェックポイント・履歴" }) +
+        row("review", "レビューとタスク", { action: "existing:#wfLaunch", value: "差分・ワークツリー・GitHub" }) +
+        row("agents", "エージェントモード", { action: "existing:#devmoterAgentLauncher", value: "モード・サブエージェント・フリート" }) +
+        row("context", "表示履歴", { action: "command:context", value: "表示量の目安と整理" }) +
+        row("checkpoint", "チェックポイント", { action: "command:checkpoints", value: "現在のタスク" })
       )}
 
       ${section("DevMoter をカスタマイズする",
-        row("◐", "テーマと表示", { action: "page:appearance", value: `${themeLabel(theme)} · ${densityLabel(density)}` }) +
-        row("♢", "通知", { action: "page:notifications" })
+        row("theme", "テーマと表示", { action: "page:appearance", value: `${themeLabel(theme)} · ${densityLabel(density)}` }) +
+        row("notifications", "通知", { action: "page:notifications" })
       )}
 
       ${section("セキュリティとログイン",
-        row("◆", "パスキー", { action: "remote:passkeys" }) +
-        row("▱", "信頼済み端末", { action: "page:devices", value: "端末の登録とペアリングコード" }) +
-        row("◇", "API Vault", { action: "page:vault", value: "ホストで暗号化して保存" })
+        row("passkey", "パスキー", { action: "remote:passkeys" }) +
+        row("device", "信頼済み端末", { action: "page:devices", value: "端末の登録とペアリングコード" }) +
+        row("vault", "API Vault", { action: "page:vault", value: "ホストで暗号化して保存" })
       )}
 
       ${section("リモートと自動化",
-        row("▤", "ホスト一覧", { action: "remote:hosts" }) +
-        row("◷", "自動化", { action: "remote:automation" })
+        row("hosts", "ホスト一覧", { action: "remote:hosts" }) +
+        row("automation", "自動化", { action: "remote:automation" })
       )}
 
       ${section("開発者ツール",
-        row("⌘", "ターミナル", { action: "tool:terminal" }) +
-        row("▥", "プロジェクトインデックス", { action: "tool:index" }) +
-        row("◇", "セーフティスキャン", { action: "tool:safety" }) +
-        row("✦", "拡張機能", { action: "command:extensions" }) +
-        row("◎", "ファイルとプレビュー", { action: "existing:.adv-fab" }) +
-        row("⌁", "診断", { action: "page:diagnostics", value: `v${appVersion}` })
+        row("terminal", "ターミナル", { action: "tool:terminal" }) +
+        row("index", "プロジェクトインデックス", { action: "tool:index" }) +
+        row("safety", "セーフティスキャン", { action: "tool:safety" }) +
+        row("extensions", "拡張機能", { action: "command:extensions" }) +
+        row("browser", "ファイルとプレビュー", { action: "existing:.adv-fab" }) +
+        row("diagnostics", "診断", { action: "page:diagnostics", value: `v${appVersion}` })
       )}
 
       ${section("ヘルプ",
-        row("?", "使い方ガイド", { action: "page:guide" }) +
-        row("⚑", "不具合を報告", { action: "report", value: "GitHub の Issue を開く", external: "GitHub" })
+        row("guide", "使い方ガイド", { action: "page:guide" }) +
+        row("report", "不具合を報告", { action: "report", value: "GitHub の Issue を開く", external: "GitHub" })
       )}
 
       <div class="devmoter-settings-card devmoter-settings-logout-card">
-        ${row("↪", "ログアウト", { action: "logout", danger: true })}
+        ${row("logout", "ログアウト", { action: "logout", danger: true })}
       </div>
     `;
     wireRows();
@@ -275,13 +314,13 @@ export function mountSettingsPanel() {
     const density = localStorage.getItem(DENSITY_KEY) || "comfortable";
     scroll.innerHTML = `
       ${section("テーマ",
-        row("◐", "システム", { action: "theme:system", value: theme === "system" ? "選択中" : "" }) +
-        row("☀", "ライト", { action: "theme:light", value: theme === "light" ? "選択中" : "" }) +
-        row("●", "ダーク", { action: "theme:dark", value: theme === "dark" ? "選択中" : "" })
+        row("system", "システム", { action: "theme:system", value: theme === "system" ? "選択中" : "" }) +
+        row("light", "ライト", { action: "theme:light", value: theme === "light" ? "選択中" : "" }) +
+        row("dark", "ダーク", { action: "theme:dark", value: theme === "dark" ? "選択中" : "" })
       )}
       ${section("表示密度",
-        row("▤", "標準", { action: "density:comfortable", value: density === "comfortable" ? "選択中" : "読みやすさ優先" }) +
-        row("≡", "コンパクト", { action: "density:compact", value: density === "compact" ? "選択中" : "情報量を増やす" })
+        row("density-comfortable", "標準", { action: "density:comfortable", value: density === "comfortable" ? "選択中" : "読みやすさ優先" }) +
+        row("density-compact", "コンパクト", { action: "density:compact", value: density === "compact" ? "選択中" : "情報量を増やす" })
       )}
       <div class="devmoter-settings-note">
         テーマと表示密度はこの端末に保存されます。高度な画面でも同じ設定を使えるよう順次統合します。
@@ -359,7 +398,7 @@ export function mountSettingsPanel() {
         ${sessions.some((session: Json) => !session.current) ? '<div class="devmoter-settings-actions"><button type="button" data-action="account:revoke-others">他のセッションをすべて解除</button></div>' : ""}
       </section>
       <div class="devmoter-settings-card devmoter-settings-logout-card">
-        ${row("↪", "ログアウト", { action: "logout", danger: true })}
+        ${row("logout", "ログアウト", { action: "logout", danger: true })}
       </div>
     `;
     wireRows();
@@ -629,8 +668,8 @@ export function mountSettingsPanel() {
       const canDisable = state === "ready" && !!subscription;
       scroll.innerHTML = `
       ${section("プッシュ通知",
-        row("♢", "通知の状態", { value: status }) +
-        row("▱", "信頼済み端末", { action: "page:devices", value: trusted ? "登録済み" : "先に登録が必要" })
+        row("notifications", "通知の状態", { value: status }) +
+        row("device", "信頼済み端末", { action: "page:devices", value: trusted ? "登録済み" : "先に登録が必要" })
       )}
       <div class="devmoter-settings-note">${escapeHtml(explanation)}</div>
       <div class="devmoter-settings-card devmoter-settings-action-card">
@@ -671,7 +710,7 @@ export function mountSettingsPanel() {
       const detail = ready && cli?.version ? `${state} ${cli.version}` : state;
       return `
         <div class="devmoter-settings-health-row">
-          <span class="${ready ? "ok" : "bad"}">${ready ? "✓" : "!"}</span>
+          <span class="${ready ? "ok" : "bad"}" aria-hidden="true">${ready ? ICONS.check : ICONS.report}</span>
           <strong>${escapeHtml(cli?.label || cli?.command || "")}</strong>
           <small>${escapeHtml(detail)}</small>
         </div>`;
@@ -682,7 +721,7 @@ export function mountSettingsPanel() {
     const required = diagnostics?.prerequisites?.required || {};
     return Object.entries(required).map(([name, value]: [string, any]) => `
       <div class="devmoter-settings-health-row">
-        <span class="${value?.available ? "ok" : "bad"}">${value?.available ? "✓" : "!"}</span>
+        <span class="${value?.available ? "ok" : "bad"}" aria-hidden="true">${value?.available ? ICONS.check : ICONS.report}</span>
         <strong>${escapeHtml(name)}</strong>
         <small>${escapeHtml(value?.version || (value?.available ? "あり" : "なし"))}</small>
       </div>
@@ -729,9 +768,9 @@ export function mountSettingsPanel() {
         row("5", "レビュー", { value: "AIが変えた差分を確認" })
       )}
       ${section("困ったとき",
-        row("⌁", "診断を見る", { action: "page:diagnostics" }) +
-        row("◇", "セーフティスキャン", { action: "tool:safety", value: "危険なコマンドと記憶した承認" }) +
-        row("⌘", "ターミナル", { action: "tool:terminal", value: "登録済みプロジェクトで開く" })
+        row("diagnostics", "診断を見る", { action: "page:diagnostics" }) +
+        row("safety", "セーフティスキャン", { action: "tool:safety", value: "危険なコマンドと記憶した承認" }) +
+        row("terminal", "ターミナル", { action: "tool:terminal", value: "登録済みプロジェクトで開く" })
       )}
     `;
     wireRows();
