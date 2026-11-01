@@ -18,12 +18,21 @@ test("terminal project loading is independent from trusted-device session loadin
   assert.ok(control.includes("return refreshTerminalSessions();"));
 });
 
-test("terminal trusted-device failure exposes direct recovery navigation", async () => {
+test("terminal device-auth failures use the shared registration gate", async () => {
   const control = await source("src/control-center.ts");
-  assert.ok(control.includes("This browser is not a Trusted device"));
-  assert.ok(control.includes('button("Open Trusted devices")'));
-  assert.ok(control.includes('detail: { page: "devices" }'));
-  assert.ok(control.includes("/trusted device/i"));
+  assert.ok(control.includes('from "./device-gate.mjs"'));
+  const start = control.indexOf("function showTerminalError(");
+  const end = control.indexOf("async function refreshTerminalSessions()", start);
+  const body = control.slice(start, end);
+  assert.ok(body.includes("isDeviceAuthError(error)"));
+  assert.ok(body.includes("createDeviceGate(document"));
+  assert.ok(body.includes('showTerminalError("Could not load sessions", error)'));
+  // The raw 401 text is not shown alongside the gate, and the old bespoke gate is gone.
+  assert.ok(!control.includes("This browser is not a Trusted device"));
+  assert.ok(!control.includes("/trusted device/i"));
+  for (const prefix of ["Could not start terminal", "Could not attach session"]) {
+    assert.ok(control.includes(`showTerminalError("${prefix}", error)`), prefix);
+  }
 });
 
 test("remote browsers are not offered localhost-only trusted-device bootstrap", async () => {

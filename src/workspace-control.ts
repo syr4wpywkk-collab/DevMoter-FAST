@@ -1,3 +1,5 @@
+import { createDeviceGate, isDeviceAuthError, responseError } from "./device-gate.mjs";
+
 type ThemeMode = "system" | "light" | "dark";
 type Json = Record<string, any>;
 
@@ -249,6 +251,18 @@ function createWorkspacePanel() {
   const panelHead = (title: string) =>
     `<div class="dm-panel-head"><strong>${escapeHtml(title)}</strong><button type="button" data-close aria-label="閉じる">×</button></div>`;
   const wireClose = () => panel.querySelector("[data-close]")?.addEventListener("click", closePanel);
+  // Device-bound panels show one registration gate instead of a raw 401/403 message.
+  const showFailure = (title: string, error: unknown) => {
+    panel.innerHTML = panelHead(title);
+    wireClose();
+    if (isDeviceAuthError(error)) {
+      panel.append(createDeviceGate(document, { onRegister: closePanel }));
+      return;
+    }
+    const message = document.createElement("p");
+    message.textContent = error instanceof Error ? error.message : String(error);
+    panel.append(message);
+  };
 
   const themeModes: ThemeMode[] = ["system", "light", "dark"];
   const cycleTheme = () => {
@@ -328,7 +342,7 @@ function createWorkspacePanel() {
         `/api/workspace-control/microtasks?parentId=${encodeURIComponent(parentId)}`
       );
       const payload = await res.json();
-      if (!res.ok) throw new Error(payload?.error || "Could not load task plan");
+      if (!res.ok) throw responseError(res.status, payload?.error || "Could not load task plan");
       const plan = payload?.plan as Json | null;
       if (!plan || !Array.isArray(plan.steps) || !plan.steps.length) {
         panel.innerHTML =
@@ -395,7 +409,7 @@ function createWorkspacePanel() {
         actions.appendChild(button);
       }
     } catch (error) {
-      panel.append(error instanceof Error ? error.message : String(error));
+      showFailure("Task checkpoints", error);
     }
   };
 
@@ -406,7 +420,7 @@ function createWorkspacePanel() {
     try {
       const res = await workspaceControlFetch("/api/workspace-control");
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Could not load extensions");
+      if (!res.ok) throw responseError(res.status, data?.error || "Could not load extensions");
       const installed = data.extensions?.installed || {};
       const items = data.extensions?.catalog || [];
       panel.innerHTML =
@@ -444,7 +458,7 @@ function createWorkspacePanel() {
         list.appendChild(row);
       }
     } catch (error) {
-      panel.append(error instanceof Error ? error.message : String(error));
+      showFailure("Extensions", error);
     }
   };
 
@@ -497,6 +511,8 @@ function injectStyles() {
     .dm-extension-row div,.dm-task-row div { display:grid; gap:2px; min-width:0; }
     .dm-extension-row small,.dm-task-row small { opacity:.72; overflow-wrap:anywhere; }
     .dm-task-row.current { outline:1px solid color-mix(in srgb,currentColor 35%,transparent); }
+    .dm-device-gate { display:grid; gap:8px; justify-items:start; margin:12px 0 0; }
+    .dm-device-gate small { margin:0; opacity:.72; }
     .dm-task-actions { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0; }
     .ocx-assistant-text p { margin:.35em 0; white-space:normal; }
     .ocx-assistant-text h1,.ocx-assistant-text h2,.ocx-assistant-text h3 { margin:.7em 0 .35em; }
