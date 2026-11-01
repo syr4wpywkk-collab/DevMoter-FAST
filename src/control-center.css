@@ -45,26 +45,6 @@
   box-shadow: 0 24px 80px rgba(0,0,0,.58);
 }
 
-.dm-tools-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 19px 22px 17px;
-  border-bottom: 1px solid var(--border-hairline);
-}
-
-.dm-tools-heading {
-  display: grid;
-  gap: 5px;
-  min-width: 0;
-}
-
-.dm-tools-heading strong {
-  font-size: 1.2rem;
-  letter-spacing: -.02em;
-}
-
 .dm-tools-tabs,
 .dm-tools-row,
 .dm-terminal-actions,
@@ -81,12 +61,12 @@
   border-bottom: 1px solid var(--border-hairline);
 }
 
-.dm-tools-head button,
 .dm-tools-tabs button,
 .dm-tools-row button,
 .dm-terminal-actions button,
 .dm-key-row button,
 .dm-tools-card button,
+.dm-device-gate button,
 .dm-tools-panel select,
 .dm-tools-panel input,
 .dm-tools-panel textarea {
@@ -105,23 +85,16 @@
 .dm-tools-panel button { user-select: none; transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1); }
 .dm-tools-panel button:active:not(:disabled) { transform: scale(0.97); }
 
-.dm-tools-head button,
 .dm-tools-tabs button,
 .dm-tools-row button,
 .dm-terminal-actions button,
 .dm-key-row button,
-.dm-tools-card button {
+.dm-tools-card button,
+.dm-device-gate button {
   min-width: 44px;
   padding: 0 14px;
   cursor: pointer;
   touch-action: manipulation;
-}
-
-.dm-tools-head .dm-tools-close {
-  flex: 0 0 auto;
-  width: 48px;
-  padding: 0;
-  font-size: 1.5rem;
 }
 
 .dm-tools-tabs button {
@@ -291,6 +264,9 @@
   flex: 0 0 auto;
   min-width: 48px;
   min-height: 44px;
+  background: var(--surface-panel);
+  color: var(--text-secondary);
+  font-size: .8rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
@@ -349,6 +325,37 @@
   border-color: color-mix(in srgb, var(--status-success) 40%, transparent);
 }
 
+/* Unregistered device: the tab shows only the 信頼済み端末 button. */
+.dm-tools-section[data-device-gated] > :not([data-device-gate]) { display: none; }
+.dm-device-gate-compact { display: flex; justify-content: center; padding: 24px 0; }
+.dm-device-gate-compact button {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--canvas-base);
+  font-weight: 500;
+}
+
+.dm-tools-details {
+  border: 1px solid var(--border-hairline);
+  border-radius: 12px;
+  padding: 0 12px;
+}
+.dm-tools-details > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  list-style-position: inside;
+}
+.dm-tools-details[open] { display: grid; gap: 12px; padding-bottom: 12px; }
+.dm-tools-details > label {
+  display: grid;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: .88rem;
+}
+
 .dm-tools-panel button:disabled {
   cursor: wait;
   opacity: .58;
@@ -361,14 +368,6 @@
 }
 
 @media (max-width: 540px) {
-  .dm-tools-head {
-    padding: 13px 14px;
-  }
-
-  .dm-tools-heading strong {
-    font-size: 1.05rem;
-  }
-
   .dm-tools-tabs {
     padding-inline: 10px;
     gap: 5px;

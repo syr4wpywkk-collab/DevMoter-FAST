@@ -2,7 +2,8 @@ import "./control-center.css";
 import type { Terminal as XTerm } from "@xterm/xterm";
 import type { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
-import { createDeviceGate, isDeviceAuthError } from "./device-gate.mjs";
+import { createDeviceGate, isDeviceAuthError, responseError } from "./device-gate.mjs";
+import { createSheetHeader } from "./sheet-header.mjs";
 
 type ProjectSummary = {
   id: string;
@@ -132,8 +133,20 @@ async function terminalFetch(
 
 async function jsonOrError<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({})) as { error?: string } & T;
-  if (!response.ok) throw new Error(payload?.error || `HTTP ${response.status}`);
+  if (!response.ok) throw responseError(response.status, payload?.error);
   return payload;
+}
+
+function errorMessage(error: unknown) {
+  return typeof (error as Error | null)?.message === "string" ? (error as Error).message : String(error);
+}
+
+// xterm draws on a canvas, so it reads the theme tokens instead of CSS.
+function terminalTheme() {
+  const css = window.getComputedStyle?.(document.documentElement);
+  const token = (name: string, fallback: string) => css?.getPropertyValue(name).trim() || fallback;
+  const foreground = token("--text-primary", "#ececec");
+  return { background: token("--canvas-base", "#212121"), foreground, cursor: foreground, selectionBackground: token("--border-subtle", "#4a4a4a") };
 }
 
 function scopeSummary(rule: PermissionRule) {
@@ -167,18 +180,10 @@ export function mountControlCenter() {
   panel.setAttribute("aria-modal", "true");
   panel.setAttribute("aria-labelledby", "dm-tools-title");
 
-  const head = document.createElement("div");
-  head.className = "dm-tools-head";
-  const heading = document.createElement("div");
-  heading.className = "dm-tools-heading";
-  const title = document.createElement("strong");
-  title.id = "dm-tools-title";
-  // The title names the open tab, matching the Settings row that opened it.
-  title.textContent = "Terminal";
-  heading.append(title);
-  const close = button("×", "Close DevMoter tools");
-  close.className = "dm-tools-close";
-  head.append(heading, close);
+  // Shared sheet header; the title names the open tab, matching the Settings
+  // row that opened it.
+  const head = createSheetHeader(document, { title: "Terminal", titleId: "dm-tools-title" });
+  const close = head.closeButton;
 
   const tabs = document.createElement("div");
   tabs.className = "dm-tools-tabs";
@@ -226,7 +231,7 @@ export function mountControlCenter() {
   indexSection.tabIndex = 0;
   body.append(terminalSection, safetySection, indexSection);
 
-  panel.append(head, tabs, body);
+  panel.append(head.element, tabs, body);
   document.body.append(scrim, launcher, panel);
 
   let projects: ProjectSummary[] = [];
@@ -262,7 +267,7 @@ export function mountControlCenter() {
 
   function setTab(next: "terminal" | "safety" | "index") {
     body.scrollTop = 0;
-    title.textContent = tabTitles[next];
+    head.setTitle(tabTitles[next]);
     for (const [tab, name] of tabEntries) {
       const selected = name === next;
       tab.classList.toggle("active", selected);
@@ -285,7 +290,7 @@ export function mountControlCenter() {
       void refreshIndexView?.().catch(error => {
         const status = indexSection.querySelector<HTMLElement>("[role='status']");
         if (status && !indexSection.classList.contains("hidden")) {
-          status.textContent = error instanceof Error ? error.message : String(error);
+          status.textContent = errorMessage(error);
         }
       });
     }
@@ -416,24 +421,36 @@ export function mountControlCenter() {
     }
   }
 
-  function clearTrustedDeviceGate() {
-    terminalSection.querySelector("[data-terminal-device-gate]")?.remove();
+  // An unregistered or revoked device sees one button into Settings →
+  // 信頼済み端末 in place of the whole tab (Terminal, Safety or Index), never
+  // the raw 401/403 text. CSS hides the tab's other children while it shows.
+  function showSectionGate(section: HTMLElement, error: unknown) {
+    if (!isDeviceAuthError(error)) return false;
+    if (!section.querySelector(":scope > [data-device-gate]")) {
+      const gate = createDeviceGate(document, { compact: true, onRegister: () => closePanel({ restoreFocus: false }) });
+      if (section === terminalSection) gate.dataset.terminalDeviceGate = "true";
+      section.prepend(gate);
+    }
+    section.dataset.deviceGated = "true";
+    return true;
   }
 
-  // Unregistered or revoked devices get the shared registration gate, not the raw 401 text.
+  function clearSectionGate(section: HTMLElement) {
+    section.querySelector(":scope > [data-device-gate]")?.remove();
+    delete section.dataset.deviceGated;
+  }
+
+  function clearTrustedDeviceGate() {
+    clearSectionGate(terminalSection);
+  }
+
   function showTerminalError(prefix: string, error: unknown) {
     clearTrustedDeviceGate();
-    if (!isDeviceAuthError(error)) {
-      terminalStatus.textContent = `${prefix} · ${error instanceof Error ? error.message : String(error)}`;
+    if (showSectionGate(terminalSection, error)) {
+      terminalStatus.textContent = "";
       return;
     }
-    terminalStatus.textContent = "";
-    const gate = createDeviceGate(document, {
-      className: "dm-tools-card",
-      onRegister: () => closePanel({ restoreFocus: false })
-    });
-    gate.dataset.terminalDeviceGate = "true";
-    terminalStatus.after(gate);
+    terminalStatus.textContent = `${prefix} · ${errorMessage(error)}`;
   }
 
   function showTerminalLoadError(error: unknown) {
@@ -470,7 +487,9 @@ export function mountControlCenter() {
       for (const project of projects) {
         const option = document.createElement("option");
         option.value = project.id;
-        option.textContent = select === projectSelect ? `${project.name} — ${project.path}` : project.name;
+        // Name only; the path made every option ellipsize at 400px.
+        option.textContent = project.name;
+        option.title = project.path;
         option.selected = project.id === selected;
         select.append(option);
       }
@@ -484,7 +503,7 @@ export function mountControlCenter() {
     const projectRow = document.createElement("div");
     projectRow.className = "dm-tools-row";
     const projectLabel = document.createElement("label");
-    projectLabel.textContent = "Registered project";
+    projectLabel.textContent = "Project";
     projectSelect = document.createElement("select");
     projectLabel.append(projectSelect);
     projectRow.append(projectLabel);
@@ -502,14 +521,14 @@ export function mountControlCenter() {
     persistLabel.className = "dm-terminal-persist-label";
     persistentSessionToggle = document.createElement("input");
     persistentSessionToggle.type = "checkbox";
-    persistLabel.append(persistentSessionToggle, document.createTextNode("Keep running after DevMoter restarts (tmux)"));
+    persistLabel.append(persistentSessionToggle, document.createTextNode("Keep running after restart (tmux)"));
     const nameLabel = document.createElement("label");
     nameLabel.textContent = "Session name";
     sessionNameInput = document.createElement("input");
     sessionNameInput.maxLength = 48;
-    sessionNameInput.placeholder = "e.g. api-dev";
+    sessionNameInput.placeholder = "api-dev";
     nameLabel.append(sessionNameInput);
-    persistenceRow.append(persistLabel, nameLabel);
+    persistenceRow.append(nameLabel, persistLabel);
 
     const actions = document.createElement("div");
     actions.className = "dm-terminal-actions";
@@ -522,7 +541,7 @@ export function mountControlCenter() {
 
     terminalStatus = document.createElement("div");
     terminalStatus.className = "dm-terminal-status";
-    terminalStatus.textContent = "Terminal is idle.";
+    terminalStatus.textContent = "Not started";
     terminalStatus.setAttribute("role", "status");
     terminalStatus.setAttribute("aria-live", "polite");
 
@@ -532,9 +551,9 @@ export function mountControlCenter() {
     terminalPlaceholder = document.createElement("div");
     terminalPlaceholder.className = "dm-terminal-placeholder";
     const placeholderTitle = document.createElement("strong");
-    placeholderTitle.textContent = "Ready when you are";
+    placeholderTitle.textContent = "Terminal not started";
     const placeholderCopy = document.createElement("span");
-    placeholderCopy.textContent = "Choose a registered project, then start or reattach a terminal session.";
+    placeholderCopy.textContent = "Pick a project and press Start";
     terminalPlaceholder.append(placeholderTitle, placeholderCopy);
     terminalShell.append(terminalPlaceholder);
 
@@ -563,8 +582,7 @@ export function mountControlCenter() {
 
     const note = document.createElement("div");
     note.className = "dm-tools-note";
-    note.textContent =
-      "PTY cwd is resolved from the registered Project ID. The terminal stays active when this panel closes; the page reconnects through a short-lived single-use ticket.";
+    note.textContent = "Runs in the project folder and keeps running when you close this sheet";
 
     terminalSection.append(projectRow, persistenceRow, actions, terminalStatus, terminalShell, keyRow, note);
 
@@ -596,7 +614,7 @@ export function mountControlCenter() {
     kill.addEventListener("click", () => {
       setTerminalControlsBusy(true);
       void killTerminal().catch(error => {
-        terminalStatus.textContent = `Could not kill terminal · ${error instanceof Error ? error.message : String(error)}`;
+        terminalStatus.textContent = `Could not kill terminal · ${errorMessage(error)}`;
       }).finally(() => { setTerminalControlsBusy(false); });
     });
     clearAuth.addEventListener("click", () => {
@@ -629,7 +647,7 @@ export function mountControlCenter() {
           scrollback: 5000,
           fontSize: 13,
           fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-          theme: { background: "#070809", foreground: "#e7e7ea", cursor: "#e7e7ea" },
+          theme: terminalTheme(),
           disableStdin: true
         });
         const fit = new FitAddon();
@@ -753,7 +771,7 @@ export function mountControlCenter() {
     } catch (error) {
       socketConnecting = false;
       if (generation !== socketGeneration || panel.classList.contains("hidden")) return;
-      terminalStatus.textContent = `Terminal reconnecting… ${error instanceof Error ? error.message : String(error)}`;
+      terminalStatus.textContent = `Terminal reconnecting… ${errorMessage(error)}`;
       scheduleTerminalReconnect(generation);
     } finally {
       if (!terminalSocket) socketConnecting = false;
@@ -885,10 +903,10 @@ export function mountControlCenter() {
       const scanner = document.createElement("div");
       scanner.className = "dm-tools-card";
       const scannerTitle = document.createElement("strong");
-      scannerTitle.textContent = "High-risk command scan";
+      scannerTitle.textContent = "Command check";
       const command = document.createElement("textarea");
       command.setAttribute("aria-label", "Command to scan");
-      command.placeholder = "Paste a command to inspect before approval…";
+      command.placeholder = "Paste a command to check";
       const scanButton = button("Scan");
       scanButton.classList.add("primary");
       const scanResult = document.createElement("pre");
@@ -924,7 +942,7 @@ export function mountControlCenter() {
             ].join("\n");
           } catch (error) {
             scanner.classList.remove("dm-risk-high", "dm-risk-low");
-            scanResult.textContent = error instanceof Error ? error.message : String(error);
+            scanResult.textContent = errorMessage(error);
           } finally {
             scanButton.disabled = false;
           }
@@ -948,10 +966,11 @@ export function mountControlCenter() {
       const response = await fetch("/api/safety/permissions", { cache: "no-store" });
       const payload = await jsonOrError<{ rules?: PermissionRule[] }>(response);
       if (revision !== safetyRevision) return;
+      clearSectionGate(safetySection);
       const rules = payload.rules || [];
       if (!rules.length) {
         const empty = document.createElement("small");
-        empty.textContent = "No remembered approvals.";
+        empty.textContent = "No remembered approvals";
         approvalList.append(empty);
       }
       for (const rule of rules) {
@@ -974,7 +993,7 @@ export function mountControlCenter() {
               await renderSafety();
             } catch (error) {
               const fail = document.createElement("small");
-              fail.textContent = error instanceof Error ? error.message : String(error);
+              fail.textContent = errorMessage(error);
               row.append(fail);
               revoke.disabled = false;
             }
@@ -985,8 +1004,9 @@ export function mountControlCenter() {
       }
     } catch (error) {
       if (revision !== safetyRevision) return;
+      if (showSectionGate(safetySection, error)) return;
       const fail = document.createElement("small");
-      fail.textContent = error instanceof Error ? error.message : String(error);
+      fail.textContent = errorMessage(error);
       approvalList.append(fail);
     }
   }
@@ -1007,7 +1027,7 @@ export function mountControlCenter() {
     row.append(label);
 
     const excludeLabel = document.createElement("label");
-    excludeLabel.textContent = "Extra excludes (comma-separated)";
+    excludeLabel.textContent = "Exclude (comma-separated)";
     const excludes = document.createElement("input");
     excludes.placeholder = "private, fixtures/secrets";
     let excludesTouched = false;
@@ -1026,9 +1046,9 @@ export function mountControlCenter() {
     actions.append(rebuild, remove, showMap);
 
     const searchLabel = document.createElement("label");
-    searchLabel.textContent = "Local full-text search";
+    searchLabel.textContent = "Search";
     const query = document.createElement("input");
-    query.placeholder = "symbol, filename, phrase…";
+    query.placeholder = "Symbol, file name or phrase";
     searchLabel.append(query);
     const searchButton = button("Search");
 
@@ -1039,7 +1059,21 @@ export function mountControlCenter() {
     const results = document.createElement("div");
     results.className = "dm-tools-list";
 
-    indexSection.append(row, excludeLabel, actions, searchLabel, searchButton, status, results);
+    // Everyday actions first; excludes and Delete index wait under 詳細.
+    actions.replaceChildren(rebuild, showMap);
+    const advanced = document.createElement("details");
+    advanced.className = "dm-tools-details";
+    const advancedSummary = document.createElement("summary");
+    advancedSummary.textContent = "Details";
+    const advancedActions = document.createElement("div");
+    advancedActions.className = "dm-tools-row";
+    advancedActions.append(remove);
+    advanced.append(advancedSummary, excludeLabel, advancedActions);
+    const searchRow = document.createElement("div");
+    searchRow.className = "dm-tools-row";
+    searchRow.append(searchLabel, searchButton);
+
+    indexSection.append(row, actions, advanced, searchRow, status, results);
 
     const currentProject = () => select.value || activeProjectId;
     let projectRevision = 0;
@@ -1063,13 +1097,15 @@ export function mountControlCenter() {
           exclude?: string[];
         }>(response);
         if (revision !== projectRevision || projectId !== currentProject()) return;
+        clearSectionGate(indexSection);
         status.textContent = payload.ready
           ? `Ready · ${payload.files || 0} files · ${Math.round((payload.indexedBytes || 0) / 1024)} KiB · ${payload.reusedFiles || 0} reused on last rebuild`
           : "Index not built.";
         if (payload.exclude?.length && !excludesTouched) excludes.value = payload.exclude.join(", ");
       } catch (error) {
         if (revision === projectRevision && projectId === currentProject()) {
-          status.textContent = error instanceof Error ? error.message : String(error);
+          if (showSectionGate(indexSection, error)) status.textContent = "";
+          else status.textContent = errorMessage(error);
         }
       }
     }
@@ -1116,7 +1152,7 @@ export function mountControlCenter() {
             `Built · ${payload.files} files · ${Math.round(payload.indexedBytes / 1024)} KiB · ${payload.reusedFiles} unchanged files reused`;
         }
       } catch (error) {
-        if (revision === projectRevision) status.textContent = error instanceof Error ? error.message : String(error);
+        if (revision === projectRevision) status.textContent = errorMessage(error);
       } finally {
         rebuild.disabled = false;
         remove.disabled = false;
@@ -1145,7 +1181,7 @@ export function mountControlCenter() {
           status.textContent = "Index deleted.";
         }
       } catch (error) {
-        if (revision === projectRevision) status.textContent = error instanceof Error ? error.message : String(error);
+        if (revision === projectRevision) status.textContent = errorMessage(error);
       } finally {
         remove.disabled = false;
         rebuild.disabled = false;
@@ -1185,7 +1221,7 @@ export function mountControlCenter() {
           results.append(empty);
         }
       } catch (error) {
-        if (revision === projectRevision) status.textContent = error instanceof Error ? error.message : String(error);
+        if (revision === projectRevision) status.textContent = errorMessage(error);
       } finally {
         searchButton.disabled = false;
       }
@@ -1236,7 +1272,7 @@ export function mountControlCenter() {
       } catch (error) {
         if (revision === projectRevision) {
           status.dataset.state = "error";
-          status.textContent = `Repository map failed: ${error instanceof Error ? error.message : String(error)}`;
+          status.textContent = `Repository map failed: ${errorMessage(error)}`;
         }
       } finally {
         showMap.disabled = false;
@@ -1244,7 +1280,7 @@ export function mountControlCenter() {
     });
 
     await refreshStatus().catch(error => {
-      status.textContent = error instanceof Error ? error.message : String(error);
+      status.textContent = errorMessage(error);
     });
   }
 

@@ -1,14 +1,177 @@
-.devmoter-agent-launcher{position:fixed;right:16px;bottom:88px;z-index:80;border:0;border-radius:999px;padding:11px 15px;background:#111;color:#fff;font:600 13px/1 system-ui;box-shadow:0 8px 24px #0003;cursor:pointer}.devmoter-agent-panel{position:fixed;right:12px;bottom:142px;z-index:81;width:min(390px,calc(100vw - 24px));max-height:min(620px,calc(100vh - 170px));overflow:auto;border:1px solid #8884;border-radius:18px;background:Canvas;color:CanvasText;box-shadow:0 18px 50px #0004;padding:16px;font:14px/1.45 system-ui}.devmoter-agent-panel.hidden{display:none}.devmoter-agent-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.devmoter-agent-head h2{font-size:16px;margin:0}.devmoter-agent-head p{margin:3px 0 0;color:GrayText;font-size:12px}.devmoter-agent-close{border:0;background:transparent;color:inherit;font-size:20px;cursor:pointer}.devmoter-agent-field{display:grid;gap:6px;margin-top:14px}.devmoter-agent-field label{font-weight:650;font-size:12px}.devmoter-agent-field select,.devmoter-agent-field textarea{width:100%;box-sizing:border-box;border:1px solid #8885;border-radius:10px;background:Field;color:FieldText;padding:10px;font:inherit}.devmoter-agent-field textarea{min-height:96px;resize:vertical}.devmoter-agent-policy{white-space:pre-wrap;border:1px solid #8884;border-radius:10px;background:#8881;padding:10px;margin:0;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}.devmoter-agent-run{width:100%;margin-top:14px;border:0;border-radius:11px;padding:11px 14px;background:#111;color:#fff;font-weight:700;cursor:pointer}.devmoter-agent-status{min-height:20px;margin:9px 0 0;font-size:12px;color:GrayText}.devmoter-agent-status.error{color:#b42318}@media (prefers-color-scheme:dark){.devmoter-agent-launcher,.devmoter-agent-run{background:#f5f5f5;color:#111}}
-.devmoter-agent-mode-tools{display:flex;gap:8px;margin-top:10px}.devmoter-agent-mode-tools button{border:1px solid #8885;border-radius:9px;background:ButtonFace;color:ButtonText;padding:8px 10px;font:inherit;cursor:pointer}.devmoter-agent-editor{margin-top:12px;padding:12px;border:1px solid #8884;border-radius:12px;background:#8881}.devmoter-agent-editor.hidden{display:none}.devmoter-agent-field input{width:100%;box-sizing:border-box;border:1px solid #8885;border-radius:10px;background:Field;color:FieldText;padding:10px;font:inherit}.devmoter-agent-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}@media(max-width:520px){.devmoter-agent-grid{grid-template-columns:1fr}}
+/* Agent mode sheet. Geometry from .dm-sheet-frame and the header from
+   .dm-sheet-head (zcode-theme.css); everything here reads theme tokens. */
+.devmoter-agent-launcher {
+  position: fixed;
+  right: 16px;
+  bottom: 88px;
+  z-index: 80;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--canvas-base);
+  font: 500 13px/1 var(--font-ui);
+  cursor: pointer;
+}
 
-.devmoter-orchestration-preview{margin-top:12px;padding:12px;border:1px solid #8884;border-radius:12px;background:#8881}.devmoter-orchestration-preview.hidden{display:none}.devmoter-orchestration-child{display:grid;grid-template-columns:auto auto 1fr;gap:8px;align-items:start;margin-top:9px;padding-top:9px;border-top:1px solid #8883}.devmoter-orchestration-child span{font:600 10px/1.4 ui-monospace,monospace;text-transform:uppercase}.devmoter-orchestration-child strong{font-size:11px}.devmoter-orchestration-child p{margin:0;font-size:12px}
+.devmoter-agent-panel {
+  z-index: 81;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-hairline);
+  border-radius: 20px;
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .28);
+  font: 14px/1.45 var(--font-ui);
+}
+.devmoter-agent-panel.hidden { display: none; }
+.devmoter-agent-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 4px 16px calc(16px + env(safe-area-inset-bottom));
+}
 
-.devmoter-agent-secondary-run{width:100%;margin-top:8px;border:1px solid #8885;border-radius:11px;padding:10px 14px;background:ButtonFace;color:ButtonText;font-weight:650;cursor:pointer}.devmoter-subagent-runs{margin-top:14px}.devmoter-subagent-runs.hidden{display:none}.devmoter-subagent-card{margin-top:8px;padding:10px;border:1px solid #8884;border-radius:11px;background:#8881}.devmoter-subagent-card-head{display:flex;justify-content:space-between;gap:8px}.devmoter-subagent-card-head span,.devmoter-subagent-card small{color:GrayText;font-size:10px}.devmoter-subagent-card p{margin:6px 0;font-size:12px}.devmoter-subagent-card small{display:block;overflow-wrap:anywhere}
+.devmoter-agent-field { display: grid; gap: 8px; margin-top: 16px; }
+.devmoter-agent-field label { color: var(--text-secondary); font-size: 13px; font-weight: 500; }
+.devmoter-agent-summary { color: var(--text-secondary); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.devmoter-fleet-launch{display:flex;gap:8px;align-items:end;margin-top:10px}.devmoter-fleet-launch label{display:grid;gap:4px;font-size:10px;color:GrayText}.devmoter-fleet-launch select{border:1px solid #8885;border-radius:8px;background:Field;color:FieldText;padding:7px}.devmoter-fleet-launch button{flex:1;border:1px solid #8885;border-radius:9px;background:ButtonFace;color:ButtonText;padding:9px;font-weight:650;cursor:pointer}
+.devmoter-agent-panel :is(select, input, textarea) {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--canvas-base);
+  color: var(--text-primary);
+  font: 16px/1.4 var(--font-ui);
+}
+.devmoter-agent-panel input[type="checkbox"] { width: 20px; min-height: 20px; height: 20px; padding: 0; accent-color: var(--accent); }
+.devmoter-agent-panel textarea { min-height: 96px; resize: vertical; }
 
-.devmoter-fleet-dashboard-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.devmoter-fleet-dashboard-head span{font-size:10px;color:GrayText}.devmoter-subagent-card[data-state="running"],.devmoter-subagent-card[data-state="starting"]{border-style:solid}.devmoter-subagent-card[data-state="waiting_for_approval"]{border-style:dashed}.devmoter-subagent-card-head>div{display:grid;gap:2px;min-width:0}.devmoter-subagent-card-head>div small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:210px}@media(max-width:520px){.devmoter-fleet-dashboard-head{align-items:flex-start}.devmoter-subagent-card-head{display:grid;grid-template-columns:minmax(0,1fr) auto}.devmoter-agent-mode-tools{flex-wrap:wrap}}
+.devmoter-agent-panel button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font: 500 14px/1.2 var(--font-ui);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.devmoter-agent-panel button:active:not(:disabled) { transform: scale(0.97); }
+.devmoter-agent-panel button:disabled { color: var(--text-muted); border-style: dashed; cursor: not-allowed; }
+.devmoter-agent-panel :focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
 
-.devmoter-model-routing{margin-top:12px;border:1px solid #8884;border-radius:12px;padding:10px}.devmoter-model-routing summary{cursor:pointer;font-weight:650}.devmoter-model-routing .devmoter-agent-policy{margin-top:9px}.devmoter-model-route-row{display:grid;grid-template-columns:72px 1fr 1fr 1.2fr;gap:6px;align-items:center;margin-top:7px}.devmoter-model-route-row strong{font-size:11px}.devmoter-model-route-row input{min-width:0;border:1px solid #8885;border-radius:8px;background:Field;color:FieldText;padding:7px;font:11px/1.3 system-ui}@media(max-width:520px){.devmoter-model-route-row{grid-template-columns:72px 1fr}.devmoter-model-route-row input[data-route-provider],.devmoter-model-route-row input[data-route-capabilities]{grid-column:2}}
+.devmoter-agent-details,
+.devmoter-model-routing {
+  margin-top: 12px;
+  padding: 0 12px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 12px;
+}
+.devmoter-agent-details > summary,
+.devmoter-model-routing > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+  font-weight: 500;
+  cursor: pointer;
+  list-style-position: inside;
+}
+.devmoter-agent-details[open],
+.devmoter-model-routing[open] { padding-bottom: 12px; }
 
-.devmoter-second-opinion-composer{margin-top:12px;padding:11px;border:1px solid #8884;border-radius:12px;background:#8881}.devmoter-second-opinion-composer.hidden{display:none}.devmoter-second-opinion-composer>small{display:block;margin-top:3px;color:GrayText}.devmoter-second-opinion-share{display:flex;gap:10px;flex-wrap:wrap;margin-top:9px;font-size:11px}.devmoter-second-opinion-composer textarea{width:100%;box-sizing:border-box;margin-top:9px;min-height:74px;border:1px solid #8885;border-radius:9px;background:Field;color:FieldText;padding:9px;font:12px/1.45 system-ui}.devmoter-subagent-card.second-opinion{border-style:double}.devmoter-second-opinion-result{white-space:pre-wrap;max-height:180px;overflow:auto;margin:8px 0 0;padding:8px;border-radius:8px;background:#8881;font:11px/1.45 ui-monospace,monospace}
+.devmoter-agent-policy {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 10px;
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.devmoter-model-routing .devmoter-agent-policy { margin-top: 0; }
+
+.devmoter-agent-run,
+.devmoter-agent-secondary-run { width: 100%; margin-top: 12px; }
+.devmoter-agent-panel .devmoter-agent-run { border-color: var(--accent); background: var(--accent); color: var(--canvas-base); }
+.devmoter-agent-secondary-run { margin-top: 8px; }
+
+.devmoter-agent-status { min-height: 20px; margin: 8px 0 0; color: var(--text-secondary); font-size: 13px; }
+.devmoter-agent-status.error { color: var(--status-error); }
+.devmoter-agent-body > .dm-device-gate-compact { display: flex; justify-content: center; padding: 12px 0 0; }
+.devmoter-agent-panel .dm-device-gate-compact button { border-color: var(--accent); background: var(--accent); color: var(--canvas-base); }
+
+.devmoter-agent-mode-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+.devmoter-agent-editor,
+.devmoter-orchestration-preview,
+.devmoter-second-opinion-composer,
+.devmoter-subagent-card {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 12px;
+  background: var(--surface-hover);
+}
+.devmoter-agent-editor.hidden,
+.devmoter-orchestration-preview.hidden,
+.devmoter-second-opinion-composer.hidden,
+.devmoter-subagent-runs.hidden { display: none; }
+.devmoter-agent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.devmoter-orchestration-child { display: grid; grid-template-columns: auto auto 1fr; gap: 8px; align-items: start; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-hairline); }
+.devmoter-orchestration-child span { color: var(--text-secondary); font: 500 11px/1.4 ui-monospace, monospace; }
+.devmoter-orchestration-child strong { font-size: 12px; }
+.devmoter-orchestration-child p { margin: 0; font-size: 12px; }
+
+.devmoter-subagent-runs { margin-top: 16px; }
+.devmoter-subagent-card { margin-top: 8px; }
+.devmoter-subagent-card-head { display: flex; justify-content: space-between; gap: 8px; }
+.devmoter-subagent-card-head > div { display: grid; gap: 2px; min-width: 0; }
+.devmoter-subagent-card-head span,
+.devmoter-subagent-card small { color: var(--text-secondary); font-size: 11px; }
+.devmoter-subagent-card-head > div small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 210px; }
+.devmoter-subagent-card p { margin: 6px 0; font-size: 12px; }
+.devmoter-subagent-card small { display: block; overflow-wrap: anywhere; }
+.devmoter-subagent-card[data-state="waiting_for_approval"] { border-style: dashed; }
+.devmoter-subagent-card.second-opinion { border-color: var(--border-subtle); }
+
+.devmoter-fleet-launch { display: flex; gap: 8px; align-items: end; margin-top: 12px; }
+.devmoter-fleet-launch label { display: grid; gap: 4px; color: var(--text-secondary); font-size: 12px; }
+.devmoter-fleet-launch button { flex: 1; }
+.devmoter-fleet-dashboard-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.devmoter-fleet-dashboard-head span { color: var(--text-secondary); font-size: 12px; }
+
+.devmoter-model-route-row { display: grid; grid-template-columns: 72px 1fr 1fr 1.2fr; gap: 8px; align-items: center; margin-top: 8px; }
+.devmoter-model-route-row strong { font-size: 12px; font-weight: 500; }
+.devmoter-model-route-row input { min-width: 0; }
+
+.devmoter-second-opinion-composer > small { display: block; margin-top: 4px; color: var(--text-secondary); }
+.devmoter-second-opinion-share { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; }
+.devmoter-second-opinion-share label { display: flex; align-items: center; gap: 6px; }
+.devmoter-second-opinion-composer textarea { margin-top: 8px; min-height: 76px; }
+.devmoter-second-opinion-result { white-space: pre-wrap; max-height: 180px; overflow: auto; margin: 8px 0 0; padding: 8px; border-radius: 8px; background: var(--canvas-base); font: 12px/1.45 ui-monospace, monospace; }
+
+@media (max-width: 520px) {
+  .devmoter-agent-grid { grid-template-columns: 1fr; }
+  .devmoter-fleet-dashboard-head { align-items: flex-start; }
+  .devmoter-subagent-card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .devmoter-model-route-row { grid-template-columns: 72px 1fr; }
+  .devmoter-model-route-row input[data-route-provider],
+  .devmoter-model-route-row input[data-route-capabilities] { grid-column: 2; }
+}
+@media (prefers-reduced-motion: reduce) { .devmoter-agent-panel button { transition: none; } }

@@ -1,4 +1,7 @@
 import { projectOptionLabels } from "./project-labels.mjs";
+import { createSheetHeader } from "./sheet-header.mjs";
+
+const REFRESH_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
 
 type Json = Record<string, any>;
 
@@ -116,32 +119,24 @@ export function mountTaskWorkflow(root: HTMLElement) {
     <button id="wfLaunch" class="wf-launch" type="button" aria-label="Review changes and tasks">
       <span>⌁</span><b>Review</b>
     </button>
-    <div id="wfModal" class="wf-modal hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Review & Tasks" tabindex="-1">
-      <div class="wf-sheet">
-        <header class="wf-header">
-          <div>
-            <span class="wf-kicker">DEVMOTER WORKFLOW</span>
-            <strong>Review & Tasks</strong>
-          </div>
-          <button id="wfClose" class="wf-close" type="button" aria-label="Close">×</button>
-        </header>
+    <div id="wfModal" class="wf-modal hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="wfTitle" tabindex="-1">
+      <div class="wf-sheet dm-sheet-frame">
         <div class="wf-toolbar">
           <label>
             <span>Project</span>
             <select id="wfProject"></select>
           </label>
-          <button id="wfRefresh" type="button">Refresh</button>
         </div>
-        <nav class="wf-tabs" aria-label="Workflow sections">
-          <button type="button" class="active" data-wf-tab="changes">Changes</button>
-          <button type="button" data-wf-tab="worktrees">Worktrees</button>
-          <button type="button" data-wf-tab="github">GitHub</button>
+        <nav class="wf-tabs" role="tablist" aria-label="Workflow sections">
+          <button type="button" class="active" role="tab" aria-selected="true" data-wf-tab="changes">Changes</button>
+          <button type="button" role="tab" aria-selected="false" data-wf-tab="worktrees">Worktrees</button>
+          <button type="button" role="tab" aria-selected="false" data-wf-tab="github">GitHub</button>
         </nav>
         <div id="wfStatus" class="wf-status" role="status" aria-live="polite"></div>
         <main class="wf-body">
           <section id="wfChangesPanel" data-wf-panel="changes">
             <div class="wf-section-head">
-              <div><strong>Reviewed changes</strong><small>Pending review never mutates files.</small></div>
+              <div><strong>Reviewed changes</strong><small>Files change only after you accept</small></div>
               <button id="wfLoadDiff" type="button">Working diff</button>
             </div>
             <div id="wfDiffBox" class="wf-inspector hidden">
@@ -218,6 +213,16 @@ export function mountTaskWorkflow(root: HTMLElement) {
   `;
 
   const launch = root.querySelector<HTMLButtonElement>("#wfLaunch")!;
+  // Shared sheet header: title, refresh (icon action) and close.
+  const head = createSheetHeader(document, { title: "Review & Tasks", titleId: "wfTitle" });
+  head.closeButton.id = "wfClose";
+  const refreshButton = document.createElement("button");
+  refreshButton.type = "button";
+  refreshButton.id = "wfRefresh";
+  refreshButton.setAttribute("aria-label", "Refresh");
+  refreshButton.innerHTML = REFRESH_ICON;
+  head.actions.append(refreshButton);
+  root.querySelector<HTMLElement>(".wf-sheet")!.prepend(head.element);
   const modal = root.querySelector<HTMLDivElement>("#wfModal")!;
   const projectSelect = root.querySelector<HTMLSelectElement>("#wfProject")!;
   const status = root.querySelector<HTMLDivElement>("#wfStatus")!;
@@ -310,7 +315,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
 
   function renderChanges() {
     if (!changes.length) {
-      changesBox.innerHTML = '<div class="wf-empty">No staged change sets yet. Agent integrations can POST proposals to the workflow API.</div>';
+      changesBox.innerHTML = '<div class="wf-empty">No changes to review</div>';
       return;
     }
     changesBox.innerHTML = changes.map(change => {
@@ -406,7 +411,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
           <button type="button" data-wf-action="cleanup" data-worktree="${escapeHtml(item.id)}">Cleanup…</button>
         </div>
       </article>
-    `).join("") : '<div class="wf-empty">No active task worktrees.</div>';
+    `).join("") : '<div class="wf-empty">No worktrees</div>';
 
     prWorktree.innerHTML = worktrees.length
       ? '<option value="">Select a worktree</option>' + worktrees.map(item =>
@@ -484,7 +489,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
     nextFile.classList.toggle("hidden", !payload.truncated);
   }
 
-  const closeButton = root.querySelector<HTMLButtonElement>("#wfClose")!;
+  const closeButton = head.closeButton;
   let returnFocus: HTMLElement | null = null;
   let previousOverflow = "";
   function closeReview(restoreFocus = true) {
@@ -522,12 +527,15 @@ export function mountTaskWorkflow(root: HTMLElement) {
     if (event.shiftKey && (document.activeElement === first || document.activeElement === modal)) { event.preventDefault(); last.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   });
-  root.querySelector<HTMLButtonElement>("#wfRefresh")!.addEventListener("click", () => void refreshAll());
+  refreshButton.addEventListener("click", () => void refreshAll());
 
   root.querySelectorAll<HTMLButtonElement>("[data-wf-tab]").forEach(button => {
     button.addEventListener("click", () => {
       const tab = button.dataset.wfTab;
-      root.querySelectorAll<HTMLButtonElement>("[data-wf-tab]").forEach(item => item.classList.toggle("active", item === button));
+      root.querySelectorAll<HTMLButtonElement>("[data-wf-tab]").forEach(item => {
+        item.classList.toggle("active", item === button);
+        item.setAttribute("aria-selected", String(item === button));
+      });
       root.querySelectorAll<HTMLElement>("[data-wf-panel]").forEach(panel => panel.classList.toggle("hidden", panel.dataset.wfPanel !== tab));
     });
   });
