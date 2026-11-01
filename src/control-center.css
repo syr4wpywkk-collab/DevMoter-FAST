@@ -69,12 +69,6 @@
   letter-spacing: -.02em;
 }
 
-.dm-tools-heading span {
-  color: #a9adb7;
-  font-size: .88rem;
-  line-height: 1.4;
-}
-
 .dm-tools-tabs,
 .dm-tools-row,
 .dm-terminal-actions,
@@ -380,10 +374,6 @@
 
   .dm-tools-heading strong {
     font-size: 1.05rem;
-  }
-
-  .dm-tools-heading span {
-    font-size: .82rem;
   }
 
   .dm-tools-tabs {

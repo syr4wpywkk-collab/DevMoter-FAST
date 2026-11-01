@@ -54,8 +54,8 @@ test("checkpoints and extensions panels route device-auth failures to the gate",
   assert.ok(ui.includes('from "./device-gate.mjs"'));
   assert.ok(ui.includes('throw responseError(res.status, payload?.error || "Could not load task plan")'));
   assert.ok(ui.includes('throw responseError(res.status, data?.error || "Could not load extensions")'));
-  assert.ok(ui.includes('showFailure("Task checkpoints", error)'));
-  assert.ok(ui.includes('showFailure("Extensions", error)'));
+  assert.ok(ui.includes('showFailure("チェックポイント", error)'));
+  assert.ok(ui.includes('showFailure("拡張機能", error)'));
   assert.ok(ui.includes("createDeviceGate(document, { onRegister: closePanel })"));
   // Errors no longer get appended under the stale "Loading…" line.
   assert.ok(!ui.includes("panel.append(error instanceof Error ? error.message : String(error))"));

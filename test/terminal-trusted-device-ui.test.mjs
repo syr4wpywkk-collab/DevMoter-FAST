@@ -41,6 +41,6 @@ test("remote browsers are not offered localhost-only trusted-device bootstrap", 
   assert.ok(settings.includes('host === "localhost"'));
   assert.ok(settings.includes('host === "127.0.0.1"'));
   assert.ok(settings.includes("localBootstrap"));
-  assert.ok(settings.includes("既存のTrusted deviceでペアリングコードを作成"));
-  assert.ok(settings.includes("最初のTrusted deviceはセキュリティ上localhost / 127.0.0.1から作成"));
+  assert.ok(settings.includes("信頼済み端末でペアリングコードを作成"));
+  assert.ok(settings.includes("最初の信頼済み端末は、セキュリティのため localhost（127.0.0.1）から登録"));
 });
