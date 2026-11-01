@@ -165,7 +165,6 @@ export function mountControlCenter() {
   panel.setAttribute("role", "dialog");
   panel.setAttribute("aria-modal", "true");
   panel.setAttribute("aria-labelledby", "dm-tools-title");
-  panel.setAttribute("aria-describedby", "dm-tools-subtitle");
 
   const head = document.createElement("div");
   head.className = "dm-tools-head";
@@ -173,11 +172,9 @@ export function mountControlCenter() {
   heading.className = "dm-tools-heading";
   const title = document.createElement("strong");
   title.id = "dm-tools-title";
-  title.textContent = "DevMoter Tools";
-  const subtitle = document.createElement("span");
-  subtitle.id = "dm-tools-subtitle";
-  subtitle.textContent = "Terminal access, permission review, and local project search";
-  heading.append(title, subtitle);
+  // The title names the open tab, matching the Settings row that opened it.
+  title.textContent = "Terminal";
+  heading.append(title);
   const close = button("×", "Close DevMoter tools");
   close.className = "dm-tools-close";
   head.append(heading, close);
@@ -186,7 +183,7 @@ export function mountControlCenter() {
   tabs.className = "dm-tools-tabs";
   const terminalTab = button("Terminal");
   const safetyTab = button("Safety");
-  const indexTab = button("Project Index");
+  const indexTab = button("Index");
   terminalTab.classList.add("active");
   tabs.setAttribute("role", "tablist");
   tabs.setAttribute("aria-label", "Tools sections");
@@ -195,6 +192,7 @@ export function mountControlCenter() {
     [safetyTab, "safety", "dm-tools-safety-panel"],
     [indexTab, "index", "dm-tools-index-panel"]
   ] as const;
+  const tabTitles = { terminal: "Terminal", safety: "Safety scan", index: "Project index" } as const;
   for (const [tab, name, panelId] of tabEntries) {
     tab.id = `dm-tools-${name}-tab`;
     tab.setAttribute("role", "tab");
@@ -263,6 +261,7 @@ export function mountControlCenter() {
 
   function setTab(next: "terminal" | "safety" | "index") {
     body.scrollTop = 0;
+    title.textContent = tabTitles[next];
     for (const [tab, name] of tabEntries) {
       const selected = name === next;
       tab.classList.toggle("active", selected);

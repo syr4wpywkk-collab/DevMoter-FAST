@@ -57,7 +57,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
       <button type="button" data-workspace-command="theme"><span aria-hidden="true">◐</span><strong>テーマ</strong><small data-workspace-theme-value></small></button>
       <button type="button" data-workspace-command="context"><span aria-hidden="true">◒</span><strong>表示履歴</strong></button>
       <button type="button" data-workspace-command="checkpoints"><span aria-hidden="true">✓</span><strong>チェックポイント</strong></button>
-      <button type="button" data-workspace-command="extensions"><span aria-hidden="true">＋</span><strong>拡張</strong></button>
+      <button type="button" data-workspace-command="extensions"><span aria-hidden="true">＋</span><strong>拡張機能</strong></button>
       <hr aria-hidden="true" />
       <button type="button" data-workspace-settings><span aria-hidden="true">⚙</span><strong>設定</strong></button>
       <label class="dm-task-first-menu-row"><span aria-hidden="true">◎</span><strong>言語</strong>
