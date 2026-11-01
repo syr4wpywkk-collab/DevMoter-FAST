@@ -1,7 +1,7 @@
 import "./app-shell.css";
 import type { MainSurface } from "./surface-navigation.mjs";
 import { shouldUseUnifiedWorkspace } from "./unified-ui-mode.mjs";
-import { getAppDefinition, isAppId } from "./app-registry";
+import { getAppDefinition, isAppId, SYSTEM_ICONS } from "./app-registry";
 import { mountToolsAi } from "./tools-ai";
 
 type Backend = "opencode" | "codex" | "api" | "integrations";
@@ -258,7 +258,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     settings.type = "button";
     settings.className = "dm-shell-settings-entry";
     settings.dataset.shellSettings = "";
-    settings.innerHTML = '<span aria-hidden="true">⚙</span><strong>設定</strong>';
+    settings.innerHTML = `<span aria-hidden="true">${SYSTEM_ICONS.settings}</span><strong>設定</strong>`;
     settings.addEventListener("click", () => {
       closeSidebar();
       window.dispatchEvent(new CustomEvent("devmoter:open-settings", { detail: { page: "root" } }));

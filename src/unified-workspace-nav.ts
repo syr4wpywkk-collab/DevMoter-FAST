@@ -4,6 +4,24 @@ import "./unified-workspace-nav.css";
 // unmounting/reparenting their live input, stream, history or approval controls.
 import "./unified-workspace-chat.css";
 
+// The ☰ menu uses the same line-icon set as Home and Settings. Exact copies of
+// APP_REGISTRY / SYSTEM_ICONS (app-registry.ts); this module is loaded standalone
+// by tests, so it cannot import them (test/line-icons.test.mjs keeps them equal).
+const ICONS: Record<string, string> = {
+  "chat": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.1A8 8 0 1 1 20 12Z"/></svg>',
+  "checkpoint": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></svg>',
+  "context": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5Z"/><path d="m3 13 9 5 9-5"/></svg>',
+  "extensions": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h4a2 2 0 1 1 4 0h4v4a2 2 0 1 1 0 4v4H4Z"/></svg>',
+  "home": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg>',
+  "language": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h9M8.5 3v2M6 5c0 4 3 7 6 8M11 5c0 4-3 7-7 8"/><path d="m13 21 4-9 4 9M14.5 18h5"/></svg>',
+  "review": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>',
+  "sessions": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>',
+  "settings": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+  "terminal": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M12 15h5"/></svg>',
+  "theme": '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M12 8h5M12 12h6M12 16h5"/></svg>',
+  "tools": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M9 8V5h6v3M3 13h18"/></svg>',
+};
+
 type ChatBackend = "codex" | "opencode" | "api";
 type WorkspaceTab = "tasks" | "chat" | "review" | "tools";
 const isWorkspaceTab = (value: unknown): value is WorkspaceTab =>
@@ -49,18 +67,18 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
       <button type="button" class="dm-task-first-menu-button" data-workspace-menu-button aria-haspopup="true" aria-expanded="false" aria-controls="dmTaskFirstMenu" aria-label="Switch screen">☰</button>
     </header>
     <nav id="dmTaskFirstMenu" class="dm-task-first-menu" aria-label="DevMoter workspace" hidden>
-      <button type="button" data-workspace-action="tasks" aria-label="Tasks and sessions"><span aria-hidden="true">▤</span><strong>タスク</strong></button>
-      <button type="button" data-workspace-action="chat" aria-label="Current chat and conversation history"><span aria-hidden="true">◇</span><strong>Chat</strong></button>
-      <button type="button" data-workspace-action="review" aria-label="Review changes"><span aria-hidden="true">⑂</span><strong>Review</strong></button>
-      <button type="button" data-workspace-action="tools" aria-label="Open tools"><span aria-hidden="true">⌘</span><strong>Tools</strong></button>
+      <button type="button" data-workspace-action="tasks" aria-label="Tasks and sessions"><span aria-hidden="true">${ICONS.sessions}</span><strong>タスク</strong></button>
+      <button type="button" data-workspace-action="chat" aria-label="Current chat and conversation history"><span aria-hidden="true">${ICONS.chat}</span><strong>Chat</strong></button>
+      <button type="button" data-workspace-action="review" aria-label="Review changes"><span aria-hidden="true">${ICONS.review}</span><strong>Review</strong></button>
+      <button type="button" data-workspace-action="tools" aria-label="Open tools"><span aria-hidden="true">${ICONS.tools}</span><strong>Tools</strong></button>
       <hr aria-hidden="true" />
-      <button type="button" data-workspace-command="theme"><span aria-hidden="true">◐</span><strong>テーマ</strong><small data-workspace-theme-value></small></button>
-      <button type="button" data-workspace-command="context"><span aria-hidden="true">◒</span><strong>表示履歴</strong></button>
-      <button type="button" data-workspace-command="checkpoints"><span aria-hidden="true">✓</span><strong>チェックポイント</strong></button>
-      <button type="button" data-workspace-command="extensions"><span aria-hidden="true">＋</span><strong>拡張機能</strong></button>
+      <button type="button" data-workspace-command="theme"><span aria-hidden="true">${ICONS.theme}</span><strong>テーマ</strong><small data-workspace-theme-value></small></button>
+      <button type="button" data-workspace-command="context"><span aria-hidden="true">${ICONS.context}</span><strong>表示履歴</strong></button>
+      <button type="button" data-workspace-command="checkpoints"><span aria-hidden="true">${ICONS.checkpoint}</span><strong>チェックポイント</strong></button>
+      <button type="button" data-workspace-command="extensions"><span aria-hidden="true">${ICONS.extensions}</span><strong>拡張機能</strong></button>
       <hr aria-hidden="true" />
-      <button type="button" data-workspace-settings><span aria-hidden="true">⚙</span><strong>設定</strong></button>
-      <label class="dm-task-first-menu-row"><span aria-hidden="true">◎</span><strong>言語</strong>
+      <button type="button" data-workspace-settings><span aria-hidden="true">${ICONS.settings}</span><strong>設定</strong></button>
+      <label class="dm-task-first-menu-row"><span aria-hidden="true">${ICONS.language}</span><strong>言語</strong>
         <select data-language-select aria-label="Language">
           <option value="en">English</option>
           <option value="ja">日本語</option>
