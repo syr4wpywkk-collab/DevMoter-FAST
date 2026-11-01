@@ -76,6 +76,15 @@ test("unified task-first navigation delegates to real app actions and native pro
   }
 });
 
+test("mobile language selector has a 44px minimum tap target", async () => {
+  const css = await readFile(new URL("../src/unified-workspace-nav.css", import.meta.url), "utf8");
+  const rule = css.match(/\.dm-task-first-menu-row > select\s*\{([^}]+)\}/)?.[1];
+  assert.ok(rule, "language select styling remains scoped to the existing menu control");
+  assert.match(rule, /min-width:\s*44px/);
+  assert.match(rule, /min-height:\s*44px/);
+  assert.match(rule, /max-width:\s*112px/, "the existing compact menu width remains bounded");
+});
+
 test("task-first navigator has no fake execution, server state or permission handling", async () => {
   const [moduleCode, shellCode, css] = await Promise.all([
     readFile(new URL("../src/unified-workspace-nav.ts", import.meta.url), "utf8"),
