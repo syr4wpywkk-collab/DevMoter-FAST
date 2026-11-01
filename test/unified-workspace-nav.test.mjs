@@ -401,10 +401,15 @@ test("A-4/A-2: Home and Terminal are ☰ destinations; every destination closes 
     for (const item of [...items, menu.querySelector(".dm-task-first-menu-row")]) {
       const icon = item.querySelector("svg");
       assert.ok(icon, `${item.textContent.trim()} has an inline line icon`);
-      assert.equal(icon.getAttribute("stroke-width"), "1.5");
+      // Shared 24px line-icon set (#507): the 1.5 stroke comes from CSS, checked in line-icons.test.mjs.
+      assert.equal(icon.getAttribute("viewBox"), "0 0 24 24");
       assert.equal(icon.getAttribute("aria-hidden"), "true");
+      assert.equal(icon.parentElement.tagName, "SPAN");
+      assert.equal(icon.parentElement.getAttribute("aria-hidden"), "true");
     }
     const source = await readFile(new URL("../src/unified-workspace-nav.ts", import.meta.url), "utf8");
+    assert.match(source, /data-workspace-go="home"[^>]*><span aria-hidden="true">\$\{ICONS\.home\}/);
+    assert.match(source, /data-workspace-action="terminal"[^>]*><span aria-hidden="true">\$\{ICONS\.terminal\}/);
     assert.doesNotMatch(source, /from "\.\/line-icons/, "standalone module inlines its SVGs");
     const shell = await readFile(new URL("../src/app-shell.ts", import.meta.url), "utf8");
     assert.ok(shell.includes('openTerminal: () => run(() => launchApp("terminal"))'));
