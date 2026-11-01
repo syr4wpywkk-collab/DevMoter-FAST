@@ -123,7 +123,7 @@ test("OpenCode proxy rejects SSRF/traversal paths before reaching upstream and k
     const allowed = [
       ["/api/opencode/location", "/api/location"],
       ["/api/opencode/api/session", "/api/session"],
-      ["/api/opencode/session/ses_123/message?limit=20", "/api/session/ses_123/message?limit=20"],
+      ["/api/opencode/session/ses_123?limit=20", "/api/session/ses_123?limit=20"],
       ["/api/opencode/session?directory=%2Ftmp%2Fproject", "/api/session?directory=%2Ftmp%2Fproject"],
       ["/api/opencode", "/api/"]
     ];
@@ -135,6 +135,12 @@ test("OpenCode proxy rejects SSRF/traversal paths before reaching upstream and k
     for (const [, expectedUpstream] of allowed) {
       assert.ok(upstreamHits.includes(expectedUpstream), `${expectedUpstream} should reach OpenCode`);
     }
+
+    // Session routes that differ by OpenCode generation are served by the
+    // DevMoter adapter; the generic proxy must never forward them.
+    const owned = await rawGet(port, "/api/opencode/session/ses_123/message?limit=20", headers);
+    assert.equal(owned.status, 404);
+    assert.ok(!upstreamHits.some(hit => hit.startsWith("/api/session/ses_123/message")), "adapter-owned route must not reach OpenCode");
   } finally {
     child.kill("SIGTERM");
     await once(child, "exit").catch(() => {});

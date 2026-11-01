@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { isAbsolute, resolve } from "node:path";
 import { listContextEntries, resolveContextReferences } from "./context-references.mjs";
 import { errorMessage } from "./error-message.mjs";
-import { buildOpenCodePromptBody } from "../src/opencode-api-shapes.mjs";
+import { lastAssistantText } from "./opencode-adapter.mjs";
 
 export const AUTOMATION_API_VERSION = 1;
 const TASK_TIMEOUT_MS = 10 * 60 * 1000;
@@ -27,19 +27,6 @@ function parseOpenCodeModel(value) {
     throw httpError("OpenCode model must be provider/model", 400, "invalid_model");
   }
   return { providerID: text.slice(0, slash), modelID: text.slice(slash + 1) };
-}
-
-function extractOpenCodeOutput(payload) {
-  if (typeof payload === "string") return payload;
-  if (typeof payload?.text === "string") return payload.text;
-  if (typeof payload?.message === "string") return payload.message;
-  if (Array.isArray(payload?.parts)) {
-    return payload.parts
-      .filter(part => part?.type === "text" && typeof part.text === "string")
-      .map(part => part.text)
-      .join("");
-  }
-  return "";
 }
 
 function publicOriginForRequest(req, configuredOrigin = "") {
@@ -240,10 +227,8 @@ export function createAutomationApi({
       };
     }
 
-    const session = await fetchOpenCodeJson("/api/session", {
-      method: "POST",
+    const session = await openCode.createSession(sessionBody, {
       headers,
-      body: JSON.stringify(sessionBody),
       signal: AbortSignal.timeout(10000)
     });
     const sessionId = String(session?.id || "");
@@ -277,16 +262,11 @@ export function createAutomationApi({
     poll.unref?.();
 
     try {
-      const { generation } = await openCode.info();
-      const result = await fetchOpenCodeJson(
-        "/api/session/" + encodeURIComponent(sessionId) + "/prompt",
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify(buildOpenCodePromptBody(generation, { text: task })),
-          signal: controller.signal
-        }
-      );
+      await openCode.prompt(sessionId, { text: task, agent, ...(selectedModel ? { model: selectedModel } : {}) }, {
+        headers,
+        signal: controller.signal
+      });
+      await openCode.waitForIdle(sessionId, { headers, signal: controller.signal });
 
       const { permissions, questions } = await pending();
       if (permissions.length) {
@@ -298,7 +278,7 @@ export function createAutomationApi({
         throw httpError("OpenCode is waiting for input", 409, "input_required");
       }
 
-      const output = extractOpenCodeOutput(result);
+      const output = lastAssistantText(await openCode.context(sessionId, { headers }));
       onEvent({ type: "task.completed", data: { sessionId } });
       return {
         apiVersion: AUTOMATION_API_VERSION,
@@ -326,15 +306,7 @@ export function createAutomationApi({
 
       if (timedOut) {
         try {
-          await fetchOpenCodeJson(
-            "/api/session/" + encodeURIComponent(sessionId) + "/interrupt",
-            {
-              method: "POST",
-              headers,
-              body: "{}",
-              signal: AbortSignal.timeout(5000)
-            }
-          );
+          await openCode.interrupt(sessionId, { headers, signal: AbortSignal.timeout(5000) });
         } catch {}
         throw httpError("OpenCode task timed out and was interrupted", 504, "task_timeout");
       }

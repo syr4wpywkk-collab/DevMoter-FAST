@@ -33,17 +33,15 @@ export function isDirectMutationRoute(value) {
   return /^\/api\/session\/[^/]+\/(?:shell|command)$/.test(pathnameOnly(value));
 }
 
-export function isPromptRoute(value) {
-  return /^\/api\/session\/[^/]+\/(?:prompt|prompt_async|message)$/.test(pathnameOnly(value));
+// Session operations whose OpenCode routes differ by generation. DevMoter
+// serves them itself (server/opencode-adapter.mjs); the generic proxy must
+// never forward them, or a client could bypass mode and sandbox policy.
+export function isAdapterOwnedRoute(value) {
+  return /^\/api\/session\/[^/]+\/(?:prompt|prompt_async|message|interrupt|abort|context|permission|permissions|question|form)(?:\/|$)/
+    .test(pathnameOnly(value));
 }
 
-export function applyModeToPrompt(payload, mode) {
-  if (!isReadOnlyMode(mode) || !payload || typeof payload !== "object" || Array.isArray(payload)) {
-    return payload;
-  }
-
-  return {
-    ...payload,
-    tools: { ...READ_ONLY_TOOLS }
-  };
+/** The tool allowlist a read-only mode imposes on a run, or null. */
+export function readOnlyToolsFor(mode) {
+  return isReadOnlyMode(mode) ? { ...READ_ONLY_TOOLS } : null;
 }

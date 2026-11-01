@@ -93,7 +93,7 @@ test("health and OpenCode SSE proxy are live without a real OpenCode account", a
         "content-type": "text/event-stream",
         "cache-control": "no-cache"
       });
-      res.end('event: ready\ndata: {"ok":true}\n\n');
+      res.end('event: ready\ndata: {"type":"server.connected","data":{}}\n\n');
       return;
     }
     res.writeHead(404, { "content-type": "application/json" });
@@ -147,9 +147,9 @@ test("health and OpenCode SSE proxy are live without a real OpenCode account", a
     assert.equal(catalog.all[1].models.bare.available, true);
     assert.equal(providerHits, 1);
 
+    // The browser never learns the OpenCode generation; the server adapts.
     const runtime = await fetch(`http://127.0.0.1:${appPort}/api/opencode/pocket/runtime`, { headers: { authorization }, signal: AbortSignal.timeout(4000) });
-    assert.equal(runtime.status, 200);
-    assert.deepEqual(await runtime.json(), { generation: "v2", version: "2.0.9", source: "/api/info" });
+    assert.equal(runtime.status, 404);
 
     const cached = await fetch(`http://127.0.0.1:${appPort}/api/opencode/pocket/providers`, { headers: { authorization }, signal: AbortSignal.timeout(4000) });
     assert.equal(cached.status, 200);
@@ -167,7 +167,7 @@ test("health and OpenCode SSE proxy are live without a real OpenCode account", a
     });
     assert.equal(events.status, 200);
     assert.match(events.headers.get("content-type") || "", /text\/event-stream/);
-    assert.match(await events.text(), /event: ready/);
+    assert.equal(await events.text(), 'data: {"type":"server.connected","properties":{}}\n\n');
   } finally {
     child.kill("SIGTERM");
     await Promise.race([once(child, "exit"), new Promise(resolve => setTimeout(resolve, 1500))]);
