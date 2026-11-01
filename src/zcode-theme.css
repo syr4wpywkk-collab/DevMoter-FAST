@@ -1,50 +1,27 @@
 /* Shared ZCode presentation layer. Keep component DOM and behavior owned by
    their existing modules; this file only maps their visual tokens. */
-:root,
-html[data-devmoter-theme="dark"] {
-  color-scheme: dark;
-  --canvas-base: #212121;
-  --surface-panel: #212121;
-  --surface-card: #2f2f2f;
-  --surface-elevated: #2f2f2f;
-  --surface-hover: #3a3a3a;
-  --border-hairline: #3a3a3a;
-  --border-subtle: #4a4a4a;
-  --border-focus: #ececec;
-  --accent: #ececec;
-  --accent-pressed: #ffffff;
-  --accent-glow: transparent;
-  --text-primary: #ececec;
-  --text-secondary: #b4b4b4;
-  --text-muted: #8e8e8e;
-  --text-dim: #6e6e6e;
-  --user-bubble: #303030;
-  --status-error: #f08b8b;
-  --status-warning: #e0b15a;
-  --status-success: #7fd19b;
-}
-
+html[data-devmoter-theme="dark"] { color-scheme: dark; }
 html[data-devmoter-theme="light"] {
   color-scheme: light;
-  --canvas-base: #ffffff;
+  --canvas-base: #f4f6f4;
   --surface-panel: #ffffff;
   --surface-card: #ffffff;
   --surface-elevated: #ffffff;
-  --surface-hover: #f4f4f4;
-  --border-hairline: #e6e6e6;
-  --border-subtle: #d9d9d9;
-  --border-focus: #0d0d0d;
-  --accent: #0d0d0d;
-  --accent-pressed: #000000;
+  --surface-hover: #ecf1ee;
+  --border-hairline: #d6dfda;
+  --border-subtle: #c4cfc9;
+  --border-focus: #255f53;
+  --accent: #2d6b5d;
+  --accent-pressed: #22554a;
   --accent-glow: transparent;
-  --text-primary: #0d0d0d;
-  --text-secondary: #5d5d5d;
-  --text-muted: #6e6e6e;
-  --text-dim: #8a8a8a;
-  --user-bubble: #f4f4f4;
-  --status-error: #b42318;
-  --status-warning: #8a6116;
-  --status-success: #1f7a3d;
+  --text-primary: #1e2924;
+  --text-secondary: #526159;
+  --text-muted: #68766f;
+  --text-dim: #7a867f;
+  --user-bubble: #edf2ef;
+  --status-error: #a32e22;
+  --status-warning: #795506;
+  --status-success: #28643e;
 }
 
 html, body { background: var(--canvas-base); color: var(--text-primary); }
@@ -54,38 +31,6 @@ body { font-family: var(--font-ui); }
 }
 :is(input, textarea, select) {
   accent-color: var(--accent);
-}
-
-/* Home: remove the older blue/gradient palette while retaining its layout. */
-.dm-home-view {
-  --hm-bg: var(--canvas-base);
-  --hm-surface: var(--surface-panel);
-  --hm-surface-hover: var(--surface-hover);
-  --hm-border: var(--border-hairline);
-  --hm-accent: var(--accent);
-  --hm-text: var(--text-primary);
-  --hm-muted: var(--text-secondary);
-  --hm-green: var(--accent);
-  --hm-warn: var(--status-warning);
-  --hm-grid: transparent;
-  background-image: none;
-  font-family: var(--font-ui);
-}
-.dm-home-view :is(.dm-home-brand-mark, .dm-home-search-trigger, .dm-home-search-row,
-  .dm-home-search-row input, .dm-home-search-row > button, .dm-home-app-card,
-  .dm-home-quick-action, .dm-home-recent-card) {
-  border-radius: var(--radius-control);
-  box-shadow: none;
-}
-.dm-home-view :is(.dm-home-brand-mark, .dm-home-search-trigger > span,
-  .dm-home-quick-action-icon, .dm-home-card-icon, .dm-home-recent-icon) { color: var(--accent); }
-.dm-home-view :is(.dm-home-brand-mark, .dm-home-search-row > button) {
-  border-color: var(--border-subtle);
-  background: var(--surface-card);
-}
-.dm-home-view :is(.dm-home-app-card:hover, .dm-home-recent-card:hover) {
-  border-color: var(--accent);
-  background: var(--surface-hover);
 }
 
 /* Chat providers share the same neutral surfaces and single emerald accent. */
