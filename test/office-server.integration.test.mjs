@@ -115,11 +115,9 @@ test("Office real HTTP: owner/origin gates, edits, provider adapter, download an
   const saved = await (
     await request(`/api/office/documents/${doc.id}`, "PATCH", {
       revision: doc.revision,
-      edits: [
-        {
-          blockId: doc.blocks.find((b) => b.editable).id,
-          text: "Read this text\nSecond paragraph",
-        },
+      blocks: [
+        { id: doc.blocks.find((b) => b.editable).id, type: "paragraph", runs: [{ text: "Read this text" }] },
+        { type: "heading", level: 2, runs: [{ text: "Second paragraph", bold: true }] },
       ],
     })
   ).json();
@@ -128,7 +126,7 @@ test("Office real HTTP: owner/origin gates, edits, provider adapter, download an
     (
       await request(`/api/office/documents/${doc.id}`, "PATCH", {
         revision: doc.revision,
-        edits: [{ blockId: "b0", text: "stale" }],
+        blocks: [{ id: "b0", type: "paragraph", runs: [{ text: "stale" }] }],
       })
     ).status,
     409,
@@ -186,4 +184,12 @@ test("Office real HTTP: owner/origin gates, edits, provider adapter, download an
   const restored = await response.json();
   assert.notEqual(restored.revision, doc.revision);
   assert.equal(restored.history.at(-1).source, "restore");
+  response = await request(`/api/office/documents/${doc.id}/rename`, "POST", { name: "議事録" });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).name, "議事録.docx");
+  assert.equal((await request(`/api/office/documents/${doc.id}/rename`, "POST", { name: "../x" })).status, 400);
+  response = await request(`/api/office/documents/${doc.id}`, "DELETE");
+  assert.equal(response.status, 200);
+  assert.equal((await request(`/api/office/documents/${doc.id}`)).status, 400);
+  assert.deepEqual(await (await request("/api/office/documents")).json(), []);
 });
