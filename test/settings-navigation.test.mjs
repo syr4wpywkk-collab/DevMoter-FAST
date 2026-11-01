@@ -88,7 +88,7 @@ test("A-3: every Settings row either stays (chevron), leaves (arrow-out) or acts
     window.document.querySelector('.devmoter-settings-row[data-action="page:appearance"]').click();
     await settle();
     assert.equal(isOpen(), true, "page rows stay inside Settings");
-    assert.equal(window.document.querySelector("[data-settings-title]").textContent, "表示とレイアウト");
+    assert.equal(window.document.querySelector("[data-settings-title]").textContent, "テーマと表示");
   } finally {
     dom.window.close();
   }
