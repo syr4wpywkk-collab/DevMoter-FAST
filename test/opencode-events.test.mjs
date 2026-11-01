@@ -69,6 +69,21 @@ test("normalizes session.status and session.idle execution state", () => {
   );
 });
 
+test("surfaces the upstream error while OpenCode 1.x retries a turn", () => {
+  // Captured from OpenCode 1.19.5 GET /event with a model whose upstream rejects the key.
+  const event = normalizeOpenCodeEvent({
+    type: "session.status",
+    properties: {
+      sessionID: "ses_e6952f09fffeWa0it4Drhh8WF1",
+      status: { type: "retry", attempt: 1, message: "Upstream request failed: Invalid credential", next: 1793529290055 }
+    }
+  });
+  assert.equal(event.executionState, "running");
+  assert.equal(event.sessionID, "ses_e6952f09fffeWa0it4Drhh8WF1");
+  assert.deepEqual(event.retry, { attempt: 1, message: "Upstream request failed: Invalid credential" });
+  assert.equal(normalizeOpenCodeEvent({ type: "session.status", properties: { status: { type: "busy" } } }).retry, null);
+});
+
 test("keeps compatibility with legacy projected text and reasoning events", () => {
   const textDelta = normalizeOpenCodeEvent({
     type: "session.text.delta",
@@ -145,43 +160,16 @@ test("non-text OpenCode part deltas never become assistant text", async () => {
   assert.match(handler, /if \(normalized\.delta === null\) \{[\s\S]*?scheduleRefresh\(220\);[\s\S]*?return;/);
 });
 
-test("OpenCode 1.x and 2.x SSE names map onto one canonical event vocabulary", () => {
-  // 2.0.9 permission events already use the canonical names.
-  assert.equal(normalizeOpenCodeEvent({ type: "permission.asked", data: { id: "per_1", sessionID: "ses_1" } }).type, "permission.asked");
-  // 1.19.5 names them permission.v2.*.
-  const replied = normalizeOpenCodeEvent({ type: "permission.v2.replied", data: { sessionID: "ses_1", requestID: "per_1", reply: "once" } });
-  assert.equal(replied.type, "permission.replied");
-  assert.equal(replied.rawType, "permission.v2.replied");
-  assert.equal(replied.props.requestID, "per_1");
-
-  // 2.0.9 questions are forms.
-  const asked = normalizeOpenCodeEvent({
-    type: "form.created",
-    data: { form: { id: "frm_1", sessionID: "ses_1", title: "Questions", fields: [{ key: "q0", type: "string", title: "Pick", description: "Which?", options: [{ value: "A", label: "A" }], custom: true }] } }
-  });
+test("the browser reads canonical events only; OpenCode version names never reach it", async () => {
+  // The DevMoter server rewrites both generations' streams (server/opencode-adapter.mjs).
+  const asked = normalizeOpenCodeEvent({ type: "question.asked", properties: { id: "que_1", sessionID: "ses_1", questions: [] } });
   assert.equal(asked.type, "question.asked");
   assert.equal(asked.sessionID, "ses_1");
-  assert.equal(asked.props.id, "frm_1");
-  assert.deepEqual(asked.props.fields, [{ key: "q0", type: "string" }]);
-  assert.equal(asked.props.questions[0].question, "Which?");
-  for (const type of ["form.replied", "form.cancelled"]) {
-    const resolved = normalizeOpenCodeEvent({ type, data: { id: "frm_1", sessionID: "ses_1" } });
-    assert.equal(resolved.type, "question.resolved");
-    assert.equal(resolved.props.requestID, "frm_1");
+  assert.equal(normalizeOpenCodeEvent({ type: "permission.replied", properties: { sessionID: "ses_1", requestID: "per_1", decision: "once" } }).props.requestID, "per_1");
+  assert.equal(normalizeOpenCodeEvent({ type: "session.text.delta", properties: { assistantMessageID: "m", ordinal: 0, delta: "hi" } }).partID, 0);
+
+  for (const file of ["../src/opencode-event-compat.mjs", "../src/opencode.ts", "../src/session-control.ts"]) {
+    const source = await readFile(new URL(file, import.meta.url), "utf8");
+    assert.doesNotMatch(source, /session\.next\.|permission\.v2\.|question\.v2\.|form\.created|apiGeneration|openCodeGeneration|OPENCODE_API_V|pocket\/runtime|opencode-api-shapes/, file);
   }
-
-  // 1.19.5 question events.
-  const v1Asked = normalizeOpenCodeEvent({ type: "question.v2.asked", data: { id: "que_1", sessionID: "ses_1", questions: [{ question: "Q", header: "H", options: [] }] } });
-  assert.equal(v1Asked.type, "question.asked");
-  assert.equal(v1Asked.props.questions[0].header, "H");
-  assert.equal(normalizeOpenCodeEvent({ type: "question.v2.rejected", data: { sessionID: "ses_1", requestID: "que_1" } }).props.requestID, "que_1");
-
-  // 1.19.5 session.next.* stream events become the 2.x session.* names.
-  const delta = normalizeOpenCodeEvent({ type: "session.next.text.delta", data: { sessionID: "ses_1", assistantMessageID: "msg_1", textID: "t1", delta: "hi" } });
-  assert.equal(delta.type, "session.text.delta");
-  assert.equal(delta.partID, "t1");
-  assert.equal(delta.messageID, "msg_1");
-  assert.equal(mergeOpenCodeStreamText("", delta), "hi");
-  assert.equal(normalizeOpenCodeEvent({ type: "session.next.agent.switched", data: { sessionID: "ses_1", agent: "plan" } }).type, "session.agent.selected");
-  assert.equal(normalizeOpenCodeEvent({ type: "session.next.model.switched", data: { sessionID: "ses_1" } }).type, "session.model.selected");
 });

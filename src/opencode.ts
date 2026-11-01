@@ -14,17 +14,6 @@ import { openCodeSessionLabel } from "./opencode-session-title.mjs";
 import { shortModelName } from "./opencode-model-label.mjs";
 import { filterOpenCodePickerModels, flattenOpenCodePickerRows, normalizeOpenCodeProviderCatalog, openCodePickerWindow, type OpenCodePickerItem } from "./opencode-provider-catalog.mjs";
 import { recoverAfterEventOpen } from "./event-recovery.mjs";
-import {
-  assertOpenCodeGeneration,
-  buildOpenCodePermissionReply,
-  buildOpenCodePromptBody,
-  buildOpenCodeQuestionReject,
-  buildOpenCodeQuestionReply,
-  normalizeOpenCodeQuestions,
-  openCodeQuestionListPath,
-  type OpenCodeApiGeneration,
-  type OpenCodeRequestSpec
-} from "./opencode-api-shapes.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
@@ -59,7 +48,6 @@ type OpenCodeModel = {
   available?: boolean;
   requiresKey?: string[];
   deprecated?: boolean;
-  unsupported?: string;
 };
 
 type OpenCodeProvider = {
@@ -164,8 +152,6 @@ type PendingQuestion = {
   id: string;
   sessionID: string;
   questions: QuestionInfo[];
-  // OpenCode 2.x questions are forms; answers are keyed by these field keys.
-  fields?: Array<{ key: string; type: string }>;
 };
 
 export type OpenCodeController = {
@@ -537,9 +523,6 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   let pendingPermissionSafety = "";
   let pendingQuestion: PendingQuestion | null = null;
   let questionAnswers: Array<Set<string>> = [];
-  // OpenCode API generation detected by the DevMoter server; request bodies
-  // that differ between OpenCode 1.x and 2.x are built from it.
-  let apiGeneration: OpenCodeApiGeneration | null = null;
   let contextExecutionState: ExecutionState | null = null;
   let submitInFlight = false;
   let resumeSyncInFlight = false;
@@ -790,27 +773,6 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     return payload as T;
   }
 
-  async function loadApiGeneration(): Promise<OpenCodeApiGeneration> {
-    const runtime = await api<{ generation?: unknown }>("/pocket/runtime");
-    apiGeneration = assertOpenCodeGeneration(runtime?.generation);
-    return apiGeneration;
-  }
-
-  async function openCodeGeneration(): Promise<OpenCodeApiGeneration> {
-    return apiGeneration ?? loadApiGeneration();
-  }
-
-  function sendOpenCodeRequest<T = Json>(
-    spec: OpenCodeRequestSpec,
-    headers: Record<string, string> = {}
-  ): Promise<T> {
-    return api<T>(spec.path, {
-      method: spec.method,
-      headers,
-      ...(spec.body ? { body: JSON.stringify(spec.body) } : {})
-    });
-  }
-
   async function devmoterApi<T = Json>(path: string, init: RequestInit = {}): Promise<T> {
     const method = String(init.method || "GET").toUpperCase();
     const headers = new Headers(init.headers || {});
@@ -849,7 +811,6 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
           name: String(record.name ?? record.id ?? id),
           cost,
           enabled: record.enabled,
-          ...(typeof record.unsupported === "string" && record.unsupported ? { unsupported: record.unsupported } : {}),
           status,
           capabilities: record.capabilities,
           free: cost?.input === 0 && cost?.output === 0,
@@ -860,15 +821,6 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       })
       .filter(model => model.id)
       .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
-  }
-
-  // A model the connected OpenCode cannot run (see openCodeRunnerUnsupported)
-  // must not be sent: OpenCode would accept the prompt and never answer.
-  function selectedModelBlockReason() {
-    if (!selectedModel) return "";
-    const provider = providers.find(item => item.id === selectedModel?.providerID);
-    const model = provider ? normalizeModels(provider).find(item => item.id === selectedModel?.modelID) : null;
-    return model?.unsupported || "";
   }
 
   function currentModelName() {
@@ -1335,7 +1287,8 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
       const footerBits: string[] = [];
       if (message.agent) footerBits.push(String(message.agent));
-      if (message.model?.modelID) footerBits.push(String(message.model.modelID));
+      const modelID = message.model?.id ?? message.model?.modelID;
+      if (modelID) footerBits.push(String(modelID));
       if (Number.isFinite(message.cost) && message.cost > 0) {
         footerBits.push(`$${Number(message.cost).toFixed(4)}`);
       }
@@ -1370,26 +1323,6 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     if (message.type === "compaction") {
       addMetaLine("context compacted");
       return;
-    }
-
-    // Transitional support for older projected message shape.
-    const role = message?.info?.role;
-    if (role === "user" || role === "assistant") {
-      const parts = Array.isArray(message.parts) ? message.parts : [];
-      if (role === "user") {
-        const text = parts
-          .filter((part: Json) => part?.type === "text")
-          .map((part: Json) => String(part.text || ""))
-          .join("");
-        noteFirstPrompt(text);
-        addUserMessage(text);
-      } else {
-        for (const part of parts) {
-          if (part?.type === "text") addAssistantText(String(part.text || ""));
-          else if (part?.type === "reasoning") addReasoning(String(part.text || ""));
-          else if (part?.type === "tool") addToolPart(part);
-        }
-      }
     }
   }
 
@@ -1670,9 +1603,10 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     }
 
     try {
-      const generation = await openCodeGeneration();
-      const data = await api<unknown>(openCodeQuestionListPath(generation, activeSession.id));
-      pendingQuestion = normalizeOpenCodeQuestions(generation, data)[0] ?? null;
+      const data = await api<PendingQuestion[]>(
+        `/session/${encodeURIComponent(activeSession.id)}/question`
+      );
+      pendingQuestion = (Array.isArray(data) ? data : [])[0] ?? null;
       renderQuestion();
     } catch {
       // Ignore temporary question lookup failure.
@@ -2117,11 +2051,6 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   async function sendMessageUnlocked() {
     const text = promptInput.value.trim();
     if (!text && !pendingAttachments.length) return;
-    const blocked = selectedModelBlockReason();
-    if (blocked) {
-      showToast(`${currentModelName()}: ${blocked}`);
-      return;
-    }
 
     if (text) {
       try {
@@ -2194,9 +2123,11 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
           headers: {
             "x-pocket-agent-mode": agentModeFor(selectedAgent)
           },
-          body: JSON.stringify(
-            buildOpenCodePromptBody(await openCodeGeneration(), { text: promptText })
-          )
+          body: JSON.stringify({
+            text: promptText,
+            agent: selectedAgent,
+            ...(selectedModel ? { model: selectedModel } : {})
+          })
         }
       );
     } catch (error) {
@@ -2305,6 +2236,17 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     }
   }
 
+  function replyPermission(request: PendingPermission, decision: "once" | "always" | "reject", opId: string) {
+    return api(
+      `/session/${encodeURIComponent(request.sessionID)}/permission/${encodeURIComponent(request.id)}/reply`,
+      {
+        method: "POST",
+        headers: { "x-pocket-operation-id": opId },
+        body: JSON.stringify({ decision })
+      }
+    );
+  }
+
   function openCodePermissionCommand(request: PendingPermission) {
     const command = request.metadata?.command;
     return typeof command === "string" ? command : "";
@@ -2347,10 +2289,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     try {
       const remembered = await matchRememberedPermission(scope, command || undefined);
       if (remembered.matched && !remembered.blockedByRisk && !loopState?.paused) {
-        await sendOpenCodeRequest(
-          buildOpenCodePermissionReply(await openCodeGeneration(), request, "once"),
-          { "x-pocket-operation-id": `opencode-remembered-${request.id}` }
-        );
+        await replyPermission(request, "once", `opencode-remembered-${request.id}`);
         pendingPermission = null;
         pendingPermissionSafety = "";
         renderPermission();
@@ -2437,10 +2376,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         }).catch(() => {});
       }
 
-      await sendOpenCodeRequest(
-        buildOpenCodePermissionReply(await openCodeGeneration(), request, effectiveReply),
-        { "x-pocket-operation-id": `opencode-permission-${request.id}-${effectiveReply}` }
-      );
+      await replyPermission(request, effectiveReply, `opencode-permission-${request.id}-${effectiveReply}`);
       pendingPermission = null;
       pendingPermissionSafety = "";
       renderPermission();
@@ -2585,9 +2521,13 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     questionReject.disabled = true;
 
     try {
-      await sendOpenCodeRequest(
-        buildOpenCodeQuestionReply(await openCodeGeneration(), request, answers),
-        { "x-pocket-operation-id": `opencode-question-${request.id}-reply-${crypto.randomUUID()}` }
+      await api(
+        `/session/${encodeURIComponent(request.sessionID)}/question/${encodeURIComponent(request.id)}/reply`,
+        {
+          method: "POST",
+          headers: { "x-pocket-operation-id": `opencode-question-${request.id}-reply-${crypto.randomUUID()}` },
+          body: JSON.stringify({ answers })
+        }
       );
       pendingQuestion = null;
       renderQuestion();
@@ -2608,9 +2548,12 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     questionReject.disabled = true;
 
     try {
-      await sendOpenCodeRequest(
-        buildOpenCodeQuestionReject(await openCodeGeneration(), request),
-        { "x-pocket-operation-id": `opencode-question-${request.id}-reject-${crypto.randomUUID()}` }
+      await api(
+        `/session/${encodeURIComponent(request.sessionID)}/question/${encodeURIComponent(request.id)}/reject`,
+        {
+          method: "POST",
+          headers: { "x-pocket-operation-id": `opencode-question-${request.id}-reject-${crypto.randomUUID()}` }
+        }
       );
       pendingQuestion = null;
       renderQuestion();
@@ -2785,6 +2728,12 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
     if (type === "session.status") {
       lastLiveEventAt = Date.now();
+      // OpenCode 1.x retries a failing upstream call (quota, credentials)
+      // instead of failing the turn: say why the run is still working.
+      if (normalized.retry && (!activeSession || normalized.sessionID === activeSession.id)) {
+        const attempt = normalized.retry.attempt ? ` (attempt ${normalized.retry.attempt})` : "";
+        showToast(`Retrying${attempt}: ${normalized.retry.message || "upstream request failed"}`);
+      }
       if (normalized.executionState) {
         setExecutionState(normalized.executionState);
         if (normalized.executionState === "completed") scheduleRefresh(60);
@@ -3600,7 +3549,6 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     setSideStatus("syncing");
     try {
       setActivity("syncing");
-      await loadApiGeneration();
       await Promise.all([
         loadLocation(),
         loadProviders(),
@@ -3656,8 +3604,6 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       setExecutionState("offline");
       stopProviderRefresh();
       disconnectEvents();
-      // OpenCode may come back as a different version; re-detect on refresh.
-      apiGeneration = null;
     }
   }
 

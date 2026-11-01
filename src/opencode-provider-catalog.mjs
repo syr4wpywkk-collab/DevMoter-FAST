@@ -63,7 +63,13 @@ function integrationEnvKeys(integration) {
  *   GET /api/model     -> enabled models of available providers
  * OpenCode 2.x adds GET /api/integration (display names, env keys) and
  * GET /api/model/default. Neither generation exposes models of providers that
- * are not connected, so every model in this catalog is usable.
+ * are not connected.
+ *
+ * On 1.x DevMoter runs prompts on the classic runner (see
+ * server/opencode-adapter.mjs), which resolves models from its own catalog,
+ * GET /provider (`runnerCatalog`). A model `/api/model` lists that the runner
+ * cannot resolve (1.19.5: the deprecated entries) is kept in the list but not
+ * selectable.
  */
 export function buildOpenCodeProviderCatalog({
   generation,
@@ -72,6 +78,7 @@ export function buildOpenCodeProviderCatalog({
   models,
   integrations = null,
   defaultModel = null,
+  runnerCatalog = null,
   directory = null
 } = {}) {
   if (generation !== "v1" && generation !== "v2") throw new Error("OpenCode API generation is unknown");
@@ -79,6 +86,8 @@ export function buildOpenCodeProviderCatalog({
   const modelList = listPayload(models);
   if (!providerList) throw new Error("OpenCode GET /api/provider returned no provider list");
   if (!modelList) throw new Error("OpenCode GET /api/model returned no model list");
+
+  const runnable = generation === "v1" ? runnerModelKeys(runnerCatalog) : null;
 
   const integrationById = new Map();
   for (const integration of listPayload(integrations) ?? []) {
@@ -114,7 +123,6 @@ export function buildOpenCodeProviderCatalog({
     const entry = providerEntry(providerID);
     const status = typeof model?.status === "string" ? model.status : null;
     const cost = normalizeModelPricing(baseCostTier(model?.cost));
-    const unsupported = openCodeRunnerUnsupported(generation, model);
     entry.models[id] = {
       id,
       modelID: String(model?.modelID ?? id),
@@ -122,8 +130,7 @@ export function buildOpenCodeProviderCatalog({
       name: typeof model?.name === "string" && model.name ? model.name : id,
       family: model?.family ?? null,
       status,
-      enabled: model?.enabled !== false && !unsupported,
-      ...(unsupported ? { unsupported } : {}),
+      enabled: model?.enabled !== false && (!runnable || runnable.has(providerID + "/" + id)),
       capabilities: model?.capabilities ?? null,
       cost,
       variants: Array.isArray(model?.variants)
@@ -152,7 +159,7 @@ export function buildOpenCodeProviderCatalog({
     opencodeVersion: version,
     source: generation === "v2"
       ? "/api/provider + /api/model + /api/integration + /api/model/default"
-      : "/api/provider + /api/model + /api/integration",
+      : "/api/provider + /api/model + /api/integration + /provider",
     modelSource: "/api/model",
     directory,
     all,
@@ -162,16 +169,21 @@ export function buildOpenCodeProviderCatalog({
   };
 }
 
-/**
- * OpenCode 1.x runs `/api/session/{id}/prompt` on its new session runner,
- * which only drives AI SDK models. A model whose catalog entry says
- * `api.type: "native"` (most OpenCode Zen / Go models, e.g.
- * deepseek-v4.1-flash-free) is accepted by the prompt route, then the runner
- * throws `UnsupportedApiError` into its own log and never emits a step, so the
- * chat waits forever. OpenCode 2.x runs native models on the same route.
- */
-export function openCodeRunnerUnsupported(generation, model) {
-  return generation === "v1" && model?.api?.type === "native" ? "OpenCode 1.xでは動かない (2.xで使える)" : "";
+// "providerID/modelID" of every model the 1.x classic runner resolves:
+// the models of connected providers in GET /provider.
+function runnerModelKeys(catalog) {
+  const { providers, connected } = normalizeOpenCodeProviderCatalog(catalog);
+  const ids = new Set(connected);
+  const keys = new Set();
+  for (const provider of providers) {
+    if (!ids.has(provider.id)) continue;
+    const models = provider.models;
+    const list = Array.isArray(models)
+      ? models.map(model => String(model?.id ?? ""))
+      : Object.keys(models ?? {});
+    for (const id of list) if (id) keys.add(provider.id + "/" + id);
+  }
+  return keys;
 }
 
 export function openCodeModelChoice(model) {
@@ -188,7 +200,7 @@ export function openCodeModelChoice(model) {
     : !available
       ? "provider unavailable"
       : !enabled
-        ? (typeof model?.unsupported === "string" && model.unsupported) || "unavailable"
+        ? (deprecated ? "deprecated" : "unavailable")
         : "";
   return { requiresKey, available, deprecated, enabled, needsKey, selectable, reason, free };
 }

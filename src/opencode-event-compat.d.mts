@@ -1,6 +1,5 @@
 export type NormalizedOpenCodeEvent = {
   type: string;
-  rawType: string;
   props: any;
   sessionID: any;
   category: "other" | "part" | "tool" | "status";
@@ -11,6 +10,8 @@ export type NormalizedOpenCodeEvent = {
   text: string | null;
   delta: string | null;
   executionState: "running" | "completed" | "failed" | null;
+  /** Set while OpenCode 1.x waits to retry a failing upstream call. */
+  retry: { attempt: number | null; message: string } | null;
 };
 
 export function normalizeOpenCodeEvent(payload: any): NormalizedOpenCodeEvent;

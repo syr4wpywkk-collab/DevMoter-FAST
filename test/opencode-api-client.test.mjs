@@ -90,17 +90,22 @@ test("catalog inputs use the shared /api routes and /api/model/default only on 2
   assert.ok(calls2.includes("/api/model/default"));
   assert.ok(!calls2.includes("/provider"));
 
+  assert.equal(inputs2.runnerCatalog, null);
+
   const calls1 = [];
   const inputs1 = await createOpenCodeClient({ baseUrl: "http://oc.test", fetchImpl: fixtureFetch(v1, calls1) }).catalogInputs();
   assert.equal(inputs1.generation, "v1");
   assert.equal(inputs1.defaultModel, null);
   assert.ok(!calls1.includes("/api/model/default"));
+  // 1.x prompts run on the classic runner, whose own catalog says which models run.
+  assert.ok(calls1.includes("/provider"));
+  assert.deepEqual(inputs1.runnerCatalog.connected, ["opencode", "opencode-go"]);
   for (const path of ["/api/provider", "/api/model", "/api/integration"]) {
     assert.ok(calls1.includes(path) && calls2.includes(path), path);
   }
 });
 
-test("pending requests read permissions plus questions (1.x) or forms (2.x)", async () => {
+test("pending requests: classic /permission + /question (1.x) or session permissions + forms (2.x), one shape", async () => {
   const form = {
     id: "frm_1", sessionID: "ses_1", title: "Questions",
     fields: [{ key: "q0", type: "string", title: "Pick", description: "Which?", options: [{ value: "A", label: "A" }], custom: true }]
@@ -108,25 +113,42 @@ test("pending requests read permissions plus questions (1.x) or forms (2.x)", as
   const calls2 = [];
   const pending2 = await createOpenCodeClient({
     baseUrl: "http://oc.test",
-    fetchImpl: fixtureFetch({ ...v2, "/api/session/ses_1/permission": { data: [] }, "/api/session/ses_1/form": { data: [form] } }, calls2)
+    fetchImpl: fixtureFetch({
+      ...v2,
+      "/api/session/ses_1/permission": { data: [{ id: "per_2", sessionID: "ses_1", action: "shell", resources: ["ls"], save: ["ls *"], source: { type: "tool", messageID: "msg_1", id: "call_1" } }] },
+      "/api/session/ses_1/form": { data: [form] }
+    }, calls2)
   }).pendingRequests("ses_1");
-  assert.deepEqual(pending2.permissions, []);
-  assert.equal(pending2.questions[0].id, "frm_1");
-  assert.deepEqual(pending2.questions[0].fields, [{ key: "q0", type: "string" }]);
+  assert.deepEqual(pending2.permissions, [{
+    id: "per_2", sessionID: "ses_1", action: "shell", resources: ["ls"], save: ["ls *"],
+    metadata: { command: "ls" }, tool: { messageID: "msg_1", callID: "call_1" }
+  }]);
+  assert.deepEqual(pending2.questions, [{
+    id: "frm_1", sessionID: "ses_1",
+    questions: [{ header: "Pick", question: "Which?", options: [{ label: "A" }], multiple: false, custom: true }]
+  }]);
   assert.ok(!calls2.some(path => path.endsWith("/question")));
 
+  // Captured from 1.19.5 GET /permission and GET /question (all sessions).
   const calls1 = [];
   const pending1 = await createOpenCodeClient({
     baseUrl: "http://oc.test",
     fetchImpl: fixtureFetch({
       ...v1,
-      "/api/session/ses_1/permission": { data: [{ id: "per_1", sessionID: "ses_1", action: "bash", resources: ["ls"] }] },
-      "/api/session/ses_1/question": { data: [] }
+      "/permission": [
+        { id: "per_1", sessionID: "ses_1", permission: "bash", patterns: ["ls"], metadata: { command: "ls" }, always: ["ls *"], tool: { messageID: "msg_1", callID: "call_1" } },
+        { id: "per_9", sessionID: "ses_other", permission: "edit", patterns: ["a.txt"], metadata: {}, always: [] }
+      ],
+      "/question": [{ id: "que_1", sessionID: "ses_1", questions: [{ question: "Which?", header: "Pick", options: [{ label: "A" }] }] }]
     }, calls1)
   }).pendingRequests("ses_1");
-  assert.equal(pending1.permissions[0].id, "per_1");
-  assert.deepEqual(pending1.questions, []);
-  assert.ok(calls1.includes("/api/session/ses_1/question"));
+  assert.deepEqual(pending1.permissions, [{
+    id: "per_1", sessionID: "ses_1", action: "bash", resources: ["ls"], save: ["ls *"],
+    metadata: { command: "ls" }, tool: { messageID: "msg_1", callID: "call_1" }
+  }]);
+  assert.deepEqual(pending1.questions, pending2.questions.map(question => ({ ...question, id: "que_1" })));
+  assert.ok(calls1.includes("/permission") && calls1.includes("/question"));
+  assert.ok(!calls1.some(path => path.startsWith("/api/session/")), "1.x never reads the new-runner request lists");
 });
 
 test("provider catalog builds from captured 2.0.9 responses", () => {
@@ -185,15 +207,101 @@ test("provider catalog builds from captured 1.19.5 responses", () => {
     version: "1.19.5",
     providers: v1["/api/provider"],
     models: v1["/api/model"],
-    integrations: v1["/api/integration"]
+    integrations: v1["/api/integration"],
+    runnerCatalog: v1["/provider"]
   });
   assert.equal(catalog.apiVersion, "v1");
-  assert.equal(catalog.source, "/api/provider + /api/model + /api/integration");
+  assert.equal(catalog.source, "/api/provider + /api/model + /api/integration + /provider");
+  // Native-API models (iceman, flint) run on the classic runner and stay selectable.
+  const opencode = catalog.all.find(provider => provider.id === "opencode").models;
+  assert.equal(opencode["flint-40b-free"].enabled, true);
+  assert.equal(catalog.all.find(provider => provider.id === "opencode-go").models["iceman-contributor-free"].enabled, true);
+  // The deprecated model the runner no longer resolves is listed but not selectable.
+  assert.equal(opencode["gemini-3-pro"].enabled, false);
+  assert.equal(opencode["gemini-3-pro"].deprecated, true);
+  assert.ok(!catalog.all.some(provider => provider.id === "anthropic"), "unconnected runner providers are not added");
   assert.deepEqual(catalog.default, {});
   const model = v1["/api/model"].data[0];
   const built = catalog.all.find(provider => provider.id === model.providerID).models[model.id];
   assert.equal(built.modelID, model.id, "1.x models have no separate modelID");
   assert.equal(built.available, true);
-  assert.throws(() => buildOpenCodeProviderCatalog({ generation: "v1", providers: v1["/api/provider"], models: "<html>" }), /GET \/api\/model returned no model list/);
+  assert.throws(() => buildOpenCodeProviderCatalog({ generation: "v1", providers: v1["/api/provider"], models: "<html>", runnerCatalog: v1["/provider"] }), /GET \/api\/model returned no model list/);
   assert.throws(() => buildOpenCodeProviderCatalog({ providers: [], models: [] }), /generation is unknown/);
+});
+
+// Records method/path/body and answers from a route table (method + path).
+function recordingFetch(routes, calls) {
+  return async (url, init = {}) => {
+    const { pathname } = new URL(url);
+    const method = init.method || "GET";
+    calls.push({ method, path: pathname, body: init.body ? JSON.parse(init.body) : undefined });
+    const key = method + " " + pathname;
+    const value = typeof routes[key] === "function" ? routes[key]() : routes[key];
+    if (value === undefined) return new Response(HTML, { status: 200, headers: { "content-type": "text/html" } });
+    if (value === null) return new Response(null, { status: 204 });
+    return new Response(JSON.stringify(value), { status: 200, headers: { "content-type": "application/json" } });
+  };
+}
+
+test("1.x session operations go to the classic runner; the session supplies an unnamed model", async () => {
+  const calls = [];
+  let busy = true;
+  const client = createOpenCodeClient({
+    baseUrl: "http://oc.test",
+    fetchImpl: recordingFetch({
+      "GET /global/health": v1["/global/health"],
+      "GET /api/session/ses_1": { data: { id: "ses_1", agent: "build", model: { id: "deepseek-v4.1-flash-free", providerID: "opencode" } } },
+      "POST /session/ses_1/prompt_async": null,
+      "GET /session/status": () => (busy ? { ses_1: { type: "busy" } } : {}),
+      "GET /session/ses_1/message": [
+        { info: { id: "msg_u", role: "user", time: { created: 20 } }, parts: [{ type: "text", text: "hi" }] },
+        { info: { id: "msg_a", role: "assistant", time: { created: 21, completed: 22 }, modelID: "deepseek-v4.1-flash-free", providerID: "opencode" }, parts: [{ type: "text", text: "answer" }] }
+      ],
+      "GET /api/session/ses_1/context": { data: [{ id: "msg_old", type: "user", text: "older", time: { created: 5 } }] },
+      "POST /session/ses_1/abort": true
+    }, calls)
+  });
+  await client.prompt("ses_1", { text: "hi" });
+  assert.deepEqual(calls.find(call => call.path === "/session/ses_1/prompt_async").body, {
+    parts: [{ type: "text", text: "hi" }],
+    model: { providerID: "opencode", modelID: "deepseek-v4.1-flash-free" },
+    agent: "build"
+  });
+
+  assert.deepEqual(await client.active(), { ses_1: { type: "running" } });
+  const running = await client.context("ses_1");
+  assert.deepEqual(running.map(item => item.id), ["msg_old", "msg_u", "msg_a"], "no idle marker while busy");
+
+  const waiting = client.waitForIdle("ses_1", { pollMs: 5 });
+  setTimeout(() => { busy = false; }, 20);
+  await waiting;
+  const done = await client.context("ses_1");
+  assert.deepEqual(done.at(-1), { id: "msg_a:idle", type: "idle", time: { created: 22 }, outcome: "succeeded" });
+
+  await client.interrupt("ses_1");
+  assert.ok(calls.some(call => call.method === "POST" && call.path === "/session/ses_1/abort"));
+  assert.ok(!calls.some(call => call.path === "/api/session/ses_1/prompt" || call.path === "/api/session/ses_1/interrupt"));
+});
+
+test("2.x session operations use /api/session; a named model/agent skips the session lookup when unchanged", async () => {
+  const calls = [];
+  const client = createOpenCodeClient({
+    baseUrl: "http://oc.test",
+    fetchImpl: recordingFetch({
+      "GET /api/info": v2["/api/info"],
+      "GET /api/session/ses_2": { data: { id: "ses_2", agent: "build", model: { id: "mock-1", providerID: "mock" } } },
+      "POST /api/session/ses_2/prompt": { data: { id: "msg_u", type: "user" } },
+      "GET /api/session/active": { data: {} },
+      "GET /api/session/ses_2/context": { data: [{ id: "msg_a", type: "assistant", content: [{ type: "text", text: "two" }] }] },
+      "POST /api/session/ses_2/interrupt": null,
+      "POST /api/session": { data: { id: "ses_new" } }
+    }, calls)
+  });
+  await client.prompt("ses_2", { text: "hi", agent: "build", model: { providerID: "mock", modelID: "mock-1" } });
+  assert.deepEqual(calls.filter(call => call.method === "POST").map(call => [call.path, call.body]), [["/api/session/ses_2/prompt", { text: "hi" }]]);
+  assert.deepEqual(await client.active(), {});
+  assert.deepEqual(await client.context("ses_2"), [{ id: "msg_a", type: "assistant", content: [{ type: "text", text: "two" }] }]);
+  await client.interrupt("ses_2");
+  assert.ok(calls.some(call => call.path === "/api/session/ses_2/interrupt"));
+  assert.deepEqual(await client.createSession({ agent: "build" }), { id: "ses_new" });
 });

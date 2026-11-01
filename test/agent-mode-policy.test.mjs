@@ -2,35 +2,31 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {
-  applyModeToPrompt,
+  isAdapterOwnedRoute,
   isDirectMutationRoute,
-  isPromptRoute,
   parseAgentMode,
   READ_ONLY_TOOLS,
+  readOnlyToolsFor,
   sessionIdFromOpenCodePath
 } from "../server/agent-mode-policy.mjs";
 
-test("plan and ask modes replace client tool choices with a read-only allowlist", () => {
+test("plan and ask modes restrict a run to the read-only tool allowlist", () => {
   for (const mode of ["plan", "ask"]) {
-    const payload = applyModeToPrompt({
-      text: "inspect this project",
-      tools: { bash: true, write: true, custom_mutator: true }
-    }, mode);
-
-    assert.equal(payload.text, "inspect this project");
-    assert.deepEqual(payload.tools, READ_ONLY_TOOLS);
-    assert.equal(payload.tools["*"], false);
-    assert.equal(payload.tools.read, true);
-    assert.equal(payload.tools.glob, true);
-    assert.equal(payload.tools.grep, true);
-    assert.equal(payload.tools.bash, undefined);
-    assert.equal(payload.tools.write, undefined);
+    const tools = readOnlyToolsFor(mode);
+    assert.deepEqual(tools, READ_ONLY_TOOLS);
+    assert.notEqual(tools, READ_ONLY_TOOLS, "callers get a copy");
+    assert.equal(tools["*"], false);
+    assert.equal(tools.read, true);
+    assert.equal(tools.glob, true);
+    assert.equal(tools.grep, true);
+    assert.equal(tools.bash, undefined);
+    assert.equal(tools.write, undefined);
   }
 });
 
-test("build mode leaves prompt tools unchanged", () => {
-  const original = { text: "do it", tools: { bash: true } };
-  assert.equal(applyModeToPrompt(original, "build"), original);
+test("build mode leaves the run's tools alone", () => {
+  assert.equal(readOnlyToolsFor("build"), null);
+  assert.equal(readOnlyToolsFor(null), null);
 });
 
 test("mode and session route parsing are strict and query-safe", () => {
@@ -39,8 +35,12 @@ test("mode and session route parsing are strict and query-safe", () => {
   assert.equal(parseAgentMode("ask"), "ask");
   assert.equal(parseAgentMode("unknown"), null);
   assert.equal(sessionIdFromOpenCodePath("/api/session/abc%201/prompt?x=1"), "abc 1");
-  assert.equal(isPromptRoute("/api/session/abc/prompt?x=1"), true);
-  assert.equal(isPromptRoute("/api/session/abc/message?foo=bar"), true);
+  for (const route of ["prompt?x=1", "prompt_async", "message?foo=bar", "interrupt", "abort", "context", "permission", "permission/per_1/reply", "permissions/per_1", "question/que_1/reject", "form/frm_1/reply"]) {
+    assert.equal(isAdapterOwnedRoute("/api/session/abc/" + route), true, route);
+  }
+  for (const route of ["/api/session/abc", "/api/session/abc/agent", "/api/session/abc/model", "/api/session", "/api/agent"]) {
+    assert.equal(isAdapterOwnedRoute(route), false, route);
+  }
   assert.equal(isDirectMutationRoute("/api/session/abc/shell?x=1"), true);
   assert.equal(isDirectMutationRoute("/api/session/abc/command?x=1"), true);
   assert.equal(isDirectMutationRoute("/api/session/abc/shell-extra?x=1"), false);
