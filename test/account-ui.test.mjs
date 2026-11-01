@@ -26,7 +26,7 @@ function harness({ githubLinked = true } = {}) {
     if (path === "/api/auth/status") return response({ authenticated: true, identity: { provider: "local", login: "devmoter" } });
     if (path === "/api/system/diagnostics") return response({});
     if (path === "/api/auth/account") return response({
-      ownerId: "owner-1",
+      ownerId: "3f2b9c1e-7a4d-4e8b-9c2a-1d5e6f7a8b9c",
       providers: {
         github: { configured: true, linked: githubLinked, identity: { login: "dev-owner" } },
         google: { configured: true, linked: false, identity: null },
@@ -84,16 +84,41 @@ test("account page shows configured sign-in methods, recovery, passkey and safe 
     assert.match(scroll.textContent, /dev-owner/);
     assert.match(scroll.textContent, /Google/);
     assert.match(scroll.textContent, /Microsoft/);
-    assert.match(scroll.textContent, /Passkey/);
+    assert.match(scroll.textContent, /パスキー/);
     assert.match(scroll.textContent, /ローカル復旧/);
     assert.match(scroll.textContent, /old.example/);
     assert.ok(scroll.textContent.includes(new Date("2026-01-01T00:00:00Z").toLocaleString()));
     assert.equal(scroll.querySelector('[data-action="account:connect"][data-provider="google"]').disabled, false);
-    assert.equal(scroll.querySelector('[data-action="account:connect"][data-provider="microsoft"]').disabled, true);
-    assert.equal(scroll.querySelector('a[href*="docs/auth-v2.md"]')?.getAttribute("rel"), "noopener noreferrer");
+    // A provider this host cannot use offers its setup guide as a button, not a disabled connect button.
+    assert.equal(scroll.querySelector('[data-action="account:connect"][data-provider="microsoft"]'), null);
+    const guides = scroll.querySelectorAll('a[href*="docs/auth-v2.md"]');
+    assert.equal(guides.length, 1);
+    assert.equal(guides[0].className, "devmoter-settings-link-button");
+    assert.equal(guides[0].getAttribute("rel"), "noopener noreferrer");
+    assert.equal(guides[0].textContent, "セットアップ案内");
     assert.equal(scroll.querySelector('[data-action="account:revoke-session"][data-session-id="old-session"]').textContent, "解除");
     assert.equal(scroll.querySelector('[data-action="account:revoke-session"][data-session-id="current-session"]'), null);
     assert.doesNotMatch(scroll.textContent, /Coming soon|Apple|DEVMOTER_/);
+  } finally {
+    dom.window.close();
+  }
+});
+
+test("owner ID is shortened for display and the copy button copies the full ID", async () => {
+  const { dom, root, window } = harness();
+  try {
+    await flush();
+    await flush();
+    const profile = root.querySelector(".devmoter-settings-profile.detail");
+    assert.match(profile.textContent, /オーナーID\s*3f2b9c1e…8b9c/);
+    assert.doesNotMatch(profile.textContent, /DevMoter owner|7a4d-4e8b/);
+    assert.equal(profile.querySelector(".devmoter-settings-mono").getAttribute("title"), "3f2b9c1e-7a4d-4e8b-9c2a-1d5e6f7a8b9c");
+    let copied = "";
+    Object.defineProperty(window.navigator, "clipboard", { configurable: true, value: { writeText: async text => { copied = text; } } });
+    profile.querySelector('[data-action="account:copy-owner"]').click();
+    await flush();
+    assert.equal(copied, "3f2b9c1e-7a4d-4e8b-9c2a-1d5e6f7a8b9c");
+    assert.equal(root.querySelector(".devmoter-settings-toast").textContent, "オーナーIDをコピーしました。");
   } finally {
     dom.window.close();
   }
