@@ -16,6 +16,15 @@ import { normalizeCodexThreadList } from "./codex-thread-list.mjs";
 import { normalizeCodexThreadHistory } from "./codex-thread-history.mjs";
 import { recoverAfterEventOpen } from "./event-recovery.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
+import { createSheetHeader } from "./sheet-header.mjs";
+import { shortProjectPath } from "./project-labels.mjs";
+
+// Line icons for Project rows (one set, 18px, 1.5 stroke, currentColor).
+const PROJECT_ROW_ICONS = {
+  folder: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>',
+  check: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="選択中"><path d="m5 12 5 5 9-10"/></svg>',
+  chevron: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>'
+} as const;
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import "./codex-chat.css";
@@ -302,13 +311,6 @@ export function mountCodexRemote(
 
       <div id="cxModal" class="cx-modal hidden" role="dialog" aria-modal="true" aria-labelledby="cxModalTitle" aria-describedby="cxModalSubtitle">
         <div class="cx-modal-card">
-          <div class="cx-modal-head">
-            <div>
-              <strong id="cxModalTitle">設定</strong>
-              <p id="cxModalSubtitle"></p>
-            </div>
-            <button id="cxModalClose" class="cx-icon-button" type="button">×</button>
-          </div>
           <div id="cxModalBody" class="cx-modal-body"></div>
         </div>
       </div>
@@ -412,10 +414,13 @@ export function mountCodexRemote(
   const fileInput = root.querySelector<HTMLInputElement>("#cxFileInput")!;
   const toast = root.querySelector<HTMLDivElement>("#cxToast")!;
   const modal = root.querySelector<HTMLDivElement>("#cxModal")!;
-  const modalTitle = root.querySelector<HTMLElement>("#cxModalTitle")!;
-  const modalSubtitle = root.querySelector<HTMLElement>("#cxModalSubtitle")!;
   const modalBody = root.querySelector<HTMLDivElement>("#cxModalBody")!;
-  const modalClose = root.querySelector<HTMLButtonElement>("#cxModalClose")!;
+  // Shared sheet header (title / close / primary) — see src/sheet-header.mjs.
+  const modalHead = createSheetHeader(document, { title: "設定", titleId: "cxModalTitle", onClose: () => closeModal() });
+  modalHead.subtitleEl.id = "cxModalSubtitle";
+  modalBody.before(modalHead.element);
+  const modalClose = modalHead.closeButton;
+  modalClose.id = "cxModalClose";
   const appFrame = root.querySelector<HTMLElement>(".cx-app")!;
   const composerWrap = root.querySelector<HTMLElement>(".cx-composer-wrap")!;
   const backgroundRegions = [".cx-topbar", ".cx-main", ".cx-composer-wrap", ".cx-approval"]
@@ -909,8 +914,9 @@ export function mountCodexRemote(
     closePlusMenu();
     window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
     modalCloseGuard = null;
-    modalTitle.textContent = titleText;
-    modalSubtitle.textContent = subtitleText;
+    modalHead.setTitle(titleText);
+    modalHead.setSubtitle(subtitleText);
+    modalHead.setPrimary(null);
     modal.classList.remove("hidden");
     syncOverlayState();
     modalClose.focus({ preventScroll: true });
@@ -2723,9 +2729,11 @@ export function mountCodexRemote(
       row.type = "button";
       row.className = `cx-project-row ${activeProject?.id === project.id ? "selected" : ""}`;
 
+      const selected = activeProject?.id === project.id;
+      if (selected) row.setAttribute("aria-current", "true");
       const icon = document.createElement("span");
       icon.className = "cx-project-icon";
-      icon.textContent = "▱";
+      icon.innerHTML = PROJECT_ROW_ICONS.folder;
 
       const copy = document.createElement("span");
       copy.className = "cx-project-copy";
@@ -2733,14 +2741,16 @@ export function mountCodexRemote(
       const name = document.createElement("strong");
       name.textContent = project.name;
 
+      // Short path in the row; the full path stays one long-press away.
       const path = document.createElement("small");
-      path.textContent = project.path;
+      path.textContent = shortProjectPath(project.path);
+      row.title = project.path;
 
       copy.append(name, path);
 
       const state = document.createElement("span");
       state.className = "cx-project-state";
-      state.textContent = activeProject?.id === project.id ? "✓" : "›";
+      state.innerHTML = selected ? PROJECT_ROW_ICONS.check : PROJECT_ROW_ICONS.chevron;
 
       row.append(icon, copy, state);
       row.addEventListener("click", () => {
@@ -3377,7 +3387,7 @@ export function mountCodexRemote(
         strong.textContent = name;
         small.textContent = online
           ? (model.description ? value + " · " + model.description : value)
-          : value + " · provider unavailable";
+          : value + " · 接続されていません";
         option.append(strong, small);
 
         if (online) {
@@ -3488,7 +3498,6 @@ export function mountCodexRemote(
   });
   titleButton.addEventListener("click", () => void showModels());
   modelTop.addEventListener("click", () => void showModels());
-  modalClose.addEventListener("click", closeModal);
   modal.addEventListener("click", event => {
     if (event.target === modal) closeModal();
   });

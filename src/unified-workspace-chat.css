@@ -435,7 +435,7 @@ body.dm-task-first-enabled .cx-app :is(.cx-modal-card, .cx-feedback-menu, .cx-to
   background: var(--dw-chat-surface);
   color: var(--dw-chat-text);
 }
-body.dm-task-first-enabled .cx-app :is(.cx-modal-head, .cx-tool-card) {
+body.dm-task-first-enabled .cx-app .cx-tool-card {
   border-color: var(--dw-chat-line);
 }
 body.dm-task-first-enabled .cx-app .cx-composer-wrap {
