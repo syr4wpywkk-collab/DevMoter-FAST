@@ -303,7 +303,8 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
         openHome: options.openHome,
         openTasks: () => run(() => launchApp("sessions")),
         openReview: () => run(() => launchApp("review")),
-        openTools: openSidebar
+        openTools: openSidebar,
+        openTerminal: () => run(() => launchApp("terminal"))
       }))
       .catch(error => {
         // A missing/cached JS chunk or a partial mount must never leave the

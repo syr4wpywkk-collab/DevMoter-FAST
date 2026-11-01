@@ -23,9 +23,9 @@ const ICONS: Record<string, string> = {
 };
 
 type ChatBackend = "codex" | "opencode" | "api";
-type WorkspaceTab = "tasks" | "chat" | "review" | "tools";
+type WorkspaceTab = "tasks" | "chat" | "review" | "tools" | "terminal";
 const isWorkspaceTab = (value: unknown): value is WorkspaceTab =>
-  value === "tasks" || value === "chat" || value === "review" || value === "tools";
+  value === "tasks" || value === "chat" || value === "review" || value === "tools" || value === "terminal";
 
 type WorkspaceActions = {
   initialSurface: MainSurface;
@@ -35,6 +35,7 @@ type WorkspaceActions = {
   openTasks: () => void;
   openReview: () => void;
   openTools: () => void;
+  openTerminal: () => void;
 };
 
 /**
@@ -67,10 +68,12 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
       <button type="button" class="dm-task-first-menu-button" data-workspace-menu-button aria-haspopup="true" aria-expanded="false" aria-controls="dmTaskFirstMenu" aria-label="Switch screen">☰</button>
     </header>
     <nav id="dmTaskFirstMenu" class="dm-task-first-menu" aria-label="DevMoter workspace" hidden>
+      <button type="button" data-workspace-go="home" aria-label="Home"><span aria-hidden="true">${ICONS.home}</span><strong>Home</strong></button>
       <button type="button" data-workspace-action="tasks" aria-label="Tasks and sessions"><span aria-hidden="true">${ICONS.sessions}</span><strong>タスク</strong></button>
       <button type="button" data-workspace-action="chat" aria-label="Current chat and conversation history"><span aria-hidden="true">${ICONS.chat}</span><strong>Chat</strong></button>
       <button type="button" data-workspace-action="review" aria-label="Review changes"><span aria-hidden="true">${ICONS.review}</span><strong>Review</strong></button>
       <button type="button" data-workspace-action="tools" aria-label="Open tools"><span aria-hidden="true">${ICONS.tools}</span><strong>Tools</strong></button>
+      <button type="button" data-workspace-action="terminal" aria-label="Open terminal"><span aria-hidden="true">${ICONS.terminal}</span><strong>Terminal</strong></button>
       <hr aria-hidden="true" />
       <button type="button" data-workspace-command="theme"><span aria-hidden="true">${ICONS.theme}</span><strong>テーマ</strong><small data-workspace-theme-value></small></button>
       <button type="button" data-workspace-command="context"><span aria-hidden="true">${ICONS.context}</span><strong>表示履歴</strong></button>
@@ -102,29 +105,25 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   const menuButton = root.querySelector<HTMLButtonElement>("[data-workspace-menu-button]")!;
   const menu = root.querySelector<HTMLElement>(".dm-task-first-menu")!;
 
-  const isMenuOpen = () => !menu.hidden;
-  function closeMenu(restoreFocus = false) {
-    if (menu.hidden) return;
-    menu.hidden = true;
-    root.classList.remove("menu-open");
-    menuButton.setAttribute("aria-expanded", "false");
-    if (restoreFocus) menuButton.focus({ preventScroll: true });
+  // One state, one transition. The ☰ button is the only toggle; outside taps,
+  // Escape, keyboard focus leaving the menu and item selection all call
+  // setMenuOpen(false). "Outside" means outside BOTH the menu and its button,
+  // so a tap on ☰ is never treated as an outside tap racing its own click.
+  let menuOpen = false;
+  function setMenuOpen(next: boolean, restoreFocus = false) {
+    if (next === menuOpen) return;
+    menuOpen = next;
+    menu.hidden = !next;
+    root.classList.toggle("menu-open", next);
+    menuButton.setAttribute("aria-expanded", String(next));
+    if (next) {
+      const current = menu.querySelector<HTMLButtonElement>('[aria-current="page"]') || menu.querySelector<HTMLButtonElement>("button");
+      current?.focus({ preventScroll: true });
+    } else if (restoreFocus) menuButton.focus({ preventScroll: true });
   }
-  function openMenu() {
-    menu.hidden = false;
-    root.classList.add("menu-open");
-    menuButton.setAttribute("aria-expanded", "true");
-    const current = menu.querySelector<HTMLButtonElement>('[aria-current="page"]') || menu.querySelector<HTMLButtonElement>("button");
-    current?.focus({ preventScroll: true });
-  }
-  menuButton.addEventListener("click", () => (isMenuOpen() ? closeMenu(true) : openMenu()));
-  // Settings (account, logout, vault, devices…) is an action, not a screen tab.
-  root.querySelector<HTMLButtonElement>("[data-workspace-settings]")!.addEventListener("click", () => {
-    closeMenu();
-    window.dispatchEvent(new window.CustomEvent("devmoter:open-settings", { detail: { page: "root" } }));
-  });
-  // Theme / display history / checkpoints / extensions used to be a button
-  // group docked in every chat drawer; they are menu commands now.
+  const isMenuTarget = (target: EventTarget | null) =>
+    target instanceof window.Node && (menu.contains(target) || menuButton.contains(target));
+  menuButton.addEventListener("click", () => setMenuOpen(!menuOpen, true));
   const themeValue = root.querySelector<HTMLElement>("[data-workspace-theme-value]")!;
   const THEME_LABELS: Record<string, string> = { system: "システム", light: "ライト", dark: "ダーク" };
   const syncThemeValue = () => {
@@ -132,25 +131,17 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   };
   syncThemeValue();
   window.addEventListener("devmoter:theme-changed", syncThemeValue);
-  for (const button of root.querySelectorAll<HTMLButtonElement>("[data-workspace-command]")) {
-    button.addEventListener("click", () => {
-      const command = button.dataset.workspaceCommand;
-      // Theme cycles in place so the new value stays visible in the open menu.
-      if (command !== "theme") closeMenu();
-      window.dispatchEvent(new window.CustomEvent("devmoter:workspace-command", { detail: { command } }));
-    });
-  }
   const onDocumentKeydown = (event: KeyboardEvent) => {
-    if (event.key === "Escape" && isMenuOpen()) { event.stopPropagation(); closeMenu(true); }
+    if (event.key === "Escape" && menuOpen) { event.stopPropagation(); setMenuOpen(false, true); }
   };
   const onDocumentPointerDown = (event: Event) => {
-    if (isMenuOpen() && !root.contains(event.target as Node)) closeMenu();
+    if (menuOpen && !isMenuTarget(event.target)) setMenuOpen(false);
   };
   document.addEventListener("keydown", onDocumentKeydown, true);
   document.addEventListener("pointerdown", onDocumentPointerDown, true);
   menu.addEventListener("focusout", event => {
-    const next = (event as FocusEvent).relatedTarget as Node | null;
-    if (next && !menu.contains(next) && next !== menuButton) closeMenu();
+    const next = (event as FocusEvent).relatedTarget;
+    if (next && !isMenuTarget(next)) setMenuOpen(false);
   });
 
   let surface: MainSurface = actions.initialSurface;
@@ -176,6 +167,9 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
       if (button.dataset.workspaceAction === activeTab) button.setAttribute("aria-current", "page");
       else button.removeAttribute("aria-current");
     }
+    const home = root.querySelector<HTMLButtonElement>('[data-workspace-go="home"]')!;
+    if (!activeTab && surface === "home") home.setAttribute("aria-current", "page");
+    else home.removeAttribute("aria-current");
   };
   const writeTabRoute = (tab: WorkspaceTab | null, mode: "push" | "replace") => {
     const url = new URL(window.location.href);
@@ -232,7 +226,12 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     trigger.click();
   }
 
-  function selectTab(tab: WorkspaceTab, historyMode: "push" | "replace" | "none", backend?: ChatBackend) {
+  // Every ☰ destination goes through here (or goHome). workspace-tab-changing
+  // is the single signal that closes whatever covers the screen (Tasks,
+  // Review, Tools and Settings), so only the destination stays visible.
+  function selectTab(
+    tab: WorkspaceTab, historyMode: "push" | "replace" | "none", backend?: ChatBackend
+  ) {
     changingTab = true;
     try {
       // Tasks and Review are provider-owned overlays, not MainSurface routes.
@@ -244,6 +243,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
       if (tab === "tasks") actions.openTasks();
       else if (tab === "review") actions.openReview();
       else if (tab === "tools") actions.openTools();
+      else if (tab === "terminal") actions.openTerminal();
       else if (backend || surface === "home" || surface === "integrations") {
         const previousSurface = new URL(window.location.href).searchParams.get("surface");
         actions.switchBackend(backend || currentBackend);
@@ -288,18 +288,51 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   };
   window.addEventListener("popstate", restoreTabRoute);
 
-  for (const button of root.querySelectorAll<HTMLButtonElement>("[data-workspace-action]")) {
-    button.addEventListener("click", () => {
-      const tab = button.dataset.workspaceAction;
-      if (!isWorkspaceTab(tab)) return;
-      closeMenu();
-      // Preserve the established Chat history shortcut only on the Chat screen.
-      if (tab === "chat" && activeTab === "chat") openNativeHistory();
-      else if (tab !== activeTab) selectTab(tab, "push");
-    });
+  function goHome() {
+    changingTab = true;
+    try {
+      window.dispatchEvent(new window.CustomEvent("devmoter:workspace-tab-changing"));
+      actions.openHome();
+    } finally {
+      changingTab = false;
+    }
+    activeTab = null;
+    renderSelection();
+    writeTabRoute(null, "replace");
   }
 
-  root.querySelector<HTMLButtonElement>("[data-workspace-home]")!.addEventListener("click", actions.openHome);
+  // Menu selection is handled in one place: close the menu, then route.
+  menu.addEventListener("click", event => {
+    const item = (event.target as Element | null)?.closest<HTMLButtonElement>("button");
+    if (!item || !menu.contains(item)) return;
+    const command = item.dataset.workspaceCommand;
+    // Theme cycles in place so the new value stays visible in the open menu.
+    if (command === "theme") {
+      window.dispatchEvent(new window.CustomEvent("devmoter:workspace-command", { detail: { command } }));
+      return;
+    }
+    setMenuOpen(false);
+    const tab = item.dataset.workspaceAction;
+    const go = item.dataset.workspaceGo;
+    if (isWorkspaceTab(tab)) {
+      if (tab === "chat" && activeTab === "chat") {
+        // Preserve the established Chat history shortcut on the Chat screen.
+        window.dispatchEvent(new window.CustomEvent("devmoter:workspace-tab-changing"));
+        openNativeHistory();
+      } else {
+        // Reselecting the current screen still closes anything covering it.
+        selectTab(tab, tab === activeTab ? "none" : "push");
+      }
+    } else if (go === "home") goHome();
+    else if (item.hasAttribute("data-workspace-settings")) {
+      // Settings (account, logout, vault, devices…) is an action, not a screen tab.
+      window.dispatchEvent(new window.CustomEvent("devmoter:open-settings", { detail: { page: "root" } }));
+    } else if (command) {
+      window.dispatchEvent(new window.CustomEvent("devmoter:workspace-command", { detail: { command } }));
+    }
+  });
+
+  root.querySelector<HTMLButtonElement>("[data-workspace-home]")!.addEventListener("click", goHome);
   updateSurface(surface);
   restoreTabRoute();
   return { destroy() {
