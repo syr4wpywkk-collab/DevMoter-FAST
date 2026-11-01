@@ -127,29 +127,48 @@ test("OpenCode provider route builds one catalog from the shared /api routes", a
   assert.match(route, /refresh/);
   assert.match(source, /openCode\.catalogInputs\(\)/);
   assert.match(source, /buildOpenCodeProviderCatalog/);
-  // The 1.x-only catalog route is gone (2.x serves its web UI there).
+  // The 1.x runner catalog is read inside the OpenCode client, not by server.mjs.
   assert.doesNotMatch(source, /fetchOpenCodeJson\("\/provider"/);
   assert.doesNotMatch(source, /readOpenCodeModelOverrides/);
 });
 
-test("OpenCode 1.x marks native-API models unrunnable; 2.x keeps them selectable", () => {
-  // Shapes from real OpenCode 1.19.5 / 2.0.9 GET /api/model.
+test("1.x and 2.x offer the same runnable models; native-API models stay selectable on both", () => {
+  // Shapes from real OpenCode 1.19.5 / 2.0.9: GET /api/model lists native and
+  // AI SDK models alike; 1.19.5 additionally lists deprecated models that its
+  // runner catalog (GET /provider) no longer resolves.
   const providers = { data: [{ id: "opencode", name: "OpenCode" }] };
   const models = { data: [
-    { providerID: "opencode", id: "deepseek-v4.1-flash-free", name: "DeepSeek V4.1 Flash Free", api: { type: "native" }, cost: { input: 0, output: 0 } },
-    { providerID: "opencode", id: "muse-wonder-1.0", name: "Muse Wonder", api: { type: "aisdk" } }
+    { providerID: "opencode", id: "deepseek-v4.1-flash-free", name: "DeepSeek V4.1 Flash Free", api: { type: "native" }, cost: [{ input: 0, output: 0 }], status: "active" },
+    { providerID: "opencode", id: "muse-wonder-1.0", name: "Muse Wonder", api: { type: "aisdk" }, status: "active" },
+    { providerID: "opencode", id: "gemini-3-pro", name: "Gemini 3 Pro", api: { type: "aisdk" }, status: "deprecated" }
   ] };
-  const v1 = buildOpenCodeProviderCatalog({ generation: "v1", providers, models });
-  const native = v1.all[0].models["deepseek-v4.1-flash-free"];
-  assert.equal(native.enabled, false);
-  assert.match(native.unsupported, /1\.x/);
-  assert.equal(v1.all[0].models["muse-wonder-1.0"].enabled, true);
-  const rows = filterOpenCodePickerModels(v1.all, { connected: ["opencode"] }).active;
-  const row = rows.find(item => item.model.id === "deepseek-v4.1-flash-free");
-  assert.equal(row.selectable, false);
-  assert.equal(row.reason, native.unsupported);
+  const runnerCatalog = {
+    all: [
+      { id: "opencode", name: "OpenCode", models: { "deepseek-v4.1-flash-free": {}, "muse-wonder-1.0": {} } },
+      { id: "anthropic", name: "Anthropic", models: { "claude-sonnet-4-6": {} } }
+    ],
+    default: {},
+    connected: ["opencode"]
+  };
+  const v1 = buildOpenCodeProviderCatalog({ generation: "v1", providers, models, runnerCatalog });
+  const v2 = buildOpenCodeProviderCatalog({ generation: "v2", providers, models: { data: models.data.slice(0, 2) } });
 
-  const v2 = buildOpenCodeProviderCatalog({ generation: "v2", providers, models });
-  assert.equal(v2.all[0].models["deepseek-v4.1-flash-free"].enabled, true);
-  assert.equal("unsupported" in v2.all[0].models["deepseek-v4.1-flash-free"], false);
+  for (const catalog of [v1, v2]) {
+    const rows = filterOpenCodePickerModels(catalog.all, { connected: catalog.connected });
+    assert.deepEqual(rows.active.map(row => [row.model.id, row.selectable, row.reason]), [
+      ["deepseek-v4.1-flash-free", true, ""],
+      ["muse-wonder-1.0", true, ""]
+    ]);
+    for (const model of Object.values(catalog.all[0].models)) assert.equal("unsupported" in model, false);
+  }
+
+  // The deprecated model the 1.x runner cannot resolve is listed, folded under
+  // 非推奨, and not selectable; unconnected runner providers are not added.
+  const deprecated = filterOpenCodePickerModels(v1.all, { connected: v1.connected }).deprecated;
+  assert.deepEqual(deprecated.map(row => [row.model.id, row.selectable, row.reason]), [["gemini-3-pro", false, "deprecated"]]);
+  assert.deepEqual(v1.connected, ["opencode"]);
+  assert.equal(v1.source, "/api/provider + /api/model + /api/integration + /provider");
+
+  // 1.x cannot build a runnable catalog without the runner's own catalog.
+  assert.throws(() => buildOpenCodeProviderCatalog({ generation: "v1", providers, models }), /invalid provider catalog/);
 });
