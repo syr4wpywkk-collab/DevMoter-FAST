@@ -71,7 +71,7 @@
 .dm-home-brand-copy { min-width: 0; }
 .dm-home-header h1 {
   margin: 0;
-  color: #f4f9ff;
+  color: var(--hm-text);
   font-size: clamp(23px, 2.65vw, 35px);
   font-weight: 750;
   letter-spacing: -.043em;
@@ -269,10 +269,10 @@
   height: 40px;
   display: grid;
   place-items: center;
-  border: 1px solid #2b405a;
+  border: 1px solid var(--hm-border);
   border-radius: 10px;
-  color: #b8d9ec;
-  background: #101d2d;
+  color: var(--hm-muted);
+  background: var(--hm-surface);
   font-size: 22px;
   font-weight: 650;
 }
