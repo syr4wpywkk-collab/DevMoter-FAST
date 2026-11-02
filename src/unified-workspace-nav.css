@@ -212,7 +212,7 @@ body.dm-task-first-enabled #app {
 }
 /* All four surfaces use position:fixed and must be bounded independently,
  * sized to the visual viewport so the iOS keyboard never covers them. */
-body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app, .ix-app) {
+body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app, .ix-app, .qx-app) {
   top:calc(var(--dw-top-height) + var(--dm-viewport-offset-top, 0px));
   left:0;
   right:0;

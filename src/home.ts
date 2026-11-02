@@ -18,7 +18,7 @@ const RECENT_LIMIT = 3;
 const HOME_ORDER: readonly AppId[] = [
   "chat", "projects", "terminal", "git", "agents", "knowledge",
   "review", "sessions", "mission-control", "automation",
-  "developer-workflows", "office", "browser", "qwen-mobile"
+  "developer-workflows", "office", "browser"
 ];
 
 const HOME_APPS: readonly AppDefinition[] = HOME_ORDER.map(id => {
@@ -40,8 +40,7 @@ const HOME_LABELS: Record<AppId, string> = {
   sessions: "セッション・実行履歴",
   browser: "ブラウザー",
   automation: "自動化",
-  "developer-workflows": "開発ワークフロー",
-  "qwen-mobile": "Qwen Code Mobile"
+  "developer-workflows": "開発ワークフロー"
 };
 
 function homeLabel(app: AppDefinition): string {

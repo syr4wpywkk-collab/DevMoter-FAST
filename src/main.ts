@@ -108,8 +108,10 @@ function applyBackend(next: Backend) {
   document.body.classList.toggle("codex-mode", next === "codex");
   document.body.classList.toggle("opencode-mode", next === "opencode");
   document.body.classList.toggle("api-mode", next === "api");
+  document.body.classList.toggle("qwen-mode", next === "qwen");
   document.body.classList.toggle("integrations-mode", next === "integrations");
   if (next === "api") void apiRemote.refresh();
+  if (next === "qwen") void qwenRemote.refresh();
   if (next === "integrations") void integrationsRemote.refresh();
   window.dispatchEvent(new CustomEvent("devmoter:backend-changed", { detail: { backend: next } }));
 }
@@ -133,7 +135,7 @@ function applySurface(surface: MainSurface) {
     apiView.classList.add("hidden");
     qwenView.classList.add("hidden");
     integrationsView.classList.add("hidden");
-    document.body.classList.remove("codex-mode", "opencode-mode", "api-mode", "integrations-mode");
+    document.body.classList.remove("codex-mode", "opencode-mode", "api-mode", "qwen-mode", "integrations-mode");
     document.body.classList.add("devmoter-home-mode");
     if (restoreHomeFocus) window.requestAnimationFrame(() => homeView.querySelector<HTMLElement>("#devmoterHomeTitle")?.focus({ preventScroll: true }));
     return;
@@ -172,7 +174,9 @@ const apiRemote = mountApiChat(apiMount, {
   onOpenCode: () => setBackend("opencode")
 });
 
-mountQwenChat(document.querySelector<HTMLDivElement>("#qwenMount")!);
+const qwenRemote = mountQwenChat(document.querySelector<HTMLDivElement>("#qwenMount")!, {
+  onIntegrations: () => setBackend("integrations")
+});
 
 const integrationsRemote = mountIntegrations(integrationsMount, {
   onOpenCode: () => setBackend("opencode"),

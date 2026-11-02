@@ -103,7 +103,7 @@ test("task-first navigator has no fake execution, server state or permission han
   assert.ok(css.includes("min-height:44px") || css.includes("min-height: 44px"));
   // Each provider is fixed to the viewport, not laid out by #app.
   // Prevent mobile navigation from covering headers, composer and approvals.
-  assert.ok(css.includes(":is(.cx-app, .ocx-app, .api-app, .ix-app)"));
+  assert.ok(css.includes(":is(.cx-app, .ocx-app, .api-app, .ix-app, .qx-app)"));
   assert.ok(css.includes("top:calc(var(--dw-top-height) + var(--dm-viewport-offset-top, 0px))"));
   assert.ok(!css.includes("--dw-bottom-height"), "no bottom tab bar reserves space");
   assert.ok(!moduleCode.includes("dm-task-first-tabs"));

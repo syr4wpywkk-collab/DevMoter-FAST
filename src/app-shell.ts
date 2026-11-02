@@ -181,7 +181,6 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
       case "sessions": clickExisting(".sc-fab"); break;
       case "automation": openRemoteTab("automation"); break;
       case "developer-workflows": options.switchBackend("codex"); updateBackend("codex"); window.setTimeout(() => clickExisting("#cxDevWorkflowsNav"), 0); break;
-      case "qwen-mobile": window.open("/qwen-mobile/index.html", "_blank", "noopener"); break;
       case "knowledge":
       case "browser":
         notify(app.previewMessage || `${app.title} is not available yet.`);

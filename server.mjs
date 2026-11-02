@@ -39,7 +39,7 @@ import { assertAuthPassword, credentialsMatch, parseBasicAuthorization, requireS
 import { OidcAuth } from "./server/oidc-auth.mjs";
 import { ExternalAuth } from "./server/external-auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
-import { publicQwenChatError, runQwenChat } from "./server/qwen-chat.mjs";
+import { createQwenRunRegistry, handleQwenChatRequest, isQwenId, publicQwenChatError } from "./server/qwen-chat.mjs";
 import { antigravityRemoteAction, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
 import { MULTI_API_PRESETS, assertVaultProviderDestination, createMultiApiStore, publicMultiApiProviders, runMultiApiChat, testMultiApiProvider } from "./server/multi-api.mjs";
 import { createMultiApiAttachmentStore } from "./server/multi-api-attachments.mjs";
@@ -135,6 +135,7 @@ void agentRunService.ready().catch(error => {
   console.error("Agent run service initialization failed", redactTexterrorMessage(error));
 });
 const multiApiStore = createMultiApiStore({ filePath: MULTI_API_FILE, env: process.env });
+const qwenRuns = createQwenRunRegistry();
 const secretStore = createSecretStore({ filePath: SECRET_VAULT_FILE });
 const multiApiAttachments = createMultiApiAttachmentStore({ directory: MULTI_API_IMAGE_DIR });
 void multiApiAttachments.cleanup().catch(error => {
@@ -2441,7 +2442,6 @@ async function serveLoginAsset(req, res, pathname) {
 async function serveStatic(req, res) {
   let path = req.url === "/" ? "/index.html" : req.url.split("?")[0];
   path = normalize(path).replace(/^(\.\.[/\\])+/, "");
-  if (path === "/qwen-mobile/" || path === "/qwen-mobile") path = "/qwen-mobile/index.html";
   const full = join(DIST, path);
 
   try {
@@ -3376,10 +3376,26 @@ const server = http.createServer(async (req, res) => {
       try {
         const payload = await readJson(req, 128 * 1024);
         const project = await getProjectById(String(payload?.projectId || ""));
-        json(res, 200, await runQwenChat({ prompt: payload?.prompt, sessionId: payload?.sessionId || null, cwd: project.path }));
+        await handleQwenChatRequest({ res, payload, cwd: project.path, registry: qwenRuns, redact: redactText });
       } catch (error) {
         const safe = publicQwenChatError(error);
-        json(res, safe.status, { error: safe.error });
+        json(res, safe.status, { error: safe.error, code: safe.code });
+      }
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/qwen/chat/cancel") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      try {
+        const payload = await readJson(req, 4 * 1024);
+        const runId = String(payload?.runId || "");
+        if (!isQwenId(runId)) {
+          json(res, 400, { error: "実行IDが不正です" });
+          return;
+        }
+        json(res, 200, { cancelled: qwenRuns.cancel(runId) });
+      } catch {
+        json(res, 400, { error: "停止できませんでした" });
       }
       return;
     }

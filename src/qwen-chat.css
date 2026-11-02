@@ -1,12 +1,260 @@
-/* Qwen Code chat (headless `qwen -p`) */
-.qx-app { display: flex; flex-direction: column; height: var(--dm-viewport-height, 100dvh); }
-.qx-top { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border, #3333); }
-.qx-log { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
-.qx-msg { max-width: 92%; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.qx-user { align-self: flex-end; background: var(--accent-soft, #4a6cf733); }
-.qx-assistant { align-self: flex-start; white-space: normal; }
-.qx-error { align-self: flex-start; color: #e5484d; }
-.qx-wait { align-self: flex-start; opacity: .6; }
-.qx-form { display: flex; gap: 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border, #3333); }
-.qx-form textarea { flex: 1; resize: none; font: inherit; min-height: 44px; }
-.qx-form button, .qx-new { min-height: 44px; min-width: 44px; }
+/* Qwen Code chat (local qwen CLI, headless stream-json).
+   Same layout as the other DevMoter chats: header, transcript, composer.
+   Colors come from the shared theme tokens, so light and dark follow
+   html[data-devmoter-theme]. */
+body.qwen-mode { padding: 0; overflow: hidden; background: var(--canvas-base); }
+
+.qx-app {
+  --qx-header-height: calc(56px + env(safe-area-inset-top));
+  --qx-content-width: 800px;
+  --qx-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --qx-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  height: var(--dm-viewport-height, 100dvh);
+  max-height: var(--dm-viewport-height, 100dvh);
+  overflow: hidden;
+  background: var(--canvas-base);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.6;
+}
+html[data-devmoter-theme="light"] .qx-app { color-scheme: light; }
+.qx-app button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  cursor: pointer;
+  font: inherit;
+  transition: transform 120ms var(--qx-ease-out), background-color 120ms var(--qx-ease-out), border-color 120ms var(--qx-ease-out);
+}
+.qx-app button:active:not(:disabled) { transform: scale(0.97); }
+.qx-app button:disabled { cursor: default; }
+.qx-app :is(button, textarea):focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+.qx-app svg { width: 18px; height: 18px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Header: history · title + project · new chat */
+.qx-topbar {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+  height: var(--qx-header-height);
+  padding: env(safe-area-inset-top) max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
+  border-bottom: 1px solid var(--border-hairline);
+  background: var(--surface-panel);
+}
+.qx-icon-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border-hairline);
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+.qx-brand { display: grid; min-width: 0; }
+.qx-brand strong { font-size: 16px; font-weight: 500; line-height: 1.3; }
+.qx-brand small {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Transcript */
+.qx-main { position: absolute; inset: var(--qx-header-height) 0 0; overflow: hidden; }
+.qx-transcript {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px max(16px, env(safe-area-inset-right)) calc(var(--qx-composer-height, 120px) + 24px) max(16px, env(safe-area-inset-left));
+  scroll-padding-bottom: calc(var(--qx-composer-height, 120px) + 24px);
+  scrollbar-color: var(--border-hairline) transparent;
+}
+.qx-welcome {
+  width: min(100%, var(--qx-content-width));
+  margin: 0 auto;
+  padding: 28px 4px;
+}
+.qx-welcome[hidden] { display: none; }
+.qx-welcome h1 { margin: 0 0 8px; color: var(--text-primary); font-size: 28px; font-weight: 600; line-height: 1.3; letter-spacing: -0.02em; }
+.qx-welcome p { margin: 0; max-width: 65ch; color: var(--text-secondary); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.qx-message { width: min(100%, var(--qx-content-width)); min-width: 0; margin: 0 auto 20px; }
+.qx-message-body { min-width: 0; color: var(--text-primary); overflow-wrap: anywhere; }
+.qx-message.user { display: flex; flex-direction: column; align-items: flex-end; }
+.qx-message.user .qx-message-body {
+  max-width: min(92%, 640px);
+  padding: 10px 14px;
+  border-radius: 14px 14px 4px 14px;
+  background: var(--user-bubble);
+  white-space: pre-wrap;
+}
+.qx-message.assistant .qx-message-body { line-height: 1.75; }
+.qx-message.error .qx-message-body { color: var(--status-error); font-size: 14px; }
+.qx-message.error[data-code="cancelled"] .qx-message-body { color: var(--text-muted); }
+.qx-message-action {
+  display: inline-flex;
+  align-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.qx-message-action.qx-setup { border: 1px solid var(--border-hairline); background: var(--surface-card); color: var(--text-primary); }
+.qx-thinking { color: var(--text-muted); font-size: 14px; }
+.qx-thinking::after { content: "…"; }
+
+/* Shared markdown renderer, mapped to the theme tokens. */
+.qx-app .cx-markdown { color: var(--text-primary); white-space: normal; }
+/* base.css gives every p/li a fixed gray; the transcript reads in the text role. */
+.qx-app .cx-markdown :is(p, li, strong, em, h1, h2, h3, h4, td, th, code) { color: var(--text-primary); }
+.qx-app .cx-markdown > :first-child { margin-top: 0; }
+.qx-app .cx-markdown > :last-child { margin-bottom: 0; }
+.qx-app .cx-markdown p { margin: 0 0 1em; }
+.qx-app .cx-markdown :is(h1, h2, h3, h4) { margin: 1.2em 0 .5em; font-weight: 600; line-height: 1.4; }
+.qx-app .cx-markdown h1 { font-size: 1.3em; }
+.qx-app .cx-markdown h2 { font-size: 1.15em; }
+.qx-app .cx-markdown :is(h3, h4) { font-size: 1em; }
+.qx-app .cx-markdown :is(ul, ol) { margin: .6em 0 1em; padding-left: 1.5em; }
+.qx-app .cx-markdown a { color: var(--accent); text-underline-offset: 3px; }
+.qx-app .cx-markdown blockquote { margin: 1em 0; padding-left: 12px; border-left: 2px solid var(--border-subtle); color: var(--text-secondary); }
+.qx-app .cx-markdown :not(pre) > code { padding: .1em .35em; border-radius: 4px; background: var(--surface-hover); font-family: var(--font-mono); font-size: .875em; }
+.qx-app .dm-code-block { margin: 1em 0; overflow: hidden; border: 1px solid var(--border-hairline); border-radius: 12px; background: var(--surface-card); }
+.qx-app .dm-code-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 0 4px 0 12px; border-bottom: 1px solid var(--border-hairline); color: var(--text-secondary); font-size: 12px; }
+.qx-app .dm-code-copy { min-height: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text-secondary); font-size: 12px; }
+.qx-app .cx-markdown pre { margin: 0; padding: 12px; overflow-x: auto; overscroll-behavior-x: contain; font-family: var(--font-mono); font-size: 13px; line-height: 1.6; white-space: pre; }
+.qx-app .cx-markdown pre code { background: transparent; font-family: inherit; }
+.qx-app .dm-markdown-table { max-width: 100%; margin: 1em 0; overflow-x: auto; }
+.qx-app .cx-markdown table { border-collapse: collapse; font-size: 14px; }
+.qx-app .cx-markdown :is(th, td) { padding: 8px 12px; border: 1px solid var(--border-hairline); text-align: left; }
+.qx-app .cx-markdown th { background: var(--surface-hover); font-weight: 500; }
+
+/* Composer */
+.qx-composer-wrap {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 35;
+  padding: 8px max(8px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  background: var(--canvas-base);
+}
+.qx-composer {
+  width: min(100%, var(--qx-content-width));
+  margin: 0 auto;
+  padding: 8px 8px 8px 12px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 16px;
+  background: var(--surface-card);
+}
+.qx-composer:focus-within { border-color: var(--border-subtle); }
+.qx-composer textarea {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  max-height: min(180px, calc(var(--dm-viewport-height, 100dvh) * .3));
+  padding: 10px 4px 6px;
+  border: 0;
+  outline: 0;
+  resize: none;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.qx-composer textarea::placeholder { color: var(--text-muted); }
+.qx-composer textarea:focus-visible { outline: 0; }
+.qx-composer-foot { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.qx-status {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qx-send {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--canvas-base);
+}
+.qx-send:disabled { background: var(--surface-hover); color: var(--text-muted); }
+.qx-send.stop { border: 1px solid var(--border-subtle); background: var(--surface-hover); color: var(--text-primary); }
+
+/* History sheet: slides in from the left, like the other chat histories. */
+.qx-scrim { position: absolute; inset: 0; z-index: 70; background: rgb(0 0 0 / .32); }
+.qx-scrim[hidden], .qx-sheet[hidden] { display: none; }
+.qx-sheet {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  width: min(88vw, 360px);
+  padding-bottom: env(safe-area-inset-bottom);
+  border-right: 1px solid var(--border-hairline);
+  background: var(--surface-panel);
+  animation: qx-sheet-in 240ms var(--qx-ease-drawer);
+}
+@keyframes qx-sheet-in { from { transform: translateX(-24px); opacity: 0; } }
+.qx-history { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px; }
+.qx-history-row { display: flex; align-items: center; gap: 4px; }
+.qx-history-row + .qx-history-row { margin-top: 2px; }
+.qx-history-open {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+}
+.qx-history-open[aria-current="true"] { border-color: var(--border-hairline); background: var(--surface-hover); }
+.qx-history-open :is(strong, small) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qx-history-open strong { font-size: 14px; font-weight: 500; line-height: 1.4; }
+.qx-history-open small { color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+.qx-history-delete { border-color: transparent; background: transparent; color: var(--text-secondary); }
+.qx-history-empty { margin: 16px 8px; color: var(--text-secondary); font-size: 14px; }
+
+@media (hover: hover) {
+  .qx-icon-button:hover:not(:disabled) { border-color: var(--border-subtle); }
+  .qx-history-open:hover { background: var(--surface-hover); }
+  .qx-history-delete:hover { background: var(--surface-hover); color: var(--status-error); }
+  .qx-message-action:hover { background: var(--surface-hover); color: var(--text-primary); }
+  .qx-app .dm-code-copy:hover { background: var(--surface-hover); }
+}
+
+/* Inside the unified workspace the workspace header already clears the notch. */
+body.dm-task-first-enabled .qx-app { --qx-header-height: 56px; }
+body.dm-task-first-enabled .qx-topbar { padding-top: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .qx-app button { transition: none; }
+  .qx-sheet { animation: none; }
+}
