@@ -10,7 +10,8 @@ export const QWEN_MESSAGE_LIMIT = 100;
 const MESSAGE_TEXT_LIMIT = 200_000;
 const TITLE_LIMIT = 40;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ROLES = new Set(["user", "assistant", "error"]);
+// "note": a quiet line such as "ここから <model> で応答します".
+const ROLES = new Set(["user", "assistant", "error", "note"]);
 
 export function isQwenSessionId(value) {
   return typeof value === "string" && UUID.test(value);
@@ -46,6 +47,8 @@ function cleanChat(value) {
     title: qwenChatTitle(value.title),
     sessionId: isQwenSessionId(value.sessionId) ? value.sessionId : null,
     projectId: typeof value.projectId === "string" ? value.projectId.slice(0, 200) : "",
+    // Model key of the last turn ("" = Qwen Code default); absent on old chats.
+    ...(typeof value.model === "string" ? { model: value.model.slice(0, 260) } : {}),
     updatedAt: Number.isFinite(value.updatedAt) ? value.updatedAt : 0,
     messages
   };

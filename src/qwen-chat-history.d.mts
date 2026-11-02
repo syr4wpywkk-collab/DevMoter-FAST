@@ -1,9 +1,10 @@
-export type QwenChatMessage = { role: "user" | "assistant" | "error"; text: string; code?: string };
+export type QwenChatMessage = { role: "user" | "assistant" | "error" | "note"; text: string; code?: string };
 export type QwenChat = {
   id: string;
   title: string;
   sessionId: string | null;
   projectId: string;
+  model?: string;
   updatedAt: number;
   messages: QwenChatMessage[];
 };

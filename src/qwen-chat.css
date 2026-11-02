@@ -32,16 +32,16 @@ html[data-devmoter-theme="light"] .qx-app { color-scheme: light; }
 }
 .qx-app button:active:not(:disabled) { transform: scale(0.97); }
 .qx-app button:disabled { cursor: default; }
-.qx-app :is(button, textarea):focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+.qx-app :is(button, textarea, input, select):focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
 .qx-app svg { width: 18px; height: 18px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
-/* Header: history · title + project · new chat */
+/* Header: history · title + project · model · new chat */
 .qx-topbar {
   position: absolute;
   inset: 0 0 auto;
   z-index: 30;
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  grid-template-columns: 44px minmax(0, 1fr) auto 44px;
   align-items: center;
   gap: 8px;
   height: var(--qx-header-height);
@@ -61,7 +61,24 @@ html[data-devmoter-theme="light"] .qx-app { color-scheme: light; }
   color: var(--text-primary);
 }
 .qx-brand { display: grid; min-width: 0; }
-.qx-brand strong { font-size: 16px; font-weight: 500; line-height: 1.3; }
+/* Active model: a quiet chip; the full name is in its label and the picker. */
+.qx-app .qx-model-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: min(30vw, 200px);
+  min-width: 0;
+  height: 44px;
+  padding: 0 8px 0 12px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.qx-model-chip span { min-width: 0; overflow: hidden; font-family: var(--font-mono); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.qx-model-chip[aria-expanded="true"] { border-color: var(--border-subtle); background: var(--surface-hover); color: var(--text-primary); }
+.qx-brand strong { overflow: hidden; font-size: 16px; font-weight: 500; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
 .qx-brand small {
   overflow: hidden;
   color: var(--text-secondary);
@@ -116,6 +133,7 @@ html[data-devmoter-theme="light"] .qx-app { color-scheme: light; }
   font-size: 13px;
 }
 .qx-message-action.qx-setup { border: 1px solid var(--border-hairline); background: var(--surface-card); color: var(--text-primary); }
+.qx-message[data-qwen-note] .qx-message-body { color: var(--text-muted); font-size: 12px; text-align: center; }
 .qx-thinking { color: var(--text-muted); font-size: 14px; }
 .qx-thinking::after { content: "…"; }
 
@@ -242,9 +260,165 @@ html[data-devmoter-theme="light"] .qx-app { color-scheme: light; }
 .qx-history-delete { border-color: transparent; background: transparent; color: var(--text-secondary); }
 .qx-history-empty { margin: 16px 8px; color: var(--text-secondary); font-size: 14px; }
 
+
+/* Model picker: bottom sheet on phones, a centered panel on wide screens. */
+.qx-picker {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  max-height: min(88dvh, calc(var(--dm-viewport-height, 100dvh) - 24px));
+  padding-bottom: env(safe-area-inset-bottom);
+  border: 1px solid var(--border-hairline);
+  border-bottom: 0;
+  border-radius: 16px 16px 0 0;
+  overflow: hidden;
+  background: var(--surface-panel);
+  animation: qx-picker-in 240ms var(--qx-ease-drawer);
+}
+.qx-picker[hidden] { display: none; }
+@keyframes qx-picker-in { from { transform: translateY(24px); opacity: 0; } }
+.qx-picker .dm-sheet-head-back {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  margin-left: -12px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-secondary);
+}
+.qx-picker .dm-sheet-head-back[hidden] { display: none; }
+.qx-picker-body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.qx-picker-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 12px 0;
+  padding: 0 12px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--text-muted);
+}
+.qx-picker-search:focus-within { border-color: var(--border-focus); }
+.qx-picker-search input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 16px;
+}
+.qx-picker-search input::placeholder { color: var(--text-muted); }
+.qx-app .qx-picker-search input:focus-visible { outline: 0; }
+.qx-picker-chips {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.qx-picker-chips[hidden] { display: none; }
+.qx-app .qx-picker-chip {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.qx-picker-chip::after { content: ""; position: absolute; inset: -4px 0; }
+.qx-picker-chip { position: relative; }
+.qx-picker-chip[aria-selected="true"] { border-color: var(--border-subtle); background: var(--surface-hover); color: var(--text-primary); }
+.qx-picker-results { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px 8px 16px; }
+.qx-picker-section { margin-top: 8px; }
+.qx-picker-section h3 { margin: 8px 12px 4px; color: var(--text-muted); font-size: 12px; font-weight: 500; line-height: 1.4; }
+.qx-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+}
+.qx-picker-row[aria-selected="true"] { border-color: var(--border-hairline); background: var(--surface-hover); }
+.qx-picker-row:disabled { color: var(--text-muted); }
+.qx-picker-row-text { display: grid; flex: 1; min-width: 0; }
+.qx-picker-row-text :is(strong, small) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qx-picker-row-text strong { font-size: 14px; font-weight: 500; line-height: 1.4; }
+.qx-picker-row-text small { color: var(--text-secondary); font-family: var(--font-mono); font-size: 12px; line-height: 1.4; }
+.qx-picker-default .qx-picker-row-text small, .qx-picker-row:disabled .qx-picker-row-text small { color: var(--text-muted); font-family: var(--font-ui); }
+.qx-picker-check { display: grid; place-items: center; width: 18px; height: 18px; flex-shrink: 0; color: var(--text-primary); }
+.qx-app .qx-picker-state { margin: 16px 12px; color: var(--text-secondary); font-size: 14px; }
+.qx-picker-state p { margin: 0 0 12px; color: var(--text-secondary); }
+.qx-app .qx-picker-note { margin: 12px; color: var(--text-muted); font-size: 12px; }
+.qx-app :is(.qx-picker-primary, .qx-picker-secondary) {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--canvas-base);
+  font-size: 14px;
+  font-weight: 500;
+}
+.qx-picker-secondary { border-color: var(--border-hairline); background: var(--surface-card); color: var(--text-primary); }
+.qx-picker-primary:disabled { border-color: var(--border-hairline); background: var(--surface-hover); color: var(--text-muted); }
+.qx-picker-form { display: grid; gap: 16px; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px; }
+.qx-field { display: grid; gap: 4px; min-width: 0; }
+.qx-field-label { color: var(--text-secondary); font-size: 13px; }
+.qx-field-hint { color: var(--text-muted); font-size: 12px; line-height: 1.4; }
+.qx-field :is(input, select) {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 16px;
+}
+.qx-field :is(input, select):focus-visible, .qx-check input:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+.qx-picker-models { display: grid; gap: 0; min-width: 0; margin: 0; padding: 0; border: 0; }
+.qx-picker-models legend { margin-bottom: 4px; padding: 0; color: var(--text-secondary); font-size: 13px; }
+.qx-check { display: flex; align-items: center; gap: 12px; min-height: 44px; min-width: 0; padding: 0 4px; font-family: var(--font-mono); font-size: 13px; }
+.qx-check span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qx-check small { color: var(--text-muted); font-family: var(--font-ui); font-size: 12px; }
+.qx-check input { width: 18px; height: 18px; flex-shrink: 0; margin: 0; accent-color: var(--accent); }
+.qx-picker-form { padding-bottom: 0; }
+.qx-picker-form-foot { position: sticky; bottom: 0; display: grid; gap: 8px; margin: 0 -16px; padding: 8px 16px 16px; border-top: 1px solid var(--border-hairline); background: var(--surface-panel); }
+.qx-picker-state[role="alert"] p { color: var(--text-primary); }
+.qx-app .qx-picker-message { min-height: 20px; margin: 0; color: var(--text-secondary); font-size: 13px; }
+.qx-app .qx-picker-message[data-state="error"] { color: var(--status-error); }
+@media (min-width: 720px) {
+  .qx-picker { inset: 10dvh auto auto 50%; width: 480px; max-height: 80dvh; border-bottom: 1px solid var(--border-hairline); border-radius: 16px; transform: translateX(-50%); animation: none; }
+}
+
 @media (hover: hover) {
   .qx-icon-button:hover:not(:disabled) { border-color: var(--border-subtle); }
   .qx-history-open:hover { background: var(--surface-hover); }
+  .qx-model-chip:hover, .qx-picker-chip:hover { border-color: var(--border-subtle); }
+  .qx-picker-row:hover:not(:disabled) { background: var(--surface-hover); }
+  .qx-picker .dm-sheet-head-back:hover { background: var(--surface-hover); }
   .qx-history-delete:hover { background: var(--surface-hover); color: var(--status-error); }
   .qx-message-action:hover { background: var(--surface-hover); color: var(--text-primary); }
   .qx-app .dm-code-copy:hover { background: var(--surface-hover); }
@@ -256,5 +430,5 @@ body.dm-task-first-enabled .qx-topbar { padding-top: 0; }
 
 @media (prefers-reduced-motion: reduce) {
   .qx-app button { transition: none; }
-  .qx-sheet { animation: none; }
+  .qx-sheet, .qx-picker { animation: none; }
 }

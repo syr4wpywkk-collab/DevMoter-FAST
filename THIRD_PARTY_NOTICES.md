@@ -11,6 +11,10 @@ DevMoter FAST communicates with software installed and authenticated separately 
 
 DevMoter FAST does not bundle either upstream application's source code or credentials. Their names are used only to describe interoperability. OpenCode, OpenAI, Codex, and other referenced product names and marks belong to their respective owners. This project is not affiliated with or endorsed by those upstream projects or providers.
 
+## Qwen Code provider data
+
+`server/qwen-code-providers.mjs` is generated from the provider presets of **Qwen Code** v0.26.6 (QwenLM/qwen-code, commit 042c023, `packages/core/src/providers/presets/*.ts` and `all-providers.ts`): provider names, base URLs, API-key variable names and model IDs, so the Qwen Code model picker offers exactly what the CLI's `/auth` menu offers. Qwen Code is licensed under the Apache License 2.0, Copyright 2025 Google LLC and Copyright 2025-2026 Qwen Team. No Qwen Code source is bundled; the CLI is installed separately by the user.
+
 ## JavaScript development dependencies
 
 The project uses npm development dependencies including TypeScript, Vite, and c8, plus their transitive dependencies. Their respective license notices remain available in the packages distributed by their maintainers and in npm package metadata.

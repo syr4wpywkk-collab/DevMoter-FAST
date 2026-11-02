@@ -34,6 +34,44 @@ test("qwen args stream JSON, keep the prompt as one argv entry and validate resu
   assert.throws(() => qwenChatArgs("hi", `${SID} --yolo`), /セッションID/);
   assert.throws(() => qwenChatArgs("  "), /空/);
   assert.throws(() => qwenChatArgs("x".repeat(20_001)), /長すぎ/);
+  assert.deepEqual(qwenChatArgs("hi", SID, ["--auth-type", "openai", "--model", "qwen3-coder-plus"]),
+    ["--output-format", "stream-json", "--include-partial-messages", "--resume", SID, "--auth-type", "openai", "--model", "qwen3-coder-plus", "--prompt", "hi"],
+    "a resumed session may switch models, like qwen's /model");
+  assert.throws(() => qwenChatArgs("hi", null, ["--openai-api-key", "sk-x", "--model", "m"]), /モデル/);
+  assert.throws(() => qwenChatArgs("hi", null, ["--auth-type", "openai", "--model", "--yolo"]), /モデル/);
+  assert.throws(() => qwenChatArgs("hi", null, ["--auth-type", "openai"]), /モデル/);
+});
+
+test("a picked model runs with --auth-type/--model, its key stays out of argv and is redacted", async () => {
+  const { dir, bin } = await fakeQwen(`
+require("fs").writeFileSync(require("path").join(dir, "seen.json"), JSON.stringify({ argv: process.argv.slice(2) }));
+const out = l => process.stdout.write(JSON.stringify(l) + "\\n");
+out({ type: "system", session_id: "${SID}" });
+out({ type: "assistant", session_id: "${SID}", parent_tool_use_id: null, message: { content: [{ type: "text", text: "key sk-or-secret-123" }] } });
+out({ type: "result", session_id: "${SID}", is_error: false, result: "x" });`);
+  const res = fakeResponse();
+  await handleQwenChatRequest({
+    res, registry: createQwenRunRegistry(), cwd: dir, payload: { prompt: "hi", runId: RUN, model: { authType: "openai", id: "z-ai/glm-4.5-air:free" } },
+    resolveModel: async model => ({ args: ["--auth-type", model.authType, "--model", model.id], secret: "sk-or-secret-123" }),
+    run: options => runQwenChat({ ...options, bin })
+  });
+  const seen = JSON.parse(await readFile(join(dir, "seen.json"), "utf8"));
+  assert.deepEqual(seen.argv.slice(3, 7), ["--auth-type", "openai", "--model", "z-ai/glm-4.5-air:free"]);
+  assert.ok(!seen.argv.some(arg => arg.includes("sk-or")), "no key in argv");
+  assert.doesNotMatch(res.body, /sk-or-secret-123/);
+  assert.match(res.body, /\[REDACTED\]/);
+});
+
+test("an unknown model is rejected before qwen starts; a picked model's auth failure points to the picker", async () => {
+  let ran = false;
+  await assert.rejects(handleQwenChatRequest({
+    res: fakeResponse(), registry: createQwenRunRegistry(), cwd: "/p", payload: { prompt: "hi", runId: RUN, model: { authType: "openai", id: "nope" } },
+    resolveModel: async () => { throw Object.assign(new Error("このモデルは Qwen Code に登録されていません"), { status: 400 }); },
+    run: async () => { ran = true; return { text: "", sessionId: null }; }
+  }), /登録されていません/);
+  assert.equal(ran, false);
+  assert.equal(classifyQwenFailure("401 invalid api key", { picked: true }).code, "model_auth");
+  assert.equal(classifyQwenFailure("401 invalid api key").code, "auth");
 });
 
 test("stream parser relays main-agent text deltas, tools and the session once", () => {
@@ -202,7 +240,13 @@ test("server keeps the Qwen chat behind the operation claim and adds a cancel ro
   assert.ok(chat > 0 && cancel > chat);
   assert.match(server.slice(chat, chat + 200), /claimOperation\(req, res/);
   assert.match(server.slice(cancel, cancel + 200), /claimOperation\(req, res/);
-  assert.match(server.slice(chat, cancel), /handleQwenChatRequest\(\{ res, payload, cwd: project\.path, registry: qwenRuns, redact: redactText \}\)/);
+  assert.match(server.slice(chat, cancel), /handleQwenChatRequest\(\{ res, payload, cwd: project\.path, registry: qwenRuns, redact: redactText, resolveModel \}\)/);
+  assert.match(server.slice(chat, cancel), /resolveQwenModelSelection\(selection, await listQwenModels\(\{ cwd: project\.path/, "the model is re-validated against qwen's own settings");
+  const models = server.indexOf('url.pathname === "/api/qwen/models")');
+  const providers = server.indexOf('url.pathname === "/api/qwen/providers")');
+  assert.ok(models > chat && providers > models);
+  assert.match(server.slice(providers, providers + 200), /claimOperation\(req, res/);
+  assert.doesNotMatch(server.slice(chat, cancel), /multiApiStore|\/api\/llm/, "the Qwen picker does not use the API Chat store");
 });
 
 test("Qwen Code is in the AI selector and the Home Qwen Code Mobile app is gone", async () => {

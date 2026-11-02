@@ -16,6 +16,21 @@ import {
 const SID = "123e4567-e89b-12d3-a456-426614174000";
 const PROJECTS = { projects: [{ id: "p1", name: "DevMoter-FAST", path: "/work/devmoter", available: true }, { id: "p2", name: "Other", path: "/work/other", available: true }] };
 const tick = (ms = 0) => new Promise(resolve => setTimeout(resolve, ms));
+const PRESETS = [
+  { id: "coding-plan", label: "Coding Plan", group: "alibaba", title: "Alibaba ModelStudio", baseUrls: [{ id: "aliyun", label: "China (Beijing)" }, { id: "alibabacloud", label: "Singapore (International)" }], custom: false, protocols: ["openai"], modelsEditable: true, keyPlaceholder: "sk-sp-...", models: [{ id: "qwen3-coder-plus" }, { id: "glm-5" }] },
+  { id: "openrouter", label: "OpenRouter", group: "third-party", title: "Third-party Providers", baseUrls: [{ id: "default", label: "" }], custom: false, protocols: ["openai"], modelsEditable: true, keyPlaceholder: "", models: [{ id: "z-ai/glm-4.5-air:free" }] },
+  { id: "custom-openai-compatible", label: "Custom Provider", group: "custom", title: "Custom Provider", baseUrls: [], custom: true, protocols: ["openai", "anthropic", "gemini"], modelsEditable: true, keyPlaceholder: "", models: [] }
+];
+const MODELS = {
+  version: "0.26.6", scope: "user", defaultModel: "coder-model",
+  groups: [{ id: "coding-plan:aliyun", label: "ModelStudio Coding Plan" }, { id: "openrouter:default", label: "OpenRouter" }],
+  models: [
+    { id: "qwen3-coder-plus", name: "[ModelStudio Coding Plan] qwen3-coder-plus", authType: "openai", group: "coding-plan:aliyun", host: "coding.dashscope.aliyuncs.com" },
+    { id: "glm-5", name: "[ModelStudio Coding Plan] glm-5", authType: "openai", group: "coding-plan:aliyun", host: "coding.dashscope.aliyuncs.com" },
+    { id: "z-ai/glm-4.5-air:free", name: "[OpenRouter] z-ai/glm-4.5-air:free", authType: "openai", group: "openrouter:default", host: "openrouter.ai", disabled: true, reason: "APIキーが未設定です" }
+  ],
+  presets: PRESETS
+};
 
 function memoryStorage(seed = {}) {
   const data = new Map(Object.entries(seed));
@@ -83,7 +98,7 @@ function ndjsonResponse(events, { hold = false, signal } = {}) {
   return { ok: true, status: 200, body, json: async () => ({}) };
 }
 
-async function mount({ chat, seed, confirm = () => true } = {}) {
+async function mount({ chat, seed, confirm = () => true, models = () => ({ ok: true, json: async () => MODELS }), install } = {}) {
   const dom = new JSDOM("<div id='root'></div>", { url: "https://devmoter.test/" });
   const requests = [];
   Object.assign(globalThis, {
@@ -94,6 +109,8 @@ async function mount({ chat, seed, confirm = () => true } = {}) {
       if (path === "/api/projects") return { ok: true, json: async () => PROJECTS };
       if (path === "/api/qwen/chat") return chat(init);
       if (path === "/api/qwen/chat/cancel") return { ok: true, json: async () => ({ cancelled: true }) };
+      if (String(path).startsWith("/api/qwen/models?")) return models(path);
+      if (path === "/api/qwen/providers") return install(JSON.parse(init.body));
       throw new Error("unexpected " + path);
     }
   });
@@ -240,4 +257,169 @@ test("history sheet lists chats newest first and switches, starts and deletes th
   } finally {
     dom.window.close();
   }
+});
+
+test("model picker: default first, provider chips, search, disabled with a reason, choice remembered and sent", async () => {
+  const { dom, root, $, type, requests } = await mount({
+    seed: { version: 1, chats: [{ id: "c1", title: "前の話", sessionId: SID, projectId: "p1", updatedAt: Date.now(), messages: [{ role: "user", text: "前" }, { role: "assistant", text: "はい" }] }] },
+    chat: () => ndjsonResponse([{ type: "done", text: "ok", sessionId: SID }])
+  });
+  try {
+    const chip = $("[data-qwen-model-button]");
+    assert.equal(chip.textContent, "既定");
+    assert.equal(chip.getAttribute("aria-label"), "モデル: Qwen Code の既定");
+    assert.ok(chip.querySelector("svg"), "line icon");
+    chip.click();
+    await tick(10);
+    const sheet = $("[data-qwen-picker]");
+    assert.equal(sheet.hidden, false);
+    assert.equal(chip.getAttribute("aria-expanded"), "true");
+    assert.equal($("[data-qwen-scrim]").hidden, false);
+    assert.ok(sheet.querySelector("[data-sheet-header]"), "shared sheet header");
+    assert.equal(sheet.querySelector(".dm-sheet-head-title").textContent, "モデル");
+    assert.equal(sheet.querySelector(".dm-sheet-head-primary").textContent, "APIを追加");
+    assert.ok(requests.find(request => String(request.path) === "/api/qwen/models?projectId=p1"));
+    const rows = () => [...sheet.querySelectorAll("[data-qwen-model]")];
+    assert.equal(rows()[0].querySelector("strong").textContent, "Qwen Code の既定");
+    assert.match(rows()[0].textContent, /coder-model/);
+    assert.equal(rows()[0].getAttribute("aria-selected"), "true");
+    assert.ok(rows()[0].querySelector(".qx-picker-check svg"), "selected check");
+    assert.deepEqual([...sheet.querySelectorAll(".qx-picker-chip")].map(node => node.textContent), ["すべて", "ModelStudio Coding Plan", "OpenRouter"]);
+    const disabled = sheet.querySelector('[data-qwen-model="openai/z-ai/glm-4.5-air:free"]');
+    assert.equal(disabled.disabled, true, "unusable models stay visible but disabled");
+    assert.match(disabled.textContent, /APIキーが未設定です/);
+
+    sheet.querySelector('[data-group="openrouter:default"]').click();
+    assert.deepEqual(rows().map(row => row.dataset.qwenModel), ["openai/z-ai/glm-4.5-air:free"], "a provider chip filters and hides the default row");
+    sheet.querySelector('[data-group="all"]').click();
+    const search = sheet.querySelector("[data-qwen-model-search]");
+    search.value = "GLM-5";
+    search.dispatchEvent(new dom.window.Event("input"));
+    assert.deepEqual(rows().map(row => row.dataset.qwenModel), ["openai/glm-5"]);
+    search.value = "zzz";
+    search.dispatchEvent(new dom.window.Event("input"));
+    assert.match(sheet.querySelector(".qx-picker-state").textContent, /「zzz」に一致するモデルはありません/);
+    search.value = "";
+    search.dispatchEvent(new dom.window.Event("input"));
+
+    sheet.querySelector('[data-qwen-model="openai/glm-5"]').click();
+    assert.equal(sheet.hidden, true);
+    assert.equal(chip.textContent, "glm-5");
+    assert.equal(chip.getAttribute("aria-expanded"), "false");
+    assert.deepEqual(JSON.parse(dom.window.localStorage.getItem("devmoter-qwen-model")), { id: "glm-5", authType: "openai", name: "[ModelStudio Coding Plan] glm-5" });
+
+    type("続きをお願い");
+    await tick(150);
+    const sent = requests.find(request => request.path === "/api/qwen/chat");
+    assert.deepEqual(sent.body.model, { authType: "openai", id: "glm-5" });
+    assert.equal(sent.body.sessionId, SID, "the session resumes with the new model");
+    const note = root.querySelector("[data-qwen-note]");
+    assert.match(note.textContent, /ここから glm-5 で応答します/);
+
+    chip.click();
+    await tick(10);
+    const recent = sheet.querySelector(".qx-picker-section h3");
+    assert.equal(recent.textContent, "最近使ったモデル", "recent models come first");
+    assert.equal(sheet.querySelector('[data-qwen-model="openai/glm-5"]').getAttribute("aria-selected"), "true");
+    rows()[0].click();
+    assert.equal(chip.textContent, "既定");
+    assert.equal(dom.window.localStorage.getItem("devmoter-qwen-model"), null);
+  } finally {
+    dom.window.close();
+  }
+});
+
+test("model picker: empty and error states, then add an API like /auth and select its model", async () => {
+  let listing = { ...MODELS, scope: "none", defaultModel: null, groups: [], models: [] };
+  let fail = true;
+  const installs = [];
+  const { dom, $ } = await mount({
+    chat: () => ndjsonResponse([]),
+    models: () => fail
+      ? { ok: false, status: 500, json: async () => ({ error: "Qwen Code の settings.json を読めませんでした。書式を確認してください" }) }
+      : { ok: true, json: async () => listing },
+    install: body => {
+      installs.push(body);
+      if (body.apiKey === "bad") return { ok: false, status: 400, json: async () => ({ error: "このプランのキーは「sk-sp-」で始まります" }) };
+      listing = { ...MODELS, models: MODELS.models.slice(0, 2), groups: MODELS.groups.slice(0, 1) };
+      return { ok: true, json: async () => ({ presetId: body.presetId, added: [{ id: "qwen3-coder-plus", authType: "openai" }] }) };
+    }
+  });
+  try {
+    $("[data-qwen-model-button]").click();
+    await tick(10);
+    const sheet = $("[data-qwen-picker]");
+    assert.match(sheet.querySelector("[role=alert]").textContent, /settings\.json/);
+    fail = false;
+    sheet.querySelector("[data-qwen-picker-retry]").click();
+    await tick(10);
+    const empty = sheet.querySelector("[data-qwen-picker-empty]");
+    assert.match(empty.textContent, /まだありません/);
+    const buttons = empty.querySelectorAll("button");
+    assert.equal(buttons.length, 1);
+    assert.equal(buttons[0].textContent, "APIを追加");
+    assert.equal(sheet.querySelector(".dm-sheet-head-primary").hidden, true, "one 「APIを追加」 button in the empty state");
+    buttons[0].click();
+
+    assert.equal(sheet.querySelector(".dm-sheet-head-title").textContent, "APIを追加");
+    assert.equal(sheet.querySelector("[data-qwen-picker-back]").hidden, false);
+    assert.deepEqual([...sheet.querySelectorAll(".qx-picker-section h3")].map(node => node.textContent), ["Alibaba ModelStudio", "Third-party Providers", "Custom Provider"]);
+    sheet.querySelector('[data-qwen-preset="coding-plan"]').click();
+    const form = sheet.querySelector("[data-qwen-provider-form]");
+    assert.deepEqual([...form.querySelectorAll("select[name=baseUrlId] option")].map(node => node.textContent), ["China (Beijing)", "Singapore (International)"]);
+    const key = form.querySelector("input[name=apiKey]");
+    assert.equal(key.type, "password");
+    assert.equal(key.placeholder, "sk-sp-...");
+    assert.deepEqual([...form.querySelectorAll(".qx-check input")].map(box => box.checked), [true, true]);
+
+    form.querySelector("[data-qwen-provider-submit]").click();
+    form.dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+    await tick(10);
+    assert.equal(installs.length, 0, "an empty key is caught before the request");
+    assert.match(form.querySelector(".qx-picker-message").textContent, /APIキーを入力/);
+
+    key.value = "bad";
+    form.dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+    await tick(10);
+    assert.match(form.querySelector("[role=alert]").textContent, /sk-sp-/);
+
+    form.querySelector("select[name=baseUrlId]").value = "alibabacloud";
+    form.querySelectorAll(".qx-check input")[1].checked = false;
+    form.querySelector("input[name=modelIds]").value = "qwen3-max, kimi-k2.5";
+    key.value = "sk-sp-good";
+    form.dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+    await tick(20);
+    assert.deepEqual(installs.at(-1), { presetId: "coding-plan", baseUrlId: "alibabacloud", apiKey: "sk-sp-good", modelIds: ["qwen3-coder-plus", "qwen3-max", "kimi-k2.5"] });
+    assert.equal(sheet.hidden, true, "the added model is selected and the picker closes");
+    assert.equal($("[data-qwen-model-button]").textContent, "qwen3-coder-plus");
+    assert.ok(!JSON.stringify({ ...dom.window.localStorage }).includes("sk-sp-good"), "the key is not kept in the browser");
+
+    $("[data-qwen-model-button]").click();
+    await tick(10);
+    sheet.querySelector(".dm-sheet-head-primary").click();
+    sheet.querySelector('[data-qwen-preset="custom-openai-compatible"]').click();
+    const custom = sheet.querySelector("[data-qwen-provider-form]");
+    assert.deepEqual([...custom.querySelectorAll("select[name=protocol] option")].map(node => node.value), ["openai", "anthropic", "gemini"]);
+    assert.equal(custom.querySelector("input[name=baseUrl]").type, "url");
+    custom.querySelector("input[name=apiKey]").value = "k";
+    custom.dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+    await tick(10);
+    assert.match(custom.querySelector(".qx-picker-message").textContent, /Base URL/);
+    sheet.querySelector("[data-qwen-picker-back]").click();
+    assert.equal(sheet.querySelector(".dm-sheet-head-title").textContent, "APIを追加");
+    sheet.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    assert.equal(sheet.hidden, true, "Escape closes the picker");
+  } finally {
+    dom.window.close();
+  }
+});
+
+test("model helpers: stored choice is validated, recent list is bounded and deduplicated", async () => {
+  const store = await import("../src/qwen-model-store.mjs");
+  const storage = memoryStorage({ [store.QWEN_MODEL_KEY]: JSON.stringify({ id: "m", authType: "qwen-oauth" }) });
+  assert.equal(store.loadQwenModel(storage), null, "qwen-oauth or junk falls back to the default");
+  for (const id of ["a", "b", "c", "d", "e", "f", "b"]) store.saveQwenModel(storage, { id, authType: "openai", name: id });
+  assert.deepEqual(store.loadRecentQwenModels(storage).map(item => item.id), ["b", "f", "e", "d", "c"]);
+  assert.equal(store.qwenModelChipLabel({ id: "z-ai/glm-4.5-air:free" }), "glm-4.5-air:free");
+  assert.equal(store.qwenModelChipLabel(null), "既定");
 });
