@@ -580,15 +580,11 @@
   inset: var(--dm-viewport-offset-top, 0px) 0 auto 0;
   height: var(--dm-viewport-height, 100dvh);
   padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
-  background: rgba(0,0,0,.72);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(0,0,0,.5);
 }
 
+/* Geometry from the shared .dm-sheet-frame (zcode-theme.css). */
 .wf-sheet {
-  width: min(100%, 980px);
-  height: 100%;
-  margin: 0 auto;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -599,7 +595,6 @@
   box-shadow: 0 26px 90px rgba(0,0,0,.55);
 }
 
-.wf-header,
 .wf-toolbar,
 .wf-section-head,
 .wf-change-head,
@@ -613,18 +608,6 @@
   display: flex;
   align-items: center;
 }
-
-.wf-header {
-  min-height: 62px;
-  padding: 10px 12px 10px 15px;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border-hairline);
-}
-
-.wf-header > div { display: grid; gap: 2px; }
-.wf-header strong { font-size: .92rem; }
-.wf-kicker { color: var(--text-secondary); font-size: .52rem; letter-spacing: .13em; }
-.wf-close { width: 38px; min-height: 38px; padding: 0; border-radius: 999px; }
 
 .wf-toolbar {
   gap: 8px;
@@ -642,7 +625,7 @@
 .wf-toolbar label span,
 .wf-form label span {
   color: var(--text-secondary);
-  font-size: .58rem;
+  font-size: .75rem;
 }
 
 .wf-toolbar select,
@@ -651,53 +634,57 @@
 .wf-form textarea,
 .wf-commit input {
   width: 100%;
-  min-height: 38px;
-  padding: 7px 9px;
-  border: 1px solid var(--border-hairline);
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   outline: none;
-  background: var(--surface-card);
+  background: var(--canvas-base);
   color: var(--text-primary);
   font: inherit;
-  font-size: .68rem;
+  font-size: 16px;
 }
 
 .wf-form textarea { resize: vertical; min-height: 72px; }
-.wf-toolbar button { min-height: 38px; padding: 0 11px; border-radius: 8px; }
 
 .wf-tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 3px;
-  padding: 6px 8px;
+  gap: 4px;
+  padding: 8px;
   border-bottom: 1px solid var(--border-hairline);
 }
 
 .wf-tabs button {
-  min-height: 38px;
-  border: 0;
-  border-radius: 7px;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: .65rem;
+  font-size: .85rem;
+  white-space: nowrap;
 }
 
+/* The selected tab reads as selected: surface step + hairline + primary text. */
 .wf-tabs button.active {
+  border-color: var(--border-subtle);
   background: var(--surface-hover);
   color: var(--text-primary);
+  font-weight: 500;
 }
 
 .wf-status {
-  min-height: 26px;
+  min-height: 28px;
   padding: 6px 12px;
   overflow: hidden;
   border-bottom: 1px solid var(--border-hairline);
   color: var(--text-secondary);
-  font-size: .59rem;
+  font-size: .75rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.wf-status:empty { display: none; }
 .wf-status.error { color: var(--status-error); }
 
 .wf-body {
@@ -718,17 +705,17 @@
 }
 
 .wf-section-head > div { min-width: 0; display: grid; gap: 2px; }
-.wf-section-head strong { font-size: .78rem; }
+.wf-section-head strong { font-size: .9rem; font-weight: 500; }
 .wf-section-head small,
 .wf-change-head small,
 .wf-worktree small,
 .wf-task small {
   color: var(--text-secondary);
-  font-size: .57rem;
+  font-size: .75rem;
   line-height: 1.45;
 }
 
-.wf-section-head button { min-height: 34px; padding: 0 9px; border-radius: 7px; font-size: .6rem; }
+.wf-section-head button { flex-shrink: 0; min-height: 44px; padding: 0 12px; border-radius: 8px; font-size: .85rem; white-space: nowrap; }
 
 .wf-stack { display: grid; gap: 10px; }
 .wf-change,
@@ -886,10 +873,11 @@
 .wf-empty {
   padding: 16px 10px;
   border: 1px dashed var(--border-hairline);
-  border-radius: 9px;
+  border-radius: 8px;
   color: var(--text-secondary);
-  font-size: .62rem;
+  font-size: .85rem;
   line-height: 1.5;
+  text-align: center;
 }
 
 @media (max-width: 700px) {
@@ -1692,7 +1680,6 @@ textarea:focus-visible,
 }
 
 .dm-control-trigger,
-.dm-control-close,
 .dm-mini {
   min-width: 44px;
   min-height: 44px;
@@ -1719,18 +1706,16 @@ textarea:focus-visible,
   background: rgba(0,0,0,.62);
 }
 
+/* Geometry from the shared .dm-sheet-frame (zcode-theme.css). */
 .dm-control-card {
-  width: min(100%, 760px);
-  max-height: min(88dvh, var(--dm-viewport-height, 88dvh));
-  margin: 0 auto;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   overflow: hidden;
   border: 1px solid var(--border-hairline);
-  border-radius: 22px;
+  border-radius: 20px;
   background: var(--surface-panel);
   color: var(--text-primary);
-  box-shadow: 0 24px 70px rgba(0,0,0,.55);
+  box-shadow: 0 24px 80px rgba(0,0,0,.28);
 }
 
 /* Buttons inside the sheet follow the theme instead of the global dark button. */
@@ -1738,35 +1723,6 @@ textarea:focus-visible,
   border: 1px solid var(--border-hairline);
   background: var(--surface-card);
   color: var(--text-primary);
-}
-
-.dm-control-head {
-  min-height: 60px;
-  padding: 10px 12px 8px 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border-hairline);
-}
-
-.dm-control-head > div {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.dm-control-head small {
-  overflow: hidden;
-  color: var(--text-secondary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dm-control-close {
-  width: 44px;
-  padding: 0;
-  border-radius: 999px;
 }
 
 .dm-control-tabs {
@@ -1787,10 +1743,16 @@ textarea:focus-visible,
   background: transparent;
 }
 
+/* Selected tab: small surface step + hairline, not an inverted black pill. */
 .dm-control-tabs button[aria-selected="true"] {
-  background: var(--text-primary);
-  color: var(--surface-panel);
+  border-color: var(--border-subtle);
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  font-weight: 500;
 }
+
+/* The body takes focus only so the sheet scrolls from the top; no ring. */
+.dm-control-body:focus { outline: none; }
 
 .dm-control-body {
   overflow: auto;
@@ -1913,8 +1875,20 @@ textarea:focus-visible,
   display: flex;
   align-items: center;
   cursor: pointer;
-  font-weight: 700;
+  font-weight: 500;
 }
+
+.dm-control-body details.dm-collapsible {
+  margin-top: 8px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 12px;
+  padding: 0 12px;
+}
+.dm-control-body details.dm-collapsible > summary { color: var(--text-secondary); }
+.dm-control-body details.dm-collapsible[open] { padding-bottom: 12px; }
+.dm-control-body details.dm-collapsible > .dm-form { padding: 0; border: 0; background: transparent; }
+.dm-empty { display: block; padding: 8px 0; color: var(--text-secondary); font-size: .85rem; }
+.dm-control-body .dm-device-gate-compact { display: flex; justify-content: center; padding: 24px 0; }
 
 .dm-passkey-card {
   display: grid;
@@ -1964,10 +1938,6 @@ textarea:focus-visible,
     flex-basis: calc(100% - 90px);
   }
 
-  .dm-control-card {
-    max-height: calc(var(--dm-viewport-height, 100dvh) - 18px);
-    border-radius: 18px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2061,12 +2031,18 @@ textarea:focus-visible,
 }
 
 .ocx-picker-row.unavailable,
-.ocx-picker-row:disabled,
-.cx-model-row.unavailable,
-.cx-model-row:disabled {
+.ocx-picker-row:disabled {
   opacity: .48;
   cursor: not-allowed;
 }
+
+/* Unavailable Codex models keep a readable name; the reason sits in the muted line. */
+.cx-model-row.unavailable,
+.cx-model-row:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+}
+.cx-model-row:is(.unavailable, :disabled) small { color: var(--text-muted); }
 
 /* Model picker toolbar: one row — search, one filter select, a small refresh icon. */
 .ocx-model-toolbar {

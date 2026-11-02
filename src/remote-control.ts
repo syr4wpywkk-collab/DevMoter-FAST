@@ -1,3 +1,6 @@
+import { createDeviceGate, isDeviceAuthError, responseError } from "./device-gate.mjs";
+import { createSheetHeader } from "./sheet-header.mjs";
+
 type Json = Record<string, any>;
 
 function uid() {
@@ -65,8 +68,25 @@ async function api<T = Json>(path: string, init: RequestInit = {}): Promise<T> {
   }
   const response = await fetch(path, { ...init, headers, cache: "no-store" });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload?.error || `HTTP ${response.status}`);
+  if (!response.ok) throw responseError(response.status, payload?.error);
   return payload as T;
+}
+
+// Forms stay folded until asked for, so each tab shows its list first.
+function collapsible(label: string, content: HTMLElement) {
+  const details = document.createElement("details");
+  details.className = "dm-collapsible";
+  const summary = document.createElement("summary");
+  summary.textContent = label;
+  details.append(summary, content);
+  return details;
+}
+
+function emptyRow(text: string) {
+  const empty = document.createElement("small");
+  empty.className = "dm-empty";
+  empty.textContent = text;
+  return empty;
 }
 
 function button(text: string, className = "") {
@@ -123,11 +143,7 @@ export function mountRemoteControlCenter() {
   shell.innerHTML = `
     <button class="dm-control-trigger" type="button" aria-label="Remote & automation" aria-haspopup="dialog" aria-expanded="false">⚙</button>
     <div class="dm-control-modal hidden" role="dialog" aria-modal="true" aria-labelledby="dmControlTitle">
-      <div class="dm-control-card">
-        <header class="dm-control-head">
-          <div><strong id="dmControlTitle">Hosts</strong><small>${location.host}</small></div>
-          <button class="dm-control-close" type="button" aria-label="Close">×</button>
-        </header>
+      <div class="dm-control-card dm-sheet-frame">
         <div class="dm-control-tabs" role="tablist" aria-label="Remote & automation">
           <button type="button" role="tab" data-tab="hosts" data-title="Hosts" aria-selected="true">Hosts</button>
           <button type="button" role="tab" data-tab="automation" data-title="Automation" aria-selected="false">Automation</button>
@@ -139,13 +155,15 @@ export function mountRemoteControlCenter() {
     </div>
   `;
   document.body.appendChild(shell);
+  // Shared sheet header; the title follows the open tab (see render()).
+  const head = createSheetHeader(document, { title: "Hosts", subtitle: location.host, titleId: "dmControlTitle" });
+  shell.querySelector<HTMLElement>(".dm-control-card")!.prepend(head.element);
 
   const trigger = shell.querySelector<HTMLButtonElement>(".dm-control-trigger")!;
   const modal = shell.querySelector<HTMLElement>(".dm-control-modal")!;
-  const close = shell.querySelector<HTMLButtonElement>(".dm-control-close")!;
+  const close = head.closeButton;
   const body = shell.querySelector<HTMLElement>(".dm-control-body")!;
   const toast = shell.querySelector<HTMLElement>(".dm-control-toast")!;
-  const title = shell.querySelector<HTMLElement>("#dmControlTitle")!;
   const tabs = Array.from(shell.querySelectorAll<HTMLButtonElement>("[data-tab]"));
   let activeTab = "hosts";
   let renderGeneration = 0;
@@ -213,7 +231,7 @@ export function mountRemoteControlCenter() {
   async function render() {
     const generation = ++renderGeneration;
     const tab = tabs.find(item => item.dataset.tab === activeTab);
-    title.textContent = tab?.dataset.title || "Hosts";
+    head.setTitle(tab?.dataset.title || "Hosts");
     // Build off-DOM and swap in only if no newer render started meanwhile:
     // Settings opens the sheet and selects a tab back to back, and two renders
     // appending into the same body duplicated every row ("This host" twice).
@@ -223,10 +241,15 @@ export function mountRemoteControlCenter() {
       else if (activeTab === "automation") await renderAutomation(view);
       else await renderPasskeys(view);
     } catch (error) {
-      const p = document.createElement("p");
-      p.className = "dm-error";
-      p.textContent = error instanceof Error ? error.message : String(error);
-      view.appendChild(p);
+      if (isDeviceAuthError(error)) {
+        // One button into 信頼済み端末 instead of "Trusted device token required".
+        view.appendChild(createDeviceGate(document, { compact: true, onRegister: () => closeModal(false) }));
+      } else {
+        const p = document.createElement("p");
+        p.className = "dm-error";
+        p.textContent = error instanceof Error ? error.message : String(error);
+        view.appendChild(p);
+      }
     }
     if (generation === renderGeneration) body.replaceChildren(view);
   }
@@ -278,6 +301,7 @@ export function mountRemoteControlCenter() {
     const submit = button("Add host", "primary");
     submit.type = "submit";
     form.append(field("Label", label), field("Address", address), field("Trust", trust), submit);
+    const addHost = collapsible("Add host", form);
     form.addEventListener("submit", async event => {
       event.preventDefault();
       await api("/api/control/hosts", {
@@ -286,7 +310,7 @@ export function mountRemoteControlCenter() {
       });
       await render();
     });
-    body.appendChild(form);
+    body.appendChild(addHost);
   }
 
   async function renderAutomation(body: DocumentFragment) {
@@ -348,7 +372,8 @@ export function mountRemoteControlCenter() {
       });
       await render();
     });
-    detailsSchedule.appendChild(scheduleForm);
+    if (!(schedules.schedules || []).length) scheduleList.appendChild(emptyRow("No schedules"));
+    detailsSchedule.appendChild(collapsible("New schedule", scheduleForm));
     body.appendChild(detailsSchedule);
 
     const detailsTrigger = document.createElement("details");
@@ -395,7 +420,8 @@ export function mountRemoteControlCenter() {
       if (result.secret) showToast(`Webhook secret (shown once): ${result.secret}`);
       await render();
     });
-    detailsTrigger.appendChild(triggerForm);
+    if (!(triggers.triggers || []).length) triggerList.appendChild(emptyRow("No triggers"));
+    detailsTrigger.appendChild(collapsible("New trigger", triggerForm));
     body.appendChild(detailsTrigger);
 
     const detailsAutopilot = document.createElement("details");
@@ -430,7 +456,7 @@ export function mountRemoteControlCenter() {
       });
       await render();
     });
-    detailsAutopilot.appendChild(autopilotForm);
+    detailsAutopilot.appendChild(collapsible("New autopilot run", autopilotForm));
 
     const runList = document.createElement("div");
     runList.className = "dm-list";

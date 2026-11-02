@@ -5,9 +5,10 @@ import vm from "node:vm";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
 import * as deviceGate from "../src/device-gate.mjs";
+import * as sheetHeader from "../src/sheet-header.mjs";
 
 const source = await readFile(new URL("../src/control-center.ts", import.meta.url), "utf8");
-const compiled = ts.transpileModule(source.replace(/^import (?!.*device-gate).*;\s*$/gm, ""), {
+const compiled = ts.transpileModule(source.replace(/^import (?!.*(device-gate|sheet-header)).*;\s*$/gm, ""), {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
 }).outputText;
 
@@ -96,7 +97,7 @@ function mount({ fetch, confirm = () => true, prompt = () => null, storedRecord 
   vm.runInNewContext(compiled, {
     exports,
     module,
-    require: name => name === "./device-gate.mjs" ? deviceGate : name === "@xterm/xterm"
+    require: name => name === "./device-gate.mjs" ? deviceGate : name === "./sheet-header.mjs" ? sheetHeader : name === "@xterm/xterm"
       ? { Terminal: FakeTerminal }
       : name === "@xterm/addon-fit"
         ? { FitAddon: FakeFitAddon }
@@ -145,7 +146,10 @@ test("mounting and opening Tools only lists sessions and shows the Trusted-devic
   assert.ok(gate);
   // The raw server error is replaced by the shared gate, not shown next to it.
   assert.equal(app.document.querySelector(".dm-terminal-status").textContent, "");
-  assert.equal(gate.querySelector("[data-device-gate-register]").textContent, "端末を登録");
+  // Unregistered device: the tab shows only the 信頼済み端末 button (Group G).
+  assert.equal(gate.querySelector("[data-device-gate-register]").textContent, "信頼済み端末を開く");
+  assert.equal(gate.querySelectorAll("button").length, 1);
+  assert.equal(gate.closest("section").dataset.deviceGated, "true");
   const opened = [];
   app.window.addEventListener("devmoter:open-settings", event => opened.push(event.detail));
   gate.querySelector("[data-device-gate-register]").click();
@@ -209,7 +213,7 @@ test("explicit start sends scoped create data, attaches through a one-use ticket
   assert.deepEqual(Array.from(firstSocket.protocols), ["devmoter-terminal.v1", "devmoter-ticket.test-ticket-1"]);
   firstSocket.open();
 
-  app.document.querySelector(".dm-tools-close").click();
+  app.document.querySelector(".dm-sheet-head-close").click();
   assert.deepEqual(firstSocket.closeCall, { code: 1000, reason: "Client detached." });
   assert.equal(requests.some(item => item.url === "/api/terminal/sessions/terminal-one" && item.method === "DELETE"), false);
   assert.ok(app.window.sessionStorage.getItem("devmoter-terminal-record"), "the reattach record survives panel close");

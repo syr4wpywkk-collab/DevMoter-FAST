@@ -107,18 +107,18 @@ test("Japanese locale translates Home, workspace navigation, and Review copy and
   const review = window.document.querySelector("#workflow");
   assert.equal(review.querySelector("#wfLaunch b").textContent, "レビュー");
   assert.equal(review.querySelector("#wfLaunch").getAttribute("aria-label"), "変更とタスクを確認");
-  assert.equal(review.querySelector("#wfModal").getAttribute("aria-label"), "レビューとタスク");
+  const wfModal = review.querySelector("#wfModal");
+  assert.equal(review.querySelector("#" + wfModal.getAttribute("aria-labelledby")).textContent, "レビューとタスク");
   assert.equal(review.querySelector("#wfClose").getAttribute("aria-label"), "閉じる");
-  assert.equal(review.querySelector(".wf-kicker").textContent, "DevMoterのワークフロー");
   assert.equal(review.querySelector(".wf-tabs").getAttribute("aria-label"), "ワークフローのセクション");
   assert.equal(review.querySelector('[data-wf-tab="changes"]').textContent, "変更");
   assert.equal(review.querySelector('[data-wf-tab="worktrees"]').textContent, "作業ツリー");
   assert.equal(review.querySelector("#wfStatus").textContent, "準備完了");
-  assert.equal(review.querySelector("#wfWorktreesPanel .wf-empty").textContent, "実行中の作業ツリーはありません。");
+  assert.equal(review.querySelector("#wfWorktreesPanel .wf-empty").textContent, "作業ツリーはありません");
   assert.equal(review.querySelector(".wf-section-head strong").textContent, "変更内容");
-  assert.equal(review.querySelector(".wf-section-head small").textContent, "確認中の変更はファイルに反映されません。");
+  assert.equal(review.querySelector(".wf-section-head small").textContent, "承認するまでファイルは変わりません");
   assert.equal(review.querySelector("#wfLoadDiff").textContent, "作業中の差分");
-  assert.equal(review.querySelector(".wf-empty").textContent, "変更セットはまだありません。エージェント連携からWorkflow APIに提案を送信できます。");
+  assert.equal(review.querySelector(".wf-empty").textContent, "レビュー待ちの変更はありません");
 
   // Verify the observer also handles Home recent-action labels and changing counts.
   home.querySelector('[data-home-quick-action="chat"]').click();

@@ -1,6 +1,7 @@
 import "./session-control.css";
 import { matchesSessionFilters, parseSessionQuery, suggestSessionTokens } from "./session-search-query.mjs";
 import { displaySessionTitle } from "./session-title-format.mjs";
+import { createSheetHeader } from "./sheet-header.mjs";
 
 type Backend = "codex" | "opencode";
 type Status = "running" | "waiting" | "done" | "idle" | "failed" | "interrupted" | "unknown";
@@ -79,12 +80,17 @@ export function mountSessionControl(options: MountOptions = {}) {
   root.innerHTML = [
     '<button class="sc-fab" type="button" aria-label="Activity">✦</button>',
     '<div class="sc-scrim hidden"></div>',
-    '<section class="sc-panel" aria-hidden="true">',
-    '<header class="sc-head"><strong>Activity</strong><button class="sc-refresh" type="button" aria-label="Refresh" title="Refresh">↻</button><button class="sc-close" type="button" aria-label="Close">×</button></header>',
+    '<section class="sc-panel dm-sheet-frame" role="dialog" aria-labelledby="scTitle" aria-hidden="true">',
     '<div class="sc-toolbar"><div class="sc-search-field"><input class="sc-search" type="search" enterkeyhint="search" autocomplete="off" spellcheck="false" placeholder="Search · agent: project: state:" aria-label="Search sessions (filters: agent:, project:, state:)" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="scSuggest"><button class="sc-clear" type="button" aria-label="Clear search" hidden>×</button></div><div id="scSuggest" class="sc-suggest" role="listbox" aria-label="Search suggestions" hidden></div></div>',
     '<div class="sc-tabs"><button class="active" data-tab="activity">Activity</button><button data-tab="queue">Queue <span class="sc-queue-count"></span></button><button data-tab="checkpoints">Checkpoints</button><button data-tab="history">History</button></div>',
     '<div class="sc-body"></div><div class="sc-toast hidden"></div></section>'
   ].join(""); document.body.appendChild(root);
+  // Shared sheet header (title / refresh / close) — src/sheet-header.mjs.
+  const head=createSheetHeader(document,{title:"Activity",titleId:"scTitle"});
+  const refreshButton=document.createElement("button"); refreshButton.type="button"; refreshButton.className="sc-refresh"; refreshButton.setAttribute("aria-label","Refresh");
+  refreshButton.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
+  head.actions.append(refreshButton); head.closeButton.classList.add("sc-close");
+  root.querySelector(".sc-panel")!.prepend(head.element);
   const panel=root.querySelector<HTMLElement>(".sc-panel")!, scrim=root.querySelector<HTMLElement>(".sc-scrim")!, body=root.querySelector<HTMLDivElement>(".sc-body")!, search=root.querySelector<HTMLInputElement>(".sc-search")!, clearSearch=root.querySelector<HTMLButtonElement>(".sc-clear")!, suggestBox=root.querySelector<HTMLElement>(".sc-suggest")!, count=root.querySelector<HTMLElement>(".sc-queue-count")!, toast=root.querySelector<HTMLElement>(".sc-toast")!;
   const notify=(text:string)=>{ if(toastTimer!==null) clearTimeout(toastTimer); toast.textContent=text; toast.classList.remove("hidden"); toastTimer=window.setTimeout(()=>toast.classList.add("hidden"),2200); };
   const open=()=>{ panel.classList.add("open"); panel.setAttribute("aria-hidden","false"); scrim.classList.remove("hidden"); window.dispatchEvent(new CustomEvent("devmoter:workspace-panel-changed", {detail:{tab:"tasks",open:true}})); void refresh(); };

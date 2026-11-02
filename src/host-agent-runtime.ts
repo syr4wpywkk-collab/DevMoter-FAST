@@ -1,4 +1,5 @@
 import type { SubagentRun } from "./subagent-runtime.mjs";
+import { responseError } from "./device-gate.mjs";
 
 type FleetSnapshot = {
   id: string;
@@ -91,7 +92,7 @@ export class HostAgentRuntime {
     }
     const response = await fetch(url, { ...init, headers, cache: "no-store" });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload?.error || `Agent request failed (${response.status})`);
+    if (!response.ok) throw responseError(response.status, payload?.error || `Agent request failed (${response.status})`);
     return payload as T;
   }
 

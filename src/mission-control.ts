@@ -1,8 +1,10 @@
 import "./mission-control.css";
+import { createDeviceGate, isDeviceAuthError, responseError } from "./device-gate.mjs";
+import { createSheetHeader } from "./sheet-header.mjs";
 
 type Json = Record<string, unknown>;
 type SourceKey = "agents" | "sessions" | "host" | "projects";
-type SourceState = { ok: boolean; data: unknown; error: string | null };
+type SourceState = { ok: boolean; data: unknown; error: string | null; deviceAuth?: boolean };
 
 type MissionState = Record<SourceKey, SourceState> & {
   loadedAt: number | null;
@@ -51,7 +53,7 @@ async function getJson(path: string) {
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       const message = stringValue(objectValue(payload).error, `HTTP ${response.status}`);
-      throw new Error(message);
+      throw responseError(response.status, message);
     }
     return payload;
   } finally {
@@ -66,7 +68,8 @@ async function loadSource(path: string): Promise<SourceState> {
     return {
       ok: false,
       data: null,
-      error: error instanceof Error ? error.message : "Unavailable"
+      error: error instanceof Error ? error.message : "Unavailable",
+      deviceAuth: isDeviceAuthError(error)
     };
   }
 }
@@ -93,7 +96,15 @@ function emptyState(message: string) {
   return element("div", "dm-mission-empty", message);
 }
 
-function errorState(message: string) {
+function errorState(source: SourceState, fallback: string) {
+  // An unregistered device gets the 信頼済み端末 button, not the raw 401 text.
+  if (source.deviceAuth) {
+    return createDeviceGate(document, {
+      compact: true,
+      onRegister: () => window.dispatchEvent(new CustomEvent("devmoter:close-mission-control"))
+    });
+  }
+  const message = source.error || fallback;
   const node = element("div", "dm-mission-source-error");
   node.append(
     element("strong", "", "Source unavailable"),
@@ -136,40 +147,30 @@ export function mountMissionControl() {
   root.className = "dm-mission-root";
   root.innerHTML = `
     <div class="dm-mission-modal hidden" role="dialog" aria-modal="true" aria-labelledby="dmMissionTitle">
-      <section class="dm-mission-sheet">
-        <header class="dm-mission-head">
-          <div>
-            <small>DevMoter FAST</small>
-            <strong id="dmMissionTitle">Mission Control</strong>
-          </div>
-          <div class="dm-mission-head-actions">
-            <button type="button" data-mission-refresh aria-label="Refresh Mission Control">↻</button>
-            <button type="button" data-mission-close aria-label="Close Mission Control">×</button>
-          </div>
-        </header>
+      <section class="dm-mission-sheet dm-sheet-frame">
         <div class="dm-mission-scroll">
-          <div class="dm-mission-updated" data-mission-updated>Not loaded yet</div>
+          <div class="dm-mission-updated" data-mission-updated>Not loaded</div>
           <section class="dm-mission-kpis" aria-label="Mission Control summary">
-            <article><small>Active agents</small><strong data-kpi-agents>—</strong></article>
-            <article><small>Fleet queue</small><strong data-kpi-queue>—</strong></article>
-            <article><small>Live sessions</small><strong data-kpi-sessions>—</strong></article>
-            <article><small>Projects online</small><strong data-kpi-projects>—</strong></article>
+            <article><small>Active agents</small><strong data-kpi-agents data-empty="true">Not loaded</strong></article>
+            <article><small>Fleet queue</small><strong data-kpi-queue data-empty="true">Not loaded</strong></article>
+            <article><small>Live sessions</small><strong data-kpi-sessions data-empty="true">Not loaded</strong></article>
+            <article><small>Projects online</small><strong data-kpi-projects data-empty="true">Not loaded</strong></article>
           </section>
           <div class="dm-mission-grid">
             <section class="dm-mission-panel">
-              <header><div><small>Runtime</small><h2>Agent Runs</h2></div><button type="button" data-open-app="agents">Open Agents</button></header>
+              <header><h2>Agent Runs</h2><button type="button" data-open-app="agents">Open</button></header>
               <div data-mission-agents></div>
             </section>
             <section class="dm-mission-panel">
-              <header><div><small>Backends</small><h2>Sessions</h2></div><button type="button" data-open-app="sessions">Open Activity</button></header>
+              <header><h2>Sessions</h2><button type="button" data-open-app="sessions">Open</button></header>
               <div data-mission-sessions></div>
             </section>
             <section class="dm-mission-panel">
-              <header><div><small>Machine</small><h2>Host</h2></div><button type="button" data-open-system="hosts">Open Hosts</button></header>
+              <header><h2>Host</h2><button type="button" data-open-system="hosts">Open</button></header>
               <div data-mission-host></div>
             </section>
             <section class="dm-mission-panel">
-              <header><div><small>Workspace</small><h2>Projects</h2></div><button type="button" data-open-app="projects">Open Projects</button></header>
+              <header><h2>Projects</h2><button type="button" data-open-app="projects">Open</button></header>
               <div data-mission-projects></div>
             </section>
           </div>
@@ -180,8 +181,16 @@ export function mountMissionControl() {
   document.body.appendChild(root);
 
   const modal = root.querySelector<HTMLElement>(".dm-mission-modal")!;
-  const refreshButton = root.querySelector<HTMLButtonElement>("[data-mission-refresh]")!;
-  const closeButton = root.querySelector<HTMLButtonElement>("[data-mission-close]")!;
+  // Shared sheet header: title, refresh (icon action) and close.
+  const head = createSheetHeader(document, { title: "Mission Control", titleId: "dmMissionTitle" });
+  const refreshButton = document.createElement("button");
+  refreshButton.type = "button";
+  refreshButton.dataset.missionRefresh = "";
+  refreshButton.setAttribute("aria-label", "Refresh");
+  refreshButton.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
+  head.actions.append(refreshButton);
+  const closeButton = head.closeButton;
+  root.querySelector<HTMLElement>(".dm-mission-sheet")!.prepend(head.element);
   const updated = root.querySelector<HTMLElement>("[data-mission-updated]")!;
   const agentsNode = root.querySelector<HTMLElement>("[data-mission-agents]")!;
   const sessionsNode = root.querySelector<HTMLElement>("[data-mission-sessions]")!;
@@ -207,7 +216,7 @@ export function mountMissionControl() {
   function renderAgents() {
     agentsNode.replaceChildren();
     if (!state.agents.ok) {
-      agentsNode.append(errorState(state.agents.error || "Agent runtime unavailable"));
+      agentsNode.append(errorState(state.agents, "Agent runtime unavailable"));
       return;
     }
     const runs = readRuns(state.agents)
@@ -217,7 +226,7 @@ export function mountMissionControl() {
     kpiAgents.textContent = String(runs.filter(run => ACTIVE_AGENT_STATES.has(stringValue(run.state, "").toLowerCase())).length);
     kpiQueue.textContent = String(queued);
     if (!runs.length) {
-      agentsNode.append(emptyState("No Agent Runs yet."));
+      agentsNode.append(emptyState("No agent runs"));
       return;
     }
     for (const run of runs.slice(0, 6)) {
@@ -234,14 +243,14 @@ export function mountMissionControl() {
   function renderSessions() {
     sessionsNode.replaceChildren();
     if (!state.sessions.ok) {
-      sessionsNode.append(errorState(state.sessions.error || "Session inventory unavailable"));
+      sessionsNode.append(errorState(state.sessions, "Session inventory unavailable"));
       return;
     }
     const sessions = readSessions(state.sessions);
     const live = sessions.filter(session => !TERMINAL_SESSION_STATES.has(stringValue(session.status, "").toLowerCase()));
     kpiSessions.textContent = String(live.length);
     if (!sessions.length) {
-      sessionsNode.append(emptyState("No OpenCode or Codex sessions reported."));
+      sessionsNode.append(emptyState("No sessions"));
       return;
     }
     for (const session of sessions.slice(0, 6)) {
@@ -258,7 +267,7 @@ export function mountMissionControl() {
   function renderHost() {
     hostNode.replaceChildren();
     if (!state.host.ok) {
-      hostNode.append(errorState(state.host.error || "Host snapshot unavailable"));
+      hostNode.append(errorState(state.host, "Host snapshot unavailable"));
       return;
     }
     const payload = objectValue(state.host.data);
@@ -285,14 +294,14 @@ export function mountMissionControl() {
   function renderProjects() {
     projectsNode.replaceChildren();
     if (!state.projects.ok) {
-      projectsNode.append(errorState(state.projects.error || "Project registry unavailable"));
+      projectsNode.append(errorState(state.projects, "Project registry unavailable"));
       return;
     }
     const projects = readProjects(state.projects);
     const online = projects.filter(project => project.available === true).length;
     kpiProjects.textContent = projects.length ? `${online}/${projects.length}` : "0";
     if (!projects.length) {
-      projectsNode.append(emptyState("No registered projects."));
+      projectsNode.append(emptyState("No projects"));
       return;
     }
     for (const project of projects.slice(0, 6)) {
@@ -304,18 +313,26 @@ export function mountMissionControl() {
     }
   }
 
+  // A KPI whose source did not load says so instead of a bare "—".
+  function setKpi(node: HTMLElement, ok: boolean) {
+    if (!ok) node.textContent = "Not loaded";
+    node.dataset.empty = String(!ok);
+  }
+
   function render() {
-    kpiAgents.textContent = state.agents.ok ? kpiAgents.textContent : "—";
-    kpiQueue.textContent = state.agents.ok ? kpiQueue.textContent : "—";
-    kpiSessions.textContent = state.sessions.ok ? kpiSessions.textContent : "—";
-    kpiProjects.textContent = state.projects.ok ? kpiProjects.textContent : "—";
+    setKpi(kpiAgents, state.agents.ok);
+    setKpi(kpiQueue, state.agents.ok);
+    setKpi(kpiSessions, state.sessions.ok);
+    setKpi(kpiProjects, state.projects.ok);
     renderAgents();
     renderSessions();
     renderHost();
     renderProjects();
-    updated.textContent = state.loadedAt
-      ? `Updated ${new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(state.loadedAt))}`
-      : "Not loaded yet";
+    // Label and time are separate text nodes so the label is translated.
+    updated.replaceChildren();
+    if (state.loadedAt) {
+      updated.append(element("span", "", "Updated"), document.createTextNode(" "), element("span", "", new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(state.loadedAt))));
+    } else updated.textContent = "Not loaded";
   }
 
   function syncAutoRefresh() {
@@ -330,7 +347,6 @@ export function mountMissionControl() {
   async function refresh() {
     if (refreshInFlight) return refreshInFlight;
     refreshButton.disabled = true;
-    refreshButton.classList.add("spinning");
     refreshInFlight = (async () => {
       const [agents, sessions, host, projects] = await Promise.all([
         loadSource("/api/agent-runs"),
@@ -343,7 +359,6 @@ export function mountMissionControl() {
     })().finally(() => {
       refreshInFlight = null;
       refreshButton.disabled = false;
-      refreshButton.classList.remove("spinning");
     });
     return refreshInFlight;
   }
@@ -390,6 +405,7 @@ export function mountMissionControl() {
   });
 
   window.addEventListener("devmoter:open-mission-control", open);
+  window.addEventListener("devmoter:close-mission-control", () => close(false));
   window.addEventListener("devmoter:surface-changed", () => close(false));
   window.addEventListener("online", () => { if (opened) void refresh(); });
   document.addEventListener("visibilitychange", () => {

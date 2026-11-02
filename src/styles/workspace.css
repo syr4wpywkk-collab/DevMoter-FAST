@@ -51,38 +51,41 @@
 
 .cx-project-row {
   width: 100%;
-  min-height: 62px;
-  padding: 9px 10px;
+  min-height: 60px;
+  padding: 8px 10px;
   display: grid;
-  grid-template-columns: 34px 1fr 24px;
+  grid-template-columns: 36px minmax(0, 1fr) 24px;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   border: 1px solid transparent;
-  border-radius: 14px;
+  border-radius: 12px;
   background: transparent;
-  color: #f2f2f2;
+  color: var(--text-primary);
   text-align: left;
 }
 
+/* Selected = hairline border + check; no filled/dark row. */
 .cx-project-row.selected {
-  border-color: #3d4d40;
-  background: #172019;
+  border-color: var(--border-subtle);
+  background: var(--surface-hover);
 }
 
 .cx-project-icon {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
-  border-radius: 10px;
-  background: #242424;
-  color: #bdbdbd;
+  flex-shrink: 0;
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-secondary);
 }
 
 .cx-project-copy {
   min-width: 0;
   display: grid;
-  gap: 3px;
+  gap: 2px;
 }
 
 .cx-project-copy strong,
@@ -92,15 +95,23 @@
   white-space: nowrap;
 }
 
+.cx-project-copy strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
 .cx-project-copy small {
-  color: #777;
-  font-size: .7rem;
+  color: var(--text-secondary);
+  font-size: .75rem;
 }
 
 .cx-project-state {
-  color: #8c8c8c;
-  text-align: center;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
 }
+
+.cx-project-row.selected .cx-project-state { color: var(--text-primary); }
 
 .cx-project-form {
   display: grid;

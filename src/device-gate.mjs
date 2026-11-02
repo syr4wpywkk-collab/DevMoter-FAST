@@ -41,12 +41,27 @@ export function openDeviceRegistration(win = window) {
  * registration / pairing page. `onRegister` runs before navigation so the
  * host surface can close itself first.
  */
-export function createDeviceGate(doc, { onRegister, className = "" } = {}) {
+export function createDeviceGate(doc, { onRegister, className = "", compact = false } = {}) {
   const win = doc.defaultView;
   const gate = doc.createElement("div");
-  gate.className = ["dm-device-gate", className].filter(Boolean).join(" ");
+  gate.className = ["dm-device-gate", compact ? "dm-device-gate-compact" : "", className].filter(Boolean).join(" ");
   gate.dataset.deviceGate = "true";
   gate.setAttribute("role", "status");
+
+  // Compact: the whole sheet section is replaced by one button into
+  // Settings → 信頼済み端末 (DevMoter Tools: Terminal / Safety / Index).
+  if (compact) {
+    const open = doc.createElement("button");
+    open.type = "button";
+    open.dataset.deviceGateRegister = "true";
+    open.textContent = "信頼済み端末を開く";
+    open.addEventListener("click", () => {
+      onRegister?.();
+      if (win) openDeviceRegistration(win);
+    });
+    gate.append(open);
+    return gate;
+  }
 
   const title = doc.createElement("strong");
   title.textContent = "この端末は未登録です";

@@ -1,4 +1,6 @@
 import "./agent-console.css";
+import { createDeviceGate, isDeviceAuthError } from "./device-gate.mjs";
+import { createSheetHeader } from "./sheet-header.mjs";
 import {
   compileModePrompt,
   listModes,
@@ -93,6 +95,13 @@ function persistModelRoutes(routes: ModelRoute[]) {
   localStorage.setItem(MODEL_ROUTES_KEY, JSON.stringify(routes));
 }
 
+// One line per built-in mode; the full policy stays under 詳細.
+const MODE_SUMMARIES: Record<string, string> = {
+  debug: "Reproduce a failure and propose the smallest fix",
+  review: "Review a diff and report risks without editing",
+  orchestrator: "Split a large task and delegate after approval"
+};
+
 function parseToolGroups(value: string) {
   return value.split(",").map(item => item.trim()).filter(Boolean);
 }
@@ -114,21 +123,21 @@ export function mountAgentConsole() {
   launcher.textContent = "Agent mode";
 
   const panel = document.createElement("section");
-  panel.className = "devmoter-agent-panel hidden";
+  // Shared sheet frame + header (zcode-theme.css / sheet-header.mjs).
+  panel.className = "devmoter-agent-panel dm-sheet-frame hidden";
+  panel.setAttribute("role", "dialog");
   panel.setAttribute("aria-label", "Agent mode control");
   panel.innerHTML = `
-    <div class="devmoter-agent-head">
-      <div><h2>Agent mode</h2><p>Runs through the normal DevMoter approval flow.</p></div>
-      <button class="devmoter-agent-close" type="button" aria-label="Close">×</button>
-    </div>
+    <div class="devmoter-agent-body">
     <div class="devmoter-agent-field">
       <label for="devmoterAgentMode">Mode</label>
       <select id="devmoterAgentMode"></select>
+      <small id="devmoterAgentModeSummary" class="devmoter-agent-summary"></small>
     </div>
-    <div class="devmoter-agent-field">
-      <label>Visible policy</label>
+    <details class="devmoter-agent-details">
+      <summary>Details</summary>
       <pre id="devmoterAgentPolicy" class="devmoter-agent-policy"></pre>
-    </div>
+    </details>
     <div class="devmoter-agent-mode-tools">
       <button id="devmoterAgentNewMode" type="button">＋ Custom mode</button>
       <button id="devmoterAgentEditMode" type="button">Edit selected</button>
@@ -169,7 +178,7 @@ export function mountAgentConsole() {
       <button id="devmoterOrchestrationApprove" class="devmoter-agent-run" type="button">Approve & send plan to active chat</button>
     </section>
     <button id="devmoterAgentRun" class="devmoter-agent-run" type="button">Run in active chat</button>
-    <button id="devmoterSubagentRun" class="devmoter-agent-secondary-run" type="button">Run as bounded Codex subagent</button>
+    <button id="devmoterSubagentRun" class="devmoter-agent-secondary-run" type="button">Run as subagent</button>
     <section id="devmoterSubagentRuns" class="devmoter-subagent-runs hidden">
       <div class="devmoter-fleet-dashboard-head">
         <strong>Agent Fleet dashboard</strong>
@@ -196,9 +205,18 @@ export function mountAgentConsole() {
       <div id="devmoterSecondOpinionList"></div>
     </section>
     <p id="devmoterAgentStatus" class="devmoter-agent-status" role="status" aria-live="polite"></p>
+    </div>
   `;
+  const head = createSheetHeader(document, {
+    title: "Agent mode",
+    subtitle: "Runs through the normal DevMoter approval flow.",
+    titleId: "devmoterAgentTitle"
+  });
+  panel.setAttribute("aria-labelledby", "devmoterAgentTitle");
+  panel.prepend(head.element);
 
-  const close = panel.querySelector<HTMLButtonElement>(".devmoter-agent-close")!;
+  const close = head.closeButton;
+  const modeSummary = panel.querySelector<HTMLElement>("#devmoterAgentModeSummary")!;
   const select = panel.querySelector<HTMLSelectElement>("#devmoterAgentMode")!;
   const policy = panel.querySelector<HTMLPreElement>("#devmoterAgentPolicy")!;
   const task = panel.querySelector<HTMLTextAreaElement>("#devmoterAgentTask")!;
@@ -274,8 +292,19 @@ export function mountAgentConsole() {
   }
 
   function setStatus(message: string, error = false) {
+    panel.querySelector(".devmoter-agent-body > [data-device-gate]")?.remove();
     status.textContent = message;
     status.classList.toggle("error", error);
+  }
+
+  // Device-token refusals become one button into 信頼済み端末, not raw text.
+  function reportError(error: unknown) {
+    if (!isDeviceAuthError(error)) {
+      setStatus(error instanceof Error ? error.message : String(error), true);
+      return;
+    }
+    setStatus("");
+    status.before(createDeviceGate(document, { compact: true, onRegister: () => panel.classList.add("hidden") }));
   }
 
   function currentModes() {
@@ -298,6 +327,7 @@ export function mountAgentConsole() {
   function renderMode() {
     const mode = resolveMode(activeModeId, customModes);
     policy.textContent = renderModePolicy(mode);
+    modeSummary.textContent = MODE_SUMMARIES[mode.id] || mode.description || "";
     task.placeholder = mode.id === "debug"
       ? "Describe the failure, regression, or test you want reproduced"
       : mode.id === "review"
@@ -434,7 +464,7 @@ export function mountAgentConsole() {
       cancel.type = "button";
       cancel.textContent = "Cancel";
       cancel.addEventListener("click", () => void subagents.cancel(run.id).catch(error =>
-        setStatus(error instanceof Error ? error.message : String(error), true)
+        reportError(error)
       ));
       actions.appendChild(cancel);
 
@@ -444,7 +474,7 @@ export function mountAgentConsole() {
           button.type = "button";
           button.textContent = label;
           button.addEventListener("click", () => void subagents.respondApproval(run.id, decision).catch(error =>
-            setStatus(error instanceof Error ? error.message : String(error), true)
+            reportError(error)
           ));
           actions.appendChild(button);
         }
@@ -459,7 +489,7 @@ export function mountAgentConsole() {
 
   subagents.subscribe(renderSubagentRun);
   void subagents.refresh().catch(error =>
-    setStatus(error instanceof Error ? error.message : String(error), true)
+    reportError(error)
   );
 
   opinionClose.addEventListener("click", () => {
@@ -486,7 +516,7 @@ export function mountAgentConsole() {
         secondOpinionTargetId = null;
         if (opinion) setStatus(`Second opinion started: ${opinion.id}`);
       } catch (error) {
-        setStatus(error instanceof Error ? error.message : String(error), true);
+        reportError(error);
       }
     })();
   });
@@ -516,7 +546,7 @@ export function mountAgentConsole() {
       renderModelRouting();
       setStatus("Saved role model routing.");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error), true);
+      reportError(error);
     }
   });
 
@@ -564,7 +594,7 @@ export function mountAgentConsole() {
       fillEditor(mode);
       setStatus(`Saved custom mode: ${mode.name}`);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error), true);
+      reportError(error);
     }
   });
   editorDelete.addEventListener("click", () => {
@@ -598,7 +628,7 @@ export function mountAgentConsole() {
       setStatus(`Sent to ${backend}. Approvals and diffs stay in the normal flow.`);
       panel.classList.add("hidden");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error), true);
+      reportError(error);
     }
   });
 
@@ -627,7 +657,7 @@ export function mountAgentConsole() {
         });
         if (run) setStatus(`Spawned bounded subagent ${run.id}`);
       } catch (error) {
-        setStatus(error instanceof Error ? error.message : String(error), true);
+        reportError(error);
       }
     })();
   });
@@ -663,7 +693,7 @@ export function mountAgentConsole() {
         setStatus(`Fleet ${fleet.id}: ${fleet.runIds.length} running/started, ${fleet.queued} queued.`);
         subagentRuns.classList.remove("hidden");
       } catch (error) {
-        setStatus(error instanceof Error ? error.message : String(error), true);
+        reportError(error);
       }
     })();
   });
@@ -676,7 +706,7 @@ export function mountAgentConsole() {
       setStatus(`Approved plan sent to ${backend}. Extra delegation still requires approval.`);
       panel.classList.add("hidden");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error), true);
+      reportError(error);
     }
   });
 

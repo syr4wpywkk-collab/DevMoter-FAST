@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import vm from "node:vm";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
+import * as deviceGate from "../src/device-gate.mjs";
+import * as sheetHeader from "../src/sheet-header.mjs";
 import { readFile } from "node:fs/promises";
 
 const source = path => readFile(new URL("../" + path, import.meta.url), "utf8");
@@ -50,9 +52,9 @@ test("every sheet opened from a Settings row is titled with that row's label", a
   ));
   // [row label in Settings, title source string, where the sheet sets it]
   const sheets = [
-    ["アクティビティ", "Activity", "src/session-control.ts", '<header class="sc-head"><strong>Activity</strong>'],
-    ["レビューとタスク", "Review & Tasks", "src/workflow.ts", "<strong>Review & Tasks</strong>"],
-    ["エージェントモード", "Agent mode", "src/agent-console.ts", "<h2>Agent mode</h2>"],
+    ["アクティビティ", "Activity", "src/session-control.ts", 'createSheetHeader(document,{title:"Activity"'],
+    ["レビューとタスク", "Review & Tasks", "src/workflow.ts", 'createSheetHeader(document, { title: "Review & Tasks"'],
+    ["エージェントモード", "Agent mode", "src/agent-console.ts", 'title: "Agent mode"'],
     ["表示履歴", "表示履歴", "src/workspace-control.ts", 'panelHead("表示履歴")'],
     ["チェックポイント", "チェックポイント", "src/workspace-control.ts", 'panelHead("チェックポイント")'],
     ["拡張機能", "拡張機能", "src/workspace-control.ts", 'panelHead("拡張機能")'],
@@ -97,7 +99,7 @@ test("Remote & automation renders each section once even when opened and switche
   };
   const exports = {};
   vm.runInNewContext(compiled, {
-    exports, require: () => ({}), window, document: window.document, location: window.location, navigator: window.navigator,
+    exports, require: name => name === "./device-gate.mjs" ? deviceGate : name === "./sheet-header.mjs" ? sheetHeader : {}, window, document: window.document, location: window.location, navigator: window.navigator,
     Headers, fetch, setTimeout, clearTimeout, crypto: { randomUUID: () => "op" }, CustomEvent: window.CustomEvent,
     PublicKeyCredential: undefined, Intl, atob, btoa
   });
