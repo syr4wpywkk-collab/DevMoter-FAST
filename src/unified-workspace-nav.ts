@@ -22,7 +22,7 @@ const ICONS: Record<string, string> = {
   "tools": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M9 8V5h6v3M3 13h18"/></svg>',
 };
 
-type ChatBackend = "codex" | "opencode" | "api";
+type ChatBackend = "codex" | "opencode" | "api" | "qwen";
 type WorkspaceTab = "tasks" | "chat" | "review" | "tools" | "terminal";
 const isWorkspaceTab = (value: unknown): value is WorkspaceTab =>
   value === "tasks" || value === "chat" || value === "review" || value === "tools" || value === "terminal";
@@ -63,6 +63,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
           <option value="codex">Codex</option>
           <option value="opencode">OpenCode</option>
           <option value="api">API Chat</option>
+          <option value="qwen">Qwen Code</option>
         </select>
       </label>
       <button type="button" class="dm-task-first-menu-button" data-workspace-menu-button aria-haspopup="true" aria-expanded="false" aria-controls="dmTaskFirstMenu" aria-label="Switch screen">☰</button>
@@ -148,9 +149,9 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
 
   let surface: MainSurface = actions.initialSurface;
   // Preserve the last real backend when starting on Home or Integrations.
-  let currentBackend: ChatBackend = surface === "codex" || surface === "api" || surface === "opencode"
+  let currentBackend: ChatBackend = surface === "codex" || surface === "api" || surface === "opencode" || surface === "qwen"
     ? surface
-    : actions.initialBackend === "codex" || actions.initialBackend === "api" || actions.initialBackend === "opencode"
+    : actions.initialBackend === "codex" || actions.initialBackend === "api" || actions.initialBackend === "opencode" || actions.initialBackend === "qwen"
       ? actions.initialBackend
       : "opencode";
 
@@ -185,9 +186,9 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   };
   const updateSurface = (next: MainSurface) => {
     surface = next;
-    if (next === "codex" || next === "opencode" || next === "api") currentBackend = next;
+    if (next === "codex" || next === "opencode" || next === "api" || next === "qwen") currentBackend = next;
     backendSelect.value = currentBackend;
-    activeTab = next === "codex" || next === "opencode" || next === "api" ? "chat" : null;
+    activeTab = next === "codex" || next === "opencode" || next === "api" || next === "qwen" ? "chat" : null;
     renderSelection();
     updateProject();
   };
@@ -202,7 +203,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
 
   const onBackendChanged = (event: Event) => {
     const next = (event as CustomEvent<{ backend?: ChatBackend }>).detail?.backend;
-    if (next === "codex" || next === "opencode" || next === "api") {
+    if (next === "codex" || next === "opencode" || next === "api" || next === "qwen") {
       currentBackend = next;
       backendSelect.value = next;
     }
@@ -211,7 +212,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
 
   backendSelect.addEventListener("change", () => {
     const next = backendSelect.value;
-    if (next !== "codex" && next !== "opencode" && next !== "api") return;
+    if (next !== "codex" && next !== "opencode" && next !== "api" && next !== "qwen") return;
     feedback.textContent = "";
     selectTab("chat", "push", next);
   });

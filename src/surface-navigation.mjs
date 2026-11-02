@@ -1,5 +1,5 @@
-const SURFACES = new Set(["home", "opencode", "codex", "api", "integrations"]);
-const LEGACY_BACKENDS = new Set(["opencode", "codex", "api"]);
+const SURFACES = new Set(["home", "opencode", "codex", "api", "qwen", "integrations"]);
+const LEGACY_BACKENDS = new Set(["opencode", "codex", "api", "qwen"]);
 
 export function isMainSurface(value) {
   return typeof value === "string" && SURFACES.has(value);

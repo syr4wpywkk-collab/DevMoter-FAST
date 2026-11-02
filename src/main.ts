@@ -5,6 +5,7 @@ import { mountCodexRemote } from "./codex";
 import { mountApiChat } from "./api-chat";
 import { startI18n } from "./i18n";
 import { mountIntegrations } from "./integrations";
+import { mountQwenChat } from "./qwen-chat";
 import { mountAgentConsole } from "./agent-console";
 import { mountSessionControl } from "./session-control";
 import { mountWorkspaceTools } from "./workspace-tools";
@@ -54,6 +55,7 @@ app.innerHTML = `
   <div id="openCodeView" class="pocket-view"><div id="openCodeMount"></div></div>
   <div id="codexView" class="pocket-view hidden"><div id="codexMount"></div></div>
   <div id="apiView" class="pocket-view hidden"><div id="apiMount"></div></div>
+  <div id="qwenView" class="pocket-view hidden"><div id="qwenMount"></div></div>
   <div id="integrationsView" class="pocket-view hidden"><div id="integrationsMount"></div></div>
   <div id="workflowMount"></div>
 `;
@@ -62,6 +64,7 @@ const openCodeView = document.querySelector<HTMLDivElement>("#openCodeView")!;
 const homeView = document.querySelector<HTMLElement>("#devmoterHomeView")!;
 const codexView = document.querySelector<HTMLDivElement>("#codexView")!;
 const apiView = document.querySelector<HTMLDivElement>("#apiView")!;
+const qwenView = document.querySelector<HTMLDivElement>("#qwenView")!;
 const integrationsView = document.querySelector<HTMLDivElement>("#integrationsView")!;
 const openCodeMount = document.querySelector<HTMLDivElement>("#openCodeMount")!;
 const codexMount = document.querySelector<HTMLDivElement>("#codexMount")!;
@@ -69,13 +72,13 @@ const apiMount = document.querySelector<HTMLDivElement>("#apiMount")!;
 const integrationsMount = document.querySelector<HTMLDivElement>("#integrationsMount")!;
 const workflowMount = document.querySelector<HTMLDivElement>("#workflowMount")!;
 
-type Backend = "opencode" | "codex" | "api" | "integrations";
+type Backend = "opencode" | "codex" | "api" | "qwen" | "integrations";
 
 const deepLinkBackend = startupParams.get("backend");
 const deepLinkSession = startupParams.get("session");
-if (deepLinkBackend === "codex" || deepLinkBackend === "opencode" || deepLinkBackend === "api") {
+if (deepLinkBackend === "codex" || deepLinkBackend === "opencode" || deepLinkBackend === "api" || deepLinkBackend === "qwen") {
   localStorage.setItem("opencode-pocket-backend", deepLinkBackend);
-  if (deepLinkSession && deepLinkBackend !== "api") {
+  if (deepLinkSession && deepLinkBackend !== "api" && deepLinkBackend !== "qwen") {
     localStorage.setItem(
       deepLinkBackend === "codex" ? "opencode-pocket-codex-thread" : "opencode-pocket-opencode-session",
       deepLinkSession
@@ -85,7 +88,7 @@ if (deepLinkBackend === "codex" || deepLinkBackend === "opencode" || deepLinkBac
 
 const savedBackend = localStorage.getItem("opencode-pocket-backend");
 let activeBackend: Backend =
-  savedBackend === "codex" || savedBackend === "api" || savedBackend === "integrations"
+  savedBackend === "codex" || savedBackend === "api" || savedBackend === "qwen" || savedBackend === "integrations"
     ? savedBackend
     : "opencode";
 
@@ -100,6 +103,7 @@ function applyBackend(next: Backend) {
   openCodeView.classList.toggle("hidden", next !== "opencode");
   codexView.classList.toggle("hidden", next !== "codex");
   apiView.classList.toggle("hidden", next !== "api");
+  qwenView.classList.toggle("hidden", next !== "qwen");
   integrationsView.classList.toggle("hidden", next !== "integrations");
   document.body.classList.toggle("codex-mode", next === "codex");
   document.body.classList.toggle("opencode-mode", next === "opencode");
@@ -127,6 +131,7 @@ function applySurface(surface: MainSurface) {
     openCodeView.classList.add("hidden");
     codexView.classList.add("hidden");
     apiView.classList.add("hidden");
+    qwenView.classList.add("hidden");
     integrationsView.classList.add("hidden");
     document.body.classList.remove("codex-mode", "opencode-mode", "api-mode", "integrations-mode");
     document.body.classList.add("devmoter-home-mode");
@@ -166,6 +171,8 @@ const apiRemote = mountApiChat(apiMount, {
   onCodex: () => setBackend("codex"),
   onOpenCode: () => setBackend("opencode")
 });
+
+mountQwenChat(document.querySelector<HTMLDivElement>("#qwenMount")!);
 
 const integrationsRemote = mountIntegrations(integrationsMount, {
   onOpenCode: () => setBackend("opencode"),

@@ -39,6 +39,7 @@ import { assertAuthPassword, credentialsMatch, parseBasicAuthorization, requireS
 import { OidcAuth } from "./server/oidc-auth.mjs";
 import { ExternalAuth } from "./server/external-auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
+import { publicQwenChatError, runQwenChat } from "./server/qwen-chat.mjs";
 import { antigravityRemoteAction, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
 import { MULTI_API_PRESETS, assertVaultProviderDestination, createMultiApiStore, publicMultiApiProviders, runMultiApiChat, testMultiApiProvider } from "./server/multi-api.mjs";
 import { createMultiApiAttachmentStore } from "./server/multi-api-attachments.mjs";
@@ -3366,6 +3367,19 @@ const server = http.createServer(async (req, res) => {
         json(res, 200, await listIntegrations());
       } catch {
         json(res, 500, { error: "Integration status unavailable" });
+      }
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/qwen/chat") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      try {
+        const payload = await readJson(req, 128 * 1024);
+        const project = await getProjectById(String(payload?.projectId || ""));
+        json(res, 200, await runQwenChat({ prompt: payload?.prompt, sessionId: payload?.sessionId || null, cwd: project.path }));
+      } catch (error) {
+        const safe = publicQwenChatError(error);
+        json(res, safe.status, { error: safe.error });
       }
       return;
     }
