@@ -9,6 +9,7 @@ import * as sessions from "../src/session-tools.mjs";
 import * as pricing from "../src/model-pricing.mjs";
 import * as reconnect from "../src/reconnect-policy.mjs";
 import * as latestRequest from "../src/latest-request.mjs";
+import * as turnState from "../src/opencode-turn-state.mjs";
 import * as reconnectAfterSync from "../src/reconnect-after-sync.mjs";
 import * as sessionList from "../src/opencode-session-list.mjs";
 import * as eventRecovery from "../src/event-recovery.mjs";
@@ -80,6 +81,7 @@ async function harness(t, initialContext = []) {
     "./model-pricing.mjs": pricing,
     "./reconnect-policy.mjs": reconnect,
     "./latest-request.mjs": latestRequest,
+    "./opencode-turn-state.mjs": turnState,
     "./reconnect-after-sync.mjs": reconnectAfterSync,
     "./opencode-session-list.mjs": sessionList,
     "./event-recovery.mjs": eventRecovery,
