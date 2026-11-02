@@ -39,8 +39,9 @@ import { assertAuthPassword, credentialsMatch, parseBasicAuthorization, requireS
 import { OidcAuth } from "./server/oidc-auth.mjs";
 import { ExternalAuth } from "./server/external-auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
-import { createQwenRunRegistry, handleQwenChatRequest, isQwenId, publicQwenChatError } from "./server/qwen-chat.mjs";
-import { antigravityRemoteAction, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
+import { QwenChatError, createQwenRunRegistry, handleQwenChatRequest, isQwenId, publicQwenChatError } from "./server/qwen-chat.mjs";
+import { installQwenProvider, listQwenModels, publicQwenModelError, publicQwenModelList, publicQwenPresets, resolveQwenModelSelection } from "./server/qwen-models.mjs";
+import { antigravityRemoteAction, integrationChildEnv, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
 import { MULTI_API_PRESETS, assertVaultProviderDestination, createMultiApiStore, publicMultiApiProviders, runMultiApiChat, testMultiApiProvider } from "./server/multi-api.mjs";
 import { createMultiApiAttachmentStore } from "./server/multi-api-attachments.mjs";
 import { createSecretStore } from "./server/secret-store.mjs";
@@ -3376,10 +3377,45 @@ const server = http.createServer(async (req, res) => {
       try {
         const payload = await readJson(req, 128 * 1024);
         const project = await getProjectById(String(payload?.projectId || ""));
-        await handleQwenChatRequest({ res, payload, cwd: project.path, registry: qwenRuns, redact: redactText });
+        const resolveModel = async selection => {
+          if (selection == null) return null;
+          try {
+            return resolveQwenModelSelection(selection, await listQwenModels({ cwd: project.path, childEnv: integrationChildEnv("qwen") }));
+          } catch (error) {
+            const safe = publicQwenModelError(error);
+            throw new QwenChatError(safe.error, safe.status, safe.code);
+          }
+        };
+        await handleQwenChatRequest({ res, payload, cwd: project.path, registry: qwenRuns, redact: redactText, resolveModel });
       } catch (error) {
         const safe = publicQwenChatError(error);
         json(res, safe.status, { error: safe.error, code: safe.code });
+      }
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/qwen/models") {
+      try {
+        const project = await getProjectById(String(url.searchParams.get("projectId") || ""));
+        const listing = await listQwenModels({ cwd: project.path, childEnv: integrationChildEnv("qwen") });
+        json(res, 200, { ...publicQwenModelList(listing), presets: publicQwenPresets() });
+      } catch (error) {
+        const safe = publicQwenModelError(error);
+        json(res, safe.status, { error: safe.error, code: safe.code });
+      }
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/qwen/providers") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      let apiKey = "";
+      try {
+        const payload = await readJson(req, 16 * 1024);
+        apiKey = String(payload?.apiKey || "");
+        json(res, 200, await installQwenProvider(payload));
+      } catch (error) {
+        const safe = publicQwenModelError(error);
+        json(res, safe.status, { error: apiKey ? safe.error.split(apiKey).join("[REDACTED]") : safe.error, code: safe.code });
       }
       return;
     }

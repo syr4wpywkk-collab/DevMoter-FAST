@@ -31,7 +31,12 @@ export class QwenChatError extends Error {
   }
 }
 
-export function qwenChatArgs(prompt, sessionId) {
+const MODEL_ARG = /^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$/;
+
+// modelArgs comes from resolveQwenModelSelection (server/qwen-models.mjs):
+// ["--auth-type", <protocol>, "--model", <id>] or nothing for the CLI default.
+// Keys are never argv entries; qwen reads them from its own settings/env.
+export function qwenChatArgs(prompt, sessionId, modelArgs = []) {
   const text = String(prompt || "").trim();
   if (!text) throw new QwenChatError("メッセージが空です");
   if (text.length > QWEN_PROMPT_LIMIT) throw new QwenChatError("メッセージが長すぎます");
@@ -41,6 +46,13 @@ export function qwenChatArgs(prompt, sessionId) {
     args.push("--resume", String(sessionId));
   }
   // The prompt is a single argv entry (no shell), so it cannot inject flags.
+  if (modelArgs.length) {
+    const [authFlag, authType, modelFlag, model] = modelArgs;
+    if (modelArgs.length !== 4 || authFlag !== "--auth-type" || modelFlag !== "--model" || !MODEL_ARG.test(String(authType)) || !MODEL_ARG.test(String(model))) {
+      throw new QwenChatError("モデルの指定が不正です");
+    }
+    args.push(...modelArgs);
+  }
   args.push("--prompt", text);
   return args;
 }
@@ -121,8 +133,11 @@ export function createQwenStreamParser() {
   return { push, finish };
 }
 
-export function classifyQwenFailure(detail) {
+export function classifyQwenFailure(detail, { picked = false } = {}) {
   const message = String(detail || "").replace(/\s+/g, " ").trim();
+  if (AUTH_FAILURE.test(message) && picked) {
+    return new QwenChatError("選んだモデルのAPIキーで接続できませんでした。モデル選択でキーを確認してください", 401, "model_auth");
+  }
   if (AUTH_FAILURE.test(message)) {
     return new QwenChatError("Qwen Code にログインできていません。ローカル連携で設定してください", 401, "auth");
   }
@@ -157,6 +172,7 @@ function killTree(child) {
 export function runQwenChat({
   prompt,
   sessionId = null,
+  modelArgs = [],
   cwd,
   bin = process.env.QWEN_BIN || "qwen",
   onEvent = () => {},
@@ -164,7 +180,7 @@ export function runQwenChat({
   maxRunMs = QWEN_MAX_RUN_MS,
   env = { ...integrationChildEnv("qwen"), NO_COLOR: "1", TERM: "dumb" }
 }) {
-  const args = qwenChatArgs(prompt, sessionId);
+  const args = qwenChatArgs(prompt, sessionId, modelArgs);
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(new QwenChatError("停止しました", 499, "cancelled"));
     const parser = createQwenStreamParser();
@@ -211,9 +227,9 @@ export function runQwenChat({
       if (stopped === "cancelled") return settle(reject, new QwenChatError("停止しました", 499, "cancelled"));
       if (stopped === "timeout") return settle(reject, new QwenChatError("Qwen Code がタイムアウトしました", 504, "timeout"));
       const outcome = parser.finish();
-      if (outcome.result?.isError) return settle(reject, classifyQwenFailure(outcome.result.text || stderr));
+      if (outcome.result?.isError) return settle(reject, classifyQwenFailure(outcome.result.text || stderr, { picked: modelArgs.length > 0 }));
       if (outcome.result) return settle(resolve, { text: outcome.text, sessionId: outcome.sessionId });
-      if (code !== 0) return settle(reject, classifyQwenFailure(stderr));
+      if (code !== 0) return settle(reject, classifyQwenFailure(stderr, { picked: modelArgs.length > 0 }));
       settle(reject, new QwenChatError("Qwen Code の応答を読めませんでした", 502, "failed"));
     });
   });
@@ -245,15 +261,25 @@ export function createQwenRunRegistry() {
   };
 }
 
-// POST /api/qwen/chat body: { projectId, prompt, sessionId?, runId }.
+// POST /api/qwen/chat body: { projectId, prompt, sessionId?, runId, model? }.
+// `model` is { authType, id } from GET /api/qwen/models, or null for the CLI
+// default; `resolveModel` re-validates it against qwen's own settings and
+// returns { args, secret } (secret: that model's key, redacted from output).
+// Resuming a session with another model is allowed: qwen's own /model
+// switches models mid-session the same way.
 // Validation errors are plain JSON; once qwen starts the response is NDJSON:
 // {type:"start"} {type:"session"} {type:"delta"} {type:"tool"} {type:"ping"}
 // and one final {type:"done"} or {type:"error"}.
-export async function handleQwenChatRequest({ res, payload, cwd, registry, redact = value => value, run = runQwenChat, heartbeatMs = HEARTBEAT_MS }) {
+export async function handleQwenChatRequest({ res, payload, cwd, registry, redact: baseRedact = value => value, resolveModel = async () => null, run = runQwenChat, heartbeatMs = HEARTBEAT_MS }) {
   const runId = String(payload?.runId || "");
   if (!isQwenId(runId)) throw new QwenChatError("実行IDが不正です");
   const sessionId = payload?.sessionId ? String(payload.sessionId) : null;
   qwenChatArgs(payload?.prompt, sessionId); // validate before any output
+  const selection = await resolveModel(payload?.model ?? null);
+  const modelArgs = selection?.args ?? [];
+  qwenChatArgs(payload?.prompt, sessionId, modelArgs);
+  const secret = selection?.secret ? String(selection.secret) : "";
+  const redact = secret ? value => baseRedact(value).split(secret).join("[REDACTED]") : baseRedact;
   const controller = new AbortController();
   registry.begin(runId, sessionId, controller);
   const write = event => {
@@ -273,7 +299,7 @@ export async function handleQwenChatRequest({ res, payload, cwd, registry, redac
   const heartbeat = setInterval(() => write({ type: "ping" }), heartbeatMs);
   heartbeat.unref?.();
   try {
-    const reply = await run({ prompt: payload.prompt, sessionId, cwd, signal: controller.signal, onEvent: write });
+    const reply = await run({ prompt: payload.prompt, sessionId, modelArgs, cwd, signal: controller.signal, onEvent: write });
     write({ type: "done", text: reply.text, sessionId: reply.sessionId });
   } catch (error) {
     const safe = publicQwenChatError(error);
