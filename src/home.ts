@@ -188,7 +188,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       button.type = "button";
       button.className = "dm-home-recent-card";
       button.dataset.homeRecentApp = app.id;
-      button.setAttribute("aria-label", homeLabel(app) + " をもう一度開く");
+      button.setAttribute("aria-label", homeLabel(app) + "をもう一度開く");
       const top = document.createElement("span");
       top.className = "dm-home-recent-top";
       const icon = document.createElement("span");
@@ -215,7 +215,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     button.type = "button";
     button.className = "dm-home-quick-action";
     button.dataset.homeQuickAction = id;
-    button.setAttribute("aria-label", homeLabel(app) + " を開く");
+    button.setAttribute("aria-label", homeLabel(app) + "を開く");
     const icon = document.createElement("span");
     icon.className = "dm-home-quick-action-icon";
     icon.innerHTML = app.icon; // static SVG from the App Registry
@@ -238,9 +238,11 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     button.className = "dm-home-app-card";
     button.dataset.homeApp = app.id;
     button.dataset.homeSearchable = [homeLabel(app), app.title, app.id, app.shortDescription, app.category].join(" ").toLocaleLowerCase();
+    button.title = app.shortDescription;
     const state = app.availability === "preview" ? "プレビュー" : app.availability === "unavailable" ? "利用不可" : "";
     button.setAttribute("aria-label", homeLabel(app) + (state ? "、" + state : ""));
-    if (state) button.setAttribute("aria-disabled", "true");
+    // Browser's preview remains partial, but now has a real Files & Preview destination.
+    if (state && app.id !== "browser") button.setAttribute("aria-disabled", "true");
     if (app.availability === "unavailable") button.disabled = true;
     const icon = document.createElement("span");
     icon.className = "dm-home-card-icon";

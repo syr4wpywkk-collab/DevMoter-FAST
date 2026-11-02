@@ -129,6 +129,26 @@ async function copyText(text: string) {
   }
 }
 
+// Rows either stay inside Settings ("page:…", chevron) or leave it for another
+// screen ("open:…", arrow-out icon + "設定を閉じて開く" for screen readers).
+// Every other action works in place and has no trailing indicator.
+type OpenTarget =
+  | "sessions" | "review" | "agents" | "automation" | "terminal"
+  | "passkeys" | "hosts" | "safety" | "index"
+  | "context" | "checkpoints" | "extensions" | "files";
+const lineIcon = (body: string) =>
+  `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+const CHEVRON_ICON = lineIcon('<path d="m9 6 6 6-6 6"/>');
+// Leaving Settings uses the shared arrow-out line icon (same as external links).
+const LEAVE_ICON = ICONS.external;
+const LEAVE_LABEL = "設定を閉じて開く";
+
+function rowKind(action = "") {
+  if (action.startsWith("page:")) return "page";
+  if (action.startsWith("open:")) return "open";
+  return action ? "action" : "info";
+}
+
 function isLoopbackBrowser() {
   const host = location.hostname.toLowerCase();
   return host === "localhost" || host === "127.0.0.1" || host === "::1";
@@ -196,10 +216,17 @@ export function mountSettingsPanel() {
     /** Leaves the app (new tab): trailing external icon instead of the chevron. */
     external?: string;
   } = {}) {
+    const kind = rowKind(options.action);
+    const trailing = kind === "page"
+      ? `<span class="devmoter-settings-chevron" aria-hidden="true">${CHEVRON_ICON}</span>`
+      : kind === "open"
+        ? `<span class="devmoter-settings-leave" title="${LEAVE_LABEL}">${LEAVE_ICON}<span class="devmoter-settings-sr">${LEAVE_LABEL}</span></span>`
+        : "";
     return `
       <button
         class="devmoter-settings-row${options.danger ? " danger" : ""}"
         type="button"
+        data-kind="${kind}"
         ${options.action ? `data-action="${escapeHtml(options.action)}"` : ""}
         ${options.disabled ? "disabled" : ""}
         ${options.external ? `aria-label="${escapeHtml(`${label}（${options.external}が新しいタブで開きます）`)}"` : ""}
@@ -212,7 +239,7 @@ export function mountSettingsPanel() {
         ${options.badge ? `<span class="devmoter-settings-badge">${escapeHtml(options.badge)}</span>` : ""}
         ${options.external
           ? `<span class="devmoter-settings-chevron external" aria-hidden="true">${ICONS.external}</span>`
-          : '<span class="devmoter-settings-chevron" aria-hidden="true">›</span>'}
+          : trailing}
       </button>
     `;
   }
@@ -260,15 +287,15 @@ export function mountSettingsPanel() {
           <strong>${escapeHtml(login)}</strong>
           <small>${escapeHtml(provider)} アカウント · GitHub ${escapeHtml(githubValue)}</small>
         </span>
-        <span aria-hidden="true">›</span>
+        <span class="devmoter-settings-chevron" aria-hidden="true">${CHEVRON_ICON}</span>
       </button>
 
       ${section("ワークスペース",
-        row("sessions", "アクティビティ", { action: "existing:.sc-fab", value: "実行中・キュー・チェックポイント・履歴" }) +
-        row("review", "レビューとタスク", { action: "existing:#wfLaunch", value: "差分・ワークツリー・GitHub" }) +
-        row("agents", "エージェントモード", { action: "existing:#devmoterAgentLauncher", value: "モード・サブエージェント・フリート" }) +
-        row("context", "表示履歴", { action: "command:context", value: "表示量の目安と整理" }) +
-        row("checkpoint", "チェックポイント", { action: "command:checkpoints", value: "現在のタスク" })
+        row("sessions", "アクティビティ", { action: "open:sessions", value: "実行中・キュー・チェックポイント・履歴" }) +
+        row("review", "レビューとタスク", { action: "open:review", value: "差分・ワークツリー・GitHub" }) +
+        row("agents", "エージェントモード", { action: "open:agents", value: "モード・サブエージェント・フリート" }) +
+        row("context", "表示履歴", { action: "open:context", value: "表示量の目安と整理" }) +
+        row("checkpoint", "チェックポイント", { action: "open:checkpoints", value: "現在のタスク" })
       )}
 
       ${section("DevMoter をカスタマイズする",
@@ -277,22 +304,22 @@ export function mountSettingsPanel() {
       )}
 
       ${section("セキュリティとログイン",
-        row("passkey", "パスキー", { action: "remote:passkeys" }) +
+        row("passkey", "パスキー", { action: "open:passkeys" }) +
         row("device", "信頼済み端末", { action: "page:devices", value: "端末の登録とペアリングコード" }) +
         row("vault", "API Vault", { action: "page:vault", value: "ホストで暗号化して保存" })
       )}
 
       ${section("リモートと自動化",
-        row("hosts", "ホスト一覧", { action: "remote:hosts" }) +
-        row("automation", "自動化", { action: "remote:automation" })
+        row("hosts", "ホスト一覧", { action: "open:hosts" }) +
+        row("automation", "自動化", { action: "open:automation" })
       )}
 
       ${section("開発者ツール",
-        row("terminal", "ターミナル", { action: "tool:terminal" }) +
-        row("index", "プロジェクトインデックス", { action: "tool:index" }) +
-        row("safety", "セーフティスキャン", { action: "tool:safety" }) +
-        row("extensions", "拡張機能", { action: "command:extensions" }) +
-        row("browser", "ファイルとプレビュー", { action: "existing:.adv-fab" }) +
+        row("terminal", "ターミナル", { action: "open:terminal" }) +
+        row("index", "プロジェクトインデックス", { action: "open:index" }) +
+        row("safety", "セーフティスキャン", { action: "open:safety" }) +
+        row("extensions", "拡張機能", { action: "open:extensions" }) +
+        row("browser", "ファイルとプレビュー", { action: "open:files" }) +
         row("diagnostics", "診断", { action: "page:diagnostics", value: `v${appVersion}` })
       )}
 
@@ -389,7 +416,7 @@ export function mountSettingsPanel() {
       </div>
       <section class="devmoter-settings-section"><h2>サインイン方法</h2><div class="devmoter-settings-card">
         ${providerRows}
-        <div class="devmoter-settings-device"><span><strong>パスキー</strong><small>${passkey.available ? "このホストで利用可能 · Face ID / Touch ID / Windows Hello" : "このホストには登録済みのパスキーがありません"}</small></span><button type="button" data-action="remote:passkeys">管理</button></div>
+        <div class="devmoter-settings-device"><span><strong>パスキー</strong><small>${passkey.available ? "このホストで利用可能 · Face ID / Touch ID / Windows Hello" : "このホストには登録済みのパスキーがありません"}</small></span><button type="button" data-action="open:passkeys" aria-label="パスキーを管理（${LEAVE_LABEL}）">管理${LEAVE_ICON}</button></div>
         <div class="devmoter-settings-device"><span><strong>ローカル復旧</strong><small>${accountData?.localRecovery ? "利用可能" : "利用できません"}</small></span><span class="devmoter-settings-badge">復旧用</span></div>
       </div></section>
       ${githubLink ? '<section class="devmoter-settings-section"><h2>GitHub接続</h2><div class="devmoter-settings-card devmoter-settings-detail-card"><p>GitHubでこのコードを入力してください。</p><strong>' +
@@ -764,13 +791,13 @@ export function mountSettingsPanel() {
         row("1", "チャット", { value: "Codex・OpenCode・API Chat に指示" }) +
         row("2", "プロジェクト", { value: "作業するリポジトリとフォルダを選ぶ" }) +
         row("3", "アクティビティ", { value: "実行中・キュー・チェックポイント・引き継ぎ" }) +
-        row("4", "自動化", { action: "remote:automation", value: "スケジュール・イベントトリガー・オートパイロット" }) +
+        row("4", "自動化", { action: "open:automation", value: "スケジュール・イベントトリガー・オートパイロット" }) +
         row("5", "レビュー", { value: "AIが変えた差分を確認" })
       )}
       ${section("困ったとき",
         row("diagnostics", "診断を見る", { action: "page:diagnostics" }) +
-        row("safety", "セーフティスキャン", { action: "tool:safety", value: "危険なコマンドと記憶した承認" }) +
-        row("terminal", "ターミナル", { action: "tool:terminal", value: "登録済みプロジェクトで開く" })
+        row("safety", "セーフティスキャン", { action: "open:safety", value: "危険なコマンドと記憶した承認" }) +
+        row("terminal", "ターミナル", { action: "open:terminal", value: "登録済みプロジェクトで開く" })
       )}
     `;
     wireRows();
@@ -824,37 +851,51 @@ export function mountSettingsPanel() {
     page = "root";
   }
 
-  function openExisting(selector: string) {
-    close();
-    window.setTimeout(() => {
-      const target = document.querySelector<HTMLElement>(selector);
-      if (!target) {
-        toast("この機能は現在の画面では利用できません。");
-        return;
-      }
-      target.click();
-    }, 0);
-  }
+  const clickFirst = (selector: string) => {
+    const target = document.querySelector<HTMLElement>(selector);
+    if (!target) {
+      toast("この機能は現在の画面では利用できません。");
+      return false;
+    }
+    target.click();
+    return true;
+  };
+  // Each target opens the same control its own screen uses. On mobile the
+  // floating launchers are hidden by CSS, so these rows may be the only entry.
+  const launchApp = (id: string) => () => window.dispatchEvent(new CustomEvent("devmoter:launch-app", { detail: { id } }));
+  const command = (name: string) => () => window.dispatchEvent(new CustomEvent("devmoter:workspace-command", { detail: { command: name } }));
+  const controlTab = (tab: string) => () => {
+    if (!clickFirst(".dm-control-trigger")) return;
+    window.setTimeout(() => document.querySelector<HTMLButtonElement>(`.dm-control-tabs [data-tab="${tab}"]`)?.click(), 0);
+  };
+  const toolsTab = (index: number) => () => {
+    if (!clickFirst(".dm-tools-launcher")) return;
+    window.setTimeout(() => document.querySelectorAll<HTMLButtonElement>(".dm-tools-tabs button")[index]?.click(), 0);
+  };
+  const OPEN_TARGETS: Record<OpenTarget, () => void> = {
+    sessions: launchApp("sessions"),
+    review: launchApp("review"),
+    agents: launchApp("agents"),
+    automation: launchApp("automation"),
+    terminal: launchApp("terminal"),
+    passkeys: controlTab("passkeys"),
+    hosts: controlTab("hosts"),
+    safety: toolsTab(1),
+    index: toolsTab(2),
+    context: command("context"),
+    checkpoints: command("checkpoints"),
+    extensions: command("extensions"),
+    files: () => void clickFirst(".adv-fab")
+  };
 
-  function openRemote(tab: "hosts" | "automation" | "passkeys") {
+  /** The only way a row leaves Settings: close first, then open the target. */
+  function leave(target: string) {
+    const open = OPEN_TARGETS[target as OpenTarget];
+    if (!open) return;
     close();
-    window.setTimeout(() => {
-      document.querySelector<HTMLElement>(".dm-control-trigger")?.click();
-      window.setTimeout(() => {
-        document.querySelector<HTMLButtonElement>(`.dm-control-tabs [data-tab="${tab}"]`)?.click();
-      }, 0);
-    }, 0);
-  }
-
-  function openTools(tab: "terminal" | "safety" | "index") {
-    close();
-    window.setTimeout(() => {
-      document.querySelector<HTMLElement>(".dm-tools-launcher")?.click();
-      window.setTimeout(() => {
-        const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>(".dm-tools-tabs button"));
-        buttons[tab === "terminal" ? 0 : tab === "safety" ? 1 : 2]?.click();
-      }, 0);
-    }, 0);
+    // Defer past this click so the target's own outside-click handlers do not
+    // see the Settings tap and close it again.
+    window.setTimeout(open, 0);
   }
 
   async function enablePush() {
@@ -937,21 +978,8 @@ export function mountSettingsPanel() {
           renderAppearance();
           return;
         }
-        if (action.startsWith("remote:")) {
-          openRemote(action.slice(7) as "hosts" | "automation" | "passkeys");
-          return;
-        }
-        if (action.startsWith("tool:")) {
-          openTools(action.slice(5) as "terminal" | "safety" | "index");
-          return;
-        }
-        if (action.startsWith("command:")) {
-          close();
-          window.dispatchEvent(new CustomEvent("devmoter:workspace-command", { detail: { command: action.slice(8) } }));
-          return;
-        }
-        if (action.startsWith("existing:")) {
-          openExisting(action.slice(9));
+        if (action.startsWith("open:")) {
+          leave(action.slice(5));
           return;
         }
         if (action === "account:connect") {
@@ -1195,7 +1223,16 @@ export function mountSettingsPanel() {
     const requested = (event as CustomEvent<{ page?: SettingsPage }>).detail?.page;
     open(requested || "root");
   });
-  window.addEventListener("devmoter:surface-changed", close);
+  // Navigation elsewhere (☰ destinations, Home, provider switch, Back) always
+  // closes Settings, so only the destination stays visible.
+  const isOpen = () => !modal.classList.contains("hidden");
+  const closeForNavigation = () => { if (isOpen()) close(); };
+  window.addEventListener("devmoter:surface-changed", closeForNavigation);
+  window.addEventListener("devmoter:workspace-tab-changing", closeForNavigation);
+  // Theme can change from the ☰ menu while Settings is open; keep its value current.
+  window.addEventListener("devmoter:theme-changed", () => {
+    if (isOpen() && (page === "root" || page === "appearance")) void renderPage();
+  });
   closeButton.addEventListener("click", close);
   backButton.addEventListener("click", () => setPage("root"));
   modal.addEventListener("click", event => {

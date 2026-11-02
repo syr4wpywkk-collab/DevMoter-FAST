@@ -150,7 +150,7 @@ body.opencode-mode { background: var(--canvas-base); }
 .ocx-app .ocx-composer-left,
 .ocx-app .ocx-composer-actions { gap: 2px; }
 .ocx-app .ocx-composer-actions { flex: 0 0 auto; }
-.ocx-app .ocx-mini-button,
+.ocx-app .ocx-mini-button { min-width: 44px; width: 44px; min-height: 44px; height: 44px; flex: 0 0 44px; border-radius: 999px; }
 .ocx-app .ocx-send { width: 36px; height: 36px; min-height: 36px; flex: 0 0 36px; border-radius: 999px; }
 .ocx-app .ocx-mini-button { border-color: transparent; background: transparent; color: var(--oc-muted); }
 .ocx-app .ocx-mini-button:hover { background: var(--oc-panel-2); }

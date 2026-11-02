@@ -72,6 +72,7 @@ test("Home delegates all available App launches to the fixed shell allowlist", a
     'case "automation":', 'case "developer-workflows":'
   ]) assert.ok(shell.includes(launched), launched);
   // Home is reached from the workspace brand button (the old sidebar Home link was removed with the tab bar).
-  assert.ok(shellTests.includes('addEventListener("click", actions.openHome)'));
+  assert.ok(shellTests.includes('[data-workspace-home]")!.addEventListener("click", goHome)'));
+  assert.ok(shellTests.includes("actions\\.openHome"), "the shell test pins goHome → actions.openHome");
   assert.ok(navigationTests.includes("Home to surface to Home updates Back and Forward"));
 });

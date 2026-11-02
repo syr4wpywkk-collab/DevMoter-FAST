@@ -71,13 +71,20 @@ test("Home still treats non-shipped applications as previews, never launches the
     onLaunchApp: id => launches.push(id),
     onPreviewApp: (id, message) => previews.push({ id, message })
   });
+  const browserCard = root.querySelector('[data-home-app="browser"]');
+  assert.equal(browserCard.getAttribute("aria-disabled"), null);
+  assert.equal(browserCard.disabled, false);
+  assert.equal(root.querySelector('[data-home-app="knowledge"]').getAttribute("aria-disabled"), "true");
   root.querySelector('[data-home-app="knowledge"]').click();
   assert.equal(root.querySelector('[data-home-app="knowledge"]')?.getAttribute("aria-label"), "ナレッジ、プレビュー");
   assert.equal(root.querySelector('[data-home-app="knowledge"] .dm-home-app-state')?.textContent, "プレビュー");
+  browserCard.click();
   assert.deepEqual(launches, []);
-  assert.equal(previews.length, 1);
+  assert.equal(previews.length, 2);
   assert.equal(previews[0].id, "knowledge");
   assert.equal(previews[0].message, "ナレッジ機能は準備中です。専用の画面は今後追加予定です。");
+  assert.equal(previews[1].id, "browser");
+  assert.match(previews[1].message, /ファイルとプレビュー/);
   dom.window.close();
 });
 

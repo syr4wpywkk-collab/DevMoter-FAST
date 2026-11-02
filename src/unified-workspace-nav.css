@@ -121,6 +121,10 @@ body.dm-task-first-enabled {
   top: calc(var(--dw-top-height) - 4px);
   right: max(8px, env(safe-area-inset-right));
   width: min(240px, calc(100vw - 16px));
+  /* Short phones (320×568): the menu scrolls instead of running off-screen. */
+  max-height: calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - 8px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: grid;
   gap: 4px;
   padding: 4px;
@@ -179,7 +183,7 @@ body.dm-task-first-enabled {
 .dm-task-first-menu button { user-select: none; transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1); }
 .dm-task-first-menu button:active { transform: scale(0.97); }
 .dm-task-first-menu-row > strong { min-width: 0; font-size: 14px; font-weight: 500; }
-.dm-task-first-menu-row > select { min-width: 0; max-width: 112px; min-height: 32px; margin-left: auto; padding: 0 8px; border: 1px solid var(--dw-border); border-radius: 8px; background: var(--dw-panel); color: var(--dw-text); font: inherit; font-size: 16px; }
+.dm-task-first-menu-row > select { min-width: 44px; max-width: 112px; min-height: 44px; margin-left: auto; padding: 0 8px; border: 1px solid var(--dw-border); border-radius: 8px; background: var(--dw-panel); color: var(--dw-text); font: inherit; font-size: 16px; }
 .dm-task-first-menu-row > select:focus-visible { outline: 2px solid var(--dw-accent); outline-offset: 2px; }
 .dm-task-first-menu hr { width: 100%; height: 1px; margin: 0; border: 0; background: var(--dw-border); }
 .dm-task-first-feedback {
@@ -223,12 +227,30 @@ body.dm-task-first-enabled .api-app .api-sidebar { height:100%; }
 body.dm-task-first-enabled .dm-shell-menu-trigger { display: none; }
 body.devmoter-shell-menu-open .dm-task-first-nav { pointer-events:none; }
 body.dm-task-first-enabled.devmoter-shell-menu-open .dm-task-first-nav { pointer-events:auto; }
-/* Workspace panels and scrims sit below the header and above the keyboard. */
-body.dm-task-first-enabled :is(.sc-shell, .wf-modal, .pocket-git-overlay, .dm-shell-sidebar, .dm-shell-scrim) {
+/* Workspace panels and scrims sit below the header and above the keyboard.
+ * Settings and the Tools/Terminal panel are workspace panels too: they size to
+ * this box instead of their own viewport/safe-area math. */
+body.dm-task-first-enabled :is(.sc-shell, .wf-modal, .pocket-git-overlay, .dm-shell-sidebar, .dm-shell-scrim, .devmoter-settings-modal, .dm-tools-scrim) {
   top: calc(var(--dw-top-height) + var(--dm-viewport-offset-top, 0px));
   bottom: auto;
   height: calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height));
   max-height: calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height));
+}
+body.dm-task-first-enabled .devmoter-settings-modal { padding-top: 8px; }
+body.dm-task-first-enabled .dm-tools-panel {
+  top: calc(var(--dw-top-height) + var(--dm-viewport-offset-top, 0px) + 8px);
+  height: max(0px, calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - 8px - max(8px, env(safe-area-inset-bottom))));
+}
+@media (min-width: 820px) {
+  body.dm-task-first-enabled .dm-tools-panel {
+    top: calc(var(--dw-top-height) + var(--dm-viewport-offset-top, 0px) + (var(--dm-viewport-height, 100dvh) - var(--dw-top-height)) / 2);
+    height: min(900px, calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - 48px));
+    max-height: calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - 48px);
+  }
+}
+@media (max-width: 620px) {
+  /* The header already clears the notch; the sheet starts right under it. */
+  body.dm-task-first-enabled .devmoter-settings-modal { padding-top: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .dm-task-first-nav *, .dm-task-first-nav *::before, .dm-task-first-nav *::after { transition: none !important; }

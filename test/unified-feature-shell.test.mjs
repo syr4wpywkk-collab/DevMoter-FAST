@@ -44,7 +44,8 @@ test("Home is a first-class surface and sidebar entry without replacing existing
   assert.ok(!home.includes('data-home-continue'));
   // Home is reached from the workspace brand button; the Tools sidebar no longer duplicates it.
   const nav = await source("src/unified-workspace-nav.ts");
-  assert.ok(nav.includes('addEventListener("click", actions.openHome)'));
+  assert.ok(nav.includes('[data-workspace-home]")!.addEventListener("click", goHome)'));
+  assert.match(nav, /function goHome\(\) \{[\s\S]*?actions\.openHome\(\);/);
   assert.ok(!shell.includes("data-home-nav"));
   // Under the unified header the top safe area belongs to the header; only the
   // legacy ☰ view clears it (app-shell.css), so home.css never adds it twice.
@@ -57,7 +58,8 @@ test("Home is a first-class surface and sidebar entry without replacing existing
 
 test("Settings remains a temporary overlay and closes if main surface history changes", async () => {
   const [settings, main] = await Promise.all([source("src/settings.ts"), source("src/main.ts")]);
-  assert.ok(settings.includes('window.addEventListener("devmoter:surface-changed", close)'));
+  assert.ok(settings.includes('window.addEventListener("devmoter:surface-changed", closeForNavigation)'));
+  assert.ok(settings.includes('window.addEventListener("devmoter:workspace-tab-changing", closeForNavigation)'));
   assert.ok(main.includes('new CustomEvent("devmoter:surface-changed"'));
   assert.ok(!settings.includes("history.pushState"));
 });

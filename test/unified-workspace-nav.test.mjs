@@ -76,6 +76,15 @@ test("unified task-first navigation delegates to real app actions and native pro
   }
 });
 
+test("mobile language selector has a 44px minimum tap target", async () => {
+  const css = await readFile(new URL("../src/unified-workspace-nav.css", import.meta.url), "utf8");
+  const rule = css.match(/\.dm-task-first-menu-row > select\s*\{([^}]+)\}/)?.[1];
+  assert.ok(rule, "language select styling remains scoped to the existing menu control");
+  assert.match(rule, /min-width:\s*44px/);
+  assert.match(rule, /min-height:\s*44px/);
+  assert.match(rule, /max-width:\s*112px/, "the existing compact menu width remains bounded");
+});
+
 test("task-first navigator has no fake execution, server state or permission handling", async () => {
   const [moduleCode, shellCode, css] = await Promise.all([
     readFile(new URL("../src/unified-workspace-nav.ts", import.meta.url), "utf8"),
@@ -331,6 +340,112 @@ test("☰ menu replaces the bottom tab bar: aria-expanded, Escape, outside tap a
     menu.querySelector('[data-workspace-command="extensions"]').click();
     assert.equal(menu.hidden, true);
     assert.deepEqual(commands, ["theme", "extensions"]);
+    nav.destroy();
+  } finally {
+    Object.assign(globalThis, prior);
+    dom.window.close();
+  }
+});
+
+test("A-5: ☰ toggles through one state path; a tap on ☰ is never an outside tap", async () => {
+  const dom = new JSDOM('<!doctype html><div id="app"></div><button id="outside">x</button>', { url: "https://localhost/?unifiedUI=1" });
+  const prior = { window: globalThis.window, document: globalThis.document, localStorage: globalThis.localStorage };
+  Object.assign(globalThis, { window: dom.window, document: dom.window.document, localStorage: dom.window.localStorage });
+  try {
+    const mount = await loadNavigator();
+    const nav = mount({
+      initialSurface: "opencode", switchBackend() {}, openHome() {},
+      openTasks() {}, openReview() {}, openTools() {}, openTerminal() {}
+    });
+    const doc = dom.window.document;
+    const button = doc.querySelector("[data-workspace-menu-button]");
+    const menu = doc.getElementById("dmTaskFirstMenu");
+    // A real tap: pointerdown (capture listeners see it first), focus moves
+    // from the open menu to ☰, then click.
+    const tap = () => {
+      button.dispatchEvent(new dom.window.Event("pointerdown", { bubbles: true }));
+      button.focus();
+      button.click();
+    };
+    const states = [];
+    for (let i = 0; i < 6; i++) { tap(); states.push(!menu.hidden); }
+    assert.deepEqual(states, [true, false, true, false, true, false]);
+    for (let i = 0; i < 6; i++) assert.equal(button.getAttribute("aria-expanded"), "false");
+    tap();
+    doc.getElementById("outside").dispatchEvent(new dom.window.Event("pointerdown", { bubbles: true }));
+    assert.equal(menu.hidden, true, "outside tap closes");
+    tap();
+    assert.equal(menu.hidden, false, "the next ☰ tap opens again");
+    const brand = doc.querySelector("[data-workspace-home]");
+    brand.dispatchEvent(new dom.window.Event("pointerdown", { bubbles: true }));
+    assert.equal(menu.hidden, true, "other header controls count as outside the menu");
+    nav.destroy();
+  } finally {
+    Object.assign(globalThis, prior);
+    dom.window.close();
+  }
+});
+
+test("A-4/A-2: Home and Terminal are ☰ destinations; every destination closes what covers the screen", async () => {
+  const dom = new JSDOM('<!doctype html><div id="app"></div>', { url: "https://localhost/?surface=codex" });
+  const prior = { window: globalThis.window, document: globalThis.document, localStorage: globalThis.localStorage };
+  Object.assign(globalThis, { window: dom.window, document: dom.window.document, localStorage: dom.window.localStorage });
+  try {
+    const { window } = dom;
+    const calls = [];
+    let changing = 0;
+    window.addEventListener("devmoter:workspace-tab-changing", () => changing++);
+    const mount = await loadNavigator();
+    const nav = mount({
+      initialSurface: "codex", switchBackend() {},
+      openHome: () => { calls.push("home"); window.dispatchEvent(new window.CustomEvent("devmoter:surface-changed", { detail: { surface: "home" } })); },
+      openTasks: () => calls.push("tasks"), openReview: () => calls.push("review"), openTools: () => calls.push("tools"),
+      openTerminal: () => calls.push("terminal")
+    });
+    changing = 0; // mounting restores the route once
+    const doc = window.document;
+    const menu = doc.getElementById("dmTaskFirstMenu");
+    const items = [...menu.querySelectorAll("button")];
+    assert.deepEqual(items.slice(0, 6).map(item => item.textContent.trim()), ["Home", "タスク", "Chat", "Review", "Tools", "Terminal"]);
+    for (const item of [...items, menu.querySelector(".dm-task-first-menu-row")]) {
+      const icon = item.querySelector("svg");
+      assert.ok(icon, `${item.textContent.trim()} has an inline line icon`);
+      // Shared 24px line-icon set (#507): the 1.5 stroke comes from CSS, checked in line-icons.test.mjs.
+      assert.equal(icon.getAttribute("viewBox"), "0 0 24 24");
+      assert.equal(icon.getAttribute("aria-hidden"), "true");
+      assert.equal(icon.parentElement.tagName, "SPAN");
+      assert.equal(icon.parentElement.getAttribute("aria-hidden"), "true");
+    }
+    const source = await readFile(new URL("../src/unified-workspace-nav.ts", import.meta.url), "utf8");
+    assert.match(source, /data-workspace-go="home"[^>]*><span aria-hidden="true">\$\{ICONS\.home\}/);
+    assert.match(source, /data-workspace-action="terminal"[^>]*><span aria-hidden="true">\$\{ICONS\.terminal\}/);
+    assert.doesNotMatch(source, /from "\.\/line-icons/, "standalone module inlines its SVGs");
+    const shell = await readFile(new URL("../src/app-shell.ts", import.meta.url), "utf8");
+    assert.ok(shell.includes('openTerminal: () => run(() => launchApp("terminal"))'));
+
+    const choose = selector => { doc.querySelector("[data-workspace-menu-button]").click(); menu.querySelector(selector).click(); };
+    choose('[data-workspace-action="terminal"]');
+    assert.deepEqual(calls, ["terminal"]);
+    assert.equal(menu.hidden, true);
+    assert.equal(changing, 1, "Terminal closes Settings/Tasks/Review first");
+    assert.equal(menu.querySelector('[aria-current="page"]').dataset.workspaceAction, "terminal");
+    assert.equal(new URL(window.location.href).searchParams.get("workspaceTab"), "terminal");
+
+    const length = window.history.length;
+    choose('[data-workspace-action="terminal"]');
+    assert.equal(changing, 2, "reselecting the current screen still closes whatever covers it");
+    assert.equal(window.history.length, length, "…without another Back stop");
+
+    choose('[data-workspace-go="home"]');
+    assert.equal(calls.at(-1), "home");
+    assert.equal(changing, 3);
+    assert.equal(menu.querySelector('[aria-current="page"]').dataset.workspaceGo, "home");
+    assert.equal(new URL(window.location.href).searchParams.get("workspaceTab"), null);
+
+    choose('[data-workspace-action="tasks"]');
+    choose('[data-workspace-action="tasks"]');
+    assert.equal(changing, 5);
+    assert.deepEqual(calls.filter(call => call === "tasks"), ["tasks", "tasks"]);
     nav.destroy();
   } finally {
     Object.assign(globalThis, prior);

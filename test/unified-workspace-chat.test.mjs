@@ -25,6 +25,15 @@ test("unified chat CSS compiles and is loaded by the default workspace UI", asyn
   assert.match(css, /html\[data-devmoter-theme="light"\] body\.dm-task-first-enabled/);
 });
 
+test("OpenCode composer utility buttons have a 44px minimum tap target", async () => {
+  const css = await source("../src/opencode-chat.css");
+  const rule = css.match(/\.ocx-app \.ocx-mini-button\s*\{([^}]+)\}/)?.[1];
+  assert.ok(rule, "OpenCode utility buttons keep their existing selector");
+  for (const dimension of ["min-width: 44px", "width: 44px", "min-height: 44px", "height: 44px", "flex: 0 0 44px"]) {
+    assert.ok(rule.includes(dimension), "utility buttons must declare " + dimension);
+  }
+});
+
 test("native Codex, OpenCode and API Chat inputs/messages/permissions remain present", async () => {
   const [css, codex, opencode, api] = await Promise.all([
     source("../src/unified-workspace-chat.css"),

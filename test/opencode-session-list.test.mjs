@@ -9,6 +9,17 @@ test("OpenCode session list accepts valid sessions and filters invalid rows", ()
   ]), [{ id: "session-1", title: "one" }, { id: "session-2" }]);
 });
 
+test("a new refresh invalidates older session-list requests before parallel loading", async () => {
+  const source = await readFile(new URL("../src/opencode.ts", import.meta.url), "utf8");
+  const start = source.indexOf("async function refresh()");
+  const end = source.indexOf("// Quiet drawer status", start);
+  const refresh = source.slice(start, end);
+  const invalidation = refresh.indexOf("latestSessionListRequest = sessionListRequests.begin()");
+  assert.ok(invalidation >= 0, "refresh invalidates any older session-list request");
+  assert.ok(invalidation < refresh.indexOf("if (!online)"), "invalidation runs before refresh state handling");
+  assert.ok(invalidation < refresh.indexOf("await Promise.all(["), "invalidation precedes the other parallel loads");
+});
+
 test("OpenCode session list rejects malformed payloads instead of replacing history with empty", () => {
   for (const value of [null, {}, "session", { data: [] }]) {
     assert.throws(() => normalizeOpenCodeSessionList(value), /invalid session list/);
