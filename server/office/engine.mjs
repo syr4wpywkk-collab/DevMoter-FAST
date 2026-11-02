@@ -23621,8 +23621,9 @@ function relationshipTypes(relsXml) {
   return types;
 }
 export {
+  PPR_CHILD_ORDER,
   buildBlankDocx,
   parseDocx,
-  patchParagraphTexts,
-  saveDocx
+  saveDocx,
+  splitXmlChildren
 };

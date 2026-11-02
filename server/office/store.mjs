@@ -9,12 +9,13 @@ import {
 import { join } from "node:path";
 import { randomUUID, createHash } from "node:crypto";
 import { readHandle, withOpenFile } from "../safe-file.mjs";
+import { parseDocx, saveDocx, buildBlankDocx } from "./engine.mjs";
 import {
-  parseDocx,
-  saveDocx,
-  patchParagraphTexts,
-  buildBlankDocx,
-} from "./engine.mjs";
+  isEditableBlock,
+  isRequiredBlock,
+  modelOf,
+  planDocumentSave,
+} from "./docx-model.mjs";
 
 export const OFFICE_LIMITS = Object.freeze({
   uploadBytes: 12 * 1024 * 1024,
@@ -29,20 +30,11 @@ const fail = (message, status = 400) =>
 const uuid = (value) =>
   typeof value === "string" && /^[a-f0-9-]{36}$/.test(value);
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
-const editable = (block, parsed) =>
-  ["paragraph", "heading", "listItem"].includes(block.type) &&
-  block.docxIndex !== null &&
-  !block.hidden &&
-  !(block.runs || []).some((run) => run.vanish) &&
-  typeof block.originalXml === "string" &&
-  parsed.extras.elements[block.docxIndex]?.name === "w:p" &&
-  parsed.internal.documentXml.slice(
-    parsed.extras.elements[block.docxIndex].start,
-    parsed.extras.elements[block.docxIndex].end,
-  ) === block.originalXml &&
-  !/<w:(?:fldChar|instrText|drawing|pict|object|sdt|ins|del|sectPr)\b/.test(
-    block.originalXml,
-  );
+const editable = isEditableBlock;
+/**
+ * AI proposals still address one paragraph each ({ blockId, text }); they are
+ * only validated here and applied in the editor, which saves the whole document.
+ */
 export function validateEdits(parsed, edits) {
   if (
     !Array.isArray(edits) ||
@@ -57,47 +49,26 @@ export function validateEdits(parsed, edits) {
       Object.keys(edit).some((key) => !["blockId", "text"].includes(key)) ||
       typeof edit.text !== "string" ||
       Buffer.byteLength(edit.text) > OFFICE_LIMITS.textBytes ||
-      /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(edit.text)
+      /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(edit.text) ||
+      edit.text.split("\n").length > 100
     )
       throw fail("本文の入力が不正です。");
     const block = parsed.blocks.find((item) => item.id === edit.blockId);
     if (!block || !editable(block, parsed) || seen.has(edit.blockId))
       throw fail("編集できない、または重複した本文です。");
     seen.add(edit.blockId);
-    const escape = (text) =>
-      text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const lines = edit.text.split("\n");
-    if (lines.length > 100)
-      throw fail("一度に追加できる段落は100段落までです。");
-    let xml = patchParagraphTexts(block.originalXml, lines[0]);
-    if (xml === null && !(block.runs || []).some((run) => run.text)) {
-      const text = escape(lines[0]);
-      const run = `<w:r><w:t xml:space="preserve">${text}</w:t></w:r>`;
-      xml = /^<w:p(?:\s[^>]*)?\/>$/.test(block.originalXml)
-        ? block.originalXml.replace(/\/>$/, `>${run}</w:p>`)
-        : block.originalXml.replace(/<\/w:p>$/, `${run}</w:p>`);
-      if (xml === block.originalXml && lines[0])
-        throw fail("この空段落を安全に編集できません。");
-    }
-    if (xml === null)
-      throw fail("この段落は書式を保持した編集に対応していません。");
-    // Enter creates new paragraphs; original bookmarks/comments remain in the
-    // first paragraph, never duplicated into the new paragraphs.
-    xml += lines
-      .slice(1)
-      .map(
-        (line) =>
-          `<w:p>${block.rawPPr || ""}<w:r>${block.runs?.[0]?.rawRPr || ""}<w:t xml:space="preserve">${escape(line)}</w:t></w:r></w:p>`,
-      )
-      .join("");
-    return {
-      blockId: block.id,
-      text: edit.text,
-      xml,
-      docxIndex: block.docxIndex,
-    };
+    return { blockId: block.id, text: edit.text };
   });
 }
+// Autosave writes often; saves within this window replace the latest edit
+// revision instead of adding one, so history stays meaningful.
+const COALESCE_MS = 10 * 60 * 1000;
+const validName = (name) =>
+  typeof name === "string" &&
+  name.toLowerCase().endsWith(".docx") &&
+  name.length <= 160 &&
+  name.trim().length > 5 &&
+  !/[\/\\\u0000-\u001f]/.test(name);
 
 export function createOfficeStore({ rootDir }) {
   let queue = Promise.resolve();
@@ -199,19 +170,24 @@ export function createOfficeStore({ rootDir }) {
     ...meta,
     blocks: parsed.blocks
       .filter((b) => !b.hidden)
-      .map((b) => ({
+      .map((b) => {
+        const isEditable = editable(b, parsed);
+        const model = ["paragraph", "heading", "listItem"].includes(b.type) ? modelOf(b) : null;
+        return {
         id: b.id,
         type: b.type,
         level: b.level,
-        list: b.list,
-        align: b.format?.align,
-        editable: editable(b, parsed),
+        list: b.list ? { kind: b.list.kind, ilvl: b.list.ilvl, numId: b.list.numId } : undefined,
+        align: model?.align,
+        editable: isEditable,
+        required: isRequiredBlock(b) || undefined,
         text: (b.runs || []).filter((r) => !r.vanish).map((r) => r.text).join(""),
         runs: (b.runs || []).filter((r) => !r.vanish).map((r) => ({
           text: r.text,
           bold: r.bold,
           italic: r.italic,
           underline: r.underline,
+          href: typeof r.link?.href === "string" ? r.link.href : undefined,
           color: r.color,
           sizeHalfPoints: r.sizeHalfPoints,
         })),
@@ -228,12 +204,13 @@ export function createOfficeStore({ rootDir }) {
               })),
             }
           : undefined,
-      })),
+        };
+      }),
     warnings: [
       "表示は編集用のプレビューです。Wordの改ページ・印刷レイアウトと一致するとは限りません。",
       ...(parsed.blocks.some((b) => !b.hidden && !editable(b, parsed))
         ? [
-            "表・画像・フィールド等は原本を保持します。この初版では直接編集できません。",
+            "表・画像・フィールド等は原本のまま保持します。",
           ]
         : []),
     ],
@@ -242,13 +219,7 @@ export function createOfficeStore({ rootDir }) {
   const create = (name, bytes) =>
     serial(async () => {
       await ensure();
-      if (
-        typeof name !== "string" ||
-        !name.toLowerCase().endsWith(".docx") ||
-        name.length > 160 ||
-        /[\/\\\u0000-\u001f]/.test(name)
-      )
-        throw fail("DOCXファイル名が不正です。");
+      if (!validName(name)) throw fail("DOCXファイル名が不正です。");
       if (!bytes || bytes.length > OFFICE_LIMITS.uploadBytes)
         throw fail("DOCXは12MB以下で選択してください。");
       if (
@@ -286,14 +257,46 @@ export function createOfficeStore({ rootDir }) {
       }
       return describe({ meta, parsed });
     });
+  const writeMeta = (id, meta) =>
+    atomic(join(dir(id), "metadata.json"), JSON.stringify(meta));
+  // Newest activity first: last opened, else last saved/created.
+  const recency = (meta) =>
+    Math.max(Date.parse(meta.openedAt || 0) || 0, Date.parse(meta.updatedAt) || 0);
   return {
     create,
     blank: async (name) => create(name, await buildBlankDocx()),
     list: async () => {
       await ensure();
-      return Promise.all((await readdir(rootDir)).filter(uuid).map(metadata));
+      const docs = await Promise.all(
+        (await readdir(rootDir)).filter(uuid).map(metadata),
+      );
+      return docs.sort((a, b) => recency(b) - recency(a));
     },
     get: async (id) => describe(await load(id)),
+    /** Open = read + remember when it was opened (drives the document list order). */
+    open: (id) =>
+      serial(async () => {
+        const data = await load(id);
+        const meta = { ...data.meta, openedAt: new Date().toISOString() };
+        await writeMeta(id, meta);
+        return describe({ meta, parsed: data.parsed });
+      }),
+    rename: (id, name) =>
+      serial(async () => {
+        if (typeof name !== "string") throw fail("文書名が不正です。");
+        const trimmed = name.trim();
+        const full = /\.docx$/i.test(trimmed) ? trimmed : `${trimmed}.docx`;
+        if (!validName(full)) throw fail("文書名が不正です。");
+        const meta = { ...(await metadata(id)), name: full };
+        await writeMeta(id, meta);
+        return meta;
+      }),
+    remove: (id) =>
+      serial(async () => {
+        await metadata(id);
+        await rm(dir(id), { recursive: true, force: true });
+        return { id, deleted: true };
+      }),
     download: async (id, revision) => {
       const meta = await metadata(id);
       const ref = revision || meta.revision;
@@ -305,10 +308,7 @@ export function createOfficeStore({ rootDir }) {
       const data = await load(id);
       if (data.meta.revision !== revision)
         throw fail("文書が更新されています。再読み込みしてください。", 409);
-      return validateEdits(data.parsed, edits).map(({ blockId, text }) => ({
-        blockId,
-        text,
-      }));
+      return validateEdits(data.parsed, edits);
     },
     restore: (id, revision, target) =>
       serial(async () => {
@@ -336,26 +336,26 @@ export function createOfficeStore({ rootDir }) {
           ],
         };
         await atomic(join(dir(id), `${next}.docx`), bytes);
-        await atomic(join(dir(id), "metadata.json"), JSON.stringify(restored));
+        await writeMeta(id, restored);
         return describe({ meta: restored, parsed });
       }),
-    save: (id, revision, edits) =>
+    /**
+     * Save the whole document from the editor's ordered block list.
+     * The original revision is never touched. A save shortly after the previous
+     * edit replaces that edit revision (autosave), and when history is full the
+     * oldest edit revisions after the original are pruned.
+     */
+    save: (id, revision, blocks) =>
       serial(async () => {
         const data = await load(id);
         if (data.meta.revision !== revision)
           throw fail("文書が更新されています。再読み込みしてください。", 409);
-        if (data.meta.history.length >= OFFICE_LIMITS.revisions)
-          throw fail("履歴が50件に達しました。別文書として保存してください。");
-        const validated = validateEdits(data.parsed, edits);
-        const blocks = data.parsed.blocks
-          .filter((b) => !b.hidden)
-          .map((b) => {
-            const change = validated.find((e) => e.docxIndex === b.docxIndex);
-            return change
-              ? { kind: "xml", xml: change.xml, docxIndex: b.docxIndex }
-              : { kind: "original", docxIndex: b.docxIndex };
-          });
-        const bytes = await saveDocx(data.parsed, blocks);
+        const { finalBlocks, options } = await planDocumentSave(
+          data.parsed,
+          blocks,
+          OFFICE_LIMITS,
+        );
+        const bytes = await saveDocx(data.parsed, finalBlocks, options);
         const parsed = await parseDocx(bytes, { expandAltChunks: false });
         if (
           parsed.blocks.length > OFFICE_LIMITS.blocks ||
@@ -364,17 +364,26 @@ export function createOfficeStore({ rootDir }) {
           throw fail("編集後の文書が上限を超えます。");
         const next = randomUUID();
         const now = new Date().toISOString();
-        const meta = {
-          ...data.meta,
-          revision: next,
-          updatedAt: now,
-          history: [
-            ...data.meta.history,
-            { revision: next, createdAt: now, source: "edit" },
-          ],
-        };
+        const history = [...data.meta.history];
+        const last = history[history.length - 1];
+        const replaced = [];
+        if (
+          last.source === "edit" &&
+          history.length > 1 &&
+          Date.now() - Date.parse(last.createdAt) < COALESCE_MS
+        )
+          replaced.push(history.pop().revision);
+        history.push({ revision: next, createdAt: replaced.length ? last.createdAt : now, source: "edit" });
+        while (history.length > OFFICE_LIMITS.revisions) {
+          const at = history.findIndex((h, i) => i > 0 && h.source === "edit" && h.revision !== next);
+          if (at === -1) throw fail("履歴が上限に達しました。別文書として保存してください。");
+          replaced.push(history.splice(at, 1)[0].revision);
+        }
+        const meta = { ...data.meta, revision: next, updatedAt: now, history };
         await atomic(join(dir(id), `${next}.docx`), bytes);
-        await atomic(join(dir(id), "metadata.json"), JSON.stringify(meta));
+        await writeMeta(id, meta);
+        for (const old of replaced)
+          await rm(join(dir(id), `${old}.docx`), { force: true });
         return describe({ meta, parsed });
       }),
   };

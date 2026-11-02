@@ -8,6 +8,10 @@ import { createOfficeStore } from "../server/office/store.mjs";
 import { createOfficeAi } from "../server/office/ai.mjs";
 import { buildBlankDocx } from "../server/office/engine.mjs";
 
+// Whole-document save payload: every block kept by id, the edited ones as paragraph models.
+const para = (id, text, extra = {}) => ({ id, type: "paragraph", runs: [{ text }], ...extra });
+const keepAll = (doc, replace = {}) =>
+  doc.blocks.flatMap((b) => (b.id in replace ? replace[b.id] : [{ id: b.id }]));
 async function setup(t) {
   const root = await mkdtemp(join(tmpdir(), "office-test-"));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -37,9 +41,9 @@ test("Office opens, edits, preserves untouched parts and reloads after restart",
   const block = doc.blocks.find((b) => b.editable);
   assert.equal(block.text, "Hello world");
   assert.equal(block.runs[0].bold, true);
-  const saved = await store.save(doc.id, doc.revision, [
-    { blockId: block.id, text: "Hello friend" },
-  ]);
+  const saved = await store.save(doc.id, doc.revision, keepAll(doc, {
+    [block.id]: [{ id: block.id, type: "paragraph", runs: [{ text: "Hello", bold: true }, { text: " friend" }] }],
+  }));
   assert.equal(saved.blocks.find((b) => b.editable).text, "Hello friend");
   assert.equal(saved.history.length, 2);
   const output = await JSZip.loadAsync((await store.download(doc.id)).bytes);
@@ -73,20 +77,22 @@ test("Office blank document supports first edit and prevents XML injection", asy
   const { store } = await setup(t);
   const doc = await store.blank("New.docx");
   const block = doc.blocks.find((b) => b.editable);
-  const saved = await store.save(doc.id, doc.revision, [
-    { blockId: block.id, text: "<script>& hi" },
-  ]);
+  const saved = await store.save(doc.id, doc.revision, keepAll(doc, {
+    [block.id]: [para(block.id, "<script>& hi")],
+  }));
   assert.equal(saved.blocks.find((b) => b.editable).text, "<script>& hi");
 });
 test("Office Enter adds paragraphs while preserving existing package parts", async (t) => {
   const { store } = await setup(t);
   const doc = await store.create("Paragraphs.docx", await fixture());
-  const saved = await store.save(doc.id, doc.revision, [
-    {
-      blockId: doc.blocks.find((b) => b.editable).id,
-      text: "First paragraph\nSecond paragraph\n第三段落",
-    },
-  ]);
+  const id = doc.blocks.find((b) => b.editable).id;
+  const saved = await store.save(doc.id, doc.revision, keepAll(doc, {
+    [id]: [
+      para(id, "First paragraph"),
+      { base: id, type: "paragraph", runs: [{ text: "Second paragraph" }] },
+      { type: "paragraph", runs: [{ text: "第三段落" }] },
+    ],
+  }));
   assert.deepEqual(
     saved.blocks.filter((b) => b.editable).map((b) => b.text),
     ["First paragraph", "Second paragraph", "第三段落"],
@@ -96,18 +102,17 @@ test("Office rejects stale, duplicate, unknown, oversized and path inputs atomic
   const { store } = await setup(t);
   const doc = await store.create("Test.docx", await fixture());
   const block = doc.blocks.find((b) => b.editable);
-  for (const edits of [
-    [{ blockId: "unknown", text: "x" }],
-    [
-      { blockId: block.id, text: "x" },
-      { blockId: block.id, text: "y" },
-    ],
-    [{ blockId: block.id, text: "x", command: "whoami" }],
-    [{ blockId: block.id, text: "x".repeat(16001) }],
+  for (const blocks of [
+    [para("unknown", "x")],
+    [para(block.id, "x"), para(block.id, "y")],
+    [{ ...para(block.id, "x"), command: "whoami" }],
+    [para(block.id, "x".repeat(16001))],
+    [],
+    "not a list",
   ])
-    await assert.rejects(store.save(doc.id, doc.revision, edits));
+    await assert.rejects(store.save(doc.id, doc.revision, blocks));
   await assert.rejects(
-    store.save(doc.id, "stale", [{ blockId: block.id, text: "x" }]),
+    store.save(doc.id, "stale", [para(block.id, "x")]),
     (e) => e.status === 409,
   );
   await assert.rejects(store.create("../Test.docx", await fixture()));
@@ -246,12 +251,10 @@ test("Office keeps content-control wrappers read-only rather than replacing thei
 test("Office AI excludes secret content and rejects malformed/out-of-scope proposals", async (t) => {
   const { store } = await setup(t);
   let doc = await store.create("Test.docx", await fixture());
-  doc = await store.save(doc.id, doc.revision, [
-    {
-      blockId: doc.blocks.find((b) => b.editable).id,
-      text: "Visible text\napi_key=sk-secretcredentialvalue",
-    },
-  ]);
+  const first = doc.blocks.find((b) => b.editable).id;
+  doc = await store.save(doc.id, doc.revision, keepAll(doc, {
+    [first]: [para(first, "Visible text"), { type: "paragraph", runs: [{ text: "api_key=sk-secretcredentialvalue" }] }],
+  }));
   for (const raw of [
     "not json",
     '{"edits":[{"blockId":"unknown","text":"No"}]}',
