@@ -1,4 +1,5 @@
-type IntegrationId = "antigravity" | "claude";
+type IntegrationId = "antigravity" | "claude" | "qwen";
+const INTEGRATION_IDS: IntegrationId[] = ["antigravity", "claude", "qwen"];
 
 type ProjectSummary = {
   id: string;
@@ -42,19 +43,17 @@ function uid() {
 
 function loadEnabled(): Set<IntegrationId> {
   const raw = localStorage.getItem(ENABLED_KEY);
-  if (raw === null) return new Set<IntegrationId>(["antigravity", "claude"]);
+  if (raw === null) return new Set<IntegrationId>(INTEGRATION_IDS);
 
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return new Set(parsed.filter((value): value is IntegrationId =>
-        value === "antigravity" || value === "claude"
-      ));
+      return new Set(parsed.filter((value): value is IntegrationId => INTEGRATION_IDS.includes(value)));
     }
   } catch {
     // Fall back to defaults if storage is corrupted.
   }
-  return new Set<IntegrationId>(["antigravity", "claude"]);
+  return new Set<IntegrationId>(INTEGRATION_IDS);
 }
 
 function saveEnabled(enabled: Set<IntegrationId>) {
@@ -173,6 +172,12 @@ export function mountIntegrations(
             <span>Antigravity Remote Control</span>
           </div>
         `
+        : info.id === "qwen"
+        ? `
+          <div class="ix-actions">
+            <button class="primary" data-action="launch" data-id="qwen" ${!info.installed || !isEnabled ? "disabled" : ""}>PCで開く</button>
+          </div>
+        `
         : `
           <div class="ix-actions">
             <button data-action="launch" data-id="claude" ${!info.installed || !isEnabled ? "disabled" : ""}>PCで開く</button>
@@ -204,6 +209,8 @@ export function mountIntegrations(
           <p class="ix-description">
             ${info.id === "antigravity"
               ? "公式CLIのRemote Control daemonを管理し、公式Remote画面へハンドオフします。"
+              : info.id === "qwen"
+              ? "ローカルQwen Codeを端末で開きます。"
               : "ローカルClaude Codeを端末で開くか、公式Claude Code Web / モバイルアプリへ移動します。"}
           </p>
 
@@ -248,7 +255,7 @@ export function mountIntegrations(
           method: "POST",
           body: JSON.stringify({ projectId: project.id })
         });
-        showNotice(id === "antigravity" ? `Antigravity CLIの起動を確認しました（${result.terminal || "terminal"}）。PC画面を確認してください。` : `Claude Codeを${result.terminal || "terminal"}で開くよう依頼しました。`);
+        showNotice(id === "antigravity" ? `Antigravity CLIの起動を確認しました（${result.terminal || "terminal"}）。PC画面を確認してください。` : `${id === "qwen" ? "Qwen Code" : "Claude Code"}を${result.terminal || "terminal"}で開くよう依頼しました。`);
       } catch (error) {
         showNotice(error instanceof Error ? error.message : String(error), "error");
       } finally {

@@ -61,3 +61,34 @@ test("Integrations has no Project card or intro copy, one action column per card
     dom.window.close();
   }
 });
+
+test("Qwen Code card launches the local CLI in the current project", async () => {
+  const { mountIntegrations } = await loadIntegrations();
+  const dom = new JSDOM("<div id='root'></div>", { url: "https://devmoter.test/" });
+  const prior = { window: globalThis.window, document: globalThis.document, localStorage: globalThis.localStorage, fetch: globalThis.fetch };
+  const launches = [];
+  Object.assign(globalThis, {
+    window: dom.window, document: dom.window.document, localStorage: dom.window.localStorage,
+    fetch: async (path, init = {}) => {
+      if (path === "/api/projects") return { ok: true, json: async () => ({ projects: [{ id: "p1", name: "First", path: "/work/first" }] }) };
+      if (path === "/api/integrations/status") return { ok: true, json: async () => ({ integrations: [
+        { id: "qwen", name: "Qwen Code", installed: true }
+      ] }) };
+      if (String(path).endsWith("/launch")) { launches.push(String(path)); return { ok: true, json: async () => ({ terminal: "tmux" }) }; }
+      throw new Error("unexpected " + path);
+    }
+  });
+  try {
+    const root = dom.window.document.getElementById("root");
+    await mountIntegrations(root).refresh();
+    const card = root.querySelector(".ix-card");
+    assert.ok(!card.classList.contains("disabled"), "enabled by default");
+    assert.deepEqual([...card.querySelectorAll(".ix-actions button")].map(b => b.textContent.trim()), ["PCで開く"]);
+    card.querySelector('[data-action="launch"]').click();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.deepEqual(launches, ["/api/integrations/qwen/launch"]);
+  } finally {
+    Object.assign(globalThis, prior);
+    dom.window.close();
+  }
+});

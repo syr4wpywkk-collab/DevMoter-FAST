@@ -66,7 +66,9 @@ function integrationChildEnv(id) {
       ? ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"]
       : id === "antigravity"
         ? ["GEMINI_API_KEY", "GOOGLE_API_KEY"]
-        : [];
+        : id === "qwen"
+          ? ["DASHSCOPE_API_KEY", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL"]
+          : [];
   return sanitizeChildEnv(process.env, allowed);
 }
 
@@ -115,6 +117,21 @@ const DEFINITIONS = {
       remoteControl: false,
       remoteUrl: false,
       qrHandoff: true,
+      agentChat: false
+    }
+  },
+  qwen: {
+    id: "qwen",
+    name: "Qwen Code",
+    bin: process.env.QWEN_BIN || "qwen",
+    versionArgs: ["--version"],
+    webUrl: "https://github.com/QwenLM/qwen-code",
+    capabilities: {
+      launch: true,
+      openProject: true,
+      remoteControl: false,
+      remoteUrl: false,
+      qrHandoff: false,
       agentChat: false
     }
   }
@@ -410,9 +427,10 @@ export async function listIntegrations() {
   if (statusCachePromise) return statusCachePromise;
 
   statusCachePromise = (async () => {
-    const [antigravityDetection, claudeDetection, remote] = await Promise.all([
+    const [antigravityDetection, claudeDetection, qwenDetection, remote] = await Promise.all([
       detect(DEFINITIONS.antigravity),
       detect(DEFINITIONS.claude),
+      detect(DEFINITIONS.qwen),
       antigravityRemoteStatus()
     ]);
 
@@ -432,6 +450,10 @@ export async function listIntegrations() {
         {
           ...publicDefinition(DEFINITIONS.claude),
           ...claudeDetection
+        },
+        {
+          ...publicDefinition(DEFINITIONS.qwen),
+          ...qwenDetection
         }
       ]
     };
