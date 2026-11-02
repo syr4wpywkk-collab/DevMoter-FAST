@@ -461,6 +461,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   let sessionListStatus: "loading" | "offline" | "error" | "ready" = "loading";
   const sessionListRequests = createLatestRequestGuard();
   const refreshRequests = createLatestRequestGuard();
+  const contextRequests = createLatestRequestGuard();
   let latestSessionListRequest = 0;
   const providerCatalogRequests = createLatestRequestGuard();
   let activeSession: OpenCodeSession | null = null;
@@ -1336,9 +1337,15 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   async function loadContext() {
     if (!activeSession) return;
 
+    // Several callers (send fallback poll, idle refresh, session switch) load
+    // context concurrently. Only the newest request may render; otherwise an
+    // older response fetched before the reply was persisted wipes it.
+    const request = contextRequests.begin();
+    const sessionId = activeSession.id;
     const messages = await api<Json[]>(
-      `/session/${encodeURIComponent(activeSession.id)}/context`
+      `/session/${encodeURIComponent(sessionId)}/context`
     );
+    if (!contextRequests.isCurrent(request) || activeSession?.id !== sessionId) return;
     const list = Array.isArray(messages) ? messages : [];
 
     contextExecutionState = null;

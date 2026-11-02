@@ -173,3 +173,10 @@ test("the browser reads canonical events only; OpenCode version names never reac
     assert.doesNotMatch(source, /session\.next\.|permission\.v2\.|question\.v2\.|form\.created|apiGeneration|openCodeGeneration|OPENCODE_API_V|pocket\/runtime|opencode-api-shapes/, file);
   }
 });
+
+test("stale OpenCode context loads cannot overwrite the live transcript", async () => {
+  const source = await readFile(new URL("../src/opencode.ts", import.meta.url), "utf8");
+  const body = source.slice(source.indexOf("async function loadContext()"), source.indexOf("transcript.replaceChildren();", source.indexOf("async function loadContext()")));
+  assert.match(body, /contextRequests\.begin\(\)/);
+  assert.match(body, /!contextRequests\.isCurrent\(request\) \|\| activeSession\?\.id !== sessionId\) return;/);
+});
