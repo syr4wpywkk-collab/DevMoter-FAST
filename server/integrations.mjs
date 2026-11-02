@@ -60,7 +60,7 @@ export function sanitizeChildEnv(source = process.env, allowedSecretKeys = []) {
   return env;
 }
 
-function integrationChildEnv(id) {
+export function integrationChildEnv(id) {
   const allowed =
     id === "claude"
       ? ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"]

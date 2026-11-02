@@ -4,7 +4,7 @@ import { shouldUseUnifiedWorkspace } from "./unified-ui-mode.mjs";
 import { getAppDefinition, isAppId, SYSTEM_ICONS } from "./app-registry";
 import { mountToolsAi } from "./tools-ai";
 
-type Backend = "opencode" | "codex" | "api" | "integrations";
+type Backend = "opencode" | "codex" | "api" | "qwen" | "integrations";
 
 type ShellOptions = {
   switchBackend: (backend: Backend) => void;
@@ -274,20 +274,20 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     row.className = "dm-shell-fallback-row";
     row.innerHTML = `
       <label><span>AI</span><select data-fallback-backend aria-label="AIバックエンド切り替え">
-        <option value="codex">Codex</option><option value="opencode">OpenCode</option><option value="api">API Chat</option>
+        <option value="codex">Codex</option><option value="opencode">OpenCode</option><option value="api">API Chat</option><option value="qwen">Qwen Code</option>
       </select></label>
       <label><span>言語</span><select data-language-select aria-label="Language">
         <option value="en">English</option><option value="ja">日本語</option><option value="zh-CN">简体中文</option>
       </select></label>`;
     const backendSelect = row.querySelector<HTMLSelectElement>("[data-fallback-backend]")!;
     const syncBackendSelect = () => {
-      const current = surface === "codex" || surface === "opencode" || surface === "api" ? surface : backend;
+      const current = surface === "codex" || surface === "opencode" || surface === "api" || surface === "qwen" ? surface : backend;
       backendSelect.value = current === "integrations" ? "opencode" : current;
     };
     syncBackendSelect();
     window.addEventListener("devmoter:surface-changed", syncBackendSelect);
     backendSelect.addEventListener("change", () => {
-      const next = backendSelect.value as "codex" | "opencode" | "api";
+      const next = backendSelect.value as "codex" | "opencode" | "api" | "qwen";
       closeSidebar();
       options.switchBackend(next);
     });
