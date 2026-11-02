@@ -14,6 +14,7 @@ import { openCodeSessionLabel } from "./opencode-session-title.mjs";
 import { shortModelName } from "./opencode-model-label.mjs";
 import { filterOpenCodePickerModels, flattenOpenCodePickerRows, normalizeOpenCodeProviderCatalog, openCodePickerWindow, type OpenCodePickerItem } from "./opencode-provider-catalog.mjs";
 import { recoverAfterEventOpen } from "./event-recovery.mjs";
+import { latestTurnIdle, shouldKeepAwaitingReply } from "./opencode-turn-state.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
@@ -528,6 +529,10 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   let pendingQuestion: PendingQuestion | null = null;
   let questionAnswers: Array<Set<string>> = [];
   let contextExecutionState: ExecutionState | null = null;
+  let contextTurnIdle = false;
+  // Deadline while a sent prompt still waits for its reply in this session.
+  let awaitingReply: { sessionId: string; until: number } | null = null;
+  const AWAITING_REPLY_MS = 10 * 60_000;
   let submitInFlight = false;
   let resumeSyncInFlight = false;
   const liveText = new Map<string, HTMLElement>();
@@ -1348,14 +1353,12 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     if (!contextRequests.isCurrent(request) || activeSession?.id !== sessionId) return;
     const list = Array.isArray(messages) ? messages : [];
 
-    contextExecutionState = null;
-    for (let index = list.length - 1; index >= 0; index--) {
-      const message = list[index];
-      if (message?.type === "idle") {
-        contextExecutionState = openCodeIdleOutcomeToExecutionState(message?.outcome);
-        break;
-      }
-    }
+    // Only the idle of the latest turn counts: the previous turn's idle used
+    // to end a just-sent run, which stopped the fallback poll before the reply.
+    const turnIdle = latestTurnIdle(list);
+    contextTurnIdle = Boolean(turnIdle);
+    contextExecutionState = turnIdle ? openCodeIdleOutcomeToExecutionState(turnIdle?.outcome) : null;
+    if (turnIdle && awaitingReply?.sessionId === sessionId) awaitingReply = null;
 
     sessionMessageCounts.set(activeSession.id, countTranscriptMessages(list));
     if (contextExecutionState) sessionStates.set(activeSession.id, contextExecutionState);
@@ -1657,10 +1660,17 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
           ? payload.data
           : payload;
 
-      if (active && typeof active === "object" && active[activeSession.id]) {
+      const busy = Boolean(active && typeof active === "object" && active[activeSession.id]);
+      if (shouldKeepAwaitingReply({
+        awaitingUntil: awaitingReply?.sessionId === activeSession.id ? awaitingReply.until : NaN,
+        now: Date.now(),
+        turnIdle: contextTurnIdle,
+        busy
+      })) {
         setExecutionState("running");
         return;
       }
+      if (awaitingReply?.sessionId === activeSession.id) awaitingReply = null;
 
       setExecutionState(contextExecutionState ?? "idle");
     } catch {
@@ -2134,6 +2144,8 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     renderAttachments();
     resizeComposer();
     slashPalette.classList.add("hidden");
+    awaitingReply = { sessionId: sessionID, until: Date.now() + AWAITING_REPLY_MS };
+    contextTurnIdle = false;
     setExecutionState("running");
 
     try {
@@ -2152,6 +2164,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         }
       );
     } catch (error) {
+      awaitingReply = null;
       setExecutionState("failed");
       showToast(error instanceof Error ? error.message : "Send failed");
     }
@@ -2238,6 +2251,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
   async function interrupt() {
     if (!activeSession) return;
+    awaitingReply = null;
 
     try {
       await api(
