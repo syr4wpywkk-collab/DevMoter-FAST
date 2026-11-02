@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#08090d">
+  <meta name="description" content="Qwen Code Mobile — モバイルで使いやすい、API接続式AIチャット">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <title>Qwen Code Mobile</title>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="チャット履歴">
+      <div class="sidebar-head">
+        <a class="brand" href="#" aria-label="Qwen Code Mobile ホーム">
+          <span class="brand-mark" aria-hidden="true">✳</span>
+          <span>qwen<span class="brand-light">code</span></span>
+        </a>
+        <button class="icon-button sidebar-close" data-action="close-sidebar" aria-label="メニューを閉じる" title="閉じる"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </div>
+      <button class="new-chat-button" data-action="new-chat"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>新しいチャット</span><kbd>⌘ K</kbd></button>
+      <div class="sidebar-section-label" id="history-heading">最近</div>
+      <nav class="history-list" id="history-list" aria-labelledby="history-heading"></nav>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-bottom">
+        <div class="api-status" aria-live="polite"><span class="status-dot" id="status-dot"></span><span id="api-status-label">API未接続</span></div>
+        <button class="sidebar-link" data-action="open-models"><svg viewBox="0 0 24 24"><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.64 5.64l1.42 1.42m9.88 9.88 1.42 1.42m0-12.72-1.42 1.42m-9.88 9.88-1.42 1.42"/><circle cx="12" cy="12" r="4"/></svg>APIとモデル</button>
+        <div class="privacy-note">APIキーはこのタブ内だけで保持します</div>
+      </div>
+    </aside>
+    <div class="sidebar-scrim" id="sidebar-scrim" data-action="close-sidebar"></div>
+
+    <main class="main-panel">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-button menu-button" data-action="toggle-sidebar" aria-label="メニュー" aria-controls="sidebar" aria-expanded="true" title="メニュー"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+          <button class="model-trigger" id="model-trigger" aria-haspopup="dialog" aria-expanded="false">
+            <span class="model-trigger-name" id="active-model-label">モデルを選択</span><svg class="chevron" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg>
+          </button>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button desktop-new-chat" data-action="new-chat" aria-label="新しいチャット" title="新しいチャット"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button>
+          <div class="avatar" aria-label="プロフィール">田</div>
+        </div>
+      </header>
+
+      <section class="conversation" id="conversation" aria-live="polite" aria-label="会話">
+        <div class="welcome" id="welcome">
+          <div class="welcome-mark" aria-hidden="true"><span>✦</span></div>
+          <p class="welcome-eyebrow">QWEN CODE MOBILE</p>
+          <h1>何を作りますか？</h1>
+        </div>
+        <div class="message-list" id="message-list"></div>
+        <div class="scroll-anchor" id="scroll-anchor"></div>
+      </section>
+
+      <footer class="composer-dock">
+        <form class="composer" id="composer-form">
+          <div class="attachment-preview" id="attachment-preview" hidden></div>
+          <div class="composer-row">
+            <button class="icon-button attach-button" id="attach-button" type="button" aria-label="画像を追加" title="画像を追加"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+            <input type="file" id="image-input" accept="image/*" multiple hidden>
+            <textarea id="message-input" rows="1" placeholder="Qwen Codeに相談" aria-label="メッセージ" autocomplete="off"></textarea>
+            <button class="send-button" id="send-button" type="submit" aria-label="メッセージを送信" title="送信" disabled><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+          </div>
+        </form>
+        <p class="composer-caption">回答はAIによって生成されます。送信前に内容を確認してください。</p>
+      </footer>
+    </main>
+  </div>
+
+  <div class="model-popover" id="model-popover" role="dialog" aria-label="モデルを選択" hidden>
+    <div class="popover-heading"><span>モデルを選択</span><button class="text-button" data-action="add-api">＋ APIを追加</button></div>
+    <label class="search-field"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="model-search" type="search" placeholder="モデルを検索" autocomplete="off"></label>
+    <div class="provider-tabs" id="provider-tabs"></div>
+    <div class="model-results" id="model-results"></div>
+    <div class="popover-foot"><span id="model-footnote" aria-hidden="true"></span><button class="icon-button tiny" data-action="refresh-models" aria-label="モデルを再読み込み" title="モデルを再読み込み"><svg viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 17.7 6.3L20 12M4 12l2.3 5.7A7 7 0 0 0 18.4 15"/></svg></button></div>
+  </div>
+
+  <div class="modal-backdrop" id="api-modal" hidden>
+    <section class="api-dialog" role="dialog" aria-modal="true" aria-labelledby="api-title">
+      <div class="dialog-head"><div><p class="dialog-kicker">接続設定</p><h2 id="api-title">APIを追加</h2></div><button class="icon-button" data-action="close-api" aria-label="閉じる"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+      <p class="dialog-copy">OpenAI互換APIに接続します。エンドポイントとキーは送信時にこの端末から接続先へ送られます。</p>
+      <form id="api-form" class="api-form">
+        <label>表示名<input id="api-name" name="name" placeholder="例：Qwen / OpenRouter" maxlength="40" required></label>
+        <label>APIベースURL<input id="api-url" name="url" type="url" inputmode="url" placeholder="https://api.example.com/v1" required></label>
+        <label>APIキー<input id="api-key" name="key" type="password" autocomplete="off" placeholder="sk-…（保存されません）" required></label>
+        <p class="key-note"><span>◈</span> キーはこのタブを閉じるまでメモリ内にのみ保持されます。</p>
+        <p class="form-error" id="api-error" role="alert" hidden></p>
+        <div class="dialog-actions"><button class="quiet-button" type="button" data-action="close-api">キャンセル</button><button class="primary-button" type="submit" id="api-submit">接続してモデルを取得</button></div>
+      </form>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js" defer></script>
+</body>
+</html>
