@@ -129,7 +129,7 @@ async function assertNavAndHitTargets(page, device) {
     const box = await buttons.nth(i).boundingBox();
     assert.ok(box && box.width >= 44 && box.height >= 44, "every menu item has a usable hit target");
     const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest("button[data-workspace-action]")?.dataset.workspaceAction, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
-    assert.equal(hit, ["tasks", "chat", "review", "tools"][i], "each item center hits that same item");
+    assert.equal(hit, ["tasks", "chat", "review", "tools", "terminal"][i], "each item center hits that same item");
   }
   await page.keyboard.press("Escape");
   assert.equal(await page.locator("[data-workspace-menu-button]").getAttribute("aria-expanded"), "false", "Escape closes the menu");
