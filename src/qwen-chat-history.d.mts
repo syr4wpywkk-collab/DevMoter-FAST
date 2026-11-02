@@ -1,0 +1,22 @@
+export type QwenChatMessage = { role: "user" | "assistant" | "error"; text: string; code?: string };
+export type QwenChat = {
+  id: string;
+  title: string;
+  sessionId: string | null;
+  projectId: string;
+  updatedAt: number;
+  messages: QwenChatMessage[];
+};
+type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+export const QWEN_CHATS_KEY: string;
+export const LEGACY_QWEN_SESSION_KEY: string;
+export const QWEN_CHAT_LIMIT: number;
+export const QWEN_MESSAGE_LIMIT: number;
+export function isQwenSessionId(value: unknown): value is string;
+export function qwenChatTitle(text: unknown): string;
+export function createQwenChat(projectId?: string, now?: number): QwenChat;
+export function sortQwenChats(chats: QwenChat[]): QwenChat[];
+export function loadQwenChats(storage: StorageLike): QwenChat[];
+export function saveQwenChats(storage: StorageLike, chats: QwenChat[]): boolean;
+export function qwenChatTime(updatedAt: number, now?: number, locale?: string): string;
+export function createNdjsonReader(): { push(chunk: string): any[]; flush(): any[] };
