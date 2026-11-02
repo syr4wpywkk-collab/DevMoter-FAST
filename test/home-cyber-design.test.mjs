@@ -33,7 +33,7 @@ test("Home keeps a real two-column launcher and uses the canonical app registry"
   assert.match(root.textContent, /作業スペース/);
   assert.equal(root.querySelectorAll("[data-home-app]").length, 14);
   assert.equal(root.querySelector("[data-home-app-count]").textContent, "14件");
-  assert.equal(root.querySelector("[data-home-app-grid]").children.length, 13);
+  assert.equal(root.querySelector("[data-home-app-grid]").children.length, 14);
   assert.equal(root.querySelector('[data-home-app="chat"]').getAttribute("type"), "button");
   assert.equal(root.querySelector("[data-home-health]").dataset.state, "checking", "never assume online");
   assert.doesNotMatch(root.textContent, /98\.4k|Swarm 8\/8|24ms|FastAPI Streamer|CodeGeeX/);
