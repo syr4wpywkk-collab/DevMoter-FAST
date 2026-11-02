@@ -25,7 +25,7 @@ export function mountQwenChat(root: HTMLElement) {
   root.innerHTML = `
     <div class="qx-app">
       <header class="qx-top"><strong>Qwen Code</strong><button type="button" class="qx-new" data-qwen-new>新規</button></header>
-      <div class="qx-log" data-qwen-log aria-live="polite"></div>
+      <div class="qx-log" data-qwen-log data-i18n-skip aria-live="polite"></div>
       <form class="qx-form" data-qwen-form>
         <textarea data-qwen-input rows="2" placeholder="メッセージ" aria-label="メッセージ"></textarea>
         <button type="submit" data-qwen-send>送信</button>

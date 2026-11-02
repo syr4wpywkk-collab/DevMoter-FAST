@@ -30,7 +30,7 @@ test("API chat bounds history and invalidates stale completions on New Chat", ()
 
 test("API chat is mounted as a first-class v3 surface and chat content is excluded from i18n mutation", () => {
   assert.match(mainSource, /mountApiChat/);
-  assert.match(mainSource, /"opencode" \| "codex" \| "api" \| "integrations"/);
+  assert.match(mainSource, /"opencode" \| "codex" \| "api" \| "qwen" \| "integrations"/);
   assert.match(i18nSource, /\.api-message/);
   assert.match(i18nSource, /"どのAPIで考える？"/);
 });
