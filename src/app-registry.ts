@@ -11,8 +11,7 @@ export const APP_IDS = [
   "sessions",
   "browser",
   "automation",
-  "developer-workflows",
-  "qwen-mobile"
+  "developer-workflows"
 ] as const;
 
 export type AppId = (typeof APP_IDS)[number];
@@ -44,8 +43,7 @@ const APP_DEFINITIONS: AppDefinition[] = [
   { id: "sessions", title: "Sessions / Activity", shortDescription: "Activity, queue, checkpoints and handoff", icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>', category: "Activity", availability: "available", launchKind: "feature" },
   { id: "browser", title: "Browser", shortDescription: "Project files, previews and browser automation", icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>', category: "Development", availability: "preview", launchKind: "placeholder", previewMessage: "Browser does not have a separate app surface yet. Open Files & Preview from the sidebar." },
   { id: "automation", title: "Automation", shortDescription: "Schedules, triggers, runs and bounded autopilot", icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>', category: "Productivity", availability: "available", launchKind: "feature" },
-  { id: "developer-workflows", title: "Developer Workflows", shortDescription: "MCP, Skills, Rules, ACP, CI and verification", icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="15" y="15" width="6" height="6" rx="1.5"/><path d="M6 9v4a2 2 0 0 0 2 2h7"/></svg>', category: "Development", availability: "available", launchKind: "feature" },
-  { id: "qwen-mobile", title: "Qwen Code Mobile", shortDescription: "Qwen Code Mobile app (served as-is from /qwen-mobile/)", icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.1A8 8 0 1 1 20 12Z"/><path d="M9 10l-2 2 2 2M15 10l2 2-2 2"/></svg>', category: "Workspace", availability: "available", launchKind: "surface" }
+  { id: "developer-workflows", title: "Developer Workflows", shortDescription: "MCP, Skills, Rules, ACP, CI and verification", icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="15" y="15" width="6" height="6" rx="1.5"/><path d="M6 9v4a2 2 0 0 0 2 2h7"/></svg>', category: "Development", availability: "available", launchKind: "feature" }
 ];
 
 // Line icons for system commands (Settings rows, the ☰ menu, file lists): same

@@ -2441,7 +2441,6 @@ async function serveLoginAsset(req, res, pathname) {
 async function serveStatic(req, res) {
   let path = req.url === "/" ? "/index.html" : req.url.split("?")[0];
   path = normalize(path).replace(/^(\.\.[/\\])+/, "");
-  if (path === "/qwen-mobile/" || path === "/qwen-mobile") path = "/qwen-mobile/index.html";
   const full = join(DIST, path);
 
   try {

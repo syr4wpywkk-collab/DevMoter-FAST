@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const EXPECTED_APPS = [
   "office", "chat", "projects", "mission-control", "knowledge", "terminal", "git", "review", "agents",
-  "sessions", "browser", "automation", "developer-workflows", "qwen-mobile"
+  "sessions", "browser", "automation", "developer-workflows"
 ];
 
 async function source(path) {
