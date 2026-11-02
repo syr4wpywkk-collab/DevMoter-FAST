@@ -103,11 +103,13 @@ test("OpenCode history traps Tab, blocks background interaction and restores its
   assert.equal(document.activeElement, menu);
 });
 
-test("OpenCode history shows a quiet status and keeps refresh beside the history label", t => {
+test("OpenCode offline history replaces the loading placeholder and keeps refresh beside the history label", t => {
   const { query } = mount(t);
   const status = query("#ocxSideStatus");
   assert.equal(status.dataset.state, "offline");
   assert.equal(status.textContent.trim(), "Offline");
+  assert.equal(query("#ocxSessions .ocx-empty").textContent, "OpenCode is offline. Conversation history will load when it reconnects.");
+  assert.doesNotMatch(query("#ocxSessions").textContent, /Connecting…/);
   assert.equal(status.closest(".ocx-sidebar-head") !== null, true);
   assert.equal(query("#ocxRefresh").closest(".ocx-side-label") !== null, true);
   for (const removed of ["#ocxQuickCodex", "#ocxQuickApi", ".ocx-sidebar-foot", "#ocxTheme", "#ocxToolsNav", "#ocxPrefs", "#ocxSidebar [data-language-select]"]) {

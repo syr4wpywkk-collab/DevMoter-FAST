@@ -5,7 +5,9 @@ Copyright GenOffice contributors. Licensed under Apache-2.0 (see LICENSE).
 
 Only open-source engine code is used; no ee/ code, trademarks or application UI.
 The original TypeScript sources are retained here. DevMoter's adapter exports
-only parsing, preservation-based saving and paragraph text patching.
+only parsing, preservation-based saving, the blank template and the paragraph-
+property helpers (splitXmlChildren, PPR_CHILD_ORDER) used by
+server/office/docx-model.mjs to write whole-document edits back to DOCX.
 Modification: ZIP limits reduced to 2,000 parts / 16MB per part / 64MB total.
 Modification: XML/rels parts containing DTD/entity declarations are rejected.
 Modification: field-instruction text uses a linear tag scanner (stripXmlTags) instead of a single-pass regex replace.

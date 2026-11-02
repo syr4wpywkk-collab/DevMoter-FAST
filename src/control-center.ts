@@ -316,6 +316,8 @@ export function mountControlCenter() {
     releaseBackgroundInert();
     for (const child of [...document.body.children]) {
       if (!(child instanceof HTMLElement) || child === launcher || child === panel || child === scrim) continue;
+      // The unified workspace header stays usable: ☰ is how users leave this panel.
+      if (child.id === "dmTaskFirstWorkspace") continue;
       inertSnapshots.set(child, { inert: child.inert, ariaHidden: child.getAttribute("aria-hidden") });
       child.inert = true;
       child.setAttribute("aria-hidden", "true");
@@ -332,6 +334,7 @@ export function mountControlCenter() {
     modalOpen = true;
     lockBackground();
     close.focus({ preventScroll: true });
+    window.dispatchEvent(new window.CustomEvent("devmoter:workspace-panel-changed", { detail: { tab: "terminal", open: true } }));
     void loadProjects().then(() => {
       renderProjectOptions();
       if (indexInitialized && !indexSection.classList.contains("hidden")) void refreshIndexView?.();
@@ -352,6 +355,7 @@ export function mountControlCenter() {
     scrim.classList.add("hidden");
     launcher.setAttribute("aria-expanded", "false");
     disconnectTerminalSocket();
+    if (wasOpen) window.dispatchEvent(new window.CustomEvent("devmoter:workspace-panel-changed", { detail: { tab: "terminal", open: false } }));
     if (wasOpen && options.restoreFocus !== false) {
       const isVisible = (element: HTMLElement | null): element is HTMLElement => Boolean(
         element?.isConnected && !element.closest("[inert], [aria-hidden='true']") && element.getClientRects().length
@@ -369,6 +373,7 @@ export function mountControlCenter() {
   scrim.addEventListener("click", () => closePanel());
   window.addEventListener("devmoter:global-nav-opened", () => closePanel({ restoreFocus: false }));
   window.addEventListener("devmoter:surface-changed", () => closePanel({ restoreFocus: false }));
+  window.addEventListener("devmoter:workspace-tab-changing", () => closePanel({ restoreFocus: false }));
   window.addEventListener("keydown", event => {
     if (!modalOpen) return;
     if (event.key === "Escape") {

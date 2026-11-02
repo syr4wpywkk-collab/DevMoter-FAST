@@ -458,7 +458,10 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   let commands: OpenCodeCommand[] = [];
   let skills: OpenCodeSkill[] = [];
   let sessions: OpenCodeSession[] = [];
+  let sessionListStatus: "loading" | "offline" | "error" | "ready" = "loading";
   const sessionListRequests = createLatestRequestGuard();
+  const refreshRequests = createLatestRequestGuard();
+  let latestSessionListRequest = 0;
   const providerCatalogRequests = createLatestRequestGuard();
   let activeSession: OpenCodeSession | null = null;
   let sessionSortMode = (localStorage.getItem("opencode-pocket-session-sort") || "recent") as SessionSortMode;
@@ -938,7 +941,11 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     if (!sorted.length) {
       const empty = document.createElement("div");
       empty.className = "ocx-empty";
-      empty.textContent = q ? "No matching sessions" : "No sessions yet";
+      empty.textContent = q ? "No matching sessions"
+        : sessionListStatus === "offline" ? "OpenCode is offline. Conversation history will load when it reconnects."
+        : sessionListStatus === "loading" ? "Connecting…"
+        : sessionListStatus === "error" ? "Could not load conversation history. Use Refresh to try again."
+        : "No sessions yet";
       sessionsEl.appendChild(empty);
       return;
     }
@@ -1495,11 +1502,14 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
   async function loadSessions() {
     const requestGeneration = sessionListRequests.begin();
+    latestSessionListRequest = requestGeneration;
     let data: OpenCodeSession[];
     try {
       data = await api<OpenCodeSession[]>("/session?limit=80&order=desc");
     } catch (error) {
       if (sessionListRequests.isCurrent(requestGeneration)) {
+        sessionListStatus = online ? "error" : "offline";
+        renderSessions();
         showToast(error instanceof Error ? error.message : "Could not load session history");
       }
       return false;
@@ -1508,6 +1518,8 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     try {
       sessions = normalizeOpenCodeSessionList(data) as OpenCodeSession[];
     } catch {
+      sessionListStatus = "error";
+      renderSessions();
       showToast("OpenCode returned an invalid session history");
       return false;
     }
@@ -1560,6 +1572,8 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       }
     }
 
+    if (!sessionListRequests.isCurrent(requestGeneration)) return false;
+    sessionListStatus = "ready";
     renderSessions();
     renderAttention();
 
@@ -3544,9 +3558,21 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   }
 
   async function refresh(): Promise<boolean> {
-    if (!online) return false;
+    const refreshGeneration = refreshRequests.begin();
+    latestSessionListRequest = sessionListRequests.begin();
+    const historyGenerationAtStart = latestSessionListRequest;
+    let historyRequestGeneration: number | null = null;
+    if (!online) {
+      sessionListStatus = "offline";
+      renderSessions();
+      return false;
+    }
 
     setSideStatus("syncing");
+    if (!sessions.length) {
+      sessionListStatus = "loading";
+      renderSessions();
+    }
     try {
       setActivity("syncing");
       await Promise.all([
@@ -3556,7 +3582,11 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         loadCommands(),
         loadSkills()
       ]);
-      const sessionsLoaded = await loadSessions();
+      if (!refreshRequests.isCurrent(refreshGeneration)) return false;
+      const sessionLoad = loadSessions();
+      historyRequestGeneration = latestSessionListRequest;
+      const sessionsLoaded = await sessionLoad;
+      if (!refreshRequests.isCurrent(refreshGeneration)) return false;
       if (!sessionsLoaded) throw new Error("Could not refresh session history");
 
       if (activeSession) {
@@ -3571,11 +3601,19 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       }
       return true;
     } catch (error) {
+      const historyRequestIsCurrent = historyRequestGeneration === null
+        ? latestSessionListRequest === historyGenerationAtStart
+        : historyRequestGeneration === latestSessionListRequest;
+      if (!refreshRequests.isCurrent(refreshGeneration) || !historyRequestIsCurrent) return false;
+      if (!sessions.length && sessionListStatus === "loading") {
+        sessionListStatus = online ? "error" : "offline";
+        renderSessions();
+      }
       setActivity("error");
       showToast(error instanceof Error ? error.message : String(error));
       return false;
     } finally {
-      setSideStatus(online ? "idle" : "offline");
+      if (refreshRequests.isCurrent(refreshGeneration)) setSideStatus(online ? "idle" : "offline");
     }
   }
 
@@ -3601,6 +3639,10 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         void refresh();
       }
     } else {
+      refreshRequests.begin();
+      latestSessionListRequest = sessionListRequests.begin();
+      sessionListStatus = "offline";
+      renderSessions();
       setExecutionState("offline");
       stopProviderRefresh();
       disconnectEvents();

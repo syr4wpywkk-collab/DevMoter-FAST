@@ -48,7 +48,7 @@ test("settings root has no rows that only redirect to Diagnostics", async () => 
       assert.ok(!labels(scroll).includes(removed), removed);
     }
     // Storage and Cloud browser no longer share the Tools modal.
-    assert.equal(scroll.querySelectorAll('[data-action="existing:.adv-fab"]').length, 1);
+    assert.equal(scroll.querySelectorAll('[data-action="open:files"]').length, 1);
   } finally {
     dom.window.close();
   }

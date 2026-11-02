@@ -22,7 +22,11 @@
   position: fixed;
   z-index: 1000;
   inset: 0;
+  box-sizing: border-box;
   display: grid;
+  /* One row the size of the modal's content box: the sheet sizes to its
+     container (below the unified header when present), not to the viewport. */
+  grid-template-rows: minmax(0, 1fr);
   align-items: end;
   padding:
     max(10px, env(safe-area-inset-top))
@@ -39,7 +43,7 @@
 
 .devmoter-settings-sheet {
   width: min(100%, 760px);
-  height: min(94dvh, 940px);
+  height: min(100%, 940px);
   margin: 0 auto;
   overflow: hidden;
   display: grid;
@@ -138,10 +142,45 @@
   font-size: .7rem;
 }
 
-.devmoter-settings-profile > span:last-child,
-.devmoter-settings-chevron {
-  color: #77777d;
-  font-size: 1.35rem;
+/* Trailing indicator: chevron = another Settings page, arrow-out = closes
+   Settings and opens another screen. In-place actions have none. */
+.devmoter-settings-row > :is(.devmoter-settings-chevron, .devmoter-settings-leave) {
+  grid-column: 4;
+}
+
+.devmoter-settings-chevron,
+.devmoter-settings-leave {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  color: #8e8e93;
+}
+
+.devmoter-settings-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+.devmoter-settings-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+[data-action="open:passkeys"] svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  margin-left: 4px;
+  vertical-align: -2px;
 }
 
 .devmoter-settings-chevron.external {
@@ -235,7 +274,8 @@
 .devmoter-settings-icon > svg,
 .devmoter-settings-trigger > svg,
 .devmoter-settings-health-row > span > svg,
-.devmoter-settings-chevron.external > svg {
+.devmoter-settings-chevron.external > svg,
+.devmoter-settings-leave > svg {
   width: 18px;
   height: 18px;
   fill: none;
@@ -342,7 +382,7 @@ body.devmoter-settings-open .devmoter-settings-trigger {
   }
 
   .devmoter-settings-sheet {
-    height: min(90dvh, 900px);
+    height: min(100%, 900px);
   }
 }
 
@@ -360,13 +400,13 @@ body.devmoter-settings-open .devmoter-settings-trigger {
   }
 
   .devmoter-settings-modal {
-    padding: max(7px, env(safe-area-inset-top)) 0 0;
+    padding: max(8px, env(safe-area-inset-top)) 0 0;
   }
 
   .devmoter-settings-sheet {
     width: 100%;
-    height: calc(100dvh - max(7px, env(safe-area-inset-top)));
-    border-radius: 30px 30px 0 0;
+    height: 100%;
+    border-radius: 20px 20px 0 0;
     border-bottom: 0;
   }
 
@@ -400,6 +440,15 @@ html[data-devmoter-theme="light"] .devmoter-settings-section h2,
 html[data-devmoter-theme="light"] .devmoter-settings-head small,
 html[data-devmoter-theme="light"] .devmoter-settings-profile small,
 html[data-devmoter-theme="light"] .devmoter-settings-row-copy small {
+  color: #73737a;
+}
+
+html[data-devmoter-theme="light"] .devmoter-settings-icon {
+  color: #3a3a3f;
+}
+
+html[data-devmoter-theme="light"] .devmoter-settings-chevron,
+html[data-devmoter-theme="light"] .devmoter-settings-leave {
   color: #73737a;
 }
 
