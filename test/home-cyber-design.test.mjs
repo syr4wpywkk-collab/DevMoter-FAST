@@ -20,7 +20,7 @@ async function loadHome() {
   return homePromise;
 }
 
-test("uploaded HTML becomes a real 3-column home launcher, not a static fake dashboard", async () => {
+test("Home keeps a real two-column launcher and uses the canonical app registry", async () => {
   const { mountHomeSurface } = await loadHome();
   const dom = new JSDOM("<main id='home'></main>", { url: "https://devmoter.test/" });
   const root = dom.window.document.querySelector("#home");
@@ -32,6 +32,7 @@ test("uploaded HTML becomes a real 3-column home launcher, not a static fake das
   });
   assert.match(root.textContent, /作業スペース/);
   assert.equal(root.querySelectorAll("[data-home-app]").length, 13);
+  assert.equal(root.querySelector("[data-home-app-count]").textContent, "13件");
   assert.equal(root.querySelector("[data-home-app-grid]").children.length, 13);
   assert.equal(root.querySelector('[data-home-app="chat"]').getAttribute("type"), "button");
   assert.equal(root.querySelector("[data-home-health]").dataset.state, "checking", "never assume online");
@@ -41,7 +42,7 @@ test("uploaded HTML becomes a real 3-column home launcher, not a static fake das
   assert.deepEqual(launched, ["terminal"]);
   assert.equal(previews.length, 1);
   assert.equal(previews[0].id, "knowledge");
-  assert.match(root.querySelector("[data-home-recent]").textContent, /Terminal/);
+  assert.match(root.querySelector("[data-home-recent]").textContent, /ターミナル/);
   dom.window.close();
 });
 
@@ -61,7 +62,7 @@ test("search, Ctrl+K and Escape filter existing real app launchers", async () =>
   input.value = "terminal";
   input.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
   assert.equal(root.querySelectorAll("[data-home-app]:not(.hidden)").length, 1);
-  assert.equal(root.querySelector("[data-home-app-count]").textContent, "1 modules");
+  assert.equal(root.querySelector("[data-home-app-count]").textContent, "1件");
   root.querySelector('[data-home-app="terminal"]').click();
   assert.deepEqual(launched, ["terminal"]);
   dom.window.document.dispatchEvent(new dom.window.KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
@@ -125,17 +126,24 @@ test("health indicator only reports actual health response and tolerates unavail
   dom.window.close();
 });
 
-test("uploaded cyber design uses bundled CSS without external scripts or CSS frameworks", async () => {
+test("Home uses bundled token CSS without neon effects, repeated card chrome or external frameworks", async () => {
   const [css, source] = await Promise.all([
     readFile(new URL("../src/home.css", import.meta.url), "utf8"),
     readFile(new URL("../src/home.ts", import.meta.url), "utf8")
   ]);
   const compiled = await transform(css, { loader: "css", target: ["chrome120", "safari17"], minify: true });
   assert.ok(compiled.code.length > 0);
-  assert.match(css, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(css, /@media \(max-width: 640px\)/);
-  assert.match(css, /prefers-reduced-motion/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /focus-visible/);
+  assert.match(css, /var\(--canvas-base\)/);
+  assert.match(css, /var\(--space-1\)/);
+  assert.match(css, /var\(--radius-small\)/);
+  assert.match(css, /body\.devmoter-home-mode\s*\{[^}]*padding:\s*0;/s);
+  assert.match(css, /\.dm-home-history-link\s*\{\s*min-height:\s*44px;/);
+  assert.match(css, /\.dm-home-health\[data-state="offline"\]\s*\{\s*color:\s*var\(--status-error\);\s*\}/);
+  assert.doesNotMatch(css, /radial-gradient|linear-gradient|box-shadow|backdrop-filter|#[0-9a-f]{3,8}/i);
   assert.ok(!/cdn\.tailwindcss|https?:\/\/|<script|Math\.random/.test(css + source));
   assert.match(source, /APP_REGISTRY/);
   assert.match(source, /onPreviewApp/);

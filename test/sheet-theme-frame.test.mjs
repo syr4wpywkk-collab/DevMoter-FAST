@@ -39,7 +39,7 @@ test("default controls and the cx modal use tokens with a light success/warning 
   assert.ok(!/\.cx-settings-section h3 \{[^}]*uppercase/.test(base), "section labels are not tracked capitals");
   assert.match(workspace, /\.cx-project-form input \{[^}]*background: var\(--canvas-base\);[^}]*font-size: 16px;/);
   assert.ok(!/\.cx-modal-card \{[^}]*#262626/.test(codexChat));
-  assert.match(theme, /html\[data-devmoter-theme="light"\] \{[\s\S]*?--status-success: #1f7a3d;/);
+  assert.match(theme, /html\[data-devmoter-theme="light"\] \{[\s\S]*?--status-success: #28643e;/);
 });
 
 test("shared sheet frame starts below the unified header; tabs wrap at 400px", async () => {

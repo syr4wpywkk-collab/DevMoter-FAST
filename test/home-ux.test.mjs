@@ -54,6 +54,9 @@ test("Home copy describes a development workspace without generic AI slogans", a
   mountHomeSurface(root, { onLaunchApp() {}, onPreviewApp() {} });
   assert.equal(root.querySelector("h1")?.textContent, "作業スペース");
   assert.equal(root.querySelector("#dm-home-apps-title")?.textContent, "ツール");
+  assert.equal(root.querySelector("[data-home-app-count]")?.textContent, "13件");
+  assert.match(root.textContent, /開発ワークフロー|ナレッジ|ブラウザー/);
+  assert.doesNotMatch(root.textContent, /Developer Workflows|Knowledge|Mission Control|Sessions \/ Activity/);
   assert.doesNotMatch(root.textContent, /building with AI|local AI workspace/i);
   dom.window.close();
 });
@@ -73,13 +76,15 @@ test("Home still treats non-shipped applications as previews, never launches the
   assert.equal(browserCard.disabled, false);
   assert.equal(root.querySelector('[data-home-app="knowledge"]').getAttribute("aria-disabled"), "true");
   root.querySelector('[data-home-app="knowledge"]').click();
+  assert.equal(root.querySelector('[data-home-app="knowledge"]')?.getAttribute("aria-label"), "ナレッジ、プレビュー");
+  assert.equal(root.querySelector('[data-home-app="knowledge"] .dm-home-app-state')?.textContent, "プレビュー");
   browserCard.click();
   assert.deepEqual(launches, []);
   assert.equal(previews.length, 2);
   assert.equal(previews[0].id, "knowledge");
-  assert.match(previews[0].message, /not available yet/i);
+  assert.equal(previews[0].message, "ナレッジ機能は準備中です。専用の画面は今後追加予定です。");
   assert.equal(previews[1].id, "browser");
-  assert.match(previews[1].message, /Open Files & Preview/i);
+  assert.match(previews[1].message, /ファイルとプレビュー/);
   dom.window.close();
 });
 

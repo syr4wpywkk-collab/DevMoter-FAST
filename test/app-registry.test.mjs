@@ -40,7 +40,8 @@ test("Home cards are rendered from the Registry with accessible availability sta
   assert.ok(home.includes('button.setAttribute("aria-label",'), "cards remain named for screen readers");
   assert.ok(home.includes('button.setAttribute("aria-disabled", "true");'), "previews are explicitly identified");
   assert.ok(home.includes('if (app.availability === "unavailable") button.disabled = true;'));
-  assert.ok(home.includes("options.onPreviewApp(app.id, app.previewMessage"), "preview must not launch a fake app");
+  assert.ok(home.includes("options.onPreviewApp(app.id, homePreviewMessage(app))"), "preview must not launch a fake app");
+  assert.ok(home.includes("return app.previewMessage ||"), "untranslated registry copy remains a fallback only");
   assert.ok(home.includes("options.onLaunchApp(app.id)"), "available apps delegate to the real shell");
 });
 

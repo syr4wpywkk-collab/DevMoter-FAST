@@ -27,6 +27,36 @@ const HOME_APPS: readonly AppDefinition[] = HOME_ORDER.map(id => {
   return entry;
 });
 
+const HOME_LABELS: Record<AppId, string> = {
+  chat: "チャット",
+  office: "文書",
+  projects: "プロジェクト",
+  "mission-control": "状況",
+  knowledge: "ナレッジ",
+  terminal: "ターミナル",
+  git: "Git",
+  review: "レビュー",
+  agents: "エージェント",
+  sessions: "セッション・実行履歴",
+  browser: "ブラウザー",
+  automation: "自動化",
+  "developer-workflows": "開発ワークフロー"
+};
+
+function homeLabel(app: AppDefinition): string {
+  return HOME_LABELS[app.id] || app.title;
+}
+
+const HOME_PREVIEW_MESSAGES: Partial<Record<AppId, string>> = {
+  knowledge: "ナレッジ機能は準備中です。専用の画面は今後追加予定です。",
+  browser: "ブラウザーの独立した画面はまだありません。サイドバーの「ファイルとプレビュー」をお使いください。"
+};
+
+function homePreviewMessage(app: AppDefinition): string {
+  if (HOME_PREVIEW_MESSAGES[app.id]) return HOME_PREVIEW_MESSAGES[app.id]!;
+  return app.previewMessage || `${homeLabel(app)}は現在利用できません。`;
+}
+
 const pilotDisposers = new WeakMap<HTMLElement, () => void>();
 const homeDisposers = new WeakMap<HTMLElement, () => void>();
 
@@ -90,14 +120,14 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
         '<div class="dm-home-header-actions">',
           '<span class="dm-home-health" data-home-health data-state="checking" role="status" aria-live="polite"><span class="dm-home-health-dot" aria-hidden="true"></span><span data-home-health-label>接続状況を確認中</span></span>',
           '<button class="dm-home-search-trigger" type="button" data-home-search-toggle aria-controls="dmHomeSearchPanel" aria-expanded="false" aria-label="アプリを検索">',
-            '<span aria-hidden="true">⌕</span><strong>Search</strong><kbd>⌘ K</kbd>',
+          '<span class="dm-home-search-trigger-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.5"></circle><path d="m15.6 15.6 4.1 4.1"></path></svg></span><strong>検索</strong><kbd>⌘ K</kbd>',
           '</button>',
         '</div>',
       '</header>',
       '<div class="dm-home-search-panel hidden" id="dmHomeSearchPanel">',
         '<label for="dmHomeSearch">アプリを検索</label>',
         '<div class="dm-home-search-row">',
-          '<input id="dmHomeSearch" data-home-search type="search" autocomplete="off" placeholder="Chat、Git、Terminalなどを検索" />',
+          '<input id="dmHomeSearch" data-home-search type="search" autocomplete="off" placeholder="チャット、Git、ターミナルなどを検索" />',
           '<button type="button" data-home-search-close aria-label="検索を閉じる">×</button>',
         '</div>',
       '</div>',
@@ -138,7 +168,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
 
   const launch = (app: AppDefinition) => {
     if (app.availability !== "available") {
-      options.onPreviewApp(app.id, app.previewMessage || app.title + " is not available yet.");
+      options.onPreviewApp(app.id, homePreviewMessage(app));
       return;
     }
     recent = [{ id: app.id, openedAt: Date.now() }, ...recent.filter(entry => entry.id !== app.id)].slice(0, RECENT_LIMIT);
@@ -158,7 +188,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       button.type = "button";
       button.className = "dm-home-recent-card";
       button.dataset.homeRecentApp = app.id;
-      button.setAttribute("aria-label", app.title + " をもう一度開く");
+      button.setAttribute("aria-label", homeLabel(app) + "をもう一度開く");
       const top = document.createElement("span");
       top.className = "dm-home-recent-top";
       const icon = document.createElement("span");
@@ -170,7 +200,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       opened.textContent = recentTime(entry.openedAt);
       top.append(icon, opened);
       const heading = document.createElement("strong");
-      heading.textContent = app.title;
+      heading.textContent = homeLabel(app);
       button.append(top, heading);
       button.addEventListener("click", () => launch(app));
       recentsHost.appendChild(button);
@@ -185,17 +215,17 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     button.type = "button";
     button.className = "dm-home-quick-action";
     button.dataset.homeQuickAction = id;
-    button.setAttribute("aria-label", app.title + " を開く");
+    button.setAttribute("aria-label", homeLabel(app) + "を開く");
     const icon = document.createElement("span");
     icon.className = "dm-home-quick-action-icon";
     icon.innerHTML = app.icon; // static SVG from the App Registry
     icon.setAttribute("aria-hidden", "true");
     const title = document.createElement("strong");
-    title.textContent = app.title;
+    title.textContent = homeLabel(app);
     button.append(icon, title);
     if (app.availability !== "available") {
       button.disabled = true;
-      button.title = app.previewMessage || "現在は利用できません";
+      button.title = homePreviewMessage(app);
     } else {
       button.addEventListener("click", () => launch(app));
     }
@@ -207,9 +237,10 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     button.type = "button";
     button.className = "dm-home-app-card";
     button.dataset.homeApp = app.id;
-    button.dataset.homeSearchable = [app.title, app.id, app.shortDescription, app.category].join(" ").toLocaleLowerCase();
-    const state = app.availability === "preview" ? "Preview" : app.availability === "unavailable" ? "Unavailable" : "";
-    button.setAttribute("aria-label", app.title + (state ? ", " + state : ""));
+    button.dataset.homeSearchable = [homeLabel(app), app.title, app.id, app.shortDescription, app.category].join(" ").toLocaleLowerCase();
+    button.title = app.shortDescription;
+    const state = app.availability === "preview" ? "プレビュー" : app.availability === "unavailable" ? "利用不可" : "";
+    button.setAttribute("aria-label", homeLabel(app) + (state ? "、" + state : ""));
     // Browser's preview remains partial, but now has a real Files & Preview destination.
     if (state && app.id !== "browser") button.setAttribute("aria-disabled", "true");
     if (app.availability === "unavailable") button.disabled = true;
@@ -221,8 +252,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     const copy = document.createElement("span");
     copy.className = "dm-home-card-copy";
     const heading = document.createElement("strong");
-    heading.textContent = app.title;
-    button.title = app.shortDescription;
+    heading.textContent = homeLabel(app);
     copy.append(heading);
     if (state) {
       const badge = document.createElement("em");
@@ -247,7 +277,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       button.classList.toggle("hidden", !matches);
       if (matches) visible++;
     }
-    count.textContent = visible + " modules";
+    count.textContent = `${visible}件`;
     noResults.classList.toggle("hidden", visible > 0);
   };
 
