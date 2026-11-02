@@ -8,6 +8,7 @@ import {
 const $ = (selector) => document.querySelector(selector);
 const views = ["home", "connect", "settings"];
 let hostUrl = readSavedHost();
+let hostReachable = false;
 
 function showView(name) {
   for (const view of views) {
@@ -26,8 +27,8 @@ function showView(name) {
 function renderConnection() {
   const configured = Boolean(hostUrl);
   $("#workspace-label").textContent = configured ? new URL(hostUrl).host : "未設定のワークスペース";
-  $("#connection-label").textContent = configured ? hostUrl : "接続先を設定してください";
-  $("#status-dot").classList.toggle("ready", configured);
+  $("#connection-label").textContent = configured ? "接続先を保存済み" : "接続先を設定してください";
+  $("#status-dot").classList.toggle("ready", hostReachable);
   $("#open-dsh").disabled = !configured;
   document.querySelector('.quick-card[data-action="open"]').disabled = !configured;
   $("#check-host").disabled = !configured;
@@ -60,6 +61,7 @@ $("#save-host").addEventListener("click", () => {
   }
   showError("");
   hostUrl = result.value;
+  hostReachable = false;
   $("#check-result").textContent = "接続先をこの端末に保存しました。";
   renderConnection();
   showView("home");
@@ -72,7 +74,12 @@ $("#host-url").addEventListener("input", () => {
 });
 
 $("#check-host").addEventListener("click", async () => {
-  if (!hostUrl) return;
+  const checked = validateHostUrl($("#host-url").value || hostUrl);
+  if (!checked.ok) {
+    showError(checked.error);
+    return;
+  }
+  const target = checked.value;
   const button = $("#check-host");
   const output = $("#check-result");
   button.disabled = true;
@@ -80,7 +87,7 @@ $("#check-host").addEventListener("click", async () => {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 5000);
   try {
-    const response = await fetch(hostUrl, {
+    const response = await fetch(target, {
       method: "HEAD",
       mode: "cors",
       credentials: "omit",
@@ -88,20 +95,26 @@ $("#check-host").addEventListener("click", async () => {
       redirect: "manual",
       signal: controller.signal,
     });
+    hostReachable = target === hostUrl && response.ok;
     output.textContent = response.ok
       ? "ホストから応答がありました。"
-      : `ホストから HTTP ${response.status} が返りました。`;
+      : response.status === 0
+        ? "応答を確認できませんでした。リダイレクトまたは CORS 制限の可能性があります。"
+        : `ホストから HTTP ${response.status} が返りました。`;
   } catch {
+    hostReachable = false;
     output.textContent = "ブラウザから応答を確認できませんでした。CORS 制限の場合もあるため、DSH を開いて確認してください。";
   } finally {
     window.clearTimeout(timeout);
-    button.disabled = false;
+    button.disabled = !validateHostUrl($("#host-url").value || hostUrl).ok;
+    renderConnection();
   }
 });
 
 $("#clear-host").addEventListener("click", () => {
   clearSavedHost();
   hostUrl = "";
+  hostReachable = false;
   $("#host-url").value = "";
   $("#check-result").textContent = "";
   renderConnection();
@@ -110,7 +123,7 @@ $("#clear-host").addEventListener("click", () => {
 
 renderConnection();
 
-if ("serviceWorker" in navigator && window.location.protocol === "https:") {
+if ("serviceWorker" in navigator && window.isSecureContext) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
   }, { once: true });
