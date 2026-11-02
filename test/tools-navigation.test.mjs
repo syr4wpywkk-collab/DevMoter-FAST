@@ -87,6 +87,26 @@ test("Tools sidebar holds only Tools AI; registered apps still launch through th
   dom.window.close();
 });
 
+test("Home Browser preview opens the existing Files & Preview launcher; other previews stay informational", async t => {
+  const dom = makeDom();
+  t.after(() => dom.window.close());
+  const calls = [];
+  mount(dom, calls);
+  const preview = (id, message) => dom.window.dispatchEvent(
+    new dom.window.CustomEvent("devmoter:app-preview", { detail: { id, message } })
+  );
+
+  preview("browser", "Browser does not have a separate app surface yet.");
+  assert.deepEqual(calls, ["advanced"]);
+  const toast = dom.window.document.querySelector(".dm-shell-toast");
+  assert.equal(toast.classList.contains("hidden"), true);
+
+  preview("knowledge", "Knowledge is not available yet.");
+  assert.deepEqual(calls, ["advanced"]);
+  assert.equal(toast.textContent, "Knowledge is not available yet.");
+  assert.equal(toast.classList.contains("hidden"), false);
+});
+
 test("OpenCode history keeps a direct Tools escape owned by the global shell", async t => {
   const dom = makeDom();
   dom.window.document.body.insertAdjacentHTML("beforeend", '<div class="ocx-app"><aside id="ocxSidebar"><div class="ocx-sidebar-head"><div>OpenCode</div><button id="ocxSidebarClose">×</button></div></aside></div>');

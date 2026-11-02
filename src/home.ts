@@ -210,7 +210,8 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     button.dataset.homeSearchable = [app.title, app.id, app.shortDescription, app.category].join(" ").toLocaleLowerCase();
     const state = app.availability === "preview" ? "Preview" : app.availability === "unavailable" ? "Unavailable" : "";
     button.setAttribute("aria-label", app.title + (state ? ", " + state : ""));
-    if (state) button.setAttribute("aria-disabled", "true");
+    // Browser's preview remains partial, but now has a real Files & Preview destination.
+    if (state && app.id !== "browser") button.setAttribute("aria-disabled", "true");
     if (app.availability === "unavailable") button.disabled = true;
     const icon = document.createElement("span");
     icon.className = "dm-home-card-icon";

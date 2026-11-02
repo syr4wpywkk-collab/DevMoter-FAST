@@ -175,7 +175,11 @@ export function mountAdvancedTools() {
   }
 
   async function loadFileBrowser(path = currentBrowserPath) {
-    if (!projectId()) return;
+    if (!projectId()) {
+      fileBrowser.textContent = "Select a project first.";
+      return;
+    }
+    fileBrowser.textContent = "Loading files…";
     try {
       const data = await api<{
         browser: {
@@ -263,6 +267,7 @@ export function mountAdvancedTools() {
   }
 
   async function loadProjects() {
+    setStatus(projectStatus, "Loading projects…");
     try {
       const data = await api<{ projects: Project[] }>("/api/projects");
       projectSelect.replaceChildren();
@@ -282,11 +287,18 @@ export function mountAdvancedTools() {
 
   async function showPreview(path: string) {
     previewBox.replaceChildren();
-    if (!projectId()) return;
+    if (!projectId()) {
+      previewBox.textContent = "Select a project first.";
+      return;
+    }
+    const loading = element("div", "adv-status");
+    loading.textContent = "Loading preview…";
+    previewBox.append(loading);
     try {
       const data = await api<{ preview: Preview }>(
         "/api/projects/" + encodeURIComponent(projectId()) + "/preview?path=" + encodeURIComponent(path)
       );
+      previewBox.replaceChildren();
       const preview = data.preview;
       const meta = element("div", "adv-status");
       meta.textContent = preview.name + " · " + preview.size.toLocaleString() + " bytes";
@@ -306,6 +318,7 @@ export function mountAdvancedTools() {
         previewBox.append(fallback);
       }
     } catch (error) {
+      previewBox.replaceChildren();
       const message = element("div", "adv-status error");
       message.textContent = error instanceof Error ? error.message : String(error);
       previewBox.append(message);
