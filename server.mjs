@@ -3369,7 +3369,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const integrationLaunchMatch = url.pathname.match(/^\/api\/integrations\/(antigravity|claude)\/launch$/);
+    const integrationLaunchMatch = url.pathname.match(/^\/api\/integrations\/(antigravity|claude|qwen)\/launch$/);
     if (req.method === "POST" && integrationLaunchMatch) {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
       try {
