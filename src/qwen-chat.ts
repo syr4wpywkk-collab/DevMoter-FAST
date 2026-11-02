@@ -14,6 +14,8 @@ import {
   type QwenChat,
   type QwenChatMessage
 } from "./qwen-chat-history.mjs";
+import { mountQwenModelPicker } from "./qwen-model-picker";
+import { qwenModelChipLabel, qwenModelKey } from "./qwen-model-store.mjs";
 
 type Project = { id: string; name: string; path: string; available?: boolean };
 type QwenEvent =
@@ -74,6 +76,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
           <strong>Qwen Code</strong>
           <small data-qwen-project></small>
         </div>
+        <button type="button" class="qx-model-chip" data-qwen-model-button aria-haspopup="dialog" aria-expanded="false" aria-controls="qwenModelSheet"><span data-qwen-model-label></span>${SYSTEM_ICONS["chevron-down"]}</button>
         <button type="button" class="qx-icon-button" data-qwen-new aria-label="${t("新しいチャット", "New chat", "新建对话")}">${SYSTEM_ICONS.plus}</button>
       </header>
       <main class="qx-main">
@@ -115,6 +118,8 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   const scrim = root.querySelector<HTMLElement>("[data-qwen-scrim]")!;
   const sheet = root.querySelector<HTMLElement>("[data-qwen-sheet]")!;
   const historyList = root.querySelector<HTMLElement>("[data-qwen-history-list]")!;
+  const modelButton = root.querySelector<HTMLButtonElement>("[data-qwen-model-button]")!;
+  const modelLabel = root.querySelector<HTMLElement>("[data-qwen-model-label]")!;
   const background = [".qx-topbar", ".qx-main", ".qx-composer-wrap"].map(selector => root.querySelector<HTMLElement>(selector)!);
   const composerWrap = background[2];
 
@@ -126,6 +131,18 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     primary: { label: t("新規", "New", "新建"), onClick: () => { closeSheet(); startNewChat(); } }
   });
   sheet.prepend(head.element);
+
+  const picker = mountQwenModelPicker({
+    host: app,
+    headers: requestHeaders,
+    projectId: () => projectFor(activeChat())?.id ?? null,
+    onChange: () => renderModel(),
+    onOpenChange: open => {
+      scrim.hidden = !open;
+      for (const region of background) region.inert = open;
+      modelButton.setAttribute("aria-expanded", String(open));
+    }
+  });
 
   let chats: QwenChat[] = loadQwenChats(localStorage);
   let activeId: string | null = chats[0]?.id ?? null;
@@ -171,6 +188,14 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       : t("ローカルの qwen CLI と話します", "Chat with the local qwen CLI", "与本地 qwen CLI 对话");
   }
 
+  function renderModel() {
+    const current = picker.current();
+    modelLabel.textContent = qwenModelChipLabel(current);
+    const name = current ? current.name : t("Qwen Code の既定", "Qwen Code default", "Qwen Code 默认");
+    modelButton.setAttribute("aria-label", t(`モデル: ${name}`, `Model: ${name}`, `模型：${name}`));
+    modelButton.title = name;
+  }
+
   async function copyText(text: string) {
     await navigator.clipboard.writeText(text);
   }
@@ -182,6 +207,10 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     const body = document.createElement("div");
     body.className = "qx-message-body";
     if (message.role === "assistant") renderChatMarkdown(body, message.text, text => void copyText(text));
+    else if (message.role === "note") {
+      row.dataset.qwenNote = "";
+      body.textContent = message.text;
+    }
     else body.textContent = message.text;
     row.append(body);
     if (message.role === "assistant" && !streaming && message.text) {
@@ -195,6 +224,15 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
           .catch(() => { copy.textContent = t("コピーできませんでした", "Copy failed", "复制失败"); });
       });
       row.append(copy);
+    }
+    if (message.role === "error" && (message.code === "model_auth" || message.code === "unknown_model")) {
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "qx-message-action qx-setup";
+      open.dataset.qwenOpenModels = "";
+      open.textContent = t("モデル選択を開く", "Open model picker", "打开模型选择");
+      open.addEventListener("click", () => picker.open(modelButton));
+      row.append(open);
     }
     if (message.role === "error" && message.code && SETUP_CODES.has(message.code) && options.onIntegrations) {
       const setup = document.createElement("button");
@@ -308,6 +346,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
 
   function render() {
     renderProject();
+    renderModel();
     renderMessages();
     renderStatus();
     if (!sheet.hidden) renderHistory();
@@ -322,6 +361,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
 
   function openSheet() {
     if (!sheet.hidden) return;
+    picker.close();
     sheetReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : historyButton;
     window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
     renderHistory();
@@ -412,6 +452,15 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     }
     if (!chat.projectId) chat.projectId = project.id;
     if (!chat.messages.some(message => message.role === "user")) chat.title = qwenChatTitle(prompt);
+    const model = picker.current();
+    const modelKey = qwenModelKey(model);
+    // A resumed qwen session can switch models (qwen's /model does the same);
+    // say so in the transcript so the change is visible later.
+    if (chat.messages.length && (chat.model ?? "") !== modelKey) {
+      const name = model ? model.name.replace(/^\[[^\]]+\]\s*/, "") || model.id : t("Qwen Code の既定", "Qwen Code default", "Qwen Code 默认");
+      chat.messages.push({ role: "note", text: t(`ここから ${name} で応答します`, `Replies use ${name} from here`, `从这里开始使用 ${name} 回复`) });
+    }
+    chat.model = modelKey;
     chat.messages.push({ role: "user", text: prompt });
     chat.updatedAt = Date.now();
     persist();
@@ -430,7 +479,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       const res = await fetch("/api/qwen/chat", {
         method: "POST",
         headers: requestHeaders(),
-        body: JSON.stringify({ projectId: project.id, prompt, sessionId: target.sessionId, runId: run.runId }),
+        body: JSON.stringify({ projectId: project.id, prompt, sessionId: target.sessionId, runId: run.runId, model: model ? { authType: model.authType, id: model.id } : null }),
         signal: run.controller.signal
       });
       if (!res.ok || !res.body) {
@@ -488,8 +537,17 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   }
 
   historyButton.addEventListener("click", () => (sheet.hidden ? openSheet() : closeSheet()));
+  modelButton.addEventListener("click", () => {
+    if (picker.isOpen()) return picker.close();
+    closeSheet();
+    window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
+    picker.open(modelButton);
+  });
   newButton.addEventListener("click", startNewChat);
-  scrim.addEventListener("click", closeSheet);
+  scrim.addEventListener("click", () => {
+    closeSheet();
+    picker.close();
+  });
   send.addEventListener("click", event => {
     if (live && live.chatId === activeId) {
       event.preventDefault();
@@ -525,8 +583,8 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       (event.shiftKey ? last : first).focus({ preventScroll: true });
     }
   });
-  window.addEventListener("devmoter:global-nav-opened", closeSheet);
-  window.addEventListener("devmoter:surface-changed", closeSheet);
+  window.addEventListener("devmoter:global-nav-opened", () => { closeSheet(); picker.close(); });
+  window.addEventListener("devmoter:surface-changed", () => { closeSheet(); picker.close(); });
   window.addEventListener("devmoter:backend-changed", event => {
     if ((event as CustomEvent<{ backend?: string }>).detail?.backend === "qwen") void refresh();
   });
