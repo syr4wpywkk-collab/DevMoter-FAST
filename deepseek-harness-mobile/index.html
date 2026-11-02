@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#090d14">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Mobile-first companion for DeepSeek Harness">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./styles.css">
+    <title>DSH Mobile</title>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#home" aria-label="DSH Mobile ホーム">
+          <span class="brand-mark" aria-hidden="true">D</span>
+          <span><strong>DSH</strong><small>MOBILE CONTROL</small></span>
+        </a>
+        <span class="preview-pill"><i></i> COMPANION</span>
+      </header>
+
+      <main id="main-content">
+        <section class="view is-active" id="view-home" aria-labelledby="home-title">
+          <div class="eyebrow">YOUR AGENT WORKSPACE</div>
+          <h1 id="home-title">どこからでも、<br><span>開発をコントロール。</span></h1>
+          <p class="lede">DeepSeek Harness をスマートフォンから開くためのモバイルコンパニオン。</p>
+
+          <article class="hero-card">
+            <div class="hero-top">
+              <div>
+                <span class="eyebrow muted">CONNECTED WORKSPACE</span>
+                <h2 id="workspace-label">未設定のワークスペース</h2>
+              </div>
+              <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+            </div>
+            <div class="connection-line">
+              <span class="connection-icon" aria-hidden="true">⌁</span>
+              <span id="connection-label">接続先を設定してください</span>
+            </div>
+            <button class="primary-button" id="open-dsh" type="button" disabled>
+              DSH を開く <span aria-hidden="true">↗</span>
+            </button>
+            <button class="text-button" data-view="connect" type="button">接続先を設定する</button>
+          </article>
+
+          <div class="section-heading">
+            <div><span class="eyebrow muted">QUICK ACCESS</span><h2>ワークスペース</h2></div>
+          </div>
+          <div class="quick-grid">
+            <button class="quick-card" data-action="open" type="button" disabled>
+              <span class="quick-icon purple" aria-hidden="true">⌘</span>
+              <strong>Agent UI</strong><small>会話・実行画面</small>
+            </button>
+            <button class="quick-card" data-view="connect" type="button">
+              <span class="quick-icon blue" aria-hidden="true">⌁</span>
+              <strong>接続設定</strong><small>DSH ホストを登録</small>
+            </button>
+          </div>
+
+          <aside class="notice">
+            <span aria-hidden="true">ⓘ</span>
+            <p>この初期版は安全な接続ランチャーです。Agent の実行・停止やターミナル操作は、公式 DSH Web UI 側で行います。</p>
+          </aside>
+        </section>
+
+        <section class="view" id="view-connect" aria-labelledby="connect-title" hidden>
+          <div class="eyebrow">WORKSPACE CONNECTION</div>
+          <h1 id="connect-title">ホストに<br><span>接続する。</span></h1>
+          <p class="lede">起動中の DeepSeek Harness Web UI のアドレスを登録します。</p>
+          <article class="panel">
+            <label for="host-url">DSH ホスト URL</label>
+            <input id="host-url" type="url" inputmode="url" autocomplete="url" placeholder="https://your-dsh-host.example">
+            <p class="field-hint">リモート接続は HTTPS が必要です。ローカル開発では localhost の HTTP を利用できます。</p>
+            <p class="form-error" id="url-error" role="alert" hidden></p>
+            <button class="primary-button full" id="save-host" type="button">接続先を保存</button>
+            <button class="secondary-button full" id="check-host" type="button" disabled>到達性を確認</button>
+            <p class="check-result" id="check-result" role="status" aria-live="polite"></p>
+          </article>
+          <article class="panel subtle-panel">
+            <h2>接続のヒント</h2>
+            <ul>
+              <li>先にホスト側で DSH Web UI を起動します。</li>
+              <li>iPhone から到達できる HTTPS アドレスを使います。</li>
+              <li>API キーやパスワードはこのアプリに入力しないでください。</li>
+            </ul>
+            <a href="https://github.com/deepseek-ai/deepseek-harness" target="_blank" rel="noopener noreferrer">公式 DeepSeek Harness ↗</a>
+          </article>
+        </section>
+
+        <section class="view" id="view-settings" aria-labelledby="settings-title" hidden>
+          <div class="eyebrow">PREFERENCES</div>
+          <h1 id="settings-title">アプリの<br><span>設定。</span></h1>
+          <article class="panel">
+            <div class="setting-row"><div><strong>登録済みホスト</strong><small id="settings-host">未設定</small></div><span class="setting-value">DSH</span></div>
+            <div class="setting-row"><div><strong>保存データ</strong><small>ホスト URL のみ</small></div><span class="setting-value">LOCAL</span></div>
+            <div class="setting-row"><div><strong>アプリバージョン</strong><small>Mobile Companion</small></div><span class="setting-value">0.1.0</span></div>
+            <button class="danger-button full" id="clear-host" type="button">保存した接続先を削除</button>
+          </article>
+          <article class="panel subtle-panel">
+            <h2>プライバシー</h2>
+            <p>このアプリは認証情報を保存せず、接続先 URL 以外の個人データを収集しません。接続テストは認証情報なしの HEAD リクエストです。</p>
+          </article>
+        </section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="メインナビゲーション">
+        <button class="nav-item is-active" data-view="home" type="button" aria-current="page"><span aria-hidden="true">⌂</span><small>ホーム</small></button>
+        <button class="nav-item" data-view="connect" type="button"><span aria-hidden="true">⌁</span><small>接続</small></button>
+        <button class="nav-item" data-view="settings" type="button"><span aria-hidden="true">⚙</span><small>設定</small></button>
+      </nav>
+    </div>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>

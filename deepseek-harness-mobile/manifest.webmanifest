@@ -1,0 +1,16 @@
+{
+  "id": "./",
+  "name": "DeepSeek Harness Mobile",
+  "short_name": "DSH Mobile",
+  "description": "Mobile-first companion for DeepSeek Harness",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#090d14",
+  "theme_color": "#090d14",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
