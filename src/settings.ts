@@ -1,4 +1,5 @@
 import "./settings.css";
+import { describeHealthFetch, formatBuildId, formatNodeVersion } from "./diagnostics-format.mjs";
 import { boundedPushWait, inspectPushReadiness, type PushReadiness } from "./push-readiness.js";
 
 type Json = Record<string, any>;
@@ -188,6 +189,8 @@ export function mountSettingsPanel() {
   let page: SettingsPage = "root";
   let authStatus: Json = {};
   let diagnostics: Json = {};
+  // #473: when /api/system/diagnostics last succeeded / failed, so stale health is never shown as current.
+  const diagnosticsFetch: { fetchedAt: number | null; failedAt: number | null; loading: boolean } = { fetchedAt: null, failedAt: null, loading: false };
   let cliStatus: Json[] = [];
   let vaultFormElement: HTMLFormElement | null = null;
   let vaultSecrets: Json[] = [];
@@ -757,11 +760,16 @@ export function mountSettingsPanel() {
 
   function renderDiagnostics() {
     setHeader("診断", "DevMoter FAST の状態");
+    const fetchState = describeHealthFetch(diagnosticsFetch);
     scroll.innerHTML = `
       <section class="devmoter-settings-section">
         <h2>ステータス</h2>
+        <div class="devmoter-settings-note" data-diagnostics-fetched data-tone="${fetchState.tone}" role="status">${escapeHtml(fetchState.text)}</div>
+        <div class="devmoter-settings-actions"><button type="button" data-action="diagnostics:refresh" ${diagnosticsFetch.loading ? "disabled" : ""}>更新</button></div>
         <div class="devmoter-settings-card devmoter-settings-detail-card">
           <div class="devmoter-settings-detail-row"><span>アプリ</span><strong>${escapeHtml(diagnostics?.app?.version || "不明")}</strong></div>
+          <div class="devmoter-settings-detail-row"><span>Node.js</span><strong data-diagnostics-node>${escapeHtml(formatNodeVersion(diagnostics?.app?.node))}</strong></div>
+          <div class="devmoter-settings-detail-row"><span>ビルド</span><strong data-diagnostics-build>${escapeHtml(formatBuildId(diagnostics?.app?.build))}</strong></div>
           <div class="devmoter-settings-detail-row"><span>OpenCode</span><strong>${diagnostics?.backends?.opencode?.online ? "オンライン" : "オフライン"}</strong></div>
           <div class="devmoter-settings-detail-row"><span>Codex</span><strong>${diagnostics?.backends?.codex?.online ? "オンライン" : "オフライン"}</strong></div>
           <div class="devmoter-settings-detail-row"><span>プロジェクト</span><strong>${escapeHtml(diagnostics?.projects?.count ?? 0)}</strong></div>
@@ -982,6 +990,15 @@ export function mountSettingsPanel() {
           leave(action.slice(5));
           return;
         }
+        if (action === "diagnostics:refresh") {
+          diagnosticsFetch.loading = true;
+          renderDiagnostics();
+          wireRows();
+          await refreshDiagnostics();
+          if (page === "diagnostics") renderDiagnostics();
+          wireRows();
+          return;
+        }
         if (action === "account:connect") {
           const provider = button.dataset.provider || "";
           try {
@@ -1194,16 +1211,28 @@ export function mountSettingsPanel() {
     }
   }
 
+  async function refreshDiagnostics() {
+    diagnosticsFetch.loading = true;
+    try {
+      diagnostics = await request("/api/system/diagnostics");
+      diagnosticsFetch.fetchedAt = Date.now();
+    } catch {
+      // Keep the last good values but mark them as stale (#473).
+      diagnosticsFetch.failedAt = Date.now();
+    } finally {
+      diagnosticsFetch.loading = false;
+    }
+  }
+
   async function refresh() {
     scroll.innerHTML = '<div class="devmoter-settings-loading">設定を読み込んでいます…</div>';
     try {
-      const [auth, diag, clis] = await Promise.all([
+      const [auth, , clis] = await Promise.all([
         request("/api/auth/status"),
-        request("/api/system/diagnostics"),
+        refreshDiagnostics(),
         request("/api/cli").catch(() => ({ clis: [] }))
       ]);
       authStatus = auth;
-      diagnostics = diag;
       cliStatus = Array.isArray(clis?.clis) ? clis.clis : [];
     } catch {
       // Keep the shell usable even when one diagnostics endpoint is unavailable.

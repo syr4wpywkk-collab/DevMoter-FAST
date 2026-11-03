@@ -27,6 +27,13 @@ function sha256(value) {
   return createHash("sha256").update(String(value)).digest("hex");
 }
 
+// Build identifiers come from the environment, so only echo values that look
+// like a plain commit SHA / tag / build number; anything else is reported as null.
+export function safeBuildId(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  return /^[0-9A-Za-z][0-9A-Za-z._-]{0,63}$/.test(text) ? text : null;
+}
+
 function safeLabel(value, fallback = "Browser") {
   const text = String(value || fallback).replace(/[\r\n\t]/g, " ").trim();
   return (text || fallback).slice(0, 80);
@@ -521,7 +528,7 @@ export function createSystemFeatures({
         version,
         node: process.version,
         host,
-        build: process.env.DEVMOTER_BUILD || process.env.GITHUB_SHA || null
+        build: safeBuildId(process.env.DEVMOTER_BUILD) || safeBuildId(process.env.GITHUB_SHA) || null
       },
       prerequisites: {
         required,
