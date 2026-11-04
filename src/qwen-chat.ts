@@ -84,17 +84,23 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
           <section class="qx-welcome" data-qwen-welcome>
             <h1>Qwen Code</h1>
             <p data-qwen-welcome-text></p>
+            <div class="qx-prompts" data-qwen-prompts role="group" aria-label="${t("最初に試す依頼", "Try a task", "试试这些任务")}">
+              <button type="button" class="qx-prompt" data-qwen-prompt>${t("プロジェクトの構成と主要ファイルを説明して", "Explain this project's structure and key files", "介绍此项目的结构和主要文件")}</button>
+              <button type="button" class="qx-prompt" data-qwen-prompt>${t("テストを実行し、失敗の原因を調べて", "Run the tests and investigate any failures", "运行测试并调查失败原因")}</button>
+              <button type="button" class="qx-prompt" data-qwen-prompt>${t("最近の変更をレビューして", "Review the recent changes", "审查最近的更改")}</button>
+            </div>
           </section>
           <div class="qx-messages" data-qwen-messages aria-live="polite"></div>
         </div>
       </main>
       <section class="qx-composer-wrap">
         <form class="qx-composer" data-qwen-form>
-          <textarea data-qwen-input rows="1" enterkeyhint="send" placeholder="${t("メッセージを入力", "Type a message", "输入消息")}" aria-label="${t("メッセージ", "Message", "消息")}"></textarea>
+          <textarea data-qwen-input rows="1" enterkeyhint="send" placeholder="${t("メッセージを入力", "Type a message", "输入消息")}" aria-label="${t("メッセージ", "Message", "消息")}" aria-describedby="qwenComposerShortcut"></textarea>
           <div class="qx-composer-foot">
             <small class="qx-status" data-qwen-status role="status" aria-live="polite"></small>
             <button type="submit" class="qx-send" data-qwen-send aria-label="${t("送信", "Send", "发送")}">${SYSTEM_ICONS.send}</button>
           </div>
+          <small class="qx-shortcut" id="qwenComposerShortcut">${t("Enterで送信 · Shift+Enterで改行", "Enter to send · Shift+Enter for a new line", "Enter 发送 · Shift+Enter 换行")}</small>
         </form>
       </section>
       <div class="qx-scrim" data-qwen-scrim hidden></div>
@@ -114,6 +120,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   const form = root.querySelector<HTMLFormElement>("[data-qwen-form]")!;
   const input = root.querySelector<HTMLTextAreaElement>("[data-qwen-input]")!;
   const status = root.querySelector<HTMLElement>("[data-qwen-status]")!;
+  const promptButtons = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-qwen-prompt]"));
   const send = root.querySelector<HTMLButtonElement>("[data-qwen-send]")!;
   const scrim = root.querySelector<HTMLElement>("[data-qwen-scrim]")!;
   const sheet = root.querySelector<HTMLElement>("[data-qwen-sheet]")!;
@@ -184,8 +191,8 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     projectLabel.textContent = name;
     projectLabel.title = project?.path || name;
     welcomeText.textContent = project
-      ? t(`${project.name} でローカルの qwen を実行します`, `Runs the local qwen CLI in ${project.name}`, `在 ${project.name} 中运行本地 qwen`)
-      : t("ローカルの qwen CLI と話します", "Chat with the local qwen CLI", "与本地 qwen CLI 对话");
+      ? t(`${project.name} のファイルを調査・変更・レビューするよう依頼できます`, `Ask Qwen Code to inspect, change, or review files in ${project.name}`, `可以让 Qwen Code 检查、修改或审查 ${project.name} 中的文件`)
+      : t("プロジェクトを選ぶと、その中のファイルを調査・変更できます", "Choose a project to inspect or change its files", "选择项目后即可检查或修改其中的文件");
   }
 
   function renderModel() {
@@ -558,6 +565,14 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     event.preventDefault();
     void submit();
   });
+  for (const button of promptButtons) {
+    button.addEventListener("click", () => {
+      input.value = button.textContent?.trim() ?? "";
+      resizeInput();
+      renderStatus();
+      input.focus({ preventScroll: true });
+    });
+  }
   input.addEventListener("input", () => {
     resizeInput();
     renderStatus();

@@ -140,6 +140,16 @@ test("Qwen chat shows its project, streams a reply and keeps the resume id per c
     assert.match($("[data-qwen-welcome-text]").textContent, /DevMoter-FAST/);
     assert.ok($("[data-qwen-history] svg") && $("[data-qwen-new] svg") && $("[data-qwen-send] svg"), "line icons");
     assert.equal($("[data-qwen-send]").disabled, true, "empty composer cannot send");
+    const prompts = [...root.querySelectorAll("[data-qwen-prompt]")];
+    assert.equal(prompts.length, 3, "the empty state offers three starter tasks");
+    assert.equal($("[data-qwen-input]").getAttribute("aria-describedby"), "qwenComposerShortcut");
+    assert.match($("#qwenComposerShortcut").textContent, /Shift\+Enter/);
+    prompts[1].click();
+    assert.equal($("[data-qwen-input]").value, prompts[1].textContent.trim());
+    assert.equal($("[data-qwen-send]").disabled, false, "choosing a prompt enables send without submitting it");
+    assert.equal(requests.filter(request => request.path === "/api/qwen/chat").length, 0);
+    $("[data-qwen-input]").value = "";
+    $("[data-qwen-input]").dispatchEvent(new dom.window.Event("input"));
 
     type("一行目", { shiftKey: true });
     type("一行目", { isComposing: true });
