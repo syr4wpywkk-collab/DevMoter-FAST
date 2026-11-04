@@ -51,13 +51,13 @@ and resolve the conflict with the owner instead of resetting Serve.
 
 Do not send the DevMoter Basic-auth password over cleartext HTTP on an untrusted network.
 
-If a reverse proxy changes the externally visible scheme or host and its forwarded headers do not preserve that origin, set:
+For reverse-proxy deployments, set the canonical browser origin:
 
 ```text
 DEVMOTER_PUBLIC_ORIGIN=https://your-device.your-tailnet.ts.net
 ```
 
-The value must be the exact public origin used by the browser. Mutation requests with a missing or mismatched `Origin` are rejected.
+The value must be the exact public origin used by the browser. Forwarded host/protocol headers are trusted only when the server connection comes from a loopback proxy; configure this value when the proxy connects from another address or when the origin is ambiguous. Mutation requests with a missing or mismatched `Origin` are rejected.
 
 Tailscale Funnel and other public-tunnel exposure are **not** the recommended deployment model for the current alpha. Do not expose the OpenCode port or Codex app-server directly.
 

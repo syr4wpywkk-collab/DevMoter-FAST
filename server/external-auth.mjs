@@ -1,6 +1,7 @@
 import { readCookie } from "./cookies.mjs";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { credentialsMatch } from "./auth.mjs";
+import { createAuthFailureLimiter } from "./auth-rate-limit.mjs";
 import { OwnerSessionStore, OWNER_SESSION_DEFAULT_TTL_MS } from "./owner-session-store.mjs";
 import { createOwnerIdentityStore } from "./owner-identity-store.mjs";
 
@@ -34,11 +35,12 @@ function publicIdentity(identity) {
 }
 
 export class ExternalAuth {
-  constructor({ configDir, githubClientId = "", fetchImpl = globalThis.fetch, sessionTtlMs = OWNER_SESSION_DEFAULT_TTL_MS, publicOrigin = "" }) {
+  constructor({ configDir, githubClientId = "", fetchImpl = globalThis.fetch, sessionTtlMs = OWNER_SESSION_DEFAULT_TTL_MS, publicOrigin = "", authFailureLimiter = createAuthFailureLimiter() }) {
     this.configDir = configDir;
     this.githubClientId = String(githubClientId || "").trim();
     this.fetchImpl = fetchImpl;
     this.publicOrigin = publicOrigin;
+    this.authFailureLimiter = authFailureLimiter;
     this.sessionTtlMs = sessionTtlMs;
     this.identities = createOwnerIdentityStore({ configDir });
     this.sessions = new OwnerSessionStore({ configDir, ttlMs: sessionTtlMs });
@@ -78,7 +80,12 @@ export class ExternalAuth {
   }
   async localLogin(req, input, expected) {
     const credentials = { username: String(input?.username || ""), password: String(input?.password || "") };
-    if (!credentialsMatch(credentials, expected)) throw authError("Invalid local recovery credentials", 401);
+    if (!credentialsMatch(credentials, expected)) {
+      if (this.authFailureLimiter.isBlocked(req)) throw authError("Too many failed sign-in attempts; try again shortly", 429);
+      this.authFailureLimiter.recordFailure(req);
+      throw authError("Invalid local recovery credentials", 401);
+    }
+    this.authFailureLimiter.clear(req);
     return this.createSession(req, { provider: "local", subject: credentials.username, login: credentials.username, name: "Local recovery" }, { assurance: "password" });
   }
   async passkeyLogin(req) {
