@@ -89,23 +89,31 @@ Phone / tablet / browser / PWA
 
 DevMoter 明确区分 **Shipped / Experimental / Planned**。UI 中出现入口，或者仓库里存在设计文档，并不代表该能力已经 production ready。
 
+| 领域 | 功能 | 成熟度 |
+| --- | --- | --- |
+| Agent workspace | OpenCode / Codex 会话、streaming、model/agent 选择、approvals、interrupt | ✅ Shipped；依赖上游 |
+| Projects | registered project、project switching、有边界的文件与 Markdown 访问 | ✅ Shipped |
+| GitHub workspace | 基于主机认证的 repo discovery 与 managed repository 操作 | ✅ Shipped；范围有限 |
+| Tools AI | 将自然语言请求路由到有边界的 project / host 观察 | 🧪 Experimental |
+| Reviewed Changes | diff proposal、文件/hunk review、drift check、显式 apply / commit | 🧪 Experimental |
+| Session control | follow-up、handoff、checkpoint、fork、transcript search、background-run controls | 🧪 Experimental |
+| Terminal | 认证的 project 级持久 terminal、bounded replay、reconnect | 🧪 Experimental |
+| API Chat / routing | 可配置 provider/model、reasoning 控制、attachments、routing/failover | 🧪 Experimental |
+| Developer workflows | Skills、Rules、MCP 管理、可选 ACP、Extensions、verification/review | 因功能而异 |
+| Host protocol | 跨 host adapter 的版本化 capability discovery | v1 discovery 契约；adapter 各有差异 |
+| Automation / integrations | host registry、有边界的 trigger/schedule、部分 integration handoff | 🧪 Experimental |
+| Web / PWA | 响应式移动端 UI、可安装的 web shell | ✅ Shipped |
+| iOS client | 通过 HTTPS 连接现有 DevMoter 服务器的 native wrapper | 🧪 Experimental；需要真机验证 |
+
+每一行的依据（API 路由、测试、未验证范围）记录在 [docs/feature-status.md](./docs/feature-status.md)。修改此表时，必须同时更新该文档。
+
+其他条目（不在上面的 13 行成熟度表中）：
+
 | 功能 | 状态 | 当前范围 |
 | --- | --- | --- |
-| OpenCode | ✅ Shipped | sessions、agents、models/providers、modes、commands、skills、streaming、permissions/questions、interrupt |
-| Codex | ✅ Shipped | threads、resume/fork、动态 model discovery、reasoning effort、streaming、approvals、attachments、plugins/MCP inventory |
-| Projects | ✅ Shipped | registered working directory、project switching、有边界的 Markdown 浏览/编辑 |
-| GitHub workspace | ✅ Shipped | host-`gh` repo discovery、managed clone/open、branch/fetch safety checks |
-| Session control | 🧪 Experimental | handoff、follow-up、checkpoint、rewind/fork、transcript search、background-run controls |
-| Reviewed Changes / Tasks | 🧪 Experimental | proposal review、hunk decision、drift check、apply/commit、worktree、PR flow |
-| Project context / local index | 🧪 Experimental | bounded project search、structure/symbol context、local indexing |
-| Persistent terminal | 🧪 Experimental | authenticated project-scoped terminal、bounded replay、reconnect |
-| API Chat / model routing | 🧪 Experimental | configurable provider/model、reasoning mode、routing/failover、image attachment |
-| Automation / control plane | 🧪 Experimental | host registry、schedule/trigger、bounded automation primitive |
-| Antigravity / Claude 集成 | 🧪 Experimental | local integration discovery、部分 launch/remote handoff flow |
-| PWA / mobile UI | ✅ Shipped | responsive UI、backend switching、reconnect、installable shell |
 | Passkey / device controls | 🧪 Experimental | 辅助设备控制；不是公网 multi-user 授权系统 |
-| Library | 🗺️ Planned | storage/library surface 尚未实现 |
 | Google / Microsoft 登录 | ✅ Available | 需要配置 OAuth 应用；使用 OIDC + PKCE。详见 [Auth v2](./docs/auth-v2.md) |
+| Library | 🗺️ Planned | storage/library surface 尚未实现 |
 | Apple 登录 | 🗺️ Planned | 尚未实现 |
 
 > [!NOTE]
