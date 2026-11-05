@@ -50,6 +50,7 @@ DevMoter FASTは、**AIを活用したソフトウェア開発のための、オ
 | Session Control | Follow-up、Handoff、Checkpoint、Fork、履歴検索、Background run制御 | 実験的 |
 | Terminal | 認証付きProject単位の永続Terminal、出力制限、再接続 | 実験的 |
 | API Chat / Routing | Provider / Model設定、Reasoning制御、添付、Routing / Failover | 実験的 |
+| Qwen Code | AI選択欄からローカルQwen Code CLIとチャット（ストリーミング、停止、端末内の履歴、モデル選択、「APIを追加」）、ローカル連携の起動カード | 実験的・ローカルにQwen Code CLIが必要 |
 | Developer Workflows | Skills、Rules、MCP管理、任意ACP、Extension、検証・レビュー設定 | 機能ごとに異なる |
 | Host Protocol | Host adapterのバージョン付きCapability discovery | v1探索契約・Adapterごとに差あり |
 | Automation / Integrations | Host registry、制限付きTrigger / Schedule、一部Integration handoff | 実験的 |
@@ -110,6 +111,17 @@ localhost上のOpenCode runtimeへ接続し、backend認証情報をブラウザ
 ### Codex
 
 ローカルCodex app-serverとstdio/JSONLで通信します。Thread、History、Resume / Fork、Streaming turn、Interrupt、Approval、Attachment、Dynamic model discovery、Reasoning effort、Plugin / MCP inventoryなどに対応します。RPCアクセスはserver-side allowlistで制限し、認証はローカルCodex CLIが保持します。
+
+### Qwen Code
+
+実験的なQwen Code連携は、ローカルにインストールした [Qwen Code](https://github.com/QwenLM/qwen-code) CLI（`qwen`。`QWEN_BIN`で実行ファイルを変更可能）を使います。API ChatのProvider storeは使いません。
+
+- **AI選択欄のチャット:** AI選択欄で「Qwen Code」を選びます。サーバーが選択中の登録済みProjectで`qwen`をヘッドレス実行（`--output-format stream-json`）し、返答をストリーミング表示します。UIから停止でき、1回の実行は最大30分です。チャットごとにQwenのsessionを保持し、`--resume`で再開します。チャット履歴は端末に保存されます。`qwen`が未インストール・未ログインの場合は短いメッセージと、ローカル連携を開くボタンを表示します。
+- **モデル選択:** ヘッダーのチップから、「Qwen Code の既定」と、Qwen Code自身の`settings.json`（`modelProviders`）にあるモデルを選べます。使えないモデルは理由付きで無効表示になります。クライアントが送るのはauth typeとモデルIDだけで、サーバーが再検証し、`qwen`には`--auth-type`と`--model`だけを渡します。
+- **APIを追加:** Qwen Codeの`/auth`と同じProvider presetを選べ、`/auth`と同じ形でQwen Code自身の設定にProviderとキーを書き込みます。APIキーの値はコマンドライン引数に置かず、ブラウザへも返しません。
+- **ローカル連携:** Qwen Codeカードから、ホスト上のターミナルでローカルの`qwen` CLIを起動できます（「PCで開く」）。子プロセスには許可リストに含まれる環境変数だけを渡します。
+
+すべてのQwen Codeバージョン・Providerでの動作は検証していません。実験的機能として扱ってください。
 
 ### API Chat / Model Routing
 
@@ -183,7 +195,7 @@ DevMoterは、公開multi-tenant hostingではなく、**単一所有者のプ�
 - OpenCode CLI
 - OpenAI Codex CLI
 
-任意の連携としてGitHub CLI (`gh`) とTailscaleを利用できます。起動前に各upstream CLIを、それぞれの正式な認証フローでログインしてください。
+任意の連携としてGitHub CLI (`gh`)、Tailscale、Qwen Code CLI (`qwen`) を利用できます。起動前に各upstream CLIを、それぞれの正式な認証フローでログインしてください。
 
 ### Quick start
 

@@ -48,6 +48,7 @@ The goal:
 | Session control | Follow-ups, handoff, checkpoints, forks, transcript search and background-run controls | Experimental |
 | Terminal | Authenticated, project-scoped persistent terminal with bounded replay and reconnect | Experimental |
 | API Chat and routing | Configurable providers/models, reasoning controls, attachments and routing/failover | Experimental |
+| Qwen Code | Local Qwen Code CLI chat in the AI selector (streaming, stop, per-device chat history, model selection, "Add API"), plus a Local Integrations launch card | Experimental; requires a locally installed Qwen Code CLI |
 | Developer workflows | Skills, rules, MCP management, optional ACP, extensions and configured verification/review workflows | Mixed; see docs |
 | Host protocol | Versioned capability discovery across host adapters | v1 discovery contract; adapters vary |
 | Automation and integrations | Host registry, bounded triggers/schedules and selected integration handoffs | Experimental |
@@ -108,6 +109,17 @@ DevMoter connects to a local OpenCode runtime and keeps its backend authenticati
 ### Codex
 
 DevMoter communicates with the local Codex app-server over stdio/JSONL. Supported integration areas include threads, history, resume/fork, streamed turns, interruption, approvals, attachments, dynamic model discovery, reasoning effort, and plugin/MCP inventory. RPC access is restricted by a server-side allowlist. Authentication remains with the local Codex CLI.
+
+### Qwen Code
+
+The experimental Qwen Code integration uses a locally installed [Qwen Code](https://github.com/QwenLM/qwen-code) CLI (`qwen`; the binary can be overridden with `QWEN_BIN`). It does not use the API Chat provider store.
+
+- **AI selector chat:** choose *Qwen Code* in the AI selector. The server runs `qwen` headlessly (`--output-format stream-json`) in the selected registered project and streams the reply. A run can be stopped from the UI, is limited to 30 minutes, and each chat keeps its Qwen session so it resumes with `--resume`. Chat history is stored on the device. If `qwen` is not installed or not signed in, the screen shows a short message and a button that opens Local Integrations.
+- **Model selection:** the header chip lists "Qwen Code default" plus the models defined in Qwen Code's own `settings.json` (`modelProviders`). Models that cannot be used are shown disabled with a reason. The client sends only an auth type and model ID; the server re-validates it and passes only `--auth-type` and `--model` to `qwen`.
+- **Add API:** offers the same provider presets as Qwen Code's `/auth` flow and writes the provider entry and key into Qwen Code's own settings, as `/auth` does. API key values are not passed on the command line and are not returned to the browser.
+- **Local Integrations:** a Qwen Code card launches the local `qwen` CLI in a terminal on the host ("Open on PC"). The child process receives only an allowlisted set of environment variables.
+
+Behavior with every Qwen Code version and provider has not been validated; treat this surface as experimental.
 
 ### API Chat and model routing
 
@@ -177,7 +189,7 @@ These controls reduce exposure; they do not make an internet-facing deployment s
 - OpenCode CLI
 - OpenAI Codex CLI
 
-Optional integrations include GitHub CLI (`gh`) and Tailscale. Authenticate upstream CLIs using their own supported flows before starting DevMoter.
+Optional integrations include GitHub CLI (`gh`), Tailscale, and Qwen Code CLI (`qwen`). Authenticate upstream CLIs using their own supported flows before starting DevMoter.
 
 ### Quick start
 
