@@ -36,6 +36,7 @@ import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
 import { isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, parseAgentMode, readOnlyToolsFor, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
 import { assertAuthPassword, credentialsMatch, parseBasicAuthorization, requireSameOriginMutation } from "./server/auth.mjs";
+import { createAuthFailureLimiter } from "./server/auth-rate-limit.mjs";
 import { OidcAuth } from "./server/oidc-auth.mjs";
 import { ExternalAuth } from "./server/external-auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
@@ -78,6 +79,7 @@ const AUTH_CONFIG = {
   username: DEVMOTER_AUTH_USERNAME,
   password: DEVMOTER_AUTH_PASSWORD
 };
+const AUTH_FAILURE_LIMITER = createAuthFailureLimiter();
 const REDACTED_SECRETS = [OPENCODE_PASSWORD, DEVMOTER_AUTH_PASSWORD, process.env.DEVMOTER_GOOGLE_CLIENT_SECRET, process.env.DEVMOTER_MICROSOFT_CLIENT_SECRET].filter(Boolean);
 const OPENCODE_DIRECTORY =
   process.env.OPENCODE_DIRECTORY ||
@@ -100,6 +102,7 @@ const externalAuth = new ExternalAuth({
   configDir: PROJECT_CONFIG_DIR,
   githubClientId: process.env.DEVMOTER_GITHUB_CLIENT_ID || "",
   publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+  authFailureLimiter: AUTH_FAILURE_LIMITER,
   sessionTtlMs: AUTH_SESSION_TTL_DAYS * 24 * 60 * 60 * 1000
 });
 const oidcAuth = new OidcAuth({
@@ -2526,10 +2529,19 @@ const server = http.createServer(async (req, res) => {
       await passkeyRoute(req, res, url); return;
     }
 
+    const hasAuthorization = req.headers.authorization !== undefined;
     const basicAuthenticated = credentialsMatch(
       parseBasicAuthorization(req.headers.authorization),
       AUTH_CONFIG
     );
+    if (basicAuthenticated) AUTH_FAILURE_LIMITER.clear(req);
+    else if (hasAuthorization) {
+      if (AUTH_FAILURE_LIMITER.isBlocked(req)) {
+        json(res, 429, { error: "Too many failed authentication attempts; try again shortly" });
+        return;
+      }
+      AUTH_FAILURE_LIMITER.recordFailure(req);
+    }
     const ownerSession = await externalAuth.session(req);
     if (!basicAuthenticated && !ownerSession) {
       if (

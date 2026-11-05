@@ -26,3 +26,11 @@ test("session control state is bounded and stored privately", async () => {
   assert.match(source, /mode: 0o600/);
   assert.match(source, /rename\(temp, stateFile\)/);
 });
+
+test("agent run persistence uses exclusive private random temporary files", async () => {
+  const source = await readFile(new URL("../server/agent-run-registry.mjs", import.meta.url), "utf8");
+  assert.match(source, /randomBytes\(8\)\.toString\("hex"\)/);
+  assert.match(source, /open\(temp, "wx", 0o600\)/);
+  assert.match(source, /rename\(temp, stateFile\)/);
+  assert.doesNotMatch(source, /Math\.random/);
+});

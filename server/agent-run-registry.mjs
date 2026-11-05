@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { randomBytes, randomUUID } from "node:crypto";
+import { mkdir, open, readFile, rename, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
 import { errorMessage } from "./error-message.mjs";
 
@@ -306,9 +306,23 @@ export function createAgentRunRegistry({
   function persist() {
     persistQueue = persistQueue.catch(() => {}).then(async () => {
       await mkdir(dirname(stateFile), { recursive: true, mode: 0o700 });
-      const temp = `${stateFile}.tmp-${process.pid}-${Math.random().toString(36).slice(2)}`;
-      await writeFile(temp, JSON.stringify(stateObject(), null, 2), { mode: 0o600 });
-      await rename(temp, stateFile);
+      const temp = `${stateFile}.tmp-${process.pid}-${randomBytes(8).toString("hex")}`;
+      let handle;
+      let tempCreated = false;
+      try {
+        handle = await open(temp, "wx", 0o600);
+        tempCreated = true;
+        await handle.writeFile(JSON.stringify(stateObject(), null, 2), "utf8");
+        await handle.sync();
+        await handle.close();
+        handle = null;
+        await rename(temp, stateFile);
+        tempCreated = false;
+      } catch (error) {
+        await handle?.close().catch(() => {});
+        if (tempCreated) await unlink(temp).catch(() => {});
+        throw error;
+      }
     });
     return persistQueue;
   }

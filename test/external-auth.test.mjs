@@ -4,14 +4,15 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ExternalAuth } from "../server/external-auth.mjs";
+import { createAuthFailureLimiter } from "../server/auth-rate-limit.mjs";
 
-function request({ cookie = "", host = "devmoter.test" } = {}) {
+function request({ cookie = "", host = "devmoter.test", remoteAddress = "127.0.0.1" } = {}) {
   return {
     headers: {
       host,
       ...(cookie ? { cookie } : {})
     },
-    socket: {}
+    socket: { remoteAddress }
   };
 }
 
@@ -54,6 +55,43 @@ test("local recovery credentials mint an HttpOnly owner session", async t => {
   const cookieHeader = result.cookie.split(";", 1)[0];
   const session = await auth.session(request({ cookie: cookieHeader }));
   assert.equal(session?.identity?.login, "devmoter");
+});
+
+test("local recovery login limits repeated failures by client and expires the limit", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-auth-rate-limit-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  let now = 1_800_000_000_000;
+  const auth = new ExternalAuth({ configDir: dir, authFailureLimiter: createAuthFailureLimiter({ now: () => now }) });
+  const expected = { username: "devmoter", password: "correct-horse-battery-staple" };
+  const firstClient = request({ remoteAddress: "192.0.2.10" });
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await assert.rejects(
+      () => auth.localLogin(firstClient, { username: "devmoter", password: "wrong" }, expected),
+      error => error?.status === 401
+    );
+  }
+  await assert.rejects(
+    () => auth.localLogin(firstClient, { username: "devmoter", password: "wrong" }, expected),
+    error => error?.status === 429
+  );
+  const recovered = await auth.localLogin(firstClient, { username: "devmoter", password: expected.password }, expected);
+  assert.equal(recovered.identity.provider, "local", "correct credentials must still recover a rate-limited client");
+
+  const expiringClient = request({ remoteAddress: "192.0.2.11" });
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await assert.rejects(
+      () => auth.localLogin(expiringClient, { username: "devmoter", password: "wrong" }, expected),
+      error => error?.status === 401
+    );
+  }
+  await assert.rejects(
+    () => auth.localLogin(expiringClient, { username: "devmoter", password: "wrong" }, expected),
+    error => error?.status === 429
+  );
+  now += 10 * 60_000 + 1;
+  const result = await auth.localLogin(expiringClient, { username: "devmoter", password: expected.password }, expected);
+  assert.equal(result.identity.provider, "local");
 });
 
 test("first GitHub owner bind requires bootstrap and never persists the OAuth token", async t => {

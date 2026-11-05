@@ -10,7 +10,7 @@ absence of vulnerabilities.
 | Surface | Enforced / checked | Evidence | Not established by this check |
 | --- | --- | --- | --- |
 | Dependency and package supply chain | `npm audit --audit-level=high`, `npm ci`, lockfile and dependency source policy | `.github/workflows/security-audit.yml`, `scripts/security-audit.mjs` | Upstream account compromise, all moderate/low CVEs |
-| JS/TS browser, server, SDK, CLI | CodeQL `javascript-typescript` with `security-extended` | `.github/workflows/codeql.yml` | Exhaustive dataflow coverage or runtime configuration |
+| JS/TS browser, server, SDK, CLI | CodeQL workflow configured for `javascript-typescript` with `security-extended`; GitHub code scanning must also be enabled for results to be accepted | `.github/workflows/codeql.yml` | Exhaustive dataflow coverage or runtime configuration |
 | GitHub Actions | CodeQL `actions`, read-only default repository token for CI/audit, immutable action pins | `.github/workflows/codeql.yml`, `ci.yml`, `security-audit.yml` | Compromised workflow administrator or runner image |
 | Authentication and sessions | Regression suite for owner sessions, passkeys, OIDC, GitHub login, cookies, same-Origin requests | `test/auth*.test.mjs`, `test/oidc-auth.test.mjs`, `test/passkey-auth-v3.test.mjs`, `test/device-cookie-security.test.mjs` | Live provider configuration and browser-specific edge cases |
 | WebSocket and terminal | Origin and session-ticket guards plus integration tests | `server/terminal-websocket.mjs`, `test/terminal-websocket.integration.test.mjs` | Host OS isolation / real-device reconnect behavior |
@@ -22,8 +22,11 @@ absence of vulnerabilities.
 | Static frontend/PWA | CSP, framing, MIME headers, browser regression tests | `server/security-headers.mjs`, `test/security-headers.test.mjs`, `test/pwa-backend.integration.test.mjs` | Complete prevention of XSS; device-local bearer material risk |
 
 **Always run** the existing CI and Security Audit on each PR and main
-update; CodeQL runs on PR, main and weekly schedule. The workflow definition
-must actually complete successfully on GitHub before claiming CodeQL active.
+update. CodeQL is configured for PRs, main and a weekly schedule, but the
+repository-level GitHub code-scanning feature must also be enabled before SARIF
+results can be accepted. Private repositories may require GitHub Advanced
+Security. Do not claim CodeQL active until an analysis completes successfully
+and appears in Security > Code scanning.
 
 ## Fixes staged in this security pass
 
@@ -53,8 +56,12 @@ must actually complete successfully on GitHub before claiming CodeQL active.
 5. **Provider gate:** Real OIDC, GitHub CLI, OpenCode, Codex, Claude and
    Antigravity auth and version behavior depends on upstream changes and
    cannot be certified by fake executable tests.
-6. **Code scanning gate:** Triage CodeQL results and npm audit alerts; no
-   warning should be interpreted as permission to disable a security guard.
+6. **Code scanning gate:** The latest CodeQL run (2026-11-04) reported that
+   repository-level code scanning is disabled, so SARIF results are not being
+   accepted. Enable it under repository Settings > Security > Code security and
+   analysis; private repositories may require GitHub Advanced Security. Then
+   triage CodeQL results and npm audit alerts; no warning should be interpreted
+   as permission to disable a security guard.
 
 ## Safe triage procedure
 

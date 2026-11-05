@@ -81,13 +81,21 @@ test("server requires auth and exact Origin for mutations", async () => {
     assert.equal(rootRedirect.status, 302);
     assert.equal(rootRedirect.headers.get("location"), "/login.html");
 
+    const wrongAuthorization = `Basic ${Buffer.from("devmoter:wrong-password-value").toString("base64")}`;
     const wrong = await fetch(`${origin}/api/projects`, {
-      headers: {
-        authorization: `Basic ${Buffer.from("devmoter:wrong-password-value").toString("base64")}`
-      }
+      headers: { authorization: wrongAuthorization }
     });
     assert.equal(wrong.status, 401);
-
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const repeatedWrong = await fetch(`${origin}/api/projects`, {
+        headers: { authorization: wrongAuthorization }
+      });
+      assert.equal(repeatedWrong.status, 401);
+    }
+    const limited = await fetch(`${origin}/api/projects`, {
+      headers: { authorization: wrongAuthorization }
+    });
+    assert.equal(limited.status, 429);
 
     const unauthenticatedIntegrations = await fetch(`${origin}/api/integrations/status`, {
       method: "POST",
