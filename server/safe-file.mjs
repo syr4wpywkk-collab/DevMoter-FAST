@@ -1,5 +1,5 @@
 import { constants as fsConstants } from "node:fs";
-import { open } from "node:fs/promises";
+import { lstat, open } from "node:fs/promises";
 
 const NOFOLLOW = fsConstants.O_NOFOLLOW || 0;
 
@@ -37,4 +37,45 @@ export async function readHandle(handle, maxBytes = Number.POSITIVE_INFINITY, en
   }
   const data = Buffer.concat(chunks, total);
   return encoding ? data.toString(encoding) : data;
+}
+
+/**
+ * Write `data` to `path` without following a symbolic link at the final path
+ * component. The file is opened once with O_NOFOLLOW where the platform
+ * supports it, and the returned info comes from fstat on that same handle.
+ */
+export async function writeFileNoFollow(path, data, { mode = 0o600, encoding = "utf8" } = {}) {
+  if (!NOFOLLOW) {
+    const existing = await lstat(path).catch(error => {
+      if (error?.code === "ENOENT") return null;
+      throw error;
+    });
+    if (existing?.isSymbolicLink()) throw symlinkWriteError();
+  }
+  let handle;
+  try {
+    handle = await open(
+      path,
+      fsConstants.O_WRONLY | fsConstants.O_CREAT | NOFOLLOW,
+      mode
+    );
+  } catch (error) {
+    if (error?.code === "ELOOP") throw symlinkWriteError();
+    throw error;
+  }
+  try {
+    const before = await handle.stat();
+    if (!before.isFile()) {
+      throw Object.assign(new Error("Write target is not a regular file"), { code: "EINVAL", statusCode: 400 });
+    }
+    await handle.truncate(0);
+    await handle.writeFile(data, typeof data === "string" ? { encoding } : undefined);
+    return await handle.stat();
+  } finally {
+    await handle.close();
+  }
+}
+
+function symlinkWriteError() {
+  return Object.assign(new Error("Refusing to write through a symbolic link"), { code: "ELOOP", statusCode: 400 });
 }
