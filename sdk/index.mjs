@@ -75,6 +75,11 @@ export class DevMoterClient {
   } = {}) {
     const normalizedMethod = String(method || "GET").toUpperCase();
     const url = new URL(String(path).replace(/^\//, ""), this.baseUrl);
+    if (url.origin !== this.baseUrl.origin) {
+      throw new DevMoterError("Request URL must stay on the configured DevMoter origin", {
+        code: "invalid_request_url"
+      });
+    }
     const requestHeaders = new Headers(headers);
     requestHeaders.set("accept", requestHeaders.get("accept") || "application/json");
     if (body !== undefined && !requestHeaders.has("content-type")) {
