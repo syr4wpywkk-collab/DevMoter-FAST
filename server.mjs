@@ -2508,14 +2508,6 @@ const PUBLIC_STATIC_PATHS = new Set([
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
-    req.basicAuthStatus = "missing";
-    const authorization = req.headers.authorization;
-    if (authorization) {
-      const credentials = parseBasicAuthorization(authorization);
-      const basic = await basicAuthGuard.verify(req, credentials?.username ?? null, credentials?.password ?? null);
-      req.basicAuthStatus = basic.status;
-    }
-
 
     if (req.method === "POST" && url.pathname === "/api/control/events/github") {
       await githubWebhookRoute(req, res);
@@ -2532,6 +2524,15 @@ const server = http.createServer(async (req, res) => {
       await serveStatic(req, res);
       return;
     }
+
+    req.basicAuthStatus = "missing";
+    const authorization = req.headers.authorization;
+    if (authorization) {
+      const credentials = parseBasicAuthorization(authorization);
+      const basic = await basicAuthGuard.verify(req, credentials?.username ?? null, credentials?.password ?? null);
+      req.basicAuthStatus = basic.status;
+    }
+
 
     if (
       url.pathname.startsWith("/api/auth/") &&
