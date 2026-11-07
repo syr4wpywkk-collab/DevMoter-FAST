@@ -160,3 +160,13 @@ test("capacity pressure never evicts an active lock", () => {
   assert.ok(tier.retryAfterSec("locked") > 0);
   assert.equal(tier.size(), 1);
 });
+
+
+test("capacity reclaims expired entries without dropping the next failure", () => {
+  const c = clock();
+  const tier = createTier({ threshold: 5, maxTracked: 1, windowMs: 1_000, now: c.now });
+  assert.equal(tier.recordFailure("old"), 1);
+  c.advance(1_001);
+  assert.equal(tier.recordFailure("new"), 1);
+  assert.equal(tier.size(), 1);
+});
