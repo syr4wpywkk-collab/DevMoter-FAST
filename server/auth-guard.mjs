@@ -102,7 +102,7 @@ export function createTier({
 
   // 上限到達時: 期限切れだけを有限回走査する。生きたロックは追い出さない。
   const reclaim = (t) => {
-    if (entries.size < maxTracked) return;
+    if (entries.size < maxTracked) return true;
     let scanned = 0;
     for (const [k, e] of entries) {
       if (isStale(e, t)) { entries.delete(k); if (entries.size < maxTracked) return; }
