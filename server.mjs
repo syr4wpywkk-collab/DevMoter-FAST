@@ -35,7 +35,8 @@ import { ControlPlane } from "./server/control-plane.mjs";
 import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/workspace-control.mjs";
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
 import { isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, parseAgentMode, readOnlyToolsFor, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
-import { assertAuthPassword, credentialsMatch, parseBasicAuthorization, requireSameOriginMutation } from "./server/auth.mjs";
+import { assertAuthPassword, parseBasicAuthorization, requireSameOriginMutation } from "./server/auth.mjs";
+import { createBasicAuthGuard, parseTrustedProxies } from "./server/auth-guard.mjs";
 import { OidcAuth } from "./server/oidc-auth.mjs";
 import { ExternalAuth } from "./server/external-auth.mjs";
 import { redactSecretsInText } from "./server/secret-redaction.mjs";
@@ -78,6 +79,11 @@ const AUTH_CONFIG = {
   username: DEVMOTER_AUTH_USERNAME,
   password: DEVMOTER_AUTH_PASSWORD
 };
+const basicAuthGuard = createBasicAuthGuard({
+  expectedUsername: AUTH_CONFIG.username,
+  expectedPassword: AUTH_CONFIG.password,
+  trustedProxies: parseTrustedProxies(process.env.DEVMOTER_TRUST_PROXY)
+});
 const REDACTED_SECRETS = [OPENCODE_PASSWORD, DEVMOTER_AUTH_PASSWORD, process.env.DEVMOTER_GOOGLE_CLIENT_SECRET, process.env.DEVMOTER_MICROSOFT_CLIENT_SECRET].filter(Boolean);
 const OPENCODE_DIRECTORY =
   process.env.OPENCODE_DIRECTORY ||
@@ -1319,7 +1325,7 @@ async function executeControlTaskCore(definition, context = {}) {
 }
 
 function basicOwner(req) {
-  return credentialsMatch(parseBasicAuthorization(req.headers.authorization), AUTH_CONFIG);
+  return req.basicAuthStatus === "ok";
 }
 async function stepUpRequired(req, session = null) {
   if (!PASSKEY_REQUIRED || session?.assurance === "passkey") return false;
@@ -1381,7 +1387,16 @@ async function externalAuthRoute(req, res, url) {
       const provider = start[1];
       // Legacy GitHub bootstrap credentials remain supported, but authenticated
       // login never implicitly turns into a provider-link operation.
-      const bootstrapAuthorized = provider === "github" && credentialsMatch({ username: String(payload?.username || ""), password: String(payload?.password || "") }, AUTH_CONFIG);
+      let bootstrapAuthorized = false;
+      if (provider === "github" && payload?.username != null && payload?.password != null) {
+        const bootstrap = await basicAuthGuard.verify(req, String(payload.username), String(payload.password));
+        bootstrapAuthorized = bootstrap.status === "ok";
+        if (bootstrap.status === "locked") {
+          res.writeHead(429, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "retry-after": String(bootstrap.retryAfterSec) });
+          res.end(JSON.stringify({ error: "Too many authentication attempts. Try again later." }));
+          return true;
+        }
+      }
       const intent = payload?.intent || (bootstrapAuthorized ? "link" : "login");
       if (!["login", "link"].includes(intent)) throw Object.assign(new Error("Invalid sign-in request"), { status: 400 });
       let ownerSession = null;
@@ -2510,6 +2525,15 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    req.basicAuthStatus = "missing";
+    const authorization = req.headers.authorization;
+    if (authorization) {
+      const credentials = parseBasicAuthorization(authorization);
+      const basic = await basicAuthGuard.verify(req, credentials?.username ?? null, credentials?.password ?? null);
+      req.basicAuthStatus = basic.status;
+    }
+
+
     if (
       url.pathname.startsWith("/api/auth/") &&
       !url.pathname.startsWith("/api/auth/passkey/")
@@ -2526,11 +2550,13 @@ const server = http.createServer(async (req, res) => {
       await passkeyRoute(req, res, url); return;
     }
 
-    const basicAuthenticated = credentialsMatch(
-      parseBasicAuthorization(req.headers.authorization),
-      AUTH_CONFIG
-    );
+    const basicAuthenticated = req.basicAuthStatus === "ok";
     const ownerSession = await externalAuth.session(req);
+    if (req.basicAuthStatus === "locked" && !ownerSession) {
+      res.writeHead(429, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "retry-after": "1" });
+      res.end(JSON.stringify({ error: "Too many authentication attempts. Try again later." }));
+      return;
+    }
     if (!basicAuthenticated && !ownerSession) {
       if (
         (req.method === "GET" || req.method === "HEAD") &&
