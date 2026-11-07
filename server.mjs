@@ -35,7 +35,7 @@ import { ControlPlane } from "./server/control-plane.mjs";
 import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/workspace-control.mjs";
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
 import { isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, parseAgentMode, readOnlyToolsFor, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
-import { assertAuthPassword, credentialsMatch, parseBasicAuthorization, requireSameOriginMutation } from "./server/auth.mjs";
+import { assertAuthPassword, parseBasicAuthorization, requireSameOriginMutation } from "./server/auth.mjs";
 import { createBasicAuthGuard, parseTrustedProxies } from "./server/auth-guard.mjs";
 import { OidcAuth } from "./server/oidc-auth.mjs";
 import { ExternalAuth } from "./server/external-auth.mjs";
