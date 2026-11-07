@@ -55,7 +55,7 @@ The goal:
 | Web/PWA | Responsive mobile-first control surface and installable web shell | Shipped |
 | iOS client | Native wrapper for connecting to an existing DevMoter server over HTTPS | Experimental; device validation required |
 
-**Maturity labels matter.** Shipped means a real backend path exists; Experimental means implementation exists but still needs hardening or broader validation; Planned means it is not available as a shipped feature. A UI entry or design document is not proof that a capability works.
+**Maturity labels matter.** Shipped means a real backend path exists; Experimental means implementation exists but still needs hardening or broader validation; Planned means it is not available as a shipped feature. A UI entry or design document is not proof that a capability works. The evidence (API routes, tests and unverified scope) for every row is tracked in [docs/feature-status.md](./docs/feature-status.md); update it whenever this table changes.
 
 ## How it fits together
 
