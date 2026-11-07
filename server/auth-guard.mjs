@@ -105,7 +105,7 @@ export function createTier({
     if (entries.size < maxTracked) return true;
     let scanned = 0;
     for (const [k, e] of entries) {
-      if (isStale(e, t)) { entries.delete(k); if (entries.size < maxTracked) return; }
+      if (isStale(e, t)) { entries.delete(k); if (entries.size < maxTracked) return true; }
       if (++scanned >= EVICT_SCAN_LIMIT) break;
     }
     return entries.size < maxTracked;
