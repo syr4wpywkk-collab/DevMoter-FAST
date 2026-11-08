@@ -1,21 +1,38 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createServer } from "node:http";
+import { once } from "node:events";
 import { DevMoterClient, sdkInternals } from "../sdk/index.mjs";
 import { parseArgs } from "../cli/devmoter.mjs";
 
-test("SDK uses Basic auth, same-origin mutation headers, and operation ids", async () => {
+test("SDK uses Basic auth, same-origin mutation headers, and operation ids", async t => {
   const calls = [];
-  const client = new DevMoterClient({
-    baseUrl: "http://127.0.0.1:8787",
-    username: "devmoter",
-    password: "0123456789abcdef",
-    fetchImpl: async (url, init) => {
-      calls.push({ url: String(url), init });
-      return new Response(JSON.stringify({ ok: true }), {
-        status: 200,
-        headers: { "content-type": "application/json" }
+  const server = createServer((req, res) => {
+    const chunks = [];
+    req.on("data", chunk => chunks.push(chunk));
+    req.on("end", () => {
+      calls.push({
+        url: req.url,
+        method: req.method,
+        headers: req.headers,
+        body: Buffer.concat(chunks).toString("utf8")
       });
-    }
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true }));
+    });
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  t.after(async () => {
+    const closed = new Promise(resolve => server.close(resolve));
+    server.closeAllConnections?.();
+    await closed;
+  });
+
+  const client = new DevMoterClient({
+    baseUrl: `http://127.0.0.1:${server.address().port}`,
+    username: "devmoter",
+    password: "0123456789abcdef"
   });
 
   await client.projects();
@@ -26,12 +43,12 @@ test("SDK uses Basic auth, same-origin mutation headers, and operation ids", asy
     task: "test"
   }, { operationId: "op-fixed" });
 
-  const getHeaders = new Headers(calls[0].init.headers);
-  const postHeaders = new Headers(calls[1].init.headers);
+  const getHeaders = new Headers(calls[0].headers);
+  const postHeaders = new Headers(calls[1].headers);
   assert.match(getHeaders.get("authorization") || "", /^Basic /);
   assert.equal(getHeaders.get("origin"), null);
   assert.match(postHeaders.get("authorization") || "", /^Basic /);
-  assert.equal(postHeaders.get("origin"), "http://127.0.0.1:8787");
+  assert.equal(postHeaders.get("origin"), `http://127.0.0.1:${server.address().port}`);
   assert.equal(postHeaders.get("x-pocket-operation-id"), "op-fixed");
   assert.equal(
     Buffer.from((postHeaders.get("authorization") || "").slice(6), "base64").toString("utf8"),

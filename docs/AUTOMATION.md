@@ -61,6 +61,8 @@ const result = await client.runTask({
 });
 ```
 
+Credentialed SDK calls use the module-captured `globalThis.fetch` and reject a per-client `fetchImpl` override. Requests use manual redirect handling and reject redirect responses. Do not replace `globalThis.fetch` before importing the SDK; a runtime patched before module load is outside this transport guarantee.
+
 ## Safety boundaries
 
 Project arguments resolve only against DevMoter's registered project registry. The automation project list does not expose host paths. Context references are project-relative, reject traversal and symlinks, exclude common secret/build directories, and enforce per-file, total-size, depth, and file-count bounds.

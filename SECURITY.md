@@ -21,9 +21,13 @@ Current protections include:
 - Configured DevMoter/OpenCode passwords are redacted from JSON error output and top-level server error logs.
 - OpenCode remains on localhost and its credentials stay server-side.
 - Codex app-server is accessed over local stdio and Codex RPC methods are allowlisted.
-- Project paths and Markdown writes remain constrained to registered project roots.
+- The SDK captures `globalThis.fetch` at module load, rejects per-client `fetchImpl` overrides, and rejects redirect responses for credentialed calls. A runtime that replaces `globalThis.fetch` before importing the SDK is outside this guarantee.
+- Project API Markdown path checks apply to that API only; they do not constrain arbitrary agent or terminal child processes running with the server account's filesystem permissions.
+- Codex, OpenCode, terminal, and some workflow children currently inherit the server's OS identity and groups. App authentication, RPC allowlists, and a narrow Markdown broker do not sandbox these children or prevent them from accessing other files writable/readable by that account.
 
 The DevMoter login is an **access boundary**, not a multi-user authorization model. After authentication, the client can control coding agents with the permissions granted to those agents.
+
+Do not treat the current installation as a hostile-code isolation boundary. A complete fix requires OS-enforced per-child isolation, denial of broker-socket and secret/config access to arbitrary-code children, and mediation of all project and app-state writes through narrowly scoped server operations.
 
 ## Recommended remote-access model
 

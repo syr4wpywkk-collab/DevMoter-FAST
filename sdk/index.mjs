@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
 
+// Capture the runtime fetch once; SDK callers cannot replace the credentialed transport per client.
+const sdkNativeFetch = typeof globalThis.fetch === "function" ? globalThis.fetch.bind(globalThis) : null;
+
 export const DEVMOTER_API_VERSION = 1;
 
 export class DevMoterError extends Error {
@@ -9,6 +12,72 @@ export class DevMoterError extends Error {
     this.status = status;
     this.code = code;
     this.data = data;
+  }
+}
+
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+
+function assertSafePathSyntax(pathname) {
+  if (pathname.includes("\\") || pathname.includes("\0")) {
+    throw new Error("Backslashes and NUL are not allowed in API paths");
+  }
+  let decoded = pathname;
+  for (let depth = 0; depth < 8; depth += 1) {
+    if (/%(?![0-9a-f]{2})/i.test(decoded)) throw new Error("Malformed percent-encoding in API path");
+    if (/%(?:2e|2f|5c)/i.test(decoded)) throw new Error("Encoded dot, slash, or backslash is not allowed in API paths");
+    let next;
+    try { next = decodeURIComponent(decoded); }
+    catch { throw new Error("Malformed percent-encoding in API path"); }
+    if (next.includes("\\") || next.includes("\0") || next.split("/").some(part => part === "." || part === "..")) {
+      throw new Error("Dot segments and backslashes are not allowed in API paths");
+    }
+    if (next === decoded) return;
+    decoded = next;
+  }
+  if (/%[0-9a-f]{2}/i.test(decoded)) throw new Error("Nested percent-encoding is not allowed in API paths");
+}
+
+function buildApiUrl(baseUrl, path) {
+  const raw = String(path);
+  if (!raw || raw !== raw.trim() || /[\u0000-\u001f\u007f]/.test(raw) || raw.includes("#")) {
+    throw new Error("Invalid API request path");
+  }
+  const queryIndex = raw.indexOf("?");
+  let pathname = queryIndex < 0 ? raw : raw.slice(0, queryIndex);
+  const query = queryIndex < 0 ? "" : raw.slice(queryIndex);
+  if (/^[a-z][a-z0-9+.-]*:/i.test(pathname)) throw new Error("Absolute API URLs are not allowed");
+  if (pathname.startsWith("//") || pathname.startsWith("\\\\")) throw new Error("Network-path API URLs are not allowed");
+  if (pathname.startsWith("/")) pathname = pathname.slice(1);
+  assertSafePathSyntax(pathname);
+  if (pathname.split("/").some(part => part === "")) throw new Error("Empty API path segments are not allowed");
+
+  const url = new URL(pathname + query, baseUrl);
+  if (url.origin !== baseUrl.origin || !url.pathname.startsWith(baseUrl.pathname)) {
+    throw new Error("DevMoter request path must stay within the configured origin and base path");
+  }
+  return url;
+}
+
+function assertNoRedirect(response, requestedUrl) {
+  // Credentialed requests use the module-captured transport and explicitly reject redirects.
+  if (REDIRECT_STATUSES.has(response?.status) || response?.type === "opaqueredirect" || response?.redirected === true) {
+    throw new DevMoterError("DevMoter redirects are not allowed for credentialed requests", {
+      status: response?.status || 0,
+      code: "redirect_rejected"
+    });
+  }
+  if (response?.url) {
+    try {
+      if (new URL(response.url).href !== requestedUrl.href) {
+        throw new DevMoterError("SDK transport followed a redirect; refusing its response", {
+          status: response?.status || 0,
+          code: "redirect_rejected"
+        });
+      }
+    } catch (error) {
+      if (error instanceof DevMoterError) throw error;
+      throw new DevMoterError("SDK transport returned an invalid response URL", { code: "invalid_response_url" });
+    }
   }
 }
 
@@ -31,6 +100,7 @@ function normalizeBaseUrl(value) {
   }
   url.hash = "";
   url.search = "";
+  assertSafePathSyntax(url.pathname);
   url.pathname = url.pathname.replace(/\/+$/, "") + "/";
   return url;
 }
@@ -49,17 +119,19 @@ function isMutation(method) {
 }
 
 export class DevMoterClient {
-  constructor({
-    baseUrl = process.env.DEVMOTER_URL || "http://127.0.0.1:8787",
-    username = process.env.DEVMOTER_AUTH_USERNAME || "devmoter",
-    password = process.env.DEVMOTER_AUTH_PASSWORD || "",
-    fetchImpl = globalThis.fetch
-  } = {}) {
-    if (typeof fetchImpl !== "function") throw new Error("fetch is required");
+  constructor(options = {}) {
+    if (options != null && "fetchImpl" in Object(options)) {
+      throw new TypeError("Custom fetchImpl is not supported for credentialed SDK requests");
+    }
+    const {
+      baseUrl = process.env.DEVMOTER_URL || "http://127.0.0.1:8787",
+      username = process.env.DEVMOTER_AUTH_USERNAME || "devmoter",
+      password = process.env.DEVMOTER_AUTH_PASSWORD || ""
+    } = options ?? {};
+    if (typeof sdkNativeFetch !== "function") throw new Error("native fetch is required");
     this.baseUrl = normalizeBaseUrl(baseUrl);
     this.username = String(username || "devmoter");
     this.password = String(password || "");
-    this.fetchImpl = fetchImpl;
   }
 
   authHeader() {
@@ -74,7 +146,13 @@ export class DevMoterClient {
     signal
   } = {}) {
     const normalizedMethod = String(method || "GET").toUpperCase();
-    const url = new URL(String(path).replace(/^\//, ""), this.baseUrl);
+    let url;
+    try { url = buildApiUrl(this.baseUrl, path); }
+    catch {
+      throw new DevMoterError("DevMoter request path must stay on the configured origin", {
+        code: "invalid_request_path"
+      });
+    }
     const requestHeaders = new Headers(headers);
     requestHeaders.set("accept", requestHeaders.get("accept") || "application/json");
     if (body !== undefined && !requestHeaders.has("content-type")) {
@@ -98,11 +176,12 @@ export class DevMoterClient {
 
     let response;
     try {
-      response = await this.fetchImpl(url, {
+      response = await sdkNativeFetch(url, {
         method: normalizedMethod,
         headers: requestHeaders,
         body: body === undefined ? undefined : JSON.stringify(body),
-        signal
+        signal,
+        redirect: "manual"
       });
     } catch (cause) {
       throw new DevMoterError(
@@ -110,6 +189,8 @@ export class DevMoterClient {
         { code: "network_error" }
       );
     }
+
+    assertNoRedirect(response, url);
 
     const text = await response.text();
     let payload = null;
@@ -167,7 +248,7 @@ export class DevMoterClient {
 
   async *streamTask({ project, agent, task, backend = "opencode", model = "" }, options = {}) {
     const id = options.operationId || operationId("task");
-    const url = new URL("api/automation/tasks", this.baseUrl);
+    const url = buildApiUrl(this.baseUrl, "/api/automation/tasks");
     const headers = new Headers({
       accept: "application/x-ndjson",
       "content-type": "application/json",
@@ -179,11 +260,12 @@ export class DevMoterClient {
 
     let response;
     try {
-      response = await this.fetchImpl(url, {
+      response = await sdkNativeFetch(url, {
         method: "POST",
         headers,
         body: JSON.stringify({ project, agent, task, backend, model }),
-        signal: options.signal
+        signal: options.signal,
+        redirect: "manual"
       });
     } catch (cause) {
       throw new DevMoterError(
@@ -191,6 +273,8 @@ export class DevMoterClient {
         { code: "network_error" }
       );
     }
+
+    assertNoRedirect(response, url);
 
     if (!response.ok) {
       const text = await response.text();
@@ -281,6 +365,9 @@ export function createEventEnvelope(type, data, {
 
 export const sdkInternals = {
   normalizeBaseUrl,
+  buildApiUrl,
+  assertSafePathSyntax,
+  assertNoRedirect,
   basicAuthorization,
   isMutation
 };
