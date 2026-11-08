@@ -90,6 +90,8 @@ DevMoter is not currently:
 - upstream protocol/CLI changes can invalidate assumptions;
 - an authenticated browser controls powerful agent capabilities;
 - coding agents may have broader filesystem/shell authority than DevMoter's browser editor;
+- Codex, OpenCode, terminal, and some workflow children currently run with the server's OS identity; they can access files, environment values, and group-accessible sockets available to that identity. A Markdown-only write broker is not an isolation boundary while those children can reach its socket or write project files directly;
+- a complete arbitrary-code boundary requires per-child OS identity/sandboxing, hiding broker sockets and protected data ancestors from children, and routing authorized artifacts through narrow server-owned operations. All direct app write paths must be inventoried and mediated before claiming completion;
 - browser-stored device material increases impact of same-origin script compromise;
 - attachments/logs require retention discipline;
 - experimental automation and host integrations need continuing contract/device testing;
@@ -108,7 +110,7 @@ The vNext product adds remote terminal, secret references, OS control, and brows
 | Host OS and DevMoter server process | Trusted for local policy and resource resolution; process compromise is out of scope | Keep privileged decisions and credentials on the host; minimize inherited authority. |
 | Authenticated owner/device | Authenticated, not automatically authorized for every action | App auth plus optional device/passkey trust; sensitive actions may require fresh authentication. |
 | Browser/PWA | Untrusted client | Exact Origin for mutations; never trust disabled controls or client-supplied paths, commands, capabilities, or policy results. |
-| Agent/provider process | Separate principal with only explicitly delegated permissions | READ does not imply WRITE, EXECUTE, NETWORK, SECRET_USE, or DESTRUCTIVE. |
+| Agent/provider process | Intended separate principal, but the main Codex/OpenCode/terminal child paths currently inherit the server UID and groups | App-level READ/WRITE scopes do not isolate a same-UID process; keep agent output and project content untrusted. |
 | Workspace files, terminal output, browser DOM, external events | Untrusted data | Never treat embedded instructions as policy or approval. Redact before logs/context. |
 | Registered Project/Host/session | Server-owned resource identity | Resolve IDs server-side and verify current ownership/state on each request. |
 
