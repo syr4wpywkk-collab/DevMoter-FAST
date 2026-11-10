@@ -38,3 +38,55 @@ export async function readHandle(handle, maxBytes = Number.POSITIVE_INFINITY, en
   const data = Buffer.concat(chunks, total);
   return encoding ? data.toString(encoding) : data;
 }
+
+/**
+ * Refuse writes when the platform cannot atomically reject a final-component
+ * symlink. An lstat()+open() fallback is unsafe because the path can be
+ * replaced between those operations.
+ *
+ * The flag parameter keeps the unsupported-platform branch directly
+ * testable without weakening the production writer.
+ */
+export function assertNoFollowSupported(noFollowFlag = NOFOLLOW) {
+  if (!noFollowFlag) {
+    throw Object.assign(
+      new Error("Secure Markdown writes are not supported on this platform"),
+      { code: "ENOTSUP", statusCode: 501 }
+    );
+  }
+}
+
+/**
+ * Write `data` without following a symbolic link at the final path component.
+ * The file is opened once with O_NOFOLLOW, and returned metadata comes from
+ * fstat on that same handle.
+ */
+export async function writeFileNoFollow(path, data, { mode = 0o600, encoding = "utf8" } = {}) {
+  assertNoFollowSupported();
+  let handle;
+  try {
+    handle = await open(
+      path,
+      fsConstants.O_WRONLY | fsConstants.O_CREAT | NOFOLLOW,
+      mode
+    );
+  } catch (error) {
+    if (error?.code === "ELOOP") throw symlinkWriteError();
+    throw error;
+  }
+  try {
+    const before = await handle.stat();
+    if (!before.isFile()) {
+      throw Object.assign(new Error("Write target is not a regular file"), { code: "EINVAL", statusCode: 400 });
+    }
+    await handle.truncate(0);
+    await handle.writeFile(data, typeof data === "string" ? { encoding } : undefined);
+    return await handle.stat();
+  } finally {
+    await handle.close();
+  }
+}
+
+function symlinkWriteError() {
+  return Object.assign(new Error("Refusing to write through a symbolic link"), { code: "ELOOP", statusCode: 400 });
+}
