@@ -1,5 +1,5 @@
 import { constants as fsConstants } from "node:fs";
-import { lstat, open } from "node:fs/promises";
+import { open } from "node:fs/promises";
 
 const NOFOLLOW = fsConstants.O_NOFOLLOW || 0;
 
@@ -40,18 +40,29 @@ export async function readHandle(handle, maxBytes = Number.POSITIVE_INFINITY, en
 }
 
 /**
- * Write `data` to `path` without following a symbolic link at the final path
- * component. The file is opened once with O_NOFOLLOW where the platform
- * supports it, and the returned info comes from fstat on that same handle.
+ * Refuse writes when the platform cannot atomically reject a final-component
+ * symlink. An lstat()+open() fallback is unsafe because the path can be
+ * replaced between those operations.
+ *
+ * The flag parameter keeps the unsupported-platform branch directly
+ * testable without weakening the production writer.
+ */
+export function assertNoFollowSupported(noFollowFlag = NOFOLLOW) {
+  if (!noFollowFlag) {
+    throw Object.assign(
+      new Error("Secure Markdown writes are not supported on this platform"),
+      { code: "ENOTSUP", statusCode: 501 }
+    );
+  }
+}
+
+/**
+ * Write `data` without following a symbolic link at the final path component.
+ * The file is opened once with O_NOFOLLOW, and returned metadata comes from
+ * fstat on that same handle.
  */
 export async function writeFileNoFollow(path, data, { mode = 0o600, encoding = "utf8" } = {}) {
-  if (!NOFOLLOW) {
-    const existing = await lstat(path).catch(error => {
-      if (error?.code === "ENOENT") return null;
-      throw error;
-    });
-    if (existing?.isSymbolicLink()) throw symlinkWriteError();
-  }
+  assertNoFollowSupported();
   let handle;
   try {
     handle = await open(

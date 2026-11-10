@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readFileSync } from "node:fs";
-import { writeFileNoFollow } from "../server/safe-file.mjs";
+import { assertNoFollowSupported, writeFileNoFollow } from "../server/safe-file.mjs";
 
 test("writeFileNoFollow creates and overwrites a regular file", async t => {
   const dir = await mkdtemp(join(tmpdir(), "md-nofollow-"));
@@ -39,6 +39,13 @@ test("writeFileNoFollow refuses a non-regular final path", async t => {
   const nested = join(dir, "dir.md");
   await mkdir(nested);
   await assert.rejects(writeFileNoFollow(nested, "x"), error => error.code === "EISDIR" || error.code === "EINVAL");
+});
+
+test("no-follow writes fail closed when the platform lacks O_NOFOLLOW", () => {
+  assert.throws(
+    () => assertNoFollowSupported(0),
+    error => error.code === "ENOTSUP" && error.statusCode === 501
+  );
 });
 
 test("project markdown save uses the no-follow writer", () => {
