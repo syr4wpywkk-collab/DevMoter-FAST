@@ -9,7 +9,7 @@
 // only passes `--auth-type <protocol> --model <id>` (auth.md "Step 3", and
 // packages/cli/src/config/config.ts: selectedAuthType = argv.authType ||
 // settings…; modelConfigUtils.ts: argv.model > settings.model.name).
-import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { dirname, join, parse as parsePath } from "node:path";
@@ -64,8 +64,13 @@ export function parseJsonc(text) {
 async function readSettingsFile(path) {
   let raw;
   try {
+    const info = await lstat(path);
+    if (info.isSymbolicLink() || !info.isFile()) {
+      throw new QwenModelError("Qwen Code の設定を読めませんでした", 500, "settings_unreadable");
+    }
     raw = await readFile(path, "utf8");
   } catch (error) {
+    if (error instanceof QwenModelError) throw error;
     if (error?.code === "ENOENT") return { exists: false, raw: "", data: {} };
     throw new QwenModelError("Qwen Code の設定を読めませんでした", 500, "settings_unreadable");
   }
@@ -95,6 +100,8 @@ async function dotenvNames(cwd, home) {
   for (const file of candidates) {
     let text;
     try {
+      const info = await lstat(file);
+      if (info.isSymbolicLink() || !info.isFile() || info.size > MAX_SETTINGS_BYTES) continue;
       text = await readFile(file, "utf8");
     } catch {
       continue;

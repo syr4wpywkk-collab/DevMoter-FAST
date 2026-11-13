@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, stat, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -97,6 +97,11 @@ test("a project's .qwen/settings.json replaces the user list (MergeStrategy.REPL
   const listing = await listQwenModels({ home, env, cwd: project });
   assert.equal(listing.scope, "workspace");
   assert.deepEqual(listing.models.map(model => model.id), ["project-model"]);
+  const outsideSettings = join(project, "outside-settings.json");
+  await writeFile(outsideSettings, JSON.stringify({ modelProviders: { openai: [{ id: "symlinked-model" }] } }));
+  await unlink(join(project, ".qwen", "settings.json"));
+  await symlink(outsideSettings, join(project, ".qwen", "settings.json"));
+  await assert.rejects(listQwenModels({ home, env, cwd: project }), error => error.code === "settings_unreadable");
   const empty = await listQwenModels({ home: await homeWith(undefined), env });
   assert.deepEqual([empty.scope, empty.models.length, empty.groups.length], ["none", 0, 0]);
   await assert.rejects(listQwenModels({ home: await homeWith("{ not json"), env }), error => error.code === "settings_invalid");

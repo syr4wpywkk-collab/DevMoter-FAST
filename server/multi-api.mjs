@@ -463,12 +463,22 @@ export function createMultiApiStore({ filePath, env = process.env } = {}) {
       throw new Error("Choose either an API key or a Vault reference");
     }
     const useVault = credentialMode === "vault" || (credentialMode === "legacy" && Boolean(requestedSecretRef || existing?.secretRef));
+    const candidatePreset = MULTI_API_PRESETS.find(item => item.id === String(input?.presetId || "custom").trim().slice(0, 64));
+    const candidateProtocol = normalizeProtocol(input?.protocol || candidatePreset?.protocol || "openai-compatible");
+    const candidateBaseUrl = normalizeBaseUrl(input?.baseUrl || candidatePreset?.baseUrl);
+    const canRetainExistingKey = Boolean(
+      existing &&
+      !existing.secretRef &&
+      existing.apiKey &&
+      existing.protocol === candidateProtocol &&
+      new URL(existing.baseUrl).origin === new URL(candidateBaseUrl).origin
+    );
     const normalized = normalizeProviderInput({
       ...input,
       id: existing?.id || input?.id,
       secretRef: useVault ? requestedSecretRef || existing?.secretRef : "",
       projectId: useVault ? input?.projectId || existing?.projectId : "",
-      apiKey: useVault ? "" : String(input?.apiKey || "").trim() || (existing?.secretRef ? "" : existing?.apiKey || "")
+      apiKey: useVault ? "" : String(input?.apiKey || "").trim() || (canRetainExistingKey ? existing.apiKey : "")
     });
 
     if (!normalized.apiKey && !normalized.secretRef) throw new Error("API key or Vault reference is required");
@@ -528,6 +538,7 @@ export async function testMultiApiProvider(input, fetchImpl = fetch) {
   const upstream = await fetchImpl(`${provider.baseUrl}/models`, {
     method: "GET",
     headers: providerHeaders(provider),
+    redirect: "error",
     signal: AbortSignal.timeout(20_000)
   });
 
@@ -623,6 +634,7 @@ async function runOpenAiCompatible(provider, model, messages, reasoningMode, fet
     method: "POST",
     headers: providerHeaders(provider),
     body: JSON.stringify(body),
+    redirect: "error",
     signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000)
   });
 
@@ -665,6 +677,7 @@ async function runAnthropic(provider, model, messages, reasoningMode, fetchImpl,
     method: "POST",
     headers: providerHeaders(provider),
     body: JSON.stringify(body),
+    redirect: "error",
     signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000)
   });
 
