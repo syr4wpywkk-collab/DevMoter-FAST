@@ -499,3 +499,67 @@ test("real tmux session remains usable after the DevMoter manager detaches", {
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("claiming a persistent terminal disconnects previous device sockets and strips server auth secrets from PTY env", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "devmoter-terminal-claim-revoke-"));
+  const storeFile = join(directory, "sessions.json");
+  const tmux = tmuxHarness();
+  const children = [];
+  const deviceA = "11111111-1111-4111-8111-111111111111";
+  const deviceB = "22222222-2222-4222-8222-222222222222";
+  const authenticateDevice = async req => {
+    const id = req.headers["x-devmoter-device-token"];
+    return id ? { id } : null;
+  };
+  const previousAuthPassword = process.env.DEVMOTER_AUTH_PASSWORD;
+  process.env.DEVMOTER_AUTH_PASSWORD = "super-secret-owner-password";
+  const manager = makeManager({ storeFile, tmux, children, authenticateDevice });
+  try {
+    const origin = "https://devmoter.example";
+    const createdResponse = response();
+    await manager.create(request({
+      headers: {
+        origin,
+        "x-devmoter-device-token": deviceA,
+        "x-devmoter-terminal-entry": "explicit"
+      },
+      body: JSON.stringify({ projectId: "project-a", persistent: true, name: "claim-test" })
+    }), createdResponse);
+    assert.equal(createdResponse.statusCode, 201);
+    assert.equal(children[0].args[2].env.DEVMOTER_AUTH_PASSWORD, undefined);
+
+    const sessionId = JSON.parse(createdResponse.body).session.id;
+    const cookieA = createdResponse.headers["set-cookie"][0].split(";")[0];
+
+    const ticketResponse = response();
+    await manager.issueSocketTicket(request({
+      headers: { origin, cookie: cookieA, "x-devmoter-device-token": deviceA }
+    }), ticketResponse, sessionId);
+    const { ticket } = JSON.parse(ticketResponse.body);
+    const session = await manager.authorizeSocket(request(), sessionId, ticket, origin);
+    assert.ok(session);
+
+    const socket = new EventEmitter();
+    socket.readyState = 1;
+    socket.bufferedAmount = 0;
+    socket.close = (code, reason) => { socket.closed = { code, reason }; socket.emit("close"); };
+    socket.terminate = () => socket.emit("close");
+    manager.attachSocket(session, socket, 0);
+
+    const claimResponse = response();
+    await manager.claimSession(request({
+      headers: {
+        origin,
+        "x-devmoter-device-token": deviceB,
+        "x-devmoter-terminal-entry": "explicit"
+      }
+    }), claimResponse, sessionId);
+    assert.equal(claimResponse.statusCode, 200);
+    assert.equal(socket.closed?.code, 1008);
+  } finally {
+    if (previousAuthPassword === undefined) delete process.env.DEVMOTER_AUTH_PASSWORD;
+    else process.env.DEVMOTER_AUTH_PASSWORD = previousAuthPassword;
+    manager.shutdown();
+    await rm(directory, { recursive: true, force: true });
+  }
+});

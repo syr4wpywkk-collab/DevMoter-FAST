@@ -93,6 +93,26 @@ function resolveShell(value) {
   return shell;
 }
 
+const REDACTED_TERMINAL_ENV_KEYS = [
+  "DEVMOTER_AUTH_PASSWORD",
+  "DEVMOTER_AUTH_USERNAME",
+  "DEVMOTER_GOOGLE_CLIENT_SECRET",
+  "DEVMOTER_MICROSOFT_CLIENT_SECRET",
+  "DEVMOTER_GITHUB_CLIENT_SECRET"
+];
+
+function terminalChildEnv(baseEnv = process.env) {
+  const env = {
+    ...baseEnv,
+    TERM: baseEnv.TERM || "xterm-256color",
+    COLORTERM: baseEnv.COLORTERM || "truecolor"
+  };
+  for (const key of REDACTED_TERMINAL_ENV_KEYS) {
+    delete env[key];
+  }
+  return env;
+}
+
 function terminalCookieName(id) {
   return `devmoter_terminal_${id}`;
 }
@@ -210,7 +230,8 @@ export function createTerminalManager(options = {}) {
   const runTmux = options.runTmux || (args => execFileAsync("tmux", args, {
     timeout: 5000,
     maxBuffer: 64 * 1024,
-    windowsHide: true
+    windowsHide: true,
+    env: terminalChildEnv(process.env)
   }));
   const tmuxArgs = Array.isArray(options.tmuxArgs) && options.tmuxArgs.every(value => typeof value === "string")
     ? [...options.tmuxArgs]
@@ -252,6 +273,7 @@ export function createTerminalManager(options = {}) {
             outputBytes: 0,
             listeners: new Set(),
             sockets: new Set(),
+            streams: new Set(),
             cleanupTimer: null,
             detaching: false
           });
@@ -335,11 +357,7 @@ export function createTerminalManager(options = {}) {
         cols: 80,
         rows: 24,
         cwd: session.cwd,
-        env: {
-          ...process.env,
-          TERM: process.env.TERM || "xterm-256color",
-          COLORTERM: process.env.COLORTERM || "truecolor"
-        }
+        env: terminalChildEnv(process.env)
       });
       bindProcess(session, child);
       return true;
@@ -507,11 +525,7 @@ export function createTerminalManager(options = {}) {
             cols: 80,
             rows: 24,
             cwd: project.path,
-            env: {
-              ...process.env,
-              TERM: process.env.TERM || "xterm-256color",
-              COLORTERM: process.env.COLORTERM || "truecolor"
-            }
+            env: terminalChildEnv(process.env)
           }
         );
       } catch (error) {
@@ -543,6 +557,7 @@ export function createTerminalManager(options = {}) {
         outputBytes: 0,
         listeners: new Set(),
         sockets: new Set(),
+        streams: new Set(),
         cleanupTimer: null
       };
       sessions.set(id, session);
@@ -722,6 +737,10 @@ export function createTerminalManager(options = {}) {
         json(res, 403, { error: "Trusted device has been revoked." });
         return;
       }
+      for (const [ticket, grant] of socketTickets) {
+        if (grant.sessionId === id) socketTickets.delete(ticket);
+      }
+      closeSockets(session, 1008, "Terminal session claimed by another device.");
       setSessionCookie(req, res, id, token, Math.max(0, Math.floor((session.expiresAt - Date.now()) / 1000)));
       json(res, 200, { session: publicSession(session) });
     } catch {
@@ -790,8 +809,8 @@ export function createTerminalManager(options = {}) {
     const listener = item => write(item);
     session.listeners.add(listener);
     socket.on("message", (message, isBinary) => {
-      if (session.closed) {
-        socket.close(1008, "Terminal session is closed.");
+      if (session.closed || !sessionDeviceAllowed(session)) {
+        socket.close(1008, session.closed ? "Terminal session is closed." : "Trusted device revoked.");
         return;
       }
       try {
@@ -837,6 +856,12 @@ export function createTerminalManager(options = {}) {
     for (const socket of session.sockets) {
       try { socket.close(code, reason); } catch { socket.terminate?.(); }
     }
+    if (session.streams) {
+      for (const streamRes of session.streams) {
+        try { streamRes.end(); } catch { /* ignore */ }
+      }
+      session.streams.clear();
+    }
   }
 
   async function stream(req, res, id, after = 0) {
@@ -865,17 +890,34 @@ export function createTerminalManager(options = {}) {
       return;
     }
 
-    const listener = item => write(item);
+    let heartbeat = null;
+    const detachStream = () => {
+      if (heartbeat) clearInterval(heartbeat);
+      session.listeners.delete(listener);
+      session.streams?.delete(res);
+    };
+    const listener = item => {
+      if (!sessionDeviceAllowed(session)) {
+        detachStream();
+        try { res.end(); } catch { /* ignore */ }
+        return;
+      }
+      write(item);
+    };
     session.listeners.add(listener);
-    const heartbeat = setInterval(() => {
+    session.streams?.add(res);
+    heartbeat = setInterval(() => {
+      if (!sessionDeviceAllowed(session)) {
+        detachStream();
+        try { res.end(); } catch { /* ignore */ }
+        return;
+      }
       res.write(`${JSON.stringify({ type: "heartbeat", at: Date.now() })}\n`);
     }, 20000);
     heartbeat.unref?.();
 
-    req.on("close", () => {
-      clearInterval(heartbeat);
-      session.listeners.delete(listener);
-    });
+    req.on("close", detachStream);
+    res.on("close", detachStream);
   }
 
   async function close(req, res, id) {

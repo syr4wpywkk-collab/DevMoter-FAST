@@ -2000,15 +2000,18 @@ async function proxy(req, res) {
     return;
   }
 
-  const body =
-    req.method === "GET" || req.method === "HEAD"
-      ? undefined
-      : await new Promise((resolve, reject) => {
-          const chunks = [];
-          req.on("data", chunk => chunks.push(chunk));
-          req.on("end", () => resolve(Buffer.concat(chunks)));
-          req.on("error", reject);
-        });
+  let body;
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    try {
+      body = await readRaw(req, 10 * 1024 * 1024);
+    } catch (error) {
+      if (error?.message === "Request body too large") {
+        json(res, 413, { error: "Request body too large" });
+        return;
+      }
+      throw error;
+    }
+  }
 
   const upstreamAbort = new AbortController();
   const abortUpstream = () => {
@@ -2028,6 +2031,7 @@ async function proxy(req, res) {
         "accept": req.headers["accept"] || "*/*"
       }),
       body,
+      redirect: "error",
       signal: upstreamAbort.signal
     });
 

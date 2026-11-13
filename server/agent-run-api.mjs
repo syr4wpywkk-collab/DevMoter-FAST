@@ -57,17 +57,46 @@ export function createAgentRunApi({
             "cache-control": "no-store",
             "connection": "keep-alive"
           });
-          const writeState = state => {
-            res.write(`event: state\ndata: ${JSON.stringify(state)}\n\n`);
-          };
-          writeState(await service.list());
-          const unsubscribe = service.subscribe(writeState);
-          const heartbeat = setInterval(() => res.write(": keepalive\n\n"), 15000);
-          heartbeat.unref?.();
-          req.on("close", () => {
-            clearInterval(heartbeat);
+          let closed = false;
+          let unsubscribe = () => {};
+          let heartbeat = null;
+          const cleanup = () => {
+            if (closed) return;
+            closed = true;
+            if (heartbeat) clearInterval(heartbeat);
             unsubscribe();
-          });
+            try { res.end(); } catch { /* ignore */ }
+          };
+          const verifyDeviceStillActive = async () => {
+            if (closed) return false;
+            try {
+              const currentDevice = await authenticateDevice(req);
+              if (!currentDevice?.id || currentDevice.id !== device.id) {
+                cleanup();
+                return false;
+              }
+              return true;
+            } catch {
+              cleanup();
+              return false;
+            }
+          };
+          const writeState = state => {
+            void verifyDeviceStillActive().then(active => {
+              if (active && !closed) {
+                res.write(`event: state\ndata: ${JSON.stringify(state)}\n\n`);
+              }
+            });
+          };
+          res.write(`event: state\ndata: ${JSON.stringify(await service.list())}\n\n`);
+          unsubscribe = service.subscribe(writeState);
+          heartbeat = setInterval(() => {
+            void verifyDeviceStillActive().then(active => {
+              if (active && !closed) res.write(": keepalive\n\n");
+            });
+          }, 15000);
+          heartbeat.unref?.();
+          req.on("close", cleanup);
           return true;
         }
 
