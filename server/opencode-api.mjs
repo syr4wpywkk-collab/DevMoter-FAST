@@ -71,10 +71,20 @@ export function createOpenCodeClient({
   }
 
   async function fetchJson(path, init = {}) {
+    const base = new URL(baseUrl);
+    const rawPath = String(path || "");
+    if (!rawPath.startsWith("/") || rawPath.startsWith("//") || /[\u0000-\u001f\u007f\\]/.test(rawPath)) {
+      throw new Error(`Invalid OpenCode request path: ${rawPath}`);
+    }
+    const targetUrl = new URL(rawPath, base);
+    if (targetUrl.origin !== base.origin) {
+      throw new Error(`Invalid OpenCode request path: ${rawPath}`);
+    }
     let upstream;
     try {
-      upstream = await fetchImpl(new URL(path, baseUrl), {
+      upstream = await fetchImpl(targetUrl, {
         ...init,
+        redirect: "error",
         headers: headers({ accept: "application/json", ...(init.headers || {}) }),
         signal: init.signal || AbortSignal.timeout(4000)
       });

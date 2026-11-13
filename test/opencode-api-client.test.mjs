@@ -305,3 +305,24 @@ test("2.x session operations use /api/session; a named model/agent skips the ses
   assert.ok(calls.some(call => call.path === "/api/session/ses_2/interrupt"));
   assert.deepEqual(await client.createSession({ agent: "build" }), { id: "ses_new" });
 });
+
+test("fetchJson rejects cross-origin paths and sets redirect: error", async () => {
+  const seen = [];
+  const client = createOpenCodeClient({
+    baseUrl: "http://oc.test",
+    fetchImpl: async (url, init) => {
+      seen.push({ url: String(url), redirect: init.redirect });
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      });
+    }
+  });
+  await assert.rejects(() => client.fetchJson("//attacker.example/api/info"), /Invalid OpenCode request path/);
+  await assert.rejects(() => client.fetchJson("http://attacker.example/api/info"), /Invalid OpenCode request path/);
+  assert.equal(seen.length, 0);
+
+  await client.fetchJson("/api/info");
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].redirect, "error");
+});
