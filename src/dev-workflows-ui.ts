@@ -224,7 +224,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
 
       const actions = document.createElement("div");
       actions.className = "cx-dev-inline-actions";
-      if (finding.locationUrl) {
+      if (finding.locationUrl && /^https?:\/\//i.test(String(finding.locationUrl))) {
         const link = document.createElement("a");
         link.href = String(finding.locationUrl);
         link.target = "_blank";
@@ -277,7 +277,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
       row.className = "cx-dev-check-row";
       const copy = document.createElement("span");
       const checkName = text("strong", String(check.name || "check"));
-      if (check.detailsUrl) {
+      if (check.detailsUrl && /^https?:\/\//i.test(String(check.detailsUrl))) {
         const link = document.createElement("a");
         link.href = String(check.detailsUrl);
         link.target = "_blank";

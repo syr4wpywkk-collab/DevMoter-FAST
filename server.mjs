@@ -139,14 +139,14 @@ const agentRunService = createAgentRunService({
   codex
 });
 void agentRunService.ready().catch(error => {
-  console.error("Agent run service initialization failed", redactTexterrorMessage(error));
+  console.error("Agent run service initialization failed", redactText(errorMessage(error)));
 });
 const multiApiStore = createMultiApiStore({ filePath: MULTI_API_FILE, env: process.env });
 const qwenRuns = createQwenRunRegistry();
 const secretStore = createSecretStore({ filePath: SECRET_VAULT_FILE });
 const multiApiAttachments = createMultiApiAttachmentStore({ directory: MULTI_API_IMAGE_DIR });
 void multiApiAttachments.cleanup().catch(error => {
-  console.warn("multi-api attachment cleanup failed", redactTexterrorMessage(error));
+  console.warn("multi-api attachment cleanup failed", redactText(errorMessage(error)));
 });
 const passkeys = new PasskeyAuth({
   configDir: PROJECT_CONFIG_DIR, publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
@@ -165,7 +165,7 @@ const controlPlane = new ControlPlane({
       status: run?.status ?? null,
       endedAt: run?.endedAt ?? null
     }).catch(error => {
-      console.error("Control-plane lifecycle dispatch failed", redactTexterrorMessage(error));
+      console.error("Control-plane lifecycle dispatch failed", redactText(errorMessage(error)));
     });
   }
 });
@@ -364,7 +364,7 @@ codex.on("notification", event => {
       backend: "codex",
       payload: { method, params: event?.params ?? null }
     }).catch(error => {
-      console.error("Workspace event append failed", redactTexterrorMessage(error));
+      console.error("Workspace event append failed", redactText(errorMessage(error)));
     });
   }
 
@@ -384,7 +384,7 @@ codex.on("notification", event => {
       method,
       itemId: event?.params?.item?.id ?? event?.params?.itemId ?? null
     }).catch(error => {
-      console.error("after-tool hook failed", redactTexterrorMessage(error));
+      console.error("after-tool hook failed", redactText(errorMessage(error)));
     });
   }
 });
@@ -405,7 +405,7 @@ codex.on("server-request", request => {
     backend: "codex",
     payload: { id: request?.id ?? null, method, params: request?.params ?? null }
   }).catch(error => {
-    console.error("Workspace request event append failed", redactTexterrorMessage(error));
+    console.error("Workspace request event append failed", redactText(errorMessage(error)));
   });
 
   if (method === "item/commandExecution/requestApproval" || method === "item/fileChange/requestApproval") {
@@ -1246,7 +1246,7 @@ async function executeControlTask(definition, context = {}) {
     return await executeControlTaskCore(definition, context);
   } finally {
     void userAutomation?.emitHook("after-run", hookPayload).catch(error => {
-      console.error("after-run hook failed", redactTexterrorMessage(error));
+      console.error("after-run hook failed", redactText(errorMessage(error)));
     });
   }
 }
@@ -2952,7 +2952,7 @@ const server = http.createServer(async (req, res) => {
           configured: result?.configured !== false,
           timedOut: result?.timedOut === true
         }).catch(error => {
-          console.error("verification-complete hook failed", redactTexterrorMessage(error));
+          console.error("verification-complete hook failed", redactText(errorMessage(error)));
         });
         return result;
       });
@@ -3637,6 +3637,6 @@ server.listen(PORT, HOST, () => {
     host: HOST,
     port: PORT
   }).catch(error => {
-    console.error("Control-plane startup event failed", redactTexterrorMessage(error));
+    console.error("Control-plane startup event failed", redactText(errorMessage(error)));
   });
 });
