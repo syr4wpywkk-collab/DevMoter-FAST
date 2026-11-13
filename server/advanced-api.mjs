@@ -200,8 +200,19 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
     if (upstream.status >= 300 && upstream.status < 400) {
       const location = upstream.headers.get("location");
       if (location) {
-        const next = new URL(location, target);
-        if (!loopbackHost(next.hostname) || Number(next.port || preview.port) !== preview.port) {
+        let next;
+        try {
+          next = new URL(location, target);
+          resolveLivePreviewTarget(preview.host, preview.port, next.pathname || "/", next.search);
+        } catch {
+          sendJson(res, 502, { error: "Preview redirect escaped the approved loopback target" });
+          return;
+        }
+        if (
+          next.protocol !== "http:" ||
+          !loopbackHost(next.hostname) ||
+          Number(next.port || 80) !== preview.port
+        ) {
           sendJson(res, 502, { error: "Preview redirect escaped the approved loopback target" });
           return;
         }
@@ -218,9 +229,18 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
     if (contentType) headers["content-type"] = contentType;
     const location = upstream.headers.get("location");
     if (location) {
-      const next = new URL(location, target);
-      if (loopbackHost(next.hostname) && Number(next.port || preview.port) === preview.port) {
-        headers.location = "/api/live-preview/proxy/" + token + next.pathname + next.search;
+      try {
+        const next = new URL(location, target);
+        resolveLivePreviewTarget(preview.host, preview.port, next.pathname || "/", next.search);
+        if (
+          next.protocol === "http:" &&
+          loopbackHost(next.hostname) &&
+          Number(next.port || 80) === preview.port
+        ) {
+          headers.location = "/api/live-preview/proxy/" + token + next.pathname + next.search;
+        }
+      } catch {
+        // Ignore invalid non-3xx Location headers rather than forwarding them.
       }
     }
     if (req.method === "HEAD") {

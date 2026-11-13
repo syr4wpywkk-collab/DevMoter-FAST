@@ -2,7 +2,7 @@ import { createOfficeStore, OFFICE_LIMITS } from "./server/office/store.mjs";
 import { createOfficeAi } from "./server/office/ai.mjs";
 import http from "node:http";
 import { accessSync, constants as fsConstants } from "node:fs";
-import { mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import { basename, delimiter, dirname, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
@@ -627,6 +627,21 @@ async function resolveProjectMarkdownPath(project, relativePath, { mustExist = f
     }
     if (extname(actualTarget).toLowerCase() !== ".md") throw new Error("Markdown read target must also be .md");
     readTarget = actualTarget;
+  } else {
+    let existingInfo = null;
+    try {
+      existingInfo = await lstat(target);
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+    if (existingInfo) {
+      if (existingInfo.isSymbolicLink()) {
+        throw new Error("Symlinked Markdown files are not allowed");
+      }
+      if (!existingInfo.isFile()) {
+        throw new Error("Markdown write requires a regular file");
+      }
+    }
   }
 
   return { root, target: readTarget, relativePath: safeRelative };
@@ -815,8 +830,20 @@ async function projectWriteFile(id, req, res) {
       throw new Error("Markdown file is larger than 1MB");
     }
 
-    await writeFile(resolved.target, content, { encoding: "utf8", mode: 0o600 });
-    const info = await stat(resolved.target);
+    const handle = await open(
+      resolved.target,
+      fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_TRUNC | (fsConstants.O_NOFOLLOW || 0),
+      0o600
+    );
+    let info;
+    try {
+      info = await handle.stat();
+      if (!info.isFile()) throw new Error("Markdown write requires a regular file");
+      await handle.writeFile(content, "utf8");
+      info = await handle.stat();
+    } finally {
+      await handle.close();
+    }
     json(res, 200, {
       ok: true,
       path: resolved.relativePath,

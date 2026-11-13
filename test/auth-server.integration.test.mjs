@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -402,6 +402,36 @@ test("server requires auth and exact Origin for mutations", async () => {
     assert.equal(sameOrigin.status, 400);
     const payload = await sameOrigin.json();
     assert.match(String(payload.error || ""), /Project path is required/);
+
+    const projectDir = join(home, "markdown-project");
+    const outsideFile = join(home, "outside-secret.txt");
+    await mkdir(projectDir, { recursive: true });
+    await writeFile(outsideFile, "untouched-secret", "utf8");
+    await symlink(outsideFile, join(projectDir, "README.md"));
+    const createdProject = await fetch(`${origin}/api/projects`, {
+      method: "POST",
+      headers: {
+        authorization,
+        origin,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "register-markdown-project"
+      },
+      body: JSON.stringify({ path: projectDir, name: "Markdown Project" })
+    });
+    assert.equal(createdProject.status, 201);
+    const { project } = await createdProject.json();
+    const symlinkWrite = await fetch(`${origin}/api/projects/${encodeURIComponent(project.id)}/file`, {
+      method: "PUT",
+      headers: {
+        authorization,
+        origin,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "write-symlink-markdown"
+      },
+      body: JSON.stringify({ path: "README.md", content: "# overwritten" })
+    });
+    assert.equal(symlinkWrite.status, 400);
+    assert.equal(await readFile(outsideFile, "utf8"), "untouched-secret");
   } finally {
     child.kill("SIGTERM");
     await Promise.race([
