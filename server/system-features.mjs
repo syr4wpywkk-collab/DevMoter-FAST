@@ -10,10 +10,13 @@ import {
   randomBytes,
   randomInt,
   randomUUID,
-  sign
+  sign,
+  timingSafeEqual
 } from "node:crypto";
 
 const PAIRING_TTL_MS = 5 * 60 * 1000;
+const MAX_ACTIVE_PAIRINGS = 16;
+const MAX_PAIRING_ATTEMPTS = 5;
 const VISIBLE_TTL_MS = 45 * 1000;
 const NOTIFY_DEDUPE_MS = 30 * 1000;
 const DEVICE_COOKIE_NAME = "devmoter_device";
@@ -25,6 +28,17 @@ function base64url(buffer) {
 
 function sha256(value) {
   return createHash("sha256").update(String(value)).digest("hex");
+}
+
+function safeEqualHex(left, right) {
+  if (typeof left !== "string" || typeof right !== "string" || left.length !== 64 || right.length !== 64) {
+    return false;
+  }
+  try {
+    return timingSafeEqual(Buffer.from(left, "hex"), Buffer.from(right, "hex"));
+  } catch {
+    return false;
+  }
 }
 
 // Build identifiers come from the environment, so only echo values that look
@@ -226,7 +240,7 @@ export function createSystemFeatures({
 
     const tokenHash = sha256(token);
     const devices = await readDevices();
-    const index = devices.findIndex(device => device.tokenHash === tokenHash && !device.revokedAt);
+    const index = devices.findIndex(device => safeEqualHex(device.tokenHash, tokenHash) && !device.revokedAt);
     if (index < 0) {
       if (optional) return null;
       throw Object.assign(new Error("Invalid or revoked device token"), { status: 401 });
@@ -288,33 +302,51 @@ export function createSystemFeatures({
 
   async function createPairing(req) {
     const current = await authenticate(req);
+    const now = Date.now();
+    for (const [existingId, existing] of pairings) {
+      if (existing.expiresAt <= now) pairings.delete(existingId);
+    }
+    while (pairings.size >= MAX_ACTIVE_PAIRINGS) {
+      const oldestKey = pairings.keys().next().value;
+      if (!oldestKey) break;
+      pairings.delete(oldestKey);
+    }
     const code = String(randomInt(100000, 1000000));
     const id = randomUUID();
+    const expiresAt = now + PAIRING_TTL_MS;
     pairings.set(id, {
       id,
       codeHash: sha256(code),
       approvedByDeviceId: current.id,
-      createdAt: Date.now(),
-      expiresAt: Date.now() + PAIRING_TTL_MS
+      createdAt: now,
+      expiresAt,
+      failedAttempts: 0
     });
-    return { pairingId: id, code, expiresAt: Date.now() + PAIRING_TTL_MS };
+    return { pairingId: id, code, expiresAt };
   }
 
   async function claimPairing(code, label) {
-    const codeHash = sha256(String(code || "").trim());
+    const normalizedCode = String(code || "").trim();
+    const codeHash = sha256(normalizedCode);
     const now = Date.now();
     for (const [id, pairing] of pairings) {
       if (pairing.expiresAt <= now) {
         pairings.delete(id);
         continue;
       }
-      if (pairing.codeHash !== codeHash) continue;
+      if (!safeEqualHex(pairing.codeHash, codeHash)) continue;
       pairings.delete(id);
       const issued = await issueDevice(label, { approvedByDeviceId: pairing.approvedByDeviceId });
       return {
         ...issued,
         approvedByDeviceId: pairing.approvedByDeviceId
       };
+    }
+    for (const [id, pairing] of pairings) {
+      pairing.failedAttempts = (pairing.failedAttempts || 0) + 1;
+      if (pairing.failedAttempts >= MAX_PAIRING_ATTEMPTS) {
+        pairings.delete(id);
+      }
     }
     throw Object.assign(new Error("Pairing code is invalid or expired"), { status: 400 });
   }

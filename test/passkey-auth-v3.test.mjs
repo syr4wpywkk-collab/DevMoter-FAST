@@ -38,6 +38,14 @@ test("registration options are generated for true loopback and reject proxy-only
       })),
       /requires localhost/
     );
+    await assert.rejects(
+      () => auth.registrationOptions(request({
+        host: "mari-opencode.example.test",
+        origin: "http://localhost:8787",
+        remoteAddress: "127.0.0.1"
+      })),
+      /does not match this host|requires localhost/
+    );
   } finally {
     if (previous === undefined) delete process.env.DEVMOTER_PASSKEY_BOOTSTRAP;
     else process.env.DEVMOTER_PASSKEY_BOOTSTRAP = previous;

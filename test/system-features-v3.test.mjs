@@ -162,3 +162,24 @@ test("malformed persisted device state fails closed instead of allowing a new bo
     /unreadable or malformed/i
   );
 });
+
+test("pairing codes are invalidated after repeated failed claim attempts", async t => {
+  const stateDir = await mkdtemp(join(tmpdir(), "devmoter-pairing-bruteforce-"));
+  t.after(() => rm(stateDir, { recursive: true, force: true }));
+  const features = createSystemFeatures({
+    stateDir,
+    appRoot: process.cwd(),
+    version: "test",
+    getProjects: async () => [],
+    getBackendHealth: async () => ({ opencode: { online: true }, codex: { online: true } })
+  });
+
+  const first = await features.bootstrapDevice(request(), "Laptop");
+  const pairing = await features.createPairing(request({ token: first.token }));
+  const wrongCode = pairing.code === "000000" ? "999999" : "000000";
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await assert.rejects(features.claimPairing(wrongCode, "Attacker"), /invalid or expired/i);
+  }
+  await assert.rejects(features.claimPairing(pairing.code, "Phone"), /invalid or expired/i);
+});

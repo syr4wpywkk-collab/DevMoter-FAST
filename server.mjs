@@ -1368,7 +1368,25 @@ async function externalAuthRoute(req, res, url) {
       json(res, 200, await authStatus(req)); return true;
     }
     if (req.method === "POST" && url.pathname === "/api/auth/local/login") {
-      const result = await externalAuth.localLogin(req, await readJson(req, 64 * 1024), AUTH_CONFIG);
+      const payload = await readJson(req, 64 * 1024);
+      const decision = await basicAuthGuard.verify(
+        req,
+        String(payload?.username ?? ""),
+        String(payload?.password ?? "")
+      );
+      if (decision.status === "locked") {
+        res.writeHead(429, {
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "no-store",
+          "retry-after": String(decision.retryAfterSec)
+        });
+        res.end(JSON.stringify({ error: "Too many authentication attempts. Try again later." }));
+        return true;
+      }
+      if (decision.status !== "ok") {
+        throw Object.assign(new Error("Invalid recovery username or password"), { status: 401 });
+      }
+      const result = await externalAuth.localLogin(req, payload, AUTH_CONFIG);
       jsonWithCookie(res, 200, { ok: true, identity: result.identity }, result.cookie); return true;
     }
     if (req.method === "GET" && url.pathname === "/api/auth/account") {

@@ -62,12 +62,29 @@ function requestHost(req) {
 function isLoopback(req) {
   const address = String(req?.socket?.remoteAddress || "");
   const host = requestHost(req);
+  const rawHost = firstHeader(req, "host");
+  let headerHostname = host;
+  if (rawHost) {
+    try {
+      headerHostname = new URL(`http://${rawHost}`).hostname.replace(/^\[|\]$/g, "").toLowerCase();
+    } catch {
+      return false;
+    }
+  }
   const localAddress =
     address === "127.0.0.1" ||
     address === "::1" ||
     address === "::ffff:127.0.0.1";
-  const localHost = host === "localhost" || host === "127.0.0.1" || host === "::1";
-  return localAddress && localHost && !firstHeader(req, "x-forwarded-for");
+  const localHost =
+    (host === "localhost" || host === "127.0.0.1" || host === "::1") &&
+    headerHostname === host;
+  return (
+    localAddress &&
+    localHost &&
+    !firstHeader(req, "x-forwarded-for") &&
+    !firstHeader(req, "x-forwarded-host") &&
+    !firstHeader(req, "x-forwarded-proto")
+  );
 }
 
 function explicitBootstrapEnabled() {
@@ -114,7 +131,15 @@ export class PasskeyAuth {
       if (supplied && new URL(supplied).origin !== expected) throw new Error("Passkey origin does not match this host");
       return expected;
     }
-    return requestOrigin(req);
+    const resolved = requestOrigin(req);
+    const hostHeader = firstHeader(req, "x-forwarded-host") || firstHeader(req, "host");
+    if (hostHeader) {
+      const expectedHost = new URL(`http://${hostHeader}`).host.toLowerCase();
+      if (new URL(resolved).host.toLowerCase() !== expectedHost) {
+        throw new Error("Passkey origin does not match this host");
+      }
+    }
+    return resolved;
   }
 
   host(req) { return new URL(this.origin(req)).hostname.replace(/^\[|\]$/g, "").toLowerCase(); }
