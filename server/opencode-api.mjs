@@ -32,6 +32,7 @@ import {
   OPENCODE_API_V1,
   OPENCODE_API_V2
 } from "./opencode-adapter.mjs";
+import { resolveRequestUrl } from "../sdk/index.mjs";
 
 export { listOf };
 
@@ -71,15 +72,8 @@ export function createOpenCodeClient({
   }
 
   async function fetchJson(path, init = {}) {
-    const base = new URL(baseUrl);
-    const rawPath = String(path || "");
-    if (!rawPath.startsWith("/") || rawPath.startsWith("//") || /[\u0000-\u001f\u007f\\]/.test(rawPath)) {
-      throw new Error(`Invalid OpenCode request path: ${rawPath}`);
-    }
-    const targetUrl = new URL(rawPath, base);
-    if (targetUrl.origin !== base.origin) {
-      throw new Error(`Invalid OpenCode request path: ${rawPath}`);
-    }
+    const rawPath = String(path ?? "");
+    const targetUrl = resolveRequestUrl(baseUrl, rawPath, `Invalid OpenCode request path: ${rawPath}`);
     let upstream;
     try {
       upstream = await fetchImpl(targetUrl, {

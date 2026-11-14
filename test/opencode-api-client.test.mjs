@@ -306,10 +306,10 @@ test("2.x session operations use /api/session; a named model/agent skips the ses
   assert.deepEqual(await client.createSession({ agent: "build" }), { id: "ses_new" });
 });
 
-test("fetchJson rejects cross-origin paths and sets redirect: error", async () => {
+test("fetchJson rejects cross-origin, dot-segment, and encoded traversal paths and sets redirect: error", async () => {
   const seen = [];
   const client = createOpenCodeClient({
-    baseUrl: "http://oc.test",
+    baseUrl: "http://oc.test/subpath",
     fetchImpl: async (url, init) => {
       seen.push({ url: String(url), redirect: init.redirect });
       return new Response(JSON.stringify({ ok: true }), {
@@ -318,11 +318,23 @@ test("fetchJson rejects cross-origin paths and sets redirect: error", async () =
       });
     }
   });
-  await assert.rejects(() => client.fetchJson("//attacker.example/api/info"), /Invalid OpenCode request path/);
-  await assert.rejects(() => client.fetchJson("http://attacker.example/api/info"), /Invalid OpenCode request path/);
+  for (const unsafe of [
+    "//attacker.example/api/info",
+    "http://attacker.example/api/info",
+    "https://attacker.example/api/info",
+    "/api/../admin",
+    "/api/%2e%2e/admin",
+    "/api/%252e%252e/admin",
+    "/api/session/%2f/context",
+    "/api\\evil",
+    "/api/info\u0000"
+  ]) {
+    await assert.rejects(() => client.fetchJson(unsafe), /Invalid OpenCode request path/, unsafe);
+  }
   assert.equal(seen.length, 0);
 
   await client.fetchJson("/api/info");
   assert.equal(seen.length, 1);
+  assert.equal(seen[0].url, "http://oc.test/subpath/api/info");
   assert.equal(seen[0].redirect, "error");
 });
