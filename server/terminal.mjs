@@ -93,22 +93,24 @@ function resolveShell(value) {
   return shell;
 }
 
-const REDACTED_TERMINAL_ENV_KEYS = [
-  "DEVMOTER_AUTH_PASSWORD",
-  "DEVMOTER_AUTH_USERNAME",
-  "DEVMOTER_GOOGLE_CLIENT_SECRET",
-  "DEVMOTER_MICROSOFT_CLIENT_SECRET",
-  "DEVMOTER_GITHUB_CLIENT_SECRET"
-];
+// Strip server and provider secrets from PTY child environments by pattern while
+// preserving operational shell variables (PATH, HOME, USER, LOGNAME, SHELL, TERM,
+// COLORTERM, LANG, LC_*, TZ, TMPDIR, XDG_*, SSH_AUTH_SOCK) and agent CLI
+// directory/binary configuration (CODEX_HOME, CODEX_CWD, CODEX_BIN, QWEN_HOME,
+// QWEN_BIN, CLAUDE_CONFIG_DIR, CLAUDE_BIN, OPENCODE_DIRECTORY, OPENCODE_URL).
+const REDACTED_TERMINAL_ENV_PATTERN =
+  /(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|PRIVATE|^DEVMOTER_AUTH_)/i;
 
-function terminalChildEnv(baseEnv = process.env) {
+export function terminalChildEnv(baseEnv = process.env) {
   const env = {
     ...baseEnv,
     TERM: baseEnv.TERM || "xterm-256color",
     COLORTERM: baseEnv.COLORTERM || "truecolor"
   };
-  for (const key of REDACTED_TERMINAL_ENV_KEYS) {
-    delete env[key];
+  for (const key of Object.keys(env)) {
+    if (REDACTED_TERMINAL_ENV_PATTERN.test(key)) {
+      delete env[key];
+    }
   }
   return env;
 }

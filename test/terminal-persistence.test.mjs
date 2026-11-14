@@ -512,7 +512,21 @@ test("claiming a persistent terminal disconnects previous device sockets and str
     return id ? { id } : null;
   };
   const previousAuthPassword = process.env.DEVMOTER_AUTH_PASSWORD;
+  const previousAuthToken = process.env.DEVMOTER_AUTH_TOKEN;
+  const previousOpenAiKey = process.env.OPENAI_API_KEY;
+  const previousGithubToken = process.env.GITHUB_TOKEN;
+  const previousClientSecret = process.env.CUSTOM_CLIENT_SECRET;
+  const previousPrivateKey = process.env.SSH_PRIVATE_KEY;
+  const previousCredentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  const previousQwenHome = process.env.QWEN_HOME;
   process.env.DEVMOTER_AUTH_PASSWORD = "super-secret-owner-password";
+  process.env.DEVMOTER_AUTH_TOKEN = "super-secret-auth-token";
+  process.env.OPENAI_API_KEY = "sk-test-openai-secret";
+  process.env.GITHUB_TOKEN = "ghp_test_github_token";
+  process.env.CUSTOM_CLIENT_SECRET = "client-secret-value";
+  process.env.SSH_PRIVATE_KEY = "private-key-material";
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = "/tmp/service-account.json";
+  process.env.QWEN_HOME = "/tmp/qwen-config-home";
   const manager = makeManager({ storeFile, tmux, children, authenticateDevice });
   try {
     const origin = "https://devmoter.example";
@@ -526,7 +540,17 @@ test("claiming a persistent terminal disconnects previous device sockets and str
       body: JSON.stringify({ projectId: "project-a", persistent: true, name: "claim-test" })
     }), createdResponse);
     assert.equal(createdResponse.statusCode, 201);
-    assert.equal(children[0].args[2].env.DEVMOTER_AUTH_PASSWORD, undefined);
+    const childEnv = children[0].args[2].env;
+    assert.equal(childEnv.DEVMOTER_AUTH_PASSWORD, undefined);
+    assert.equal(childEnv.DEVMOTER_AUTH_TOKEN, undefined);
+    assert.equal(childEnv.OPENAI_API_KEY, undefined);
+    assert.equal(childEnv.GITHUB_TOKEN, undefined);
+    assert.equal(childEnv.CUSTOM_CLIENT_SECRET, undefined);
+    assert.equal(childEnv.SSH_PRIVATE_KEY, undefined);
+    assert.equal(childEnv.GOOGLE_APPLICATION_CREDENTIALS, undefined);
+    assert.equal(childEnv.QWEN_HOME, "/tmp/qwen-config-home");
+    assert.ok(childEnv.PATH);
+    assert.ok(childEnv.TERM);
 
     const sessionId = JSON.parse(createdResponse.body).session.id;
     const cookieA = createdResponse.headers["set-cookie"][0].split(";")[0];
@@ -557,8 +581,18 @@ test("claiming a persistent terminal disconnects previous device sockets and str
     assert.equal(claimResponse.statusCode, 200);
     assert.equal(socket.closed?.code, 1008);
   } finally {
-    if (previousAuthPassword === undefined) delete process.env.DEVMOTER_AUTH_PASSWORD;
-    else process.env.DEVMOTER_AUTH_PASSWORD = previousAuthPassword;
+    const restore = (key, value) => {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    };
+    restore("DEVMOTER_AUTH_PASSWORD", previousAuthPassword);
+    restore("DEVMOTER_AUTH_TOKEN", previousAuthToken);
+    restore("OPENAI_API_KEY", previousOpenAiKey);
+    restore("GITHUB_TOKEN", previousGithubToken);
+    restore("CUSTOM_CLIENT_SECRET", previousClientSecret);
+    restore("SSH_PRIVATE_KEY", previousPrivateKey);
+    restore("GOOGLE_APPLICATION_CREDENTIALS", previousCredentials);
+    restore("QWEN_HOME", previousQwenHome);
     manager.shutdown();
     await rm(directory, { recursive: true, force: true });
   }
