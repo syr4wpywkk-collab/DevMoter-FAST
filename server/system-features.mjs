@@ -3,6 +3,7 @@ import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import { join } from "node:path";
 import { expectedRequestOrigin } from "./auth.mjs";
+import { createClientIpResolver, parseTrustedProxies } from "./auth-guard.mjs";
 import {
   createHash,
   createPrivateKey,
@@ -14,9 +15,17 @@ import {
   timingSafeEqual
 } from "node:crypto";
 
+// Pairing codes are 6-digit numbers (900,000 values, 100000..999999) valid for
+// PAIRING_TTL_MS (5 minutes). Failed claim attempts are throttled per caller IP
+// (MAX_PAIRING_ATTEMPTS = 5 failed guesses per 5-minute PAIRING_CLAIM_WINDOW_MS)
+// with a global cap of MAX_PAIRING_CLAIM_CALLERS (256) distinct failing callers
+// per window, bounding total brute-force guesses across all sources without
+// ever deleting or invalidating active pairing codes on failed guesses.
 const PAIRING_TTL_MS = 5 * 60 * 1000;
 const MAX_ACTIVE_PAIRINGS = 16;
 const MAX_PAIRING_ATTEMPTS = 5;
+const PAIRING_CLAIM_WINDOW_MS = PAIRING_TTL_MS;
+const MAX_PAIRING_CLAIM_CALLERS = 256;
 const VISIBLE_TTL_MS = 45 * 1000;
 const NOTIFY_DEDUPE_MS = 30 * 1000;
 const DEVICE_COOKIE_NAME = "devmoter_device";
@@ -199,12 +208,16 @@ export function createSystemFeatures({
   host = "127.0.0.1",
   version = "0.0.0",
   pushSender = sendEmptyPush,
-  onDeviceRevoked = async () => {}
+  onDeviceRevoked = async () => {},
+  trustedProxies = parseTrustedProxies(process.env.DEVMOTER_TRUST_PROXY),
+  now = () => Date.now()
 }) {
   const devicesFile = join(stateDir, "devices.json");
   const subscriptionsFile = join(stateDir, "push-subscriptions.json");
   const vapidFile = join(stateDir, "vapid.json");
   const pairings = new Map();
+  const claimAttempts = new Map();
+  const clientIp = createClientIpResolver({ trustedProxies });
   const pendingNotifications = new Map();
   const recentNotifications = new Map();
   let deviceMutationQueue = Promise.resolve();
@@ -302,9 +315,9 @@ export function createSystemFeatures({
 
   async function createPairing(req) {
     const current = await authenticate(req);
-    const now = Date.now();
+    const currentNow = now();
     for (const [existingId, existing] of pairings) {
-      if (existing.expiresAt <= now) pairings.delete(existingId);
+      if (existing.expiresAt <= currentNow) pairings.delete(existingId);
     }
     while (pairings.size >= MAX_ACTIVE_PAIRINGS) {
       const oldestKey = pairings.keys().next().value;
@@ -313,40 +326,58 @@ export function createSystemFeatures({
     }
     const code = String(randomInt(100000, 1000000));
     const id = randomUUID();
-    const expiresAt = now + PAIRING_TTL_MS;
+    const expiresAt = currentNow + PAIRING_TTL_MS;
     pairings.set(id, {
       id,
       codeHash: sha256(code),
       approvedByDeviceId: current.id,
-      createdAt: now,
-      expiresAt,
-      failedAttempts: 0
+      createdAt: currentNow,
+      expiresAt
     });
     return { pairingId: id, code, expiresAt };
   }
 
-  async function claimPairing(code, label) {
+  function pruneClaimAttempts(currentNow) {
+    for (const [key, entry] of claimAttempts) {
+      if (currentNow - entry.firstFailedAt >= PAIRING_CLAIM_WINDOW_MS) {
+        claimAttempts.delete(key);
+      }
+    }
+  }
+
+  async function claimPairing(code, label, req = null) {
+    const currentNow = now();
+    pruneClaimAttempts(currentNow);
+    const callerKey = clientIp(req);
+    const existingAttempt = claimAttempts.get(callerKey);
+    if (existingAttempt && existingAttempt.count >= MAX_PAIRING_ATTEMPTS) {
+      throw Object.assign(new Error("Too many failed pairing attempts; try again later"), { status: 429 });
+    }
+
     const normalizedCode = String(code || "").trim();
     const codeHash = sha256(normalizedCode);
-    const now = Date.now();
     for (const [id, pairing] of pairings) {
-      if (pairing.expiresAt <= now) {
+      if (pairing.expiresAt <= currentNow) {
         pairings.delete(id);
         continue;
       }
       if (!safeEqualHex(pairing.codeHash, codeHash)) continue;
       pairings.delete(id);
+      claimAttempts.delete(callerKey);
       const issued = await issueDevice(label, { approvedByDeviceId: pairing.approvedByDeviceId });
       return {
         ...issued,
         approvedByDeviceId: pairing.approvedByDeviceId
       };
     }
-    for (const [id, pairing] of pairings) {
-      pairing.failedAttempts = (pairing.failedAttempts || 0) + 1;
-      if (pairing.failedAttempts >= MAX_PAIRING_ATTEMPTS) {
-        pairings.delete(id);
+
+    if (existingAttempt) {
+      existingAttempt.count += 1;
+    } else {
+      if (claimAttempts.size >= MAX_PAIRING_CLAIM_CALLERS) {
+        throw Object.assign(new Error("Too many failed pairing attempts; try again later"), { status: 429 });
       }
+      claimAttempts.set(callerKey, { count: 1, firstFailedAt: currentNow });
     }
     throw Object.assign(new Error("Pairing code is invalid or expired"), { status: 400 });
   }

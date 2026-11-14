@@ -3147,7 +3147,7 @@ const server = http.createServer(async (req, res) => {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
       try {
         const payload = await readJson(req);
-        const issued = await systemFeatures.claimPairing(payload?.code, payload?.label);
+        const issued = await systemFeatures.claimPairing(payload?.code, payload?.label, req);
         const { token, device, approvedByDeviceId } = issued;
         const { tokenHash: _tokenHash, ...publicDevice } = device;
         jsonWithCookie(
