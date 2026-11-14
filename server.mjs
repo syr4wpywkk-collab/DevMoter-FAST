@@ -618,7 +618,20 @@ async function resolveProjectMarkdownPath(project, relativePath, { mustExist = f
     throw new Error("File parent escapes the project");
   }
 
-  let readTarget = target;
+  let currentDir = root;
+  const parentParts = relative(root, parent).split(sep).filter(Boolean);
+  for (const part of parentParts) {
+    currentDir = join(currentDir, part);
+    const dirInfo = await lstat(currentDir);
+    if (dirInfo.isSymbolicLink()) {
+      throw new Error("Symlinked Markdown directories are not allowed");
+    }
+    if (!dirInfo.isDirectory()) {
+      throw new Error("File parent must be a directory");
+    }
+  }
+
+  let readTarget = join(actualParent, basename(target));
   if (mustExist) {
     const actualTarget = await realpath(target);
     const targetRel = relative(root, actualTarget);
@@ -630,7 +643,7 @@ async function resolveProjectMarkdownPath(project, relativePath, { mustExist = f
   } else {
     let existingInfo = null;
     try {
-      existingInfo = await lstat(target);
+      existingInfo = await lstat(readTarget);
     } catch (error) {
       if (error?.code !== "ENOENT") throw error;
     }

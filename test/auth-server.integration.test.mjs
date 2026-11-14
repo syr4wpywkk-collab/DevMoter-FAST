@@ -405,9 +405,14 @@ test("server requires auth and exact Origin for mutations", async () => {
 
     const projectDir = join(home, "markdown-project");
     const outsideFile = join(home, "outside-secret.txt");
+    const outsideDir = join(home, "outside-dir");
+    const outsideNestedMd = join(outsideDir, "README.md");
     await mkdir(projectDir, { recursive: true });
+    await mkdir(outsideDir, { recursive: true });
     await writeFile(outsideFile, "untouched-secret", "utf8");
+    await writeFile(outsideNestedMd, "untouched-dir-secret", "utf8");
     await symlink(outsideFile, join(projectDir, "README.md"));
+    await symlink(outsideDir, join(projectDir, "docs"), "dir");
     const createdProject = await fetch(`${origin}/api/projects`, {
       method: "POST",
       headers: {
@@ -432,6 +437,19 @@ test("server requires auth and exact Origin for mutations", async () => {
     });
     assert.equal(symlinkWrite.status, 400);
     assert.equal(await readFile(outsideFile, "utf8"), "untouched-secret");
+
+    const symlinkDirWrite = await fetch(`${origin}/api/projects/${encodeURIComponent(project.id)}/file`, {
+      method: "PUT",
+      headers: {
+        authorization,
+        origin,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "write-symlink-dir-markdown"
+      },
+      body: JSON.stringify({ path: "docs/README.md", content: "# escaped dir write" })
+    });
+    assert.equal(symlinkDirWrite.status, 400);
+    assert.equal(await readFile(outsideNestedMd, "utf8"), "untouched-dir-secret");
   } finally {
     child.kill("SIGTERM");
     await Promise.race([
