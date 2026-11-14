@@ -9,11 +9,12 @@
 // only passes `--auth-type <protocol> --model <id>` (auth.md "Step 3", and
 // packages/cli/src/config/config.ts: selectedAuthType = argv.authType ||
 // settings…; modelConfigUtils.ts: argv.model > settings.model.name).
-import { chmod, lstat, mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { chmod, mkdir, rename, writeFile } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { dirname, join, parse as parsePath } from "node:path";
 import { QWEN_CODE_PRESET_VERSION, QWEN_CODE_PROVIDERS } from "./qwen-code-providers.mjs";
+import { readHandle, withOpenFile } from "./safe-file.mjs";
 
 // packages/cli/src/config/top-level-options.ts AUTH_TYPE_CHOICES.
 export const QWEN_AUTH_TYPES = Object.freeze(["openai", "openai-responses", "anthropic", "qwen-oauth", "gemini", "vertex-ai"]);
@@ -64,17 +65,22 @@ export function parseJsonc(text) {
 async function readSettingsFile(path) {
   let raw;
   try {
-    const info = await lstat(path);
-    if (info.isSymbolicLink() || !info.isFile()) {
-      throw new QwenModelError("Qwen Code の設定を読めませんでした", 500, "settings_unreadable");
-    }
-    raw = await readFile(path, "utf8");
+    // Open once with O_NOFOLLOW and fstat + read the same file descriptor (no TOCTOU).
+    raw = await withOpenFile(path, { noFollow: true }, async (handle, info) => {
+      if (!info.isFile()) {
+        throw new QwenModelError("Qwen Code の設定を読めませんでした", 500, "settings_unreadable");
+      }
+      if (info.size > MAX_SETTINGS_BYTES) {
+        throw new QwenModelError("Qwen Code の設定ファイルが大きすぎます", 500, "settings_unreadable");
+      }
+      return readHandle(handle, MAX_SETTINGS_BYTES, "utf8");
+    });
   } catch (error) {
     if (error instanceof QwenModelError) throw error;
     if (error?.code === "ENOENT") return { exists: false, raw: "", data: {} };
+    if (error?.code === "EFBIG") throw new QwenModelError("Qwen Code の設定ファイルが大きすぎます", 500, "settings_unreadable");
     throw new QwenModelError("Qwen Code の設定を読めませんでした", 500, "settings_unreadable");
   }
-  if (raw.length > MAX_SETTINGS_BYTES) throw new QwenModelError("Qwen Code の設定ファイルが大きすぎます", 500, "settings_unreadable");
   try {
     const data = raw.trim() ? parseJsonc(raw) : {};
     return { exists: true, raw, data: data && typeof data === "object" && !Array.isArray(data) ? data : {} };
@@ -100,12 +106,14 @@ async function dotenvNames(cwd, home) {
   for (const file of candidates) {
     let text;
     try {
-      const info = await lstat(file);
-      if (info.isSymbolicLink() || !info.isFile() || info.size > MAX_SETTINGS_BYTES) continue;
-      text = await readFile(file, "utf8");
+      text = await withOpenFile(file, { noFollow: true }, async (handle, info) => {
+        if (!info.isFile() || info.size > MAX_SETTINGS_BYTES) return null;
+        return readHandle(handle, MAX_SETTINGS_BYTES, "utf8");
+      });
     } catch {
       continue;
     }
+    if (text === null) continue;
     const names = new Set();
     for (const line of text.split(/\r?\n/)) {
       const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);

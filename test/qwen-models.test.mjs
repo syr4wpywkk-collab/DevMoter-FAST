@@ -93,10 +93,14 @@ test("a project's .qwen/settings.json replaces the user list (MergeStrategy.REPL
   const home = await homeWith({ modelProviders: { openai: [{ id: "user-model", envKey: "OPENAI_API_KEY" }] }, env: { OPENAI_API_KEY: "sk-1" } });
   const project = await mkdtemp(join(tmpdir(), "qwen-proj-"));
   await mkdir(join(project, ".qwen"));
-  await writeFile(join(project, ".qwen", "settings.json"), JSON.stringify({ modelProviders: { openai: [{ id: "project-model" }] } }));
+  await writeFile(join(project, ".qwen", "settings.json"), JSON.stringify({ modelProviders: { openai: [{ id: "project-model" }, { id: "dotenv-model", envKey: "SYMLINK_DOTENV_KEY" }] } }));
+  const outsideDotenv = join(project, "outside.env");
+  await writeFile(outsideDotenv, "SYMLINK_DOTENV_KEY=sk-from-symlinked-dotenv\n");
+  await symlink(outsideDotenv, join(project, ".env"));
   const listing = await listQwenModels({ home, env, cwd: project });
   assert.equal(listing.scope, "workspace");
-  assert.deepEqual(listing.models.map(model => model.id), ["project-model"]);
+  assert.deepEqual(listing.models.map(model => model.id), ["project-model", "dotenv-model"]);
+  assert.equal(listing.models[1].disabled, true, "symlinked .env is ignored via O_NOFOLLOW");
   const outsideSettings = join(project, "outside-settings.json");
   await writeFile(outsideSettings, JSON.stringify({ modelProviders: { openai: [{ id: "symlinked-model" }] } }));
   await unlink(join(project, ".qwen", "settings.json"));
