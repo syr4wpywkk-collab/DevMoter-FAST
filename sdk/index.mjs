@@ -48,6 +48,75 @@ function isMutation(method) {
   return !["GET", "HEAD", "OPTIONS"].includes(String(method || "GET").toUpperCase());
 }
 
+function decodeSegment(segment, errorMessage = "Invalid DevMoter request path") {
+  let current = segment;
+  for (let index = 0; index < 3; index += 1) {
+    const decoded = decodeURIComponent(current);
+    if (decoded === current) return decoded;
+    current = decoded;
+  }
+  throw new Error(errorMessage);
+}
+
+export function resolveRequestUrl(baseUrl, path, errorMessage = "Invalid DevMoter request path") {
+  let base;
+  try {
+    base = baseUrl instanceof URL ? new URL(baseUrl.href) : new URL(String(baseUrl || ""));
+  } catch {
+    throw new Error(errorMessage);
+  }
+  base.hash = "";
+  base.search = "";
+  base.pathname = base.pathname.replace(/\/+$/, "") + "/";
+
+  const raw = String(path ?? "");
+  if (
+    !raw ||
+    !raw.startsWith("/") ||
+    /[\u0000-\u001f\u007f\\#]/.test(raw) ||
+    raw.startsWith("//") ||
+    /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)
+  ) {
+    throw new Error(errorMessage);
+  }
+  const queryIndex = raw.indexOf("?");
+  const rawPath = queryIndex >= 0 ? raw.slice(0, queryIndex) : raw;
+  const rawSearch = queryIndex >= 0 ? raw.slice(queryIndex) : "";
+  if (!rawPath || rawPath.includes("//")) {
+    throw new Error(errorMessage);
+  }
+  const trimmedPath = rawPath.replace(/^\/+/, "");
+  if (!trimmedPath) {
+    throw new Error(errorMessage);
+  }
+  for (const segment of trimmedPath.split("/")) {
+    if (!segment || segment === "." || segment === "..") {
+      throw new Error(errorMessage);
+    }
+    let decoded;
+    try {
+      decoded = decodeSegment(segment, errorMessage);
+    } catch {
+      throw new Error(errorMessage);
+    }
+    if (
+      !decoded ||
+      decoded === "." ||
+      decoded === ".." ||
+      decoded.includes("/") ||
+      decoded.includes("\\") ||
+      /[\u0000-\u001f\u007f]/.test(decoded)
+    ) {
+      throw new Error(errorMessage);
+    }
+  }
+  const url = new URL(trimmedPath + rawSearch, base);
+  if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname)) {
+    throw new Error(errorMessage);
+  }
+  return url;
+}
+
 export class DevMoterClient {
   constructor({
     baseUrl = process.env.DEVMOTER_URL || "http://127.0.0.1:8787",
@@ -74,7 +143,7 @@ export class DevMoterClient {
     signal
   } = {}) {
     const normalizedMethod = String(method || "GET").toUpperCase();
-    const url = new URL(String(path).replace(/^\//, ""), this.baseUrl);
+    const url = resolveRequestUrl(this.baseUrl, path);
     const requestHeaders = new Headers(headers);
     requestHeaders.set("accept", requestHeaders.get("accept") || "application/json");
     if (body !== undefined && !requestHeaders.has("content-type")) {
@@ -102,6 +171,7 @@ export class DevMoterClient {
         method: normalizedMethod,
         headers: requestHeaders,
         body: body === undefined ? undefined : JSON.stringify(body),
+        redirect: "error",
         signal
       });
     } catch (cause) {
@@ -167,7 +237,7 @@ export class DevMoterClient {
 
   async *streamTask({ project, agent, task, backend = "opencode", model = "" }, options = {}) {
     const id = options.operationId || operationId("task");
-    const url = new URL("api/automation/tasks", this.baseUrl);
+    const url = resolveRequestUrl(this.baseUrl, "/api/automation/tasks");
     const headers = new Headers({
       accept: "application/x-ndjson",
       "content-type": "application/json",
@@ -183,6 +253,7 @@ export class DevMoterClient {
         method: "POST",
         headers,
         body: JSON.stringify({ project, agent, task, backend, model }),
+        redirect: "error",
         signal: options.signal
       });
     } catch (cause) {
@@ -281,6 +352,7 @@ export function createEventEnvelope(type, data, {
 
 export const sdkInternals = {
   normalizeBaseUrl,
+  resolveRequestUrl,
   basicAuthorization,
   isMutation
 };

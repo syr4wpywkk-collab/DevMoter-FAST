@@ -162,3 +162,57 @@ test("malformed persisted device state fails closed instead of allowing a new bo
     /unreadable or malformed/i
   );
 });
+
+test("repeated failed pairing claims throttle the abusive caller without invalidating active pairing codes", async t => {
+  const stateDir = await mkdtemp(join(tmpdir(), "devmoter-pairing-bruteforce-"));
+  t.after(() => rm(stateDir, { recursive: true, force: true }));
+  let clock = 1_800_000_000_000;
+  const features = createSystemFeatures({
+    stateDir,
+    appRoot: process.cwd(),
+    version: "test",
+    now: () => clock,
+    getProjects: async () => [],
+    getBackendHealth: async () => ({ opencode: { online: true }, codex: { online: true } })
+  });
+
+  const first = await features.bootstrapDevice(request(), "Laptop");
+  const pairing = await features.createPairing(request({ token: first.token }));
+  const wrongCode = pairing.code === "000000" ? "999999" : "000000";
+  const attackerReq = request({ remoteAddress: "203.0.113.50" });
+  const phoneReq = request({ remoteAddress: "198.51.100.25" });
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await assert.rejects(
+      features.claimPairing(wrongCode, "Attacker", attackerReq),
+      error => error.status === 400 && /invalid or expired/i.test(error.message)
+    );
+  }
+  // 6th+ attempts from the abusive caller are throttled with 429 and do not consume the valid code.
+  for (let extra = 0; extra < 10; extra += 1) {
+    await assert.rejects(
+      features.claimPairing(wrongCode, "Attacker", attackerReq),
+      error => error.status === 429 && /Too many failed pairing attempts/i.test(error.message)
+    );
+  }
+  await assert.rejects(
+    features.claimPairing(pairing.code, "Attacker", attackerReq),
+    error => error.status === 429 && /Too many failed pairing attempts/i.test(error.message)
+  );
+
+  // Legitimate caller can still claim the valid, unexpired pairing code.
+  const claimed = await features.claimPairing(pairing.code, "Phone", phoneReq);
+  assert.equal(await features.isDeviceActive(claimed.device.id), true);
+
+  // Claimed pairing code is single-use and cannot be reused.
+  await assert.rejects(
+    features.claimPairing(pairing.code, "Another Phone", phoneReq),
+    error => error.status === 400 && /invalid or expired/i.test(error.message)
+  );
+
+  // After the 5-minute claim window rolls over, the previously throttled caller is unblocked for a new pairing.
+  clock += 5 * 60 * 1000 + 1;
+  const nextPairing = await features.createPairing(request({ token: first.token }));
+  const recovered = await features.claimPairing(nextPairing.code, "Recovered Device", attackerReq);
+  assert.equal(await features.isDeviceActive(recovered.device.id), true);
+});

@@ -278,6 +278,7 @@ export class ControlPlane {
     try {
       const response = await fetch(hostHealthUrl(host.address), {
         headers: { accept: "application/json" },
+        redirect: "error",
         signal: AbortSignal.timeout(HOST_STATUS_TIMEOUT_MS)
       });
       const payload = await response.json().catch(() => ({}));

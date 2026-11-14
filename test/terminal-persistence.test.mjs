@@ -499,3 +499,101 @@ test("real tmux session remains usable after the DevMoter manager detaches", {
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("claiming a persistent terminal disconnects previous device sockets and strips server auth secrets from PTY env", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "devmoter-terminal-claim-revoke-"));
+  const storeFile = join(directory, "sessions.json");
+  const tmux = tmuxHarness();
+  const children = [];
+  const deviceA = "11111111-1111-4111-8111-111111111111";
+  const deviceB = "22222222-2222-4222-8222-222222222222";
+  const authenticateDevice = async req => {
+    const id = req.headers["x-devmoter-device-token"];
+    return id ? { id } : null;
+  };
+  const previousAuthPassword = process.env.DEVMOTER_AUTH_PASSWORD;
+  const previousAuthToken = process.env.DEVMOTER_AUTH_TOKEN;
+  const previousOpenAiKey = process.env.OPENAI_API_KEY;
+  const previousGithubToken = process.env.GITHUB_TOKEN;
+  const previousClientSecret = process.env.CUSTOM_CLIENT_SECRET;
+  const previousPrivateKey = process.env.SSH_PRIVATE_KEY;
+  const previousCredentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  const previousQwenHome = process.env.QWEN_HOME;
+  process.env.DEVMOTER_AUTH_PASSWORD = "super-secret-owner-password";
+  process.env.DEVMOTER_AUTH_TOKEN = "super-secret-auth-token";
+  process.env.OPENAI_API_KEY = "sk-test-openai-secret";
+  process.env.GITHUB_TOKEN = "ghp_test_github_token";
+  process.env.CUSTOM_CLIENT_SECRET = "client-secret-value";
+  process.env.SSH_PRIVATE_KEY = "private-key-material";
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = "/tmp/service-account.json";
+  process.env.QWEN_HOME = "/tmp/qwen-config-home";
+  const manager = makeManager({ storeFile, tmux, children, authenticateDevice });
+  try {
+    const origin = "https://devmoter.example";
+    const createdResponse = response();
+    await manager.create(request({
+      headers: {
+        origin,
+        "x-devmoter-device-token": deviceA,
+        "x-devmoter-terminal-entry": "explicit"
+      },
+      body: JSON.stringify({ projectId: "project-a", persistent: true, name: "claim-test" })
+    }), createdResponse);
+    assert.equal(createdResponse.statusCode, 201);
+    const childEnv = children[0].args[2].env;
+    assert.equal(childEnv.DEVMOTER_AUTH_PASSWORD, undefined);
+    assert.equal(childEnv.DEVMOTER_AUTH_TOKEN, undefined);
+    assert.equal(childEnv.OPENAI_API_KEY, undefined);
+    assert.equal(childEnv.GITHUB_TOKEN, undefined);
+    assert.equal(childEnv.CUSTOM_CLIENT_SECRET, undefined);
+    assert.equal(childEnv.SSH_PRIVATE_KEY, undefined);
+    assert.equal(childEnv.GOOGLE_APPLICATION_CREDENTIALS, undefined);
+    assert.equal(childEnv.QWEN_HOME, "/tmp/qwen-config-home");
+    assert.ok(childEnv.PATH);
+    assert.ok(childEnv.TERM);
+
+    const sessionId = JSON.parse(createdResponse.body).session.id;
+    const cookieA = createdResponse.headers["set-cookie"][0].split(";")[0];
+
+    const ticketResponse = response();
+    await manager.issueSocketTicket(request({
+      headers: { origin, cookie: cookieA, "x-devmoter-device-token": deviceA }
+    }), ticketResponse, sessionId);
+    const { ticket } = JSON.parse(ticketResponse.body);
+    const session = await manager.authorizeSocket(request(), sessionId, ticket, origin);
+    assert.ok(session);
+
+    const socket = new EventEmitter();
+    socket.readyState = 1;
+    socket.bufferedAmount = 0;
+    socket.close = (code, reason) => { socket.closed = { code, reason }; socket.emit("close"); };
+    socket.terminate = () => socket.emit("close");
+    manager.attachSocket(session, socket, 0);
+
+    const claimResponse = response();
+    await manager.claimSession(request({
+      headers: {
+        origin,
+        "x-devmoter-device-token": deviceB,
+        "x-devmoter-terminal-entry": "explicit"
+      }
+    }), claimResponse, sessionId);
+    assert.equal(claimResponse.statusCode, 200);
+    assert.equal(socket.closed?.code, 1008);
+  } finally {
+    const restore = (key, value) => {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    };
+    restore("DEVMOTER_AUTH_PASSWORD", previousAuthPassword);
+    restore("DEVMOTER_AUTH_TOKEN", previousAuthToken);
+    restore("OPENAI_API_KEY", previousOpenAiKey);
+    restore("GITHUB_TOKEN", previousGithubToken);
+    restore("CUSTOM_CLIENT_SECRET", previousClientSecret);
+    restore("SSH_PRIVATE_KEY", previousPrivateKey);
+    restore("GOOGLE_APPLICATION_CREDENTIALS", previousCredentials);
+    restore("QWEN_HOME", previousQwenHome);
+    manager.shutdown();
+    await rm(directory, { recursive: true, force: true });
+  }
+});

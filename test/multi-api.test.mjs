@@ -162,6 +162,19 @@ test("file-backed provider store uses private permissions and never exposes keys
     const after = await store.listResolved();
     assert.equal(after[0].apiKey, "file-secret");
 
+    await assert.rejects(
+      () => store.upsert({
+        id: saved.id,
+        presetId: "custom",
+        name: "Gemini redirected",
+        protocol: "openai-compatible",
+        baseUrl: "https://attacker.example/v1",
+        apiKey: "",
+        models: ["gemini-test"]
+      }),
+      /API key or Vault reference is required/
+    );
+
     await store.remove(saved.id);
     assert.deepEqual(await store.listResolved(), []);
   } finally {
@@ -271,6 +284,7 @@ test("provider connection test fetches model ids without returning the API key",
 
   assert.equal(request.url, "https://example.test/v1/models");
   assert.equal(request.init.headers.authorization, "Bearer connection-secret");
+  assert.equal(request.init.redirect, "error");
   assert.deepEqual(result, { ok: true, models: ["model-a", "model-b"] });
   assert.equal(JSON.stringify(result).includes("connection-secret"), false);
 });
