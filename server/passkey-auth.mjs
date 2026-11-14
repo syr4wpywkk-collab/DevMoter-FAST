@@ -40,6 +40,38 @@ function firstHeader(req, name) {
   return String(value || "").split(",")[0].trim();
 }
 
+// Trust boundary for WebAuthn origin, RP ID, and loopback bootstrap checks:
+// - Forwarded proxy headers (X-Forwarded-Host, X-Forwarded-Proto, X-Forwarded-For)
+//   are NEVER trusted for passkey origin/RP-ID resolution or loopback bootstrap.
+//   Deployments behind a reverse proxy must configure `publicOrigin`
+//   (DEVMOTER_PUBLIC_ORIGIN) to pin the canonical external origin.
+// - Loopback bootstrap (`isLoopback`) requires a direct loopback socket address,
+//   an explicit loopback `Host` header (`localhost`, `127.0.0.1`, `[::1]`, or `::1`),
+//   a matching `Origin` host when `Origin` is present, and the absence of any
+//   `X-Forwarded-*` headers.
+function normalizeHostHeader(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  return raw === "::1" ? "[::1]" : raw;
+}
+
+function parseHostAuthority(rawHost) {
+  const normalized = normalizeHostHeader(rawHost);
+  if (!normalized) return null;
+  try {
+    const parsed = new URL(`http://${normalized}`);
+    if (parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
+      return null;
+    }
+    return {
+      host: parsed.host.toLowerCase(),
+      hostname: parsed.hostname.replace(/^\[|\]$/g, "").toLowerCase()
+    };
+  } catch {
+    return null;
+  }
+}
+
 function requestOrigin(req) {
   const direct = firstHeader(req, "origin");
   if (direct) {
@@ -48,11 +80,10 @@ function requestOrigin(req) {
     return parsed.origin;
   }
 
-  const proto = firstHeader(req, "x-forwarded-proto") || "http";
-  const host = firstHeader(req, "x-forwarded-host") || firstHeader(req, "host") || "localhost";
-  const parsed = new URL(`${proto}://${host}`);
-  if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("Unsupported passkey origin");
-  return parsed.origin;
+  const proto = req?.socket?.encrypted ? "https" : "http";
+  const authority = parseHostAuthority(firstHeader(req, "host") || "localhost");
+  if (!authority) throw new Error("Unsupported passkey origin");
+  return `${proto}://${authority.host}`;
 }
 
 function requestHost(req) {
@@ -61,23 +92,25 @@ function requestHost(req) {
 
 function isLoopback(req) {
   const address = String(req?.socket?.remoteAddress || "");
-  const host = requestHost(req);
-  const rawHost = firstHeader(req, "host");
-  let headerHostname = host;
-  if (rawHost) {
-    try {
-      headerHostname = new URL(`http://${rawHost}`).hostname.replace(/^\[|\]$/g, "").toLowerCase();
-    } catch {
-      return false;
-    }
+  const headerAuthority = parseHostAuthority(firstHeader(req, "host"));
+  if (!headerAuthority) return false;
+  let originUrl;
+  try {
+    originUrl = new URL(requestOrigin(req));
+  } catch {
+    return false;
   }
+  const originHostname = originUrl.hostname.replace(/^\[|\]$/g, "").toLowerCase();
   const localAddress =
     address === "127.0.0.1" ||
     address === "::1" ||
     address === "::ffff:127.0.0.1";
   const localHost =
-    (host === "localhost" || host === "127.0.0.1" || host === "::1") &&
-    headerHostname === host;
+    (headerAuthority.hostname === "localhost" ||
+      headerAuthority.hostname === "127.0.0.1" ||
+      headerAuthority.hostname === "::1") &&
+    originHostname === headerAuthority.hostname &&
+    originUrl.host.toLowerCase() === headerAuthority.host;
   return (
     localAddress &&
     localHost &&
@@ -132,12 +165,14 @@ export class PasskeyAuth {
       return expected;
     }
     const resolved = requestOrigin(req);
-    const hostHeader = firstHeader(req, "x-forwarded-host") || firstHeader(req, "host");
-    if (hostHeader) {
-      const expectedHost = new URL(`http://${hostHeader}`).host.toLowerCase();
-      if (new URL(resolved).host.toLowerCase() !== expectedHost) {
+    const rawHost = firstHeader(req, "host");
+    if (rawHost) {
+      const authority = parseHostAuthority(rawHost);
+      if (!authority || new URL(resolved).host.toLowerCase() !== authority.host) {
         throw new Error("Passkey origin does not match this host");
       }
+    } else if (firstHeader(req, "origin")) {
+      throw new Error("Passkey origin does not match this host");
     }
     return resolved;
   }
