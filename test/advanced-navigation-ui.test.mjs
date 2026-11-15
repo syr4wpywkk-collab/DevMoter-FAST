@@ -119,6 +119,7 @@ test('Files & Preview retains all section behaviors across all four tabs',async 
   if(path==='/api/attachments/url/preview'&&method==='POST')return ok({preview:{normalizedUrl:'https://example.com/docs',host:'example.com',port:443,path:'/docs'}});
   if(path==='/api/attachments/url/fetch'&&method==='POST')return ok({attachment:{name:'Docs',source:'https://example.com/docs',size:15,mime:'text/plain'},text:'Example content',redirects:[]});
   if(path.includes('/artifacts?'))return ok({artifacts});
+  if(path==='/api/artifacts/a1/preview')return ok({artifact:artifacts[0],preview:{kind:'text',name:'report.json',path:'dist/report.json',size:42,language:'json',content:'{"ok":true}'}});
   if(path.endsWith('/artifacts')&&method==='POST'){artifacts=[...artifacts,{id:'a2',name:'bundle.js',path:'dist/bundle.js',size:99}];return ok({artifact:artifacts[1]});}
   if(path.endsWith('/web-preview')&&method==='GET')return ok({preview:livePreview});
   if(path.endsWith('/web-preview')&&method==='POST'){livePreview={host:'127.0.0.1',port:3000,url:'/api/live-preview/proxy/p1/'};return ok({preview:livePreview});}
@@ -153,9 +154,20 @@ test('Files & Preview retains all section behaviors across all four tabs',async 
  await new Promise(r=>setImmediate(r));
  assert.match(d.querySelector('#cxPromptInput').value,/Example content/);
 
- // Generated outputs tab: list + add
+ // Generated outputs tab: list, preview in place, add
  d.querySelector('[data-adv-tab="outputs"]').click();
  assert.match(d.querySelector('[data-artifacts]').textContent,/report\.json/);
+ const artifactPreviewBtn=d.querySelector('[data-artifacts] .adv-item button');
+ assert.equal(artifactPreviewBtn.textContent,'Preview');
+ artifactPreviewBtn.click();
+ assert.equal(d.querySelector('[data-artifact-preview]').textContent,'Loading preview…');
+ await new Promise(r=>setImmediate(r));
+ const artifactPreview=d.querySelector('[data-artifact-preview]');
+ assert.ok(artifactPreview.closest('[data-adv-panel="outputs"]')&&!artifactPreview.closest('.hidden, [hidden]'));
+ assert.equal(d.querySelector('[data-adv-tab="outputs"]').getAttribute('aria-selected'),'true');
+ assert.match(artifactPreview.textContent,/report\.json.*42 bytes.*\{"ok":true\}/);
+ assert.match(d.querySelector('[data-preview]').textContent,/README\.md.*# Hello/);
+ assert.ok(d.querySelector('[data-preview]').closest('.hidden, [hidden]'));
  d.querySelector('[data-artifact-path]').value='dist/bundle.js';
  d.querySelector('[data-artifact-add]').click();
  await new Promise(r=>setImmediate(r));await new Promise(r=>setImmediate(r));
@@ -224,4 +236,77 @@ test('Files & Preview distinguishes project, file and preview loading from empty
  await new Promise(r=>setImmediate(r));
  assert.equal(d.querySelector('[data-preview]').textContent,'Permission denied');
  assert.equal(d.querySelector('[data-preview] .error')!==null,true);
+});
+
+test('Generated outputs artifact Preview renders visibly in Outputs tab and resets scroll after drawer is visible',async t=>{
+ const dom=new JSDOM('<body></body>',{url:'http://localhost',runScripts:'outside-only'});t.after(()=>dom.window.close());
+ const w=dom.window;w.exports={};w.require=name=>name==='./i18n'?i18nCore:({});
+ const ok=(body,status=200)=>new Response(JSON.stringify(body),{status});
+ const artifacts=[
+  {id:'a-text',name:'summary.ts',path:'dist/summary.ts',size:24},
+  {id:'a-img',name:'chart.png',path:'dist/chart.png',size:128},
+  {id:'a-bin',name:'archive.bin',path:'dist/archive.bin',size:512},
+  {id:'a-err',name:'missing.log',path:'dist/missing.log',size:16}
+ ];
+ w.fetch=async url=>{
+  const path=String(url);
+  if(path==='/api/projects')return ok({projects:[{id:'p1',name:'App',path:'/tmp/app'}]});
+  if(path.includes('/artifacts?'))return ok({artifacts});
+  if(path==='/api/artifacts/a-text/preview')return ok({artifact:artifacts[0],preview:{kind:'text',name:'summary.ts',path:'dist/summary.ts',size:24,language:'typescript',content:'export const ok = true;'}});
+  if(path==='/api/artifacts/a-img/preview')return ok({artifact:artifacts[1],preview:{kind:'image',name:'chart.png',path:'dist/chart.png',size:128,mime:'image/png',data:'AQID'}});
+  if(path==='/api/artifacts/a-bin/preview')return ok({artifact:artifacts[2],preview:{kind:'binary',name:'archive.bin',path:'dist/archive.bin',size:512,reason:'binary-or-unsupported'}});
+  if(path==='/api/artifacts/a-err/preview')return ok({error:'Artifact not found'},404);
+  return ok({browser:{path:'',parent:null,entries:[],truncated:false},models:[],grants:[],preview:null,mode:'disabled',backend:'test',available:false,enforced:false,externalBackends:'none',capability:{enabled:false,available:false},session:null});
+ };
+ w.eval(compiled);w.exports.mountAdvancedTools();
+ const d=w.document;
+ const drawer=d.querySelector('.adv-drawer');
+ const scrollBox=d.querySelector('.adv-scroll');
+ const scrollHiddenStates=[];
+ let scrollTopValue=75;
+ Object.defineProperty(scrollBox,'scrollTop',{
+  configurable:true,
+  get(){return scrollTopValue;},
+  set(v){scrollTopValue=v;scrollHiddenStates.push({value:v,drawerHidden:drawer.classList.contains('hidden')});}
+ });
+
+ d.querySelector('.adv-fab').click();
+ assert.deepEqual(scrollHiddenStates,[{value:0,drawerHidden:false}]);
+ assert.equal(scrollBox.scrollTop,0);
+ await new Promise(r=>setImmediate(r));await new Promise(r=>setImmediate(r));
+
+ d.querySelector('[data-adv-tab="outputs"]').click();
+ const previewButtons=[...d.querySelectorAll('[data-artifacts] .adv-item button')];
+ assert.equal(previewButtons.length,4);
+ const artifactPreview=d.querySelector('[data-artifact-preview]');
+
+ // Text artifact preview stays visible inside Outputs tab
+ previewButtons[0].click();
+ await new Promise(r=>setImmediate(r));
+ assert.ok(!artifactPreview.closest('.hidden, [hidden]'));
+ assert.equal(d.querySelector('[data-adv-tab="outputs"]').getAttribute('aria-selected'),'true');
+ assert.match(artifactPreview.textContent,/summary\.ts · 24 bytes/);
+ assert.ok(artifactPreview.querySelector('pre.adv-code.language-typescript'));
+ assert.ok(artifactPreview.querySelector('.adv-token-keyword'));
+
+ // Image artifact preview
+ previewButtons[1].click();
+ await new Promise(r=>setImmediate(r));
+ const img=artifactPreview.querySelector('img');
+ assert.ok(img);
+ assert.equal(img.alt,'chart.png');
+ assert.equal(img.src,'data:image/png;base64,AQID');
+
+ // Binary artifact preview
+ previewButtons[2].click();
+ await new Promise(r=>setImmediate(r));
+ assert.ok(artifactPreview.querySelector('.adv-binary'));
+ assert.match(artifactPreview.textContent,/Preview unavailable: binary-or-unsupported/);
+
+ // Error clears prior preview inside Outputs preview box and keeps project status intact
+ previewButtons[3].click();
+ await new Promise(r=>setImmediate(r));
+ assert.equal(artifactPreview.querySelector('.adv-binary'),null);
+ assert.equal(artifactPreview.querySelector('.adv-status.error')?.textContent,'Artifact not found');
+ assert.equal(d.querySelector('[data-project-status]').textContent,'1 project(s)');
 });

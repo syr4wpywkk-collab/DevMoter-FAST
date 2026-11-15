@@ -125,7 +125,7 @@ export function mountAdvancedTools() {
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.urlAttachHeading"))}</h3><div class="adv-row"><input data-url-input inputmode="url" placeholder="https://example.com/docs"/><button type="button" data-url-preview>${escapeHtml(t("advanced.previewUrlBtn"))}</button><button type="button" data-url-attach disabled>${escapeHtml(t("advanced.fetchAttachBtn"))}</button></div><div class="adv-status" data-url-status>${escapeHtml(t("advanced.urlMetadataNote"))}</div></section>` +
     "</div>" +
     `<div class="adv-panel hidden" id="adv-panel-outputs" role="tabpanel" aria-labelledby="adv-tab-outputs" data-adv-panel="outputs" hidden>` +
-    `<section class="adv-section"><div class="adv-row"><input data-artifact-path placeholder="dist/report.json"/><button type="button" data-artifact-add>${escapeHtml(t("advanced.addBtn"))}</button></div><input data-session placeholder="${escapeHtml(t("advanced.sessionPlaceholder"))}"/><div class="adv-list" data-artifacts></div></section>` +
+    `<section class="adv-section"><div class="adv-row"><input data-artifact-path placeholder="dist/report.json"/><button type="button" data-artifact-add>${escapeHtml(t("advanced.addBtn"))}</button></div><input data-session placeholder="${escapeHtml(t("advanced.sessionPlaceholder"))}"/><div class="adv-list" data-artifacts></div><div class="adv-preview" data-artifact-preview></div></section>` +
     "</div>" +
     `<div class="adv-panel hidden" id="adv-panel-preview" role="tabpanel" aria-labelledby="adv-tab-preview" data-adv-panel="preview" hidden>` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.livePreviewHeading"))}</h3><div class="adv-row"><input data-preview-port inputmode="numeric" placeholder="3000"/><button type="button" data-preview-start>${escapeHtml(t("advanced.startRestartBtn"))}</button><button type="button" data-preview-stop>${escapeHtml(t("advanced.stopBtn"))}</button></div><div class="adv-status" data-live-status></div><iframe class="adv-frame hidden" data-live-frame sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"></iframe></section>` +
@@ -149,6 +149,7 @@ export function mountAdvancedTools() {
   const urlStatus = q<HTMLElement>("[data-url-status]");
   const urlAttach = q<HTMLButtonElement>("[data-url-attach]");
   const artifactList = q<HTMLElement>("[data-artifacts]");
+  const artifactPreviewBox = q<HTMLElement>("[data-artifact-preview]");
   const grantList = q<HTMLElement>("[data-grants]");
   const modelSelect = q<HTMLSelectElement>("[data-model]");
   const modelStatus = q<HTMLElement>("[data-model-status]");
@@ -299,48 +300,71 @@ export function mountAdvancedTools() {
     }
   }
 
-  async function showPreview(path: string) {
-    previewBox.replaceChildren();
-    if (!projectId()) {
-      previewBox.textContent = t("advanced.selectProjectFirst");
-      return;
-    }
-    const loading = element("div", "adv-status");
-    loading.textContent = t("advanced.loadingPreview");
-    previewBox.append(loading);
-    try {
-      const data = await api<{ preview: Preview }>(
-        "/api/projects/" + encodeURIComponent(projectId()) + "/preview?path=" + encodeURIComponent(path)
-      );
-      previewBox.replaceChildren();
-      const preview = data.preview;
-      const meta = element("div", "adv-status");
-      meta.textContent = t("advanced.previewFileMeta", { name: preview.name, size: formatNumber(preview.size) });
-      previewBox.append(meta);
-      if (preview.kind === "image") {
-        const img = element("img");
-        img.alt = preview.name;
-        img.src = "data:" + preview.mime + ";base64," + preview.data;
-        previewBox.append(img);
-      } else if (preview.kind === "text") {
-        const pre = element("pre", "adv-code language-" + preview.language);
-        highlightText(pre, preview.content, preview.language);
-        previewBox.append(pre);
-      } else {
-        const fallback = element("div", "adv-binary");
-        fallback.textContent = t("advanced.previewUnavailable", { reason: translateServerMessage(preview.reason) });
-        previewBox.append(fallback);
-      }
-    } catch (error) {
-      previewBox.replaceChildren();
-      const message = element("div", "adv-status error");
-      message.textContent = formatAdvError(error);
-      previewBox.append(message);
+  const previewTokens = new WeakMap<HTMLElement, number>();
+
+  function clearPreview(container: HTMLElement) {
+    previewTokens.set(container, (previewTokens.get(container) ?? 0) + 1);
+    container.replaceChildren();
+  }
+
+  function renderPreviewPayload(container: HTMLElement, preview: Preview) {
+    container.replaceChildren();
+    const meta = element("div", "adv-status");
+    meta.textContent = t("advanced.previewFileMeta", { name: preview.name, size: formatNumber(preview.size) });
+    container.append(meta);
+    if (preview.kind === "image") {
+      const img = element("img");
+      img.alt = preview.name;
+      img.src = "data:" + preview.mime + ";base64," + preview.data;
+      container.append(img);
+    } else if (preview.kind === "text") {
+      const pre = element("pre", "adv-code language-" + preview.language);
+      highlightText(pre, preview.content, preview.language);
+      container.append(pre);
+    } else {
+      const fallback = element("div", "adv-binary");
+      fallback.textContent = t("advanced.previewUnavailable", { reason: translateServerMessage(preview.reason) });
+      container.append(fallback);
     }
   }
 
+  async function fetchAndRenderPreview(container: HTMLElement, url: string) {
+    const token = (previewTokens.get(container) ?? 0) + 1;
+    previewTokens.set(container, token);
+    container.replaceChildren();
+    const loading = element("div", "adv-status");
+    loading.textContent = t("advanced.loadingPreview");
+    container.append(loading);
+    try {
+      const data = await api<{ preview: Preview }>(url);
+      if (previewTokens.get(container) !== token) return;
+      renderPreviewPayload(container, data.preview);
+    } catch (error) {
+      if (previewTokens.get(container) !== token) return;
+      container.replaceChildren();
+      const message = element("div", "adv-status error");
+      message.textContent = formatAdvError(error);
+      container.append(message);
+    }
+  }
+
+  async function showPreview(path: string) {
+    if (!projectId()) {
+      clearPreview(previewBox);
+      previewBox.textContent = t("advanced.selectProjectFirst");
+      return;
+    }
+    await fetchAndRenderPreview(
+      previewBox,
+      "/api/projects/" + encodeURIComponent(projectId()) + "/preview?path=" + encodeURIComponent(path)
+    );
+  }
+
   async function loadArtifacts() {
-    if (!projectId()) return;
+    if (!projectId()) {
+      clearPreview(artifactPreviewBox);
+      return;
+    }
     const session = q<HTMLInputElement>("[data-session]").value.trim();
     try {
       const data = await api<{ artifacts: Array<{ id: string; name: string; path: string; size: number }> }>(
@@ -348,6 +372,7 @@ export function mountAdvancedTools() {
       );
       artifactList.replaceChildren();
       if (!data.artifacts.length) {
+        clearPreview(artifactPreviewBox);
         artifactList.textContent = t("advanced.noOutputsForSession");
         return;
       }
@@ -358,30 +383,12 @@ export function mountAdvancedTools() {
         const preview = element("button");
         preview.type = "button";
         preview.textContent = t("advanced.previewBtn");
-        preview.addEventListener("click", async () => {
-          try {
-            const payload = await api<{ preview: Preview }>(
-              "/api/artifacts/" + encodeURIComponent(item.id) + "/preview"
-            );
-            previewBox.replaceChildren();
-            if (payload.preview.kind === "text") {
-              const pre = element("pre", "adv-code");
-              highlightText(pre, payload.preview.content, payload.preview.language);
-              previewBox.append(pre);
-            } else if (payload.preview.kind === "image") {
-              const img = element("img");
-              img.alt = payload.preview.name;
-              img.src = "data:" + payload.preview.mime + ";base64," + payload.preview.data;
-              previewBox.append(img);
-            } else {
-              previewBox.textContent = t("advanced.previewUnavailable", {
-                reason: translateServerMessage(payload.preview.reason)
-              });
-            }
-          } catch (error) {
-            setStatus(projectStatus, formatAdvError(error), true);
-          }
-        });
+        preview.addEventListener("click", () =>
+          void fetchAndRenderPreview(
+            artifactPreviewBox,
+            "/api/artifacts/" + encodeURIComponent(item.id) + "/preview"
+          )
+        );
         const download = element("a");
         download.textContent = t("advanced.downloadBtn");
         download.href = "/api/artifacts/" + encodeURIComponent(item.id) + "/download";
@@ -650,8 +657,8 @@ export function mountAdvancedTools() {
     returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    selectTab(activeTab);
     drawer.classList.remove("hidden");
+    selectTab(activeTab);
     q<HTMLButtonElement>("[data-close]").focus({ preventScroll: true });
     await Promise.all([loadProjects(), loadModels(), loadGrants(), loadSandbox()]);
   });
@@ -675,6 +682,8 @@ export function mountAdvancedTools() {
   window.addEventListener("devmoter:surface-changed", closeDrawer);
   projectSelect.addEventListener("change", () => {
     currentBrowserPath = "";
+    clearPreview(previewBox);
+    clearPreview(artifactPreviewBox);
     void Promise.all([loadArtifacts(), loadLivePreview(), loadFileBrowser(""), loadAgentBrowser()]);
   });
   q<HTMLButtonElement>("[data-browser-refresh]").addEventListener("click", () => void loadFileBrowser());
@@ -694,7 +703,10 @@ export function mountAdvancedTools() {
   q<HTMLButtonElement>("[data-file-open]").addEventListener("click", () =>
     void showPreview(q<HTMLInputElement>("[data-file-path]").value.trim())
   );
-  q<HTMLInputElement>("[data-session]").addEventListener("change", () => void loadArtifacts());
+  q<HTMLInputElement>("[data-session]").addEventListener("change", () => {
+    clearPreview(artifactPreviewBox);
+    void loadArtifacts();
+  });
   q<HTMLButtonElement>("[data-artifact-add]").addEventListener("click", async () => {
     if (!projectId()) return;
     try {
