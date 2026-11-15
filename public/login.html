@@ -44,6 +44,8 @@
     a.action { display:grid; place-items:center; min-height:48px; padding:0 12px; background:#171717; color:white; text-decoration:none; font-weight:650; font-size:13px; }
     .copy { width:auto; min-width:92px; }
     .foot { margin:16px 0 0; color:#777; font-size:11px; line-height:1.55; text-align:center; }
+    .lang-bar { display:flex; justify-content:flex-end; margin:0 0 12px; }
+    .lang-select { min-height:36px; padding:0 10px; border:1px solid #dededc; border-radius:10px; background:#fff; color:#444; font:inherit; font-size:12px; font-weight:600; cursor:pointer; }
     @media (prefers-reduced-motion: no-preference) { button, a.action { transition:background-color .15s ease,border-color .15s ease; } }
     @media (prefers-color-scheme:dark) {
       :root { color:#f4f4f3; background:#101010; } body { background:#101010; }
@@ -54,7 +56,7 @@
       button.primary,a.action { color:#171717; background:#f4f4f3; border-color:#f4f4f3; } button.primary:hover { background:#ddd; }
       .divider::before,.divider::after { background-color:#333; }
       details { border-color:#333; }
-      summary,label { color:#c4c4c2; } input,.code { color:#f4f4f3; background:#222; border-color:#414141; }
+      summary,label { color:#c4c4c2; } input,.code,.lang-select { color:#f4f4f3; background:#222; border-color:#414141; }
       .device { background:#202020; border-color:#393939; }.device p,.message { color:#b6b6b4; }
       .message.error { color:#ff8b83; }.message.ok { color:#7ee0ad; }
     }
@@ -63,22 +65,29 @@
 </head>
 <body>
   <main>
-    <header class="brand"><div class="mark" aria-hidden="true">✦</div><h1>DevMoter FAST</h1><p class="sub">Your AI coding agents, anywhere.</p></header>
-    <section class="card" aria-label="Sign in">
+    <div class="lang-bar">
+      <select id="languageSelect" class="lang-select" data-language-select aria-label="Language">
+        <option value="ja">日本語</option>
+        <option value="en">English</option>
+        <option value="zh">简体中文</option>
+      </select>
+    </div>
+    <header class="brand"><div class="mark" aria-hidden="true">✦</div><h1>DevMoter FAST</h1><p class="sub" data-i18n="brandSubtitle">Your AI coding agents, anywhere.</p></header>
+    <section id="loginCard" class="card" aria-label="Sign in">
       <div id="providers" class="providers" aria-live="polite"></div>
       <div id="device" class="device" hidden>
-        <p>Enter this code on GitHub to finish signing in.</p><div id="userCode" class="code"></div>
-        <div class="device-actions"><a id="verifyLink" class="action" target="_blank" rel="noopener noreferrer">Open GitHub</a><button id="copyCode" class="copy" type="button">Copy code</button></div>
+        <p data-i18n="githubDevicePrompt">Enter this code on GitHub to finish signing in.</p><div id="userCode" class="code"></div>
+        <div class="device-actions"><a id="verifyLink" class="action" target="_blank" rel="noopener noreferrer" data-i18n="openGithub">Open GitHub</a><button id="copyCode" class="copy" type="button" data-i18n="copyCode">Copy code</button></div>
       </div>
-      <div class="divider">Other options</div>
-      <details id="recovery"><summary>Use local recovery</summary>
-        <label for="username">Username</label><input id="username" autocomplete="username" value="devmoter" />
-        <label for="password">Recovery password</label><input id="password" type="password" autocomplete="current-password" />
-        <button id="localLogin" class="recovery" type="button">Continue with recovery</button>
+      <div class="divider" data-i18n="otherOptions">Other options</div>
+      <details id="recovery"><summary id="recoverySummary" data-i18n="useLocalRecovery">Use local recovery</summary>
+        <label for="username" data-i18n="usernameLabel">Username</label><input id="username" autocomplete="username" value="devmoter" />
+        <label for="password" data-i18n="recoveryPasswordLabel">Recovery password</label><input id="password" type="password" autocomplete="current-password" />
+        <button id="localLogin" class="recovery" type="button" data-i18n="continueRecovery">Continue with recovery</button>
       </details>
       <p id="message" class="message" role="status" aria-live="polite"></p>
     </section>
-    <p class="foot">Your session stays signed in securely on this device.</p>
+    <p class="foot" data-i18n="sessionFoot">Your session stays signed in securely on this device.</p>
   </main>
   <script src="/login.js" defer></script>
 </body>

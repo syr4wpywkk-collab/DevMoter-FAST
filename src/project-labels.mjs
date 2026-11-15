@@ -1,3 +1,5 @@
+import { t } from "./i18n-core.mjs";
+
 const MAX_LABEL = 60;
 
 function segments(path) {
@@ -7,7 +9,7 @@ function segments(path) {
 function fallbackName(project) {
   const name = typeof project?.name === "string" ? project.name.trim() : "";
   if (name) return name;
-  return segments(project?.path).at(-1) || String(project?.id || "Project");
+  return segments(project?.path).at(-1) || String(project?.id || t("projectLabels.fallbackProject"));
 }
 
 function truncate(text) {

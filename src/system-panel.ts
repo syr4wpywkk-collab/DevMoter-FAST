@@ -1,4 +1,5 @@
 import { boundedPushWait, inspectPushReadiness } from "./push-readiness.js";
+import { formatDateTime, t, translateServerMessage } from "./i18n";
 
 const SETUP_DISMISSED_KEY = "devmoter-setup-dismissed-v1";
 function base64urlToBytes(value: string) {
@@ -15,6 +16,12 @@ function escapeHtml(value: unknown) {
     .replace(/"/g, "&quot;");
 }
 
+function deviceBrowserLabel() {
+  return navigator.userAgent.includes("Mobile")
+    ? t("settings.devices.labelMobile")
+    : t("settings.devices.labelDesktop");
+}
+
 export function mountSystemPanel() {
   let activeSessionId = "";
   let activeBackend: "codex" | "opencode" = "opencode";
@@ -22,14 +29,14 @@ export function mountSystemPanel() {
   const root = document.createElement("div");
   root.className = "devmoter-system-root";
   root.innerHTML = `
-    <button class="devmoter-system-button" type="button" aria-label="DevMoter system settings">⚙</button>
-    <div class="devmoter-system-modal hidden" role="dialog" aria-modal="true" aria-label="DevMoter setup and diagnostics">
+    <button class="devmoter-system-button" type="button" aria-label="${escapeHtml(t("system.buttonAria"))}">⚙</button>
+    <div class="devmoter-system-modal hidden" role="dialog" aria-modal="true" aria-label="${escapeHtml(t("system.modalAria"))}">
       <div class="devmoter-system-card">
         <div class="devmoter-system-head">
-          <div><strong>DevMoter system</strong><small>Setup · diagnostics · trusted devices · notifications</small></div>
-          <button class="devmoter-system-close" type="button" aria-label="Close">×</button>
+          <div><strong>${escapeHtml(t("system.title"))}</strong><small>${escapeHtml(t("system.subtitle"))}</small></div>
+          <button class="devmoter-system-close" type="button" aria-label="${escapeHtml(t("common.close"))}">×</button>
         </div>
-        <div class="devmoter-system-body"><p>Loading…</p></div>
+        <div class="devmoter-system-body"><p>${escapeHtml(t("common.loading"))}</p></div>
       </div>
     </div>
   `;
@@ -49,7 +56,7 @@ export function mountSystemPanel() {
     }
     const response = await fetch(path, { ...init, headers, cache: "no-store" });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload?.error || `HTTP ${response.status}`);
+    if (!response.ok) throw new Error(translateServerMessage(payload?.error) || t("common.httpError", { status: response.status }));
     return payload;
   }
 
@@ -73,19 +80,26 @@ export function mountSystemPanel() {
       ? Object.entries(data.capabilities) as Array<[string, any]>
       : [];
     const names: Record<string, string> = {
-      terminal: "Terminal", files: "Files", processes: "Processes", services: "Services",
-      ports: "Ports", git: "Git", browser: "Browser", secrets: "Secrets",
-      agents: "Agents", notifications: "Notifications"
+      terminal: t("system.capTerminal"),
+      files: t("system.capFiles"),
+      processes: t("system.capProcesses"),
+      services: t("system.capServices"),
+      ports: t("system.capPorts"),
+      git: t("system.capGit"),
+      browser: t("system.capBrowser"),
+      secrets: t("system.capSecrets"),
+      agents: t("system.capAgents"),
+      notifications: t("system.capNotifications")
     };
     const rows = capabilities.map(([id, capability]) => `
       <span>${escapeHtml(names[id] || id)}</span>
-      <b>${escapeHtml(capability?.state || "unknown")}</b>
+      <b>${escapeHtml(capability?.state || t("common.unknown"))}</b>
     `).join("");
     return `
       <div class="devmoter-diagnostics-grid">
-        <span>Platform</span><b>${escapeHtml(data?.host?.platform || "unknown")}</b>
-        <span>Runtime</span><b>${escapeHtml(data?.host?.runtime || "unknown")}</b>
-        <span>Protocol</span><b>${escapeHtml(data?.protocolVersion || "unknown")}</b>
+        <span>${escapeHtml(t("system.platform"))}</span><b>${escapeHtml(data?.host?.platform || t("common.unknown"))}</b>
+        <span>${escapeHtml(t("system.runtime"))}</span><b>${escapeHtml(data?.host?.runtime || t("common.unknown"))}</b>
+        <span>${escapeHtml(t("system.protocol"))}</span><b>${escapeHtml(data?.protocolVersion || t("common.unknown"))}</b>
         ${rows}
       </div>
     `;
@@ -102,17 +116,21 @@ export function mountSystemPanel() {
   function prerequisiteRows(data: any) {
     const required = data?.prerequisites?.required || {};
     return Object.entries(required).map(([name, value]: [string, any]) =>
-      `<li><span>${value?.available ? "✓" : "!"}</span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(value?.version || (value?.available ? "available" : "missing"))}</small></li>`
+      `<li><span>${value?.available ? "✓" : "!"}</span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(value?.version || (value?.available ? t("setup.available") : t("setup.missing")))}</small></li>`
     ).join("");
   }
 
   function deviceRows(data: any) {
     const list = Array.isArray(data?.devices) ? data.devices : [];
-    if (!list.length) return "<p class=\"devmoter-system-muted\">No trusted devices yet.</p>";
+    if (!list.length) return `<p class="devmoter-system-muted">${escapeHtml(t("system.noTrustedDevices"))}</p>`;
     return list.map((device: any) => `
       <div class="devmoter-device-row">
-        <div><strong>${escapeHtml(device.label)}</strong><small>Created ${new Date(device.createdAt).toLocaleString()} · Last used ${new Date(device.lastUsedAt).toLocaleString()}${device.current ? " · this device" : ""}</small></div>
-        <button type="button" data-revoke-device="${escapeHtml(device.id)}">Revoke</button>
+        <div><strong>${escapeHtml(device.label)}</strong><small>${escapeHtml(t("system.deviceMeta", {
+          created: formatDateTime(device.createdAt),
+          lastUsed: formatDateTime(device.lastUsedAt),
+          current: device.current ? t("system.thisDeviceSuffix") : ""
+        }))}</small></div>
+        <button type="button" data-revoke-device="${escapeHtml(device.id)}">${escapeHtml(t("common.revoke"))}</button>
       </div>
     `).join("");
   }
@@ -131,69 +149,69 @@ export function mountSystemPanel() {
       <div data-system-message class="devmoter-system-message" data-tone="info"></div>
 
       <section class="devmoter-system-section">
-        <strong>Account</strong>
+        <strong>${escapeHtml(t("system.accountHeading"))}</strong>
         <div class="devmoter-diagnostics-grid">
-          <span>Signed in with</span><b>${escapeHtml(identity?.provider || "recovery")}</b>
-          <span>Identity</span><b>${escapeHtml(identity?.login || "DevMoter owner")}</b>
-          <span>GitHub login</span><b>${authStatus?.github?.bound ? "connected" : authStatus?.github?.configured ? "ready to connect" : "not configured"}</b>
+          <span>${escapeHtml(t("system.signedInWith"))}</span><b>${escapeHtml(identity?.provider || t("system.recoveryMethod"))}</b>
+          <span>${escapeHtml(t("system.identity"))}</span><b>${escapeHtml(identity?.login || t("system.ownerDefault"))}</b>
+          <span>${escapeHtml(t("system.githubLogin"))}</span><b>${escapeHtml(authStatus?.github?.bound ? t("system.githubConnected") : authStatus?.github?.configured ? t("system.githubReady") : t("system.githubNotConfigured"))}</b>
         </div>
         <div class="devmoter-system-actions">
-          ${authStatus?.authenticated ? '<button type="button" data-sign-out>Sign out</button>' : ""}
+          ${authStatus?.authenticated ? `<button type="button" data-sign-out>${escapeHtml(t("system.signOut"))}</button>` : ""}
         </div>
       </section>
 
       <section class="devmoter-system-section">
-        <div class="devmoter-system-title"><strong>First-run checklist</strong><button type="button" data-dismiss-setup>Skip for now</button></div>
+        <div class="devmoter-system-title"><strong>${escapeHtml(t("system.checklistHeading"))}</strong><button type="button" data-dismiss-setup>${escapeHtml(t("system.skipForNow"))}</button></div>
         <ul class="devmoter-checklist">${prerequisiteRows(diag)}</ul>
         <p class="devmoter-system-muted">${escapeHtml(diag?.prerequisites?.message)}</p>
-        <p class="devmoter-system-muted">DevMoter never auto-runs repository bootstrap scripts from this checklist.</p>
+        <p class="devmoter-system-muted">${escapeHtml(t("system.noBootstrapNote"))}</p>
       </section>
 
       <section class="devmoter-system-section">
-        <strong>Diagnostics</strong>
+        <strong>${escapeHtml(t("system.diagnosticsHeading"))}</strong>
         <div class="devmoter-diagnostics-grid">
-          <span>App</span><b>${escapeHtml(diag?.app?.version || "unknown")}</b>
-          <span>OpenCode</span><b>${diag?.backends?.opencode?.online ? "online" : "offline"}</b>
-          <span>Codex</span><b>${diag?.backends?.codex?.online ? "online" : "offline"}</b>
-          <span>Projects</span><b>${escapeHtml(diag?.projects?.count ?? 0)}</b>
-          <span>Network</span><b>${diag?.network?.localhostFirst ? "localhost-first" : "custom bind"}</b>
+          <span>${escapeHtml(t("system.app"))}</span><b>${escapeHtml(diag?.app?.version || t("common.unknown"))}</b>
+          <span>OpenCode</span><b>${escapeHtml(diag?.backends?.opencode?.online ? t("common.online") : t("common.offline"))}</b>
+          <span>Codex</span><b>${escapeHtml(diag?.backends?.codex?.online ? t("common.online") : t("common.offline"))}</b>
+          <span>${escapeHtml(t("system.projects"))}</span><b>${escapeHtml(diag?.projects?.count ?? 0)}</b>
+          <span>${escapeHtml(t("system.network"))}</span><b>${escapeHtml(diag?.network?.localhostFirst ? t("system.localhostFirst") : t("system.customBind"))}</b>
         </div>
         <p class="devmoter-system-muted">${escapeHtml(diag?.network?.message)}</p>
       </section>
 
       <section class="devmoter-system-section">
-        <strong>Host capabilities</strong>
+        <strong>${escapeHtml(t("system.hostCapabilities"))}</strong>
         ${hostRows(hostData)}
-        <p class="devmoter-system-muted">Reported by this Host</p>
+        <p class="devmoter-system-muted">${escapeHtml(t("system.reportedByHost"))}</p>
       </section>
 
       <section class="devmoter-system-section">
-        <strong>Trusted devices</strong>
+        <strong>${escapeHtml(t("system.trustedDevicesHeading"))}</strong>
         <div data-device-list>${deviceRows(deviceData)}</div>
         <div class="devmoter-system-actions">
           ${trusted
-            ? '<button type="button" data-create-pairing>Create pairing code</button>'
-            : '<button type="button" data-bootstrap-device>Trust this localhost browser</button>'}
+            ? `<button type="button" data-create-pairing>${escapeHtml(t("system.createPairingCode"))}</button>`
+            : `<button type="button" data-bootstrap-device>${escapeHtml(t("system.trustLocalhost"))}</button>`}
         </div>
         <div class="devmoter-pairing-claim">
-          <input data-pairing-code inputmode="numeric" maxlength="6" placeholder="6-digit pairing code" />
-          <button type="button" data-claim-pairing>Pair this device</button>
+          <input data-pairing-code inputmode="numeric" maxlength="6" placeholder="${escapeHtml(t("system.pairPlaceholder"))}" />
+          <button type="button" data-claim-pairing>${escapeHtml(t("system.pairDevice"))}</button>
         </div>
       </section>
 
       <section class="devmoter-system-section">
-        <strong>Notifications</strong>
-        <p class="devmoter-system-muted">Opt-in only. Notification text is generic and never includes prompts, code, tool output, or credentials.</p>
+        <strong>${escapeHtml(t("system.notificationsHeading"))}</strong>
+        <p class="devmoter-system-muted">${escapeHtml(t("system.notificationsPrivacy"))}</p>
         <div class="devmoter-system-actions">
-          <button type="button" data-enable-push>Enable notifications</button>
-          <button type="button" data-disable-push>Disable notifications</button>
+          <button type="button" data-enable-push>${escapeHtml(t("system.enableNotifications"))}</button>
+          <button type="button" data-disable-push>${escapeHtml(t("system.disableNotifications"))}</button>
         </div>
       </section>
 
       <section class="devmoter-system-section">
-        <strong>Offline demo</strong>
-        <p class="devmoter-system-muted">Runs scripted fake sessions only; no CLI or project files are touched.</p>
-        <a class="devmoter-system-link" href="/?demo=1">Open scripted demo</a>
+        <strong>${escapeHtml(t("system.offlineDemoHeading"))}</strong>
+        <p class="devmoter-system-muted">${escapeHtml(t("system.offlineDemoCopy"))}</p>
+        <a class="devmoter-system-link" href="/?demo=1">${escapeHtml(t("system.openDemo"))}</a>
       </section>
     `;
 
@@ -202,7 +220,7 @@ export function mountSystemPanel() {
         await request("/api/auth/logout", { method: "POST", body: "{}" });
         location.replace("/login.html");
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : String(error), "error");
+        setMessage(error instanceof Error ? translateServerMessage(error.message) : String(error), "error");
       }
     });
 
@@ -215,21 +233,21 @@ export function mountSystemPanel() {
       try {
         await request("/api/devices/bootstrap", {
           method: "POST",
-          body: JSON.stringify({ label: navigator.userAgent.includes("Mobile") ? "Mobile browser" : "Browser" })
+          body: JSON.stringify({ label: deviceBrowserLabel() })
         });
         await render();
-        setMessage("This browser is now trusted.", "ok");
+        setMessage(t("system.browserTrusted"), "ok");
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : String(error), "error");
+        setMessage(error instanceof Error ? translateServerMessage(error.message) : String(error), "error");
       }
     });
 
     body.querySelector("[data-create-pairing]")?.addEventListener("click", async () => {
       try {
         const result = await request("/api/pairings", { method: "POST" }, true);
-        setMessage(`Pairing code: ${result.code} (expires in 5 minutes)`, "ok");
+        setMessage(t("system.pairingCodeCreated", { code: result.code }), "ok");
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : String(error), "error");
+        setMessage(error instanceof Error ? translateServerMessage(error.message) : String(error), "error");
       }
     });
 
@@ -238,12 +256,12 @@ export function mountSystemPanel() {
       try {
         await request("/api/pairings/claim", {
           method: "POST",
-          body: JSON.stringify({ code: input.value, label: navigator.userAgent.includes("Mobile") ? "Mobile browser" : "Browser" })
+          body: JSON.stringify({ code: input.value, label: deviceBrowserLabel() })
         });
         await render();
-        setMessage("Device paired.", "ok");
+        setMessage(t("system.devicePaired"), "ok");
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : String(error), "error");
+        setMessage(error instanceof Error ? translateServerMessage(error.message) : String(error), "error");
       }
     });
 
@@ -252,15 +270,15 @@ export function mountSystemPanel() {
         try {
           const result = await request(`/api/devices/${encodeURIComponent(button.dataset.revokeDevice || "")}`, { method: "DELETE" }, true);
           await render();
-          setMessage(result.revokedCurrentDevice ? "This device was revoked." : "Device revoked.", "ok");
+          setMessage(result.revokedCurrentDevice ? t("system.currentDeviceRevoked") : t("system.deviceRevoked"), "ok");
         } catch (error) {
-          setMessage(error instanceof Error ? error.message : String(error), "error");
+          setMessage(error instanceof Error ? translateServerMessage(error.message) : String(error), "error");
         }
       });
     }
 
-    body.querySelector("[data-enable-push]")?.addEventListener("click", () => void enablePush().catch(() => setMessage("Push notifications could not be enabled. Retry from Settings.", "error")));
-    body.querySelector("[data-disable-push]")?.addEventListener("click", () => void disablePush().catch(() => setMessage("Push notifications could not be disabled. Please retry.", "error")));
+    body.querySelector("[data-enable-push]")?.addEventListener("click", () => void enablePush().catch(() => setMessage(t("system.enablePushError"), "error")));
+    body.querySelector("[data-disable-push]")?.addEventListener("click", () => void disablePush().catch(() => setMessage(t("system.disablePushError"), "error")));
   }
 
   async function currentSubscription() {
@@ -275,23 +293,23 @@ export function mountSystemPanel() {
 
   async function enablePush() {
     if (!(await devices())) {
-      setMessage("Trust or pair this device first.", "error");
+      setMessage(t("system.trustFirstError"), "error");
       return;
     }
     if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
-      setMessage("Push notifications are not supported in this browser.", "error");
+      setMessage(t("system.pushUnsupported"), "error");
       return;
     }
 
     const readiness = await inspectPushReadiness(navigator.serviceWorker, Notification.permission);
     if (readiness.state !== "ready" || !readiness.registration) {
       const message = readiness.state === "unregistered"
-        ? "No notification service worker is registered. Reload the app and try again."
+        ? t("system.swUnregistered")
         : readiness.state === "denied"
-          ? "Allow notifications in this browser's site settings, then try again."
+          ? t("system.pushDenied")
           : readiness.state === "unsupported"
-            ? "Push notifications are not supported in this browser."
-            : "The notification service worker is not ready. Wait a moment and try again.";
+            ? t("system.pushUnsupported")
+            : t("system.swNotReady");
       setMessage(message, "error");
       return;
     }
@@ -300,7 +318,7 @@ export function mountSystemPanel() {
       ? Notification.permission
       : await Notification.requestPermission();
     if (permission !== "granted") {
-      setMessage("Notification permission was not granted.", "error");
+      setMessage(t("system.permissionNotGranted"), "error");
       return;
     }
 
@@ -318,7 +336,7 @@ export function mountSystemPanel() {
       body: JSON.stringify({ endpoint: subscription.endpoint })
     }, true);
     await syncVisibility();
-    setMessage("Notifications enabled.", "ok");
+    setMessage(t("system.notificationsEnabled"), "ok");
   }
 
   async function disablePush() {
@@ -330,7 +348,7 @@ export function mountSystemPanel() {
       }, true).catch(() => {});
       await subscription.unsubscribe().catch(() => false);
     }
-    setMessage("Notifications disabled.", "ok");
+    setMessage(t("system.notificationsDisabled"), "ok");
   }
 
   async function syncVisibility() {
@@ -358,7 +376,7 @@ export function mountSystemPanel() {
   function open() {
     modal.classList.remove("hidden");
     void render().catch(error => {
-      body.innerHTML = `<p class="devmoter-system-error">${escapeHtml(error instanceof Error ? error.message : String(error))}</p>`;
+      body.innerHTML = `<p class="devmoter-system-error">${escapeHtml(error instanceof Error ? translateServerMessage(error.message) : String(error))}</p>`;
     });
   }
 

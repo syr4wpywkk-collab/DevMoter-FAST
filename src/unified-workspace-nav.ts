@@ -3,6 +3,15 @@ import "./unified-workspace-nav.css";
 // Stage 2: present native provider transcripts/composers consistently, without
 // unmounting/reparenting their live input, stream, history or approval controls.
 import "./unified-workspace-chat.css";
+import { bindLanguageSelectors, t } from "./i18n";
+
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 // The ☰ menu uses the same line-icon set as Home and Settings. Exact copies of
 // APP_REGISTRY / SYSTEM_ICONS (app-registry.ts); this module is loaded standalone
@@ -51,48 +60,49 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   root.className = "dm-task-first-nav";
   root.innerHTML = `
     <header class="dm-task-first-header">
-      <button type="button" data-workspace-home class="dm-task-first-brand" aria-label="DevMoter FAST Home">
+      <button type="button" data-workspace-home class="dm-task-first-brand" aria-label="${escapeHtml(t("nav.homeAria"))}">
         <span class="dm-task-first-mark" aria-hidden="true">▦</span>
-        <span><strong>DevMoter <em>FAST</em></strong><small>UNIFIED WORKSPACE</small></span>
+        <span><strong>DevMoter <em>FAST</em></strong><small>${escapeHtml(t("nav.unifiedWorkspace"))}</small></span>
       </button>
-      <p class="dm-task-first-project" data-workspace-project aria-label="Current project"></p>
+      <p class="dm-task-first-project" data-workspace-project aria-label="${escapeHtml(t("nav.currentProjectAria"))}"></p>
       <label class="dm-task-first-backend">
-        <span>AI backend</span>
-        <select data-workspace-backend aria-label="AIバックエンド切り替え">
-          <option value="" disabled>AIを選択</option>
+        <span>${escapeHtml(t("nav.aiBackend"))}</span>
+        <select data-workspace-backend aria-label="${escapeHtml(t("shell.aiSwitchAria"))}">
+          <option value="" disabled>${escapeHtml(t("nav.selectAi"))}</option>
           <option value="codex">Codex</option>
           <option value="opencode">OpenCode</option>
           <option value="api">API Chat</option>
           <option value="qwen">Qwen Code</option>
         </select>
       </label>
-      <button type="button" class="dm-task-first-menu-button" data-workspace-menu-button aria-haspopup="true" aria-expanded="false" aria-controls="dmTaskFirstMenu" aria-label="Switch screen">☰</button>
+      <button type="button" class="dm-task-first-menu-button" data-workspace-menu-button aria-haspopup="true" aria-expanded="false" aria-controls="dmTaskFirstMenu" aria-label="${escapeHtml(t("nav.switchScreenAria"))}">☰</button>
     </header>
-    <nav id="dmTaskFirstMenu" class="dm-task-first-menu" aria-label="DevMoter workspace" hidden>
-      <button type="button" data-workspace-go="home" aria-label="Home"><span aria-hidden="true">${ICONS.home}</span><strong>Home</strong></button>
-      <button type="button" data-workspace-action="tasks" aria-label="Tasks and sessions"><span aria-hidden="true">${ICONS.sessions}</span><strong>タスク</strong></button>
-      <button type="button" data-workspace-action="chat" aria-label="Current chat and conversation history"><span aria-hidden="true">${ICONS.chat}</span><strong>Chat</strong></button>
-      <button type="button" data-workspace-action="review" aria-label="Review changes"><span aria-hidden="true">${ICONS.review}</span><strong>Review</strong></button>
-      <button type="button" data-workspace-action="tools" aria-label="Open tools"><span aria-hidden="true">${ICONS.tools}</span><strong>Tools</strong></button>
-      <button type="button" data-workspace-action="terminal" aria-label="Open terminal"><span aria-hidden="true">${ICONS.terminal}</span><strong>Terminal</strong></button>
+    <nav id="dmTaskFirstMenu" class="dm-task-first-menu" aria-label="${escapeHtml(t("nav.workspaceNavAria"))}" hidden>
+      <button type="button" data-workspace-go="home" aria-label="${escapeHtml(t("nav.home"))}"><span aria-hidden="true">${ICONS.home}</span><strong>${escapeHtml(t("nav.home"))}</strong></button>
+      <button type="button" data-workspace-action="tasks" aria-label="${escapeHtml(t("nav.tasksAria"))}"><span aria-hidden="true">${ICONS.sessions}</span><strong>${escapeHtml(t("nav.tasks"))}</strong></button>
+      <button type="button" data-workspace-action="chat" aria-label="${escapeHtml(t("nav.chatAria"))}"><span aria-hidden="true">${ICONS.chat}</span><strong>${escapeHtml(t("nav.chat"))}</strong></button>
+      <button type="button" data-workspace-action="review" aria-label="${escapeHtml(t("nav.reviewAria"))}"><span aria-hidden="true">${ICONS.review}</span><strong>${escapeHtml(t("nav.review"))}</strong></button>
+      <button type="button" data-workspace-action="tools" aria-label="${escapeHtml(t("nav.toolsAria"))}"><span aria-hidden="true">${ICONS.tools}</span><strong>${escapeHtml(t("nav.tools"))}</strong></button>
+      <button type="button" data-workspace-action="terminal" aria-label="${escapeHtml(t("nav.terminalAria"))}"><span aria-hidden="true">${ICONS.terminal}</span><strong>${escapeHtml(t("nav.terminal"))}</strong></button>
       <hr aria-hidden="true" />
-      <button type="button" data-workspace-command="theme"><span aria-hidden="true">${ICONS.theme}</span><strong>テーマ</strong><small data-workspace-theme-value></small></button>
-      <button type="button" data-workspace-command="context"><span aria-hidden="true">${ICONS.context}</span><strong>表示履歴</strong></button>
-      <button type="button" data-workspace-command="checkpoints"><span aria-hidden="true">${ICONS.checkpoint}</span><strong>チェックポイント</strong></button>
-      <button type="button" data-workspace-command="extensions"><span aria-hidden="true">${ICONS.extensions}</span><strong>拡張機能</strong></button>
+      <button type="button" data-workspace-command="theme"><span aria-hidden="true">${ICONS.theme}</span><strong>${escapeHtml(t("nav.theme"))}</strong><small data-workspace-theme-value></small></button>
+      <button type="button" data-workspace-command="context"><span aria-hidden="true">${ICONS.context}</span><strong>${escapeHtml(t("nav.context"))}</strong></button>
+      <button type="button" data-workspace-command="checkpoints"><span aria-hidden="true">${ICONS.checkpoint}</span><strong>${escapeHtml(t("nav.checkpoints"))}</strong></button>
+      <button type="button" data-workspace-command="extensions"><span aria-hidden="true">${ICONS.extensions}</span><strong>${escapeHtml(t("nav.extensions"))}</strong></button>
       <hr aria-hidden="true" />
-      <button type="button" data-workspace-settings><span aria-hidden="true">${ICONS.settings}</span><strong>設定</strong></button>
-      <label class="dm-task-first-menu-row"><span aria-hidden="true">${ICONS.language}</span><strong>言語</strong>
-        <select data-language-select aria-label="Language">
-          <option value="en">English</option>
+      <button type="button" data-workspace-settings><span aria-hidden="true">${ICONS.settings}</span><strong>${escapeHtml(t("nav.settings"))}</strong></button>
+      <label class="dm-task-first-menu-row"><span aria-hidden="true">${ICONS.language}</span><strong>${escapeHtml(t("nav.language"))}</strong>
+        <select data-language-select aria-label="${escapeHtml(t("language.ariaLabel"))}">
           <option value="ja">日本語</option>
-          <option value="zh-CN">简体中文</option>
+          <option value="en">English</option>
+          <option value="zh">简体中文</option>
         </select>
       </label>
     </nav>
     <p class="dm-task-first-feedback" role="status" aria-live="polite" data-workspace-feedback></p>
   `;
   document.body.append(root);
+  bindLanguageSelectors(root, { reload: true });
   document.body.classList.add("dm-task-first-enabled");
   // The unified selector is the only agent switcher in this view. Native
   // Codex/API switchers stay mounted for legacy UI, but a read-only identity
@@ -128,9 +138,10 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     target instanceof window.Node && (menu.contains(target) || menuButton.contains(target));
   menuButton.addEventListener("click", () => setMenuOpen(!menuOpen, true));
   const themeValue = root.querySelector<HTMLElement>("[data-workspace-theme-value]")!;
-  const THEME_LABELS: Record<string, string> = { system: "システム", light: "ライト", dark: "ダーク" };
+  const themeLabel = (mode: string) =>
+    mode === "light" ? t("nav.themeLight") : mode === "dark" ? t("nav.themeDark") : t("nav.themeSystem");
   const syncThemeValue = () => {
-    themeValue.textContent = THEME_LABELS[localStorage.getItem("devmoter-theme") || "system"] || THEME_LABELS.system;
+    themeValue.textContent = themeLabel(localStorage.getItem("devmoter-theme") || "system");
   };
   syncThemeValue();
   window.addEventListener("devmoter:theme-changed", syncThemeValue);
@@ -159,7 +170,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     // Project selection is owned by the existing backend; this is a label only.
     const value = localStorage.getItem("opencode-pocket-project") || "";
     const normalized = value.replace(/\\/g, "/").replace(/\/+$/, "");
-    projectLabel.textContent = normalized.split("/").filter(Boolean).pop()?.slice(0, 80) || "Workspace";
+    projectLabel.textContent = normalized.split("/").filter(Boolean).pop()?.slice(0, 80) || t("nav.workspaceFallback");
   };
 
   let activeTab: WorkspaceTab | null = null;
@@ -223,7 +234,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
       currentBackend === "codex" ? "#cxMenu" : currentBackend === "opencode" ? "#ocxMenu" : "#apiMenu"
     );
     if (!trigger) {
-      feedback.textContent = "この画面では会話履歴を開けません。";
+      feedback.textContent = t("nav.historyUnavailable");
       return;
     }
     trigger.click();

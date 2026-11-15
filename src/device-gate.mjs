@@ -5,6 +5,8 @@
 // "Trusted device required"; none of them is something the user can act on
 // as text, so callers swap the raw error for this short gate.
 
+import { t } from "./i18n-core.mjs";
+
 const DEVICE_AUTH_MESSAGE = /trusted device|device token/i;
 
 /** Error thrown by device-bound fetches so callers can tell auth from other failures. */
@@ -54,7 +56,7 @@ export function createDeviceGate(doc, { onRegister, className = "", compact = fa
     const open = doc.createElement("button");
     open.type = "button";
     open.dataset.deviceGateRegister = "true";
-    open.textContent = "信頼済み端末を開く";
+    open.textContent = t("deviceGate.openTrustedDevices");
     open.addEventListener("click", () => {
       onRegister?.();
       if (win) openDeviceRegistration(win);
@@ -64,13 +66,13 @@ export function createDeviceGate(doc, { onRegister, className = "", compact = fa
   }
 
   const title = doc.createElement("strong");
-  title.textContent = "この端末は未登録です";
+  title.textContent = t("deviceGate.unregisteredTitle");
   const copy = doc.createElement("small");
-  copy.textContent = "端末を登録すると使えます";
+  copy.textContent = t("deviceGate.unregisteredCopy");
   const register = doc.createElement("button");
   register.type = "button";
   register.dataset.deviceGateRegister = "true";
-  register.textContent = "端末を登録";
+  register.textContent = t("deviceGate.registerButton");
   register.addEventListener("click", () => {
     onRegister?.();
     if (win) openDeviceRegistration(win);

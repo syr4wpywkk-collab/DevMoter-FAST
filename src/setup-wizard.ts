@@ -1,4 +1,13 @@
 import "./setup-wizard.css";
+import { t, translateServerMessage } from "./i18n";
+
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 type PlanAction = "install" | "keep" | "manual_review";
 
@@ -75,10 +84,10 @@ type InstallExecution = {
   }>;
 };
 
-const groups = [
-  { title: "Coding agents", ids: ["codex", "opencode", "claude", "antigravity"] },
-  { title: "Developer tools", ids: ["github"] },
-  { title: "Remote access", ids: ["tailscale"] }
+const groups = () => [
+  { title: t("setup.groupCodingAgents"), ids: ["codex", "opencode", "claude", "antigravity"] },
+  { title: t("setup.groupDevTools"), ids: ["github"] },
+  { title: t("setup.groupRemoteAccess"), ids: ["tailscale"] }
 ];
 
 const knownNames: Record<string, string> = {
@@ -91,98 +100,98 @@ const knownNames: Record<string, string> = {
 };
 
 function statusLabel(tool: Tool) {
-  if (tool.state === "ready") return "Installed · Connected";
-  if (tool.state === "auth_required") return "Installed · Sign-in required";
-  if (tool.state === "broken") return "Installed · Check failed";
-  if (tool.state === "unsupported") return "Unsupported on this platform";
+  if (tool.state === "ready") return t("setup.statusReady");
+  if (tool.state === "auth_required") return t("setup.statusAuthRequired");
+  if (tool.state === "broken") return t("setup.statusBroken");
+  if (tool.state === "unsupported") return t("setup.statusUnsupported");
   if (tool.installed && tool.id === "opencode") {
-    if (tool.install && tool.install.installStatus === "manual-review") return "Installed · Keep existing";
-    if (tool.providerAuth === "configured") return "Installed · Provider credentials found";
-    if (tool.providerAuth === "none") return "Installed · No provider credentials found";
-    return "Installed · Provider status unknown";
+    if (tool.install && tool.install.installStatus === "manual-review") return t("setup.statusKeep");
+    if (tool.providerAuth === "configured") return t("setup.statusProviderConfigured");
+    if (tool.providerAuth === "none") return t("setup.statusProviderNone");
+    return t("setup.statusProviderUnknown");
   }
-  if (tool.installed) return "Installed · Keep existing";
-  if (tool.state === "missing") return "Not installed";
-  return "Status unknown";
+  if (tool.installed) return t("setup.statusKeep");
+  if (tool.state === "missing") return t("setup.statusMissing");
+  return t("setup.statusUnknown");
 }
 
 function actionFor(tool: Tool): { action: PlanAction | null; label: string; disabled: boolean; checked: boolean } {
-  if (tool.state === "unsupported") return { action: null, label: "Unavailable", disabled: true, checked: false };
+  if (tool.state === "unsupported") return { action: null, label: t("setup.actionUnavailable"), disabled: true, checked: false };
   if (tool.state === "broken" || tool.state === "unknown") {
-    return { action: "manual_review", label: "Needs manual review", disabled: true, checked: true };
+    return { action: "manual_review", label: t("setup.actionManualReview"), disabled: true, checked: true };
   }
   if (tool.installed || ["installed", "ready", "auth_required"].includes(tool.state)) {
-    return { action: "keep", label: "Keep existing", disabled: true, checked: true };
+    return { action: "keep", label: t("setup.actionKeep"), disabled: true, checked: true };
   }
   if (tool.install.installSupport === "blocked" || tool.install.installStatus === "manual-review" || tool.install.installStatus === "blocked") {
-    return { action: "manual_review", label: "Needs manual review", disabled: true, checked: true };
+    return { action: "manual_review", label: t("setup.actionManualReview"), disabled: true, checked: true };
   }
   if (tool.install.installStatus === "candidate" && ["A", "B"].includes(tool.install.installSourceClass || "")) {
-    return { action: "install", label: "Install candidate", disabled: false, checked: true };
+    return { action: "install", label: t("setup.actionInstallCandidate"), disabled: false, checked: true };
   }
   if (tool.install.installStatus === "confirmation-required" && tool.install.installSourceClass === "C") {
-    return { action: "install", label: "Preview only · Class C", disabled: false, checked: false };
+    return { action: "install", label: t("setup.actionPreviewClassC"), disabled: false, checked: false };
   }
-  return { action: "manual_review", label: "Needs manual review", disabled: true, checked: true };
+  return { action: "manual_review", label: t("setup.actionManualReview"), disabled: true, checked: true };
 }
 
 function planStatusLabel(item: PlanItem) {
-  if (item.status === "reviewable" && item.automaticInstall) return "Ready · reviewed automatic install";
-  if (item.status === "reviewable") return "Ready for review · manual execution";
-  if (item.status === "confirmation-required") return "Class C · manual install remains required";
-  if (item.status === "manual-review") return "Needs manual review";
-  if (item.status === "blocked") return "Blocked · not an install candidate";
-  if (item.status === "unsupported") return "Unavailable on this platform";
-  if (item.action === "keep" && item.currentState === "missing") return "Skipped · not installed";
-  return "Keep existing";
+  if (item.status === "reviewable" && item.automaticInstall) return t("setup.planReadyAuto");
+  if (item.status === "reviewable") return t("setup.planReadyManual");
+  if (item.status === "confirmation-required") return t("setup.planConfirmClassC");
+  if (item.status === "manual-review") return t("setup.planManualReview");
+  if (item.status === "blocked") return t("setup.planBlocked");
+  if (item.status === "unsupported") return t("setup.planUnsupported");
+  if (item.action === "keep" && item.currentState === "missing") return t("setup.planSkippedMissing");
+  return t("setup.actionKeep");
 }
 
 function privilegeLabel(privilege: PlanItem["requiresPrivilege"]) {
-  if (privilege === "administrator") return "Administrator permission required";
-  if (privilege === "user") return "User-level install · no sudo expected";
-  return "Privilege requirement not verified";
+  if (privilege === "administrator") return t("setup.privAdmin");
+  if (privilege === "user") return t("setup.privUser");
+  return t("setup.privUnknown");
 }
 
 export function mountSetupWizard(root: HTMLDivElement) {
   root.innerHTML = `
     <main class="dm-setup" aria-labelledby="dm-setup-title">
       <header class="dm-setup-header">
-        <a href="/" class="dm-setup-back">← DevMoter FAST</a>
-        <span class="dm-setup-badge">EXPERIMENTAL · INSTALL</span>
+        <a href="/" class="dm-setup-back">${escapeHtml(t("setup.backHome"))}</a>
+        <span class="dm-setup-badge">${escapeHtml(t("setup.badge"))}</span>
       </header>
       <section class="dm-setup-intro">
-        <p class="dm-setup-eyebrow">DEV MOTER FAST SETUP</p>
-        <h1 id="dm-setup-title">Your tools, one clear plan.</h1>
-        <p class="dm-setup-lede">Installation should cost time, not expertise.</p>
-        <p class="dm-setup-note">Review first. Only approved Codex / OpenCode npm packages install automatically, into a user-owned npm prefix. Other tools stay manual.</p>
+        <p class="dm-setup-eyebrow">${escapeHtml(t("setup.eyebrow"))}</p>
+        <h1 id="dm-setup-title">${escapeHtml(t("setup.title"))}</h1>
+        <p class="dm-setup-lede">${escapeHtml(t("setup.lede"))}</p>
+        <p class="dm-setup-note">${escapeHtml(t("setup.note"))}</p>
         <div class="dm-setup-actions" data-selection-actions>
-          <button class="dm-setup-rescan" type="button" data-rescan>Rescan</button>
-          <button class="dm-setup-review" type="button" data-review disabled>Review install plan</button>
+          <button class="dm-setup-rescan" type="button" data-rescan>${escapeHtml(t("setup.rescan"))}</button>
+          <button class="dm-setup-review" type="button" data-review disabled>${escapeHtml(t("setup.reviewPlan"))}</button>
           <span class="dm-setup-scan-state" aria-live="polite" data-scan-state></span>
         </div>
       </section>
       <section class="dm-setup-environment" aria-labelledby="dm-setup-environment-title">
-        <h2 id="dm-setup-environment-title">Environment</h2>
-        <div class="dm-setup-environment-grid" data-environment><div class="dm-setup-skeleton">Checking this machine…</div></div>
+        <h2 id="dm-setup-environment-title">${escapeHtml(t("setup.envTitle"))}</h2>
+        <div class="dm-setup-environment-grid" data-environment><div class="dm-setup-skeleton">${escapeHtml(t("setup.envChecking"))}</div></div>
       </section>
       <section class="dm-setup-selection" aria-labelledby="dm-setup-selection-title" data-selection-view>
-        <h2 id="dm-setup-selection-title">Choose what to plan</h2>
-        <p class="dm-setup-section-note">Existing installs are kept. Class C and administrator installs stay manual.</p>
+        <h2 id="dm-setup-selection-title">${escapeHtml(t("setup.selectionTitle"))}</h2>
+        <p class="dm-setup-section-note">${escapeHtml(t("setup.selectionNote"))}</p>
         <div class="dm-setup-groups" data-tool-groups></div>
       </section>
       <section class="dm-setup-plan-view" aria-labelledby="dm-setup-plan-title" data-plan-view hidden>
         <div class="dm-setup-plan-heading">
-          <div><p class="dm-setup-eyebrow">REVIEW & EXECUTE</p><h2 id="dm-setup-plan-title">Review install plan</h2></div>
-          <span class="dm-setup-plan-lock">Explicit confirmation</span>
+          <div><p class="dm-setup-eyebrow">${escapeHtml(t("setup.planEyebrow"))}</p><h2 id="dm-setup-plan-title">${escapeHtml(t("setup.planTitle"))}</h2></div>
+          <span class="dm-setup-plan-lock">${escapeHtml(t("setup.planLock"))}</span>
         </div>
         <div class="dm-setup-plan-items" data-plan-items></div>
         <div class="dm-setup-plan-actions">
-          <button class="dm-setup-back-button" type="button" data-back>Back</button>
-          <button class="dm-setup-execute-button" type="button" data-execute disabled>Install reviewed tools</button>
+          <button class="dm-setup-back-button" type="button" data-back>${escapeHtml(t("common.back"))}</button>
+          <button class="dm-setup-execute-button" type="button" data-execute disabled>${escapeHtml(t("setup.installButton"))}</button>
         </div>
         <div class="dm-setup-execution-result" data-execution-result aria-live="polite"></div>
       </section>
-      <footer class="dm-setup-footer">Automatic execution is intentionally narrow: reviewed Codex/OpenCode user-level npm installs only. No sudo, arbitrary shell, browser-supplied package, or automatic Tailscale/service mutation.</footer>
+      <footer class="dm-setup-footer">${escapeHtml(t("setup.footer"))}</footer>
     </main>
   `;
 
@@ -202,9 +211,9 @@ export function mountSetupWizard(root: HTMLDivElement) {
 
   function renderEnvironment(status: SetupStatus) {
     const items = [
-      { label: status.platform.os === "linux" ? "Linux" : status.platform.os, value: status.platform.supported ? "Supported" : "Unsupported" },
-      { label: "Node.js", value: status.platform.node.available ? status.platform.node.version : "Missing" },
-      { label: "Git", value: status.platform.git.version || (status.platform.git.installed ? "Available" : "Not found") }
+      { label: status.platform.os === "linux" ? "Linux" : status.platform.os, value: status.platform.supported ? t("setup.supported") : t("setup.unsupported") },
+      { label: "Node.js", value: status.platform.node.available ? status.platform.node.version : t("setup.missing") },
+      { label: "Git", value: status.platform.git.version || (status.platform.git.installed ? t("setup.available") : t("setup.notFound")) }
     ];
     environment.replaceChildren(...items.map(item => {
       const card = document.createElement("div");
@@ -220,7 +229,7 @@ export function mountSetupWizard(root: HTMLDivElement) {
 
   function renderTools(tools: Tool[]) {
     const byId = new Map(tools.map(tool => [tool.id, tool]));
-    toolGroups.replaceChildren(...groups.map(group => {
+    toolGroups.replaceChildren(...groups().map(group => {
       const section = document.createElement("section");
       section.className = "dm-setup-group";
       const heading = document.createElement("h3");
@@ -231,7 +240,7 @@ export function mountSetupWizard(root: HTMLDivElement) {
         const tool = byId.get(id);
         const row = document.createElement("article");
         row.className = `dm-setup-tool dm-setup-state-${tool?.state || "unknown"}`;
-        const choice = tool ? actionFor(tool) : { action: null, label: "Status unknown", disabled: true, checked: false };
+        const choice = tool ? actionFor(tool) : { action: null, label: t("setup.statusUnknown"), disabled: true, checked: false };
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.className = "dm-setup-choice";
@@ -244,18 +253,21 @@ export function mountSetupWizard(root: HTMLDivElement) {
         const name = document.createElement("strong");
         name.textContent = tool?.displayName || knownNames[id];
         const status = document.createElement("span");
-        status.textContent = tool ? statusLabel(tool) : "Status unknown";
+        status.textContent = tool ? statusLabel(tool) : t("setup.statusUnknown");
         const action = document.createElement("small");
         action.textContent = choice.label;
         copy.append(name, status, action);
         if (tool?.version) {
           const version = document.createElement("small");
-          version.textContent = `Version ${tool.version}`;
+          version.textContent = t("setup.versionLabel", { version: tool.version });
           copy.append(version);
         }
         if (tool?.install.installSourceClass) {
           const source = document.createElement("small");
-          source.textContent = `Source class ${tool.install.installSourceClass} · ${tool.install.source.label}`;
+          source.textContent = t("setup.sourceClassLabel", {
+            cls: tool.install.installSourceClass,
+            label: tool.install.source.label
+          });
           copy.append(source);
         }
         row.append(checkbox, copy);
@@ -284,7 +296,9 @@ export function mountSetupWizard(root: HTMLDivElement) {
       if (item.action === "install" || item.status === "manual-review" || item.status === "blocked") {
         const source = document.createElement("p");
         source.className = "dm-setup-plan-source";
-        source.textContent = item.source ? `${item.source.label} · ${item.source.publisher} · Class ${item.installSourceClass || "?"}` : "No verified source";
+        source.textContent = item.source
+          ? t("setup.planSource", { label: item.source.label, publisher: item.source.publisher, cls: item.installSourceClass || "?" })
+          : t("setup.noVerifiedSource");
         const privilege = document.createElement("p");
         privilege.className = "dm-setup-plan-privilege";
         privilege.textContent = privilegeLabel(item.requiresPrivilege);
@@ -292,7 +306,9 @@ export function mountSetupWizard(root: HTMLDivElement) {
       } else if (item.action === "keep") {
         const kept = document.createElement("p");
         kept.className = "dm-setup-plan-privilege";
-        kept.textContent = item.detectedVersion ? `Version ${item.detectedVersion} · no changes planned` : "No changes planned";
+        kept.textContent = item.detectedVersion
+          ? t("setup.keptVersion", { version: item.detectedVersion })
+          : t("setup.noChangesPlanned");
         card.append(kept);
       }
 
@@ -311,9 +327,9 @@ export function mountSetupWizard(root: HTMLDivElement) {
         block.append(label, list);
         card.append(block);
       };
-      appendList("Planned changes", item.changes);
-      appendList("Verification", item.verification);
-      appendList("Notes", item.notes);
+      appendList(t("setup.listPlannedChanges"), item.changes);
+      appendList(t("setup.listVerification"), item.verification);
+      appendList(t("setup.listNotes"), item.notes);
       return card;
     }));
     selectionView.hidden = true;
@@ -328,10 +344,10 @@ export function mountSetupWizard(root: HTMLDivElement) {
     section.className = `dm-setup-execution dm-setup-execution-${result.status}`;
     const heading = document.createElement("strong");
     heading.textContent = result.status === "succeeded"
-      ? "Installation complete"
+      ? t("setup.execSucceeded")
       : result.status === "failed"
-        ? "Installation needs attention"
-        : "Some tools still need local action";
+        ? t("setup.execFailed")
+        : t("setup.execAction");
     section.append(heading);
 
     const list = document.createElement("div");
@@ -353,17 +369,17 @@ export function mountSetupWizard(root: HTMLDivElement) {
   async function scan() {
     rescan.disabled = true;
     review.disabled = true;
-    scanState.textContent = "Scanning…";
+    scanState.textContent = t("setup.scanning");
     try {
       const response = await fetch("/api/setup/status", { cache: "no-store", credentials: "same-origin" });
-      if (!response.ok) throw new Error(response.status === 401 ? "Sign in to scan this machine." : `Scan failed (${response.status}).`);
+      if (!response.ok) throw new Error(response.status === 401 ? t("setup.scanAuthRequired") : t("setup.scanFailed", { status: response.status }));
       const status = await response.json() as SetupStatus;
       currentStatus = status;
       renderEnvironment(status);
       renderTools(status.tools);
-      scanState.textContent = "Scan complete";
+      scanState.textContent = t("setup.scanComplete");
     } catch (error) {
-      scanState.textContent = error instanceof Error ? error.message : "Scan failed.";
+      scanState.textContent = error instanceof Error ? translateServerMessage(error.message) : t("setup.scanFailedGeneric");
     } finally {
       rescan.disabled = false;
       review.disabled = !currentStatus?.platform.supported;
@@ -373,7 +389,7 @@ export function mountSetupWizard(root: HTMLDivElement) {
   async function reviewPlan() {
     if (!currentStatus) return;
     review.disabled = true;
-    scanState.textContent = "Building preview…";
+    scanState.textContent = t("setup.buildingPreview");
     const selections: Array<{ toolId: string; action: PlanAction }> = [];
     for (const tool of currentStatus.tools) {
       const choice = actionFor(tool);
@@ -384,7 +400,7 @@ export function mountSetupWizard(root: HTMLDivElement) {
       selections.push({ toolId: tool.id, action: choice.action });
     }
     if (!selections.length) {
-      scanState.textContent = "Select at least one tool to review.";
+      scanState.textContent = t("setup.selectAtLeastOne");
       review.disabled = false;
       return;
     }
@@ -397,14 +413,14 @@ export function mountSetupWizard(root: HTMLDivElement) {
         body: JSON.stringify({ selections })
       });
       if (!response.ok) {
-        if (response.status === 401) throw new Error("Sign in to review this plan.");
+        if (response.status === 401) throw new Error(t("setup.planAuthRequired"));
         const error = await response.json().catch(() => ({})) as { error?: string };
-        throw new Error(error.error || `Plan preview failed (${response.status}).`);
+        throw new Error((error.error && translateServerMessage(error.error)) || t("setup.planFailed", { status: response.status }));
       }
       renderPlan(await response.json() as InstallPlan);
-      scanState.textContent = "Preview ready · nothing was installed";
+      scanState.textContent = t("setup.previewReady");
     } catch (error) {
-      scanState.textContent = error instanceof Error ? error.message : "Plan preview failed.";
+      scanState.textContent = error instanceof Error ? translateServerMessage(error.message) : t("setup.planFailedGeneric");
       review.disabled = false;
     }
   }
@@ -416,7 +432,7 @@ export function mountSetupWizard(root: HTMLDivElement) {
 
     execute.disabled = true;
     back.disabled = true;
-    scanState.textContent = "Installing reviewed tools…";
+    scanState.textContent = t("setup.installing");
     try {
       const response = await fetch("/api/setup/execute", {
         method: "POST",
@@ -436,13 +452,13 @@ export function mountSetupWizard(root: HTMLDivElement) {
         })
       });
       const payload = await response.json().catch(() => ({})) as InstallExecution & { error?: string };
-      if (!response.ok) throw new Error(payload.error || `Installation failed (${response.status}).`);
+      if (!response.ok) throw new Error((payload.error && translateServerMessage(payload.error)) || t("setup.installFailed", { status: response.status }));
       renderExecution(payload);
       scanState.textContent = payload.status === "succeeded"
-        ? "Installation complete · rescan to refresh status"
-        : "Installation finished with follow-up actions";
+        ? t("setup.installCompleteRescan")
+        : t("setup.installFinishedFollowup");
     } catch (error) {
-      scanState.textContent = error instanceof Error ? error.message : "Installation failed.";
+      scanState.textContent = error instanceof Error ? translateServerMessage(error.message) : t("setup.installFailedGeneric");
       execute.disabled = false;
     } finally {
       back.disabled = false;
@@ -457,7 +473,7 @@ export function mountSetupWizard(root: HTMLDivElement) {
     currentPlan = null;
     executionResult.replaceChildren();
     execute.disabled = true;
-    scanState.textContent = "Choose tools to update the preview.";
+    scanState.textContent = t("setup.backHint");
   });
   review.addEventListener("click", () => void reviewPlan());
   execute.addEventListener("click", () => void executePlan());

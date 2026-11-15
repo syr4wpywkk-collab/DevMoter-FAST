@@ -28,6 +28,7 @@ const app = document.querySelector<HTMLDivElement>("#app")!;
 // One visualViewport listener publishes --dm-viewport-height / --dm-keyboard-inset
 // and keeps focused fields above the iOS keyboard for every surface.
 startViewportSync(window);
+startI18n();
 const startupParams = new URLSearchParams(window.location.search);
 
 const requestedProject = startupParams.get("project");
