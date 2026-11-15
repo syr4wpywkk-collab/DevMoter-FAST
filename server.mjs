@@ -2,7 +2,7 @@ import { createOfficeStore, OFFICE_LIMITS } from "./server/office/store.mjs";
 import { createOfficeAi } from "./server/office/ai.mjs";
 import http from "node:http";
 import { accessSync, constants as fsConstants } from "node:fs";
-import { mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import { basename, delimiter, dirname, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
@@ -139,14 +139,14 @@ const agentRunService = createAgentRunService({
   codex
 });
 void agentRunService.ready().catch(error => {
-  console.error("Agent run service initialization failed", redactTexterrorMessage(error));
+  console.error("Agent run service initialization failed", redactText(errorMessage(error)));
 });
 const multiApiStore = createMultiApiStore({ filePath: MULTI_API_FILE, env: process.env });
 const qwenRuns = createQwenRunRegistry();
 const secretStore = createSecretStore({ filePath: SECRET_VAULT_FILE });
 const multiApiAttachments = createMultiApiAttachmentStore({ directory: MULTI_API_IMAGE_DIR });
 void multiApiAttachments.cleanup().catch(error => {
-  console.warn("multi-api attachment cleanup failed", redactTexterrorMessage(error));
+  console.warn("multi-api attachment cleanup failed", redactText(errorMessage(error)));
 });
 const passkeys = new PasskeyAuth({
   configDir: PROJECT_CONFIG_DIR, publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
@@ -165,7 +165,7 @@ const controlPlane = new ControlPlane({
       status: run?.status ?? null,
       endedAt: run?.endedAt ?? null
     }).catch(error => {
-      console.error("Control-plane lifecycle dispatch failed", redactTexterrorMessage(error));
+      console.error("Control-plane lifecycle dispatch failed", redactText(errorMessage(error)));
     });
   }
 });
@@ -364,7 +364,7 @@ codex.on("notification", event => {
       backend: "codex",
       payload: { method, params: event?.params ?? null }
     }).catch(error => {
-      console.error("Workspace event append failed", redactTexterrorMessage(error));
+      console.error("Workspace event append failed", redactText(errorMessage(error)));
     });
   }
 
@@ -384,7 +384,7 @@ codex.on("notification", event => {
       method,
       itemId: event?.params?.item?.id ?? event?.params?.itemId ?? null
     }).catch(error => {
-      console.error("after-tool hook failed", redactTexterrorMessage(error));
+      console.error("after-tool hook failed", redactText(errorMessage(error)));
     });
   }
 });
@@ -405,7 +405,7 @@ codex.on("server-request", request => {
     backend: "codex",
     payload: { id: request?.id ?? null, method, params: request?.params ?? null }
   }).catch(error => {
-    console.error("Workspace request event append failed", redactTexterrorMessage(error));
+    console.error("Workspace request event append failed", redactText(errorMessage(error)));
   });
 
   if (method === "item/commandExecution/requestApproval" || method === "item/fileChange/requestApproval") {
@@ -618,7 +618,20 @@ async function resolveProjectMarkdownPath(project, relativePath, { mustExist = f
     throw new Error("File parent escapes the project");
   }
 
-  let readTarget = target;
+  let currentDir = root;
+  const parentParts = relative(root, parent).split(sep).filter(Boolean);
+  for (const part of parentParts) {
+    currentDir = join(currentDir, part);
+    const dirInfo = await lstat(currentDir);
+    if (dirInfo.isSymbolicLink()) {
+      throw new Error("Symlinked Markdown directories are not allowed");
+    }
+    if (!dirInfo.isDirectory()) {
+      throw new Error("File parent must be a directory");
+    }
+  }
+
+  let readTarget = join(actualParent, basename(target));
   if (mustExist) {
     const actualTarget = await realpath(target);
     const targetRel = relative(root, actualTarget);
@@ -627,6 +640,21 @@ async function resolveProjectMarkdownPath(project, relativePath, { mustExist = f
     }
     if (extname(actualTarget).toLowerCase() !== ".md") throw new Error("Markdown read target must also be .md");
     readTarget = actualTarget;
+  } else {
+    let existingInfo = null;
+    try {
+      existingInfo = await lstat(readTarget);
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+    if (existingInfo) {
+      if (existingInfo.isSymbolicLink()) {
+        throw new Error("Symlinked Markdown files are not allowed");
+      }
+      if (!existingInfo.isFile()) {
+        throw new Error("Markdown write requires a regular file");
+      }
+    }
   }
 
   return { root, target: readTarget, relativePath: safeRelative };
@@ -815,8 +843,20 @@ async function projectWriteFile(id, req, res) {
       throw new Error("Markdown file is larger than 1MB");
     }
 
-    await writeFile(resolved.target, content, { encoding: "utf8", mode: 0o600 });
-    const info = await stat(resolved.target);
+    const handle = await open(
+      resolved.target,
+      fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_TRUNC | (fsConstants.O_NOFOLLOW || 0),
+      0o600
+    );
+    let info;
+    try {
+      info = await handle.stat();
+      if (!info.isFile()) throw new Error("Markdown write requires a regular file");
+      await handle.writeFile(content, "utf8");
+      info = await handle.stat();
+    } finally {
+      await handle.close();
+    }
     json(res, 200, {
       ok: true,
       path: resolved.relativePath,
@@ -1219,7 +1259,7 @@ async function executeControlTask(definition, context = {}) {
     return await executeControlTaskCore(definition, context);
   } finally {
     void userAutomation?.emitHook("after-run", hookPayload).catch(error => {
-      console.error("after-run hook failed", redactTexterrorMessage(error));
+      console.error("after-run hook failed", redactText(errorMessage(error)));
     });
   }
 }
@@ -1368,7 +1408,25 @@ async function externalAuthRoute(req, res, url) {
       json(res, 200, await authStatus(req)); return true;
     }
     if (req.method === "POST" && url.pathname === "/api/auth/local/login") {
-      const result = await externalAuth.localLogin(req, await readJson(req, 64 * 1024), AUTH_CONFIG);
+      const payload = await readJson(req, 64 * 1024);
+      const decision = await basicAuthGuard.verify(
+        req,
+        String(payload?.username ?? ""),
+        String(payload?.password ?? "")
+      );
+      if (decision.status === "locked") {
+        res.writeHead(429, {
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "no-store",
+          "retry-after": String(decision.retryAfterSec)
+        });
+        res.end(JSON.stringify({ error: "Too many authentication attempts. Try again later." }));
+        return true;
+      }
+      if (decision.status !== "ok") {
+        throw Object.assign(new Error("Invalid recovery username or password"), { status: 401 });
+      }
+      const result = await externalAuth.localLogin(req, payload, AUTH_CONFIG);
       jsonWithCookie(res, 200, { ok: true, identity: result.identity }, result.cookie); return true;
     }
     if (req.method === "GET" && url.pathname === "/api/auth/account") {
@@ -1955,15 +2013,18 @@ async function proxy(req, res) {
     return;
   }
 
-  const body =
-    req.method === "GET" || req.method === "HEAD"
-      ? undefined
-      : await new Promise((resolve, reject) => {
-          const chunks = [];
-          req.on("data", chunk => chunks.push(chunk));
-          req.on("end", () => resolve(Buffer.concat(chunks)));
-          req.on("error", reject);
-        });
+  let body;
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    try {
+      body = await readRaw(req, 10 * 1024 * 1024);
+    } catch (error) {
+      if (error?.message === "Request body too large") {
+        json(res, 413, { error: "Request body too large" });
+        return;
+      }
+      throw error;
+    }
+  }
 
   const upstreamAbort = new AbortController();
   const abortUpstream = () => {
@@ -1983,6 +2044,7 @@ async function proxy(req, res) {
         "accept": req.headers["accept"] || "*/*"
       }),
       body,
+      redirect: "error",
       signal: upstreamAbort.signal
     });
 
@@ -2903,7 +2965,7 @@ const server = http.createServer(async (req, res) => {
           configured: result?.configured !== false,
           timedOut: result?.timedOut === true
         }).catch(error => {
-          console.error("verification-complete hook failed", redactTexterrorMessage(error));
+          console.error("verification-complete hook failed", redactText(errorMessage(error)));
         });
         return result;
       });
@@ -3098,7 +3160,7 @@ const server = http.createServer(async (req, res) => {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
       try {
         const payload = await readJson(req);
-        const issued = await systemFeatures.claimPairing(payload?.code, payload?.label);
+        const issued = await systemFeatures.claimPairing(payload?.code, payload?.label, req);
         const { token, device, approvedByDeviceId } = issued;
         const { tokenHash: _tokenHash, ...publicDevice } = device;
         jsonWithCookie(
@@ -3588,6 +3650,6 @@ server.listen(PORT, HOST, () => {
     host: HOST,
     port: PORT
   }).catch(error => {
-    console.error("Control-plane startup event failed", redactTexterrorMessage(error));
+    console.error("Control-plane startup event failed", redactText(errorMessage(error)));
   });
 });

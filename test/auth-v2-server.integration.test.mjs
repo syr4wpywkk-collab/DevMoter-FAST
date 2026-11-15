@@ -420,6 +420,22 @@ test("public auth requests avoid unknown-token writes and bound pending Passkey 
     assert.equal((await fetch(optionsPath, { method: "POST", headers: { origin } })).status, 200);
     const status = await fetch(origin + "/api/auth/status", { headers: { cookie: ownerCookie } });
     assert.equal((await status.json()).authenticated, true);
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const badLogin = await fetch(`${origin}/api/auth/local/login`, {
+        method: "POST",
+        headers: { origin, "content-type": "application/json" },
+        body: JSON.stringify({ username: "devmoter", password: "wrong-recovery-password" })
+      });
+      assert.equal(badLogin.status, 401);
+    }
+    const lockedLogin = await fetch(`${origin}/api/auth/local/login`, {
+      method: "POST",
+      headers: { origin, "content-type": "application/json" },
+      body: JSON.stringify(recovery)
+    });
+    assert.equal(lockedLogin.status, 429);
+    assert.ok(Number(lockedLogin.headers.get("retry-after")) >= 1);
   } finally {
     await stop(child);
     await rm(home, { recursive: true, force: true });
