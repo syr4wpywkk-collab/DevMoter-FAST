@@ -22,6 +22,7 @@ const modules = new Map(await Promise.all(ts.preProcessFile(apiSource).importedF
   .map(async ({ fileName }) => [fileName, await import(new URL("../src/" + fileName.slice(2), import.meta.url))])));
 // These overlay tests intentionally exercise the legacy ?unifiedUI=0 view.
 modules.set("./unified-ui-mode.mjs", await import("../src/unified-ui-mode.mjs"));
+modules.set("./feature-flags.mjs", await import("../src/feature-flags.mjs"));
 const settle = () => new Promise(resolve => setImmediate(resolve));
 const presets = [{ id: "custom", name: "Custom", protocol: "openai-compatible", baseUrl: "https://provider.example/v1" }];
 const providers = [{
