@@ -62,13 +62,13 @@
 }
 .dm-mission-panel h2 { margin: 0; font-size: 15px; font-weight: 500; }
 .dm-mission-panel header button {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: var(--surface-panel);
   color: var(--text-primary);
-  font: 500 13px/1 var(--font-ui);
+  font: 500 14px/1 var(--font-ui);
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -107,7 +107,7 @@
   padding: 4px 8px;
   background: var(--surface-hover);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 12px;
 }
 .dm-mission-status:is([data-state="running"], [data-state="starting"], [data-state="available"]),
 .dm-mission-capability[data-state="available"] { color: var(--status-success); }
@@ -117,9 +117,8 @@
 .dm-mission-capability[data-state="unavailable"] { color: var(--status-error); }
 
 .dm-mission-capabilities { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
-.dm-mission-source-error,
-.dm-mission-empty { padding: 12px 0 4px; color: var(--text-secondary); font-size: 13px; }
-.dm-mission-source-error { display: grid; gap: 4px; color: var(--status-error); }
+.dm-mission-empty { padding: 16px 12px; border: 1px dashed var(--border-hairline); border-radius: 12px; color: var(--text-secondary); font-size: 13px; text-align: center; }
+.dm-mission-source-error { display: grid; gap: 4px; padding: 12px; border: 1px solid var(--status-error-border); border-radius: 12px; background: var(--status-error-surface); color: var(--status-error); }
 .dm-mission-source-error strong { font-size: 13px; font-weight: 500; }
 .dm-mission-source-error small { color: var(--text-secondary); font-size: 12px; overflow-wrap: anywhere; }
 .dm-mission-panel .dm-device-gate-compact { padding: 8px 0 4px; }
