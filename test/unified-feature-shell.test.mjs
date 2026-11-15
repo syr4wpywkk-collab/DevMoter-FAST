@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { DICTIONARIES } from "../src/i18n-core.mjs";
 
 async function source(path) {
   return readFile(new URL("../" + path, import.meta.url), "utf8");
@@ -11,7 +12,20 @@ test("unified feature shell exposes the major implemented surfaces", async () =>
   const [shell, registry, settings] = await Promise.all([source("src/app-shell.ts"), source("src/app-registry.ts"), source("src/settings.ts")]);
   assert.ok(shell.includes("getAppDefinition(id)"));
   for (const label of ["Mission Control", "Terminal", "Git", "Review", "Agents", "Sessions / Activity", "Projects", "Developer Workflows"]) assert.ok(registry.includes(label), label);
-  for (const label of ["ターミナル", "プロジェクトインデックス", "セーフティスキャン", "API Vault", "信頼済み端末", "パスキー", "ホスト一覧", "診断"]) assert.ok(settings.includes(label), label);
+  const jaRootValues = Object.entries(DICTIONARIES.ja).filter(([k]) => k.startsWith("settings.root.")).map(([, v]) => v);
+  for (const [key, label] of [
+    ["settings.root.terminal", "ターミナル"],
+    ["settings.root.index", "プロジェクトインデックス"],
+    ["settings.root.safety", "セーフティスキャン"],
+    ["settings.root.vault", "API Vault"],
+    ["settings.root.devices", "信頼済み端末"],
+    ["settings.root.passkey", "パスキー"],
+    ["settings.root.hosts", "ホスト一覧"],
+    ["settings.root.diagnostics", "診断"]
+  ]) {
+    assert.ok(settings.includes(key), key);
+    assert.ok(jaRootValues.includes(label), label);
+  }
 });
 
 test("unified feature shell targets real mounted launchers and navigation IDs", async () => {

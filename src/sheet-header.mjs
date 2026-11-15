@@ -18,6 +18,8 @@
 // the primary/close buttons. Sheets must not build their own header row.
 // Loaded standalone by tests, so the close icon is inline SVG.
 
+import { t } from "./i18n-core.mjs";
+
 const CLOSE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 
 /**
@@ -25,7 +27,7 @@ const CLOSE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" 
  * @param {{ title: string, subtitle?: string, titleId?: string, closeLabel?: string,
  *   onClose?: () => void, primary?: { label: string, onClick: () => void } | null }} options
  */
-export function createSheetHeader(doc, { title, subtitle = "", titleId = "", closeLabel = "閉じる", onClose, primary = null } = {}) {
+export function createSheetHeader(doc, { title, subtitle = "", titleId = "", closeLabel = t("common.close"), onClose, primary = null } = {}) {
   const element = doc.createElement("header");
   element.className = "dm-sheet-head";
   // Same marker as the Office dialog's three-slot header (#509), so a header

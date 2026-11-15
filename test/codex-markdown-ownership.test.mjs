@@ -1,5 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as i18nCore from "../src/i18n-core.mjs";
+
+const jaI18n = {
+  ...i18nCore,
+  getLanguage: () => "ja",
+  t: (k, p) => i18nCore.translate("ja", k, p),
+  translateServerMessage: m => i18nCore.translateServerMessage(m, "ja"),
+  formatDateTime: (v, o) => i18nCore.formatDateTime(v, o, "ja"),
+  formatTime: (v, o) => i18nCore.formatTime(v, o, "ja"),
+  formatNumber: (v, o) => i18nCore.formatNumber(v, o, "ja"),
+  formatRelativeTime: (ts, now) => i18nCore.formatRelativeTime(ts, now, "ja"),
+  tApp: (id, f) => i18nCore.tApp(id, f, "ja")
+};
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
@@ -40,7 +53,7 @@ test("workspace enhancer preserves each chat renderer and source-backed code cop
   dom.window.setInterval = () => 1;
   dom.window.setTimeout = callback => timers.push(callback);
   dom.window.exports = {};
-  dom.window.require = name => name === "./device-gate.mjs" ? deviceGate : undefined;
+  dom.window.require = name => (name === "./device-gate.mjs" ? deviceGate : name === "./i18n" ? jaI18n : name === "./speech" ? { speechRecognitionLanguage: () => "en-US" } : undefined);
   dom.window.eval(compiledWorkspace);
   const stop = dom.window.exports.startWorkspaceControl();
   t.after(stop);
@@ -110,7 +123,7 @@ test("workspace commands keep the existing theme, Context, checkpoint and extens
   dom.window.localStorage.setItem("opencode-pocket-codex-thread", "preserved-thread");
   document.body.classList.add("codex-mode");
   dom.window.exports = {};
-  dom.window.require = name => name === "./device-gate.mjs" ? deviceGate : undefined;
+  dom.window.require = name => (name === "./device-gate.mjs" ? deviceGate : name === "./i18n" ? jaI18n : name === "./speech" ? { speechRecognitionLanguage: () => "en-US" } : undefined);
   dom.window.eval(compiledWorkspace);
   const stop = dom.window.exports.startWorkspaceControl();
   t.after(stop);

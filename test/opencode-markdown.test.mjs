@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as i18nCore from "../src/i18n-core.mjs";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
@@ -73,7 +74,10 @@ async function harness(t, initialContext = []) {
     window.Function("require", "exports", code)(require, exports);
     return exports;
   };
-  const bounds = evaluate(compiledBounds, () => { throw new Error("Unexpected bounds import"); });
+  const bounds = evaluate(compiledBounds, name => {
+    if (name === "./i18n") return i18nCore;
+    throw new Error("Unexpected bounds import");
+  });
   const modules = {
     "./execution-state.mjs": execution,
     "./opencode-event-compat.mjs": events,
@@ -92,7 +96,7 @@ async function harness(t, initialContext = []) {
     "./chat-markdown.mjs": { renderChatMarkdown },
     "./bounded-transcript": bounds,
     "./opencode-chat.css": {},
-    "./i18n": { speechRecognitionLanguage: () => "en-US" },
+    "./i18n": { speechRecognitionLanguage: () => "en-US", ...i18nCore },
     "./wake-lock": { setWakeLockExecutionActive() {}, wakeLockEnabled: () => false, wakeLockSupported: () => false },
     "./safety-client": {},
     "./opencode/status": await loadPureTypeScript("opencode/status.ts"),

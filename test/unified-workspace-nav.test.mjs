@@ -7,7 +7,10 @@ import { JSDOM } from "jsdom";
 async function loadNavigator() {
   const source = await readFile(new URL("../src/unified-workspace-nav.ts", import.meta.url), "utf8");
   // Browser CSS import is intentionally omitted only from this DOM unit test.
-  const transpiled = await transform(source.replace(/import "\.\/unified-workspace-(?:nav|chat)\.css";/g, ""), {
+  const clean = source
+    .replace(/import "\.\/unified-workspace-(?:nav|chat)\.css";/g, "")
+    .replace(/from "\.\/i18n";/g, `from ${JSON.stringify(new URL("../src/i18n-core.mjs", import.meta.url).href)};`);
+  const transpiled = await transform(clean, {
     loader: "ts", format: "esm", target: "es2022"
   });
   const uri = "data:text/javascript;base64," + Buffer.from(transpiled.code).toString("base64");
@@ -331,12 +334,12 @@ test("☰ menu replaces the bottom tab bar: aria-expanded, Escape, outside tap a
     button.click();
     assert.deepEqual([...menu.querySelectorAll("[data-workspace-command]")].map(item => item.dataset.workspaceCommand),
       ["theme", "context", "checkpoints", "extensions"]);
-    assert.equal(menu.querySelector("[data-workspace-theme-value]").textContent, "システム");
+    assert.equal(menu.querySelector("[data-workspace-theme-value]").textContent, "System");
     menu.querySelector('[data-workspace-command="theme"]').click();
     assert.equal(menu.hidden, false, "theme cycles in place");
     dom.window.localStorage.setItem("devmoter-theme", "light");
     dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:theme-changed"));
-    assert.equal(menu.querySelector("[data-workspace-theme-value]").textContent, "ライト");
+    assert.equal(menu.querySelector("[data-workspace-theme-value]").textContent, "Light");
     menu.querySelector('[data-workspace-command="extensions"]').click();
     assert.equal(menu.hidden, true);
     assert.deepEqual(commands, ["theme", "extensions"]);
@@ -406,7 +409,7 @@ test("A-4/A-2: Home and Terminal are ☰ destinations; every destination closes 
     const doc = window.document;
     const menu = doc.getElementById("dmTaskFirstMenu");
     const items = [...menu.querySelectorAll("button")];
-    assert.deepEqual(items.slice(0, 6).map(item => item.textContent.trim()), ["Home", "タスク", "Chat", "Review", "Tools", "Terminal"]);
+    assert.deepEqual(items.slice(0, 6).map(item => item.textContent.trim()), ["Home", "Tasks", "Chat", "Review", "Tools", "Terminal"]);
     for (const item of [...items, menu.querySelector(".dm-task-first-menu-row")]) {
       const icon = item.querySelector("svg");
       assert.ok(icon, `${item.textContent.trim()} has an inline line icon`);

@@ -1,4 +1,17 @@
 import "./advanced.css";
+import { formatNumber, t, translateServerMessage } from "./i18n";
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatAdvError(error: unknown): string {
+  return translateServerMessage(error instanceof Error ? error.message : String(error));
+}
 
 // File-list icons from the shared line-icon set. Exact copies of APP_REGISTRY /
 // SYSTEM_ICONS (app-registry.ts); tests load this module standalone, so it cannot
@@ -38,7 +51,7 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
     }
   });
   const payload = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(payload?.error || ("Request failed (" + res.status + ")"));
+  if (!res.ok) throw new Error(translateServerMessage(payload?.error || t("advanced.requestFailed", { status: res.status })));
   return payload as T;
 }
 
@@ -88,37 +101,37 @@ function modelCompatible(model: Model, reqs: { vision: boolean; tools: boolean; 
 export function mountAdvancedTools() {
   const fab = element("button", "adv-fab");
   fab.type = "button";
-  fab.textContent = "Tools";
-  fab.setAttribute("aria-label", "Open DevMoter tools");
+  fab.textContent = t("advanced.fabLabel");
+  fab.setAttribute("aria-label", t("advanced.fabAria"));
   document.body.append(fab);
 
   const drawer = element("aside", "adv-drawer hidden");
-  drawer.setAttribute("aria-label", "DevMoter advanced tools");
+  drawer.setAttribute("aria-label", t("advanced.drawerAria"));
   drawer.setAttribute("role", "dialog");
   drawer.setAttribute("aria-modal", "true");
   drawer.innerHTML =
-    '<div class="adv-head"><div><strong>Files & preview</strong></div><button type="button" data-close aria-label="Close">×</button></div>' +
+    `<div class="adv-head"><div><strong>${escapeHtml(t("advanced.drawerTitle"))}</strong></div><button type="button" data-close aria-label="${escapeHtml(t("advanced.closeAria"))}">×</button></div>` +
     '<div class="adv-scroll">' +
-    '<section class="adv-section"><label>Project<select data-project></select></label><div class="adv-status" data-project-status></div></section>' +
-    '<section class="adv-section"><h3>Project files</h3><div class="adv-row"><button type="button" data-browser-up>↑ Up</button><code data-browser-path>/</code><button type="button" data-browser-refresh>Refresh</button></div><div class="adv-list" data-file-browser></div></section>' +
-    '<section class="adv-section"><h3>Safe file preview</h3><div class="adv-row"><input data-file-path placeholder="src/main.ts"/><button type="button" data-file-open>Preview</button></div><div class="adv-preview" data-preview></div></section>' +
-    '<section class="adv-section"><h3>URL attachment</h3><div class="adv-row"><input data-url-input inputmode="url" placeholder="https://example.com/docs"/><button type="button" data-url-preview>Preview URL</button><button type="button" data-url-attach disabled>Fetch & attach</button></div><div class="adv-status" data-url-status>URL metadata is shown before any network fetch.</div></section>' +
-    '<section class="adv-section"><h3>Generated outputs</h3><div class="adv-row"><input data-artifact-path placeholder="dist/report.json"/><button type="button" data-artifact-add>Add</button></div><input data-session placeholder="session id (optional)"/><div class="adv-list" data-artifacts></div></section>' +
-    '<section class="adv-section"><h3>Live web preview</h3><div class="adv-row"><input data-preview-port inputmode="numeric" placeholder="3000"/><button type="button" data-preview-start>Start / restart</button><button type="button" data-preview-stop>Stop</button></div><div class="adv-status" data-live-status></div><iframe class="adv-frame hidden" data-live-frame sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"></iframe></section>' +
-    '<section class="adv-section"><h3>Browser automation</h3><div class="adv-status">Opt-in · approved live preview only · isolated temporary profile · no personal browser cookies.</div><div class="adv-row"><button type="button" data-agent-browser-start>Start browser</button><button type="button" data-agent-browser-inspect>Inspect DOM</button><button type="button" data-agent-browser-stop>Stop</button></div><div class="adv-status" data-agent-browser-status>Checking…</div><pre class="adv-code hidden" data-agent-browser-result></pre></section>' +
-    '<section class="adv-section"><h3>Models</h3><div class="adv-checks"><label><input type="checkbox" data-cap="vision"/>Vision</label><label><input type="checkbox" data-cap="tools"/>Tools</label><label><input type="checkbox" data-cap="reasoning"/>Reasoning</label></div><select data-model></select><div class="adv-row"><input data-model-prompt placeholder="Test prompt for selected route"/><button type="button" data-model-run>Run</button></div><div class="adv-status" data-model-status></div><pre class="adv-code hidden" data-model-result></pre></section>' +
-    '<section class="adv-section"><h3>Directory grants</h3><div class="adv-row"><input data-grant-path placeholder="/home/me/shared"/><select data-grant-mode><option value="read">Read</option><option value="read-write">Read/write</option></select><button type="button" data-grant-add>Grant</button></div><div class="adv-list" data-grants></div></section>' +
-    '<section class="adv-section"><h3>OS sandbox</h3><div class="adv-status" data-sandbox>Checking…</div></section>' +
+    `<section class="adv-section"><label>${escapeHtml(t("advanced.projectLabel"))}<select data-project></select></label><div class="adv-status" data-project-status></div></section>` +
+    `<section class="adv-section"><h3>${escapeHtml(t("advanced.projectFilesHeading"))}</h3><div class="adv-row"><button type="button" data-browser-up>${escapeHtml(t("advanced.upBtn"))}</button><code data-browser-path>/</code><button type="button" data-browser-refresh>${escapeHtml(t("advanced.refreshBtn"))}</button></div><div class="adv-list" data-file-browser></div></section>` +
+    `<section class="adv-section"><h3>${escapeHtml(t("advanced.safePreviewHeading"))}</h3><div class="adv-row"><input data-file-path placeholder="src/main.ts"/><button type="button" data-file-open>${escapeHtml(t("advanced.previewBtn"))}</button></div><div class="adv-preview" data-preview></div></section>` +
+    `<section class="adv-section"><h3>${escapeHtml(t("advanced.urlAttachHeading"))}</h3><div class="adv-row"><input data-url-input inputmode="url" placeholder="https://example.com/docs"/><button type="button" data-url-preview>${escapeHtml(t("advanced.previewUrlBtn"))}</button><button type="button" data-url-attach disabled>${escapeHtml(t("advanced.fetchAttachBtn"))}</button></div><div class="adv-status" data-url-status>${escapeHtml(t("advanced.urlMetadataNote"))}</div></section>` +
+    `<section class="adv-section"><h3>${escapeHtml(t("advanced.generatedOutputsHeading"))}</h3><div class="adv-row"><input data-artifact-path placeholder="dist/report.json"/><button type="button" data-artifact-add>${escapeHtml(t("advanced.addBtn"))}</button></div><input data-session placeholder="${escapeHtml(t("advanced.sessionPlaceholder"))}"/><div class="adv-list" data-artifacts></div></section>` +
+    `<section class="adv-section"><h3>${escapeHtml(t("advanced.livePreviewHeading"))}</h3><div class="adv-row"><input data-preview-port inputmode="numeric" placeholder="3000"/><button type="button" data-preview-start>${escapeHtml(t("advanced.startRestartBtn"))}</button><button type="button" data-preview-stop>${escapeHtml(t("advanced.stopBtn"))}</button></div><div class="adv-status" data-live-status></div><iframe class="adv-frame hidden" data-live-frame sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"></iframe></section>` +
+    `<section class="adv-section"><h3>${escapeHtml(t("advanced.browserAutoHeading"))}</h3><div class="adv-status">${escapeHtml(t("advanced.browserAutoPolicyNote"))}</div><div class="adv-row"><button type="button" data-agent-browser-start>${escapeHtml(t("advanced.startBrowserBtn"))}</button><button type="button" data-agent-browser-inspect>${escapeHtml(t("advanced.inspectDomBtn"))}</button><button type="button" data-agent-browser-stop>${escapeHtml(t("advanced.stopBtn"))}</button></div><div class="adv-status" data-agent-browser-status>${escapeHtml(t("advanced.checking"))}</div><pre class="adv-code hidden" data-agent-browser-result></pre></section>` +
+    `<section class="adv-section"><h3>${escapeHtml(t("advanced.modelsHeading"))}</h3><div class="adv-checks"><label><input type="checkbox" data-cap="vision"/>${escapeHtml(t("advanced.capVision"))}</label><label><input type="checkbox" data-cap="tools"/>${escapeHtml(t("advanced.capTools"))}</label><label><input type="checkbox" data-cap="reasoning"/>${escapeHtml(t("advanced.capReasoning"))}</label></div><select data-model></select><div class="adv-row"><input data-model-prompt placeholder="${escapeHtml(t("advanced.modelPromptPlaceholder"))}"/><button type="button" data-model-run>${escapeHtml(t("advanced.runBtn"))}</button></div><div class="adv-status" data-model-status></div><pre class="adv-code hidden" data-model-result></pre></section>` +
+    `<section class="adv-section"><h3>${escapeHtml(t("advanced.directoryGrantsHeading"))}</h3><div class="adv-row"><input data-grant-path placeholder="/home/me/shared"/><select data-grant-mode><option value="read">${escapeHtml(t("advanced.grantRead"))}</option><option value="read-write">${escapeHtml(t("advanced.grantReadWrite"))}</option></select><button type="button" data-grant-add>${escapeHtml(t("advanced.grantBtn"))}</button></div><div class="adv-list" data-grants></div></section>` +
+    `<section class="adv-section"><h3>${escapeHtml(t("advanced.osSandboxHeading"))}</h3><div class="adv-status" data-sandbox>${escapeHtml(t("advanced.checking"))}</div></section>` +
     "</div>";
   const groups = [
-    { index: 1, id: "files", title: "Files & documents" },
-    { index: 4, id: "outputs", title: "Generated outputs" },
-    { index: 5, id: "preview", title: "Web preview & browser" },
-    { index: 7, id: "models", title: "Models & access" }
+    { index: 1, id: "files", title: t("advanced.jumpFiles") },
+    { index: 4, id: "outputs", title: t("advanced.jumpOutputs") },
+    { index: 5, id: "preview", title: t("advanced.jumpPreview") },
+    { index: 7, id: "models", title: t("advanced.jumpModels") }
   ];
   const sections = drawer.querySelectorAll<HTMLElement>(".adv-section");
   const jumpNav = element("nav", "adv-jump-nav");
-  jumpNav.setAttribute("aria-label", "Files & Preview sections");
+  jumpNav.setAttribute("aria-label", t("advanced.jumpNavAria"));
   for (const group of groups) {
     const section = sections[group.index];
     section.id = "adv-group-" + group.id;
@@ -167,7 +180,7 @@ export function mountAdvancedTools() {
       document.querySelector<HTMLTextAreaElement>("#openCodeView #ocxPromptInput")
     ].filter((node): node is HTMLTextAreaElement => Boolean(node));
     const input = candidates.find(node => !node.closest(".hidden") && !node.disabled);
-    if (!input) throw new Error("Open a Codex/OpenCode composer before attaching a URL");
+    if (!input) throw new Error(t("advanced.openComposerFirst"));
     const block = "\n\n[URL attachment: " + (title || source) + "]\nSource: " + source + "\n" + text + "\n[/URL attachment]\n";
     input.value = input.value + block;
     input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -176,10 +189,10 @@ export function mountAdvancedTools() {
 
   async function loadFileBrowser(path = currentBrowserPath) {
     if (!projectId()) {
-      fileBrowser.textContent = "Select a project first.";
+      fileBrowser.textContent = t("advanced.selectProjectFirst");
       return;
     }
-    fileBrowser.textContent = "Loading files…";
+    fileBrowser.textContent = t("advanced.loadingFiles");
     try {
       const data = await api<{
         browser: {
@@ -192,7 +205,7 @@ export function mountAdvancedTools() {
       currentBrowserPath = data.browser.path;
       browserPath.textContent = "/" + currentBrowserPath;
       fileBrowser.replaceChildren();
-      if (!data.browser.entries.length) fileBrowser.textContent = "No visible files in this directory.";
+      if (!data.browser.entries.length) fileBrowser.textContent = t("advanced.noVisibleFiles");
       for (const item of data.browser.entries) {
         const row = element("div", "adv-item");
         const open = element("button");
@@ -209,17 +222,20 @@ export function mountAdvancedTools() {
         });
         if (item.kind !== "directory" && !item.previewable) open.disabled = true;
         const meta = element("small");
-        meta.textContent = item.kind + (item.size == null ? "" : " · " + item.size.toLocaleString() + " B");
+        const kindLabel = item.kind === "directory" ? t("advanced.kindDirectory") : item.kind === "file" ? t("advanced.kindFile") : item.kind;
+        meta.textContent = item.size == null
+          ? kindLabel
+          : t("advanced.fileEntryMeta", { kind: kindLabel, size: formatNumber(item.size) });
         row.append(open, meta);
         fileBrowser.append(row);
       }
       if (data.browser.truncated) {
         const note = element("div", "adv-status");
-        note.textContent = "Directory list truncated for safety.";
+        note.textContent = t("advanced.directoryTruncated");
         fileBrowser.append(note);
       }
     } catch (error) {
-      fileBrowser.textContent = error instanceof Error ? error.message : String(error);
+      fileBrowser.textContent = formatAdvError(error);
     }
   }
 
@@ -234,10 +250,12 @@ export function mountAdvancedTools() {
         { method: "POST", body: JSON.stringify({ url: raw }) }
       );
       previewedUrl = data.preview.normalizedUrl;
-      setStatus(urlStatus, data.preview.host + ":" + data.preview.port + data.preview.path + " · no network request made yet");
+      setStatus(urlStatus, t("advanced.urlPreviewSummary", {
+        url: data.preview.host + ":" + data.preview.port + data.preview.path
+      }));
       urlAttach.disabled = false;
     } catch (error) {
-      setStatus(urlStatus, error instanceof Error ? error.message : String(error), true);
+      setStatus(urlStatus, formatAdvError(error), true);
     }
   }
 
@@ -247,7 +265,7 @@ export function mountAdvancedTools() {
       if (!previewedUrl) return;
     }
     urlAttach.disabled = true;
-    setStatus(urlStatus, "Fetching bounded public webpage…");
+    setStatus(urlStatus, t("advanced.fetchingWebpage"));
     try {
       const data = await api<{
         attachment: { name: string; source: string; size: number; mime: string };
@@ -258,16 +276,19 @@ export function mountAdvancedTools() {
         body: JSON.stringify({ url: previewedUrl })
       });
       appendUrlAttachmentToComposer(data.attachment.source, data.attachment.name, data.text);
-      setStatus(urlStatus, "Attached " + data.attachment.size.toLocaleString() + " B as inert extracted text · " + data.redirects.length + " redirect(s)");
+      setStatus(urlStatus, t("advanced.attachedUrlSummary", {
+        size: formatNumber(data.attachment.size),
+        redirects: formatNumber(data.redirects.length)
+      }));
     } catch (error) {
-      setStatus(urlStatus, error instanceof Error ? error.message : String(error), true);
+      setStatus(urlStatus, formatAdvError(error), true);
     } finally {
       urlAttach.disabled = false;
     }
   }
 
   async function loadProjects() {
-    setStatus(projectStatus, "Loading projects…");
+    setStatus(projectStatus, t("advanced.loadingProjects"));
     try {
       const data = await api<{ projects: Project[] }>("/api/projects");
       projectSelect.replaceChildren();
@@ -278,21 +299,26 @@ export function mountAdvancedTools() {
         option.disabled = project.available === false;
         projectSelect.append(option);
       }
-      setStatus(projectStatus, data.projects.length ? (data.projects.length + " project(s)") : "Register a project first.");
+      setStatus(
+        projectStatus,
+        data.projects.length
+          ? t("advanced.projectCount", { count: formatNumber(data.projects.length) })
+          : t("advanced.registerProjectFirst")
+      );
       if (projectSelect.value) await Promise.all([loadArtifacts(), loadLivePreview(), loadFileBrowser(""), loadAgentBrowser()]);
     } catch (error) {
-      setStatus(projectStatus, error instanceof Error ? error.message : String(error), true);
+      setStatus(projectStatus, formatAdvError(error), true);
     }
   }
 
   async function showPreview(path: string) {
     previewBox.replaceChildren();
     if (!projectId()) {
-      previewBox.textContent = "Select a project first.";
+      previewBox.textContent = t("advanced.selectProjectFirst");
       return;
     }
     const loading = element("div", "adv-status");
-    loading.textContent = "Loading preview…";
+    loading.textContent = t("advanced.loadingPreview");
     previewBox.append(loading);
     try {
       const data = await api<{ preview: Preview }>(
@@ -301,7 +327,7 @@ export function mountAdvancedTools() {
       previewBox.replaceChildren();
       const preview = data.preview;
       const meta = element("div", "adv-status");
-      meta.textContent = preview.name + " · " + preview.size.toLocaleString() + " bytes";
+      meta.textContent = t("advanced.previewFileMeta", { name: preview.name, size: formatNumber(preview.size) });
       previewBox.append(meta);
       if (preview.kind === "image") {
         const img = element("img");
@@ -314,13 +340,13 @@ export function mountAdvancedTools() {
         previewBox.append(pre);
       } else {
         const fallback = element("div", "adv-binary");
-        fallback.textContent = "Preview unavailable: " + preview.reason;
+        fallback.textContent = t("advanced.previewUnavailable", { reason: translateServerMessage(preview.reason) });
         previewBox.append(fallback);
       }
     } catch (error) {
       previewBox.replaceChildren();
       const message = element("div", "adv-status error");
-      message.textContent = error instanceof Error ? error.message : String(error);
+      message.textContent = formatAdvError(error);
       previewBox.append(message);
     }
   }
@@ -334,16 +360,16 @@ export function mountAdvancedTools() {
       );
       artifactList.replaceChildren();
       if (!data.artifacts.length) {
-        artifactList.textContent = "No registered outputs for this session.";
+        artifactList.textContent = t("advanced.noOutputsForSession");
         return;
       }
       for (const item of data.artifacts) {
         const row = element("div", "adv-item");
         const label = element("span");
-        label.textContent = item.name + " · " + item.size.toLocaleString() + " B";
+        label.textContent = t("advanced.artifactMeta", { name: item.name, size: formatNumber(item.size) });
         const preview = element("button");
         preview.type = "button";
-        preview.textContent = "Preview";
+        preview.textContent = t("advanced.previewBtn");
         preview.addEventListener("click", async () => {
           try {
             const payload = await api<{ preview: Preview }>(
@@ -360,20 +386,22 @@ export function mountAdvancedTools() {
               img.src = "data:" + payload.preview.mime + ";base64," + payload.preview.data;
               previewBox.append(img);
             } else {
-              previewBox.textContent = "Preview unavailable: " + payload.preview.reason;
+              previewBox.textContent = t("advanced.previewUnavailable", {
+                reason: translateServerMessage(payload.preview.reason)
+              });
             }
           } catch (error) {
-            setStatus(projectStatus, error instanceof Error ? error.message : String(error), true);
+            setStatus(projectStatus, formatAdvError(error), true);
           }
         });
         const download = element("a");
-        download.textContent = "Download";
+        download.textContent = t("advanced.downloadBtn");
         download.href = "/api/artifacts/" + encodeURIComponent(item.id) + "/download";
         row.append(label, preview, download);
         artifactList.append(row);
       }
     } catch (error) {
-      artifactList.textContent = error instanceof Error ? error.message : String(error);
+      artifactList.textContent = formatAdvError(error);
     }
   }
 
@@ -384,22 +412,22 @@ export function mountAdvancedTools() {
         "/api/projects/" + encodeURIComponent(projectId()) + "/web-preview"
       );
       if (!data.preview) {
-        setStatus(liveStatus, "Stopped");
+        setStatus(liveStatus, t("advanced.stopped"));
         liveFrame.classList.add("hidden");
         liveFrame.removeAttribute("src");
         return;
       }
-      setStatus(liveStatus, data.preview.host + ":" + data.preview.port + " · running");
+      setStatus(liveStatus, t("advanced.runningAt", { host: data.preview.host, port: data.preview.port }));
       liveFrame.src = data.preview.url;
       liveFrame.classList.remove("hidden");
     } catch (error) {
-      setStatus(liveStatus, error instanceof Error ? error.message : String(error), true);
+      setStatus(liveStatus, formatAdvError(error), true);
     }
   }
 
   async function loadAgentBrowser() {
     if (!projectId()) {
-      setStatus(agentBrowserStatus, "Select a project first.");
+      setStatus(agentBrowserStatus, t("advanced.selectProjectFirst"));
       return;
     }
     try {
@@ -410,16 +438,21 @@ export function mountAdvancedTools() {
       const capability = data.capability;
       const session = data.session;
       if (!capability.enabled) {
-        setStatus(agentBrowserStatus, "Disabled · set DEVMOTER_BROWSER_AUTOMATION=1 to opt in.");
+        setStatus(agentBrowserStatus, t("advanced.browserDisabled"));
       } else if (!capability.available) {
-        setStatus(agentBrowserStatus, "Enabled, but Chromium/Chrome was not found.", true);
+        setStatus(agentBrowserStatus, t("advanced.browserMissingBinary"), true);
       } else if (session?.active) {
-        setStatus(agentBrowserStatus, (capability.binary || "browser") + " · active · " + (session.sandboxed ? "bwrap" : "unsandboxed/preferred"));
+        setStatus(agentBrowserStatus, t("advanced.browserActiveStatus", {
+          binary: capability.binary || t("advanced.browserDefaultName"),
+          sandbox: session.sandboxed ? t("advanced.browserModeSandbox") : t("advanced.browserModeUnsandboxed")
+        }));
       } else {
-        setStatus(agentBrowserStatus, (capability.binary || "browser") + " · ready · start an approved live preview first.");
+        setStatus(agentBrowserStatus, t("advanced.browserReadyStatus", {
+          binary: capability.binary || t("advanced.browserDefaultName")
+        }));
       }
     } catch (error) {
-      setStatus(agentBrowserStatus, error instanceof Error ? error.message : String(error), true);
+      setStatus(agentBrowserStatus, formatAdvError(error), true);
     }
   }
 
@@ -431,27 +464,31 @@ export function mountAdvancedTools() {
         "/api/advanced/browser/start",
         { method: "POST", body: JSON.stringify({ projectId: projectId() }) }
       );
-      setStatus(agentBrowserStatus, "Active · " + (data.session.sandboxed ? "OS sandboxed" : "preferred mode / bwrap unavailable"));
+      setStatus(agentBrowserStatus, t("advanced.browserStartedStatus", {
+        sandbox: data.session.sandboxed ? t("advanced.browserSandboxed") : t("advanced.browserPreferredFallback")
+      }));
       await loadAgentBrowser();
     } catch (error) {
-      setStatus(agentBrowserStatus, error instanceof Error ? error.message : String(error), true);
+      setStatus(agentBrowserStatus, formatAdvError(error), true);
     }
   }
 
   async function inspectAgentBrowser() {
     if (!projectId()) return;
     agentBrowserResult.classList.remove("hidden");
-    agentBrowserResult.textContent = "Inspecting approved live preview…";
+    agentBrowserResult.textContent = t("advanced.inspectingPreview");
     try {
       const data = await api<{ inspection: { content: string; truncated: boolean; sandboxed: boolean } }>(
         "/api/advanced/browser/inspect",
         { method: "POST", body: JSON.stringify({ projectId: projectId() }) }
       );
       agentBrowserResult.textContent = data.inspection.content +
-        (data.inspection.truncated ? "\n\n[DOM output truncated by DevMoter]" : "");
-      setStatus(agentBrowserStatus, "Inspection complete · " + (data.inspection.sandboxed ? "OS sandboxed" : "preferred mode"));
+        (data.inspection.truncated ? t("advanced.domTruncated") : "");
+      setStatus(agentBrowserStatus, t("advanced.inspectionComplete", {
+        sandbox: data.inspection.sandboxed ? t("advanced.browserSandboxed") : t("advanced.browserPreferredMode")
+      }));
     } catch (error) {
-      agentBrowserResult.textContent = error instanceof Error ? error.message : String(error);
+      agentBrowserResult.textContent = formatAdvError(error);
       setStatus(agentBrowserStatus, agentBrowserResult.textContent, true);
     }
   }
@@ -464,10 +501,10 @@ export function mountAdvancedTools() {
         body: JSON.stringify({ projectId: projectId() })
       });
       agentBrowserResult.classList.add("hidden");
-      setStatus(agentBrowserStatus, "Stopped");
+      setStatus(agentBrowserStatus, t("advanced.stopped"));
       await loadAgentBrowser();
     } catch (error) {
-      setStatus(agentBrowserStatus, error instanceof Error ? error.message : String(error), true);
+      setStatus(agentBrowserStatus, formatAdvError(error), true);
     }
   }
 
@@ -482,9 +519,12 @@ export function mountAdvancedTools() {
     for (const model of models) {
       const option = document.createElement("option");
       option.value = model.providerId + "/" + model.id;
-      option.textContent =
-        (model.local ? "Local" : "Remote") + " · " + model.providerId + " · " + model.label +
-        (model.available ? "" : " (discovery unavailable)");
+      option.textContent = t("advanced.modelOptionLabel", {
+        scope: model.local ? t("advanced.modelLocal") : t("advanced.modelRemote"),
+        provider: model.providerId,
+        label: model.label,
+        suffix: model.available ? "" : t("advanced.discoveryUnavailable")
+      });
       option.disabled = !modelCompatible(model, reqs);
       modelSelect.append(option);
     }
@@ -494,7 +534,10 @@ export function mountAdvancedTools() {
     const compatible = models.filter(model => modelCompatible(model, reqs)).length;
     setStatus(
       modelStatus,
-      compatible + "/" + models.length + " compatible · capability metadata comes from server config/discovery"
+      t("advanced.modelsCompatible", {
+        compatible: formatNumber(compatible),
+        total: formatNumber(models.length)
+      })
     );
   }
 
@@ -504,7 +547,7 @@ export function mountAdvancedTools() {
       models = data.models;
       refreshModelOptions();
     } catch (error) {
-      setStatus(modelStatus, error instanceof Error ? error.message : String(error), true);
+      setStatus(modelStatus, formatAdvError(error), true);
     }
   }
 
@@ -515,16 +558,21 @@ export function mountAdvancedTools() {
       );
       grantList.replaceChildren();
       if (!data.grants.length) {
-        grantList.textContent = "No extra directory grants.";
+        grantList.textContent = t("advanced.noExtraGrants");
         return;
       }
       for (const grant of data.grants) {
         const row = element("div", "adv-item");
         const label = element("span");
-        label.textContent = grant.mode + " · " + grant.path;
+        const modeLabel = grant.mode === "read"
+          ? t("advanced.grantRead")
+          : grant.mode === "read-write"
+            ? t("advanced.grantReadWrite")
+            : grant.mode;
+        label.textContent = t("advanced.grantItemLabel", { mode: modeLabel, path: grant.path });
         const revoke = element("button");
         revoke.type = "button";
-        revoke.textContent = "Revoke";
+        revoke.textContent = t("advanced.revokeBtn");
         revoke.addEventListener("click", async () => {
           await api("/api/advanced/grants/" + encodeURIComponent(grant.id), { method: "DELETE" });
           await loadGrants();
@@ -533,7 +581,7 @@ export function mountAdvancedTools() {
         grantList.append(row);
       }
     } catch (error) {
-      grantList.textContent = error instanceof Error ? error.message : String(error);
+      grantList.textContent = formatAdvError(error);
     }
   }
 
@@ -546,15 +594,18 @@ export function mountAdvancedTools() {
       }>("/api/advanced/sandbox");
       setStatus(
         node,
-        data.backend + ": " + (data.available ? "available" : "unavailable") +
-          " · mode " + data.mode +
-          " · " + (data.enforced ? "enforced for DevMoter-owned agent tools" : "not enforced") +
-          " · external backends " + data.externalBackends +
-          (data.version ? " · " + data.version : ""),
+        t("advanced.sandboxSummary", {
+          backend: data.backend,
+          availability: data.available ? t("advanced.sandboxAvailable") : t("advanced.sandboxUnavailable"),
+          mode: data.mode,
+          enforcement: data.enforced ? t("advanced.sandboxEnforced") : t("advanced.sandboxNotEnforced"),
+          backends: data.externalBackends,
+          version: data.version ? " · " + data.version : ""
+        }),
         data.mode === "required" && !data.available
       );
     } catch (error) {
-      setStatus(node, error instanceof Error ? error.message : String(error), true);
+      setStatus(node, formatAdvError(error), true);
     }
   }
 
@@ -603,7 +654,7 @@ export function mountAdvancedTools() {
   urlInput.addEventListener("input", () => {
     previewedUrl = "";
     urlAttach.disabled = true;
-    setStatus(urlStatus, "URL changed · preview it before fetching.");
+    setStatus(urlStatus, t("advanced.urlChangedHint"));
   });
   q<HTMLButtonElement>("[data-file-open]").addEventListener("click", () =>
     void showPreview(q<HTMLInputElement>("[data-file-path]").value.trim())
@@ -622,7 +673,7 @@ export function mountAdvancedTools() {
       });
       await loadArtifacts();
     } catch (error) {
-      setStatus(projectStatus, error instanceof Error ? error.message : String(error), true);
+      setStatus(projectStatus, formatAdvError(error), true);
     }
   });
   q<HTMLButtonElement>("[data-preview-start]").addEventListener("click", async () => {
@@ -637,7 +688,7 @@ export function mountAdvancedTools() {
       });
       await loadLivePreview();
     } catch (error) {
-      setStatus(liveStatus, error instanceof Error ? error.message : String(error), true);
+      setStatus(liveStatus, formatAdvError(error), true);
     }
   });
   q<HTMLButtonElement>("[data-preview-stop]").addEventListener("click", async () => {
@@ -663,7 +714,7 @@ export function mountAdvancedTools() {
     };
     const result = q<HTMLPreElement>("[data-model-result]");
     result.classList.remove("hidden");
-    result.textContent = "Running…";
+    result.textContent = t("advanced.running");
     try {
       const payload = await api<{
         text: string;
@@ -679,10 +730,12 @@ export function mountAdvancedTools() {
         })
       });
       result.textContent =
-        payload.text + "\n\nHandled by: " +
-        payload.handledBy.providerId + "/" + payload.handledBy.model;
+        payload.text +
+        t("advanced.handledBy", {
+          model: payload.handledBy.providerId + "/" + payload.handledBy.model
+        });
     } catch (error) {
-      result.textContent = error instanceof Error ? error.message : String(error);
+      result.textContent = formatAdvError(error);
     }
   });
   q<HTMLButtonElement>("[data-grant-add]").addEventListener("click", async () => {
@@ -697,7 +750,7 @@ export function mountAdvancedTools() {
       q<HTMLInputElement>("[data-grant-path]").value = "";
       await loadGrants();
     } catch (error) {
-      grantList.textContent = error instanceof Error ? error.message : String(error);
+      grantList.textContent = formatAdvError(error);
     }
   });
 }

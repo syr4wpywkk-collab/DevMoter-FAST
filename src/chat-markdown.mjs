@@ -1,5 +1,6 @@
 import createDOMPurify from "dompurify";
 import { Marked } from "marked";
+import { t } from "./i18n-core.mjs";
 
 const purifiers = new WeakMap();
 const allowedTags = [
@@ -61,7 +62,7 @@ export function renderChatMarkdown(target, rawText, onCopy) {
       },
       image(token) {
         // Attachments have their own UI; Markdown must not load remote resources.
-        return escapeHtml(token.text || "画像");
+        return escapeHtml(token.text || t("markdown.imageFallback"));
       },
       checkbox(token) {
         return token.checked ? "☑ " : "☐ ";
@@ -122,12 +123,12 @@ export function renderChatMarkdown(target, rawText, onCopy) {
     header.className = "dm-code-head";
     const language = document.createElement("span");
     language.className = "dm-code-language";
-    language.textContent = block.language.split(/\s+/, 1)[0] || "コード";
+    language.textContent = block.language.split(/\s+/, 1)[0] || t("markdown.code");
     const copy = document.createElement("button");
     copy.className = "dm-code-copy";
     copy.type = "button";
-    copy.textContent = "コピー";
-    copy.setAttribute("aria-label", "コードをコピー");
+    copy.textContent = t("common.copy");
+    copy.setAttribute("aria-label", t("markdown.copyCodeAria"));
     copy.addEventListener("click", () => onCopy(block.source));
     header.append(language, copy);
     pre.replaceWith(wrapper);

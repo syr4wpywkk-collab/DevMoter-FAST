@@ -4,6 +4,7 @@ import type { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { createDeviceGate, isDeviceAuthError, responseError } from "./device-gate.mjs";
 import { createSheetHeader } from "./sheet-header.mjs";
+import { formatNumber, t, translateServerMessage } from "./i18n";
 
 type ProjectSummary = {
   id: string;
@@ -91,7 +92,7 @@ function terminalAuthorization(ask = false) {
   const existing = sessionStorage.getItem(TERMINAL_AUTH_KEY);
   if (existing) return existing;
   if (!ask) return "";
-  const password = window.prompt("DevMoter terminal password (DEVMOTER_AUTH_PASSWORD)");
+  const password = window.prompt(t("terminal.passwordPrompt"));
   if (!password) return "";
   const value = `Basic ${btoa(`devmoter:${password}`)}`;
   sessionStorage.setItem(TERMINAL_AUTH_KEY, value);
@@ -138,7 +139,8 @@ async function jsonOrError<T>(response: Response): Promise<T> {
 }
 
 function errorMessage(error: unknown) {
-  return typeof (error as Error | null)?.message === "string" ? (error as Error).message : String(error);
+  const raw = typeof (error as Error | null)?.message === "string" ? (error as Error).message : String(error);
+  return translateServerMessage(raw);
 }
 
 // xterm draws on a canvas, so it reads the theme tokens instead of CSS.
@@ -151,17 +153,24 @@ function terminalTheme() {
 
 function scopeSummary(rule: PermissionRule) {
   const rows = [
-    rule.scope.backend ? `backend=${rule.scope.backend}` : "",
-    rule.scope.tool ? `tool=${rule.scope.tool}` : "",
-    rule.scope.projectId ? `project=${rule.scope.projectId}` : "",
-    rule.scope.sessionId ? `session=${rule.scope.sessionId}` : "",
-    rule.scope.action ? `action=${rule.scope.action}` : ""
+    rule.scope.backend ? t("safety.scopeBackend", { value: rule.scope.backend }) : "",
+    rule.scope.tool ? t("safety.scopeTool", { value: rule.scope.tool }) : "",
+    rule.scope.projectId ? t("safety.scopeProject", { value: rule.scope.projectId }) : "",
+    rule.scope.sessionId ? t("safety.scopeSession", { value: rule.scope.sessionId }) : "",
+    rule.scope.action ? t("safety.scopeAction", { value: rule.scope.action }) : ""
   ].filter(Boolean);
   return rows.join("\n");
 }
 
+function terminalSessionStateLabel(state: string) {
+  if (state === "attached") return t("terminal.stateAttached");
+  if (state === "exited") return t("terminal.stateExited");
+  if (state === "detached") return t("terminal.stateDetached");
+  return translateServerMessage(state);
+}
+
 export function mountControlCenter() {
-  const launcher = button("⌘", "Open DevMoter tools");
+  const launcher = button("⌘", t("controlCenter.openToolsAria"));
   launcher.className = "dm-tools-launcher";
   launcher.setAttribute("aria-haspopup", "dialog");
   launcher.setAttribute("aria-expanded", "false");
@@ -169,36 +178,40 @@ export function mountControlCenter() {
   const scrim = document.createElement("button");
   scrim.type = "button";
   scrim.className = "dm-tools-scrim hidden";
-  scrim.setAttribute("aria-label", "Close DevMoter tools");
+  scrim.setAttribute("aria-label", t("controlCenter.closeToolsAria"));
   scrim.tabIndex = -1;
 
   const panel = document.createElement("aside");
   // The shared sheet frame (zcode-theme.css) starts below the unified header.
   panel.className = "dm-tools-panel dm-sheet-frame hidden";
-  panel.setAttribute("aria-label", "DevMoter tools");
+  panel.setAttribute("aria-label", t("controlCenter.toolsAria"));
   panel.setAttribute("role", "dialog");
   panel.setAttribute("aria-modal", "true");
   panel.setAttribute("aria-labelledby", "dm-tools-title");
 
   // Shared sheet header; the title names the open tab, matching the Settings
   // row that opened it.
-  const head = createSheetHeader(document, { title: "Terminal", titleId: "dm-tools-title" });
+  const head = createSheetHeader(document, { title: t("controlCenter.tab.terminal"), titleId: "dm-tools-title" });
   const close = head.closeButton;
 
   const tabs = document.createElement("div");
   tabs.className = "dm-tools-tabs";
-  const terminalTab = button("Terminal");
-  const safetyTab = button("Safety");
-  const indexTab = button("Index");
+  const terminalTab = button(t("controlCenter.tab.terminal"));
+  const safetyTab = button(t("controlCenter.tab.safety"));
+  const indexTab = button(t("controlCenter.tab.index"));
   terminalTab.classList.add("active");
   tabs.setAttribute("role", "tablist");
-  tabs.setAttribute("aria-label", "Tools sections");
+  tabs.setAttribute("aria-label", t("controlCenter.tabsAria"));
   const tabEntries = [
     [terminalTab, "terminal", "dm-tools-terminal-panel"],
     [safetyTab, "safety", "dm-tools-safety-panel"],
     [indexTab, "index", "dm-tools-index-panel"]
   ] as const;
-  const tabTitles = { terminal: "Terminal", safety: "Safety scan", index: "Project index" } as const;
+  const tabTitles = {
+    terminal: t("controlCenter.tab.terminal"),
+    safety: t("controlCenter.tab.safetyTitle"),
+    index: t("controlCenter.tab.indexTitle")
+  } as const;
   for (const [tab, name, panelId] of tabEntries) {
     tab.id = `dm-tools-${name}-tab`;
     tab.setAttribute("role", "tab");
@@ -455,11 +468,11 @@ export function mountControlCenter() {
       terminalStatus.textContent = "";
       return;
     }
-    terminalStatus.textContent = `${prefix} · ${errorMessage(error)}`;
+    terminalStatus.textContent = t("terminal.errorWithReason", { prefix, error: errorMessage(error) });
   }
 
   function showTerminalLoadError(error: unknown) {
-    showTerminalError("Could not load sessions", error);
+    showTerminalError(t("terminal.loadSessionsFailed"), error);
   }
 
   async function refreshTerminalSessions() {
@@ -472,12 +485,12 @@ export function mountControlCenter() {
     savedSessionSelect.replaceChildren();
     const placeholder = document.createElement("option");
     placeholder.value = "";
-    placeholder.textContent = "Select saved session…";
+    placeholder.textContent = t("terminal.selectSavedSession");
     savedSessionSelect.append(placeholder);
     for (const session of savedTerminalSessions.filter(item => item.persistent && !item.closed)) {
       const option = document.createElement("option");
       option.value = session.id;
-      option.textContent = `${session.name || "Terminal"} · ${session.projectName} · ${session.status || "detached"}`;
+      option.textContent = `${session.name || t("terminal.defaultName")} · ${session.projectName} · ${terminalSessionStateLabel(session.status || "detached")}`;
       option.selected = session.id === selectedId;
       savedSessionSelect.append(option);
     }
@@ -508,16 +521,16 @@ export function mountControlCenter() {
     const projectRow = document.createElement("div");
     projectRow.className = "dm-tools-row";
     const projectLabel = document.createElement("label");
-    projectLabel.textContent = "Project";
+    projectLabel.textContent = t("terminal.projectLabel");
     projectSelect = document.createElement("select");
     projectLabel.append(projectSelect);
     projectRow.append(projectLabel);
 
     const sessionLabel = document.createElement("label");
-    sessionLabel.textContent = "Saved sessions";
+    sessionLabel.textContent = t("terminal.savedSessionsLabel");
     savedSessionSelect = document.createElement("select");
     sessionLabel.append(savedSessionSelect);
-    const refreshSessions = button("Refresh");
+    const refreshSessions = button(t("common.refresh"));
     projectRow.append(sessionLabel, refreshSessions);
 
     const persistenceRow = document.createElement("div");
@@ -526,9 +539,9 @@ export function mountControlCenter() {
     persistLabel.className = "dm-terminal-persist-label";
     persistentSessionToggle = document.createElement("input");
     persistentSessionToggle.type = "checkbox";
-    persistLabel.append(persistentSessionToggle, document.createTextNode("Keep running after restart (tmux)"));
+    persistLabel.append(persistentSessionToggle, document.createTextNode(t("terminal.persistLabel")));
     const nameLabel = document.createElement("label");
-    nameLabel.textContent = "Session name";
+    nameLabel.textContent = t("terminal.sessionNameLabel");
     sessionNameInput = document.createElement("input");
     sessionNameInput.maxLength = 48;
     sessionNameInput.placeholder = "api-dev";
@@ -537,47 +550,47 @@ export function mountControlCenter() {
 
     const actions = document.createElement("div");
     actions.className = "dm-terminal-actions";
-    const start = button("Start / Reattach");
+    const start = button(t("terminal.startReattachBtn"));
     start.classList.add("primary");
-    const kill = button("Kill session");
+    const kill = button(t("terminal.killBtn"));
     kill.classList.add("danger");
-    const clearAuth = button("Forget password");
+    const clearAuth = button(t("terminal.forgetPasswordBtn"));
     actions.append(start, kill, clearAuth);
 
     terminalStatus = document.createElement("div");
     terminalStatus.className = "dm-terminal-status";
-    terminalStatus.textContent = "Not started";
+    terminalStatus.textContent = t("terminal.notStarted");
     terminalStatus.setAttribute("role", "status");
     terminalStatus.setAttribute("aria-live", "polite");
 
     terminalShell = document.createElement("div");
     terminalShell.className = "dm-terminal-shell";
-    terminalShell.setAttribute("aria-label", "Terminal output");
+    terminalShell.setAttribute("aria-label", t("terminal.outputAria"));
     terminalPlaceholder = document.createElement("div");
     terminalPlaceholder.className = "dm-terminal-placeholder";
     const placeholderTitle = document.createElement("strong");
-    placeholderTitle.textContent = "Terminal not started";
+    placeholderTitle.textContent = t("terminal.placeholderTitle");
     const placeholderCopy = document.createElement("span");
-    placeholderCopy.textContent = "Pick a project and press Start";
+    placeholderCopy.textContent = t("terminal.placeholderCopy");
     terminalPlaceholder.append(placeholderTitle, placeholderCopy);
     terminalShell.append(terminalPlaceholder);
 
     const keyRow = document.createElement("div");
     keyRow.className = "dm-key-row";
     const keys: Array<[string, string, string]> = [
-      ["Esc", "\u001b", "Escape"],
-      ["Tab", "\t", "Tab"],
-      ["Ctrl+C", "\u0003", "Send Ctrl+C"],
-      ["Ctrl+D", "\u0004", "Send Ctrl+D"],
-      ["Ctrl+Z", "\u001a", "Send Ctrl+Z"],
-      ["←", "\u001b[D", "Left arrow"],
-      ["↑", "\u001b[A", "Up arrow"],
-      ["↓", "\u001b[B", "Down arrow"],
-      ["→", "\u001b[C", "Right arrow"],
-      ["Home", "\u001b[H", "Home"],
-      ["End", "\u001b[F", "End"],
-      ["PgUp", "\u001b[5~", "Page up"],
-      ["PgDn", "\u001b[6~", "Page down"]
+      ["Esc", "\u001b", t("terminal.key.escape")],
+      ["Tab", "\t", t("terminal.key.tab")],
+      ["Ctrl+C", "\u0003", t("terminal.key.ctrlC")],
+      ["Ctrl+D", "\u0004", t("terminal.key.ctrlD")],
+      ["Ctrl+Z", "\u001a", t("terminal.key.ctrlZ")],
+      ["←", "\u001b[D", t("terminal.key.left")],
+      ["↑", "\u001b[A", t("terminal.key.up")],
+      ["↓", "\u001b[B", t("terminal.key.down")],
+      ["→", "\u001b[C", t("terminal.key.right")],
+      ["Home", "\u001b[H", t("terminal.key.home")],
+      ["End", "\u001b[F", t("terminal.key.end")],
+      ["PgUp", "\u001b[5~", t("terminal.key.pageUp")],
+      ["PgDn", "\u001b[6~", t("terminal.key.pageDown")]
     ];
     for (const [label, sequence, aria] of keys) {
       const key = button(label, aria);
@@ -587,7 +600,7 @@ export function mountControlCenter() {
 
     const note = document.createElement("div");
     note.className = "dm-tools-note";
-    note.textContent = "Runs in the project folder and keeps running when you close this sheet";
+    note.textContent = t("terminal.persistenceNote");
 
     terminalSection.append(projectRow, persistenceRow, actions, terminalStatus, terminalShell, keyRow, note);
 
@@ -611,20 +624,20 @@ export function mountControlCenter() {
     sessionNameInput.disabled = true;
     start.addEventListener("click", () => {
       setTerminalControlsBusy(true);
-      terminalStatus.textContent = "Preparing terminal…";
+      terminalStatus.textContent = t("terminal.preparing");
       void startOrReattachTerminal().catch(error => {
-        showTerminalError("Could not start terminal", error);
+        showTerminalError(t("terminal.startFailed"), error);
       }).finally(() => { setTerminalControlsBusy(false); });
     });
     kill.addEventListener("click", () => {
       setTerminalControlsBusy(true);
       void killTerminal().catch(error => {
-        terminalStatus.textContent = `Could not kill terminal · ${errorMessage(error)}`;
+        terminalStatus.textContent = t("terminal.killFailed", { error: errorMessage(error) });
       }).finally(() => { setTerminalControlsBusy(false); });
     });
     clearAuth.addEventListener("click", () => {
       sessionStorage.removeItem(TERMINAL_AUTH_KEY);
-      terminalStatus.textContent = "Stored terminal password cleared for this browser tab.";
+      terminalStatus.textContent = t("terminal.passwordCleared");
     });
     setTerminalControlsBusy = busy => {
       start.disabled = busy;
@@ -745,7 +758,10 @@ export function mountControlCenter() {
         }
         socketConnecting = false;
         if (terminalView) terminalView.options.disableStdin = false;
-        terminalStatus.textContent = `Connected · ${record.session.projectName} · ${record.session.cwd}`;
+        terminalStatus.textContent = t("terminal.connectedStatus", {
+          project: record.session.projectName,
+          cwd: record.session.cwd
+        });
         fitTerminal();
       };
       socket.onmessage = event => {
@@ -764,19 +780,19 @@ export function mountControlCenter() {
         socketConnecting = false;
         if (event.reason === "Terminal process exited.") {
           record.session.closed = true;
-          terminalStatus.textContent = "Terminal process exited.";
+          terminalStatus.textContent = t("terminal.exitedStatus");
           saveTerminalRecord(record);
         }
         if (terminalView) terminalView.options.disableStdin = true;
         if (generation !== socketGeneration || panel.classList.contains("hidden")) return;
         if (record.session.closed) return;
-        terminalStatus.textContent = "Terminal disconnected. Reconnecting…";
+        terminalStatus.textContent = t("terminal.disconnectedReconnecting");
         scheduleTerminalReconnect(generation);
       };
     } catch (error) {
       socketConnecting = false;
       if (generation !== socketGeneration || panel.classList.contains("hidden")) return;
-      terminalStatus.textContent = `Terminal reconnecting… ${errorMessage(error)}`;
+      terminalStatus.textContent = t("terminal.reconnectingWithError", { error: errorMessage(error) });
       scheduleTerminalReconnect(generation);
     } finally {
       if (!terminalSocket) socketConnecting = false;
@@ -785,7 +801,7 @@ export function mountControlCenter() {
 
   async function startOrReattachTerminal() {
     if (!activeProjectId) {
-      terminalStatus.textContent = "Register/select a project first.";
+      terminalStatus.textContent = t("terminal.selectProjectFirst");
       return;
     }
 
@@ -816,7 +832,10 @@ export function mountControlCenter() {
     terminalRecord = { session: payload.session, token: payload.token || "" };
     saveTerminalRecord(terminalRecord);
     lastSeq = 0;
-    terminalStatus.textContent = `Starting · ${payload.session.projectName} · ${payload.session.cwd}`;
+    terminalStatus.textContent = t("terminal.startingStatus", {
+      project: payload.session.projectName,
+      cwd: payload.session.cwd
+    });
     await ensureTerminalRenderer();
     terminalView?.reset();
     void connectTerminalSocket();
@@ -826,7 +845,9 @@ export function mountControlCenter() {
     const session = savedTerminalSessions.find(item => item.id === sessionId);
     if (!session) return;
     setTerminalControlsBusy(true);
-    terminalStatus.textContent = `Claiming ${session.name || "terminal session"}…`;
+    terminalStatus.textContent = t("terminal.claimingStatus", {
+      name: session.name || t("terminal.sessionFallbackName")
+    });
     try {
       const response = await terminalFetch(
         `/api/terminal/sessions/${encodeURIComponent(session.id)}/claim`,
@@ -849,7 +870,7 @@ export function mountControlCenter() {
       void connectTerminalSocket();
       await refreshTerminalSessions();
     } catch (error) {
-      showTerminalError("Could not attach session", error);
+      showTerminalError(t("terminal.attachFailed"), error);
     } finally {
       setTerminalControlsBusy(false);
     }
@@ -870,18 +891,23 @@ export function mountControlCenter() {
     saveTerminalRecord(terminalRecord);
     lastSeq = Math.min(lastSeq, payload.session.seq);
     terminalStatus.textContent = payload.session.closed
-      ? `Session closed · exit ${String(payload.session.exitCode ?? "")}`
-      : `Reattached · ${payload.session.projectName} · ${payload.session.cwd}`;
+      ? t("terminal.closedWithExit", { code: String(payload.session.exitCode ?? "") })
+      : t("terminal.reattachedStatus", {
+        project: payload.session.projectName,
+        cwd: payload.session.cwd
+      });
     await ensureTerminalRenderer();
     void connectTerminalSocket();
   }
 
   async function killTerminal() {
     if (!terminalRecord) {
-      terminalStatus.textContent = "No terminal session to kill.";
+      terminalStatus.textContent = t("terminal.noSessionToKill");
       return;
     }
-    if (terminalRecord.session.persistent && !window.confirm(`Terminate persistent session “${terminalRecord.session.name || "Terminal"}”? Its background process will stop.`)) {
+    if (terminalRecord.session.persistent && !window.confirm(t("terminal.killConfirm", {
+      name: terminalRecord.session.name || t("terminal.defaultName")
+    }))) {
       return;
     }
     const response = await terminalFetch(
@@ -896,7 +922,7 @@ export function mountControlCenter() {
     );
     await jsonOrError(response);
     disconnectTerminalSocket();
-    terminalStatus.textContent = "Terminal session killed.";
+    terminalStatus.textContent = t("terminal.killedStatus");
     saveTerminalRecord(null);
     terminalRecord = null;
   }
@@ -908,18 +934,18 @@ export function mountControlCenter() {
       const scanner = document.createElement("div");
       scanner.className = "dm-tools-card";
       const scannerTitle = document.createElement("strong");
-      scannerTitle.textContent = "Command check";
+      scannerTitle.textContent = t("safety.commandCheckHeading");
       const command = document.createElement("textarea");
-      command.setAttribute("aria-label", "Command to scan");
-      command.placeholder = "Paste a command to check";
-      const scanButton = button("Scan");
+      command.setAttribute("aria-label", t("safety.commandAria"));
+      command.placeholder = t("safety.commandPlaceholder");
+      const scanButton = button(t("safety.scanBtn"));
       scanButton.classList.add("primary");
       const scanResult = document.createElement("pre");
       scanResult.setAttribute("role", "status");
       scanResult.setAttribute("aria-live", "polite");
       scanButton.addEventListener("click", () => {
         scanButton.disabled = true;
-        scanResult.textContent = "Scanning command…";
+        scanResult.textContent = t("safety.scanning");
         void (async () => {
           try {
             const response = await fetch("/api/safety/command-scan", {
@@ -936,14 +962,18 @@ export function mountControlCenter() {
             }>(response);
             scanner.classList.toggle("dm-risk-high", payload.dangerous === true);
             scanner.classList.toggle("dm-risk-low", payload.dangerous === false);
-            const risk = typeof payload.risk === "string" && payload.risk ? payload.risk : "Unknown";
-            const returnedCommand = typeof payload.command === "string" ? payload.command : "(not returned)";
-            const reasons = Array.isArray(payload.reasons) ? payload.reasons.filter(reason => typeof reason === "string") : [];
+            const risk = typeof payload.risk === "string" && payload.risk
+              ? translateServerMessage(payload.risk)
+              : t("safety.riskUnknown");
+            const returnedCommand = typeof payload.command === "string" ? payload.command : t("safety.notReturned");
+            const reasons = Array.isArray(payload.reasons)
+              ? payload.reasons.filter(reason => typeof reason === "string").map(reason => translateServerMessage(reason))
+              : [];
             scanResult.textContent = [
-              `Risk: ${risk}`,
-              `Command: ${returnedCommand}`,
+              t("safety.riskLabel", { risk }),
+              t("safety.commandLabel", { command: returnedCommand }),
               ...reasons.map(reason => `• ${reason}`),
-              ...(typeof payload.note === "string" && payload.note ? [payload.note] : [])
+              ...(typeof payload.note === "string" && payload.note ? [translateServerMessage(payload.note)] : [])
             ].join("\n");
           } catch (error) {
             scanner.classList.remove("dm-risk-high", "dm-risk-low");
@@ -958,7 +988,7 @@ export function mountControlCenter() {
       const approvals = document.createElement("div");
       approvals.className = "dm-tools-card";
       const approvalsTitle = document.createElement("strong");
-      approvalsTitle.textContent = "Remembered approvals";
+      approvalsTitle.textContent = t("safety.rememberedApprovalsHeading");
       approvalList = document.createElement("div");
       approvalList.className = "dm-tools-list";
       approvalList.dataset.safetyApprovalList = "true";
@@ -975,17 +1005,17 @@ export function mountControlCenter() {
       const rules = payload.rules || [];
       if (!rules.length) {
         const empty = document.createElement("small");
-        empty.textContent = "No remembered approvals";
+        empty.textContent = t("safety.noRememberedApprovals");
         approvalList.append(empty);
       }
       for (const rule of rules) {
         const row = document.createElement("div");
         row.className = "dm-tools-card";
         const name = document.createElement("strong");
-        name.textContent = `${rule.scope.backend || "backend"} · ${rule.scope.tool || "tool"}`;
+        name.textContent = `${rule.scope.backend || t("safety.backendFallback")} · ${rule.scope.tool || t("safety.toolFallback")}`;
         const detail = document.createElement("pre");
         detail.textContent = scopeSummary(rule);
-        const revoke = button("Revoke");
+        const revoke = button(t("safety.revokeBtn"));
         revoke.addEventListener("click", () => {
           revoke.disabled = true;
           void (async () => {
@@ -1023,7 +1053,7 @@ export function mountControlCenter() {
     const row = document.createElement("div");
     row.className = "dm-tools-row";
     const label = document.createElement("label");
-    label.textContent = "Project";
+    label.textContent = t("index.projectLabel");
     const select = document.createElement("select");
     indexProjectSelect = select;
     renderProjectOptions();
@@ -1032,7 +1062,7 @@ export function mountControlCenter() {
     row.append(label);
 
     const excludeLabel = document.createElement("label");
-    excludeLabel.textContent = "Exclude (comma-separated)";
+    excludeLabel.textContent = t("index.excludeLabel");
     const excludes = document.createElement("input");
     excludes.placeholder = "private, fixtures/secrets";
     let excludesTouched = false;
@@ -1045,17 +1075,17 @@ export function mountControlCenter() {
 
     const actions = document.createElement("div");
     actions.className = "dm-tools-row";
-    const rebuild = button("Rebuild index");
-    const remove = button("Delete index");
-    const showMap = button("Repo map");
+    const rebuild = button(t("index.rebuildBtn"));
+    const remove = button(t("index.deleteBtn"));
+    const showMap = button(t("index.repoMapBtn"));
     actions.append(rebuild, remove, showMap);
 
     const searchLabel = document.createElement("label");
-    searchLabel.textContent = "Search";
+    searchLabel.textContent = t("index.searchLabel");
     const query = document.createElement("input");
-    query.placeholder = "Symbol, file name or phrase";
+    query.placeholder = t("index.searchPlaceholder");
     searchLabel.append(query);
-    const searchButton = button("Search");
+    const searchButton = button(t("index.searchBtn"));
 
     const status = document.createElement("div");
     status.className = "dm-terminal-status";
@@ -1064,12 +1094,12 @@ export function mountControlCenter() {
     const results = document.createElement("div");
     results.className = "dm-tools-list";
 
-    // Everyday actions first; excludes and Delete index wait under 詳細.
+    // Everyday actions first; excludes and Delete index wait under Details.
     actions.replaceChildren(rebuild, showMap);
     const advanced = document.createElement("details");
     advanced.className = "dm-tools-details";
     const advancedSummary = document.createElement("summary");
-    advancedSummary.textContent = "Details";
+    advancedSummary.textContent = t("index.detailsSummary");
     const advancedActions = document.createElement("div");
     advancedActions.className = "dm-tools-row";
     advancedActions.append(remove);
@@ -1087,7 +1117,7 @@ export function mountControlCenter() {
       if (!currentProject()) return;
       const projectId = currentProject();
       const revision = projectRevision;
-      status.textContent = "Loading index status…";
+      status.textContent = t("index.loadingStatus");
       try {
         const response = await fetch(
           `/api/projects/${encodeURIComponent(projectId)}/index/status`,
@@ -1104,8 +1134,12 @@ export function mountControlCenter() {
         if (revision !== projectRevision || projectId !== currentProject()) return;
         clearSectionGate(indexSection);
         status.textContent = payload.ready
-          ? `Ready · ${payload.files || 0} files · ${Math.round((payload.indexedBytes || 0) / 1024)} KiB · ${payload.reusedFiles || 0} reused on last rebuild`
-          : "Index not built.";
+          ? t("index.readyStatus", {
+            files: formatNumber(payload.files || 0),
+            kib: formatNumber(Math.round((payload.indexedBytes || 0) / 1024)),
+            reused: formatNumber(payload.reusedFiles || 0)
+          })
+          : t("index.notBuiltStatus");
         if (payload.exclude?.length && !excludesTouched) excludes.value = payload.exclude.join(", ");
       } catch (error) {
         if (revision === projectRevision && projectId === currentProject()) {
@@ -1134,7 +1168,7 @@ export function mountControlCenter() {
       const projectId = currentProject();
       const revision = projectRevision;
       results.replaceChildren();
-      status.textContent = "Building local index…";
+      status.textContent = t("index.buildingStatus");
       rebuild.disabled = true;
       remove.disabled = true;
       select.disabled = true;
@@ -1153,8 +1187,11 @@ export function mountControlCenter() {
         );
         const payload = await jsonOrError<{ files: number; indexedBytes: number; reusedFiles: number }>(response);
         if (revision === projectRevision && projectId === currentProject()) {
-          status.textContent =
-            `Built · ${payload.files} files · ${Math.round(payload.indexedBytes / 1024)} KiB · ${payload.reusedFiles} unchanged files reused`;
+          status.textContent = t("index.builtStatus", {
+            files: formatNumber(payload.files),
+            kib: formatNumber(Math.round(payload.indexedBytes / 1024)),
+            reused: formatNumber(payload.reusedFiles)
+          });
         }
       } catch (error) {
         if (revision === projectRevision) status.textContent = errorMessage(error);
@@ -1171,7 +1208,7 @@ export function mountControlCenter() {
       remove.disabled = true;
       rebuild.disabled = true;
       select.disabled = true;
-      status.textContent = "Deleting project index…";
+      status.textContent = t("index.deletingStatus");
       try {
         const response = await fetch(
           `/api/projects/${encodeURIComponent(projectId)}/index`,
@@ -1183,7 +1220,7 @@ export function mountControlCenter() {
         await jsonOrError(response);
         if (revision === projectRevision && projectId === currentProject()) {
           results.replaceChildren();
-          status.textContent = "Index deleted.";
+          status.textContent = t("index.deletedStatus");
         }
       } catch (error) {
         if (revision === projectRevision) status.textContent = errorMessage(error);
@@ -1198,7 +1235,7 @@ export function mountControlCenter() {
       const projectId = currentProject();
       const revision = projectRevision;
       results.replaceChildren();
-      status.textContent = "Searching local index…";
+      status.textContent = t("index.searchingStatus");
       searchButton.disabled = true;
       try {
         const response = await fetch(
@@ -1209,7 +1246,10 @@ export function mountControlCenter() {
           results?: Array<{ path: string; line: number; snippet: string; score: number }>;
         }>(response);
         if (revision !== projectRevision || projectId !== currentProject()) return;
-        status.textContent = `${(payload.results || []).length} search result${(payload.results || []).length === 1 ? "" : "s"}.`;
+        const count = (payload.results || []).length;
+        status.textContent = count === 1
+          ? t("index.searchResultsOne")
+          : t("index.searchResultsMany", { count: formatNumber(count) });
         for (const item of payload.results || []) {
           const card = document.createElement("div");
           card.className = "dm-tools-card";
@@ -1222,7 +1262,7 @@ export function mountControlCenter() {
         }
         if (!(payload.results || []).length) {
           const empty = document.createElement("small");
-          empty.textContent = "No matches.";
+          empty.textContent = t("index.noMatches");
           results.append(empty);
         }
       } catch (error) {
@@ -1237,7 +1277,7 @@ export function mountControlCenter() {
       const revision = projectRevision;
       results.replaceChildren();
       status.dataset.state = "loading";
-      status.textContent = "Loading repository map…";
+      status.textContent = t("index.loadingMapStatus");
       showMap.disabled = true;
       try {
         const response = await fetch(
@@ -1250,11 +1290,11 @@ export function mountControlCenter() {
         }>(response);
         if (revision !== projectRevision || projectId !== currentProject()) return;
         status.dataset.state = "ok";
-        status.textContent = "Repository map loaded.";
+        status.textContent = t("index.mapLoadedStatus");
         const directoryCard = document.createElement("div");
         directoryCard.className = "dm-tools-card";
         const directoryTitle = document.createElement("strong");
-        directoryTitle.textContent = "Structure";
+        directoryTitle.textContent = t("index.structureTitle");
         const directoryText = document.createElement("pre");
         directoryText.textContent = (payload.directories || [])
           .slice(0, 120)
@@ -1266,7 +1306,7 @@ export function mountControlCenter() {
         const symbolCard = document.createElement("div");
         symbolCard.className = "dm-tools-card";
         const symbolTitle = document.createElement("strong");
-        symbolTitle.textContent = "Symbols";
+        symbolTitle.textContent = t("index.symbolsTitle");
         const symbolText = document.createElement("pre");
         symbolText.textContent = (payload.symbols || [])
           .slice(0, 220)
@@ -1277,7 +1317,7 @@ export function mountControlCenter() {
       } catch (error) {
         if (revision === projectRevision) {
           status.dataset.state = "error";
-          status.textContent = `Repository map failed: ${errorMessage(error)}`;
+          status.textContent = t("index.mapFailedStatus", { error: errorMessage(error) });
         }
       } finally {
         showMap.disabled = false;

@@ -1,5 +1,5 @@
 import "./qwen-chat.css";
-import { getLanguage } from "./i18n";
+import { formatNumber, getLanguage, t, translateServerMessage } from "./i18n";
 import { SYSTEM_ICONS } from "./app-registry";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import { createSheetHeader } from "./sheet-header.mjs";
@@ -46,14 +46,16 @@ export type QwenChatController = {
 
 const PROJECT_KEY = "opencode-pocket-project";
 const DEVICE_TOKEN_KEY = "devmoter-device-token";
-// Codes for which the fix lives on the ローカル連携 (Integrations) screen.
+// Codes for which the fix lives on the Integrations screen.
 const SETUP_CODES = new Set(["not_installed", "auth"]);
 
-function t(ja: string, en: string, zhCN: string) {
-  const language = getLanguage();
-  if (language === "en") return en;
-  if (language === "zh-CN") return zhCN;
-  return ja;
+function escapeHtml(value: string) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function newId() {
@@ -71,13 +73,13 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   root.innerHTML = `
     <div class="qx-app" data-qwen-app>
       <header class="qx-topbar">
-        <button type="button" class="qx-icon-button" data-qwen-history aria-haspopup="dialog" aria-expanded="false" aria-controls="qwenHistorySheet" aria-label="${t("チャット履歴", "Chat history", "对话历史")}">${SYSTEM_ICONS.history}</button>
+        <button type="button" class="qx-icon-button" data-qwen-history aria-haspopup="dialog" aria-expanded="false" aria-controls="qwenHistorySheet" aria-label="${escapeHtml(t("qwen.chat.historyAria"))}">${SYSTEM_ICONS.history}</button>
         <div class="qx-brand">
           <strong>Qwen Code</strong>
           <small data-qwen-project></small>
         </div>
         <button type="button" class="qx-model-chip" data-qwen-model-button aria-haspopup="dialog" aria-expanded="false" aria-controls="qwenModelSheet"><span data-qwen-model-label></span>${SYSTEM_ICONS["chevron-down"]}</button>
-        <button type="button" class="qx-icon-button" data-qwen-new aria-label="${t("新しいチャット", "New chat", "新建对话")}">${SYSTEM_ICONS.plus}</button>
+        <button type="button" class="qx-icon-button" data-qwen-new aria-label="${escapeHtml(t("qwen.chat.newChatAria"))}">${SYSTEM_ICONS.plus}</button>
       </header>
       <main class="qx-main">
         <div class="qx-transcript" data-qwen-log data-i18n-skip>
@@ -90,10 +92,10 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       </main>
       <section class="qx-composer-wrap">
         <form class="qx-composer" data-qwen-form>
-          <textarea data-qwen-input rows="1" enterkeyhint="send" placeholder="${t("メッセージを入力", "Type a message", "输入消息")}" aria-label="${t("メッセージ", "Message", "消息")}"></textarea>
+          <textarea data-qwen-input rows="1" enterkeyhint="send" placeholder="${escapeHtml(t("qwen.chat.inputPlaceholder"))}" aria-label="${escapeHtml(t("qwen.chat.inputAria"))}"></textarea>
           <div class="qx-composer-foot">
             <small class="qx-status" data-qwen-status role="status" aria-live="polite"></small>
-            <button type="submit" class="qx-send" data-qwen-send aria-label="${t("送信", "Send", "发送")}">${SYSTEM_ICONS.send}</button>
+            <button type="submit" class="qx-send" data-qwen-send aria-label="${escapeHtml(t("qwen.chat.sendAria"))}">${SYSTEM_ICONS.send}</button>
           </div>
         </form>
       </section>
@@ -124,11 +126,11 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   const composerWrap = background[2];
 
   const head = createSheetHeader(document, {
-    title: t("チャット履歴", "Chat history", "对话历史"),
+    title: t("qwen.chat.historyTitle"),
     titleId: "qwenHistoryTitle",
-    closeLabel: t("閉じる", "Close", "关闭"),
+    closeLabel: t("common.close"),
     onClose: () => closeSheet(),
-    primary: { label: t("新規", "New", "新建"), onClick: () => { closeSheet(); startNewChat(); } }
+    primary: { label: t("qwen.chat.historyNew"), onClick: () => { closeSheet(); startNewChat(); } }
   });
   sheet.prepend(head.element);
 
@@ -163,7 +165,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
 
   const activeChat = () => chats.find(chat => chat.id === activeId) ?? null;
   const persist = () => {
-    if (!saveQwenChats(localStorage, chats)) notice = t("履歴を端末に保存できませんでした", "Could not save history on this device", "无法在此设备上保存历史");
+    if (!saveQwenChats(localStorage, chats)) notice = t("qwen.chat.saveHistoryFailed");
   };
   const currentProject = () => {
     const usable = projects.filter(project => project.available !== false);
@@ -179,20 +181,20 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     const chat = activeChat();
     const project = projectFor(chat);
     const name = project?.name
-      || (chat?.projectId && projectsLoaded ? t("プロジェクトが見つかりません", "Project not found", "找不到项目") : "")
-      || (projectsLoaded ? t("プロジェクトがありません", "No project", "没有项目") : t("プロジェクトを読み込み中", "Loading project", "正在加载项目"));
+      || (chat?.projectId && projectsLoaded ? t("qwen.chat.projectNotFound") : "")
+      || (projectsLoaded ? t("qwen.chat.noProject") : t("qwen.chat.loadingProject"));
     projectLabel.textContent = name;
     projectLabel.title = project?.path || name;
     welcomeText.textContent = project
-      ? t(`${project.name} でローカルの qwen を実行します`, `Runs the local qwen CLI in ${project.name}`, `在 ${project.name} 中运行本地 qwen`)
-      : t("ローカルの qwen CLI と話します", "Chat with the local qwen CLI", "与本地 qwen CLI 对话");
+      ? t("qwen.chat.welcomeProject", { project: project.name })
+      : t("qwen.chat.welcomeDefault");
   }
 
   function renderModel() {
     const current = picker.current();
-    modelLabel.textContent = qwenModelChipLabel(current);
-    const name = current ? current.name : t("Qwen Code の既定", "Qwen Code default", "Qwen Code 默认");
-    modelButton.setAttribute("aria-label", t(`モデル: ${name}`, `Model: ${name}`, `模型：${name}`));
+    modelLabel.textContent = qwenModelChipLabel(current, getLanguage());
+    const name = current ? current.name : t("qwen.picker.defaultTitle");
+    modelButton.setAttribute("aria-label", t("qwen.chat.modelButtonAria", { name }));
     modelButton.title = name;
   }
 
@@ -217,11 +219,11 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       const copy = document.createElement("button");
       copy.type = "button";
       copy.className = "qx-message-action";
-      copy.textContent = t("コピー", "Copy", "复制");
+      copy.textContent = t("common.copy");
       copy.addEventListener("click", () => {
         copyText(message.text)
-          .then(() => { copy.textContent = t("コピーしました", "Copied", "已复制"); })
-          .catch(() => { copy.textContent = t("コピーできませんでした", "Copy failed", "复制失败"); });
+          .then(() => { copy.textContent = t("common.copied"); })
+          .catch(() => { copy.textContent = t("common.copyFailed"); });
       });
       row.append(copy);
     }
@@ -230,7 +232,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       open.type = "button";
       open.className = "qx-message-action qx-setup";
       open.dataset.qwenOpenModels = "";
-      open.textContent = t("モデル選択を開く", "Open model picker", "打开模型选择");
+      open.textContent = t("qwen.chat.openModelPicker");
       open.addEventListener("click", () => picker.open(modelButton));
       row.append(open);
     }
@@ -239,7 +241,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       setup.type = "button";
       setup.className = "qx-message-action qx-setup";
       setup.dataset.qwenSetup = "";
-      setup.textContent = t("ローカル連携を開く", "Open integrations", "打开本地集成");
+      setup.textContent = t("qwen.chat.openIntegrations");
       setup.addEventListener("click", () => options.onIntegrations?.());
       row.append(setup);
     }
@@ -262,7 +264,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       if (!live!.text) {
         const wait = document.createElement("div");
         wait.className = "qx-thinking";
-        wait.textContent = t("考え中", "Thinking", "思考中");
+        wait.textContent = t("qwen.chat.thinking");
         row.append(wait);
       }
       list.append(row);
@@ -287,11 +289,11 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     if (live) {
       const seconds = Math.max(0, Math.floor((Date.now() - live.startedAt) / 1000));
       const what = !runningHere
-        ? t("別のチャットが応答中", "Another chat is replying", "另一个对话正在回复")
+        ? t("qwen.chat.otherChatReplying")
         : live.tool
-          ? t(`ツールを実行中: ${live.tool}`, `Running tool: ${live.tool}`, `正在运行工具：${live.tool}`)
-          : t("応答中", "Replying", "正在回复");
-      status.textContent = `${what} · ${seconds}${t("秒", "s", "秒")}`;
+          ? t("qwen.chat.runningTool", { tool: live.tool })
+          : t("qwen.chat.replying");
+      status.textContent = t("qwen.chat.statusWithSeconds", { what, seconds: formatNumber(seconds) });
     } else {
       status.textContent = notice;
     }
@@ -299,7 +301,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     send.classList.toggle("stop", Boolean(runningHere));
     send.innerHTML = runningHere ? SYSTEM_ICONS.stop : SYSTEM_ICONS.send;
     send.type = runningHere ? "button" : "submit";
-    send.setAttribute("aria-label", runningHere ? t("停止", "Stop", "停止") : t("送信", "Send", "发送"));
+    send.setAttribute("aria-label", runningHere ? t("qwen.chat.stopAria") : t("qwen.chat.sendAria"));
     send.disabled = runningHere ? false : isRunning || !input.value.trim();
     form.setAttribute("aria-busy", String(Boolean(runningHere)));
   }
@@ -310,7 +312,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     if (!sorted.length) {
       const empty = document.createElement("p");
       empty.className = "qx-history-empty";
-      empty.textContent = t("まだチャットはありません", "No chats yet", "还没有对话");
+      empty.textContent = t("qwen.chat.emptyHistory");
       historyList.append(empty);
       return;
     }
@@ -327,7 +329,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       title.textContent = chat.title;
       const meta = document.createElement("small");
       const project = projects.find(item => item.id === chat.projectId);
-      const running = live?.chatId === chat.id ? ` · ${t("応答中", "Replying", "正在回复")}` : "";
+      const running = live?.chatId === chat.id ? ` · ${t("qwen.chat.replying")}` : "";
       meta.textContent = `${project?.name ? `${project.name} · ` : ""}${qwenChatTime(chat.updatedAt, Date.now(), language)}${running}`;
       open.title = chat.title;
       open.append(title, meta);
@@ -336,7 +338,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       remove.type = "button";
       remove.className = "qx-icon-button qx-history-delete";
       remove.dataset.deleteChat = chat.id;
-      remove.setAttribute("aria-label", t(`「${chat.title}」を削除`, `Delete "${chat.title}"`, `删除“${chat.title}”`));
+      remove.setAttribute("aria-label", t("qwen.chat.deleteChatAria", { title: chat.title }));
       remove.innerHTML = SYSTEM_ICONS.trash;
       remove.addEventListener("click", () => deleteChat(chat.id));
       row.append(open, remove);
@@ -393,7 +395,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   function deleteChat(id: string) {
     const chat = chats.find(item => item.id === id);
     if (!chat) return;
-    if (!window.confirm(t(`「${chat.title}」を削除しますか？`, `Delete "${chat.title}"?`, `删除“${chat.title}”？`))) return;
+    if (!window.confirm(t("qwen.chat.deleteChatConfirm", { title: chat.title }))) return;
     if (live?.chatId === id) stopRun();
     chats = chats.filter(item => item.id !== id);
     if (activeId === id) activeId = null;
@@ -429,7 +431,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     // proxies that keep the upstream request open.
     void fetch("/api/qwen/chat/cancel", { method: "POST", headers: requestHeaders(), body: JSON.stringify({ runId: run.runId }) }).catch(() => {});
     const partial: QwenChatMessage[] = run.text ? [{ role: "assistant", text: run.text }] : [];
-    finishRun(run, [...partial, { role: "error", text: t("停止しました", "Stopped", "已停止"), code: "cancelled" }]);
+    finishRun(run, [...partial, { role: "error", text: t("qwen.chat.stoppedMessage"), code: "cancelled" }]);
   }
 
   async function submit() {
@@ -439,8 +441,8 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     const project = projectFor(chat);
     if (!project) {
       notice = chat?.projectId
-        ? t("このチャットのプロジェクトが見つかりません", "This chat's project was not found", "找不到此对话的项目")
-        : t("先にプロジェクトを選んでください", "Choose a project first", "请先选择项目");
+        ? t("qwen.chat.chatProjectNotFound")
+        : t("qwen.chat.chooseProjectFirst");
       renderStatus();
       return;
     }
@@ -457,8 +459,8 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     // A resumed qwen session can switch models (qwen's /model does the same);
     // say so in the transcript so the change is visible later.
     if (chat.messages.length && (chat.model ?? "") !== modelKey) {
-      const name = model ? model.name.replace(/^\[[^\]]+\]\s*/, "") || model.id : t("Qwen Code の既定", "Qwen Code default", "Qwen Code 默认");
-      chat.messages.push({ role: "note", text: t(`ここから ${name} で応答します`, `Replies use ${name} from here`, `从这里开始使用 ${name} 回复`) });
+      const name = model ? model.name.replace(/^\[[^\]]+\]\s*/, "") || model.id : t("qwen.picker.defaultTitle");
+      chat.messages.push({ role: "note", text: t("qwen.chat.modelSwitchNote", { name }) });
     }
     chat.model = modelKey;
     chat.messages.push({ role: "user", text: prompt });
@@ -484,7 +486,9 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       });
       if (!res.ok || !res.body) {
         const payload = await res.json().catch(() => ({}));
-        if (!run.stopped) finishRun(run, fail(String(payload?.error || `HTTP ${res.status}`), String(payload?.code || "failed")));
+        if (!run.stopped) {
+          finishRun(run, fail(translateServerMessage(payload?.error || t("common.httpError", { status: res.status })), String(payload?.code || "failed")));
+        }
         return;
       }
       const reader = res.body.getReader();
@@ -506,9 +510,9 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
         } else if (event.type === "done") {
           if (event.sessionId) target.sessionId = event.sessionId;
           const text = run.text || event.text;
-          outcome = [{ role: "assistant", text: text || t("（空の応答）", "(empty reply)", "（空回复）") }];
+          outcome = [{ role: "assistant", text: text || t("qwen.chat.emptyReply") }];
         } else if (event.type === "error") {
-          outcome = fail(event.error, event.code);
+          outcome = fail(translateServerMessage(event.error), event.code);
         }
       };
       for (;;) {
@@ -517,10 +521,10 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
         for (const event of lines.push(decoder.decode(value, { stream: true }))) handle(event as QwenEvent);
       }
       for (const event of lines.flush()) handle(event as QwenEvent);
-      if (!run.stopped) finishRun(run, outcome ?? fail(t("接続が切れました。応答は途中までです", "The connection closed before the reply finished", "连接已断开，回复不完整")));
+      if (!run.stopped) finishRun(run, outcome ?? fail(t("qwen.chat.connectionClosed")));
     } catch (error) {
       if (run.stopped) return;
-      finishRun(run, fail(error instanceof Error ? error.message : String(error)));
+      finishRun(run, fail(translateServerMessage(error instanceof Error ? error.message : String(error))));
     }
   }
 

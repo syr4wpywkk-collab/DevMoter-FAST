@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as i18nCore from "../src/i18n-core.mjs";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
@@ -65,7 +66,7 @@ function mount(t, { deferPresets = false } = {}) {
     throw new Error(`Unexpected API request: ${path}`);
   };
   dom.window.require = name => {
-    if (name === "./i18n") return { getLanguage: () => "en" };
+    if (name === "./i18n") return i18nCore;
     if (name.endsWith(".css")) return {};
     if (name === "./device-gate.mjs") return deviceGate;
     if (modules.has(name)) return modules.get(name);
@@ -256,7 +257,7 @@ test("theme controls follow external Settings changes and Context describes disp
   assert.equal(dom.window.document.documentElement.dataset.devmoterThemeMode,'system');
   command('context');
   assert.equal(query('.dm-panel [data-compact]').disabled, true);
-  assert.match(query('.dm-panel').textContent, /API Chatの会話履歴はこの機能の対象外/);
-  assert.match(query('.dm-panel').textContent, /モデルの上限.*取得していません/);
-  assert.match(query('.dm-panel').textContent, /料金削減は行いません/);
+  assert.match(query('.dm-panel').textContent, /API Chat history is not covered/);
+  assert.match(query('.dm-panel').textContent, /model limits are not fetched/);
+  assert.match(query('.dm-panel').textContent, /reduce tokens\/cost/);
 });

@@ -2,6 +2,8 @@
 // with the qwen session id used for `--resume`. Pure helpers so tests can load
 // them standalone.
 
+import { formatRelativeTime, t } from "./i18n-core.mjs";
+
 export const QWEN_CHATS_KEY = "devmoter-qwen-chats";
 // The first Qwen Code chat (#530) kept one resume id under this key.
 export const LEGACY_QWEN_SESSION_KEY = "devmoter-qwen-session";
@@ -19,7 +21,7 @@ export function isQwenSessionId(value) {
 
 export function qwenChatTitle(text) {
   const clean = String(text || "").replace(/\s+/g, " ").trim();
-  if (!clean) return "新しいチャット";
+  if (!clean) return t("qwenStore.newChat");
   const chars = Array.from(clean);
   return chars.length > TITLE_LIMIT ? `${chars.slice(0, TITLE_LIMIT - 1).join("")}…` : clean;
 }
@@ -29,7 +31,7 @@ function newId() {
 }
 
 export function createQwenChat(projectId = "", now = Date.now()) {
-  return { id: newId(), title: "新しいチャット", sessionId: null, projectId: String(projectId || ""), updatedAt: now, messages: [] };
+  return { id: newId(), title: t("qwenStore.newChat"), sessionId: null, projectId: String(projectId || ""), updatedAt: now, messages: [] };
 }
 
 function cleanMessage(value) {
@@ -71,7 +73,7 @@ export function loadQwenChats(storage) {
     if (legacy !== null) {
       storage.removeItem(LEGACY_QWEN_SESSION_KEY);
       if (isQwenSessionId(legacy) && !chats.some(chat => chat.sessionId === legacy)) {
-        chats.push({ ...createQwenChat(), title: "以前のチャット", sessionId: legacy, updatedAt: 1 });
+        chats.push({ ...createQwenChat(), title: t("qwenStore.previousChat"), sessionId: legacy, updatedAt: 1 });
       }
     }
   } catch {
@@ -95,17 +97,8 @@ export function saveQwenChats(storage, chats) {
 }
 
 // Relative time for the last week, then an absolute date.
-export function qwenChatTime(updatedAt, now = Date.now(), locale = "ja") {
-  const diff = Math.max(0, now - updatedAt);
-  const minute = 60_000, hour = 60 * minute, day = 24 * hour;
-  if (diff >= 7 * day) {
-    return new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric" }).format(new Date(updatedAt));
-  }
-  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
-  if (diff < minute) return rtf.format(0, "second");
-  if (diff < hour) return rtf.format(-Math.floor(diff / minute), "minute");
-  if (diff < day) return rtf.format(-Math.floor(diff / hour), "hour");
-  return rtf.format(-Math.floor(diff / day), "day");
+export function qwenChatTime(updatedAt, now = Date.now(), locale = undefined) {
+  return formatRelativeTime(updatedAt, now, locale);
 }
 
 // Splits a streamed NDJSON body into parsed objects across chunk boundaries.

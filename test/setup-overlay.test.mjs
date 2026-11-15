@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as i18nCore from "../src/i18n-core.mjs";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import ts from "typescript";
@@ -57,7 +58,7 @@ function panelHarness({ dismissed = false } = {}) {
   const exports = {};
   vm.runInNewContext(compiled, {
     exports,
-    require: name => name === "./push-readiness.js" ? pushReadiness : {},
+    require: name => (name === "./push-readiness.js" ? pushReadiness : name === "./i18n" ? i18nCore : {}),
     window,
     document: {
       createElement: () => root,

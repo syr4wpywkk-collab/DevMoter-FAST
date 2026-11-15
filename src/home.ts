@@ -1,6 +1,15 @@
 import "./home.css";
 import { APP_REGISTRY, type AppId, type AppDefinition } from "./app-registry";
 import { mountHomeBackendShortcuts, type ChatBackend } from "./react/home-backend-shortcuts";
+import { formatDateTime, t, tApp } from "./i18n";
+
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 type HomeOptions = {
   onLaunchApp: (id: AppId) => void;
@@ -27,34 +36,16 @@ const HOME_APPS: readonly AppDefinition[] = HOME_ORDER.map(id => {
   return entry;
 });
 
-const HOME_LABELS: Record<AppId, string> = {
-  chat: "チャット",
-  office: "文書",
-  projects: "プロジェクト",
-  "mission-control": "状況",
-  knowledge: "ナレッジ",
-  terminal: "ターミナル",
-  git: "Git",
-  review: "レビュー",
-  agents: "エージェント",
-  sessions: "セッション・実行履歴",
-  browser: "ブラウザー",
-  automation: "自動化",
-  "developer-workflows": "開発ワークフロー"
-};
-
 function homeLabel(app: AppDefinition): string {
-  return HOME_LABELS[app.id] || app.title;
+  return tApp(app.id, "title") || app.title;
 }
 
-const HOME_PREVIEW_MESSAGES: Partial<Record<AppId, string>> = {
-  knowledge: "ナレッジ機能は準備中です。専用の画面は今後追加予定です。",
-  browser: "ブラウザーの独立した画面はまだありません。サイドバーの「ファイルとプレビュー」をお使いください。"
-};
+function homeDescription(app: AppDefinition): string {
+  return tApp(app.id, "shortDescription") || app.shortDescription;
+}
 
 function homePreviewMessage(app: AppDefinition): string {
-  if (HOME_PREVIEW_MESSAGES[app.id]) return HOME_PREVIEW_MESSAGES[app.id]!;
-  return app.previewMessage || `${homeLabel(app)}は現在利用できません。`;
+  return tApp(app.id, "previewMessage") || app.previewMessage || t("apps.unavailable", { title: homeLabel(app) });
 }
 
 const pilotDisposers = new WeakMap<HTMLElement, () => void>();
@@ -91,7 +82,7 @@ function availableStorage(win: Window | null): Storage | undefined {
 }
 
 function recentTime(time: number): string {
-  return new Date(time).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return formatDateTime(time, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
@@ -114,42 +105,42 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
         '<div class="dm-home-identity">',
           '<div class="dm-home-brand-mark" aria-hidden="true">D</div>',
           '<div class="dm-home-brand-copy">',
-            '<h1 id="devmoterHomeTitle" tabindex="-1">作業スペース</h1>',
+            `<h1 id="devmoterHomeTitle" tabindex="-1">${escapeHtml(t("home.title"))}</h1>`,
           '</div>',
         '</div>',
         '<div class="dm-home-header-actions">',
-          '<span class="dm-home-health" data-home-health data-state="checking" role="status" aria-live="polite"><span class="dm-home-health-dot" aria-hidden="true"></span><span data-home-health-label>接続状況を確認中</span></span>',
-          '<button class="dm-home-search-trigger" type="button" data-home-search-toggle aria-controls="dmHomeSearchPanel" aria-expanded="false" aria-label="アプリを検索">',
-          '<span class="dm-home-search-trigger-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.5"></circle><path d="m15.6 15.6 4.1 4.1"></path></svg></span><strong>検索</strong><kbd>⌘ K</kbd>',
+          `<span class="dm-home-health" data-home-health data-state="checking" role="status" aria-live="polite"><span class="dm-home-health-dot" aria-hidden="true"></span><span data-home-health-label>${escapeHtml(t("home.healthChecking"))}</span></span>`,
+          `<button class="dm-home-search-trigger" type="button" data-home-search-toggle aria-controls="dmHomeSearchPanel" aria-expanded="false" aria-label="${escapeHtml(t("home.searchAppsAria"))}">`,
+          `<span class="dm-home-search-trigger-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.5"></circle><path d="m15.6 15.6 4.1 4.1"></path></svg></span><strong>${escapeHtml(t("home.searchTrigger"))}</strong><kbd>⌘ K</kbd>`,
           '</button>',
         '</div>',
       '</header>',
       '<div class="dm-home-search-panel hidden" id="dmHomeSearchPanel">',
-        '<label for="dmHomeSearch">アプリを検索</label>',
+        `<label for="dmHomeSearch">${escapeHtml(t("home.searchAppsAria"))}</label>`,
         '<div class="dm-home-search-row">',
-          '<input id="dmHomeSearch" data-home-search type="search" autocomplete="off" placeholder="チャット、Git、ターミナルなどを検索" />',
-          '<button type="button" data-home-search-close aria-label="検索を閉じる">×</button>',
+          `<input id="dmHomeSearch" data-home-search type="search" autocomplete="off" placeholder="${escapeHtml(t("home.searchPlaceholder"))}" />`,
+          `<button type="button" data-home-search-close aria-label="${escapeHtml(t("home.searchCloseAria"))}">×</button>`,
         '</div>',
       '</div>',
       '<section class="dm-home-section dm-home-quick-section" aria-labelledby="dm-home-quick-title">',
         '<div class="dm-home-section-heading">',
-          '<h2 id="dm-home-quick-title">クイックアクション</h2>',
+          `<h2 id="dm-home-quick-title">${escapeHtml(t("home.quickActions"))}</h2>`,
         '</div>',
         '<div class="dm-home-quick-actions" data-home-quick-actions></div>',
         '<div data-home-react-pilot></div>',
       '</section>',
       '<section class="dm-home-section" aria-labelledby="dm-home-apps-title">',
         '<div class="dm-home-section-heading">',
-          '<h2 id="dm-home-apps-title">ツール</h2>',
+          `<h2 id="dm-home-apps-title">${escapeHtml(t("home.toolsHeading"))}</h2>`,
           '<span class="dm-home-section-note" data-home-app-count></span>',
         '</div>',
         '<div class="dm-home-app-grid" data-home-app-grid></div>',
-        '<p class="dm-home-empty hidden" data-home-no-results>該当するアプリはありません。</p>',
+        `<p class="dm-home-empty hidden" data-home-no-results>${escapeHtml(t("home.noResults"))}</p>`,
       '</section>',
       '<section class="dm-home-section dm-home-activity" aria-labelledby="dm-home-activity-title" data-home-recent-section hidden>',
         '<div class="dm-home-section-heading">',
-          '<h2 id="dm-home-activity-title">最近</h2>',
-          '<button type="button" class="dm-home-history-link" data-home-sessions>セッション履歴 <span aria-hidden="true">↗</span></button>',
+          `<h2 id="dm-home-activity-title">${escapeHtml(t("home.recentHeading"))}</h2>`,
+          `<button type="button" class="dm-home-history-link" data-home-sessions>${escapeHtml(t("home.sessionHistoryLink"))} <span aria-hidden="true">↗</span></button>`,
         '</div>',
         '<div class="dm-home-recent-grid" data-home-recent></div>',
       '</section>',
@@ -188,7 +179,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       button.type = "button";
       button.className = "dm-home-recent-card";
       button.dataset.homeRecentApp = app.id;
-      button.setAttribute("aria-label", homeLabel(app) + "をもう一度開く");
+      button.setAttribute("aria-label", t("home.reopenAppAria", { title: homeLabel(app) }));
       const top = document.createElement("span");
       top.className = "dm-home-recent-top";
       const icon = document.createElement("span");
@@ -215,7 +206,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     button.type = "button";
     button.className = "dm-home-quick-action";
     button.dataset.homeQuickAction = id;
-    button.setAttribute("aria-label", homeLabel(app) + "を開く");
+    button.setAttribute("aria-label", t("home.openAppAria", { title: homeLabel(app) }));
     const icon = document.createElement("span");
     icon.className = "dm-home-quick-action-icon";
     icon.innerHTML = app.icon; // static SVG from the App Registry
@@ -237,10 +228,11 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     button.type = "button";
     button.className = "dm-home-app-card";
     button.dataset.homeApp = app.id;
-    button.dataset.homeSearchable = [homeLabel(app), app.title, app.id, app.shortDescription, app.category].join(" ").toLocaleLowerCase();
-    button.title = app.shortDescription;
-    const state = app.availability === "preview" ? "プレビュー" : app.availability === "unavailable" ? "利用不可" : "";
-    button.setAttribute("aria-label", homeLabel(app) + (state ? "、" + state : ""));
+    const desc = homeDescription(app);
+    button.dataset.homeSearchable = [homeLabel(app), app.title, app.id, desc, app.shortDescription, app.category].join(" ").toLocaleLowerCase();
+    button.title = desc;
+    const state = app.availability === "preview" ? t("home.statePreview") : app.availability === "unavailable" ? t("home.stateUnavailable") : "";
+    button.setAttribute("aria-label", state ? t("home.appStateAria", { title: homeLabel(app), state }) : homeLabel(app));
     // Browser's preview remains partial, but now has a real Files & Preview destination.
     if (state && app.id !== "browser") button.setAttribute("aria-disabled", "true");
     if (app.availability === "unavailable") button.disabled = true;
@@ -277,7 +269,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       button.classList.toggle("hidden", !matches);
       if (matches) visible++;
     }
-    count.textContent = `${visible}件`;
+    count.textContent = t("home.appCount", { count: visible });
     noResults.classList.toggle("hidden", visible > 0);
   };
 
@@ -339,7 +331,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     if (typeof win?.fetch !== "function") return;
     const serial = ++healthSerial;
     health.dataset.state = "checking";
-    healthLabel.textContent = "接続状況を確認中";
+    healthLabel.textContent = t("home.healthChecking");
     try {
       const response = await win.fetch("/api/health", { credentials: "same-origin", cache: "no-store" });
       if (!response.ok) throw new Error("Health HTTP " + response.status);
@@ -352,11 +344,11 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       const count = Number(backends.opencode.online) + Number(backends.codex.online);
       health.dataset.state = count === 2 ? "online" : count === 1 ? "partial" : "offline";
       healthLabel.textContent = "OpenCode " + (backends.opencode.online ? "●" : "○") + " / Codex " + (backends.codex.online ? "●" : "○");
-      health.title = "サーバーが報告する実際の接続状態";
+      health.title = t("home.healthTitle");
     } catch {
       if (serial !== healthSerial || !target.isConnected) return;
       health.dataset.state = "unknown";
-      healthLabel.textContent = "接続状況を取得できません";
+      healthLabel.textContent = t("home.healthUnavailable");
     }
   };
   const onSurfaceChanged = (event: Event) => {

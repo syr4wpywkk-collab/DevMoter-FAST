@@ -1,5 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as i18nCore from "../src/i18n-core.mjs";
+
+const jaI18n = {
+  ...i18nCore,
+  getLanguage: () => "ja",
+  t: (k, p) => i18nCore.translate("ja", k, p),
+  translateServerMessage: m => i18nCore.translateServerMessage(m, "ja"),
+  formatDateTime: (v, o) => i18nCore.formatDateTime(v, o, "ja"),
+  formatTime: (v, o) => i18nCore.formatTime(v, o, "ja"),
+  formatNumber: (v, o) => i18nCore.formatNumber(v, o, "ja"),
+  formatRelativeTime: (ts, now) => i18nCore.formatRelativeTime(ts, now, "ja"),
+  tApp: (id, f) => i18nCore.tApp(id, f, "ja")
+};
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
@@ -30,19 +43,19 @@ test("native failed turn reason reaches the Codex failure UI", () => {
   const eventPath = source.slice(start, end);
   assert.match(eventPath, /if \(finalState === "failed"\)[\s\S]*?completedFailure = normalizeCodexSendError\(turn\.error \?\? params\?\.error \?\? \{\}\)/);
   assert.match(source, /normalizeCodexSendError\(error\)/);
-  assert.match(source, /`Category: \$\{normalized\.category\}`/);
-  assert.match(source, /`Reason: \$\{normalized\.reason\}`/);
+  assert.match(source, /t\("codex\.sendError\.detailCategory", \{ value: localizedCategory \}\)/);
+  assert.match(source, /t\("codex\.sendError\.detailReason", \{ value: localizedReason \}\)/);
 });
 
 test("failed send exposes a restore action and opens app Diagnostics without resending", () => {
   const start = source.indexOf("function addCodexSendFailure(");
   const end = source.indexOf("function addMcpToolResult(", start);
   const failureUi = source.slice(start, end);
-  assert.match(failureUi, /textContent = "入力に戻す"/);
+  assert.match(failureUi, /textContent = t\("codex\.sendError\.restoreInput"\)/);
   assert.match(failureUi, /promptInput\.value\.trim\(\) \|\| pendingAttachments\.length \|\| selectedContextRefs\.length/);
   assert.match(failureUi, /activeThreadId !== retryDraft\.threadId/);
   assert.match(failureUi, /detail: \{ page: "diagnostics" \}/);
-  assert.match(failureUi, /textContent = "Diagnostics"/);
+  assert.match(failureUi, /textContent = t\("codex\.sendError\.diagnostics"\)/);
   assert.doesNotMatch(failureUi, /void sendMessage\(\)/);
 });
 
@@ -101,7 +114,7 @@ test("native completion reason survives the thread/read transcript replacement",
 
   const require = name => {
     if (modules.has(name)) return modules.get(name);
-    if (name === "./i18n") return { speechRecognitionLanguage: () => "en-US" };
+    if (name === "./i18n") return { speechRecognitionLanguage: () => "en-US", ...jaI18n };
     if (name === "./dev-workflows-ui") return { createDevWorkflowPanel: () => ({ show: async () => {} }) };
     if (name === "./mcp-result") return { isMcpToolItem: () => false, mcpToolSummary: () => ({}), normalizeStructuredMcpResult: value => ({ value, rawText: "", truncated: false }) };
     if (name === "./bounded-transcript") return { enforceTranscriptLimit() {} };

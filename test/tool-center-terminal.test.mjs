@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as i18nCore from "../src/i18n-core.mjs";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import ts from "typescript";
@@ -8,7 +9,7 @@ import * as deviceGate from "../src/device-gate.mjs";
 import * as sheetHeader from "../src/sheet-header.mjs";
 
 const source = await readFile(new URL("../src/control-center.ts", import.meta.url), "utf8");
-const compiled = ts.transpileModule(source.replace(/^import (?!.*(device-gate|sheet-header)).*;\s*$/gm, ""), {
+const compiled = ts.transpileModule(source.replace(/^import (?!.*(device-gate|sheet-header|i18n)).*;\s*$/gm, ""), {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
 }).outputText;
 
@@ -97,7 +98,7 @@ function mount({ fetch, confirm = () => true, prompt = () => null, storedRecord 
   vm.runInNewContext(compiled, {
     exports,
     module,
-    require: name => name === "./device-gate.mjs" ? deviceGate : name === "./sheet-header.mjs" ? sheetHeader : name === "@xterm/xterm"
+    require: name => name === "./device-gate.mjs" ? deviceGate : name === "./sheet-header.mjs" ? sheetHeader : name === "./i18n" ? i18nCore : name === "@xterm/xterm"
       ? { Terminal: FakeTerminal }
       : name === "@xterm/addon-fit"
         ? { FitAddon: FakeFitAddon }
@@ -147,7 +148,7 @@ test("mounting and opening Tools only lists sessions and shows the Trusted-devic
   // The raw server error is replaced by the shared gate, not shown next to it.
   assert.equal(app.document.querySelector(".dm-terminal-status").textContent, "");
   // Unregistered device: the tab shows only the 信頼済み端末 button (Group G).
-  assert.equal(gate.querySelector("[data-device-gate-register]").textContent, "信頼済み端末を開く");
+  assert.equal(gate.querySelector("[data-device-gate-register]").textContent, i18nCore.translate("en", "deviceGate.openTrustedDevices"));
   assert.equal(gate.querySelectorAll("button").length, 1);
   assert.equal(gate.closest("section").dataset.deviceGated, "true");
   const opened = [];

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { DICTIONARIES } from "../src/i18n-core.mjs";
 
 async function source(path) {
   return readFile(new URL("../src/" + path, import.meta.url), "utf8");
@@ -23,7 +24,8 @@ test("Mission Control tolerates partial source failure and never trusts API stri
   const mission = await source("mission-control.ts");
   assert.ok(mission.includes("Promise.all(["));
   assert.ok(mission.includes("loadSource("));
-  assert.ok(mission.includes("Source unavailable"));
+  assert.ok(mission.includes('t("mission.sourceUnavailable")'));
+  assert.equal(DICTIONARIES.en["mission.sourceUnavailable"], "Source unavailable");
   assert.ok(mission.includes("replaceChildren()"));
   assert.ok(mission.includes("textContent"));
   assert.ok(mission.includes("document.createElement"));

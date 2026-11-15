@@ -1,5 +1,9 @@
 import { createDeviceGate, isDeviceAuthError, responseError } from "./device-gate.mjs";
+import { formatNumber, t, translateServerMessage } from "./i18n";
 import { createSheetHeader } from "./sheet-header.mjs";
+
+const esc = (value: string) =>
+  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 type Json = Record<string, any>;
 
@@ -68,7 +72,7 @@ async function api<T = Json>(path: string, init: RequestInit = {}): Promise<T> {
   }
   const response = await fetch(path, { ...init, headers, cache: "no-store" });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw responseError(response.status, payload?.error);
+  if (!response.ok) throw responseError(response.status, payload?.error ? translateServerMessage(String(payload.error)) : undefined);
   return payload as T;
 }
 
@@ -126,10 +130,10 @@ function selectInput(values: Array<[string, string]>) {
 
 function fmtState(state: string) {
   switch (state) {
-    case "online": return "Online";
-    case "auth-required": return "Auth required";
-    case "timeout": return "Timeout";
-    default: return "Offline";
+    case "online": return t("common.online");
+    case "auth-required": return t("remote.state.authRequired");
+    case "timeout": return t("remote.state.timeout");
+    default: return t("common.offline");
   }
 }
 
@@ -140,14 +144,18 @@ export function hostScopedStorageKey(key: string) {
 export function mountRemoteControlCenter() {
   const shell = document.createElement("div");
   shell.className = "dm-control-shell";
+  const remoteLabel = esc(t("remote.ariaLabel"));
+  const hostsTitle = esc(t("remote.tabs.hosts"));
+  const automationTitle = esc(t("remote.tabs.automation"));
+  const passkeysTitle = esc(t("remote.tabs.passkeys"));
   shell.innerHTML = `
-    <button class="dm-control-trigger" type="button" aria-label="Remote & automation" aria-haspopup="dialog" aria-expanded="false">⚙</button>
+    <button class="dm-control-trigger" type="button" aria-label="${remoteLabel}" aria-haspopup="dialog" aria-expanded="false">⚙</button>
     <div class="dm-control-modal hidden" role="dialog" aria-modal="true" aria-labelledby="dmControlTitle">
       <div class="dm-control-card dm-sheet-frame">
-        <div class="dm-control-tabs" role="tablist" aria-label="Remote & automation">
-          <button type="button" role="tab" data-tab="hosts" data-title="Hosts" aria-selected="true">Hosts</button>
-          <button type="button" role="tab" data-tab="automation" data-title="Automation" aria-selected="false">Automation</button>
-          <button type="button" role="tab" data-tab="passkeys" data-title="Passkeys" aria-selected="false">Passkeys</button>
+        <div class="dm-control-tabs" role="tablist" aria-label="${remoteLabel}">
+          <button type="button" role="tab" data-tab="hosts" data-title="${hostsTitle}" aria-selected="true">${hostsTitle}</button>
+          <button type="button" role="tab" data-tab="automation" data-title="${automationTitle}" aria-selected="false">${automationTitle}</button>
+          <button type="button" role="tab" data-tab="passkeys" data-title="${passkeysTitle}" aria-selected="false">${passkeysTitle}</button>
         </div>
         <div class="dm-control-body" tabindex="-1"></div>
         <div class="dm-control-toast hidden" role="status" aria-live="polite"></div>
@@ -156,7 +164,7 @@ export function mountRemoteControlCenter() {
   `;
   document.body.appendChild(shell);
   // Shared sheet header; the title follows the open tab (see render()).
-  const head = createSheetHeader(document, { title: "Hosts", subtitle: location.host, titleId: "dmControlTitle" });
+  const head = createSheetHeader(document, { title: t("remote.tabs.hosts"), subtitle: location.host, titleId: "dmControlTitle" });
   shell.querySelector<HTMLElement>(".dm-control-card")!.prepend(head.element);
 
   const trigger = shell.querySelector<HTMLButtonElement>(".dm-control-trigger")!;
@@ -231,7 +239,7 @@ export function mountRemoteControlCenter() {
   async function render() {
     const generation = ++renderGeneration;
     const tab = tabs.find(item => item.dataset.tab === activeTab);
-    head.setTitle(tab?.dataset.title || "Hosts");
+    head.setTitle(tab?.dataset.title || t("remote.tabs.hosts"));
     // Build off-DOM and swap in only if no newer render started meanwhile:
     // Settings opens the sheet and selects a tab back to back, and two renders
     // appending into the same body duplicated every row ("This host" twice).
@@ -247,7 +255,7 @@ export function mountRemoteControlCenter() {
       } else {
         const p = document.createElement("p");
         p.className = "dm-error";
-        p.textContent = error instanceof Error ? error.message : String(error);
+        p.textContent = translateServerMessage(error instanceof Error ? error.message : String(error));
         view.appendChild(p);
       }
     }
@@ -270,7 +278,7 @@ export function mountRemoteControlCenter() {
       small.textContent = item.host.address || location.origin;
       if (item.host.trustState && item.host.trustState !== "local") {
         const trust = document.createElement("span");
-        trust.textContent = item.host.trustState === "trusted" ? "Trusted" : "Unverified";
+        trust.textContent = item.host.trustState === "trusted" ? t("remote.hosts.trusted") : t("remote.hosts.unverified");
         small.append(" · ", trust);
       }
       const state = document.createElement("span");
@@ -280,9 +288,9 @@ export function mountRemoteControlCenter() {
       row.append(copy, state);
 
       if (item.host.id !== "local") {
-        const open = button("Open", "dm-mini primary");
+        const open = button(t("common.open"), "dm-mini primary");
         open.addEventListener("click", () => location.assign(item.host.address));
-        const remove = button("Remove", "dm-mini");
+        const remove = button(t("common.remove"), "dm-mini");
         remove.addEventListener("click", async () => {
           await api(`/api/control/hosts/${encodeURIComponent(item.host.id)}`, { method: "DELETE" });
           await render();
@@ -295,13 +303,13 @@ export function mountRemoteControlCenter() {
 
     const form = document.createElement("form");
     form.className = "dm-form";
-    const label = textInput("Laptop / home server");
-    const address = textInput("https://host.example");
-    const trust = selectInput([["unverified", "Unverified"], ["trusted", "Trusted"]]);
-    const submit = button("Add host", "primary");
+    const label = textInput(t("remote.hosts.labelPlaceholder"));
+    const address = textInput(t("remote.hosts.addressPlaceholder"));
+    const trust = selectInput([["unverified", t("remote.hosts.unverified")], ["trusted", t("remote.hosts.trusted")]]);
+    const submit = button(t("remote.hosts.addButton"), "primary");
     submit.type = "submit";
-    form.append(field("Label", label), field("Address", address), field("Trust", trust), submit);
-    const addHost = collapsible("Add host", form);
+    form.append(field(t("remote.hosts.labelField"), label), field(t("remote.hosts.addressField"), address), field(t("remote.hosts.trustField"), trust), submit);
+    const addHost = collapsible(t("remote.hosts.addButton"), form);
     form.addEventListener("submit", async event => {
       event.preventDefault();
       await api("/api/control/hosts", {
@@ -321,12 +329,12 @@ export function mountRemoteControlCenter() {
       api<{ projects: Json[] }>("/api/projects")
     ]);
 
-    const projectOptions: Array<[string, string]> = [["", "No project"]];
+    const projectOptions: Array<[string, string]> = [["", t("remote.automation.noProject")]];
     for (const project of projects.projects || []) projectOptions.push([project.id, `${project.name} · ${project.hostId && project.hostId !== "local" ? project.hostId : location.host}`]);
 
     const detailsSchedule = document.createElement("details");
     detailsSchedule.open = true;
-    detailsSchedule.innerHTML = "<summary>Schedules</summary>";
+    detailsSchedule.innerHTML = `<summary>${esc(t("remote.automation.schedules"))}</summary>`;
     const scheduleList = document.createElement("div");
     scheduleList.className = "dm-list";
     for (const schedule of schedules.schedules || []) {
@@ -336,13 +344,13 @@ export function mountRemoteControlCenter() {
       copy.className = "dm-row-copy";
       copy.innerHTML = `<strong></strong><small></small>`;
       copy.querySelector("strong")!.textContent = schedule.name;
-      copy.querySelector("small")!.textContent = `${schedule.cron} · ${schedule.timeZone} · ${schedule.backend} · ${schedule.enabled ? "active" : "paused"}`;
-      const toggle = button(schedule.enabled ? "Pause" : "Resume", "dm-mini");
+      copy.querySelector("small")!.textContent = `${schedule.cron} · ${schedule.timeZone} · ${schedule.backend} · ${schedule.enabled ? t("remote.automation.active") : t("remote.automation.paused")}`;
+      const toggle = button(schedule.enabled ? t("remote.automation.pause") : t("remote.automation.resume"), "dm-mini");
       toggle.addEventListener("click", async () => {
         await api(`/api/control/schedules/${schedule.id}`, { method: "PATCH", body: JSON.stringify({ enabled: !schedule.enabled }) });
         await render();
       });
-      const del = button("Delete", "dm-mini");
+      const del = button(t("common.delete"), "dm-mini");
       del.addEventListener("click", async () => {
         await api(`/api/control/schedules/${schedule.id}`, { method: "DELETE" });
         await render();
@@ -354,16 +362,24 @@ export function mountRemoteControlCenter() {
 
     const scheduleForm = document.createElement("form");
     scheduleForm.className = "dm-form compact";
-    const scheduleName = textInput("Nightly review");
+    const scheduleName = textInput(t("remote.automation.namePlaceholder"));
     const cron = textInput("0 21 * * *");
     const timezone = textInput(Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
     const backend = selectInput([["codex", "Codex"], ["opencode", "OpenCode"]]);
     const project = selectInput(projectOptions);
     const task = document.createElement("textarea");
-    task.placeholder = "Task to run";
-    const create = button("Create schedule", "primary");
+    task.placeholder = t("remote.automation.taskPlaceholder");
+    const create = button(t("remote.automation.createSchedule"), "primary");
     create.type = "submit";
-    scheduleForm.append(field("Name", scheduleName), field("Cron", cron), field("Timezone", timezone), field("Backend", backend), field("Project", project), field("Task", task), create);
+    scheduleForm.append(
+      field(t("remote.automation.nameField"), scheduleName),
+      field(t("remote.automation.cronField"), cron),
+      field(t("remote.automation.timezoneField"), timezone),
+      field(t("remote.automation.backendField"), backend),
+      field(t("remote.automation.projectField"), project),
+      field(t("remote.automation.taskField"), task),
+      create
+    );
     scheduleForm.addEventListener("submit", async event => {
       event.preventDefault();
       await api("/api/control/schedules", {
@@ -372,12 +388,12 @@ export function mountRemoteControlCenter() {
       });
       await render();
     });
-    if (!(schedules.schedules || []).length) scheduleList.appendChild(emptyRow("No schedules"));
-    detailsSchedule.appendChild(collapsible("New schedule", scheduleForm));
+    if (!(schedules.schedules || []).length) scheduleList.appendChild(emptyRow(t("remote.automation.noSchedules")));
+    detailsSchedule.appendChild(collapsible(t("remote.automation.newSchedule"), scheduleForm));
     body.appendChild(detailsSchedule);
 
     const detailsTrigger = document.createElement("details");
-    detailsTrigger.innerHTML = "<summary>Event triggers</summary>";
+    detailsTrigger.innerHTML = `<summary>${esc(t("remote.automation.triggers"))}</summary>`;
     const triggerList = document.createElement("div");
     triggerList.className = "dm-list";
     for (const item of triggers.triggers || []) {
@@ -388,9 +404,13 @@ export function mountRemoteControlCenter() {
       const strong = document.createElement("strong");
       strong.textContent = item.name;
       const small = document.createElement("small");
-      small.textContent = `${item.source} · ${item.event} · max ${item.maxConcurrency} concurrent`;
+      small.textContent = t("remote.automation.triggerMeta", {
+        source: String(item.source || ""),
+        event: String(item.event || ""),
+        max: formatNumber(Number(item.maxConcurrency || 0))
+      });
       copy.append(strong, small);
-      const del = button("Delete", "dm-mini");
+      const del = button(t("common.delete"), "dm-mini");
       del.addEventListener("click", async () => {
         await api(`/api/control/triggers/${item.id}`, { method: "DELETE" });
         await render();
@@ -402,30 +422,37 @@ export function mountRemoteControlCenter() {
 
     const triggerForm = document.createElement("form");
     triggerForm.className = "dm-form compact";
-    const source = selectInput([["devmoter.lifecycle", "DevMoter lifecycle"], ["github.webhook", "GitHub webhook"]]);
+    const source = selectInput([["devmoter.lifecycle", t("remote.automation.lifecycle")], ["github.webhook", t("remote.automation.githubWebhook")]]);
     const eventName = textInput("server.started");
     const triggerBackend = selectInput([["codex", "Codex"], ["opencode", "OpenCode"]]);
     const triggerProject = selectInput(projectOptions);
     const triggerTask = document.createElement("textarea");
-    triggerTask.placeholder = "Task for this event";
-    const createTrigger = button("Create trigger", "primary");
+    triggerTask.placeholder = t("remote.automation.triggerTaskPlaceholder");
+    const createTrigger = button(t("remote.automation.createTrigger"), "primary");
     createTrigger.type = "submit";
-    triggerForm.append(field("Source", source), field("Event", eventName), field("Backend", triggerBackend), field("Project", triggerProject), field("Task", triggerTask), createTrigger);
+    triggerForm.append(
+      field(t("remote.automation.sourceField"), source),
+      field(t("remote.automation.eventField"), eventName),
+      field(t("remote.automation.backendField"), triggerBackend),
+      field(t("remote.automation.projectField"), triggerProject),
+      field(t("remote.automation.taskField"), triggerTask),
+      createTrigger
+    );
     triggerForm.addEventListener("submit", async event => {
       event.preventDefault();
       const result = await api<Json>("/api/control/triggers", {
         method: "POST",
         body: JSON.stringify({ source: source.value, event: eventName.value, backend: triggerBackend.value, projectId: triggerProject.value, task: triggerTask.value })
       });
-      if (result.secret) showToast(`Webhook secret (shown once): ${result.secret}`);
+      if (result.secret) showToast(t("remote.automation.webhookSecret", { secret: String(result.secret) }));
       await render();
     });
-    if (!(triggers.triggers || []).length) triggerList.appendChild(emptyRow("No triggers"));
-    detailsTrigger.appendChild(collapsible("New trigger", triggerForm));
+    if (!(triggers.triggers || []).length) triggerList.appendChild(emptyRow(t("remote.automation.noTriggers")));
+    detailsTrigger.appendChild(collapsible(t("remote.automation.newTrigger"), triggerForm));
     body.appendChild(detailsTrigger);
 
     const detailsAutopilot = document.createElement("details");
-    detailsAutopilot.innerHTML = "<summary>Autopilot</summary>";
+    detailsAutopilot.innerHTML = `<summary>${esc(t("remote.automation.autopilot"))}</summary>`;
     const autopilotForm = document.createElement("form");
     autopilotForm.className = "dm-form compact";
     const autoBackend = selectInput([["codex", "Codex"], ["opencode", "OpenCode"]]);
@@ -437,10 +464,18 @@ export function mountRemoteControlCenter() {
     const maxBudget = document.createElement("input");
     maxBudget.type = "number"; maxBudget.min = "0"; maxBudget.step = "0.01"; maxBudget.value = "0";
     const autoTask = document.createElement("textarea");
-    autoTask.placeholder = "Long-running task";
-    const start = button("Start bounded autopilot", "primary");
+    autoTask.placeholder = t("remote.automation.autoTaskPlaceholder");
+    const start = button(t("remote.automation.startAutopilot"), "primary");
     start.type = "submit";
-    autopilotForm.append(field("Backend", autoBackend), field("Project", autoProject), field("Max turns", maxTurns), field("Max minutes", maxMinutes), field("Max budget (0 = unset)", maxBudget), field("Task", autoTask), start);
+    autopilotForm.append(
+      field(t("remote.automation.backendField"), autoBackend),
+      field(t("remote.automation.projectField"), autoProject),
+      field(t("remote.automation.maxTurns"), maxTurns),
+      field(t("remote.automation.maxMinutes"), maxMinutes),
+      field(t("remote.automation.maxBudget"), maxBudget),
+      field(t("remote.automation.taskField"), autoTask),
+      start
+    );
     autopilotForm.addEventListener("submit", async event => {
       event.preventDefault();
       await api("/api/control/autopilot", {
@@ -456,7 +491,7 @@ export function mountRemoteControlCenter() {
       });
       await render();
     });
-    detailsAutopilot.appendChild(collapsible("New autopilot run", autopilotForm));
+    detailsAutopilot.appendChild(collapsible(t("remote.automation.newAutopilot"), autopilotForm));
 
     const runList = document.createElement("div");
     runList.className = "dm-list";
@@ -469,18 +504,23 @@ export function mountRemoteControlCenter() {
       strong.textContent = `${run.kind} · ${run.status}`;
       const small = document.createElement("small");
       small.textContent = run.kind === "autopilot"
-        ? `${run.backend} · ${run.turnsCompleted || 0}/${run.bounds?.maxTurns || "?"} turns · ${run.summary || ""}`
+        ? t("remote.automation.autopilotMeta", {
+            backend: String(run.backend || ""),
+            completed: formatNumber(Number(run.turnsCompleted || 0)),
+            max: run.bounds?.maxTurns ? formatNumber(Number(run.bounds.maxTurns)) : "?",
+            summary: String(run.summary || "")
+          })
         : `${run.backend} · ${run.summary || ""}`;
       copy.append(strong, small);
       row.appendChild(copy);
       if (run.kind === "autopilot" && ["queued", "running", "paused"].includes(run.status)) {
-        const primaryAction = button(run.status === "paused" ? "Resume" : "Pause", "dm-mini");
+        const primaryAction = button(run.status === "paused" ? t("remote.automation.resume") : t("remote.automation.pause"), "dm-mini");
         primaryAction.addEventListener("click", async () => {
           const action = run.status === "paused" ? "resume" : "pause";
           await api(`/api/control/autopilot/${run.id}/${action}`, { method: "POST" });
           await render();
         });
-        const cancel = button("Cancel", "dm-mini");
+        const cancel = button(t("common.cancel"), "dm-mini");
         cancel.addEventListener("click", async () => {
           await api(`/api/control/autopilot/${run.id}/cancel`, { method: "POST" });
           await render();
@@ -502,31 +542,31 @@ export function mountRemoteControlCenter() {
     const state = document.createElement("p");
     if (status.enabled) {
       const count = document.createElement("strong");
-      count.textContent = String(status.credentialCount ?? 0);
+      count.textContent = formatNumber(Number(status.credentialCount ?? 0));
       const signedIn = document.createElement("span");
-      signedIn.textContent = status.authenticated ? "Signed in" : "Sign-in required";
-      state.append(document.createTextNode("Registered passkeys"), " ", count, " · ", signedIn);
+      signedIn.textContent = status.authenticated ? t("remote.passkeys.signedIn") : t("remote.passkeys.signInRequired");
+      state.append(document.createTextNode(t("remote.passkeys.registeredLabel")), " ", count, " · ", signedIn);
     } else {
-      state.textContent = "No passkeys registered";
+      state.textContent = t("remote.passkeys.none");
     }
     card.appendChild(state);
 
     if (!webauthnAvailable) {
       const unsupported = document.createElement("p");
       unsupported.className = "dm-error";
-      unsupported.textContent = "This browser does not support passkeys";
+      unsupported.textContent = t("remote.passkeys.unsupported");
       card.appendChild(unsupported);
     }
 
     if (webauthnAvailable && status.enabled && !status.authenticated) {
-      const login = button("Sign in with passkey", "primary");
+      const login = button(t("remote.passkeys.signIn"), "primary");
       login.addEventListener("click", async () => {
         const options = await api<Json>("/api/auth/passkey/login/options", { method: "POST" });
         const publicKey = options.publicKey;
         publicKey.challenge = b64urlToBytes(publicKey.challenge);
         publicKey.allowCredentials = (publicKey.allowCredentials || []).map((item: Json) => ({ ...item, id: b64urlToBytes(item.id) }));
         const credential = await navigator.credentials.get({ publicKey }) as PublicKeyCredential | null;
-        if (!credential) throw new Error("Passkey login cancelled");
+        if (!credential) throw new Error(t("remote.passkeys.loginCancelled"));
         const response = credential.response as AuthenticatorAssertionResponse;
         await api("/api/auth/passkey/login/verify", {
           method: "POST",
@@ -535,14 +575,14 @@ export function mountRemoteControlCenter() {
             response: authenticationResponseJSON(credential)
           })
         });
-        showToast("Signed in with passkey");
+        showToast(t("remote.passkeys.signedInToast"));
         await render();
       });
       card.appendChild(login);
     }
 
     if (webauthnAvailable && status.canRegister) {
-      const register = button("Register passkey", "primary");
+      const register = button(t("remote.passkeys.register"), "primary");
       register.addEventListener("click", async () => {
         const options = await api<Json>("/api/auth/passkey/register/options", { method: "POST" });
         const publicKey = options.publicKey;
@@ -553,7 +593,7 @@ export function mountRemoteControlCenter() {
           id: b64urlToBytes(item.id)
         }));
         const credential = await navigator.credentials.create({ publicKey }) as PublicKeyCredential | null;
-        if (!credential) throw new Error("Passkey registration cancelled");
+        if (!credential) throw new Error(t("remote.passkeys.registerCancelled"));
         await api("/api/auth/passkey/register/verify", {
           method: "POST",
           body: JSON.stringify({
@@ -561,14 +601,14 @@ export function mountRemoteControlCenter() {
             response: registrationResponseJSON(credential)
           })
         });
-        showToast("Passkey registered");
+        showToast(t("remote.passkeys.registeredToast"));
         await render();
       });
       card.appendChild(register);
     }
 
     if (status.authenticated) {
-      const logout = button("Sign out", "dm-mini");
+      const logout = button(t("remote.passkeys.signOut"), "dm-mini");
       logout.addEventListener("click", async () => {
         await api("/api/auth/passkey/logout", { method: "POST" });
         location.replace("/login.html");

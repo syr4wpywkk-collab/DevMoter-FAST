@@ -2,7 +2,34 @@ import { formatCodexResetTime as formatResetTime, codexFeedbackKey as feedbackKe
 import { getAppDefinition } from "./app-registry";
 import { cxIcons } from "./codex/icons";
 import { codexThreadStatusToExecutionState, codexTurnStatusToExecutionState, isExecutionActive, type ExecutionState } from "./execution-state.mjs";
-import { speechRecognitionLanguage } from "./i18n";
+import { bindLanguageSelectors, formatNumber, localeTag, speechRecognitionLanguage, t, tApp, translateServerMessage } from "./i18n";
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function codexSendErrorCategory(category: string): string {
+  switch (category) {
+    case "Authentication": return t("codex.sendError.category.authentication");
+    case "Rate limit": return t("codex.sendError.category.rateLimit");
+    case "Usage limit": return t("codex.sendError.category.usageLimit");
+    case "Connection": return t("codex.sendError.category.connection");
+    case "Request": return t("codex.sendError.category.request");
+    case "Service": return t("codex.sendError.category.service");
+    case "Model": return t("codex.sendError.category.model");
+    case "Codex error": return t("codex.sendError.category.codexError");
+    default: return translateServerMessage(category);
+  }
+}
+
+function codexSendErrorReason(reason: string): string {
+  return reason === "Codex did not provide a reason." ? t("codex.sendError.noReason") : translateServerMessage(reason);
+}
 import { createDevWorkflowPanel } from "./dev-workflows-ui";
 import { isMcpToolItem, mcpToolSummary, normalizeStructuredMcpResult } from "./mcp-result";
 import { setWakeLockExecutionActive } from "./wake-lock";
@@ -22,7 +49,7 @@ import { shortProjectPath } from "./project-labels.mjs";
 // Line icons for Project rows (one set, 18px, 1.5 stroke, currentColor).
 const PROJECT_ROW_ICONS = {
   folder: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>',
-  check: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="選択中"><path d="m5 12 5 5 9-10"/></svg>',
+  check: () => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-label="${escapeHtml(t("codex.icon.selectedAria"))}"><path d="m5 12 5 5 9-10"/></svg>`,
   chevron: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>'
 } as const;
 import { enforceTranscriptLimit } from "./bounded-transcript";
@@ -139,9 +166,9 @@ function codexUnavailableCode(code: unknown): CodexUnavailableCode | null {
 }
 
 export function codexAvailabilityLabel(code: CodexUnavailableCode | null): string {
-  if (code === "not_installed") return "未インストール";
-  if (code === "not_executable" || code === "failed") return "起動できません";
-  return "Offline";
+  if (code === "not_installed") return t("codex.availability.notInstalled");
+  if (code === "not_executable" || code === "failed") return t("codex.availability.notExecutable");
+  return t("common.offline");
 }
 
 export function mountCodexRemote(
@@ -152,77 +179,78 @@ export function mountCodexRemote(
     <div class="cx-app">
       <div id="cxScrim" class="cx-scrim hidden"></div>
 
-      <aside id="cxSidebar" class="cx-sidebar" aria-hidden="true" aria-label="会話履歴" tabindex="-1">
+      <aside id="cxSidebar" class="cx-sidebar" aria-hidden="true" aria-label="${escapeHtml(t("codex.sidebar.aria"))}" tabindex="-1">
         <div class="cx-sidebar-head dm-agent-head">
-          <div class="dm-unified-agent-identity" data-unified-agent-label hidden aria-label="Codex チャット履歴">
+          <div class="dm-unified-agent-identity" data-unified-agent-label hidden aria-label="${escapeHtml(t("codex.sidebar.unifiedAria"))}">
             <span class="dm-unified-agent-icon" aria-hidden="true">⌘</span>
-            <span class="dm-unified-agent-copy"><strong>Codex</strong><small>チャット履歴</small></span>
+            <span class="dm-unified-agent-copy"><strong>Codex</strong><small>${escapeHtml(t("codex.sidebar.chatHistory"))}</small></span>
           </div>
           <div class="dm-agent-switch-shell">
             <button id="cxAgentSwitchButton" class="dm-agent-switch-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
               <span class="dm-agent-switch-icon">⌘</span>
-              <span class="dm-agent-switch-copy"><strong>Codex</strong><small>現在のエージェント</small></span>
+              <span class="dm-agent-switch-copy"><strong>Codex</strong><small>${escapeHtml(t("codex.sidebar.currentAgent"))}</small></span>
               <span class="dm-agent-switch-chevron">⌄</span>
             </button>
-            <div id="cxAgentSwitchMenu" class="dm-agent-switch-menu hidden" role="listbox" aria-label="エージェントを選択">
-              <button class="cx-agent-option active" type="button" data-agent="codex"><span>⌘</span><span><strong>Codex</strong><small>実装・修正</small></span><span>✓</span></button>
-              <button class="cx-agent-option" type="button" data-agent="opencode"><span>◈</span><span><strong>OpenCode</strong><small>エージェント実行</small></span><span></span></button>
-              <button class="cx-agent-option" type="button" data-agent="api"><span>✦</span><span><strong>API Chat</strong><small>マルチプロバイダー</small></span><span></span></button>
+            <div id="cxAgentSwitchMenu" class="dm-agent-switch-menu hidden" role="listbox" aria-label="${escapeHtml(t("codex.sidebar.selectAgentAria"))}">
+              <button class="cx-agent-option active" type="button" data-agent="codex"><span>⌘</span><span><strong>Codex</strong><small>${escapeHtml(t("codex.sidebar.agentCodexSummary"))}</small></span><span>✓</span></button>
+              <button class="cx-agent-option" type="button" data-agent="opencode"><span>◈</span><span><strong>OpenCode</strong><small>${escapeHtml(t("codex.sidebar.agentOpenCodeSummary"))}</small></span><span></span></button>
+              <button class="cx-agent-option" type="button" data-agent="api"><span>✦</span><span><strong>API Chat</strong><small>${escapeHtml(t("codex.sidebar.agentApiSummary"))}</small></span><span></span></button>
             </div>
           </div>
-          <button id="cxSidebarClose" class="cx-icon-button" type="button" aria-label="閉じる">×</button>
+          <button id="cxSidebarClose" class="cx-icon-button" type="button" aria-label="${escapeHtml(t("common.close"))}">×</button>
         </div>
 
         <div class="cx-sidebar-scroll">
         <button id="cxNewChatSide" class="cx-side-action primary" type="button">
-          <span aria-hidden="true">✎</span><span>新しいチャット</span>
+          <span aria-hidden="true">✎</span><span>${escapeHtml(t("codex.sidebar.newChat"))}</span>
         </button>
 
         <label class="cx-search">
           <span aria-hidden="true">⌕</span>
-          <input id="cxThreadSearch" type="search" placeholder="チャットを検索" />
+          <input id="cxThreadSearch" type="search" placeholder="${escapeHtml(t("codex.sidebar.searchPlaceholder"))}" />
         </label>
 
         <nav class="cx-side-nav">
-          <button id="cxProjectsNav" class="cx-nav-item" type="button">${getAppDefinition("projects").icon}<span>Projects</span></button>
-          <button id="cxPluginsQuick" class="cx-nav-item" type="button">${cxIcons.plugins}<span>Plugins</span></button>
-          <button id="cxIntegrationsNav" class="cx-nav-item" type="button">${cxIcons.integrations}<span>Integrations</span></button>
-          <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button">${getAppDefinition("developer-workflows").icon}<span>Developer workflows</span></button>
+          <button id="cxProjectsNav" class="cx-nav-item" type="button">${getAppDefinition("projects").icon}<span>${escapeHtml(tApp("projects"))}</span></button>
+          <button id="cxPluginsQuick" class="cx-nav-item" type="button">${cxIcons.plugins}<span>${escapeHtml(t("codex.sidebar.plugins"))}</span></button>
+          <button id="cxIntegrationsNav" class="cx-nav-item" type="button">${cxIcons.integrations}<span>${escapeHtml(t("integrations.title"))}</span></button>
+          <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button">${getAppDefinition("developer-workflows").icon}<span>${escapeHtml(t("devWorkflows.panelTitle"))}</span></button>
         </nav>
 
         <div class="cx-side-section">
-          <div class="cx-side-label cx-task-heading"><span>Tasks</span><span aria-hidden="true">☷</span></div>
+          <div class="cx-side-label cx-task-heading"><span>${escapeHtml(t("codex.sidebar.tasks"))}</span><span aria-hidden="true">☷</span></div>
           <div id="cxSidebarThreads" class="cx-sidebar-threads">
-            <div class="cx-side-empty">読み込み中…</div>
+            <div class="cx-side-empty">${escapeHtml(t("common.loading"))}</div>
           </div>
         </div>
 
         </div>
 
         <div class="cx-sidebar-foot">
-          <label class="pocket-language-setting" title="Language">
+          <label class="pocket-language-setting" title="${escapeHtml(t("nav.language"))}">
             <span aria-hidden="true">◎</span>
-            <select data-language-select aria-label="Language">
+            <select data-language-select aria-label="${escapeHtml(t("nav.language"))}">
               <option value="en">English</option>
               <option value="ja">日本語</option>
-              <option value="zh-CN">简体中文</option>
+              <option value="zh-Hans">简体中文</option>
+              <option value="zh-Hant">繁體中文</option>
             </select>
           </label>
-          <span id="cxSideStatus" class="cx-online-pill offline"><i></i> Offline</span>
+          <span id="cxSideStatus" class="cx-online-pill offline"><i></i> ${escapeHtml(t("common.offline"))}</span>
         </div>
       </aside>
 
       <header class="cx-topbar">
-        <button id="cxMenu" class="cx-icon-button" type="button" aria-label="会話履歴を開く" title="会話履歴">${cxIcons.menu}</button>
+        <button id="cxMenu" class="cx-icon-button" type="button" aria-label="${escapeHtml(t("codex.topbar.openHistoryAria"))}" title="${escapeHtml(t("codex.topbar.openHistoryTitle"))}">${cxIcons.menu}</button>
         <div class="cx-brand" aria-label="DevMoter"><span class="cx-brand-mark">Z</span><strong>DevMoter</strong></div>
         <button id="cxTitleButton" class="cx-title-button" type="button">
           <span id="cxTitle">Codex</span>
-          <small id="cxModelLabel">DevMoter agent</small>
+          <small id="cxModelLabel">${escapeHtml(t("codex.topbar.agentSubtitle"))}</small>
         </button>
         <div class="cx-topbar-controls">
-          <button id="cxUsageTop" class="cx-topbar-pill cx-usage-pill" type="button" aria-label="使用量" title="Usage">${cxIcons.usage}<small id="cxUsageLabel">Usage</small></button>
-          <button id="cxDetailsTop" class="cx-topbar-pill cx-details-toggle" type="button" aria-label="作業スペース情報を開く" aria-expanded="false">詳細</button>
-          <button id="cxNewChatTop" class="cx-icon-button" type="button" aria-label="新しいチャット"><span class="cx-new-chat-label">新しいチャット</span>${cxIcons.newChat}</button>
+          <button id="cxUsageTop" class="cx-topbar-pill cx-usage-pill" type="button" aria-label="${escapeHtml(t("codex.topbar.usage"))}" title="${escapeHtml(t("codex.topbar.usage"))}">${cxIcons.usage}<small id="cxUsageLabel">${escapeHtml(t("codex.topbar.usage"))}</small></button>
+          <button id="cxDetailsTop" class="cx-topbar-pill cx-details-toggle" type="button" aria-label="${escapeHtml(t("codex.topbar.openDetailsAria"))}" aria-expanded="false">${escapeHtml(t("codex.topbar.detailsButton"))}</button>
+          <button id="cxNewChatTop" class="cx-icon-button" type="button" aria-label="${escapeHtml(t("codex.sidebar.newChat"))}"><span class="cx-new-chat-label">${escapeHtml(t("codex.sidebar.newChat"))}</span>${cxIcons.newChat}</button>
         </div>
       </header>
 
@@ -230,77 +258,77 @@ export function mountCodexRemote(
         <div id="cxTranscript" class="cx-transcript">
           <div class="cx-welcome">
             <div class="cx-welcome-mark">✦</div>
-            <h2>何を作ろうか？</h2>
-            <p>CodexをChromebookで動かしたまま、ここから操作できます。</p>
+            <h2>${escapeHtml(t("codex.welcome.title"))}</h2>
+            <p>${escapeHtml(t("codex.welcome.subtitle"))}</p>
           </div>
         </div>
       </main>
 
-      <aside id="cxDetailsPanel" class="cx-details-panel" aria-label="作業スペース情報" aria-hidden="true" tabindex="-1" inert>
+      <aside id="cxDetailsPanel" class="cx-details-panel" aria-label="${escapeHtml(t("codex.details.aria"))}" aria-hidden="true" tabindex="-1" inert>
         <section class="cx-detail-section">
-          <div class="cx-detail-heading"><span>SESSION</span><span id="cxDetailsState" class="cx-detail-state">●</span></div>
+          <div class="cx-detail-heading"><span>${escapeHtml(t("codex.details.sessionHeading"))}</span><span id="cxDetailsState" class="cx-detail-state">●</span></div>
           <strong id="cxDetailsTitle">Codex</strong>
-          <small id="cxDetailsModel">DevMoter agent</small>
-          <p id="cxDetailsActivity">接続状態を確認中</p>
+          <small id="cxDetailsModel">${escapeHtml(t("codex.topbar.agentSubtitle"))}</small>
+          <p id="cxDetailsActivity">${escapeHtml(t("codex.details.checkingConnection"))}</p>
         </section>
         <section class="cx-detail-section cx-goal-section" id="cxGoalSection" hidden>
-          <div class="cx-detail-heading"><span>Goal</span><span id="cxGoalState"></span></div>
+          <div class="cx-detail-heading"><span>${escapeHtml(t("codex.details.goalHeading"))}</span><span id="cxGoalState"></span></div>
           <strong id="cxGoalText"></strong><small id="cxGoalMeta"></small>
         </section>
         <section class="cx-detail-section cx-progress-section" id="cxProgressSection" hidden>
-          <div class="cx-detail-heading"><span>Progress</span></div>
+          <div class="cx-detail-heading"><span>${escapeHtml(t("codex.details.progressHeading"))}</span></div>
           <div id="cxProgressItems"></div>
         </section>
         <section class="cx-detail-section cx-workspace-section">
-          <div class="cx-detail-heading"><span>WORKSPACE</span></div>
+          <div class="cx-detail-heading"><span>${escapeHtml(t("codex.details.workspaceHeading"))}</span></div>
         </section>
       </aside>
 
       <div id="cxApproval" class="cx-approval hidden">
         <div class="cx-approval-copy">
-          <span class="cx-approval-eyebrow">CODEX APPROVAL</span>
-          <strong id="cxApprovalTitle">許可が必要です</strong>
+          <span class="cx-approval-eyebrow">${escapeHtml(t("codex.approval.eyebrow"))}</span>
+          <strong id="cxApprovalTitle">${escapeHtml(t("codex.approval.defaultTitle"))}</strong>
           <div id="cxApprovalMeta" class="cx-approval-meta"></div>
           <pre id="cxApprovalDetail"></pre>
         </div>
         <div class="cx-approval-actions three">
-          <button id="cxDenyApproval" type="button">拒否</button>
-          <button id="cxAcceptApproval" type="button">今回だけ</button>
-          <button id="cxAcceptSessionApproval" class="primary" type="button">セッション中は許可</button>
+          <button id="cxDenyApproval" type="button">${escapeHtml(t("codex.approval.deny"))}</button>
+          <button id="cxAcceptApproval" type="button">${escapeHtml(t("codex.approval.once"))}</button>
+          <button id="cxAcceptSessionApproval" class="primary" type="button">${escapeHtml(t("codex.approval.forSession"))}</button>
         </div>
       </div>
 
       <section class="cx-composer-wrap">
         <div id="cxExecutionStatus" class="cx-execution-status" data-state="offline" role="status" aria-live="polite">
-          <i></i><span>オフライン</span>
+          <i></i><span>${escapeHtml(t("codex.state.offline"))}</span>
         </div>
         <div id="cxAttachmentStrip" class="cx-attachment-strip hidden"></div>
-        <div id="cxContextPalette" class="cx-context-palette hidden" role="listbox" aria-label="Project context suggestions"></div>
+        <div id="cxContextPalette" class="cx-context-palette hidden" role="listbox" aria-label="${escapeHtml(t("codex.composer.contextPaletteAria"))}"></div>
 
         <form id="cxPromptForm" class="cx-composer">
           <textarea
             id="cxPromptInput"
             rows="1"
-            placeholder="追加の変更を依頼…"
-            aria-label="Codexへのメッセージ"
+            placeholder="${escapeHtml(t("codex.composer.promptPlaceholder"))}"
+            aria-label="${escapeHtml(t("codex.composer.promptAria"))}"
           ></textarea>
 
           <div class="cx-composer-row">
             <div class="cx-composer-left">
-              <button id="cxPlus" class="cx-round-button" type="button" aria-label="追加" aria-expanded="false" aria-controls="cxPlusMenu">${cxIcons.plus}</button>
-              <button id="cxModelTop" class="cx-topbar-pill" type="button" aria-label="モデルを選択" aria-haspopup="dialog"><small id="cxModelTopLabel">default</small>${cxIcons.chevron}</button>
-              <button id="cxReasoningTop" class="cx-topbar-pill" type="button" aria-label="推論性能を選択" aria-haspopup="dialog"><small id="cxReasoningTopLabel">Auto</small>${cxIcons.chevron}</button>
+              <button id="cxPlus" class="cx-round-button" type="button" aria-label="${escapeHtml(t("codex.composer.plusAria"))}" aria-expanded="false" aria-controls="cxPlusMenu">${cxIcons.plus}</button>
+              <button id="cxModelTop" class="cx-topbar-pill" type="button" aria-label="${escapeHtml(t("codex.composer.modelSelectAria"))}" aria-haspopup="dialog"><small id="cxModelTopLabel">${escapeHtml(t("codex.composer.modelDefault"))}</small>${cxIcons.chevron}</button>
+              <button id="cxReasoningTop" class="cx-topbar-pill" type="button" aria-label="${escapeHtml(t("codex.composer.reasoningSelectAria"))}" aria-haspopup="dialog"><small id="cxReasoningTopLabel">${escapeHtml(t("codex.reasoning.auto"))}</small>${cxIcons.chevron}</button>
             </div>
             <div class="cx-composer-right">
-              <button id="cxVoice" class="cx-round-button cx-voice-button" type="button" aria-label="音声入力">${cxIcons.voice}</button>
-              <button id="cxSend" class="cx-send-button" type="submit" aria-label="送信">${cxIcons.send}</button>
+              <button id="cxVoice" class="cx-round-button cx-voice-button" type="button" aria-label="${escapeHtml(t("codex.composer.voiceAria"))}">${cxIcons.voice}</button>
+              <button id="cxSend" class="cx-send-button" type="submit" aria-label="${escapeHtml(t("common.send"))}">${cxIcons.send}</button>
             </div>
           </div>
         </form>
 
         <div id="cxPlusMenu" class="cx-plus-menu hidden">
-          <button id="cxPhoto" type="button">${cxIcons.image}<span>画像送信</span></button>
-          <button id="cxFile" type="button">${cxIcons.file}<span>ファイル</span></button>
+          <button id="cxPhoto" type="button">${cxIcons.image}<span>${escapeHtml(t("codex.composer.photoButton"))}</span></button>
+          <button id="cxFile" type="button">${cxIcons.file}<span>${escapeHtml(t("codex.composer.fileButton"))}</span></button>
         </div>
 
         <input id="cxPhotoInput" type="file" accept="image/*" multiple hidden />
@@ -316,6 +344,7 @@ export function mountCodexRemote(
       </div>
     </div>
   `;
+  bindLanguageSelectors(root, { reload: true });
 
   const sidebar = root.querySelector<HTMLElement>("#cxSidebar")!;
   const detailsPanel = root.querySelector<HTMLElement>("#cxDetailsPanel")!;
@@ -416,7 +445,7 @@ export function mountCodexRemote(
   const modal = root.querySelector<HTMLDivElement>("#cxModal")!;
   const modalBody = root.querySelector<HTMLDivElement>("#cxModalBody")!;
   // Shared sheet header (title / close / primary) — see src/sheet-header.mjs.
-  const modalHead = createSheetHeader(document, { title: "設定", titleId: "cxModalTitle", onClose: () => closeModal() });
+  const modalHead = createSheetHeader(document, { title: t("codex.modal.settingsTitle"), titleId: "cxModalTitle", onClose: () => closeModal() });
   modalHead.subtitleEl.id = "cxModalSubtitle";
   modalBody.before(modalHead.element);
   const modalClose = modalHead.closeButton;
@@ -541,24 +570,26 @@ export function mountCodexRemote(
   }
 
   function updateContextLabel() {
-    const project = activeProject?.name || "No project";
-    const model = selectedModel ? modelDisplayName(selectedModel) : "default";
+    const project = activeProject?.name || t("codex.context.noProject");
+    const model = selectedModel ? modelDisplayName(selectedModel) : t("codex.composer.modelDefault");
     modelLabel.textContent = project;
     modelTopLabel.textContent = model;
     modelTop.title = model;
-    modelTop.setAttribute("aria-label", `モデルを選択: ${model}`);
+    modelTop.setAttribute("aria-label", t("codex.composer.modelWithNameAria", { name: model }));
   }
 
   function updateUsage(tokens = 0) {
     usageTokens = Math.max(0, usageTokens + tokens);
     usageLabel.textContent = usageTokens > 0
-      ? (usageTokens >= 1000 ? `${(usageTokens / 1000).toFixed(1)}k tok` : `${usageTokens} tok`)
-      : "Usage";
+      ? (usageTokens >= 1000
+        ? t("codex.usage.kTokens", { count: formatNumber(usageTokens / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
+        : t("codex.usage.shortTokens", { count: formatNumber(usageTokens) }))
+      : t("codex.topbar.usage");
   }
 
   async function showUsage() {
-    openModal("Usage", "Codexアカウントの利用枠");
-    modalBody.innerHTML = '<div class="cx-modal-loading">読み込み中…</div>';
+    openModal(t("codex.topbar.usage"), t("codex.usage.modalSubtitle"));
+    modalBody.innerHTML = `<div class="cx-modal-loading">${escapeHtml(t("common.loading"))}</div>`;
 
     try {
       const payload = await rpc<Json>("account/rateLimits/read", {});
@@ -574,12 +605,12 @@ export function mountCodexRemote(
         const empty = document.createElement("section");
         empty.className = "cx-library-empty";
         const title = document.createElement("strong");
-        title.textContent = "利用枠の情報がありません";
+        title.textContent = t("codex.usage.emptyTitle");
         const note = document.createElement("p");
-        note.textContent = "Codexがこのアカウントについて返した利用枠だけを表示します。";
+        note.textContent = t("codex.usage.emptyNote");
         empty.append(title, note);
         modalBody.appendChild(empty);
-        usageLabel.textContent = "Usage";
+        usageLabel.textContent = t("codex.topbar.usage");
         return;
       }
 
@@ -596,8 +627,8 @@ export function mountCodexRemote(
         section.appendChild(heading);
 
         const windows = [
-          ["Primary", snapshot.primary],
-          ["Secondary", snapshot.secondary]
+          [t("codex.usage.primary"), snapshot.primary],
+          [t("codex.usage.secondary"), snapshot.secondary]
         ] as const;
         for (const [label, windowData] of windows) {
           if (!windowData || typeof windowData !== "object") continue;
@@ -605,10 +636,15 @@ export function mountCodexRemote(
           const row = document.createElement("div");
           row.className = "cx-usage-row";
           const copy = document.createElement("span");
-          const reset = formatResetTime(windowData.resetsAt);
-          copy.textContent = Number.isFinite(used)
-            ? `${label}: ${Math.max(0, 100 - used).toFixed(0)}% left${reset ? ` · reset ${reset}` : ""}`
-            : `${label}${reset ? ` · reset ${reset}` : ""}`;
+          const reset = formatResetTime(windowData.resetsAt, localeTag());
+          if (Number.isFinite(used)) {
+            const percent = formatNumber(Math.max(0, 100 - used), { maximumFractionDigits: 0 });
+            copy.textContent = reset
+              ? t("codex.usage.windowWithRemainingReset", { label, percent, reset })
+              : t("codex.usage.windowWithRemaining", { label, percent });
+          } else {
+            copy.textContent = reset ? t("codex.usage.windowReset", { label, reset }) : label;
+          }
           row.appendChild(copy);
           section.appendChild(row);
         }
@@ -617,7 +653,9 @@ export function mountCodexRemote(
           const credits = document.createElement("div");
           credits.className = "cx-usage-row";
           const balance = snapshot.credits.balance;
-          credits.textContent = balance == null ? "Credits available" : `Credits: ${String(balance)}`;
+          credits.textContent = balance == null
+            ? t("codex.usage.creditsAvailable")
+            : t("codex.usage.creditsBalance", { balance: String(balance) });
           section.appendChild(credits);
         }
         modalBody.appendChild(section);
@@ -626,16 +664,16 @@ export function mountCodexRemote(
       const primary = payload?.rateLimits?.primary;
       const used = Number(primary?.usedPercent);
       usageLabel.textContent = Number.isFinite(used)
-        ? `${Math.max(0, 100 - used).toFixed(0)}% left`
-        : "Usage";
+        ? t("codex.usage.leftPill", { percent: formatNumber(Math.max(0, 100 - used), { maximumFractionDigits: 0 }) })
+        : t("codex.topbar.usage");
     } catch (error) {
       modalBody.replaceChildren();
       const empty = document.createElement("section");
       empty.className = "cx-library-empty";
       const title = document.createElement("strong");
-      title.textContent = "Usageを取得できませんでした";
+      title.textContent = t("codex.usage.fetchFailedTitle");
       const note = document.createElement("p");
-      note.textContent = error instanceof Error ? error.message : "Codex app-serverから利用枠を取得できませんでした";
+      note.textContent = error instanceof Error ? translateServerMessage(error.message) : t("codex.usage.fetchFailedNote");
       empty.append(title, note);
       modalBody.appendChild(empty);
     }
@@ -649,12 +687,12 @@ export function mountCodexRemote(
 
   function reasoningLabel(value: string) {
     return ({
-      none: "None",
-      minimal: "Minimal",
-      low: "Low",
-      medium: "Medium",
-      high: "High",
-      xhigh: "Extra High"
+      none: t("codex.reasoning.none"),
+      minimal: t("codex.reasoning.minimal"),
+      low: t("codex.reasoning.low"),
+      medium: t("codex.reasoning.medium"),
+      high: t("codex.reasoning.high"),
+      xhigh: t("codex.reasoning.xhigh")
     } as Record<string, string>)[value] || value;
   }
 
@@ -667,23 +705,28 @@ export function mountCodexRemote(
     }
     const defaultEffort = model?.defaultReasoningEffort;
     const label = reasoningMode === "auto"
-      ? `Auto${defaultEffort ? ` · ${reasoningLabel(defaultEffort)}` : ""}`
+      ? (defaultEffort ? t("codex.reasoning.autoWithDefault", { effort: reasoningLabel(defaultEffort) }) : t("codex.reasoning.auto"))
       : reasoningLabel(reasoningMode);
     reasoningTopLabel.textContent = label;
     reasoningTop.title = label;
-    reasoningTop.setAttribute("aria-label", `推論性能を選択: ${label}`);
+    reasoningTop.setAttribute("aria-label", t("codex.composer.reasoningWithLabelAria", { label }));
   }
 
   function showReasoningPicker() {
     const model = selectedModelMetadata();
     const values = reasoningChoices(model).map(item => ({
       value: item.value,
-      label: item.value === "auto" ? "Auto" : reasoningLabel(item.value),
+      label: item.value === "auto" ? t("codex.reasoning.auto") : reasoningLabel(item.value),
       description: item.value === "auto"
-        ? (model?.defaultReasoningEffort ? `モデル既定: ${reasoningLabel(model.defaultReasoningEffort)}` : "Codexに自動選択させる")
-        : (item.description || `${reasoningLabel(item.value)} reasoning`)
+        ? (model?.defaultReasoningEffort ? t("codex.reasoning.modelDefault", { effort: reasoningLabel(model.defaultReasoningEffort) }) : t("codex.reasoning.letCodexChoose"))
+        : (item.description || t("codex.reasoning.genericDesc", { label: reasoningLabel(item.value) }))
     }));
-    openModal("推論量", model ? `${model.displayName || model.model} が対応している推論量` : "このモデルの思考量を選択");
+    openModal(
+      t("codex.reasoning.modalTitle"),
+      model
+        ? t("codex.reasoning.modalSubtitleModel", { model: model.displayName || model.model })
+        : t("codex.reasoning.modalSubtitleDefault")
+    );
     modalBody.innerHTML = `<div class="cx-choice-list"></div>`;
     const list = modalBody.querySelector<HTMLDivElement>(".cx-choice-list")!;
     for (const item of values) {
@@ -728,7 +771,7 @@ export function mountCodexRemote(
 
   async function applyModelSelection(modelValue: string, displayName: string) {
     if (isExecutionActive(executionState)) {
-      showToast("回答中はモデルを変更できません");
+      showToast(t("codex.model.cannotChangeWhileActive"));
       return;
     }
 
@@ -743,13 +786,13 @@ export function mountCodexRemote(
       persistSelectedModel(modelValue);
       showToast(
         activeThreadId
-          ? `${displayName} に切り替えました`
-          : `次のチャット: ${displayName}`
+          ? t("codex.model.switched", { name: displayName })
+          : t("codex.model.nextChat", { name: displayName })
       );
       closeModal();
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      showToast("モデル変更に失敗しました");
+      const message = error instanceof Error ? translateServerMessage(error.message) : String(error);
+      showToast(t("codex.model.changeFailed"));
       throw new Error(message);
     }
   }
@@ -773,19 +816,19 @@ export function mountCodexRemote(
           cache: method === "GET" ? "no-store" : undefined
         },
         REMOTE_REQUEST_TIMEOUT_MS,
-        () => new Error("Project request timed out")
+        () => new Error(t("codex.errors.projectRequestTimeout"))
       );
     } catch (error) {
       if (mutating) {
         throw new Error(
-          `Mutation outcome is unknown (operation ${operationId}). DevMoter did not retry it automatically.`,
+          t("codex.errors.mutationUnknown", { operationId }),
           { cause: error }
         );
       }
       throw error;
     }
     const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
+    if (!res.ok) throw new Error(payload?.error ? translateServerMessage(String(payload.error)) : t("common.httpError", { status: res.status }));
     return payload as T;
   }
 
@@ -962,12 +1005,12 @@ export function mountCodexRemote(
           body: JSON.stringify({ method, params })
         },
         REMOTE_REQUEST_TIMEOUT_MS,
-        () => new Error("Codex RPC request timed out")
+        () => new Error(t("codex.errors.rpcTimeout"))
       );
     } catch (error) {
       if (opId) {
         throw new Error(
-          `Mutation outcome is unknown (operation ${opId}). DevMoter did not retry it automatically.`,
+          t("codex.errors.mutationUnknown", { operationId: opId }),
           { cause: error }
         );
       }
@@ -977,29 +1020,29 @@ export function mountCodexRemote(
     if (!res.ok) {
       if (payload?.duplicate) {
         throw new Error(
-          `Operation ${payload?.operationId || opId} was already seen; the duplicate send was suppressed and the earlier outcome is unknown.`
+          t("codex.errors.duplicateRpc", { operationId: String(payload?.operationId || opId) })
         );
       }
       const code = typeof payload?.code === "string" ? payload.code : "";
       if (code === "not_installed" || code === "not_executable" || code === "failed") {
-        throw Object.assign(new Error(String(payload?.error || "CLIを起動できません")), { code });
+        throw Object.assign(new Error(payload?.error ? translateServerMessage(String(payload.error)) : t("codex.errors.cannotLaunchCli")), { code });
       }
-      throw new Error(payload?.error || `HTTP ${res.status}`);
+      throw new Error(payload?.error ? translateServerMessage(String(payload.error)) : t("common.httpError", { status: res.status }));
     }
     return payload.result as T;
   }
 
   function executionLabel(state: ExecutionState) {
     switch (state) {
-      case "offline": return "オフライン";
-      case "reconnecting": return "再接続中…";
-      case "idle": return "待機中";
-      case "running": return "実行中…";
-      case "waiting_for_approval": return "確認待ち";
-      case "waiting_for_input": return "入力待ち";
-      case "completed": return "完了";
-      case "failed": return "失敗";
-      case "interrupted": return "中断";
+      case "offline": return t("codex.state.offline");
+      case "reconnecting": return t("codex.state.reconnecting");
+      case "idle": return t("codex.state.idle");
+      case "running": return t("codex.state.running");
+      case "waiting_for_approval": return t("codex.state.waitingApproval");
+      case "waiting_for_input": return t("codex.state.waitingInput");
+      case "completed": return t("codex.state.completed");
+      case "failed": return t("codex.state.failed");
+      case "interrupted": return t("codex.state.interrupted");
     }
   }
 
@@ -1014,7 +1057,7 @@ export function mountCodexRemote(
 
     send.classList.toggle("stop", active);
     send.innerHTML = active ? cxIcons.stop : cxIcons.send;
-    send.setAttribute("aria-label", active ? "停止" : "送信");
+    send.setAttribute("aria-label", active ? t("common.stop") : t("common.send"));
     send.disabled = !online || next === "reconnecting";
 
     if (previous !== next) {
@@ -1032,7 +1075,7 @@ export function mountCodexRemote(
     sideStatus.classList.toggle("online", next);
     sideStatus.classList.toggle("missing", unavailableCode === "not_installed");
     sideStatus.dataset.codexState = next ? "online" : unavailableCode || "offline";
-    sideStatus.innerHTML = `<i></i> ${next ? "Online" : codexAvailabilityLabel(unavailableCode)}`;
+    sideStatus.innerHTML = `<i></i> ${escapeHtml(next ? t("common.online") : codexAvailabilityLabel(unavailableCode))}`;
     promptInput.disabled = !next;
 
     if (!next) {
@@ -1049,18 +1092,19 @@ export function mountCodexRemote(
         const empty = document.createElement("div");
         empty.className = "cx-side-empty";
         empty.textContent = unavailableCode === "not_installed"
-          ? "Codex が未インストールです"
+          ? t("codex.side.notInstalled")
           : unavailableCode
-            ? "Codex を起動できません"
-            : "Codexはオフラインです";
+            ? t("codex.side.cannotLaunch")
+            : t("codex.side.offline");
         sidebarThreads.appendChild(empty);
       }
       if (notice) {
+        const translatedNotice = translateServerMessage(notice);
         const label = executionStatus.querySelector("span");
-        if (label) label.textContent = notice;
-        executionStatus.title = notice;
+        if (label) label.textContent = translatedNotice;
+        executionStatus.title = translatedNotice;
         const welcome = root.querySelector<HTMLElement>(".cx-welcome p");
-        if (welcome) welcome.textContent = notice;
+        if (welcome) welcome.textContent = translatedNotice;
       }
       return;
     }
@@ -1098,7 +1142,7 @@ export function mountCodexRemote(
       document.execCommand("copy");
       helper.remove();
     }
-    showToast("コピーしました");
+    showToast(t("common.copied"));
   }
 
   function addAssistantActions(bubble: HTMLDivElement) {
@@ -1113,8 +1157,8 @@ export function mountCodexRemote(
     const copy = document.createElement("button");
     copy.type = "button";
     copy.className = "cx-message-action";
-    copy.setAttribute("aria-label", "回答をコピー");
-    copy.title = "コピー";
+    copy.setAttribute("aria-label", t("codex.message.copyAria"));
+    copy.title = t("codex.message.copyTitle");
     copy.innerHTML = `
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <rect x="8" y="8" width="11" height="11" rx="2"></rect>
@@ -1129,8 +1173,8 @@ export function mountCodexRemote(
     const feedback = document.createElement("button");
     feedback.type = "button";
     feedback.className = "cx-message-action";
-    feedback.setAttribute("aria-label", "回答を評価");
-    feedback.title = "評価";
+    feedback.setAttribute("aria-label", t("codex.message.rateAria"));
+    feedback.title = t("codex.message.rateTitle");
     feedback.innerHTML = `
       <svg viewBox="0 0 28 24" aria-hidden="true">
         <path d="M8.5 11.5V5.8c0-.9-.7-1.6-1.6-1.6h-.7L3.5 9v5.8h3.4c.9 0 1.6-.7 1.6-1.6v-1.7Z"></path>
@@ -1151,7 +1195,7 @@ export function mountCodexRemote(
       button.className = "cx-feedback-choice";
       if (saved === value) button.classList.add("selected");
       button.textContent = value === "up" ? "👍" : "👎";
-      button.setAttribute("aria-label", value === "up" ? "良い回答" : "良くない回答");
+      button.setAttribute("aria-label", value === "up" ? t("codex.message.thumbsUpAria") : t("codex.message.thumbsDownAria"));
       button.addEventListener("click", event => {
         event.stopPropagation();
         localStorage.setItem(feedbackKey(text), value);
@@ -1161,7 +1205,7 @@ export function mountCodexRemote(
         button.classList.add("selected");
         feedbackMenu.classList.add("hidden");
         feedback.classList.add("rated");
-        showToast(value === "up" ? "👍 を記録しました" : "👎 を記録しました");
+        showToast(value === "up" ? t("codex.message.recordedUp") : t("codex.message.recordedDown"));
       });
       feedbackMenu.appendChild(button);
     }
@@ -1181,8 +1225,8 @@ export function mountCodexRemote(
     const share = document.createElement("button");
     share.type = "button";
     share.className = "cx-message-action";
-    share.setAttribute("aria-label", "回答を共有");
-    share.title = "共有";
+    share.setAttribute("aria-label", t("codex.message.shareAria"));
+    share.title = t("codex.message.shareTitle");
     share.innerHTML = `
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M12 15V3"></path>
@@ -1200,7 +1244,7 @@ export function mountCodexRemote(
         }
       }
       await copyText(text);
-      showToast("共有できないためコピーしました");
+      showToast(t("codex.message.copiedFallback"));
     });
 
     actions.append(copy, feedbackWrap, share);
@@ -1263,20 +1307,22 @@ export function mountCodexRemote(
     retryDraft: FailedCodexSendDraft | null
   ) {
     const normalized = normalizeCodexSendError(error);
-    const bubble = addMessage("system", `${normalized.category}: ${normalized.reason}`);
+    const localizedCategory = codexSendErrorCategory(normalized.category);
+    const localizedReason = codexSendErrorReason(normalized.reason);
+    const bubble = addMessage("system", `${localizedCategory}: ${localizedReason}`);
     const actions = document.createElement("div");
     actions.className = "cx-send-error-actions";
     if (retryDraft) {
       const restore = document.createElement("button");
       restore.type = "button";
-      restore.textContent = "入力に戻す";
+      restore.textContent = t("codex.sendError.restoreInput");
       restore.addEventListener("click", () => {
         if (activeThreadId !== retryDraft.threadId) {
-          showToast("元の会話を開いてから入力に戻してください。");
+          showToast(t("codex.sendError.openOriginalChat"));
           return;
         }
         if (promptInput.value.trim() || pendingAttachments.length || selectedContextRefs.length) {
-          showToast("入力欄に内容があります。送信または削除してから復元してください。");
+          showToast(t("codex.sendError.clearDraftFirst"));
           return;
         }
         promptInput.value = retryDraft.text;
@@ -1292,7 +1338,7 @@ export function mountCodexRemote(
     }
     const diagnosticsButton = document.createElement("button");
     diagnosticsButton.type = "button";
-    diagnosticsButton.textContent = "Diagnostics";
+    diagnosticsButton.textContent = t("codex.sendError.diagnostics");
     diagnosticsButton.addEventListener("click", () => {
       window.dispatchEvent(new CustomEvent("devmoter:open-settings", { detail: { page: "diagnostics" } }));
     });
@@ -1300,16 +1346,16 @@ export function mountCodexRemote(
     const failedDetails = document.createElement("details");
     failedDetails.className = "cx-send-error-diagnostics";
     const summary = document.createElement("summary");
-    summary.textContent = "Error details";
+    summary.textContent = t("codex.sendError.detailsSummary");
     const content = document.createElement("div");
     content.textContent = [
-      `Category: ${normalized.category}`,
-      `Reason: ${normalized.reason}`,
-      normalized.code ? `Code: ${normalized.code}` : "",
-      "Backend: Codex",
-      `Method: ${diagnostics.method}`,
-      diagnostics.threadId ? `Thread: ${diagnostics.threadId}` : "",
-      diagnostics.turnId ? `Turn: ${diagnostics.turnId}` : ""
+      t("codex.sendError.detailCategory", { value: localizedCategory }),
+      t("codex.sendError.detailReason", { value: localizedReason }),
+      normalized.code ? t("codex.sendError.detailCode", { value: normalized.code }) : "",
+      t("codex.sendError.detailBackend"),
+      t("codex.sendError.detailMethod", { value: diagnostics.method }),
+      diagnostics.threadId ? t("codex.sendError.detailThread", { value: diagnostics.threadId }) : "",
+      diagnostics.turnId ? t("codex.sendError.detailTurn", { value: diagnostics.turnId }) : ""
     ].filter(Boolean).join("\n");
     failedDetails.append(summary, content);
     actions.appendChild(failedDetails);
@@ -1349,7 +1395,8 @@ export function mountCodexRemote(
     const label = document.createElement("span");
     label.textContent = `MCP · ${summary.server} · ${summary.tool}`;
     const state = document.createElement("small");
-    state.textContent = summary.status + (normalized.truncated ? " · truncated" : "");
+    const mcpState = summary.status === "available" ? t("codex.mcp.available") : translateServerMessage(summary.status);
+    state.textContent = mcpState + (normalized.truncated ? t("codex.mcp.truncatedSuffix") : "");
     head.append(label, state);
     const structured = document.createElement("pre");
     structured.className = "cx-mcp-structured";
@@ -1358,7 +1405,7 @@ export function mountCodexRemote(
     const raw = document.createElement("details");
     raw.className = "cx-mcp-raw";
     const rawSummary = document.createElement("summary");
-    rawSummary.textContent = "Raw fallback";
+    rawSummary.textContent = t("codex.mcp.rawFallback");
     const rawPre = document.createElement("pre");
     rawPre.textContent = normalized.rawText;
     raw.append(rawSummary, rawPre);
@@ -1382,7 +1429,7 @@ export function mountCodexRemote(
     if (!items.length) {
       const empty = document.createElement("div");
       empty.className = "cx-side-empty";
-      empty.textContent = q ? "見つかりません" : "まだチャットがありません";
+      empty.textContent = q ? t("codex.threads.noMatches") : t("codex.threads.empty");
       sidebarThreads.appendChild(empty);
       return;
     }
@@ -1390,7 +1437,7 @@ export function mountCodexRemote(
     let groupName = "";
     for (const thread of items) {
       const cwd = thread.cwd || "";
-      const nextGroup = cwd.split(/[\\/]/).filter(Boolean).at(-1) || "その他";
+      const nextGroup = cwd.split(/[\\/]/).filter(Boolean).at(-1) || t("codex.threads.otherGroup");
       if (!q && nextGroup !== groupName) {
         groupName = nextGroup;
         const group = document.createElement("div");
@@ -1410,13 +1457,19 @@ export function mountCodexRemote(
       if (thread.id === activeThreadId) button.classList.add("active");
 
       const text = document.createElement("span");
-      text.textContent = thread.name || thread.preview || "新しいチャット";
+      text.textContent = thread.name || thread.preview || t("codex.sidebar.newChat");
       button.appendChild(text);
       if (thread.updatedAt) {
         const age = Math.max(0, Date.now() - thread.updatedAt);
         const stamp = document.createElement("small");
         stamp.className = "cx-thread-age";
-        stamp.textContent = age < 60_000 ? "now" : age < 3_600_000 ? `${Math.floor(age / 60_000)}m` : age < 86_400_000 ? `${Math.floor(age / 3_600_000)}h` : `${Math.floor(age / 86_400_000)}d`;
+        stamp.textContent = age < 60_000
+          ? t("codex.threads.ageNow")
+          : age < 3_600_000
+            ? t("codex.threads.ageMinutes", { count: formatNumber(Math.floor(age / 60_000)) })
+            : age < 86_400_000
+              ? t("codex.threads.ageHours", { count: formatNumber(Math.floor(age / 3_600_000)) })
+              : t("codex.threads.ageDays", { count: formatNumber(Math.floor(age / 86_400_000)) });
         button.appendChild(stamp);
       }
       button.addEventListener("click", () => {
@@ -1434,7 +1487,7 @@ export function mountCodexRemote(
         { threadId, includeTurns: false }
       );
       const thread = result?.thread;
-      if (!thread) throw new Error("Saved thread is not available");
+      if (!thread) throw new Error(t("codex.threads.savedUnavailable"));
       return await selectThread({
         id: threadId,
         name: thread.name,
@@ -1442,15 +1495,15 @@ export function mountCodexRemote(
         cwd: thread.cwd
       });
     } catch (error) {
-      title.textContent = "会話を復元できません";
+      title.textContent = t("codex.threads.restoreTitle");
       transcript.innerHTML = `
         <div class="cx-welcome">
           <div class="cx-welcome-mark">↻</div>
-          <h2>保存済みの会話を復元できませんでした</h2>
-          <p>新しいチャットには切り替えず、接続復帰時にもう一度この会話を探します。</p>
+          <h2>${escapeHtml(t("codex.threads.restoreHeading"))}</h2>
+          <p>${escapeHtml(t("codex.threads.restoreBody"))}</p>
         </div>
       `;
-      showToast(error instanceof Error ? error.message : "会話の復元に失敗しました");
+      showToast(error instanceof Error ? translateServerMessage(error.message) : t("codex.threads.restoreFailed"));
       return false;
     }
   }
@@ -1462,7 +1515,7 @@ export function mountCodexRemote(
       result = await rpc<Json>("thread/list", { limit: 100 });
     } catch (error) {
       if (threadListRequests.isCurrent(requestGeneration)) {
-        showToast(error instanceof Error ? error.message : "会話一覧を読み込めませんでした");
+        showToast(error instanceof Error ? translateServerMessage(error.message) : t("codex.threads.listLoadFailed"));
       }
       return false;
     }
@@ -1470,7 +1523,7 @@ export function mountCodexRemote(
     try {
       allThreads = normalizeCodexThreadList(result);
     } catch {
-      showToast("Codexから有効な会話一覧を受け取れませんでした");
+      showToast(t("codex.threads.listInvalid"));
       return false;
     }
     renderThreads();
@@ -1495,10 +1548,10 @@ export function mountCodexRemote(
     for (const part of parts) {
       if (part?.type === "text" && typeof part.text === "string") texts.push(part.text);
       if (part?.type === "image" || part?.type === "localImage") {
-        attachments.push({ name: "画像", kind: "image" });
+        attachments.push({ name: t("codex.threads.imageLabel"), kind: "image" });
       }
       if (part?.type === "mention") {
-        attachments.push({ name: part.name || part.path || "ファイル", kind: "file" });
+        attachments.push({ name: part.name || part.path || t("codex.threads.fileLabel"), kind: "file" });
       }
     }
 
@@ -1511,7 +1564,7 @@ export function mountCodexRemote(
       result = await rpc("thread/read", { threadId, includeTurns: true });
     } catch (error) {
       if (activeThreadId === threadId) {
-        showToast(error instanceof Error ? error.message : "会話履歴を読み込めませんでした");
+        showToast(error instanceof Error ? translateServerMessage(error.message) : t("codex.threads.historyLoadFailed"));
       }
       return false;
     }
@@ -1521,7 +1574,7 @@ export function mountCodexRemote(
     try {
       thread = normalizeCodexThreadHistory(result);
     } catch {
-      showToast("Codexから有効な会話履歴を受け取れませんでした");
+      showToast(t("codex.threads.historyInvalid"));
       return false;
     }
     const turns = thread.turns;
@@ -1599,8 +1652,8 @@ export function mountCodexRemote(
       transcript.innerHTML = `
         <div class="cx-welcome">
           <div class="cx-welcome-mark">✦</div>
-          <h2>新しいチャット</h2>
-          <p>メッセージを送るとここに会話が表示されます。</p>
+          <h2>${escapeHtml(t("codex.sidebar.newChat"))}</h2>
+          <p>${escapeHtml(t("codex.chat.newWelcomeBody"))}</p>
         </div>
       `;
     }
@@ -1634,7 +1687,7 @@ export function mountCodexRemote(
       renderThreads();
       return true;
     } catch (error) {
-      addMessage("system", error instanceof Error ? error.message : "チャットを開けませんでした");
+      addMessage("system", error instanceof Error ? translateServerMessage(error.message) : t("codex.chat.openFailed"));
       return false;
     }
   }
@@ -1664,7 +1717,7 @@ export function mountCodexRemote(
     if (!activeProject?.id) return "";
     const response = await fetch("/api/dev/session-context?projectId=" + encodeURIComponent(activeProject.id), { cache: "no-store" });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload?.error || "Rulesを読み込めませんでした");
+    if (!response.ok) throw new Error(payload?.error ? translateServerMessage(String(payload.error)) : t("codex.chat.rulesLoadFailed"));
     return typeof payload?.developerInstructions === "string" ? payload.developerInstructions : "";
   }
 
@@ -1677,18 +1730,18 @@ export function mountCodexRemote(
       if (developerInstructions) params.developerInstructions = developerInstructions;
       const result = await rpc<{ thread?: ThreadSummary; model?: string }>("thread/start", params);
       const thread = result?.thread;
-      if (!thread?.id) throw new Error("thread id が返りませんでした");
+      if (!thread?.id) throw new Error(t("codex.chat.missingThreadId"));
 
       activeThreadId = thread.id;
       activeTurnId = null;
       if (result?.model) persistSelectedModel(result.model);
       localStorage.setItem("opencode-pocket-codex-thread", thread.id);
-      title.textContent = "新しいチャット";
+      title.textContent = t("codex.sidebar.newChat");
       transcript.innerHTML = `
         <div class="cx-welcome">
           <div class="cx-welcome-mark">✦</div>
-          <h2>何を作ろうか？</h2>
-          <p>メッセージ、画像、ファイルを送れます。</p>
+          <h2>${escapeHtml(t("codex.welcome.title"))}</h2>
+          <p>${escapeHtml(t("codex.chat.createdWelcomeBody"))}</p>
         </div>
       `;
       await loadThreads();
@@ -1746,7 +1799,7 @@ export function mountCodexRemote(
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(reader.error || new Error("ファイルを読めませんでした"));
+      reader.onerror = () => reject(reader.error || new Error(t("codex.upload.readFailed")));
       reader.readAsDataURL(blob);
     });
   }
@@ -1758,7 +1811,7 @@ export function mountCodexRemote(
     const limit = kind === "image" ? 10 * 1024 * 1024 : 15 * 1024 * 1024;
     if (blob.size > limit) {
       throw new Error(
-        `${blob.name} は${kind === "image" ? "10" : "15"}MBを超えています`
+        t("codex.upload.sizeExceeded", { name: blob.name, limit: kind === "image" ? "10" : "15" })
       );
     }
 
@@ -1779,11 +1832,11 @@ export function mountCodexRemote(
         })
       },
       120_000,
-      () => new Error("アップロードがタイムアウトしました。もう一度試してください。")
+      () => new Error(t("codex.upload.timeout"))
     );
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(payload?.error || "ファイルをアップロードできませんでした");
+      throw new Error(payload?.error ? translateServerMessage(String(payload.error)) : t("codex.upload.failed"));
     }
 
     return {
@@ -1806,7 +1859,7 @@ export function mountCodexRemote(
       }
       renderAttachments();
     } catch (error) {
-      addMessage("system", error instanceof Error ? error.message : String(error));
+      addMessage("system", error instanceof Error ? translateServerMessage(error.message) : String(error));
     }
   }
 
@@ -1870,8 +1923,8 @@ export function mountCodexRemote(
         const small = document.createElement("small");
         strong.textContent = "@" + entry.path;
         small.textContent = entry.kind === "folder"
-          ? "folder · bounded expansion"
-          : String(entry.size ?? "?") + " bytes";
+          ? t("codex.context.folderSummary")
+          : t("codex.context.fileBytes", { bytes: formatNumber(entry.size ?? 0) });
         copy.append(strong, small);
         option.append(icon, copy);
 
@@ -1945,15 +1998,15 @@ export function mountCodexRemote(
       try {
         const guard = await runPreExecutionGuard(text);
         if (guard.decision === "block") {
-          addMessage("system", `Safety guard blocked this request:\n${guardMessage(guard)}`);
+          addMessage("system", t("codex.send.guardBlocked", { message: guardMessage(guard) }));
           return;
         }
         if (
           guard.decision === "warn" &&
-          !window.confirm(`Safety check before execution:\n\n${guardMessage(guard)}\n\nContinue?`)
+          !window.confirm(t("codex.send.guardConfirm", { message: guardMessage(guard) }))
         ) return;
       } catch {
-        addMessage("system", "Safety guard unavailable; request was not sent.");
+        addMessage("system", t("codex.send.guardUnavailable"));
         return;
       }
     }
@@ -1964,8 +2017,9 @@ export function mountCodexRemote(
     } catch (error) {
       addMessage(
         "system",
-        "Project context could not be resolved: " +
-          (error instanceof Error ? error.message : String(error))
+        t("codex.send.contextResolveFailed", {
+          error: error instanceof Error ? translateServerMessage(error.message) : String(error)
+        })
       );
       return;
     }
@@ -2056,7 +2110,7 @@ export function mountCodexRemote(
         turnId: activeTurnId
       });
     } catch (error) {
-      addMessage("system", error instanceof Error ? error.message : "停止できませんでした");
+      addMessage("system", error instanceof Error ? translateServerMessage(error.message) : t("codex.send.interruptFailed"));
     }
   }
 
@@ -2070,14 +2124,14 @@ export function mountCodexRemote(
     approval.classList.remove("hidden");
     const isFileChange = request.method === "item/fileChange/requestApproval";
     approvalTitle.textContent = isFileChange
-      ? "ファイル変更を許可しますか？"
-      : "コマンド実行を許可しますか？";
+      ? t("codex.approval.fileChangeTitle")
+      : t("codex.approval.commandTitle");
 
     const contextRows = [
-      ["Backend", "Codex"],
-      ["Thread", String(request.params?.threadId || activeThreadId || "unknown")],
-      ["Turn", String(request.params?.turnId || activeTurnId || "unknown")],
-      ["Action", isFileChange ? "File change" : "Command execution"]
+      [t("codex.approval.metaBackend"), "Codex"],
+      [t("codex.approval.metaThread"), String(request.params?.threadId || activeThreadId || t("common.unknown"))],
+      [t("codex.approval.metaTurn"), String(request.params?.turnId || activeTurnId || t("common.unknown"))],
+      [t("codex.approval.metaAction"), isFileChange ? t("codex.approval.actionFileChange") : t("codex.approval.actionCommand")]
     ];
     approvalMeta.replaceChildren(
       ...contextRows.map(([label, value]) => {
@@ -2092,13 +2146,13 @@ export function mountCodexRemote(
     );
 
     approvalDetail.textContent = [
-      request.params?.reason ? `Reason: ${request.params.reason}` : "",
-      request.params?.command ? `Command:\n${request.params.command}` : "",
-      request.params?.cwd ? `Working directory:\n${request.params.cwd}` : "",
-      request.params?.grantRoot ? `Requested write root:\n${request.params.grantRoot}` : ""
-    ].filter(Boolean).join("\n\n") || "Codex is requesting permission to continue.";
+      request.params?.reason ? t("codex.approval.reasonLine", { reason: String(request.params.reason) }) : "",
+      request.params?.command ? t("codex.approval.commandLine", { command: String(request.params.command) }) : "",
+      request.params?.cwd ? t("codex.approval.cwdLine", { cwd: String(request.params.cwd) }) : "",
+      request.params?.grantRoot ? t("codex.approval.grantRootLine", { root: String(request.params.grantRoot) }) : ""
+    ].filter(Boolean).join("\n\n") || t("codex.approval.defaultDetail");
     if (pendingApprovalSafety) {
-      approvalDetail.textContent += `\n\nSafety pause:\n${pendingApprovalSafety}`;
+      approvalDetail.textContent += `\n\n${t("codex.approval.safetyPauseDetail", { message: pendingApprovalSafety })}`;
     }
   }
 
@@ -2160,14 +2214,14 @@ export function mountCodexRemote(
           "&limit=500",
         { cache: "no-store" },
         REMOTE_REQUEST_TIMEOUT_MS,
-        () => new Error("Background event replay timed out")
+        () => new Error(t("codex.reconnect.replayTimeout"))
       );
-      if (!response.ok) throw new Error("Background event replay unavailable");
+      if (!response.ok) throw new Error(t("codex.reconnect.replayUnavailable"));
       const payload = await response.json().catch(() => ({}));
       if (payload?.gap) {
         cursor = String(payload?.latestCursor || payload?.cursor || cursor);
         localStorage.setItem(storageKey, cursor);
-        throw new Error("Background replay gap detected");
+        throw new Error(t("codex.reconnect.replayGap"));
       }
       const items = Array.isArray(payload?.events) ? payload.events : [];
       for (const item of items) applyReplayState(item);
@@ -2200,16 +2254,16 @@ export function mountCodexRemote(
       events?.close();
       events = null;
       const sync = await reconnectAfterSync(async () => {
-        if (!(await refresh())) throw new Error("Could not refresh Codex state");
+        if (!(await refresh())) throw new Error(t("codex.reconnect.refreshFailed"));
       }, () => connectEvents());
 
       if (sync.error) {
-        showToast("会話履歴を同期できませんでした。接続を再試行します。");
+        showToast(t("codex.reconnect.syncFailedToast"));
         return;
       }
 
       if (threadId && activeThreadId === threadId) {
-        showToast(replayFallback ? "会話履歴を再取得しました" : "バックグラウンドの作業を同期しました");
+        showToast(replayFallback ? t("codex.reconnect.resyncedFallback") : t("codex.reconnect.resyncedBackground"));
       }
     } finally {
       resumeSyncInFlight = false;
@@ -2242,13 +2296,13 @@ export function mountCodexRemote(
 
       if (executionState === "reconnecting") {
         void recoverAfterEventOpen(async () => {
-          if (!(await refresh())) throw new Error("Could not refresh Codex state");
+          if (!(await refresh())) throw new Error(t("codex.reconnect.refreshFailed"));
         }, error => {
           if (executionState === "reconnecting") {
             setExecutionState("idle");
             showToast(error
-              ? "接続は復帰しましたが、会話の同期に失敗しました。履歴を再読み込みしてください。"
-              : "再接続しました");
+              ? t("codex.reconnect.syncAfterOpenFailed")
+              : t("codex.reconnect.reconnected"));
           }
         });
       }
@@ -2273,7 +2327,7 @@ export function mountCodexRemote(
         const toModel = params?.toModel;
         if (threadId === activeThreadId && typeof toModel === "string" && toModel) {
           persistSelectedModel(toModel);
-          showToast(`Codexが ${modelDisplayName(toModel)} に切り替えました`);
+          showToast(t("codex.events.rerouted", { model: modelDisplayName(toModel) }));
         }
         return;
       }
@@ -2377,7 +2431,7 @@ export function mountCodexRemote(
         request.method !== "item/commandExecution/requestApproval" &&
         request.method !== "item/fileChange/requestApproval"
       ) {
-        addMessage("system", `Codexから未対応の確認要求: ${request.method}`);
+        addMessage("system", t("codex.events.unsupportedApproval", { method: request.method }));
         return;
       }
 
@@ -2411,7 +2465,7 @@ export function mountCodexRemote(
             body: JSON.stringify({ id: request.id, decision: "accept" })
           });
           if (auto.ok) {
-            addMessage("system", "Applied a remembered, narrowly scoped Codex approval.");
+            addMessage("system", t("codex.approval.rememberedApplied"));
             return;
           }
         }
@@ -2486,28 +2540,31 @@ export function mountCodexRemote(
         try {
           commandRisk = await scanCommand(command);
         } catch {
-          throw new Error("Safety scan unavailable; approval was not sent.");
+          throw new Error(t("codex.approval.safetyScanUnavailable"));
         }
         if (
           commandRisk.dangerous &&
           !window.confirm(
-            `High-risk command detected:\n\n${commandRisk.command}\n\nReasons:\n${commandRisk.reasons.map(reason => `• ${reason}`).join("\n")}\n\nApprove this one execution?`
+            t("codex.approval.highRiskConfirm", {
+              command: commandRisk.command,
+              reasons: commandRisk.reasons.map(reason => `• ${translateServerMessage(reason)}`).join("\n")
+            })
           )
         ) return;
         if (commandRisk.dangerous && decision === "acceptForSession") {
           effectiveDecision = "accept";
-          addMessage("system", "High-risk commands can only be approved once; session-wide approval was downgraded.");
+          addMessage("system", t("codex.approval.highRiskDowngraded"));
         }
       }
 
       if (decision !== "decline" && pendingApprovalSafety) {
-        if (!window.confirm(`Repeated-action safety pause:\n\n${pendingApprovalSafety}\n\nContinue this run?`)) return;
+        if (!window.confirm(t("codex.approval.loopConfirm", { message: pendingApprovalSafety }))) return;
         await continueAgentRun(codexLoopRunId(request)).catch(() => {});
       }
 
       if (effectiveDecision === "acceptForSession" && !commandRisk?.dangerous) {
         await rememberPermission(scope, {
-          note: "Remembered from Codex session approval",
+          note: t("codex.approval.rememberedNote"),
           ttlMs: 24 * 60 * 60 * 1000
         }).catch(() => {});
       }
@@ -2528,7 +2585,7 @@ export function mountCodexRemote(
           void refresh();
           return;
         }
-        throw new Error(payload?.error || "許可応答に失敗しました");
+        throw new Error(payload?.error ? translateServerMessage(String(payload.error)) : t("codex.approval.replyFailed"));
       }
 
       pendingApproval = null;
@@ -2538,7 +2595,7 @@ export function mountCodexRemote(
     } catch (error) {
       addMessage(
         "system",
-        error instanceof Error ? error.message : "許可応答に失敗しました"
+        error instanceof Error ? translateServerMessage(error.message) : t("codex.approval.replyFailed")
       );
     } finally {
       denyApproval.disabled = false;
@@ -2568,7 +2625,7 @@ export function mountCodexRemote(
     if (!entries.length && !errorMessage) {
       const empty = document.createElement("p");
       empty.className = "cx-muted";
-      empty.textContent = "見つかりませんでした。";
+      empty.textContent = t("codex.plugins.noneFound");
       section.appendChild(empty);
     }
 
@@ -2579,13 +2636,15 @@ export function mountCodexRemote(
       const copy = document.createElement("span");
       copy.innerHTML = "<strong></strong><small></small>";
       copy.querySelector("strong")!.textContent = entry.name;
-      copy.querySelector("small")!.textContent =
-        `${entry.marketplace || "plugin"} · ${entry.enabled ? "有効" : "無効"}`;
+      copy.querySelector("small")!.textContent = t("codex.plugins.rowMeta", {
+        marketplace: entry.marketplace || "plugin",
+        state: entry.enabled ? t("common.enabled") : t("common.disabled")
+      });
 
       const state = document.createElement("span");
       state.className = "cx-plugin-state";
       state.textContent = entry.enabled ? "●" : "○";
-      state.title = entry.enabled ? "Enabled" : "Disabled";
+      state.title = entry.enabled ? t("common.enabled") : t("common.disabled");
 
       row.append(copy, state);
       section.appendChild(row);
@@ -2596,8 +2655,8 @@ export function mountCodexRemote(
 
   async function showPlugins() {
     closeSidebar();
-    openModal("プラグイン", "Codex 0.149.1互換のPlugin / MCPビュー");
-    modalBody.innerHTML = '<div class="cx-modal-loading">読み込み中…</div>';
+    openModal(t("codex.sidebar.plugins"), t("codex.plugins.subtitle"));
+    modalBody.innerHTML = `<div class="cx-modal-loading">${escapeHtml(t("common.loading"))}</div>`;
 
     const pluginParams = {
       cwds: activeProject?.path ? [activeProject.path] : []
@@ -2624,17 +2683,17 @@ export function mountCodexRemote(
     if (installedResult.status === "fulfilled") {
       const installedEntries = pluginEntries(installedResult.value);
       appendPluginSection(
-        "Installed plugins",
+        t("codex.plugins.installedTitle"),
         enrichInstalledPluginEntries(installedEntries, catalogEntries)
       );
     } else {
       const fallbackEntries = catalogEntries.filter(entry => entry.installed);
       const fallbackError = catalogResult.status === "rejected"
         ? (catalogResult.reason instanceof Error
-            ? `Plugin API: ${catalogResult.reason.message}`
-            : "Plugin APIを読み込めませんでした。")
+            ? t("codex.plugins.apiError", { error: translateServerMessage(catalogResult.reason.message) })
+            : t("codex.plugins.apiLoadFailed"))
         : "";
-      appendPluginSection("Installed plugins", fallbackEntries, fallbackError);
+      appendPluginSection(t("codex.plugins.installedTitle"), fallbackEntries, fallbackError);
     }
 
     const mcpSection = document.createElement("section");
@@ -2648,7 +2707,7 @@ export function mountCodexRemote(
       if (!servers.length) {
         const empty = document.createElement("p");
         empty.className = "cx-muted";
-        empty.textContent = "MCPサーバーはありません。";
+        empty.textContent = t("codex.plugins.noMcpServers");
         mcpSection.appendChild(empty);
       } else {
         for (const server of servers) {
@@ -2659,11 +2718,10 @@ export function mountCodexRemote(
           name.textContent = String(server?.name || "MCP");
 
           const state = document.createElement("span");
-          state.textContent = String(
-            server?.runtimeStatus ||
-            server?.authStatus ||
-            "available"
-          );
+          const rawState = server?.runtimeStatus || server?.authStatus;
+          state.textContent = rawState
+            ? translateServerMessage(String(rawState))
+            : t("codex.mcp.available");
 
           row.append(name, state);
           mcpSection.appendChild(row);
@@ -2674,8 +2732,8 @@ export function mountCodexRemote(
       error.className = "cx-muted";
       error.textContent =
         mcpResult.reason instanceof Error
-          ? `MCP: ${mcpResult.reason.message}`
-          : "MCP情報を読み込めませんでした。";
+          ? t("codex.plugins.mcpError", { error: translateServerMessage(mcpResult.reason.message) })
+          : t("codex.plugins.mcpLoadFailed");
       mcpSection.appendChild(error);
     }
 
@@ -2684,14 +2742,14 @@ export function mountCodexRemote(
 
   async function showProjects() {
     closeSidebar();
-    openModal("プロジェクト", "Codexの作業ディレクトリとMarkdownを管理します。");
-    modalBody.innerHTML = '<div class="cx-modal-loading">読み込み中…</div>';
+    openModal(tApp("projects"), t("codex.projects.subtitle"));
+    modalBody.innerHTML = `<div class="cx-modal-loading">${escapeHtml(t("common.loading"))}</div>`;
 
     try {
       await loadProjects();
       renderProjectPicker();
     } catch (error) {
-      modalBody.textContent = error instanceof Error ? error.message : String(error);
+      modalBody.textContent = error instanceof Error ? translateServerMessage(error.message) : String(error);
     }
   }
 
@@ -2704,11 +2762,11 @@ export function mountCodexRemote(
     const addExisting = document.createElement("button");
     addExisting.type = "button";
     addExisting.className = "primary";
-    addExisting.textContent = "＋ 既存フォルダ";
+    addExisting.textContent = t("codex.projects.addExisting");
 
     const createNew = document.createElement("button");
     createNew.type = "button";
-    createNew.textContent = "＋ 新規Project";
+    createNew.textContent = t("codex.projects.createNew");
 
     const github = document.createElement("button");
     github.type = "button";
@@ -2722,7 +2780,7 @@ export function mountCodexRemote(
     if (!projects.length) {
       const empty = document.createElement("p");
       empty.className = "cx-muted";
-      empty.textContent = "まだProjectが登録されていません。";
+      empty.textContent = t("codex.projects.empty");
       list.appendChild(empty);
     }
 
@@ -2752,7 +2810,7 @@ export function mountCodexRemote(
 
       const state = document.createElement("span");
       state.className = "cx-project-state";
-      state.innerHTML = selected ? PROJECT_ROW_ICONS.check : PROJECT_ROW_ICONS.chevron;
+      state.innerHTML = selected ? PROJECT_ROW_ICONS.check() : PROJECT_ROW_ICONS.chevron;
 
       row.append(icon, copy, state);
       row.addEventListener("click", () => {
@@ -2774,11 +2832,11 @@ export function mountCodexRemote(
     const back = document.createElement("button");
     back.type = "button";
     back.className = "cx-back-button";
-    back.textContent = "‹ Local Projects";
+    back.textContent = t("codex.github.backLocal");
     back.addEventListener("click", renderProjectPicker);
 
     const heading = document.createElement("h3");
-    heading.textContent = "GitHub repositories";
+    heading.textContent = t("codex.github.heading");
 
     const status = document.createElement("p");
     status.className = "cx-muted";
@@ -2790,9 +2848,9 @@ export function mountCodexRemote(
     let page = 1;
 
     const filterButtons = ([
-      ["all", "All"],
-      ["private", "Private"],
-      ["public", "Public"]
+      ["all", t("common.all")],
+      ["private", t("codex.github.filterPrivate")],
+      ["public", t("codex.github.filterPublic")]
     ] as const).map(([value, label]) => {
       const button = document.createElement("button");
       button.type = "button";
@@ -2806,7 +2864,7 @@ export function mountCodexRemote(
 
     const search = document.createElement("input");
     search.type = "search";
-    search.placeholder = "Search all accessible repositories";
+    search.placeholder = t("codex.github.searchPlaceholder");
     search.className = "cx-github-search";
 
     const list = document.createElement("div");
@@ -2817,34 +2875,36 @@ export function mountCodexRemote(
 
     const previous = document.createElement("button");
     previous.type = "button";
-    previous.textContent = "‹ Prev";
+    previous.textContent = t("codex.github.prevPage");
 
     const pageLabel = document.createElement("span");
-    pageLabel.textContent = "Page 1";
+    pageLabel.textContent = t("codex.github.pageLabel", { page: formatNumber(1) });
 
     const nextPage = document.createElement("button");
     nextPage.type = "button";
-    nextPage.textContent = "Next ›";
+    nextPage.textContent = t("codex.github.nextPage");
 
     pager.append(previous, pageLabel, nextPage);
     modalBody.append(back, heading, status, filters, search, list, pager);
 
     const load = async () => {
-      list.textContent = "読み込み中…";
+      list.textContent = t("common.loading");
       previous.disabled = true;
       nextPage.disabled = true;
 
       try {
         const authResponse = await fetch("/api/github/status", { cache: "no-store" });
         const auth = await authResponse.json().catch(() => ({}));
-        if (!authResponse.ok) throw new Error(auth?.error || `HTTP ${authResponse.status}`);
+        if (!authResponse.ok) {
+          throw new Error(auth?.error ? translateServerMessage(String(auth.error)) : t("common.httpError", { status: authResponse.status }));
+        }
 
         status.textContent = auth.authenticated
-          ? `gh: ${auth.login || "authenticated"}`
-          : "GitHub CLIが未認証。ホストで gh auth login を実行してね。";
+          ? t("codex.github.authStatus", { login: auth.login || t("codex.github.authenticated") })
+          : t("codex.github.unauthenticated");
 
         if (!auth.authenticated) {
-          list.textContent = "GitHub integration is unavailable.";
+          list.textContent = t("codex.github.unavailable");
           pager.classList.add("hidden");
           return;
         }
@@ -2856,9 +2916,13 @@ export function mountCodexRemote(
         });
         const response = await fetch(`/api/github/repos?${query.toString()}`, { cache: "no-store" });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result?.error || `HTTP ${response.status}`);
+        if (!response.ok) {
+          throw new Error(result?.error ? translateServerMessage(String(result.error)) : t("common.httpError", { status: response.status }));
+        }
 
-        pageLabel.textContent = search.value.trim() ? "Search" : `Page ${result.page || page}`;
+        pageLabel.textContent = search.value.trim()
+          ? t("codex.github.searchPageLabel")
+          : t("codex.github.pageLabel", { page: formatNumber(result.page || page) });
         previous.disabled = Boolean(search.value.trim()) || page <= 1;
         nextPage.disabled = Boolean(search.value.trim()) || !result.hasMore;
         pager.classList.toggle("hidden", Boolean(search.value.trim()));
@@ -2866,8 +2930,8 @@ export function mountCodexRemote(
         if (!result.repositories?.length) {
           list.textContent =
             visibility === "private"
-              ? "Privateリポジトリが見つかりません。"
-              : "リポジトリが見つかりません。";
+              ? t("codex.github.noPrivateRepos")
+              : t("codex.github.noRepos");
           return;
         }
 
@@ -2878,16 +2942,19 @@ export function mountCodexRemote(
           row.innerHTML = `<span class="cx-project-icon">◉</span><span class="cx-project-copy"><strong></strong><small></small></span><span class="cx-project-state">›</span>`;
           (row.querySelector("strong") as HTMLElement).textContent = repo.fullName;
           const localGitState = repo.cloned
-            ? ` · local:${repo.currentBranch || repo.defaultBranch} · ${repo.dirty ? "changes" : "clean"}`
+            ? t("codex.github.localBranchState", {
+                branch: repo.currentBranch || repo.defaultBranch,
+                dirty: repo.dirty ? t("codex.github.dirtyChanges") : t("codex.github.dirtyClean")
+              })
             : "";
           (row.querySelector("small") as HTMLElement).textContent =
-            `${repo.private ? "Private" : "Public"} · ${repo.defaultBranch}${localGitState}`;
+            `${repo.private ? t("codex.github.filterPrivate") : t("codex.github.filterPublic")} · ${repo.defaultBranch}${localGitState}`;
           row.addEventListener("click", () => void showGithubRepo(repo));
           return row;
         }));
       } catch (error) {
-        status.textContent = error instanceof Error ? error.message : String(error);
-        list.textContent = "GitHub情報を読み込めませんでした。";
+        status.textContent = error instanceof Error ? translateServerMessage(error.message) : String(error);
+        list.textContent = t("codex.github.repoLoadFailed");
       }
     };
 
@@ -2922,14 +2989,16 @@ export function mountCodexRemote(
   }
 
   async function showGithubRepo(repo: GithubRepo) {
-    modalBody.textContent = "ブランチを読み込み中…";
+    modalBody.textContent = t("codex.github.loadingBranches");
     try {
       const branchResponse = await fetch(
         `/api/github/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/branches`,
         { cache: "no-store" }
       );
       const result = await branchResponse.json().catch(() => ({}));
-      if (!branchResponse.ok) throw new Error(result?.error || `HTTP ${branchResponse.status}`);
+      if (!branchResponse.ok) {
+        throw new Error(result?.error ? translateServerMessage(String(result.error)) : t("common.httpError", { status: branchResponse.status }));
+      }
       const refreshedDefaultBranch = String(
         result?.defaultBranch ||
         (result?.branches || []).find((branch: { default?: boolean }) => branch?.default)?.name ||
@@ -2938,9 +3007,9 @@ export function mountCodexRemote(
       );
       const form = document.createElement("form");
       form.className = "cx-project-form";
-      const back = document.createElement("button"); back.type = "button"; back.className = "cx-back-button"; back.textContent = "‹ GitHub"; back.addEventListener("click", () => void showGithubProjects());
+      const back = document.createElement("button"); back.type = "button"; back.className = "cx-back-button"; back.textContent = t("codex.github.backGithub"); back.addEventListener("click", () => void showGithubProjects());
       const title = document.createElement("h3"); title.textContent = repo.fullName;
-      const label = document.createElement("label"); label.innerHTML = "<span>Branch</span>";
+      const label = document.createElement("label"); label.innerHTML = `<span>${escapeHtml(t("codex.github.branchLabel"))}</span>`;
       const select = document.createElement("select");
       for (const branch of result.branches || []) {
         const option = document.createElement("option");
@@ -2950,11 +3019,37 @@ export function mountCodexRemote(
         select.appendChild(option);
       }
       label.appendChild(select);
-      const submit = document.createElement("button"); submit.type = "submit"; submit.className = "primary"; submit.textContent = repo.cloned ? "Fetch and open" : "Clone and open";
+      const submit = document.createElement("button"); submit.type = "submit"; submit.className = "primary"; submit.textContent = repo.cloned ? t("codex.github.fetchAndOpen") : t("codex.github.cloneAndOpen");
       const error = document.createElement("p"); error.className = "cx-form-error hidden";
       form.append(back, title, label, submit, error); modalBody.replaceChildren(form);
-      form.addEventListener("submit", async event => { event.preventDefault(); submit.disabled = true; error.classList.add("hidden"); try { const response = await fetch("/api/github/open", { method: "POST", headers: { "content-type": "application/json", "x-pocket-operation-id": uid() }, body: JSON.stringify({ owner: repo.owner, repo: repo.name, branch: select.value }) }); const result = await response.json(); if (!response.ok) throw new Error(result?.error || `HTTP ${response.status}`); await loadProjects(); const project = projects.find(item => item.id === result.project.id) || result.project; setActiveProject(project); await showProjectWorkspace(project); } catch (cause) { error.textContent = cause instanceof Error ? cause.message : String(cause); error.classList.remove("hidden"); } finally { submit.disabled = false; } });
-    } catch (error) { modalBody.textContent = error instanceof Error ? error.message : String(error); }
+      form.addEventListener("submit", async event => {
+        event.preventDefault();
+        submit.disabled = true;
+        error.classList.add("hidden");
+        try {
+          const response = await fetch("/api/github/open", {
+            method: "POST",
+            headers: { "content-type": "application/json", "x-pocket-operation-id": uid() },
+            body: JSON.stringify({ owner: repo.owner, repo: repo.name, branch: select.value })
+          });
+          const openResult = await response.json();
+          if (!response.ok) {
+            throw new Error(openResult?.error ? translateServerMessage(String(openResult.error)) : t("common.httpError", { status: response.status }));
+          }
+          await loadProjects();
+          const project = projects.find(item => item.id === openResult.project.id) || openResult.project;
+          setActiveProject(project);
+          await showProjectWorkspace(project);
+        } catch (cause) {
+          error.textContent = cause instanceof Error ? translateServerMessage(cause.message) : String(cause);
+          error.classList.remove("hidden");
+        } finally {
+          submit.disabled = false;
+        }
+      });
+    } catch (error) {
+      modalBody.textContent = error instanceof Error ? translateServerMessage(error.message) : String(error);
+    }
   }
 
   function showProjectAddForm(action: "add" | "create") {
@@ -2966,15 +3061,15 @@ export function mountCodexRemote(
     const back = document.createElement("button");
     back.type = "button";
     back.className = "cx-back-button";
-    back.textContent = "‹ 戻る";
+    back.textContent = `‹ ${t("common.back")}`;
     back.addEventListener("click", renderProjectPicker);
 
     const heading = document.createElement("h3");
     heading.textContent =
-      action === "create" ? "新しいProjectを作成" : "既存フォルダを追加";
+      action === "create" ? t("codex.projects.createHeading") : t("codex.projects.addHeading");
 
     const pathLabel = document.createElement("label");
-    pathLabel.innerHTML = "<span>Path</span>";
+    pathLabel.innerHTML = `<span>${escapeHtml(t("codex.projects.pathLabel"))}</span>`;
     const pathInput = document.createElement("input");
     pathInput.type = "text";
     pathInput.placeholder =
@@ -2983,23 +3078,23 @@ export function mountCodexRemote(
     pathLabel.appendChild(pathInput);
 
     const nameLabel = document.createElement("label");
-    nameLabel.innerHTML = "<span>表示名（任意）</span>";
+    nameLabel.innerHTML = `<span>${escapeHtml(t("codex.projects.optionalNameLabel"))}</span>`;
     const nameInput = document.createElement("input");
     nameInput.type = "text";
-    nameInput.placeholder = "Project name";
+    nameInput.placeholder = t("codex.projects.namePlaceholder");
     nameLabel.appendChild(nameInput);
 
     const note = document.createElement("p");
     note.className = "cx-muted";
     note.textContent =
       action === "create"
-        ? "ホームディレクトリ配下に新しいフォルダを作成します。"
-        : "Chromebook側に既に存在するフォルダを登録します。";
+        ? t("codex.projects.createNote")
+        : t("codex.projects.addNote");
 
     const submit = document.createElement("button");
     submit.type = "submit";
     submit.className = "primary";
-    submit.textContent = action === "create" ? "作成" : "追加";
+    submit.textContent = action === "create" ? t("common.create") : t("common.add");
 
     const error = document.createElement("div");
     error.className = "cx-form-error hidden";
@@ -3029,7 +3124,7 @@ export function mountCodexRemote(
         setActiveProject(project);
         await showProjectWorkspace(project);
       } catch (cause) {
-        error.textContent = cause instanceof Error ? cause.message : String(cause);
+        error.textContent = cause instanceof Error ? translateServerMessage(cause.message) : String(cause);
         error.classList.remove("hidden");
       } finally {
         submit.disabled = false;
@@ -3040,7 +3135,7 @@ export function mountCodexRemote(
   async function showProjectWorkspace(project: ProjectSummary) {
     setActiveProject(project);
     openModal(project.name, project.path);
-    modalBody.innerHTML = '<div class="cx-modal-loading">Markdownを読み込み中…</div>';
+    modalBody.innerHTML = `<div class="cx-modal-loading">${escapeHtml(t("codex.projects.loadingMarkdown"))}</div>`;
 
     try {
       const result = await projectApi<{ files?: MarkdownDoc[] }>(
@@ -3054,13 +3149,13 @@ export function mountCodexRemote(
 
       const back = document.createElement("button");
       back.type = "button";
-      back.textContent = "‹ Projects";
+      back.textContent = t("codex.projects.backProjects");
       back.addEventListener("click", () => void showProjects());
 
       const newChat = document.createElement("button");
       newChat.type = "button";
       newChat.className = "primary";
-      newChat.textContent = "✎ 新しいチャット";
+      newChat.textContent = `✎ ${t("codex.sidebar.newChat")}`;
       newChat.addEventListener("click", () => {
         closeModal();
         void createThread();
@@ -3071,7 +3166,7 @@ export function mountCodexRemote(
 
       const quick = document.createElement("section");
       quick.className = "cx-settings-section";
-      quick.innerHTML = "<h3>Project Instructions</h3>";
+      quick.innerHTML = `<h3>${escapeHtml(t("codex.projects.instructionsHeading"))}</h3>`;
 
       for (const filename of ["AGENTS.md", "HANDOFF.md", "README.md"]) {
         const found = docs.find(doc => doc.path.toUpperCase() === filename.toUpperCase());
@@ -3083,7 +3178,7 @@ export function mountCodexRemote(
         label.innerHTML = "<strong></strong><small></small>";
         label.querySelector("strong")!.textContent = filename;
         label.querySelector("small")!.textContent =
-          found ? "編集" : "まだありません · タップして作成";
+          found ? t("common.edit") : t("codex.projects.missingTapCreate");
 
         const arrow = document.createElement("span");
         arrow.textContent = found ? "›" : "＋";
@@ -3102,11 +3197,11 @@ export function mountCodexRemote(
       heading.className = "cx-section-heading";
 
       const titleEl = document.createElement("h3");
-      titleEl.textContent = `Markdown · ${docs.length}`;
+      titleEl.textContent = t("codex.projects.markdownHeading", { count: formatNumber(docs.length) });
 
       const add = document.createElement("button");
       add.type = "button";
-      add.textContent = "＋ Markdown";
+      add.textContent = t("codex.projects.addMarkdownButton");
       add.addEventListener("click", () => showNewMarkdownForm(project));
 
       heading.append(titleEl, add);
@@ -3115,7 +3210,7 @@ export function mountCodexRemote(
       if (!docs.length) {
         const empty = document.createElement("p");
         empty.className = "cx-muted";
-        empty.textContent = "Markdownファイルはまだありません。";
+        empty.textContent = t("codex.projects.noMarkdownFiles");
         filesSection.appendChild(empty);
       }
 
@@ -3152,9 +3247,9 @@ export function mountCodexRemote(
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "cx-register-remove";
-      remove.textContent = "このProjectの登録を解除";
+      remove.textContent = t("codex.projects.unregisterProject");
       remove.addEventListener("click", async () => {
-        if (!confirm(`${project.name} をDevMoterから登録解除しますか？\n実フォルダは削除しません。`)) {
+        if (!confirm(t("codex.projects.unregisterConfirm", { name: project.name }))) {
           return;
         }
         await projectApi(`/${encodeURIComponent(project.id)}`, { method: "DELETE" });
@@ -3165,12 +3260,12 @@ export function mountCodexRemote(
       danger.appendChild(remove);
       modalBody.appendChild(danger);
     } catch (error) {
-      modalBody.textContent = error instanceof Error ? error.message : String(error);
+      modalBody.textContent = error instanceof Error ? translateServerMessage(error.message) : String(error);
     }
   }
 
   function showNewMarkdownForm(project: ProjectSummary) {
-    openModal("Markdownを追加", project.name);
+    openModal(t("codex.markdown.addTitle"), project.name);
     modalBody.replaceChildren();
 
     const form = document.createElement("form");
@@ -3179,11 +3274,11 @@ export function mountCodexRemote(
     const back = document.createElement("button");
     back.type = "button";
     back.className = "cx-back-button";
-    back.textContent = "‹ Project";
+    back.textContent = t("codex.markdown.backProject");
     back.addEventListener("click", () => void showProjectWorkspace(project));
 
     const label = document.createElement("label");
-    label.innerHTML = "<span>ファイル名</span>";
+    label.innerHTML = `<span>${escapeHtml(t("codex.markdown.filenameLabel"))}</span>`;
     const input = document.createElement("input");
     input.type = "text";
     input.placeholder = "NOTES.md";
@@ -3193,12 +3288,12 @@ export function mountCodexRemote(
 
     const note = document.createElement("p");
     note.className = "cx-muted";
-    note.textContent = "Project配下の既存フォルダも指定できます。例: docs/PLAN.md";
+    note.textContent = t("codex.markdown.subpathNote");
 
     const submit = document.createElement("button");
     submit.type = "submit";
     submit.className = "primary";
-    submit.textContent = "エディタを開く";
+    submit.textContent = t("codex.markdown.openEditor");
 
     const error = document.createElement("div");
     error.className = "cx-form-error hidden";
@@ -3211,7 +3306,7 @@ export function mountCodexRemote(
       let path = input.value.trim();
       if (!path.toLowerCase().endsWith(".md")) path += ".md";
       if (!path || path === ".md") {
-        error.textContent = "ファイル名を入力してね";
+        error.textContent = t("codex.markdown.enterFilename");
         error.classList.remove("hidden");
         return;
       }
@@ -3225,7 +3320,7 @@ export function mountCodexRemote(
     create = false
   ) {
     openModal(path, project.name);
-    modalBody.innerHTML = '<div class="cx-modal-loading">読み込み中…</div>';
+    modalBody.innerHTML = `<div class="cx-modal-loading">${escapeHtml(t("common.loading"))}</div>`;
 
     try {
       let content = "";
@@ -3243,16 +3338,16 @@ export function mountCodexRemote(
 
       const back = document.createElement("button");
       back.type = "button";
-      back.textContent = "‹ Project";
+      back.textContent = t("codex.markdown.backProject");
 
       const status = document.createElement("span");
       status.className = "cx-md-status";
-      status.textContent = create ? "新規" : "保存済み";
+      status.textContent = create ? t("codex.markdown.statusNew") : t("codex.markdown.statusSaved");
 
       const save = document.createElement("button");
       save.type = "button";
       save.className = "primary";
-      save.textContent = "保存";
+      save.textContent = t("common.save");
 
       toolbar.append(back, status, save);
 
@@ -3260,7 +3355,7 @@ export function mountCodexRemote(
       editor.className = "cx-md-editor";
       editor.value = content;
       editor.spellcheck = false;
-      editor.setAttribute("aria-label", `${path} editor`);
+      editor.setAttribute("aria-label", t("codex.markdown.editorAria", { path }));
 
       const meta = document.createElement("div");
       meta.className = "cx-md-meta";
@@ -3270,17 +3365,17 @@ export function mountCodexRemote(
 
       let dirty = create;
       modalCloseGuard = () =>
-        !dirty || confirm("未保存の変更があります。閉じますか？");
+        !dirty || confirm(t("codex.markdown.unsavedCloseConfirm"));
 
       editor.addEventListener("input", () => {
         dirty = true;
-        status.textContent = "未保存";
+        status.textContent = t("codex.markdown.statusUnsaved");
         status.classList.add("dirty");
       });
 
       const doSave = async () => {
         save.disabled = true;
-        status.textContent = "保存中…";
+        status.textContent = t("common.saving");
 
         try {
           await projectApi(
@@ -3295,10 +3390,10 @@ export function mountCodexRemote(
           );
           dirty = false;
           modalCloseGuard = null;
-          status.textContent = "保存済み";
+          status.textContent = t("codex.markdown.statusSaved");
           status.classList.remove("dirty");
         } catch (error) {
-          status.textContent = error instanceof Error ? error.message : String(error);
+          status.textContent = error instanceof Error ? translateServerMessage(error.message) : String(error);
           status.classList.add("dirty");
         } finally {
           save.disabled = false;
@@ -3314,22 +3409,22 @@ export function mountCodexRemote(
       });
 
       back.addEventListener("click", () => {
-        if (dirty && !confirm("未保存の変更があります。戻りますか？")) return;
+        if (dirty && !confirm(t("codex.markdown.unsavedBackConfirm"))) return;
         void showProjectWorkspace(project);
       });
 
       requestAnimationFrame(() => editor.focus());
     } catch (error) {
-      modalBody.textContent = error instanceof Error ? error.message : String(error);
+      modalBody.textContent = error instanceof Error ? translateServerMessage(error.message) : String(error);
     }
   }
 
   async function showModels() {
     openModal(
-      "Provider · Model · Agent",
-      activeThreadId ? "このチャット" : "次のチャット"
+      t("codex.models.modalTitle"),
+      activeThreadId ? t("codex.models.thisChat") : t("codex.models.nextChat")
     );
-    modalBody.innerHTML = '<div class="cx-modal-loading">読み込み中…</div>';
+    modalBody.innerHTML = `<div class="cx-modal-loading">${escapeHtml(t("common.loading"))}</div>`;
 
     try {
       const models = await loadModelCatalog();
@@ -3347,16 +3442,17 @@ export function mountCodexRemote(
         }`;
         const strong = document.createElement("strong");
         const small = document.createElement("small");
-        strong.textContent = "Default";
-        small.textContent =
-          (defaultModel.displayName || defaultModel.model) + " · Codex default";
+        strong.textContent = t("codex.models.defaultTitle");
+        small.textContent = t("codex.models.codexDefaultMeta", {
+          model: defaultModel.displayName || defaultModel.model
+        });
         auto.append(strong, small);
         auto.addEventListener("click", () => {
           void applyModelSelection(
             defaultModel.model,
             defaultModel.displayName || defaultModel.model
           ).catch(error => {
-            modalBody.textContent = error instanceof Error ? error.message : String(error);
+            modalBody.textContent = error instanceof Error ? translateServerMessage(error.message) : String(error);
           });
         });
         list.appendChild(auto);
@@ -3371,7 +3467,7 @@ export function mountCodexRemote(
           hiddenGroupShown = true;
           const group = document.createElement("div");
           group.className = "cx-model-group";
-          group.textContent = "その他";
+          group.textContent = t("codex.models.otherGroup");
           list.appendChild(group);
         }
         const value = model.model;
@@ -3389,13 +3485,13 @@ export function mountCodexRemote(
         strong.textContent = name;
         small.textContent = online
           ? (model.description ? value + " · " + model.description : value)
-          : value + " · 接続されていません";
+          : t("codex.models.disconnectedMeta", { model: value });
         option.append(strong, small);
 
         if (online) {
           option.addEventListener("click", () => {
             void applyModelSelection(value, name).catch(error => {
-              modalBody.textContent = error instanceof Error ? error.message : String(error);
+              modalBody.textContent = error instanceof Error ? translateServerMessage(error.message) : String(error);
             });
           });
         }
@@ -3404,7 +3500,7 @@ export function mountCodexRemote(
 
       modalBody.appendChild(list);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = error instanceof Error ? translateServerMessage(error.message) : String(error);
       modalBody.replaceChildren();
       const note = document.createElement("p");
       note.className = "cx-cli-note";
@@ -3415,12 +3511,12 @@ export function mountCodexRemote(
 
   function showRemote() {
     closeSidebar();
-    openModal("リモート", "DevMoter接続情報");
+    openModal(t("codex.remote.title"), t("codex.remote.subtitle"));
     modalBody.innerHTML = `
       <section class="cx-settings-section">
-        <div class="cx-info-row"><span>Codex</span><strong>${online ? "Connected" : codexAvailabilityLabel(unavailableCode)}</strong></div>
-        <div class="cx-info-row"><span>Transport</span><strong>app-server / stdio</strong></div>
-        <div class="cx-info-row"><span>Access</span><strong>Tailscale / DevMoter</strong></div>
+        <div class="cx-info-row"><span>Codex</span><strong>${escapeHtml(online ? t("codex.remote.connected") : codexAvailabilityLabel(unavailableCode))}</strong></div>
+        <div class="cx-info-row"><span>${escapeHtml(t("codex.remote.transportLabel"))}</span><strong>app-server / stdio</strong></div>
+        <div class="cx-info-row"><span>${escapeHtml(t("codex.remote.accessLabel"))}</span><strong>Tailscale / DevMoter</strong></div>
       </section>
     `;
   }
@@ -3557,7 +3653,7 @@ export function mountCodexRemote(
     const SpeechRecognition = (window as Window & { SpeechRecognition?: new () => any; webkitSpeechRecognition?: new () => any }).SpeechRecognition ||
       (window as Window & { webkitSpeechRecognition?: new () => any }).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      showToast("このブラウザは音声入力に未対応です");
+      showToast(t("codex.voice.unsupported"));
       return;
     }
     const recognition = new SpeechRecognition();
@@ -3570,7 +3666,7 @@ export function mountCodexRemote(
       promptInput.value = text;
       resizeComposer();
     };
-    recognition.onerror = () => showToast("音声入力に失敗しました");
+    recognition.onerror = () => showToast(t("codex.voice.failed"));
     recognition.onend = () => voice.classList.remove("listening");
     recognition.start();
   });

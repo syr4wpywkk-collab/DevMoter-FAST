@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { DICTIONARIES } from "../src/i18n-core.mjs";
 import { normalizeOpenCodeSessionList } from "../src/opencode-session-list.mjs";
 
 test("OpenCode session list accepts valid sessions and filters invalid rows", () => {
@@ -33,6 +34,7 @@ test("OpenCode loader catches request and schema errors before replacing session
   const loader = source.slice(start, end);
   assert.match(loader, /catch \(error\)[\s\S]*?showToast\([\s\S]*?return false;/);
   assert.match(loader, /sessions = normalizeOpenCodeSessionList\(data\)/);
-  assert.match(loader, /catch \{[\s\S]*?showToast\("OpenCode returned an invalid session history/);
+  assert.match(loader, /catch \{[\s\S]*?showToast\(t\("opencode\.sessions\.historyInvalid"\)\)/);
+  assert.match(DICTIONARIES.en["opencode.sessions.historyInvalid"], /^OpenCode returned an invalid session history/);
   assert.match(loader, /return true;/);
 });

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { DICTIONARIES } from "../src/i18n-core.mjs";
 import { fetchWithTimeout } from "../src/fetch-with-timeout.mjs";
 
 test("fetchWithTimeout passes through a successful response", async () => {
@@ -25,5 +26,6 @@ test("fetchWithTimeout aborts and settles even if the fetcher ignores abort", as
 test("API Chat image uploads use the bounded fetch helper", async () => {
   const source = await readFile(new URL("../src/api-chat.ts", import.meta.url), "utf8");
   assert.match(source, /fetchWithTimeout\(\s*\(input, init\) => fetch\(input, init\),\s*"\/api\/llm\/attachments"/);
-  assert.match(source, /Image upload timed out/);
+  assert.match(source, /t\("apiChat\.imageUploadTimeout"\)/);
+  assert.match(DICTIONARIES.en["apiChat.imageUploadTimeout"], /Image upload timed out/);
 });

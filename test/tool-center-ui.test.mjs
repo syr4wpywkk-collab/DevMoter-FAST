@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as i18nCore from "../src/i18n-core.mjs";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import ts from "typescript";
@@ -8,7 +9,7 @@ import * as deviceGate from "../src/device-gate.mjs";
 import * as sheetHeader from "../src/sheet-header.mjs";
 
 const source = await readFile(new URL("../src/control-center.ts", import.meta.url), "utf8");
-const compiled = ts.transpileModule(source.replace(/^import (?!.*(device-gate|sheet-header)).*;\s*$/gm, ""), {
+const compiled = ts.transpileModule(source.replace(/^import (?!.*(device-gate|sheet-header|i18n)).*;\s*$/gm, ""), {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
 }).outputText;
 const settle = async () => {
@@ -70,7 +71,7 @@ test("Tools panel exposes an accessible modal and keeps real safety/index workfl
   const exports = {};
   const module = { exports };
   vm.runInNewContext(compiled, {
-    exports, module, require: name => name === "./device-gate.mjs" ? deviceGate : name === "./sheet-header.mjs" ? sheetHeader : {}, window, document: window.document,
+    exports, module, require: name => name === "./device-gate.mjs" ? deviceGate : name === "./sheet-header.mjs" ? sheetHeader : name === "./i18n" ? i18nCore : {}, window, document: window.document,
     HTMLElement: window.HTMLElement, HTMLDivElement: window.HTMLDivElement,
     localStorage: window.localStorage, sessionStorage: window.sessionStorage,
     fetch: window.fetch, Headers, crypto: window.crypto, btoa: window.btoa.bind(window),
@@ -89,7 +90,7 @@ test("Tools panel exposes an accessible modal and keeps real safety/index workfl
   assert.equal(panel.getAttribute("role"), "dialog");
   assert.equal(panel.getAttribute("aria-modal"), "true");
   // The shared sheet header owns the close button and its label.
-  assert.equal(document.activeElement.getAttribute("aria-label"), "閉じる");
+  assert.equal(document.activeElement.getAttribute("aria-label"), i18nCore.translate("en", "common.close"));
   assert.ok(document.activeElement.classList.contains("dm-sheet-head-close"));
   assert.equal(background.inert, true);
   assert.equal(background.getAttribute("aria-hidden"), "true");

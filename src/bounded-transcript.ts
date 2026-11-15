@@ -1,3 +1,5 @@
+import { t } from "./i18n";
+
 const TRUNCATION_CLASS = "devmoter-transcript-truncated";
 
 export function enforceTranscriptLimit(container: HTMLElement, maxNodes = 500) {
@@ -19,6 +21,6 @@ export function enforceTranscriptLimit(container: HTMLElement, maxNodes = 500) {
   const previous = Number(notice.dataset.trimmed || 0);
   const total = previous + removeCount;
   notice.dataset.trimmed = String(total);
-  notice.textContent = `Older rendered output was hidden to keep this session responsive (${total} blocks). Reopen/reload the session to replay recent canonical history.`;
+  notice.textContent = t("common.transcriptTruncated", { count: total });
   return removeCount;
 }

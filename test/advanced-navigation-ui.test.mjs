@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as i18nCore from '../src/i18n-core.mjs';
 import {readFile} from 'node:fs/promises';
 import {JSDOM} from 'jsdom';
 import ts from 'typescript';
@@ -7,7 +8,7 @@ const source=await readFile(new URL('../src/advanced.ts',import.meta.url),'utf8'
 const compiled=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
 test('Files & Preview section shortcuts retain controls and move focus, Escape closes without changing data',async t=>{
  const dom=new JSDOM('<body><button id="entry">Files</button></body>',{url:'http://localhost',runScripts:'outside-only'});t.after(()=>dom.window.close());
- const w=dom.window;w.exports={};w.require=()=>({});const requests=[];
+ const w=dom.window;w.exports={};w.require=name=>name==='./i18n'?i18nCore:({});const requests=[];
  w.HTMLElement.prototype.scrollIntoView=function(){this.dataset.scrolled='true'};
  w.fetch=async(url,options)=>{requests.push({url,method:options?.method||'GET'});return new Response(JSON.stringify({projects:[],models:[],grants:[],mode:'disabled'}))};
  w.eval(compiled);w.exports.mountAdvancedTools();
@@ -23,7 +24,7 @@ test('Files & Preview section shortcuts retain controls and move focus, Escape c
 
 test('Files & Preview distinguishes project, file and preview loading from empty and error states',async t=>{
  const dom=new JSDOM('<body></body>',{url:'http://localhost',runScripts:'outside-only'});t.after(()=>dom.window.close());
- const w=dom.window;w.exports={};w.require=()=>({});
+ const w=dom.window;w.exports={};w.require=name=>name==='./i18n'?i18nCore:({});
  let resolveProjects,resolveFiles,resolvePreview;
  const projectsPending=new Promise(resolve=>{resolveProjects=resolve});
  const filesPending=new Promise(resolve=>{resolveFiles=resolve});

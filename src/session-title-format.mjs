@@ -4,13 +4,9 @@
  * (or "Child session - …"); shown raw that is a UTC timestamp, so the UI shows
  * "新しいセッション 10/30 23:24" in the user's local time instead.
  */
-const DEFAULT_TITLE = /^(new|child) session\s*-\s*(\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)\s*$/i;
+import { getLanguage, normalizeLanguage, translate } from "./i18n-core.mjs";
 
-const PREFIX = {
-  ja: { new: "新しいセッション", child: "子セッション" },
-  en: { new: "New session", child: "Child session" },
-  "zh-CN": { new: "新会话", child: "子会话" }
-};
+const DEFAULT_TITLE = /^(new|child) session\s*-\s*(\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)\s*$/i;
 
 /** True for an empty title or one OpenCode generated from the creation time. */
 export function isDefaultSessionTitle(title) {
@@ -38,7 +34,9 @@ export function displaySessionTitle(title, options = {}) {
   const value = String(title ?? "").trim();
   if (!isDefaultSessionTitle(value)) return value;
   const match = value.match(DEFAULT_TITLE);
-  const prefix = (PREFIX[options.language] || PREFIX.ja)[match?.[1]?.toLowerCase() === "child" ? "child" : "new"];
+  const lang = options.language !== undefined ? (normalizeLanguage(options.language) ?? "en") : getLanguage();
+  const key = match?.[1]?.toLowerCase() === "child" ? "sessionTitle.child" : "sessionTitle.new";
+  const prefix = translate(lang, key);
   const time = shortSessionTime(match?.[2] || 0, options.timeZone) || shortSessionTime(options.created ?? 0, options.timeZone);
   return time ? `${prefix} ${time}` : prefix;
 }

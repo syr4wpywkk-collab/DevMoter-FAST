@@ -1,3 +1,5 @@
+import { formatNumber, t, translateServerMessage } from "./i18n";
+
 type ProjectSummary = {
   id: string;
   name: string;
@@ -56,6 +58,8 @@ type ParsedHunk = {
 };
 
 const PAGE_SIZE = 80;
+const esc = (value: string) =>
+  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 async function requestJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { cache: "no-store" });
@@ -64,16 +68,16 @@ async function requestJson<T>(url: string): Promise<T> {
   try {
     payload = text ? JSON.parse(text) : {};
   } catch {
-    throw new Error("DevMoter returned invalid JSON");
+    throw new Error(t("workspaceTools.invalidJson"));
   }
-  if (!res.ok) throw new Error(payload?.error || "HTTP " + res.status);
+  if (!res.ok) throw new Error(translateServerMessage(payload?.error) || t("common.httpError", { status: res.status }));
   return payload as T;
 }
 
-function badge(text: string) {
+function badge(key: string, label = key) {
   const span = document.createElement("span");
-  span.className = "pocket-git-badge " + text;
-  span.textContent = text;
+  span.className = "pocket-git-badge " + key;
+  span.textContent = label;
   return span;
 }
 
@@ -95,7 +99,7 @@ function parseUnifiedDiff(diff: string): ParsedHunk[] {
 
     if (!current) {
       if (!raw) continue;
-      current = { header: "File header", lines: [] };
+      current = { header: t("workspaceTools.fileHeader"), lines: [] };
       hunks.push(current);
     }
 
@@ -132,7 +136,7 @@ function appendDiffCode(row: HTMLElement, line: ParsedLine) {
     marker.textContent = line.kind === "add" ? "+ " : "− ";
     marker.setAttribute("aria-hidden", "true");
     code.prepend(marker);
-    row.setAttribute("aria-label", `${line.kind === "add" ? "Added" : "Deleted"} line: ${line.text}`);
+    row.setAttribute("aria-label", t(line.kind === "add" ? "workspaceTools.addedLineAria" : "workspaceTools.deletedLineAria", { text: line.text }));
   }
 }
 
@@ -222,16 +226,16 @@ export function mountWorkspaceTools() {
   const trigger = document.createElement("button");
   trigger.type = "button";
   trigger.className = "pocket-git-trigger";
-  trigger.textContent = "Git";
-  trigger.setAttribute("aria-label", "Project Git status");
+  trigger.textContent = t("workspaceTools.triggerLabel");
+  trigger.setAttribute("aria-label", t("workspaceTools.triggerAria"));
 
   const overlay = document.createElement("div");
   overlay.className = "pocket-git-overlay hidden";
   overlay.innerHTML = [
-    '<section class="pocket-git-panel" role="dialog" aria-modal="true" aria-label="Project Git">',
+    `<section class="pocket-git-panel" role="dialog" aria-modal="true" aria-label="${esc(t("workspaceTools.dialogTitle"))}">`,
     '  <header class="pocket-git-head">',
-    '    <div><strong>Project Git</strong><small id="pocketGitProject">No project</small></div>',
-    '    <button id="pocketGitClose" type="button" aria-label="Close">×</button>',
+    `    <div><strong>${esc(t("workspaceTools.dialogTitle"))}</strong><small id="pocketGitProject">${esc(t("workspaceTools.noProject"))}</small></div>`,
+    `    <button id="pocketGitClose" type="button" aria-label="${esc(t("common.close"))}">×</button>`,
     '  </header>',
     '  <div id="pocketGitBody" class="pocket-git-body"></div>',
     '</section>'
@@ -259,10 +263,10 @@ export function mountWorkspaceTools() {
     body.replaceChildren();
     const card = document.createElement("div");
     card.className = "pocket-git-empty";
-    card.textContent = error instanceof Error ? error.message : String(error);
+    card.textContent = translateServerMessage(error instanceof Error ? error.message : String(error));
     const retry = document.createElement("button");
     retry.type = "button";
-    retry.textContent = "Retry Git status";
+    retry.textContent = t("workspaceTools.retryStatus");
     retry.addEventListener("click", () => void openPanel());
     card.appendChild(retry);
     body.appendChild(card);
@@ -274,7 +278,7 @@ export function mountWorkspaceTools() {
     const saved = localStorage.getItem("opencode-pocket-project");
     project = projects.find(item => item.id === saved) || projects[0] || null;
     if (project && saved !== project.id) localStorage.setItem("opencode-pocket-project", project.id);
-    projectLabel.textContent = project ? project.name + " · " + project.path : "No project";
+    projectLabel.textContent = project ? project.name + " · " + project.path : t("workspaceTools.noProject");
   }
 
   function renderStatus(container: HTMLElement) {
@@ -282,13 +286,13 @@ export function mountWorkspaceTools() {
     const card = document.createElement("section");
     card.className = "pocket-git-status";
     if (!status.isGit) {
-      card.textContent = "This project is not a Git repository.";
+      card.textContent = t("workspaceTools.notGitRepo");
       container.appendChild(card);
       return;
     }
 
     const branch = document.createElement("strong");
-    branch.textContent = status.branch || "unknown branch";
+    branch.textContent = status.branch || t("workspaceTools.unknownBranch");
     const counts = document.createElement("div");
     counts.className = "pocket-git-counts";
     for (const [name, value] of [
@@ -297,15 +301,15 @@ export function mountWorkspaceTools() {
       ["untracked", status.untracked],
       ["conflict", status.conflicts]
     ] as const) {
-      const item = badge(name);
-      item.append(" " + value);
+      const item = badge(name, t(`workspaceTools.badge.${name}`));
+      item.append(" " + formatNumber(value));
       counts.appendChild(item);
     }
     const sync = document.createElement("small");
     sync.textContent =
       status.ahead === null || status.behind === null
-        ? "No upstream tracking information"
-        : "↑ " + status.ahead + "  ↓ " + status.behind + (status.upstream ? " · " + status.upstream : "");
+        ? t("workspaceTools.noUpstream")
+        : "↑ " + formatNumber(status.ahead) + "  ↓ " + formatNumber(status.behind) + (status.upstream ? " · " + status.upstream : "");
     card.append(branch, counts, sync);
     container.appendChild(card);
   }
@@ -337,7 +341,7 @@ export function mountWorkspaceTools() {
     prev.disabled = offset <= 0;
     prev.addEventListener("click", () => void loadPage(Math.max(0, offset - PAGE_SIZE)));
     const label = document.createElement("span");
-    label.textContent = total ? (offset + 1) + "–" + Math.min(total, offset + files.length) + " / " + total : "0 files";
+    label.textContent = total ? formatNumber(offset + 1) + "–" + formatNumber(Math.min(total, offset + files.length)) + " / " + formatNumber(total) : t("workspaceTools.pagerZero");
     const next = document.createElement("button");
     next.type = "button";
     next.textContent = "→";
@@ -356,13 +360,13 @@ export function mountWorkspaceTools() {
     list.className = "pocket-git-files";
     const title = document.createElement("div");
     title.className = "pocket-git-section-title";
-    title.textContent = "Changed files";
+    title.textContent = t("workspaceTools.changedFiles");
     list.appendChild(title);
 
     if (!files.length) {
       const empty = document.createElement("div");
       empty.className = "pocket-git-empty";
-      empty.textContent = "Working tree is clean.";
+      empty.textContent = t("workspaceTools.cleanTree");
       list.appendChild(empty);
     }
 
@@ -378,7 +382,7 @@ export function mountWorkspaceTools() {
       const counts = file.additions === null || file.deletions === null
         ? ""
         : "+" + file.additions + " −" + file.deletions;
-      meta.textContent = counts || (file.binary ? "binary" : "changed");
+      meta.textContent = counts || t(file.binary ? "workspaceTools.fileMeta.binary" : "workspaceTools.fileMeta.changed");
       copy.append(name, meta);
       const badges = document.createElement("span");
       badges.className = "pocket-git-file-badges";
@@ -398,7 +402,7 @@ export function mountWorkspaceTools() {
     body.replaceChildren();
     const loading = document.createElement("div");
     loading.className = "pocket-git-empty";
-    loading.textContent = "Loading diff…";
+    loading.textContent = t("workspaceTools.loadingDiff");
     body.appendChild(loading);
 
     try {
@@ -420,7 +424,7 @@ export function mountWorkspaceTools() {
     toolbar.className = "pocket-diff-toolbar";
     const back = document.createElement("button");
     back.type = "button";
-    back.textContent = "← Files";
+    back.textContent = t("workspaceTools.backToFiles");
     back.addEventListener("click", renderList);
 
     const title = document.createElement("strong");
@@ -430,7 +434,7 @@ export function mountWorkspaceTools() {
     mode.className = "pocket-diff-mode";
     const unified = document.createElement("button");
     unified.type = "button";
-    unified.textContent = "Unified";
+    unified.textContent = t("workspaceTools.view.unified");
     unified.classList.toggle("active", view === "unified");
     unified.addEventListener("click", () => {
       view = "unified";
@@ -438,7 +442,7 @@ export function mountWorkspaceTools() {
     });
     const split = document.createElement("button");
     split.type = "button";
-    split.textContent = "Split";
+    split.textContent = t("workspaceTools.view.split");
     split.classList.toggle("active", view === "split");
     split.addEventListener("click", () => {
       view = window.matchMedia("(max-width: 899px)").matches ? "unified" : "split";
@@ -456,11 +460,11 @@ export function mountWorkspaceTools() {
       localStorage.setItem("opencode-pocket-diff-wrap", wrap ? "1" : "0");
       renderDiff();
     });
-    wrapLabel.append(wrapInput, document.createTextNode("Wrap"));
+    wrapLabel.append(wrapInput, document.createTextNode(t("workspaceTools.wrap")));
 
     const copy = document.createElement("button");
     copy.type = "button";
-    copy.textContent = "Copy";
+    copy.textContent = t("common.copy");
     copy.addEventListener("click", () => void navigator.clipboard?.writeText(currentDiff?.diff || ""));
 
     toolbar.append(back, title, mode, wrapLabel, copy);
@@ -469,7 +473,7 @@ export function mountWorkspaceTools() {
     if (currentDiff.truncated) {
       const note = document.createElement("div");
       note.className = "pocket-git-note";
-      note.textContent = "Large diff bounded for mobile rendering.";
+      note.textContent = t("workspaceTools.diffTruncated");
       body.appendChild(note);
     }
 
@@ -477,7 +481,7 @@ export function mountWorkspaceTools() {
     fileDetails.className = "pocket-diff-file";
     fileDetails.open = true;
     const fileSummary = document.createElement("summary");
-    fileSummary.textContent = selected.path + " · collapse/expand file";
+    fileSummary.textContent = t("workspaceTools.collapseExpandFile", { path: selected.path });
     fileDetails.appendChild(fileSummary);
 
     const viewer = document.createElement("div");
@@ -486,7 +490,7 @@ export function mountWorkspaceTools() {
     if (!hunks.length) {
       const empty = document.createElement("div");
       empty.className = "pocket-git-empty";
-      empty.textContent = selected.binary ? "Binary file changed." : "No textual diff available.";
+      empty.textContent = selected.binary ? t("workspaceTools.binaryChanged") : t("workspaceTools.noTextDiff");
       viewer.appendChild(empty);
     } else {
       const useSplit = view === "split" && !window.matchMedia("(max-width: 899px)").matches;
@@ -507,12 +511,12 @@ export function mountWorkspaceTools() {
     body.replaceChildren();
     const loading = document.createElement("div");
     loading.className = "pocket-git-empty";
-    loading.textContent = "Loading project Git status…";
+    loading.textContent = t("workspaceTools.loadingStatus");
     body.appendChild(loading);
     try {
       await resolveProject();
       if (!project) {
-        showError("Add or select a project first.");
+        showError(t("workspaceTools.addProjectFirst"));
         return;
       }
       await loadPage(0);

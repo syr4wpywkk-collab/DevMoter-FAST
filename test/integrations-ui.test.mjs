@@ -49,8 +49,8 @@ test("Integrations has no Project card or intro copy, one action column per card
       assert.equal(card.querySelectorAll(".ix-actions").length, 1, "one action column");
       assert.ok(card.querySelector(".ix-description").textContent.trim(), "card description stays");
     }
-    assert.deepEqual([...cards[0].querySelectorAll(".ix-actions button")].map(b => b.textContent.trim()), ["PCで開く", "Remote停止", "Remoteを開く", "QR表示"]);
-    assert.deepEqual([...cards[1].querySelectorAll(".ix-actions button")].map(b => b.textContent.trim()), ["PCで開く", "Claude Code Web", "QR表示"]);
+    assert.deepEqual([...cards[0].querySelectorAll(".ix-actions button")].map(b => b.textContent.trim()), ["Open on PC", "Stop Remote", "Open Remote", "Show QR"]);
+    assert.deepEqual([...cards[1].querySelectorAll(".ix-actions button")].map(b => b.textContent.trim()), ["Open on PC", "Claude Code Web", "Show QR"]);
     const pill = cards[0].querySelector(".ix-pill");
     assert.equal(pill.title, "Remote: " + longRemote, "full name stays available when truncated");
     cards[1].querySelector('[data-action="launch"]').click();
@@ -83,7 +83,7 @@ test("Qwen Code card launches the local CLI in the current project", async () =>
     await mountIntegrations(root).refresh();
     const card = root.querySelector(".ix-card");
     assert.ok(!card.classList.contains("disabled"), "enabled by default");
-    assert.deepEqual([...card.querySelectorAll(".ix-actions button")].map(b => b.textContent.trim()), ["PCで開く"]);
+    assert.deepEqual([...card.querySelectorAll(".ix-actions button")].map(b => b.textContent.trim()), ["Open on PC"]);
     card.querySelector('[data-action="launch"]').click();
     await new Promise(resolve => setTimeout(resolve, 0));
     assert.deepEqual(launches, ["/api/integrations/qwen/launch"]);

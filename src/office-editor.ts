@@ -57,9 +57,31 @@ const HISTORY_LIMIT = 100;
 export type OfficeEditorOptions = {
   onChange: () => void;
   onLockedDelete?: (label: string) => boolean;
+  translate?: (key: string, params?: Record<string, string | number>) => string;
 };
 
+const FALLBACK_EDITOR_STRINGS: Record<string, string> = {
+  "office.editor.element": "element",
+  "office.editor.sectionBreak": "section break",
+  "office.editor.sectionBreakNotice": "Page layout changes here",
+  "office.editor.table": "table",
+  "office.editor.image": "image",
+  "office.editor.imageAltFallback": "Image in document",
+  "office.editor.preservedElement": "Preserved element",
+  "office.editor.keepOriginal": "{label} · original preserved",
+  "office.editor.removeElementAria": "Delete {label}",
+  "office.editor.invalidLinkUrl": "Please enter an http(s) or mailto URL."
+};
+
+function defaultEditorTranslate(key: string, params?: Record<string, string | number>) {
+  const template = FALLBACK_EDITOR_STRINGS[key] ?? key;
+  return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (_, k) =>
+    params && Object.prototype.hasOwnProperty.call(params, k) ? String(params[k]) : `{${k}}`
+  );
+}
+
 export function createOfficeEditor(page: HTMLElement, options: OfficeEditorOptions) {
+  const translate = options.translate || defaultEditorTranslate;
   const doc = page.ownerDocument;
   const win = doc.defaultView!;
   let nextKey = 1;
@@ -151,15 +173,15 @@ export function createOfficeEditor(page: HTMLElement, options: OfficeEditorOptio
       el.dataset.marker = "true";
       return el;
     }
-    let label = "要素";
+    let label = translate("office.editor.element");
     if (block.required) {
-      label = "セクション区切り";
+      label = translate("office.editor.sectionBreak");
       const text = doc.createElement("p");
       text.className = "office-protected";
-      text.textContent = "ここでページ設定が切り替わります";
+      text.textContent = translate("office.editor.sectionBreakNotice");
       el.append(text);
     } else if (block.table) {
-      label = "表";
+      label = translate("office.editor.table");
       const wrap = doc.createElement("div");
       wrap.className = "office-table-scroll";
       const table = doc.createElement("table");
@@ -176,28 +198,29 @@ export function createOfficeEditor(page: HTMLElement, options: OfficeEditorOptio
       wrap.append(table);
       el.append(wrap);
     } else if (block.imageDataUrl && /^data:image\/(?:png|jpeg|gif|webp);base64,/.test(block.imageDataUrl)) {
-      label = "画像";
+      label = translate("office.editor.image");
       const image = doc.createElement("img");
       image.src = block.imageDataUrl;
-      image.alt = block.label || "文書内の画像";
+      image.alt = block.label || translate("office.editor.imageAltFallback");
       el.append(image);
     } else {
       const text = doc.createElement("p");
       text.className = "office-protected";
-      text.textContent = block.previewText || block.text || block.label || "原本を保持している要素";
+      text.textContent = block.previewText || block.text || block.label || translate("office.editor.preservedElement");
       el.append(text);
     }
     const bar = doc.createElement("div");
     bar.className = "office-locked-bar";
     const caption = doc.createElement("small");
-    caption.textContent = block.required ? label : `${label}・原本を保持`;
+    caption.textContent = block.required ? label : translate("office.editor.keepOriginal", { label });
     bar.append(caption);
     if (!block.required) {
       const remove = doc.createElement("button");
       remove.type = "button";
       remove.className = "office-icon-button";
-      remove.setAttribute("aria-label", `${label}を削除`);
-      remove.title = `${label}を削除`;
+      const removeLabel = translate("office.editor.removeElementAria", { label });
+      remove.setAttribute("aria-label", removeLabel);
+      remove.title = removeLabel;
       remove.innerHTML = icon('<path d="M3.5 5h11M7.5 5V3.5h3V5M5 5l.7 9.5h6.6L13 5"/>');
       remove.addEventListener("click", () => {
         if (options.onLockedDelete && !options.onLockedDelete(label)) return;
@@ -749,7 +772,7 @@ export function createOfficeEditor(page: HTMLElement, options: OfficeEditorOptio
       }
       return;
     }
-    if (!SAFE_HREF.test(href)) throw new Error("http(s)またはmailtoのURLを入力してください。");
+    if (!SAFE_HREF.test(href)) throw new Error(translate("office.editor.invalidLinkUrl"));
     if (existing && range?.collapsed) {
       // caret inside a link: change that whole link
       const whole = doc.createRange();
