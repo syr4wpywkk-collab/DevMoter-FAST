@@ -37,5 +37,10 @@ test("API chat is mounted as a first-class v3 surface and chat content is exclud
   assert.match(apiChatSource, /bubble\.textContent = message\.content;/);
   assert.match(apiChatSource, /renderChatMarkdown\(bubble, message\.content, copyMessage\);/);
   assert.match(apiChatSource, /t\("apiChat\.welcomePrompt"\)/);
-  assert.ok(DICTIONARIES.ja["apiChat.welcomePrompt"] && DICTIONARIES.en["apiChat.welcomePrompt"] && DICTIONARIES.zh["apiChat.welcomePrompt"]);
+  assert.ok(
+    DICTIONARIES.ja["apiChat.welcomePrompt"] &&
+      DICTIONARIES.en["apiChat.welcomePrompt"] &&
+      DICTIONARIES["zh-Hans"]["apiChat.welcomePrompt"] &&
+      DICTIONARIES["zh-Hant"]["apiChat.welcomePrompt"]
+  );
 });

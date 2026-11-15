@@ -35,6 +35,8 @@ test("without a prompt a default title becomes a localized label with a short lo
   assert.equal(openCodeSessionLabel({ title: "", time: { created: Date.UTC(2026, 0, 5, 9, 7) } }, { language: "ja", timeZone: "UTC" }), "新しいセッション 1/5 09:07");
   assert.equal(openCodeSessionLabel({ title: "" }), "New session");
   assert.equal(openCodeSessionLabel({ title: "" }, { language: "ja" }), "新しいセッション");
+  assert.equal(openCodeSessionLabel({ title: "" }, { language: "zh-Hans" }), "新会话");
+  assert.equal(openCodeSessionLabel({ title: "" }, { language: "zh-Hant" }), "新工作階段");
   assert.equal(openCodeSessionLabel({ title: "" }, { language: "zh" }), "新会话");
   assert.equal(openCodeSessionLabel({ title: "" }, { language: "en" }), "New session");
   assert.equal(shortSessionTime("not a date"), "");

@@ -52,7 +52,11 @@ test("Shell launches are fixed allowlisted behavior", async () => {
   assert.ok(!shell.includes("data-shell-app="));
   assert.ok(shell.includes('if (!isAppId(id)) throw new Error(t("shell.appUnregistered"))'));
   assert.equal(DICTIONARIES.en["shell.appUnregistered"], "This app is not registered.");
-  assert.ok(DICTIONARIES.ja["shell.appUnregistered"] && DICTIONARIES.zh["shell.appUnregistered"]);
+  assert.ok(
+    DICTIONARIES.ja["shell.appUnregistered"] &&
+      DICTIONARIES["zh-Hans"]["shell.appUnregistered"] &&
+      DICTIONARIES["zh-Hant"]["shell.appUnregistered"]
+  );
   assert.ok(shell.includes('case "terminal": openToolsTab("terminal")'));
   assert.ok(shell.includes('case "git": clickExisting(".pocket-git-trigger")'));
   assert.ok(shell.includes('case "review": clickExisting("#wfLaunch")'));

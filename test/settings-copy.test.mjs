@@ -166,14 +166,14 @@ test("rows merged or removed in #504 keep #504's set; their copy is unified and 
   assert.ok(settings.includes('setHeader(t("settings.root.devices")'));
   assert.ok(settings.includes('value: t("settings.root.reportSub"), external: "GitHub"'));
   for (const key of ["settings.root.appearance", "settings.root.devicesSub", "settings.root.report", "settings.root.reportSub"]) {
-    assert.ok(DICTIONARIES.ja[key] && DICTIONARIES.en[key] && DICTIONARIES.zh[key], key);
+    assert.ok(DICTIONARIES.ja[key] && DICTIONARIES.en[key] && DICTIONARIES["zh-Hans"][key] && DICTIONARIES["zh-Hant"][key], key);
     assert.doesNotMatch(DICTIONARIES.en[key], /[ぁ-んァ-ン一-龯]/, key);
   }
   // The device gate speaks the same words as the row it opens.
   const gate = await source("src/device-gate.mjs");
   for (const key of ["deviceGate.unregisteredTitle", "deviceGate.unregisteredCopy", "deviceGate.registerButton"]) {
     assert.ok(gate.includes(`t("${key}")`), key);
-    assert.ok(DICTIONARIES.ja[key] && DICTIONARIES.en[key] && DICTIONARIES.zh[key], key);
+    assert.ok(DICTIONARIES.ja[key] && DICTIONARIES.en[key] && DICTIONARIES["zh-Hans"][key] && DICTIONARIES["zh-Hant"][key], key);
     assert.doesNotMatch(DICTIONARIES.en[key], /[ぁ-んァ-ン一-龯]/, key);
   }
   // Device-bound sheets title their gate with the Settings row label, not the old English title.

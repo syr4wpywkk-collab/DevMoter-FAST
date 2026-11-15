@@ -169,7 +169,8 @@ test("Group G copy has Japanese for every new or shortened English source string
   ]) {
     assert.equal(DICTIONARIES.en[key], expectedEn, key);
     assert.equal(DICTIONARIES.ja[key], expectedJa, key);
-    assert.ok(DICTIONARIES.zh[key], `${key} has zh`);
+    assert.ok(DICTIONARIES["zh-Hans"][key], `${key} has zh-Hans`);
+    assert.ok(DICTIONARIES["zh-Hant"][key], `${key} has zh-Hant`);
   }
   // Old long English that no longer ships.
   const sources = (await Promise.all(["control-center.ts", "agent-console.ts", "workflow.ts", "mission-control.ts"].map(source))).join("\n");

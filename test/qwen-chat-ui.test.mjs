@@ -427,7 +427,7 @@ test("model helpers: stored choice is validated, recent list is bounded and dedu
   assert.equal(store.qwenModelChipLabel({ id: "z-ai/glm-4.5-air:free" }), "glm-4.5-air:free");
   assert.equal(store.qwenModelChipLabel(null), "Default");
   assert.equal(store.qwenModelChipLabel(null, "ja"), "既定");
-  assert.equal(store.qwenModelChipLabel(null, "zh"), "默认");
-  assert.equal(store.qwenModelChipLabel(null, "ja"), "既定");
+  assert.equal(store.qwenModelChipLabel(null, "zh-Hans"), "默认");
+  assert.equal(store.qwenModelChipLabel(null, "zh-Hant"), "預設");
   assert.equal(store.qwenModelChipLabel(null, "zh"), "默认");
 });
