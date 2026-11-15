@@ -787,7 +787,7 @@ export function mountSettingsPanel() {
     scroll.innerHTML = `
       <section class="devmoter-settings-section">
         <h2>${escapeHtml(t("settings.diagnostics.statusHeading"))}</h2>
-        <div class="devmoter-settings-note" data-diagnostics-fetched data-tone="${fetchState.tone}" role="status">${escapeHtml(fetchState.text)}</div>
+        <div class="devmoter-settings-note" data-diagnostics-fetched data-tone="${escapeHtml(fetchState.tone)}" role="status">${escapeHtml(fetchState.text)}</div>
         <div class="devmoter-settings-actions"><button type="button" data-action="diagnostics:refresh" ${diagnosticsFetch.loading ? "disabled" : ""}>${escapeHtml(t("common.refresh"))}</button></div>
         <div class="devmoter-settings-card devmoter-settings-detail-card">
           <div class="devmoter-settings-detail-row"><span>${escapeHtml(t("settings.diagnostics.appLabel"))}</span><strong>${escapeHtml(diagnostics?.app?.version || t("common.unknown"))}</strong></div>

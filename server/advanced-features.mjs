@@ -124,6 +124,8 @@ export async function listProjectDirectory(rootInput, relativePath = "", options
   const safeRelative = normalizeBrowserRelative(relativePath);
   assertPublicProjectPath(safeRelative);
   const candidate = safeRelative ? resolve(root, safeRelative) : root;
+  const candidateInfo = await lstat(candidate);
+  if (candidateInfo.isSymbolicLink() || !candidateInfo.isDirectory()) throw new Error("Browser path is not a regular project directory");
   const target = await realpath(candidate);
   if (!inside(root, target)) throw new Error("Browser path escapes the registered project");
   assertPublicProjectPath(relative(root, target));
@@ -158,8 +160,8 @@ export async function listProjectDirectory(rootInput, relativePath = "", options
     if (info.size > FILE_BROWSER_LARGE) kind = "large";
     else if (TEXT_EXTENSIONS.has(ext) || ext === "") {
       try {
-        const sample = await readFile(actual);
-        kind = looksBinary(sample.subarray(0, Math.min(sample.length, 8192))) ? "binary" : "text";
+        const sample = await withOpenFile(full, {}, handle => readHandle(handle, 8192));
+        kind = looksBinary(sample) ? "binary" : "text";
       } catch {
         kind = "binary";
       }

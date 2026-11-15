@@ -2611,7 +2611,9 @@ export function mountCodexRemote(
   ) {
     const section = document.createElement("section");
     section.className = "cx-settings-section";
-    section.innerHTML = `<h3>${escapeHtml(titleText)}</h3>`;
+    const heading = document.createElement("h3");
+    heading.textContent = titleText;
+    section.appendChild(heading);
 
     if (errorMessage) {
       const error = document.createElement("p");

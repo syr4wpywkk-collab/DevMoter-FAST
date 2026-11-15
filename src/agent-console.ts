@@ -713,8 +713,13 @@ export function mountAgentConsole() {
           const childStateLabel = childStateKeys[child.state]
             ? t(childStateKeys[child.state])
             : child.state;
-          row.innerHTML = `<span>${escapeHtml(childStateLabel)}</span><strong>${escapeHtml(roleLabel(child.owner))}</strong><p></p>`;
-          row.querySelector("p")!.textContent = child.title;
+          const stateEl = document.createElement("span");
+          stateEl.textContent = childStateLabel;
+          const ownerEl = document.createElement("strong");
+          ownerEl.textContent = roleLabel(child.owner);
+          const titleEl = document.createElement("p");
+          titleEl.textContent = child.title;
+          row.append(stateEl, ownerEl, titleEl);
           orchestrationChildren.appendChild(row);
         }
         orchestrationPreview.classList.remove("hidden");

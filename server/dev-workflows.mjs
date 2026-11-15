@@ -10,6 +10,19 @@ const execFileAsync = promisify(execFile);
 const TERMINAL = new Set(["completed", "failed", "cancelled", "canceled", "interrupted", "aborted"]);
 const EXTENSION_CAPABILITIES = new Set(["commands", "skills", "hooks", "mcp", "adapters", "themes", "rules", "review", "verification", "browser"]);
 const EXTENSION_PERMISSIONS = new Set(["filesystem:read", "filesystem:write", "network", "shell", "credentials", "adapters", "browser"]);
+const DANGEROUS_MCP_ENV_KEYS = new Set([
+  "NODE_OPTIONS",
+  "LD_PRELOAD",
+  "LD_LIBRARY_PATH",
+  "DYLD_INSERT_LIBRARIES",
+  "DYLD_LIBRARY_PATH",
+  "PATH",
+  "HOME",
+  "SHELL",
+  "BASH_ENV",
+  "ENV",
+  "PROMPT_COMMAND"
+]);
 const SECRET_KEY = /(secret|token|password|api[_-]?key|authorization|credential)/i;
 const MAX_DIFF = 220000;
 const MAX_RULE = 65536;
@@ -89,7 +102,9 @@ function normalizeMcp(item, index) {
   if (transport === "stdio" && !server.command) throw new Error(name + ": command is required");
   if (plain(item.env)) {
     for (const [key, value] of Object.entries(item.env)) {
-      if (!/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(key)) throw new Error(name + ": invalid env key");
+      if (!/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(key) || DANGEROUS_MCP_ENV_KEYS.has(key.toUpperCase())) {
+        throw new Error(name + ": invalid env key");
+      }
       server.env[key] = String(value == null ? "" : value).slice(0, 8000);
     }
   }
