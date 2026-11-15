@@ -586,7 +586,9 @@
   font-size: 13px;
 }
 [data-proposal] summary {
-  min-height: 32px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
   font-size: 13px;
   color: var(--of-text-2);
 }
