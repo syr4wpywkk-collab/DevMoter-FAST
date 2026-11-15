@@ -403,6 +403,45 @@
   color: var(--of-muted);
   font-size: 14px;
 }
+.office-empty[data-empty-state="zero"] {
+  min-height: min(60vh, 420px);
+}
+.office-empty-card {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  max-width: 340px;
+  padding: 24px 16px;
+  text-align: center;
+}
+.office-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--of-line);
+  border-radius: 14px;
+  background: var(--of-card);
+  color: var(--of-text-2);
+}
+.office-empty-message {
+  margin: 0;
+}
+.office-empty[data-empty-state="zero"] .office-empty-message {
+  color: var(--of-text);
+  font-size: 15px;
+  font-weight: 500;
+}
+.office-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.dm-office .office-empty-actions button {
+  padding: 0 16px;
+}
 .office-page {
   max-width: 760px;
   min-height: 60vh;
@@ -536,6 +575,17 @@
   display: grid;
   justify-items: start;
   gap: 8px;
+}
+.office-ai-empty {
+  padding: 12px;
+  border: 1px dashed var(--of-line);
+  border-radius: 10px;
+  color: var(--of-text-2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.office-ai-empty p {
+  margin: 0;
 }
 .office-ai label {
   display: block;

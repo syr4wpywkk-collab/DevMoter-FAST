@@ -957,6 +957,8 @@ export const ja = {
   "office.renameAria": "「{name}」の名前を変更",
   "office.deleteAria": "「{name}」を削除",
   "office.emptyLibrary": "まだ文書はありません。",
+  "office.createNew": "新規作成",
+  "office.aiRequiresDoc": "文書を開くと使えます。",
   "office.newNameAria": "新しい文書名",
   "office.confirmDeleteDoc": "「{name}」を削除しますか？原本と履歴も削除され、元に戻せません。",
   "office.history.original": "原本",
