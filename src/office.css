@@ -141,10 +141,10 @@
 }
 .dm-office .office-primary:disabled {
   border-style: dashed;
-  border-color: var(--of-line-strong);
+  border-color: color-mix(in srgb, var(--of-muted) 65%, var(--of-line-strong));
   background: var(--of-hover);
   color: var(--of-muted);
-  opacity: 0.65;
+  opacity: 1;
 }
 .dm-office .office-icon-button {
   display: inline-grid;
@@ -639,10 +639,10 @@
 }
 .office-ai-actions button:first-child:disabled {
   border-style: dashed;
-  border-color: var(--of-line-strong);
+  border-color: color-mix(in srgb, var(--of-muted) 65%, var(--of-line-strong));
   background: var(--of-hover);
   color: var(--of-muted);
-  opacity: 0.65;
+  opacity: 1;
 }
 [data-ai-status]:not(:empty) {
   margin-top: 12px;
