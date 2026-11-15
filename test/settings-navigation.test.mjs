@@ -1,5 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as i18nCore from "../src/i18n-core.mjs";
+
+const jaI18n = {
+  ...i18nCore,
+  getLanguage: () => "ja",
+  t: (k, p) => i18nCore.translate("ja", k, p),
+  translateServerMessage: m => i18nCore.translateServerMessage(m, "ja"),
+  formatDateTime: (v, o) => i18nCore.formatDateTime(v, o, "ja"),
+  formatTime: (v, o) => i18nCore.formatTime(v, o, "ja"),
+  formatNumber: (v, o) => i18nCore.formatNumber(v, o, "ja"),
+  formatRelativeTime: (ts, now) => i18nCore.formatRelativeTime(ts, now, "ja"),
+  tApp: (id, f) => i18nCore.tApp(id, f, "ja")
+};
 import vm from "node:vm";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
@@ -16,7 +29,7 @@ function mountSettings() {
   const exports = {};
   vm.runInNewContext(settingsCompiled, {
     exports,
-    require: name => name === "./push-readiness.js" ? { boundedPushWait: p => p, inspectPushReadiness: async () => ({ state: "unsupported" }) } : {},
+    require: name => (name === "./push-readiness.js" ? { boundedPushWait: p => p, inspectPushReadiness: async () => ({ state: "unsupported" }) } : name === "./i18n" ? jaI18n : {}),
     window, document: window.document, navigator: window.navigator, location: window.location,
     localStorage: window.localStorage, Headers,
     fetch: async () => ({ ok: true, status: 200, json: async () => ({}) }),

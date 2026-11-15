@@ -18,21 +18,24 @@ test("only OpenCode's generated titles are treated as defaults", () => {
 });
 
 test("a generated title becomes a localized label in the user's time zone", () => {
-  assert.equal(displaySessionTitle(fresh, { timeZone: "Asia/Tokyo" }), "新しいセッション 10/30 23:24");
+  assert.equal(displaySessionTitle(fresh, { timeZone: "Asia/Tokyo" }), "New session 10/30 23:24");
   assert.equal(displaySessionTitle(fresh, { language: "ja", timeZone: "UTC" }), "新しいセッション 10/30 14:24");
   assert.equal(displaySessionTitle(fresh, { language: "en", timeZone: "Asia/Tokyo" }), "New session 10/30 23:24");
   assert.equal(displaySessionTitle(fresh, { language: "zh-CN", timeZone: "Asia/Tokyo" }), "新会话 10/30 23:24");
-  assert.equal(displaySessionTitle(child, { timeZone: "Asia/Tokyo" }), "子セッション 10/30 23:24");
-  // Unknown languages fall back to Japanese, the app default.
-  assert.equal(displaySessionTitle(fresh, { language: "fr", timeZone: "Asia/Tokyo" }), "新しいセッション 10/30 23:24");
+  assert.equal(displaySessionTitle(child, { timeZone: "Asia/Tokyo" }), "Child session 10/30 23:24");
+  assert.equal(displaySessionTitle(child, { language: "ja", timeZone: "Asia/Tokyo" }), "子セッション 10/30 23:24");
+  // Unknown languages fall back to English when no preference is stored.
+  assert.equal(displaySessionTitle(fresh, { language: "fr", timeZone: "Asia/Tokyo" }), "New session 10/30 23:24");
 });
 
 test("timestamps with an explicit offset are honoured", () => {
-  assert.equal(displaySessionTitle("New session - 2026-10-30T23:24:00+09:00", { timeZone: "UTC" }), "新しいセッション 10/30 14:24");
+  assert.equal(displaySessionTitle("New session - 2026-10-30T23:24:00+09:00", { timeZone: "UTC" }), "New session 10/30 14:24");
+  assert.equal(displaySessionTitle("New session - 2026-10-30T23:24:00+09:00", { language: "ja", timeZone: "UTC" }), "新しいセッション 10/30 14:24");
 });
 
 test("empty titles use the creation time, or just the label", () => {
-  assert.equal(displaySessionTitle("", { created: at, timeZone: "Asia/Tokyo" }), "新しいセッション 10/30 23:24");
+  assert.equal(displaySessionTitle("", { created: at, timeZone: "Asia/Tokyo" }), "New session 10/30 23:24");
+  assert.equal(displaySessionTitle("", { created: at, language: "ja", timeZone: "Asia/Tokyo" }), "新しいセッション 10/30 23:24");
   assert.equal(displaySessionTitle(undefined, { language: "en" }), "New session");
 });
 

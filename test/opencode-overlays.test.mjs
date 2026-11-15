@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as i18nCore from "../src/i18n-core.mjs";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
@@ -56,7 +57,7 @@ function mount(t) {
     if (modules.has(name)) return modules.get(name);
     if (name === "./device-gate.mjs") return deviceGate;
     if (name.endsWith(".css")) return {};
-    if (name === "./i18n") return { speechRecognitionLanguage: () => "en-US" };
+    if (name === "./i18n") return { speechRecognitionLanguage: () => "en-US", ...i18nCore };
     if (name === "./wake-lock") return {
       setWakeLockEnabled: noop, setWakeLockExecutionActive: noop,
       wakeLockEnabled: () => false, wakeLockSupported: () => false

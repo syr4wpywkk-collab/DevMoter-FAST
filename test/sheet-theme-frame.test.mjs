@@ -106,15 +106,15 @@ test("Developer workflows waits for the saved Project instead of asking to selec
     assert.ok(!h.subtitles.includes("Projectを選択してください"), "never flashes the empty-project prompt");
     assert.equal(h.subtitles.at(-1), "DevMoter-FAST");
     assert.ok(h.calls.some(path => path.startsWith("/api/dev/capabilities?projectId=p1")));
-    // Short titles with line icons; JSON folded under 詳細; consistent empty state.
+    // Short titles with line icons; JSON folded under Details; consistent empty state.
     const headings = [...body.querySelectorAll(".cx-dev-section-head > h3")].map(node => node.textContent);
     assert.deepEqual(headings, ["Review & CI", "Verification", "MCP servers", "Skills / Rules", "Extension manifest", "Agent adapters"]);
     for (const icon of body.querySelectorAll(".cx-dev-section-head > h3 > .cx-dev-section-icon")) assert.ok(icon.querySelector("svg"));
     for (const details of body.querySelectorAll("details.cx-dev-details")) {
       assert.equal(details.open, false);
-      assert.equal(details.querySelector("summary").textContent, "詳細");
+      assert.equal(details.querySelector("summary").textContent, "Details");
     }
-    assert.ok([...body.querySelectorAll('.cx-dev-state[data-state="empty"]')].some(node => node.textContent === "設定済みMCP serverはありません。"));
+    assert.ok([...body.querySelectorAll('.cx-dev-state[data-state="empty"]')].some(node => node.textContent === "No MCP servers configured."));
   } finally {
     h.restore();
   }
@@ -127,7 +127,7 @@ test("Developer workflows still asks for a Project when none is saved", async ()
     const shown = h.panel.show();
     h.finishLoad();
     await shown;
-    assert.equal(h.subtitles.at(-1), "Projectを選択してください");
+    assert.equal(h.subtitles.at(-1), "Select a project");
     assert.ok(!h.calls.length, "no Project-scoped request without a Project");
   } finally {
     h.restore();

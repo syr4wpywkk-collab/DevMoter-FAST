@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { JSDOM } from "jsdom";
 import { createSheetHeader } from "../src/sheet-header.mjs";
 import { createDeviceGate } from "../src/device-gate.mjs";
+import { DICTIONARIES } from "../src/i18n-core.mjs";
 import { shortProjectPath } from "../src/project-labels.mjs";
 
 const source = path => readFile(new URL(`../src/${path}`, import.meta.url), "utf8");
@@ -23,7 +24,7 @@ test("shared sheet header: title, one-line subtitle, optional primary, close", (
   assert.equal(head.subtitleEl.hidden, true, "no subtitle → no empty line");
   assert.equal(head.primaryButton.hidden, true, "no primary → hidden");
   assert.equal(head.closeButton.type, "button");
-  assert.equal(head.closeButton.getAttribute("aria-label"), "閉じる");
+  assert.equal(head.closeButton.getAttribute("aria-label"), "Close");
   assert.ok(head.closeButton.querySelector("svg[aria-hidden='true']"), "line icon, not a × glyph");
   assert.doesNotMatch(head.closeButton.textContent, /×/);
   head.closeButton.click();
@@ -49,13 +50,13 @@ test("shared sheet header: title, one-line subtitle, optional primary, close", (
 
 test("every Group G sheet builds its header with createSheetHeader and the old header code is gone", async () => {
   const files = {
-    "codex.ts": ['createSheetHeader(document, { title: "設定", titleId: "cxModalTitle"'],
-    "control-center.ts": ['createSheetHeader(document, { title: "Terminal", titleId: "dm-tools-title" })'],
-    "agent-console.ts": ['title: "Agent mode"'],
-    "workflow.ts": ['createSheetHeader(document, { title: "Review & Tasks", titleId: "wfTitle" })'],
-    "session-control.ts": ['createSheetHeader(document,{title:"Activity",titleId:"scTitle"})'],
-    "mission-control.ts": ['createSheetHeader(document, { title: "Mission Control", titleId: "dmMissionTitle" })'],
-    "remote-control.ts": ['createSheetHeader(document, { title: "Hosts", subtitle: location.host, titleId: "dmControlTitle" })']
+    "codex.ts": ['createSheetHeader(document, { title: t("codex.modal.settingsTitle"), titleId: "cxModalTitle"'],
+    "control-center.ts": ['createSheetHeader(document, { title: t("controlCenter.tab.terminal"), titleId: "dm-tools-title" })'],
+    "agent-console.ts": ['title: t("agentConsole.sheetTitle")'],
+    "workflow.ts": ['createSheetHeader(document, { title: t("workflow.sheetTitle"), titleId: "wfTitle" })'],
+    "session-control.ts": ['createSheetHeader(document,{title:t("sessionControl.title"),titleId:"scTitle"})'],
+    "mission-control.ts": ['createSheetHeader(document, { title: t("mission.title"), titleId: "dmMissionTitle" })'],
+    "remote-control.ts": ['createSheetHeader(document, { title: t("remote.tabs.hosts"), subtitle: location.host, titleId: "dmControlTitle" })']
   };
   const gone = {
     "codex.ts": ['class="cx-modal-head"', 'id="cxModalTitle"'],
@@ -129,7 +130,7 @@ test("compact device gate is one button into 信頼済み端末", () => {
   assert.ok(gate.classList.contains("dm-device-gate-compact"));
   assert.equal(gate.children.length, 1);
   const button = gate.querySelector("[data-device-gate-register]");
-  assert.equal(button.textContent, "信頼済み端末を開く");
+  assert.equal(button.textContent, "Open Trusted devices");
   button.click();
   assert.equal(closed, 1);
   assert.deepEqual(opened, [{ page: "devices" }]);
@@ -143,34 +144,33 @@ test("device-token refusals in Agent mode, Mission Control and Automation show t
   assert.equal((agent.match(/reportError\(error\)/g) || []).length >= 10, true);
   assert.ok(mission.includes("throw responseError(response.status, message)"));
   assert.ok(mission.includes("createDeviceGate(document, {\n      compact: true"));
-  assert.ok(remote.includes("throw responseError(response.status, payload?.error)"));
+  assert.ok(remote.includes("throw responseError(response.status, payload?.error ? translateServerMessage(String(payload.error)) : undefined)"));
   assert.ok(remote.includes("createDeviceGate(document, { compact: true"));
 });
 
 test("Group G copy has Japanese for every new or shortened English source string", async () => {
-  const i18n = await source("i18n.ts");
-  const ja = key => {
-    const match = i18n.match(new RegExp(`^\\s*${JSON.stringify(key).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}: \\{[^}]*ja: "([^"]*)"`, "m"));
-    return match?.[1];
-  };
-  for (const [key, expected] of [
-    ["Saved sessions", "保存済みセッション"],
-    ["Keep running after restart (tmux)", "再起動後も実行を続ける（tmux）"],
-    ["Terminal not started", "ターミナルは未起動です"],
-    ["Command check", "コマンドの確認"],
-    ["Remembered approvals", "記憶した承認"],
-    ["Exclude (comma-separated)", "除外（カンマ区切り）"],
-    ["Rebuild index", "インデックスを再作成"],
-    ["Repo map", "リポジトリマップ"],
-    ["Details", "詳細"],
-    ["Role model routing", "役割ごとのモデル"],
-    ["Run as subagent", "サブエージェントで実行"],
-    ["No changes to review", "レビュー待ちの変更はありません"],
-    ["Not loaded", "未読み込み"],
-    ["Active agents", "実行中のエージェント"],
-    ["New schedule", "スケジュールを追加"],
-    ["信頼済み端末を開く", "信頼済み端末を開く"]
-  ]) assert.equal(ja(key), expected, key);
+  for (const [key, expectedEn, expectedJa] of [
+    ["terminal.savedSessionsLabel", "Saved sessions", "保存済みセッション"],
+    ["terminal.persistLabel", "Keep running after restart (tmux)", "再起動後も維持する（tmux）"],
+    ["terminal.placeholderTitle", "Terminal not started", "ターミナルは未起動です"],
+    ["safety.commandCheckHeading", "Command check", "コマンド検査"],
+    ["safety.rememberedApprovalsHeading", "Remembered approvals", "記憶済みの承認"],
+    ["index.excludeLabel", "Exclude (comma-separated)", "除外（カンマ区切り）"],
+    ["index.rebuildBtn", "Rebuild index", "インデックス再構築"],
+    ["index.repoMapBtn", "Repo map", "リポジトリマップ"],
+    ["common.details", "Details", "詳細"],
+    ["agentConsole.roleRoutingSummary", "Role model routing", "役割別モデルルーティング"],
+    ["agentConsole.runSubagentBtn", "Run as subagent", "サブエージェントとして実行"],
+    ["workflow.noChangesToReview", "No changes to review", "レビュー待ちの変更はありません"],
+    ["mission.notLoaded", "Not loaded", "未読み込み"],
+    ["mission.kpi.activeAgents", "Active agents", "稼働中エージェント"],
+    ["remote.automation.newSchedule", "New schedule", "新しいスケジュール"],
+    ["deviceGate.openTrustedDevices", "Open Trusted devices", "信頼済み端末を開く"]
+  ]) {
+    assert.equal(DICTIONARIES.en[key], expectedEn, key);
+    assert.equal(DICTIONARIES.ja[key], expectedJa, key);
+    assert.ok(DICTIONARIES.zh[key], `${key} has zh`);
+  }
   // Old long English that no longer ships.
   const sources = (await Promise.all(["control-center.ts", "agent-console.ts", "workflow.ts", "mission-control.ts"].map(source))).join("\n");
   for (const old of ["Ready when you are", "Registered project", "Keep running after DevMoter restarts", "High-risk command scan", "Run as bounded Codex subagent", "No staged change sets yet", "PTY cwd is resolved"]) {

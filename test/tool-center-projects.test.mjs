@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as i18nCore from "../src/i18n-core.mjs";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 import ts from "typescript";
@@ -8,7 +9,7 @@ import * as deviceGate from "../src/device-gate.mjs";
 import * as sheetHeader from "../src/sheet-header.mjs";
 
 const source = await readFile(new URL("../src/control-center.ts", import.meta.url), "utf8");
-const compiled = ts.transpileModule(source.replace(/^import (?!.*(device-gate|sheet-header)).*;\s*$/gm, ""), {
+const compiled = ts.transpileModule(source.replace(/^import (?!.*(device-gate|sheet-header|i18n)).*;\s*$/gm, ""), {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
 }).outputText;
 const settle = async () => {
@@ -44,7 +45,7 @@ function createHarness(dom, fetchImpl) {
   const exports = {};
   const module = { exports };
   vm.runInNewContext(compiled, {
-    exports, module, require: name => name === "./device-gate.mjs" ? deviceGate : name === "./sheet-header.mjs" ? sheetHeader : {}, window, document: window.document,
+    exports, module, require: name => name === "./device-gate.mjs" ? deviceGate : name === "./sheet-header.mjs" ? sheetHeader : name === "./i18n" ? i18nCore : {}, window, document: window.document,
     HTMLElement: window.HTMLElement, HTMLDivElement: window.HTMLDivElement,
     localStorage: window.localStorage, sessionStorage: window.sessionStorage,
     fetch: window.fetch, Headers, Event: window.Event, CustomEvent: window.CustomEvent,

@@ -28,10 +28,14 @@ test("a default title shows the first prompt, summarised to one short line", () 
 
 test("without a prompt a default title becomes a localized label with a short local time", () => {
   const session = { title: "New session - 2026-10-31T17:03:18.156Z" };
-  assert.equal(openCodeSessionLabel(session, { timeZone: "UTC" }), "新しいセッション 10/31 17:03");
+  assert.equal(openCodeSessionLabel(session, { timeZone: "UTC" }), "New session 10/31 17:03");
+  assert.equal(openCodeSessionLabel(session, { language: "ja", timeZone: "UTC" }), "新しいセッション 10/31 17:03");
   assert.equal(openCodeSessionLabel(session, { language: "en", timeZone: "Asia/Tokyo" }), "New session 11/1 02:03");
-  assert.equal(openCodeSessionLabel({ title: "", time: { created: Date.UTC(2026, 0, 5, 9, 7) } }, { timeZone: "UTC" }), "新しいセッション 1/5 09:07");
-  assert.equal(openCodeSessionLabel({ title: "" }), "新しいセッション");
+  assert.equal(openCodeSessionLabel({ title: "", time: { created: Date.UTC(2026, 0, 5, 9, 7) } }, { timeZone: "UTC" }), "New session 1/5 09:07");
+  assert.equal(openCodeSessionLabel({ title: "", time: { created: Date.UTC(2026, 0, 5, 9, 7) } }, { language: "ja", timeZone: "UTC" }), "新しいセッション 1/5 09:07");
+  assert.equal(openCodeSessionLabel({ title: "" }), "New session");
+  assert.equal(openCodeSessionLabel({ title: "" }, { language: "ja" }), "新しいセッション");
+  assert.equal(openCodeSessionLabel({ title: "" }, { language: "zh" }), "新会话");
   assert.equal(openCodeSessionLabel({ title: "" }, { language: "en" }), "New session");
   assert.equal(shortSessionTime("not a date"), "");
 });

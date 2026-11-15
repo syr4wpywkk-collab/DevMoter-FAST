@@ -24,11 +24,11 @@ test("Codex and OpenCode only show recovered after successful refresh", async ()
   for (const source of [codex, opencode]) {
     assert.match(source, /recoverAfterEventOpen\(async \(\) =>/);
     assert.match(source, /showToast\(error\s*\?/);
-    assert.match(source, /同期に失敗|session sync failed/);
-    assert.match(source, /再接続しました|Connection recovered/);
+    assert.match(source, /t\("(?:codex|opencode)\.reconnect\.syncAfterOpenFailed"\)/);
+    assert.match(source, /t\("(?:codex\.reconnect\.reconnected|opencode\.reconnect\.recovered)"\)/);
   }
   assert.match(codex, /if \(!\(await loadThreads\(\)\)\) return false;/);
   assert.match(codex, /if \(!\(await loadThreadHistory\(threadBeforeRefresh\)\)\) return false;/);
-  assert.match(opencode, /if \(!sessionsLoaded\) throw new Error\("Could not refresh session history"\)/);
-  assert.match(opencode, /return false;[\s\S]*?setActivity\("error"\)/);
+  assert.match(opencode, /if \(!sessionsLoaded\) throw new Error\(t\("opencode\.sessions\.refreshHistoryFailed"\)\)/);
+  assert.match(opencode, /setActivity\(t\("opencode\.activity\.error"\), "error"\)[\s\S]*?return false;/);
 });

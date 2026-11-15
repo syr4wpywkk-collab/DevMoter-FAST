@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { DICTIONARIES } from "../src/i18n-core.mjs";
 
 async function source(path) {
   return readFile(new URL("../" + path, import.meta.url), "utf8");
@@ -31,12 +32,17 @@ test("terminal device-auth failures use the shared registration gate", async () 
   const gate = control.slice(gateStart, control.indexOf("function clearSectionGate(", gateStart));
   assert.ok(gate.includes("isDeviceAuthError(error)"));
   assert.ok(gate.includes("createDeviceGate(document, { compact: true"));
-  assert.ok(body.includes('showTerminalError("Could not load sessions", error)'));
+  assert.ok(body.includes('showTerminalError(t("terminal.loadSessionsFailed"), error)'));
+  assert.equal(DICTIONARIES.en["terminal.loadSessionsFailed"], "Could not load sessions");
   // The raw 401 text is not shown alongside the gate, and the old bespoke gate is gone.
   assert.ok(!control.includes("This browser is not a Trusted device"));
   assert.ok(!control.includes("/trusted device/i"));
-  for (const prefix of ["Could not start terminal", "Could not attach session"]) {
-    assert.ok(control.includes(`showTerminalError("${prefix}", error)`), prefix);
+  for (const [key, expectedEn] of [
+    ["terminal.startFailed", "Could not start terminal"],
+    ["terminal.attachFailed", "Could not attach session"]
+  ]) {
+    assert.ok(control.includes(`showTerminalError(t("${key}"), error)`), key);
+    assert.equal(DICTIONARIES.en[key], expectedEn, key);
   }
 });
 
@@ -46,6 +52,8 @@ test("remote browsers are not offered localhost-only trusted-device bootstrap", 
   assert.ok(settings.includes('host === "localhost"'));
   assert.ok(settings.includes('host === "127.0.0.1"'));
   assert.ok(settings.includes("localBootstrap"));
-  assert.ok(settings.includes("信頼済み端末でペアリングコードを作成"));
-  assert.ok(settings.includes("最初の信頼済み端末は、セキュリティのため localhost（127.0.0.1）から登録"));
+  assert.ok(settings.includes('t("settings.devices.guidanceRemote")'));
+  assert.ok(settings.includes('t("settings.devices.guidanceBootstrap")'));
+  assert.ok(DICTIONARIES.ja["settings.devices.guidanceRemote"].includes("信頼済み端末でペアリングコードを作成"));
+  assert.ok(DICTIONARIES.ja["settings.devices.guidanceBootstrap"].includes("最初の信頼済み端末は、セキュリティのため localhost（127.0.0.1）から登録"));
 });

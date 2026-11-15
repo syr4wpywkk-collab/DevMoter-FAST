@@ -28,8 +28,8 @@ test("Tools shows only the input and an always-visible model picker; the default
   });
   try {
     $(".dm-shell-menu-trigger").click(); await tick();
-    assert.equal($("[data-ai-submit]").textContent.trim(), "調査を開始");
-    assert.equal($("[data-ai-goal]").placeholder, "例：現在の変更点を整理");
+    assert.equal($("[data-ai-submit]").textContent.trim(), "Start inspection");
+    assert.equal($("[data-ai-goal]").placeholder, "e.g. Summarize current changes");
     for (const removed of [".tools-ai-welcome", "[data-manual-tools]", "[data-tools-item]", "[data-ai-suggestion]", ".tools-ai-sharing", ".tools-ai-settings", "[data-ai-project]", "[data-ai-manual]", "[data-ai-availability]", "[data-ai-settings]"]) assert.equal($(removed), null, removed);
     assert.equal($("[data-ai-provider]").closest("details"), null, "model picker is not collapsed");
     assert.equal($("[data-ai-model]").value, "configured-model");
@@ -37,12 +37,12 @@ test("Tools shows only the input and an always-visible model picker; the default
     $("[data-ai-goal]").value = "今の変更を調べて";
     $("[data-ai-form]").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true })); await tick();
     assert.equal(sent.projectId, "p1"); assert.equal(sent.providerId, "planner");
-    assert.match($("[data-ai-progress]").textContent, /今回の対象: Project A/);
+    assert.match($("[data-ai-progress]").textContent, /Target: Project A/);
     assert.equal($("[data-ai-stop]").closest(".dm-shell-sidebar-head") !== null, true);
     $("[data-shell-close]").click(); $(".dm-shell-menu-trigger").click(); await tick();
     assert.equal(dom.window.localStorage.getItem("devmoter-tools-ai-run"), current.runId);
     assert.match($("[data-ai-progress]").textContent, /Project A/);
-    $("[data-ai-stop]").click(); await tick(); assert.match($("[data-ai-progress]").textContent, /停止要求済み/);
+    $("[data-ai-stop]").click(); await tick(); assert.match($("[data-ai-progress]").textContent, /Stop requested/);
     assert.deepEqual(calls, []);
   } finally { dom.window.close(); }
 });
@@ -56,7 +56,7 @@ test("unconfigured planner keeps the explicit settings path and no submission", 
     $(".dm-shell-menu-trigger").click(); await tick();
     assert.equal($("[data-ai-submit]").disabled, false);
     assert.equal($("[data-ai-setup-notice]").hidden, false);
-    assert.match($("[data-ai-setup-message]").textContent, /API Chat.*設定.*Codex.*OpenCode/);
+    assert.match($("[data-ai-setup-message]").textContent, /API Chat.*setting.*Codex.*OpenCode/);
     $("[data-ai-goal]").value = "今の変更を調べて";
     $("[data-ai-submit]").click(); await tick();
     assert.equal(posts, 0);
@@ -67,9 +67,9 @@ test("unconfigured planner keeps the explicit settings path and no submission", 
 
 test("missing credential, model, and Vault project binding produce actionable preflight without a run", async () => {
   for (const [provider, reason, recoverySelector, configureHidden] of [
-    [{ ...context.providers[0], ready: false }, /credentialが未設定/, "[data-ai-configure]", false],
-    [{ ...context.providers[0], models: [] }, /modelが未設定/, "[data-ai-model]", false],
-    [{ ...context.providers[0], projectId: "p-missing" }, /紐付いたProject/, "[data-ai-provider]", true]
+    [{ ...context.providers[0], ready: false }, /Credentials.*not configured/, "[data-ai-configure]", false],
+    [{ ...context.providers[0], models: [] }, /No model is configured/, "[data-ai-model]", false],
+    [{ ...context.providers[0], projectId: "p-missing" }, /No Project is linked/, "[data-ai-provider]", true]
   ]) {
     let posts = 0;
     const { dom, $ } = setup(async (_url, options) => { if (options.method === "POST") posts++; return response({ ...context, providers: [provider] }); });
@@ -94,7 +94,7 @@ test("failed context load can be retried; a configured send then reaches the run
   try {
     $(".dm-shell-menu-trigger").click(); await tick();
     assert.equal($("[data-ai-retry]").hidden, false);
-    assert.match($("[data-ai-setup-message]").textContent, /取得できません/);
+    assert.match($("[data-ai-setup-message]").textContent, /Could not fetch AI settings/);
     $("[data-ai-submit]").click(); assert.equal(posts, 0);
     $("[data-ai-retry]").click(); await tick();
     assert.equal($("[data-ai-setup-notice]").hidden, true);
@@ -115,7 +115,7 @@ test("context timeout releases loading and exposes retry instead of leaving Send
     timeout(); await tick();
     assert.equal($("[data-ai-submit]").disabled, false);
     assert.equal($("[data-ai-retry]").hidden, false);
-    assert.match($("[data-ai-error]").textContent, /タイムアウト/);
+    assert.match($("[data-ai-error]").textContent, /timed out/);
   } finally { dom.window.close(); }
 });
 
@@ -136,7 +136,7 @@ test("empty goal gets feedback and stale context errors cannot undo a newer read
     assert.equal($("[data-ai-submit]").disabled, false);
     assert.equal($("[data-ai-setup-notice]").hidden, true);
     $("[data-ai-submit]").click(); await tick();
-    assert.equal(posts, 0); assert.match($("[data-ai-error]").textContent, /入力してください/);
+    assert.equal(posts, 0); assert.match($("[data-ai-error]").textContent, /Please enter/);
     assert.equal(document.activeElement, $("[data-ai-goal]"));
   } finally { dom.window.close(); }
 });
@@ -149,10 +149,10 @@ test("result cards use safe source rendering, preserve builtAt/redaction, and sh
     dom.window.localStorage.setItem("devmoter-tools-ai-run", current.runId);
     $(".dm-shell-menu-trigger").click(); await tick();
     assert.match($("[data-ai-results]").textContent, /builtAt: 1234/);
-    assert.match($("[data-ai-results]").textContent, /共有対象から除外/);
+    assert.match($("[data-ai-results]").textContent, /excluded from AI sharing/);
     assert.equal($("[data-ai-results] script"), null);
     assert.equal($("[data-ai-stop]").disabled, true);
-    assert.match($("[data-ai-progress]").textContent, /結果不明/);
+    assert.match($("[data-ai-progress]").textContent, /Result unknown/);
   } finally { dom.window.close(); }
 });
 
@@ -171,7 +171,7 @@ test("lost start response is reconciled by original request ID, never assumed su
     $("[data-shell-close]").click(); $(".dm-shell-menu-trigger").click(); await tick();
     assert.equal(dom.window.localStorage.getItem("devmoter-tools-ai-run"), baseRun.runId);
     assert.equal(dom.window.localStorage.getItem("devmoter-tools-ai-pending-request"), null);
-    assert.match($("[data-ai-progress]").textContent, /調査内容を整理しています/);
+    assert.match($("[data-ai-progress]").textContent, /Planning investigation/);
   } finally { dom.window.close(); }
 });
 
@@ -192,7 +192,7 @@ test("an old reconnect response cannot replace a newly submitted run", async () 
     release(); await tick();
     assert.equal($("[data-ai-stop]").disabled, false);
     assert.equal(dom.window.localStorage.getItem("devmoter-tools-ai-run"), newer.runId);
-    assert.match($("[data-ai-progress]").textContent, /調査内容を整理しています/);
+    assert.match($("[data-ai-progress]").textContent, /Planning investigation/);
   } finally { dom.window.close(); }
 });
 

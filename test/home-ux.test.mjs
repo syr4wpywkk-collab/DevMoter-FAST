@@ -52,11 +52,11 @@ test("Home copy describes a development workspace without generic AI slogans", a
   const dom = new JSDOM("<main id='home'></main>");
   const root = dom.window.document.querySelector("#home");
   mountHomeSurface(root, { onLaunchApp() {}, onPreviewApp() {} });
-  assert.equal(root.querySelector("h1")?.textContent, "作業スペース");
-  assert.equal(root.querySelector("#dm-home-apps-title")?.textContent, "ツール");
-  assert.equal(root.querySelector("[data-home-app-count]")?.textContent, "13件");
-  assert.match(root.textContent, /開発ワークフロー|ナレッジ|ブラウザー/);
-  assert.doesNotMatch(root.textContent, /Developer Workflows|Knowledge|Mission Control|Sessions \/ Activity/);
+  assert.equal(root.querySelector("h1")?.textContent, "Workspace");
+  assert.equal(root.querySelector("#dm-home-apps-title")?.textContent, "Tools");
+  assert.equal(root.querySelector("[data-home-app-count]")?.textContent, "13 apps");
+  assert.match(root.textContent, /Developer Workflows|Knowledge|Browser/);
+  assert.doesNotMatch(root.textContent, /開発ワークフロー|ナレッジ|ブラウザー/);
   assert.doesNotMatch(root.textContent, /building with AI|local AI workspace/i);
   dom.window.close();
 });
@@ -76,15 +76,15 @@ test("Home still treats non-shipped applications as previews, never launches the
   assert.equal(browserCard.disabled, false);
   assert.equal(root.querySelector('[data-home-app="knowledge"]').getAttribute("aria-disabled"), "true");
   root.querySelector('[data-home-app="knowledge"]').click();
-  assert.equal(root.querySelector('[data-home-app="knowledge"]')?.getAttribute("aria-label"), "ナレッジ、プレビュー");
-  assert.equal(root.querySelector('[data-home-app="knowledge"] .dm-home-app-state')?.textContent, "プレビュー");
+  assert.equal(root.querySelector('[data-home-app="knowledge"]')?.getAttribute("aria-label"), "Knowledge, Preview");
+  assert.equal(root.querySelector('[data-home-app="knowledge"] .dm-home-app-state')?.textContent, "Preview");
   browserCard.click();
   assert.deepEqual(launches, []);
   assert.equal(previews.length, 2);
   assert.equal(previews[0].id, "knowledge");
-  assert.equal(previews[0].message, "ナレッジ機能は準備中です。専用の画面は今後追加予定です。");
+  assert.equal(previews[0].message, "Knowledge is not available yet. Its app shell is planned separately.");
   assert.equal(previews[1].id, "browser");
-  assert.match(previews[1].message, /ファイルとプレビュー/);
+  assert.match(previews[1].message, /Files & Preview/);
   dom.window.close();
 });
 

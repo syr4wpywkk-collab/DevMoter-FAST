@@ -1,5 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as i18nCore from "../src/i18n-core.mjs";
+
+const jaI18n = {
+  ...i18nCore,
+  getLanguage: () => "ja",
+  t: (k, p) => i18nCore.translate("ja", k, p),
+  translateServerMessage: m => i18nCore.translateServerMessage(m, "ja"),
+  formatDateTime: (v, o) => i18nCore.formatDateTime(v, o, "ja"),
+  formatTime: (v, o) => i18nCore.formatTime(v, o, "ja"),
+  formatNumber: (v, o) => i18nCore.formatNumber(v, o, "ja"),
+  formatRelativeTime: (ts, now) => i18nCore.formatRelativeTime(ts, now, "ja"),
+  tApp: (id, f) => i18nCore.tApp(id, f, "ja")
+};
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
@@ -20,7 +33,7 @@ function mount(t, fetch) {
   w.exports = {};
   w.eval(editorJs);
   const editorModule = w.exports;
-  w.require = (name) => (name === "./api-model-label.mjs" ? apiModelLabelModule : name === "./office-editor" ? editorModule : {});
+  w.require = (name) => (name === "./api-model-label.mjs" ? apiModelLabelModule : name === "./office-editor" ? editorModule : name === "./i18n" ? jaI18n : {});
   w.exports = {};
   w.fetch = fetch;
   w.confirm = () => true;

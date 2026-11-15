@@ -39,7 +39,7 @@ function memoryStorage(seed = {}) {
 
 test("history helpers: titles, newest first, legacy resume id, bounded storage", () => {
   assert.equal(qwenChatTitle("  テストを\n実行して  "), "テストを 実行して");
-  assert.equal(qwenChatTitle(""), "新しいチャット");
+  assert.equal(qwenChatTitle(""), "New chat");
   assert.equal(Array.from(qwenChatTitle("あ".repeat(80))).length, 40);
   const storage = memoryStorage({
     [QWEN_CHATS_KEY]: JSON.stringify({ chats: [
@@ -52,7 +52,7 @@ test("history helpers: titles, newest first, legacy resume id, bounded storage",
   assert.deepEqual(chats.map(chat => chat.id).slice(0, 2), ["new", "old"]);
   assert.equal(chats[1].sessionId, null, "invalid resume ids are dropped");
   assert.deepEqual(chats[1].messages, [{ role: "user", text: "x" }]);
-  assert.equal(chats[2].title, "以前のチャット");
+  assert.equal(chats[2].title, "Previous chat");
   assert.equal(storage.getItem(LEGACY_QWEN_SESSION_KEY), null, "legacy key migrated once");
   assert.equal(loadQwenChats(memoryStorage({ [QWEN_CHATS_KEY]: "{broken" })).length, 0);
   const many = Array.from({ length: 40 }, (_, index) => ({ id: `c${index}`, title: "t", sessionId: null, projectId: "", updatedAt: index, messages: [{ role: "user", text: "x" }] }));
@@ -115,6 +115,7 @@ async function mount({ chat, seed, confirm = () => true, models = () => ({ ok: t
     }
   });
   dom.window.confirm = confirm;
+  dom.window.localStorage.setItem("devmoter-language", "ja");
   dom.window.localStorage.setItem("opencode-pocket-project", "p1");
   if (seed) dom.window.localStorage.setItem(QWEN_CHATS_KEY, JSON.stringify(seed));
   const { mountQwenChat } = await loadQwenChat();
@@ -415,11 +416,18 @@ test("model picker: empty and error states, then add an API like /auth and selec
 });
 
 test("model helpers: stored choice is validated, recent list is bounded and deduplicated", async () => {
+  delete globalThis.localStorage;
+  delete globalThis.window;
+  delete globalThis.document;
   const store = await import("../src/qwen-model-store.mjs");
   const storage = memoryStorage({ [store.QWEN_MODEL_KEY]: JSON.stringify({ id: "m", authType: "qwen-oauth" }) });
   assert.equal(store.loadQwenModel(storage), null, "qwen-oauth or junk falls back to the default");
   for (const id of ["a", "b", "c", "d", "e", "f", "b"]) store.saveQwenModel(storage, { id, authType: "openai", name: id });
   assert.deepEqual(store.loadRecentQwenModels(storage).map(item => item.id), ["b", "f", "e", "d", "c"]);
   assert.equal(store.qwenModelChipLabel({ id: "z-ai/glm-4.5-air:free" }), "glm-4.5-air:free");
-  assert.equal(store.qwenModelChipLabel(null), "既定");
+  assert.equal(store.qwenModelChipLabel(null), "Default");
+  assert.equal(store.qwenModelChipLabel(null, "ja"), "既定");
+  assert.equal(store.qwenModelChipLabel(null, "zh"), "默认");
+  assert.equal(store.qwenModelChipLabel(null, "ja"), "既定");
+  assert.equal(store.qwenModelChipLabel(null, "zh"), "默认");
 });

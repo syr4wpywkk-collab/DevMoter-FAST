@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { DICTIONARIES } from "../src/i18n-core.mjs";
 
 const EXPECTED_APPS = [
   "office", "chat", "projects", "mission-control", "knowledge", "terminal", "git", "review", "agents",
@@ -41,7 +42,7 @@ test("Home cards are rendered from the Registry with accessible availability sta
   assert.ok(home.includes('button.setAttribute("aria-disabled", "true");'), "previews are explicitly identified");
   assert.ok(home.includes('if (app.availability === "unavailable") button.disabled = true;'));
   assert.ok(home.includes("options.onPreviewApp(app.id, homePreviewMessage(app))"), "preview must not launch a fake app");
-  assert.ok(home.includes("return app.previewMessage ||"), "untranslated registry copy remains a fallback only");
+  assert.ok(home.includes('return tApp(app.id, "previewMessage") || app.previewMessage ||'), "untranslated registry copy remains a fallback only");
   assert.ok(home.includes("options.onLaunchApp(app.id)"), "available apps delegate to the real shell");
 });
 
@@ -49,7 +50,9 @@ test("Shell launches are fixed allowlisted behavior", async () => {
   const shell = await source("app-shell.ts");
   assert.ok(shell.includes("getAppDefinition(id)"));
   assert.ok(!shell.includes("data-shell-app="));
-  assert.ok(shell.includes('if (!isAppId(id)) throw new Error("This app is not registered.")'));
+  assert.ok(shell.includes('if (!isAppId(id)) throw new Error(t("shell.appUnregistered"))'));
+  assert.equal(DICTIONARIES.en["shell.appUnregistered"], "This app is not registered.");
+  assert.ok(DICTIONARIES.ja["shell.appUnregistered"] && DICTIONARIES.zh["shell.appUnregistered"]);
   assert.ok(shell.includes('case "terminal": openToolsTab("terminal")'));
   assert.ok(shell.includes('case "git": clickExisting(".pocket-git-trigger")'));
   assert.ok(shell.includes('case "review": clickExisting("#wfLaunch")'));
