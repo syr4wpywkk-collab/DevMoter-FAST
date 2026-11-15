@@ -1,20 +1,23 @@
 import { en } from "./locales/en.mjs";
 import { ja } from "./locales/ja.mjs";
-import { zh } from "./locales/zh.mjs";
+import { zhHans } from "./locales/zh-Hans.mjs";
+import { zhHant } from "./locales/zh-Hant.mjs";
 
 export const STORAGE_KEY = "devmoter-language";
-export const SUPPORTED_LANGUAGES = Object.freeze(["ja", "en", "zh"]);
+export const SUPPORTED_LANGUAGES = Object.freeze(["ja", "en", "zh-Hans", "zh-Hant"]);
 
 export const DICTIONARIES = Object.freeze({
   en: Object.freeze({ ...en }),
   ja: Object.freeze({ ...ja }),
-  zh: Object.freeze({ ...zh })
+  "zh-Hans": Object.freeze({ ...zhHans }),
+  "zh-Hant": Object.freeze({ ...zhHant })
 });
 
 const LOCALE_TAGS = Object.freeze({
   ja: "ja-JP",
   en: "en-US",
-  zh: "zh-CN"
+  "zh-Hans": "zh-CN",
+  "zh-Hant": "zh-TW"
 });
 
 const SERVER_MESSAGE_KEYS = Object.freeze({
@@ -77,13 +80,23 @@ const SERVER_MESSAGE_KEYS = Object.freeze({
 const listeners = new Set();
 let storageSyncInstalled = false;
 
+function normalizeChineseLanguage(normalized) {
+  const subtags = normalized.split("-").slice(1);
+  const extIdx = subtags.indexOf("x");
+  const tags = extIdx === -1 ? subtags : subtags.slice(0, extIdx);
+  if (tags.includes("hant")) return "zh-Hant";
+  if (tags.includes("hans")) return "zh-Hans";
+  if (tags.includes("tw") || tags.includes("hk") || tags.includes("mo")) return "zh-Hant";
+  return "zh-Hans";
+}
+
 export function normalizeLanguage(value) {
   if (typeof value !== "string") return null;
   const normalized = value.trim().toLowerCase().replace(/_/g, "-");
   if (!normalized) return null;
   if (normalized === "ja" || normalized.startsWith("ja-")) return "ja";
   if (normalized === "en" || normalized.startsWith("en-")) return "en";
-  if (normalized === "zh" || normalized.startsWith("zh-")) return "zh";
+  if (normalized === "zh" || normalized.startsWith("zh-")) return normalizeChineseLanguage(normalized);
   return null;
 }
 
@@ -107,7 +120,16 @@ export function resolveLanguage(value) {
   try {
     const stored = globalThis.localStorage?.getItem(STORAGE_KEY);
     const normalized = normalizeLanguage(stored);
-    if (normalized) return normalized;
+    if (normalized) {
+      if (normalized === "zh-Hans" && typeof stored === "string" && stored.trim().toLowerCase() === "zh") {
+        try {
+          globalThis.localStorage?.setItem?.(STORAGE_KEY, "zh-Hans");
+        } catch {
+          // Ignore storage write restrictions.
+        }
+      }
+      return normalized;
+    }
   } catch {
     // Ignore storage read restrictions.
   }

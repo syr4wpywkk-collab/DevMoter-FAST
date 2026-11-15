@@ -1,4 +1,4 @@
-export const zh = {
+export const zhHans = {
   "common.close": "关闭",
   "common.cancel": "取消",
   "common.back": "返回",
@@ -47,7 +47,8 @@ export const zh = {
   "language.subtitle": "切换界面控件和提示的显示语言",
   "language.ja": "日本語",
   "language.en": "English",
-  "language.zh": "简体中文",
+  "language.zh-Hans": "简体中文",
+  "language.zh-Hant": "繁體中文",
   "language.reloadNotice": "正在重新加载以应用所选语言…",
 
   "deviceGate.openTrustedDevices": "打开受信任设备",

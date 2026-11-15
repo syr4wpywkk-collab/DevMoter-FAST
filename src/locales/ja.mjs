@@ -47,7 +47,8 @@ export const ja = {
   "language.subtitle": "画面に表示する言語を切り替えます",
   "language.ja": "日本語",
   "language.en": "English",
-  "language.zh": "简体中文",
+  "language.zh-Hans": "简体中文",
+  "language.zh-Hant": "繁體中文",
   "language.reloadNotice": "言語設定を反映するため再読み込みします…",
 
   "deviceGate.openTrustedDevices": "信頼済み端末を開く",

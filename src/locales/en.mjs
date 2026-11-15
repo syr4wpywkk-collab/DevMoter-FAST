@@ -47,7 +47,8 @@ export const en = {
   "language.subtitle": "Display language for controls and dialogs",
   "language.ja": "日本語",
   "language.en": "English",
-  "language.zh": "简体中文",
+  "language.zh-Hans": "简体中文",
+  "language.zh-Hant": "繁體中文",
   "language.reloadNotice": "Reloading to apply the selected language…",
 
   "deviceGate.openTrustedDevices": "Open Trusted devices",

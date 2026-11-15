@@ -1,6 +1,6 @@
-export type DevMoterLanguage = "ja" | "en" | "zh";
+export type DevMoterLanguage = "ja" | "en" | "zh-Hans" | "zh-Hant";
 export type TranslationParams = Record<string, string | number | boolean | null | undefined>;
-export type LocaleTag = "ja-JP" | "en-US" | "zh-CN";
+export type LocaleTag = "ja-JP" | "en-US" | "zh-CN" | "zh-TW";
 
 export const STORAGE_KEY: string;
 export const SUPPORTED_LANGUAGES: readonly DevMoterLanguage[];
