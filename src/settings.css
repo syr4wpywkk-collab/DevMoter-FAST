@@ -9,10 +9,10 @@
   width: 48px;
   height: 48px;
   padding: 0;
-  border: 1px solid rgba(255,255,255,.14);
+  border: 1px solid var(--border-subtle);
   border-radius: 999px;
-  background: rgba(29,29,31,.94);
-  color: #f5f5f7;
+  background: var(--surface-elevated);
+  color: var(--text-primary);
   font-size: 1.1rem;
   box-shadow: 0 12px 34px rgba(0,0,0,.42);
   backdrop-filter: blur(18px);
@@ -33,7 +33,7 @@
     max(8px, env(safe-area-inset-right))
     max(8px, env(safe-area-inset-bottom))
     max(8px, env(safe-area-inset-left));
-  background: rgba(0,0,0,.72);
+  background: var(--surface-overlay, rgba(0,0,0,.72));
   backdrop-filter: blur(8px);
 }
 
@@ -48,10 +48,11 @@
   overflow: hidden;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 28px;
-  background: #1c1c1e;
-  box-shadow: 0 28px 90px rgba(0,0,0,.62);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sheet, 28px);
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  box-shadow: 0 28px 90px rgba(0,0,0,.45);
 }
 
 .devmoter-settings-head {
@@ -60,7 +61,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255,255,255,.06);
+  border-bottom: 1px solid var(--border-hairline);
 }
 
 .devmoter-settings-head > div {
@@ -69,24 +70,24 @@
 }
 
 .devmoter-settings-head strong {
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1.35rem;
   letter-spacing: -.02em;
 }
 
 .devmoter-settings-head small {
-  color: #98989f;
-  font-size: .72rem;
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
 }
 
 .devmoter-settings-close {
   width: 46px;
   height: 46px;
   padding: 0;
-  border: 1px solid rgba(255,255,255,.10);
+  border: 1px solid var(--border-subtle);
   border-radius: 999px;
-  background: #303034;
-  color: #f4f4f5;
+  background: var(--surface-card);
+  color: var(--text-primary);
   font-size: 1.55rem;
   line-height: 1;
 }
@@ -100,7 +101,7 @@
 
 .devmoter-settings-loading {
   padding: 36px 18px;
-  color: #8e8e93;
+  color: var(--text-muted);
   text-align: center;
 }
 
@@ -113,10 +114,10 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  border: 0;
+  border: 1px solid var(--border-hairline);
   border-radius: 20px;
-  background: #2c2c2e;
-  color: #fff;
+  background: var(--surface-card);
+  color: var(--text-primary);
   text-align: left;
 }
 
@@ -138,8 +139,8 @@
 }
 
 .devmoter-settings-profile small {
-  color: #a9a9af;
-  font-size: .7rem;
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
 }
 
 /* Trailing indicator: chevron = another Settings page, arrow-out = closes
@@ -154,7 +155,7 @@
   height: 20px;
   display: grid;
   place-items: center;
-  color: #8e8e93;
+  color: var(--text-muted);
 }
 
 .devmoter-settings-chevron svg {
@@ -199,11 +200,12 @@
   height: 52px;
   display: grid;
   place-items: center;
+  border: 1px solid var(--border-subtle);
   border-radius: 999px;
-  background: linear-gradient(135deg, #7042ff, #b45ed8);
-  color: white;
+  background: var(--accent-soft);
+  color: var(--accent);
   font-size: 1rem;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
+  font-weight: 600;
 }
 
 .devmoter-settings-section {
@@ -212,16 +214,17 @@
 
 .devmoter-settings-section h2 {
   margin: 0 0 8px 10px;
-  color: #a9a9af;
-  font-size: .74rem;
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
   font-weight: 650;
   letter-spacing: .01em;
 }
 
 .devmoter-settings-card {
   overflow: hidden;
+  border: 1px solid var(--border-hairline);
   border-radius: 20px;
-  background: #2c2c2e;
+  background: var(--surface-card);
 }
 
 .devmoter-settings-row {
@@ -235,7 +238,7 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: #f5f5f7;
+  color: var(--text-primary);
   text-align: left;
 }
 
@@ -250,11 +253,11 @@
   left: 50px;
   right: 14px;
   height: 1px;
-  background: rgba(255,255,255,.085);
+  background: var(--border-hairline);
 }
 
 .devmoter-settings-row:active {
-  background: rgba(255,255,255,.055);
+  background: var(--surface-hover);
 }
 
 .devmoter-settings-row:disabled {
@@ -306,7 +309,7 @@
 
 .devmoter-settings-row-copy strong {
   overflow: hidden;
-  font-size: .83rem;
+  font-size: var(--font-size-label);
   font-weight: 540;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -314,33 +317,35 @@
 
 .devmoter-settings-row-copy small {
   overflow: hidden;
-  color: #9a9aa1;
-  font-size: .67rem;
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .devmoter-settings-badge {
   padding: 4px 8px;
+  border: 1px solid var(--border-hairline);
   border-radius: 999px;
-  background: #4a4a4f;
-  color: #dedee2;
-  font-size: .58rem;
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
   white-space: nowrap;
 }
 
 .devmoter-settings-logout-card {
   margin-top: 24px;
-  background: rgba(118,28,30,.26);
+  border-color: var(--status-error-border);
+  background: var(--status-error-surface);
 }
 
 .devmoter-settings-row.danger {
-  color: #ff453a;
+  color: var(--status-error);
 }
 
 .devmoter-settings-row.danger .devmoter-settings-icon,
 .devmoter-settings-row.danger .devmoter-settings-chevron {
-  color: #ff453a;
+  color: var(--status-error);
 }
 
 .devmoter-settings-toast {
@@ -350,11 +355,11 @@
   bottom: calc(22px + env(safe-area-inset-bottom));
   max-width: min(86vw, 520px);
   padding: 10px 14px;
-  border: 1px solid rgba(255,255,255,.12);
+  border: 1px solid var(--border-subtle);
   border-radius: 999px;
-  background: rgba(37,37,39,.96);
-  color: #f5f5f7;
-  font-size: .72rem;
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  font-size: var(--font-size-caption);
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, 8px);
@@ -417,49 +422,25 @@ body.devmoter-settings-open .devmoter-settings-trigger {
 }
 
 html[data-devmoter-theme="light"] .devmoter-settings-sheet {
-  background: #f2f2f7;
-  border-color: rgba(0,0,0,.08);
-}
-
-html[data-devmoter-theme="light"] .devmoter-settings-head strong,
-html[data-devmoter-theme="light"] .devmoter-settings-row,
-html[data-devmoter-theme="light"] .devmoter-settings-profile {
-  color: #111113;
+  background: var(--canvas-base);
+  border-color: var(--border-hairline);
 }
 
 html[data-devmoter-theme="light"] .devmoter-settings-card,
-html[data-devmoter-theme="light"] .devmoter-settings-profile {
-  background: #fff;
-}
-
-html[data-devmoter-theme="light"] .devmoter-settings-row + .devmoter-settings-row::before {
-  background: rgba(0,0,0,.10);
-}
-
-html[data-devmoter-theme="light"] .devmoter-settings-section h2,
-html[data-devmoter-theme="light"] .devmoter-settings-head small,
-html[data-devmoter-theme="light"] .devmoter-settings-profile small,
-html[data-devmoter-theme="light"] .devmoter-settings-row-copy small {
-  color: #73737a;
-}
-
-html[data-devmoter-theme="light"] .devmoter-settings-icon {
-  color: #3a3a3f;
-}
-
-html[data-devmoter-theme="light"] .devmoter-settings-chevron,
-html[data-devmoter-theme="light"] .devmoter-settings-leave {
-  color: #73737a;
+html[data-devmoter-theme="light"] .devmoter-settings-profile,
+html[data-devmoter-theme="light"] .devmoter-guide-hero {
+  background: var(--surface-panel);
 }
 
 .devmoter-settings-back {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
   padding: 0;
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: #f5f5f7;
+  color: var(--text-primary);
   font-size: 1.8rem;
   line-height: 1;
 }
@@ -469,7 +450,7 @@ html[data-devmoter-theme="light"] .devmoter-settings-leave {
 }
 
 .devmoter-settings-head:has(.devmoter-settings-back:not(.hidden)) {
-  grid-template-columns: 40px minmax(0, 1fr) 46px;
+  grid-template-columns: 44px minmax(0, 1fr) 46px;
 }
 
 .devmoter-settings-head:has(.devmoter-settings-back:not(.hidden)) {
@@ -488,21 +469,21 @@ html[data-devmoter-theme="light"] .devmoter-settings-leave {
 .devmoter-guide-hero {
   margin: 12px 8px 18px;
   color: var(--text-secondary);
-  font-size: .72rem;
+  font-size: var(--font-size-caption);
   line-height: 1.55;
 }
 
 .devmoter-guide-hero {
   padding: 16px;
-  border: 1px solid rgba(255,255,255,.08);
+  border: 1px solid var(--border-hairline);
   border-radius: 18px;
-  background: #252527;
+  background: var(--surface-card);
 }
 
 .devmoter-guide-hero strong {
   display: block;
   margin-bottom: 6px;
-  color: #f5f5f7;
+  color: var(--text-primary);
   font-size: .9rem;
 }
 
@@ -520,7 +501,7 @@ html[data-devmoter-theme="light"] .devmoter-settings-leave {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid var(--border-hairline);
 }
 
 .devmoter-settings-detail-row:last-child {
@@ -528,13 +509,13 @@ html[data-devmoter-theme="light"] .devmoter-settings-leave {
 }
 
 .devmoter-settings-detail-row span {
-  color: #aaaab0;
-  font-size: .72rem;
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
 }
 
 .devmoter-settings-detail-row strong {
-  color: #f5f5f7;
-  font-size: .74rem;
+  color: var(--text-primary);
+  font-size: var(--font-size-label);
   text-align: right;
 }
 
@@ -551,10 +532,10 @@ html[data-devmoter-theme="light"] .devmoter-settings-leave {
 .devmoter-settings-device button {
   min-height: 44px;
   padding: 0 13px;
-  border: 1px solid rgba(255,255,255,.12);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
-  background: #3a3a3d;
-  color: #f5f5f7;
+  background: var(--surface-hover);
+  color: var(--text-primary);
 }
 
 .devmoter-settings-form-card {
@@ -567,24 +548,29 @@ html[data-devmoter-theme="light"] .devmoter-settings-leave {
   width: 100%;
   min-height: 46px;
   padding: 0 13px;
-  border: 1px solid rgba(255,255,255,.12);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
-  outline: none;
-  background: #1e1e20;
-  color: #fff;
-  font-size: .82rem;
+  background: var(--canvas-base);
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.devmoter-settings-form-card input:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+  border-color: var(--border-focus);
 }
 
 .devmoter-settings-form-card > label {
   display: grid;
   gap: 6px;
-  color: #b7b7bd;
-  font-size: .72rem;
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
 }
 
 .devmoter-settings-form-card > small {
-  color: #9b9ba1;
-  font-size: .68rem;
+  color: var(--text-muted);
+  font-size: var(--font-size-caption);
   line-height: 1.5;
 }
 
@@ -600,7 +586,7 @@ html[data-devmoter-theme="light"] .devmoter-settings-leave {
 }
 
 .devmoter-vault-secret + .devmoter-vault-secret {
-  border-top: 1px solid rgba(255,255,255,.08);
+  border-top: 1px solid var(--border-hairline);
 }
 
 .devmoter-vault-secret-main {
@@ -611,18 +597,18 @@ html[data-devmoter-theme="light"] .devmoter-settings-leave {
 
 .devmoter-vault-secret-main strong {
   overflow-wrap: anywhere;
-  color: #f5f5f7;
-  font-size: .78rem;
+  color: var(--text-primary);
+  font-size: var(--font-size-label);
 }
 
 .devmoter-vault-secret-main small {
-  color: #a0a0a6;
-  font-size: .66rem;
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
   overflow-wrap: anywhere;
 }
 
 .devmoter-vault-secret-main .devmoter-vault-warning {
-  color: #ffc66d;
+  color: var(--status-warning);
 }
 
 .devmoter-vault-secret-actions {
@@ -631,16 +617,16 @@ html[data-devmoter-theme="light"] .devmoter-settings-leave {
 }
 
 .devmoter-vault-secret-actions button {
-  min-height: 40px;
+  min-height: 44px;
   flex: 1;
-  border: 1px solid rgba(255,255,255,.12);
+  border: 1px solid var(--border-subtle);
   border-radius: 11px;
-  background: #353538;
-  color: #f5f5f7;
+  background: var(--surface-hover);
+  color: var(--text-primary);
 }
 
 .devmoter-vault-secret-actions button:last-child {
-  color: #ffaaa4;
+  color: var(--status-error);
 }
 
 .devmoter-vault-projects {
@@ -649,30 +635,30 @@ html[data-devmoter-theme="light"] .devmoter-settings-leave {
   padding: 10px;
   display: grid;
   gap: 8px;
-  border: 1px solid rgba(255,255,255,.12);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
 }
 
 .devmoter-vault-projects legend {
   padding: 0 4px;
-  color: #b7b7bd;
-  font-size: .72rem;
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
 }
 
 .devmoter-vault-project-option {
-  min-height: 40px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #f5f5f7;
-  font-size: .76rem;
+  color: var(--text-primary);
+  font-size: var(--font-size-label);
 }
 
 .devmoter-vault-project-option input {
   width: 20px;
   height: 20px;
   min-height: 20px;
-  accent-color: #8c8cff;
+  accent-color: var(--accent);
 }
 
 .devmoter-settings-device {
@@ -685,7 +671,7 @@ html[data-devmoter-theme="light"] .devmoter-settings-leave {
 }
 
 .devmoter-settings-device + .devmoter-settings-device {
-  border-top: 1px solid rgba(255,255,255,.08);
+  border-top: 1px solid var(--border-hairline);
 }
 
 .devmoter-settings-device > span {
@@ -702,12 +688,12 @@ html[data-devmoter-theme="light"] .devmoter-settings-leave {
 }
 
 .devmoter-settings-device strong {
-  font-size: .78rem;
+  font-size: var(--font-size-label);
 }
 
 .devmoter-settings-device small {
-  color: #9b9ba1;
-  font-size: .62rem;
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
 }
 
 .devmoter-settings-device button {
@@ -745,8 +731,8 @@ html[data-devmoter-theme="light"] .devmoter-settings-leave {
 
 .devmoter-settings-empty {
   padding: 18px 14px;
-  color: #929298;
-  font-size: .72rem;
+  color: var(--text-muted);
+  font-size: var(--font-size-label);
   text-align: center;
 }
 
@@ -760,7 +746,7 @@ html[data-devmoter-theme="light"] .devmoter-settings-leave {
   grid-template-columns: 22px minmax(80px, .55fr) minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid var(--border-hairline);
 }
 
 .devmoter-settings-health-row:last-child {
@@ -772,21 +758,21 @@ html[data-devmoter-theme="light"] .devmoter-settings-leave {
 }
 
 .devmoter-settings-health-row > span.ok {
-  color: #71d49a;
+  color: var(--status-success);
 }
 
 .devmoter-settings-health-row > span.bad {
-  color: #ff9b95;
+  color: var(--status-error);
 }
 
 .devmoter-settings-health-row strong {
-  font-size: .74rem;
+  font-size: var(--font-size-label);
 }
 
 .devmoter-settings-health-row small {
   overflow: hidden;
-  color: #96969c;
-  font-size: .65rem;
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -805,75 +791,25 @@ html[data-devmoter-density="compact"] .devmoter-settings-card {
   border-radius: 16px;
 }
 
-html[data-devmoter-theme="light"] .devmoter-settings-detail-row strong,
-html[data-devmoter-theme="light"] .devmoter-guide-hero strong {
-  color: #111113;
-}
-
-html[data-devmoter-theme="light"] .devmoter-settings-detail-row,
-html[data-devmoter-theme="light"] .devmoter-settings-device,
-html[data-devmoter-theme="light"] .devmoter-settings-health-row {
-  border-color: rgba(0,0,0,.10);
-}
-
-html[data-devmoter-theme="light"] .devmoter-guide-hero {
-  border-color: rgba(0,0,0,.08);
-  background: #fff;
-}
-
-html[data-devmoter-theme="light"] .devmoter-settings-form-card input {
-  border-color: rgba(0,0,0,.12);
-  background: #f4f4f7;
-  color: #111;
-}
-
-html[data-devmoter-theme="light"] .devmoter-vault-secret-main strong,
-html[data-devmoter-theme="light"] .devmoter-vault-project-option {
-  color: #161619;
-}
-
-html[data-devmoter-theme="light"] .devmoter-vault-secret + .devmoter-vault-secret {
-  border-color: rgba(0,0,0,.10);
-}
-
-html[data-devmoter-theme="light"] .devmoter-vault-projects {
-  border-color: rgba(0,0,0,.14);
-}
-
-html[data-devmoter-theme="light"] .devmoter-vault-projects legend,
-html[data-devmoter-theme="light"] .devmoter-settings-form-card > label {
-  color: #55555b;
-}
-
-html[data-devmoter-theme="light"] .devmoter-vault-secret-actions button {
-  border-color: rgba(0,0,0,.12);
-  background: #f1f1f4;
-  color: #222226;
-}
-
-html[data-devmoter-theme="light"] .devmoter-vault-secret-actions button:last-child {
-  color: #ad312a;
-}
-
 /* Owner ID copy and provider setup guide: same control as the row buttons. */
 .devmoter-settings-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
 .devmoter-settings-copy,
 .devmoter-settings-link-button {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255,255,255,.12);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
-  background: #3a3a3d;
-  color: #f5f5f7;
+  background: var(--surface-hover);
+  color: var(--text-primary);
   font: inherit;
-  font-size: .72rem;
+  font-size: var(--font-size-caption);
   text-decoration: none;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
@@ -893,15 +829,8 @@ html[data-devmoter-theme="light"] .devmoter-vault-secret-actions button:last-chi
 
 .devmoter-settings-copy:focus-visible,
 .devmoter-settings-link-button:focus-visible {
-  outline: 2px solid currentColor;
+  outline: 2px solid var(--border-focus);
   outline-offset: 2px;
-}
-
-html[data-devmoter-theme="light"] .devmoter-settings-copy,
-html[data-devmoter-theme="light"] .devmoter-settings-link-button {
-  border-color: rgba(0,0,0,.12);
-  background: #f1f1f4;
-  color: #222226;
 }
 
 @media (prefers-reduced-motion: reduce) {
