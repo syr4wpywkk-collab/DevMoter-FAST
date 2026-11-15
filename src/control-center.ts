@@ -275,6 +275,7 @@ export function mountControlCenter() {
   let safetyInitialized = false;
   let indexInitialized = false;
   let safetyRevision = 0;
+  let terminalRevision = 0;
   let refreshSafetyView: (() => Promise<void>) | null = null;
   let refreshIndexView: (() => Promise<void>) | null = null;
 
@@ -360,7 +361,9 @@ export function mountControlCenter() {
 
   let trustDirty = false;
   function refreshPanelState(options: { includeBackgroundTabs?: boolean } = {}) {
+    const revision = ++terminalRevision;
     return loadProjects().then(() => {
+      if (revision !== terminalRevision) return false;
       renderProjectOptions();
       if (safetyInitialized && (options.includeBackgroundTabs || !safetySection.classList.contains("hidden"))) {
         void refreshSafetyView?.();
@@ -368,14 +371,19 @@ export function mountControlCenter() {
       if (indexInitialized && (options.includeBackgroundTabs || !indexSection.classList.contains("hidden"))) {
         void refreshIndexView?.();
       }
-      return refreshTerminalSessions();
-    }).then(() => {
-      if (modalOpen && terminalRecord) void reattachTerminal().catch(showTerminalLoadError);
+      return loadTerminalSessions(revision);
+    }).then(refreshed => {
+      if (!refreshed || revision !== terminalRevision) return;
+      if (modalOpen && terminalRecord) {
+        void reattachTerminal(revision).catch(error => {
+          if (revision === terminalRevision && modalOpen) showTerminalLoadError(error);
+        });
+      }
       if (modalOpen && !terminalSection.classList.contains("hidden") && terminalView && terminalSection.dataset.deviceGated !== "true") {
         fitTerminal();
       }
     }).catch(error => {
-      if (modalOpen) showTerminalLoadError(error);
+      if (revision === terminalRevision && modalOpen) showTerminalLoadError(error);
     });
   }
 
@@ -556,23 +564,35 @@ export function mountControlCenter() {
   }
 
   async function refreshTerminalSessions() {
-    const response = await terminalFetch("/api/terminal/sessions");
-    const payload = await jsonOrError<{ sessions?: TerminalSession[] }>(response);
-    clearTrustedDeviceGate();
-    savedTerminalSessions = payload.sessions || [];
-    if (!savedSessionSelect) return;
-    const selectedId = terminalRecord?.session.id || savedSessionSelect.value;
-    savedSessionSelect.replaceChildren();
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = t("terminal.selectSavedSession");
-    savedSessionSelect.append(placeholder);
-    for (const session of savedTerminalSessions.filter(item => item.persistent && !item.closed)) {
-      const option = document.createElement("option");
-      option.value = session.id;
-      option.textContent = `${session.name || t("terminal.defaultName")} · ${session.projectName} · ${terminalSessionStateLabel(session.status || "detached")}`;
-      option.selected = session.id === selectedId;
-      savedSessionSelect.append(option);
+    return loadTerminalSessions(++terminalRevision);
+  }
+
+  async function loadTerminalSessions(revision: number): Promise<boolean> {
+    try {
+      const response = await terminalFetch("/api/terminal/sessions");
+      if (revision !== terminalRevision) return false;
+      const payload = await jsonOrError<{ sessions?: TerminalSession[] }>(response);
+      if (revision !== terminalRevision) return false;
+      clearTrustedDeviceGate();
+      savedTerminalSessions = payload.sessions || [];
+      if (!savedSessionSelect) return true;
+      const selectedId = terminalRecord?.session.id || savedSessionSelect.value;
+      savedSessionSelect.replaceChildren();
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = t("terminal.selectSavedSession");
+      savedSessionSelect.append(placeholder);
+      for (const session of savedTerminalSessions.filter(item => item.persistent && !item.closed)) {
+        const option = document.createElement("option");
+        option.value = session.id;
+        option.textContent = `${session.name || t("terminal.defaultName")} · ${session.projectName} · ${terminalSessionStateLabel(session.status || "detached")}`;
+        option.selected = session.id === selectedId;
+        savedSessionSelect.append(option);
+      }
+      return true;
+    } catch (error) {
+      if (revision !== terminalRevision) return false;
+      throw error;
     }
   }
 
@@ -956,8 +976,9 @@ export function mountControlCenter() {
     }
   }
 
-  async function reattachTerminal() {
+  async function reattachTerminal(expectedRevision?: number) {
     if (!terminalRecord) return;
+    if (expectedRevision !== undefined && expectedRevision !== terminalRevision) return;
     const response = await terminalFetch(
       `/api/terminal/sessions/${encodeURIComponent(terminalRecord.session.id)}`,
       {
@@ -966,7 +987,10 @@ export function mountControlCenter() {
         }
       }
     );
+    if (expectedRevision !== undefined && expectedRevision !== terminalRevision) return;
     const payload = await jsonOrError<{ session: TerminalSession }>(response);
+    if (expectedRevision !== undefined && expectedRevision !== terminalRevision) return;
+    if (!terminalRecord) return;
     terminalRecord.session = payload.session;
     saveTerminalRecord(terminalRecord);
     lastSeq = Math.min(lastSeq, payload.session.seq);
@@ -977,6 +1001,7 @@ export function mountControlCenter() {
         cwd: payload.session.cwd
       });
     await ensureTerminalRenderer();
+    if (expectedRevision !== undefined && expectedRevision !== terminalRevision) return;
     void connectTerminalSocket();
   }
 
@@ -1438,9 +1463,14 @@ export function mountControlCenter() {
   }
 
   renderTerminalShell();
+  const initialRevision = terminalRevision;
   void loadProjects().then(() => {
+    if (initialRevision !== terminalRevision) return false;
     renderProjectOptions();
     if (indexInitialized && !indexSection.classList.contains("hidden")) void refreshIndexView?.();
     return refreshTerminalSessions();
+  }, error => {
+    if (initialRevision === terminalRevision) showTerminalLoadError(error);
+    return false;
   }).catch(showTerminalLoadError);
 }

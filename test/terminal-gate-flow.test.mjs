@@ -67,7 +67,17 @@ const jsonResponse = (body, status = 200) => ({
   async text() { return JSON.stringify(body); }
 });
 
-function mountControlAndSettings({ fetch, language = "en", url = "http://localhost:8765/", withSettings = true } = {}) {
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+function mountControlAndSettings({ fetch, language = "en", url = "http://localhost:8765/", withSettings = true, beforeMount } = {}) {
   const dom = new JSDOM("<!doctype html><main id='background'><button>Background</button></main>", {
     url,
     runScripts: "outside-only"
@@ -160,6 +170,7 @@ function mountControlAndSettings({ fetch, language = "en", url = "http://localho
     return module.exports;
   };
 
+  beforeMount?.(window);
   if (withSettings) {
     const settingsMod = runModule(compiledSettings, "settings.js");
     settingsMod.mountSettingsPanel();
@@ -385,23 +396,25 @@ test("end-to-end gate -> Trusted devices registration -> returning makes all 3 t
   assert.equal(settingsRoot.inert, false, "Settings overlay is not locked inert by background lock");
   assert.equal(panel.classList.contains("hidden"), false, "Control Center stays open underneath Settings");
 
-  // Escape inside Settings navigates/closes Settings without dismissing Control Center.
-  const escEvent = new app.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true });
-  app.document.dispatchEvent(escEvent);
+  // Escape inside Settings steps back (devices -> root) and then closes Settings without dismissing Control Center.
+  const dispatchEscape = () => app.document.dispatchEvent(
+    new app.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })
+  );
+  dispatchEscape();
   await settle();
-  assert.equal(panel.classList.contains("hidden"), false, "Escape in Settings never closes Control Center");
+  assert.equal(settingsModal.classList.contains("hidden"), false, "First Escape goes from devices to Settings root");
+  assert.equal(app.document.querySelector(".devmoter-settings-back")?.classList.contains("hidden"), true, "Settings returned to root page");
+  assert.equal(panel.classList.contains("hidden"), false, "First Escape in Settings never closes Control Center");
+
+  dispatchEscape();
+  await settle();
+  assert.equal(settingsModal.classList.contains("hidden"), true, "Second Escape closes Settings modal");
+  assert.equal(panel.classList.contains("hidden"), false, "Second Escape closing Settings leaves Control Center open");
 
   // Re-open Trusted devices from the still-gated Safety tab and register this browser.
-  if (settingsModal.classList.contains("hidden")) {
-    safetyPanel.querySelector("[data-device-gate-register]").click();
-    await settle();
-  }
-  const backButton = app.document.querySelector(".devmoter-settings-back");
-  if (app.document.querySelector('[data-action="device:bootstrap"]') == null && backButton) {
-    // Escaped to Settings root; click the Trusted devices row.
-    app.document.querySelector('[data-action="page:devices"]')?.click();
-    await settle();
-  }
+  safetyPanel.querySelector("[data-device-gate-register]").click();
+  await settle();
+  assert.equal(settingsModal.classList.contains("hidden"), false, "Settings re-opens to Trusted devices");
   const bootstrapBtn = app.document.querySelector('[data-action="device:bootstrap"]');
   assert.ok(bootstrapBtn, "Trusted devices page offers Register this browser on localhost");
   bootstrapBtn.click();
@@ -488,6 +501,146 @@ test("returning focus re-checks device trust when registration happens outside t
   assert.equal(indexPanel.dataset.deviceGated, undefined);
   assert.equal(terminalPanel.dataset.deviceGated, undefined);
   assert.match(indexPanel.querySelector("[role='status']").textContent, /Ready/);
+});
+
+test("stale terminal session refreshes cannot re-gate an unlocked tab or clear an active gate", async t => {
+  // (a) Slow stale 403 resolving after a fast trusted 200 must NOT re-gate the Terminal tab.
+  let sessionCallsA = 0;
+  const slow403 = deferred();
+  const appA = mountControlAndSettings({
+    withSettings: false,
+    fetch: async path => {
+      const url = String(path);
+      if (url === "/api/projects") return jsonResponse({ projects: [{ id: "project-a", name: "Sample", path: "/work/sample" }] });
+      if (url === "/api/terminal/sessions") {
+        sessionCallsA += 1;
+        if (sessionCallsA === 1) return jsonResponse({ error: "Trusted device required" }, 403);
+        if (sessionCallsA === 2) return slow403.promise;
+        return jsonResponse({
+          sessions: [{
+            id: "sess-fresh",
+            name: "Fresh",
+            projectId: "project-a",
+            projectName: "Sample",
+            persistent: true,
+            closed: false,
+            status: "detached"
+          }]
+        });
+      }
+      return jsonResponse({ error: "Not found" }, 404);
+    }
+  });
+  t.after(() => appA.dom.window.close());
+
+  await settle();
+  appA.document.querySelector(".dm-tools-launcher").click();
+  await settle();
+  assert.equal(sessionCallsA, 2);
+
+  appA.window.dispatchEvent(new appA.window.CustomEvent("devmoter:device-trust-changed"));
+  await settle();
+  assert.equal(sessionCallsA, 3);
+
+  const terminalPanelA = appA.document.querySelector("#dm-tools-terminal-panel");
+  const savedSelectA = terminalPanelA.querySelectorAll("select")[1];
+  assert.equal(terminalPanelA.dataset.deviceGated, undefined);
+  assert.equal(terminalPanelA.querySelector(":scope > [data-device-gate]"), null);
+  assert.ok([...savedSelectA.options].some(option => option.value === "sess-fresh"));
+  assert.equal(terminalPanelA.querySelector(".dm-terminal-status").textContent, "");
+
+  slow403.resolve(jsonResponse({ error: "Trusted device required" }, 403));
+  await settle();
+
+  assert.equal(terminalPanelA.dataset.deviceGated, undefined, "stale 403 must not re-gate unlocked Terminal tab");
+  assert.equal(terminalPanelA.querySelector(":scope > [data-device-gate]"), null);
+  assert.ok([...savedSelectA.options].some(option => option.value === "sess-fresh"));
+  assert.equal(terminalPanelA.querySelector(".dm-terminal-status").textContent, "");
+
+  // (b) Slow stale 200 resolving after a newer 403 must NOT clear an active gate, populate <select>, or reattach.
+  let sessionCallsB = 0;
+  let reattachCallsB = 0;
+  const slow200 = deferred();
+  const appB = mountControlAndSettings({
+    withSettings: false,
+    beforeMount: win => {
+      win.sessionStorage.setItem("devmoter-terminal-record", JSON.stringify({
+        session: {
+          id: "term-1",
+          projectId: "project-a",
+          projectName: "Sample",
+          cwd: "/work/sample",
+          persistent: true,
+          name: "Existing",
+          status: "running",
+          seq: 0,
+          closed: false
+        },
+        token: "tok-1"
+      }));
+    },
+    fetch: async path => {
+      const url = String(path);
+      if (url === "/api/projects") return jsonResponse({ projects: [{ id: "project-a", name: "Sample", path: "/work/sample" }] });
+      if (url === "/api/terminal/sessions") {
+        sessionCallsB += 1;
+        if (sessionCallsB === 1) return jsonResponse({ sessions: [] });
+        if (sessionCallsB === 2) return slow200.promise;
+        return jsonResponse({ error: "Trusted device required" }, 403);
+      }
+      if (url === "/api/terminal/sessions/term-1") {
+        reattachCallsB += 1;
+        return jsonResponse({
+          session: {
+            id: "term-1",
+            projectId: "project-a",
+            projectName: "Sample",
+            cwd: "/work/sample",
+            persistent: true,
+            name: "Existing",
+            status: "running",
+            seq: 0,
+            closed: false
+          }
+        });
+      }
+      return jsonResponse({ error: "Not found" }, 404);
+    }
+  });
+  t.after(() => appB.dom.window.close());
+
+  await settle();
+  appB.document.querySelector(".dm-tools-launcher").click();
+  await settle();
+  assert.equal(sessionCallsB, 2);
+
+  appB.window.dispatchEvent(new appB.window.CustomEvent("devmoter:device-trust-changed"));
+  await settle();
+  assert.equal(sessionCallsB, 3);
+
+  const terminalPanelB = appB.document.querySelector("#dm-tools-terminal-panel");
+  const savedSelectB = terminalPanelB.querySelectorAll("select")[1];
+  assert.equal(terminalPanelB.dataset.deviceGated, "true");
+  assert.ok(terminalPanelB.querySelector(":scope > [data-device-gate]"));
+
+  slow200.resolve(jsonResponse({
+    sessions: [{
+      id: "sess-stale",
+      name: "Stale",
+      projectId: "project-a",
+      projectName: "Sample",
+      persistent: true,
+      closed: false,
+      status: "detached"
+    }]
+  }));
+  await settle();
+
+  assert.equal(terminalPanelB.dataset.deviceGated, "true", "stale 200 must not clear an active gate");
+  assert.ok(terminalPanelB.querySelector(":scope > [data-device-gate]"));
+  assert.equal([...savedSelectB.options].some(option => option.value === "sess-stale"), false);
+  assert.equal(reattachCallsB, 0);
+  assert.equal(appB.sockets.length, 0);
 });
 
 test("server-side terminal trust gate cannot be bypassed without an active trusted device", async t => {

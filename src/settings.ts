@@ -1323,6 +1323,8 @@ export function mountSettingsPanel() {
   });
   document.addEventListener("keydown", event => {
     if (event.key !== "Escape" || modal.classList.contains("hidden")) return;
+    event.preventDefault();
+    event.stopPropagation();
     if (page !== "root") setPage("root");
     else close();
   });
