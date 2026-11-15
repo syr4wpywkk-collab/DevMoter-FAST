@@ -305,6 +305,8 @@ test("read-only file browser hides sensitive dotfiles and blocks symlink escapes
   const src = await listProjectDirectory(root, "src");
   assert.equal(src.entries[0].path, "src/main.js");
   assert.equal(src.entries[0].kind, "text");
+  await symlink(join(root, "src"), join(root, "src-link"));
+  await assert.rejects(() => listProjectDirectory(root, "src-link"), /not a regular project directory/i);
   await assert.rejects(() => listProjectDirectory(root, "../outside"), /stay inside|escapes/i);
 });
 

@@ -4,9 +4,11 @@ import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import {
   extensionPermissionFingerprint,
+  normalizeDevWorkflowSettings,
   structureMcpResult,
   validateExtensionManifest
 } from "../server/dev-workflows.mjs";
+import { createAgentRunApi } from "../server/agent-run-api.mjs";
 import { AcpAdapter } from "../server/acp-adapter.mjs";
 import { loadPureTypeScript } from "./helpers/ts-pure-modules.mjs";
 
@@ -132,4 +134,54 @@ test("ACP refuses unsupported protocol versions before announcing readiness", as
   await assert.rejects(agent.connect(), /Unsupported ACP protocol version/);
   assert.equal(ready, false);
   assert.equal(child.killed, true);
+});
+
+test("MCP server normalization rejects dangerous loader and shell environment keys", () => {
+  for (const key of ["NODE_OPTIONS", "LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES", "PATH", "BASH_ENV"]) {
+    assert.throws(() => normalizeDevWorkflowSettings({
+      mcp: {
+        servers: [{
+          name: "unsafe-mcp",
+          transport: "stdio",
+          command: "npx",
+          env: { [key]: "malicious" }
+        }]
+      }
+    }), /invalid env key/);
+  }
+});
+
+test("agent-runs SSE stream terminates when the trusted device is revoked", async () => {
+  let subscriber = null;
+  let deviceActive = true;
+  const api = createAgentRunApi({
+    service: {
+      async list() { return { runs: [], fleets: [] }; },
+      subscribe(fn) {
+        subscriber = fn;
+        return () => { subscriber = null; };
+      }
+    },
+    authenticateDevice: async () => (deviceActive ? { id: "dev-1" } : null)
+  });
+
+  const req = new EventEmitter();
+  req.method = "GET";
+  const chunks = [];
+  let ended = false;
+  const res = {
+    writeHead() {},
+    write(chunk) { chunks.push(String(chunk)); },
+    end() { ended = true; }
+  };
+
+  await api.handle(req, res, new URL("http://127.0.0.1/api/agent-runs/events"));
+  assert.equal(chunks.length, 1);
+  assert.equal(typeof subscriber, "function");
+
+  deviceActive = false;
+  subscriber({ runs: [{ id: "run-1" }], fleets: [] });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(ended, true);
+  assert.equal(chunks.length, 1);
 });

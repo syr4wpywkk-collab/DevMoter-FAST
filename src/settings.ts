@@ -764,7 +764,7 @@ export function mountSettingsPanel() {
     scroll.innerHTML = `
       <section class="devmoter-settings-section">
         <h2>ステータス</h2>
-        <div class="devmoter-settings-note" data-diagnostics-fetched data-tone="${fetchState.tone}" role="status">${escapeHtml(fetchState.text)}</div>
+        <div class="devmoter-settings-note" data-diagnostics-fetched data-tone="${escapeHtml(fetchState.tone)}" role="status">${escapeHtml(fetchState.text)}</div>
         <div class="devmoter-settings-actions"><button type="button" data-action="diagnostics:refresh" ${diagnosticsFetch.loading ? "disabled" : ""}>更新</button></div>
         <div class="devmoter-settings-card devmoter-settings-detail-card">
           <div class="devmoter-settings-detail-row"><span>アプリ</span><strong>${escapeHtml(diagnostics?.app?.version || "不明")}</strong></div>

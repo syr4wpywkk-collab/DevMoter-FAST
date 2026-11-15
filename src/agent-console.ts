@@ -615,8 +615,13 @@ export function mountAgentConsole() {
         for (const child of orchestrationPlan.children) {
           const row = document.createElement("div");
           row.className = "devmoter-orchestration-child";
-          row.innerHTML = `<span>${child.state}</span><strong>${child.owner}</strong><p></p>`;
-          row.querySelector("p")!.textContent = child.title;
+          const stateEl = document.createElement("span");
+          stateEl.textContent = String(child.state);
+          const ownerEl = document.createElement("strong");
+          ownerEl.textContent = String(child.owner);
+          const titleEl = document.createElement("p");
+          titleEl.textContent = child.title;
+          row.append(stateEl, ownerEl, titleEl);
           orchestrationChildren.appendChild(row);
         }
         orchestrationPreview.classList.remove("hidden");

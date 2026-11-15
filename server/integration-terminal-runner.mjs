@@ -38,7 +38,7 @@ async function main() {
     try {
       command = (await assertCliReady(executable)).resolvedPath;
     } catch (error) {
-      console.errorerrorMessage(error);
+      console.error(errorMessage(error));
       await report({ ok: false, reason: error?.code || "failed" });
       await holdFailure();
       process.exitCode = 1;
