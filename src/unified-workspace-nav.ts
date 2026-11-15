@@ -182,8 +182,41 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   };
   syncThemeValue();
   window.addEventListener("devmoter:theme-changed", syncThemeValue);
+  const FOCUSABLE_SELECTOR =
+    'button:not(:disabled), input:not([type="hidden"]):not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [href], [tabindex]:not([tabindex="-1"])';
+  const isVisibleFocusTarget = (target: HTMLElement | null): target is HTMLElement => {
+    const closedDetails = target?.closest("details:not([open])");
+    if (
+      !target?.isConnected ||
+      (closedDetails && target !== closedDetails.querySelector("summary")) ||
+      target.closest('[inert], [aria-hidden="true"], [hidden], .hidden')
+    ) {
+      return false;
+    }
+    if (drawer.getClientRects().length > 0 && !target.getClientRects().length) return false;
+    for (let el: Element | null = target; el; el = el === drawer ? null : el.parentElement) {
+      const style = window.getComputedStyle?.(el);
+      if (style && (style.display === "none" || style.visibility === "hidden")) return false;
+    }
+    return true;
+  };
   const onDocumentKeydown = (event: KeyboardEvent) => {
-    if (event.key === "Escape" && menuOpen) { event.stopPropagation(); setMenuOpen(false, true); }
+    if (!menuOpen) return;
+    if (event.key === "Escape") { event.stopPropagation(); setMenuOpen(false, true); return; }
+    if (event.key !== "Tab") return;
+    // Keep Tab trapped inside the open modal drawer and prevent underlying
+    // document-level handlers (e.g. app-shell sidebar) from pulling focus out.
+    event.stopPropagation();
+    const controls = Array.from(drawer.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+      .filter(control => control.tabIndex >= 0 && isVisibleFocusTarget(control));
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (!first || !last) { event.preventDefault(); return; }
+    const active = document.activeElement;
+    if (!drawer.contains(active) || (event.shiftKey ? active === first : active === last)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus({ preventScroll: true });
+    }
   };
   const onDocumentPointerDown = (event: Event) => {
     if (!menuOpen || isMenuTarget(event.target)) return;

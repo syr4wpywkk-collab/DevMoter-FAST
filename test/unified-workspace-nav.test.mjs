@@ -641,3 +641,163 @@ test("issue #555: header removed, only menu button remains on screen, drawer hol
     dom.window.close();
   }
 });
+
+test("issue #555 audit fix: drawer traps Tab / Shift+Tab inside #dmTaskFirstDrawer without leaking focus", async () => {
+  const dom = new JSDOM('<!doctype html><div id="app"><button id="appButton">Behind</button></div>', {
+    url: "https://localhost/?unifiedUI=1&surface=home"
+  });
+  const prior = { window: globalThis.window, document: globalThis.document, localStorage: globalThis.localStorage };
+  Object.assign(globalThis, { window: dom.window, document: dom.window.document, localStorage: dom.window.localStorage });
+  try {
+    const doc = dom.window.document;
+    dom.window.HTMLElement.prototype.getClientRects = function () {
+      return this.closest('[inert], [aria-hidden="true"], [hidden], .hidden') ? [] : [{ width: 44, height: 44 }];
+    };
+    const mount = await loadNavigator();
+    const nav = mount({
+      initialSurface: "home",
+      initialBackend: "opencode",
+      switchBackend() {},
+      openHome() {},
+      openTasks() {},
+      openReview() {},
+      openTools() {},
+      openTerminal() {}
+    });
+    const root = doc.getElementById("dmTaskFirstWorkspace");
+    const button = root.querySelector("[data-workspace-menu-button]");
+    const drawer = root.querySelector("#dmTaskFirstDrawer");
+    const first = root.querySelector("[data-workspace-home]");
+    const closeBtn = root.querySelector("[data-workspace-menu-close]");
+    const last = root.querySelector("[data-language-select]");
+    const appButton = doc.getElementById("appButton");
+
+    // Disabled / hidden elements added at the end of drawer must be skipped by the trap.
+    const trailingDisabled = doc.createElement("button");
+    trailingDisabled.disabled = true;
+    drawer.append(trailingDisabled);
+    const trailingHidden = doc.createElement("button");
+    trailingHidden.hidden = true;
+    drawer.append(trailingHidden);
+
+    // Simulate a background document-level bubble Tab listener (e.g. app-shell.ts sidebar).
+    let backgroundBubbleSawTab = 0;
+    const onBackgroundBubbleKeydown = event => {
+      if (event.key === "Tab") backgroundBubbleSawTab += 1;
+    };
+    doc.addEventListener("keydown", onBackgroundBubbleKeydown);
+
+    const pressTab = (target, shiftKey = false) => {
+      const event = new dom.window.KeyboardEvent("keydown", { key: "Tab", shiftKey, bubbles: true, cancelable: true });
+      target.dispatchEvent(event);
+      return event;
+    };
+
+    // Closed drawer does not intercept Tab.
+    appButton.focus();
+    const closedTab = pressTab(appButton, false);
+    assert.equal(closedTab.defaultPrevented, false);
+    assert.equal(backgroundBubbleSawTab, 1);
+
+    // Open drawer: Shift+Tab from first control wraps to last (<select data-language-select>), not menuButton or #app.
+    button.click();
+    assert.equal(drawer.hidden, false);
+    first.focus();
+    const shiftTabFirst = pressTab(first, true);
+    assert.equal(shiftTabFirst.defaultPrevented, true);
+    assert.equal(doc.activeElement, last, "Shift+Tab from first drawer control wraps to last drawer control");
+    assert.equal(drawer.contains(doc.activeElement), true);
+    assert.equal(drawer.hidden, false);
+    assert.equal(backgroundBubbleSawTab, 1, "Tab inside open drawer does not propagate to background listeners");
+
+    // Tab from last control wraps to first ([data-workspace-home]).
+    const tabLast = pressTab(last, false);
+    assert.equal(tabLast.defaultPrevented, true);
+    assert.equal(doc.activeElement, first, "Tab from last drawer control wraps to first drawer control");
+    assert.equal(drawer.contains(doc.activeElement), true);
+    assert.equal(drawer.hidden, false);
+    assert.equal(backgroundBubbleSawTab, 1);
+
+    // Middle control Tab allows native progression inside the drawer while still stopping background Tab hijacking.
+    closeBtn.focus();
+    const tabMiddle = pressTab(closeBtn, false);
+    assert.equal(tabMiddle.defaultPrevented, false);
+    assert.equal(backgroundBubbleSawTab, 1, "middle Tab still blocks background sidebar traps from pulling focus out");
+
+    // If focus is on menuButton (which is in isMenuTarget so focusout keeps drawer open), Tab / Shift+Tab pulls it back into drawer.
+    button.focus();
+    const tabFromMenuBtn = pressTab(button, false);
+    assert.equal(tabFromMenuBtn.defaultPrevented, true);
+    assert.equal(doc.activeElement, first);
+    button.focus();
+    const shiftTabFromMenuBtn = pressTab(button, true);
+    assert.equal(shiftTabFromMenuBtn.defaultPrevented, true);
+    assert.equal(doc.activeElement, last);
+    assert.equal(drawer.contains(doc.activeElement), true);
+
+    // Moving focus programmatically to #app closes the drawer via focusout, and reopening keeps trapping.
+    appButton.focus();
+    assert.equal(drawer.hidden, true, "programmatic focus outside menu targets closes the drawer");
+
+    // Fallback when getClientRects() returns empty (e.g. unmocked JSDOM).
+    delete dom.window.HTMLElement.prototype.getClientRects;
+    button.click();
+    assert.equal(drawer.hidden, false);
+    first.focus();
+    assert.equal(pressTab(first, true).defaultPrevented, true);
+    assert.equal(doc.activeElement, last);
+    assert.equal(pressTab(last, false).defaultPrevented, true);
+    assert.equal(doc.activeElement, first);
+
+    doc.removeEventListener("keydown", onBackgroundBubbleKeydown);
+    nav.destroy();
+  } finally {
+    Object.assign(globalThis, prior);
+    dom.window.close();
+  }
+});
+
+test("issue #555 audit fix: unified mode Home shell clears both notch safe-area and floating ☰ at every width", async () => {
+  const [navCss, homeCss, shellCss, baseCss] = await Promise.all([
+    readFile(new URL("../src/unified-workspace-nav.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/home.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/app-shell.css", import.meta.url), "utf8"),
+    readFile(new URL("../src/styles/base.css", import.meta.url), "utf8")
+  ]);
+
+  // Verify body.dm-task-first-enabled .dm-home-shell rule exists with higher specificity than .dm-home-shell (0,2,1 > 0,1,0).
+  const homeClearanceMatch = navCss.match(/body\.dm-task-first-enabled\s+\.dm-home-shell\s*\{([^}]+)\}/s);
+  assert.ok(homeClearanceMatch, "unified nav CSS defines top clearance on body.dm-task-first-enabled .dm-home-shell");
+  assert.match(
+    homeClearanceMatch[1],
+    /padding-top:\s*calc\(var\(--dw-top-height\)\s*\+\s*var\(--space-2,\s*8px\)\);/,
+    "Home shell clears --dw-top-height plus --space-2 (8px)"
+  );
+  assert.doesNotMatch(
+    navCss,
+    /\.dm-home-header\s*\{\s*padding-left:\s*48px/,
+    "redundant narrow-width left-padding workaround on .dm-home-header is removed"
+  );
+  // Confirm legacy mode still clears top in app-shell.css and home.css keeps safe-area-inset-top untouched.
+  assert.match(shellCss, /body:not\(\.dm-task-first-enabled\)\s+\.dm-home-shell\s*\{[^}]*padding-top:\s*calc\(64px\s*\+\s*env\(safe-area-inset-top\)\)/s);
+  assert.ok(!homeCss.includes("env(safe-area-inset-top)"));
+
+  // Geometric verification across non-notched (0px) and notched iOS (47px, 59px) viewports:
+  // Home top padding >= --dw-top-height and places .dm-home-header strictly below both safe-area and floating ☰.
+  const dwBase = Number(navCss.match(/--dw-top-height:\s*calc\((\d+)px\s*\+\s*env\(safe-area-inset-top\)\)/)?.[1]);
+  const space2 = Number(baseCss.match(/--space-2:\s*(\d+)px;/)?.[1]);
+  const btnRule = navCss.match(/\.dm-task-first-menu-button\s*\{([^}]+)\}/)?.[1] || "";
+  const btnTopMin = Number(btnRule.match(/max\((\d+)px,\s*env\(safe-area-inset-top\)\)/)?.[1]);
+  const btnH = Number(btnRule.match(/height:\s*(\d+)px;/)?.[1]);
+  assert.equal(dwBase, 56);
+  assert.equal(space2, 8);
+  for (const safeTop of [0, 20, 47, 59]) {
+    const dwTopHeight = dwBase + safeTop;
+    const homePaddingTop = dwTopHeight + space2;
+    const menuBtnTop = Math.max(btnTopMin, safeTop);
+    const menuBtnBottom = menuBtnTop + btnH;
+    assert.ok(homePaddingTop >= dwTopHeight, `Home top padding (${homePaddingTop}px) >= --dw-top-height (${dwTopHeight}px) at safeTop=${safeTop}`);
+    assert.ok(homePaddingTop > safeTop, `Home header clears status bar/notch (${safeTop}px)`);
+    assert.ok(homePaddingTop > menuBtnBottom, `Home header top (${homePaddingTop}px) sits below floating ☰ bottom (${menuBtnBottom}px) at safeTop=${safeTop}`);
+  }
+});

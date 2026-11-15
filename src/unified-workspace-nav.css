@@ -313,8 +313,9 @@ body.dm-task-first-enabled :is(.ocx-app .ocx-topbar, .api-app .api-topbar, .ix-a
     padding-left: calc(max(12px, env(safe-area-inset-left)) + 50px);
   }
 }
-@media (max-width: 1240px) {
-  body.dm-task-first-enabled .dm-home-header { padding-left: 48px; }
+/* Home renders in flow inside #app from top: 0, so clear the notch/safe area and floating ☰. */
+body.dm-task-first-enabled .dm-home-shell {
+  padding-top: calc(var(--dw-top-height) + var(--space-2, 8px));
 }
 /* History drawers with explicit viewport heights must stay inside the
  * bounded provider surface. */
