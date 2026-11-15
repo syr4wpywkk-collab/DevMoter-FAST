@@ -1,14 +1,15 @@
 /* API Chat presentation; native provider capabilities and form actions stay intact. */
-body.api-mode { padding: 0; overflow: hidden; background: #fff; }
+body.api-mode { padding: 0; overflow: hidden; background: var(--canvas-base, #fff); }
 
 .api-app {
-  --api-bg: #fff;
-  --api-surface: #fff;
-  --api-text: #1f1f1f;
-  --api-muted: #5f6368;
-  --api-border: #d9e0e8;
-  --api-accent: #496454;
-  --api-composer-surface: #f1f3f0;
+  --api-bg: var(--canvas-base, #fff);
+  --api-surface: var(--surface-panel, #fff);
+  --api-text: var(--text-primary, #1f1f1f);
+  --api-muted: var(--text-secondary, #5f6368);
+  --api-border: var(--border-hairline, #d9e0e8);
+  --api-accent: var(--accent, #2d6b5d);
+  --api-on-accent: var(--on-accent, #ffffff);
+  --api-composer-surface: var(--surface-card, #f1f3f0);
   --api-content-width: 760px;
   --api-header-height: calc(64px + env(safe-area-inset-top));
   position: fixed;
@@ -23,7 +24,7 @@ body.api-mode { padding: 0; overflow: hidden; background: #fff; }
   overflow: hidden;
   background: var(--api-bg);
   color: var(--api-text);
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-ui);
   font-size: 16px;
   line-height: 1.6;
   color-scheme: light;
@@ -31,7 +32,7 @@ body.api-mode { padding: 0; overflow: hidden; background: #fff; }
 .api-app button:focus-visible,
 .api-app a:focus-visible,
 .api-app input:focus-visible,
-.api-app select:focus-visible { outline: 2px solid var(--api-accent); outline-offset: 3px; }
+.api-app select:focus-visible { outline: 2px solid var(--border-focus, var(--api-accent)); outline-offset: 2px; }
 .api-app button > svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .api-app .api-icon-button svg,
 .api-app .api-composer-foot button svg { width: 22px; height: 22px; }
@@ -56,7 +57,7 @@ body.api-mode { padding: 0; overflow: hidden; background: #fff; }
 .api-app .api-sidebar-head > button { width: 44px; height: 44px; min-height: 44px; flex: 0 0 44px; border: 0; background: transparent; color: var(--api-text); }
 .api-app .api-brand { display: grid; min-width: 0; grid-column: 2; grid-row: 1; }
 .api-app .api-brand strong { font-size: 1.05rem; font-weight: 500; }
-.api-app .api-brand small { display: block; color: var(--api-muted); font-size: .7rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.api-app .api-brand small { display: block; color: var(--api-muted); font-size: var(--font-size-caption, 12px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .api-app .api-header-actions { grid-column: 3; grid-row: 1; display: flex; align-items: center; justify-content: flex-end; gap: 4px; min-width: 0; }
 
 .api-app #apiSettingsTop { grid-area: auto; align-self: center; height: 44px; }
@@ -126,7 +127,7 @@ body.api-mode { padding: 0; overflow: hidden; background: #fff; }
 .api-app .api-composer textarea { min-height: 44px; max-height: min(160px, calc(var(--dm-viewport-height, 100dvh) * .25)); padding: 6px 8px 8px; font-size: 16px; line-height: 1.5; }
 .api-app .api-composer textarea::placeholder { color: var(--api-muted); }
 .api-app .api-picker-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, .75fr); grid-template-areas: none; width: 100%; min-width: 0; margin: 0; gap: 6px; }
-.api-app .api-picker-row select { grid-area: auto; min-width: 0; width: 100%; max-width: none; height: 44px; min-height: 44px; padding: 0 28px 0 12px; border: 1px solid var(--api-border); border-radius: 8px; background: var(--api-bg); color: var(--api-text); font-size: .8rem; text-overflow: ellipsis; color-scheme: light; }
+.api-app .api-picker-row select { grid-area: auto; min-width: 0; width: 100%; max-width: none; height: 44px; min-height: 44px; padding: 0 28px 0 12px; border: 1px solid var(--api-border); border-radius: 8px; background: var(--api-bg); color: var(--api-text); font-size: 16px; text-overflow: ellipsis; }
 .api-app #apiProvider,
 .api-app #apiModel,
 .api-app #apiReasoning { grid-area: auto; min-width: 0; }
@@ -147,33 +148,33 @@ body.api-mode { padding: 0; overflow: hidden; background: #fff; }
 .api-app .api-message-attachments span { font-size: .75rem; background: rgba(255, 255, 255, .6); }
 
 .api-app .api-scrim { position: absolute; inset: 0; z-index: 70; background: rgba(24, 35, 50, .3); }
-.api-app .api-sidebar { position: absolute; inset: 0 auto auto 0; z-index: 80; width: min(88vw, 350px); height: var(--dm-viewport-height, 100dvh); padding: calc(12px + env(safe-area-inset-top)) 14px calc(12px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); background: #f0f4f9; color: var(--api-text); box-shadow: 12px 0 40px rgba(30, 47, 72, .12); transform: translateX(-110%); }
+.api-app .api-sidebar { position: absolute; inset: 0 auto auto 0; z-index: 80; width: min(88vw, 350px); height: var(--dm-viewport-height, 100dvh); padding: calc(12px + env(safe-area-inset-top)) 14px calc(12px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); background: var(--api-surface); color: var(--api-text); box-shadow: 12px 0 40px rgba(0, 0, 0, .16); transform: translateX(-110%); }
 .api-app .api-sidebar.open { transform: translateX(0); }
 .api-app .api-sidebar-head,
 .api-app .api-new-chat { flex: 0 0 auto; }
 .api-app .api-sidebar-scroll { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
-.api-app .api-new-chat { width: 100%; min-height: 44px; background: #e1e8f2; font-size: .85rem; font-weight: 500; }
+.api-app .api-new-chat { width: 100%; min-height: 44px; background: var(--api-composer-surface); color: var(--api-text); font-size: .85rem; font-weight: 500; }
 
 .api-app #apiHistory { display: grid; gap: 2px; }
 .api-app .api-history-row { display: block; width: 100%; min-height: 44px; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--api-text); text-align: left; font-size: .85rem; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .api-app .api-history-row:hover,
-.api-app .api-history-row.active { background: #dfe8f5; }
+.api-app .api-history-row.active { background: var(--surface-hover, #dfe8f5); }
 .api-app .api-history-row strong,
 .api-app .api-history-row small { display: block; overflow: hidden; text-overflow: ellipsis; }
 .api-app .api-history-row strong { font-weight: 500; }
-.api-app .api-history-row small { color: var(--api-muted); font-size: .7rem; }
+.api-app .api-history-row small { color: var(--api-muted); font-size: var(--font-size-caption, 12px); }
 
-.api-app .dm-agent-switch-menu { background: #fff; border-color: #d5deeb; color: var(--api-text); }
+.api-app .dm-agent-switch-menu { background: var(--api-surface); border-color: var(--api-border); color: var(--api-text); }
 .api-app .dm-agent-switch-menu > button { color: var(--api-text); }
 .api-app .dm-agent-switch-menu > button:hover,
 .api-app .dm-agent-switch-menu > button:focus-visible,
-.api-app .dm-agent-switch-menu > button.active { background: #dae8fa; color: #17365e; }
-.api-app .dm-agent-switch-menu > button.active small { color: #345679; }
-.api-app .dm-agent-switch-menu > button.active > span:last-child { color: #184c9c; }
+.api-app .dm-agent-switch-menu > button.active { background: var(--surface-hover, #e3e8e5); color: var(--api-text); }
+.api-app .dm-agent-switch-menu > button.active small { color: var(--api-muted); }
+.api-app .dm-agent-switch-menu > button.active > span:last-child { color: var(--api-accent); }
 .api-app .dm-agent-switch-menu small { color: var(--api-muted); }
 
-.api-app .api-settings-modal { position: absolute; z-index: 100; padding: max(14px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); background: rgba(24, 35, 50, .32); color-scheme: light; }
-.api-app .api-settings-card { max-height: min(820px, calc(var(--dm-viewport-height, 100dvh) - 28px)); border-radius: 24px; background: #fff; color: var(--api-text); }
+.api-app .api-settings-modal { position: absolute; z-index: 100; padding: max(14px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); background: var(--surface-overlay, rgba(16, 20, 18, .48)); }
+.api-app .api-settings-card { max-height: min(820px, calc(var(--dm-viewport-height, 100dvh) - 28px)); border-radius: 24px; background: var(--api-surface); color: var(--api-text); }
 .api-app .api-settings-head { min-height: 68px; padding: 12px 14px 12px 18px; }
 .api-app .api-settings-head button { width: 44px; height: 44px; min-height: 44px; flex: 0 0 44px; }
 .api-app .api-settings-body { overscroll-behavior: contain; }
@@ -182,17 +183,17 @@ body.api-mode { padding: 0; overflow: hidden; background: #fff; }
 .api-app .api-settings-back,
 .api-app .api-provider-form-actions button,
 .api-app .api-provider-danger button { min-height: 44px; }
-.api-app .api-provider-row { background: #f7f9fd; }
-.api-app .api-provider-protocol { color: #356ac3; }
+.api-app .api-provider-row { background: var(--api-composer-surface); }
+.api-app .api-provider-protocol { color: var(--api-accent); }
 .api-app .api-provider-form input,
 .api-app .api-provider-form select,
-.api-app .api-provider-form textarea { min-height: 44px; background: #f5f8fc; color: var(--api-text); font-size: 16px; color-scheme: light; }
+.api-app .api-provider-form textarea { min-height: 44px; background: var(--api-composer-surface); color: var(--api-text); font-size: 16px; }
 .api-app .api-provider-form select option,
-.api-app .api-provider-form select optgroup { background: #fff; color: var(--api-text); }
-.api-app .api-preset-button { min-height: 48px; background: #f5f8fc; color: var(--api-text); }
-.api-app .api-form-message[data-state="success"] { color: #188038; }
+.api-app .api-provider-form select optgroup { background: var(--api-surface); color: var(--api-text); }
+.api-app .api-preset-button { min-height: 48px; background: var(--api-composer-surface); color: var(--api-text); }
+.api-app .api-form-message[data-state="success"] { color: var(--status-success, #188038); }
 .api-app .api-form-message[data-state="error"],
-.api-app .api-provider-danger button { color: #b3261e; }
+.api-app .api-provider-danger button { color: var(--status-error, #b3261e); }
 
 @media (max-width: 899px) {
   body.api-mode .api-app .api-topbar { padding-left: max(12px, env(safe-area-inset-left)); }
@@ -214,12 +215,12 @@ body.api-mode { padding: 0; overflow: hidden; background: #fff; }
 /* Explicit app preference takes priority over the OS palette. */
 html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button:hover,
 html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button:focus-visible,
-html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active { background: #344762; color: #f5f8ff; }
-html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active small { color: #d5e2f9; }
-html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active > span:last-child { color: #b5c9ff; }
+html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active { background: var(--surface-hover); color: var(--api-text); }
+html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active small { color: var(--api-muted); }
+html[data-devmoter-theme="dark"] .api-app .dm-agent-switch-menu > button.active > span:last-child { color: var(--api-accent); }
 html[data-devmoter-theme="dark"] .api-app {
-  --api-bg: #13151a; --api-surface: #1e222b; --api-text: #e8eaf0; --api-muted: #b7bfcd;
-  --api-border: #424a44; --api-accent: #9ab49f; --api-on-accent: #13151a; --api-composer-surface: #202522;
+  --api-bg: var(--canvas-base, #191f1c); --api-surface: var(--surface-panel, #232a26); --api-text: var(--text-primary, #ecefed); --api-muted: var(--text-secondary, #b2beb8);
+  --api-border: var(--border-hairline, #424a44); --api-accent: var(--accent, #92c3b4); --api-on-accent: #13151a; --api-composer-surface: var(--surface-card, #29312d);
   color-scheme: dark;
 }
 html[data-devmoter-theme="dark"] .api-app .api-sidebar,

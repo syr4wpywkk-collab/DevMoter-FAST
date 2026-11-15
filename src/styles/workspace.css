@@ -1714,39 +1714,50 @@ body.opencode-mode #app {
 /* Compact language setting shared by both coding-agent sidebars. */
 .pocket-language-setting {
   min-width: 0;
-  min-height: 32px;
-  padding: 0 7px;
+  min-height: 44px;
+  padding: 0 10px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  border: 1px solid #2d2d2d;
-  border-radius: 9px;
-  background: rgba(255,255,255,.035);
-  color: #a9a9af;
-  font-size: .64rem;
+  gap: 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: var(--font-size-label);
+}
+
+.pocket-language-setting:focus-within {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
 }
 
 .pocket-language-setting > span {
   flex: 0 0 auto;
-  color: #85858d;
-  font-size: .76rem;
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
 }
 
 .pocket-language-setting select {
   min-width: 0;
-  max-width: 108px;
-  padding: 0 2px;
+  max-width: 120px;
+  min-height: 42px;
+  padding: 0 4px;
   border: 0;
   outline: 0;
   background: transparent;
-  color: inherit;
+  color: var(--text-primary);
   font: inherit;
+  font-size: var(--font-size-body);
   cursor: pointer;
 }
 
+.pocket-language-setting select:focus-visible {
+  outline: none;
+}
+
 .pocket-language-setting option {
-  background: #fff;
-  color: #111;
+  background: var(--surface-panel);
+  color: var(--text-primary);
 }
 
 /* ──────────────────────────────────────────
@@ -1756,24 +1767,24 @@ body.opencode-mode #app {
 body.integrations-mode {
   padding: 0;
   overflow: hidden;
-  background: #0d0f12;
+  background: var(--canvas-base);
 }
 
-/* Integrations: pure black canvas, graphite surface steps, hairlines at text 8%. */
+/* Integrations: follows shared theme tokens across dark and light modes. */
 .ix-app {
-  --ix-text: #ededed;
-  --ix-secondary: #a3a3a3;
-  --ix-muted: #737373;
-  --ix-line: rgba(237, 237, 237, .08);
-  --ix-surface: #0f0f0f;
-  --ix-raised: #171717;
+  --ix-text: var(--text-primary);
+  --ix-secondary: var(--text-secondary);
+  --ix-muted: var(--text-muted);
+  --ix-line: var(--border-hairline);
+  --ix-surface: var(--surface-panel);
+  --ix-raised: var(--surface-card);
   position: fixed;
   inset: 0;
-  height: 100dvh;
+  height: var(--dm-viewport-height, 100dvh);
   overflow: hidden;
-  background: #000;
+  background: var(--canvas-base);
   color: var(--ix-text);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-ui);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -1783,25 +1794,27 @@ body.integrations-mode {
   inset: 0 0 auto 0;
   height: calc(56px + env(safe-area-inset-top));
   padding:
-    calc(8px + env(safe-area-inset-top))
+    calc(6px + env(safe-area-inset-top))
     max(12px, env(safe-area-inset-right))
-    8px
+    6px
     max(12px, env(safe-area-inset-left));
   display: grid;
-  grid-template-columns: 40px 1fr 40px;
+  grid-template-columns: 44px 1fr 44px;
   align-items: center;
   gap: 8px;
   border-bottom: 1px solid var(--ix-line);
-  background: #000;
+  background: var(--surface-panel);
 }
 
 .ix-icon {
-  width: 40px;
-  min-height: 40px;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  min-height: 44px;
   padding: 0;
   border: 1px solid var(--ix-line);
-  border-radius: 10px;
-  background: var(--ix-surface);
+  border-radius: var(--radius-control);
+  background: var(--ix-raised);
   color: var(--ix-text);
   touch-action: manipulation;
 }
@@ -1810,8 +1823,8 @@ body.integrations-mode {
   min-width: 0;
   margin: 0;
   overflow: hidden;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1841,10 +1854,10 @@ body.integrations-mode {
   min-width: 0;
   padding: 16px;
   border: 1px solid var(--ix-line);
-  border-radius: 16px;
+  border-radius: var(--radius-card);
   background: var(--ix-surface);
 }
-.ix-card.disabled { opacity: .56; }
+.ix-card.disabled { opacity: .62; }
 .ix-card-head,
 .ix-name-row {
   display: flex;
@@ -1858,7 +1871,7 @@ body.integrations-mode {
   flex-shrink: 0;
   margin: 0;
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
 }
 .ix-version {
   display: block;
@@ -1866,8 +1879,8 @@ body.integrations-mode {
   margin-top: 4px;
   overflow: hidden;
   color: var(--ix-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1880,7 +1893,7 @@ body.integrations-mode {
   gap: 6px;
   overflow: hidden;
   color: var(--ix-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-caption);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1892,21 +1905,21 @@ body.integrations-mode {
   border-radius: 50%;
   background: var(--ix-muted);
 }
-.ix-pill.ready::before { background: #4ade80; }
+.ix-pill.ready::before { background: var(--status-success); }
 .ix-pill.missing { color: var(--ix-muted); }
 
 .ix-description {
   max-width: 65ch;
   margin: 12px 0;
   color: var(--ix-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-label);
   line-height: 1.6;
 }
 
 .ix-actions {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 4px;
+  gap: 6px;
   margin-top: 8px;
 }
 .ix-actions button {
@@ -1914,11 +1927,11 @@ body.integrations-mode {
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--ix-line);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--ix-raised);
   color: var(--ix-text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--font-size-label);
   text-align: left;
   touch-action: manipulation;
   user-select: none;
@@ -1927,17 +1940,25 @@ body.integrations-mode {
 .ix-actions button:active:not(:disabled) { transform: scale(0.97); }
 .ix-actions button:disabled { color: var(--ix-muted); }
 .ix-actions button.primary {
-  border-color: transparent;
-  background: var(--ix-text);
-  color: #000;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent, var(--canvas-base));
+  font-weight: 600;
 }
-.ix-actions button.primary:disabled { background: var(--ix-raised); color: var(--ix-muted); }
+.ix-actions button.primary:disabled {
+  border-color: transparent;
+  background: var(--ix-raised);
+  color: var(--ix-muted);
+}
 
 .ix-toggle {
   position: relative;
+  display: inline-flex;
+  align-items: center;
   width: 44px;
-  height: 28px;
+  min-height: 44px;
   flex: 0 0 auto;
+  cursor: pointer;
 }
 .ix-toggle input {
   position: absolute;
@@ -1945,10 +1966,12 @@ body.integrations-mode {
   pointer-events: none;
 }
 .ix-toggle span {
-  position: absolute;
-  inset: 0;
-  border: 1px solid var(--ix-line);
-  border-radius: 999px;
+  position: relative;
+  display: block;
+  width: 44px;
+  height: 28px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
   background: var(--ix-raised);
 }
 .ix-toggle span::after {
@@ -1962,12 +1985,18 @@ body.integrations-mode {
   background: var(--ix-muted);
   transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
-.ix-toggle input:checked + span { background: var(--ix-text); }
+.ix-toggle input:checked + span {
+  border-color: var(--accent);
+  background: var(--accent);
+}
 .ix-toggle input:checked + span::after {
   transform: translateX(16px);
-  background: #000;
+  background: var(--on-accent, var(--canvas-base));
 }
-.ix-toggle input:focus-visible + span { outline: 2px solid var(--ix-text); outline-offset: 2px; }
+.ix-toggle input:focus-visible + span {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
 
 .ix-qr {
   margin-top: 12px;
@@ -1975,8 +2004,9 @@ body.integrations-mode {
   display: grid;
   justify-items: center;
   gap: 8px;
-  border-radius: 12px;
-  background: #fff;
+  border: 1px solid var(--ix-line);
+  border-radius: var(--radius-card);
+  background: #ffffff;
 }
 .ix-qr.hidden { display: none; }
 .ix-qr img {
@@ -1985,8 +2015,8 @@ body.integrations-mode {
   object-fit: contain;
 }
 .ix-qr span {
-  color: #333;
-  font-size: 12px;
+  color: #1a211d;
+  font-size: var(--font-size-caption);
   font-weight: 500;
 }
 
@@ -1994,19 +2024,26 @@ body.integrations-mode {
   margin-bottom: 12px;
   padding: 10px 12px;
   border: 1px solid var(--ix-line);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--ix-surface);
   color: var(--ix-text);
-  font-size: 13px;
+  font-size: var(--font-size-label);
 }
-.ix-notice.error { color: #f0a3a3; }
+.ix-notice.error {
+  border-color: var(--status-error-border);
+  background: var(--status-error-surface);
+  color: var(--status-error);
+}
 .ix-notice.hidden { display: none; }
 .ix-loading {
   padding: 28px 16px;
   color: var(--ix-muted);
   text-align: center;
+  font-size: var(--font-size-label);
 }
-.ix-loading.error { color: #f0a3a3; }
+.ix-loading.error {
+  color: var(--status-error);
+}
 @media (prefers-reduced-motion: reduce) {
   .ix-actions button, .ix-toggle span::after { transition: none; }
 }

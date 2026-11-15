@@ -27,7 +27,7 @@ body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app) {
   background: var(--dw-chat-bg);
   color: var(--dw-chat-text);
   color-scheme: dark;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-ui);
 }
 
 html[data-devmoter-theme="light"] body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app) {
@@ -311,8 +311,8 @@ body.dm-task-first-enabled :is(.cx-app #cxExecutionStatus, .ocx-app #ocxActivity
 body.dm-task-first-enabled :is(.cx-app .cx-composer button, .ocx-app .ocx-composer button, .api-app .api-composer button):focus-visible,
 body.dm-task-first-enabled :is(.cx-app .cx-topbar button, .ocx-app .ocx-topbar button, .api-app .api-topbar button):focus-visible,
 body.dm-task-first-enabled :is(.cx-app .cx-composer select, .ocx-app .ocx-composer select, .api-app .api-composer select):focus-visible {
-  outline: 2px solid var(--dw-chat-accent);
-  outline-offset: 3px;
+  outline: 2px solid var(--border-focus, var(--dw-chat-accent));
+  outline-offset: 2px;
 }
 /* Approval/permission state remains explicit and must never be recolored
  * to look like a normal assistant message or automatically acknowledged. */
