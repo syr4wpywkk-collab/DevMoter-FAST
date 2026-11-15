@@ -16,6 +16,7 @@ const modules = new Map(await Promise.all(ts.preProcessFile(source).importedFile
   .map(async ({ fileName }) => [fileName, await import(new URL("../src/" + fileName.slice(2), import.meta.url))])));
 // These overlay tests intentionally exercise the legacy ?unifiedUI=0 view.
 modules.set("./unified-ui-mode.mjs", await import("../src/unified-ui-mode.mjs"));
+modules.set("./feature-flags.mjs", await import("../src/feature-flags.mjs"));
 modules.set("./opencode/status", await loadPureTypeScript("opencode/status.ts"));
 modules.set("./opencode/tools", await loadPureTypeScript("opencode/tools.ts"));
 // tools-ai.ts (Global Tools) labels API model ids through the shared helper.

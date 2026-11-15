@@ -9,7 +9,8 @@ async function loadNavigator() {
   // Browser CSS import is intentionally omitted only from this DOM unit test.
   const clean = source
     .replace(/import "\.\/unified-workspace-(?:nav|chat)\.css";/g, "")
-    .replace(/from "\.\/i18n";/g, `from ${JSON.stringify(new URL("../src/i18n-core.mjs", import.meta.url).href)};`);
+    .replace(/from "\.\/i18n";/g, `from ${JSON.stringify(new URL("../src/i18n-core.mjs", import.meta.url).href)};`)
+    .replace(/from "\.\/feature-flags\.mjs";/g, `from ${JSON.stringify(new URL("../src/feature-flags.mjs", import.meta.url).href)};`);
   const transpiled = await transform(clean, {
     loader: "ts", format: "esm", target: "es2022"
   });
@@ -449,6 +450,45 @@ test("A-4/A-2: Home and Terminal are ☰ destinations; every destination closes 
     choose('[data-workspace-action="tasks"]');
     assert.equal(changing, 5);
     assert.deepEqual(calls.filter(call => call === "tasks"), ["tasks", "tasks"]);
+    nav.destroy();
+  } finally {
+    Object.assign(globalThis, prior);
+    dom.window.close();
+  }
+});
+
+test("unified AI backend selector hides Qwen Code and normalizes stale qwen states to opencode", async () => {
+  const dom = new JSDOM("<!doctype html><div id='app'></div>", { url: "https://localhost/?unifiedUI=1" });
+  const prior = { window: globalThis.window, document: globalThis.document, localStorage: globalThis.localStorage };
+  globalThis.window = dom.window;
+  globalThis.document = dom.window.document;
+  globalThis.localStorage = dom.window.localStorage;
+  try {
+    const mount = await loadNavigator();
+    const switched = [];
+    const nav = mount({
+      initialSurface: "home",
+      initialBackend: "qwen",
+      switchBackend: backend => switched.push(backend),
+      openHome() {}, openTasks() {}, openReview() {}, openTools() {}, openTerminal() {}
+    });
+    const select = dom.window.document.querySelector("[data-workspace-backend]");
+    const values = [...select.querySelectorAll("option")].map(option => option.value).filter(Boolean);
+    assert.deepEqual(values, ["codex", "opencode", "api"]);
+    assert.equal(select.value, "opencode");
+
+    dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:backend-changed", { detail: { backend: "qwen" } }));
+    assert.equal(select.value, "opencode");
+
+    dom.window.document.querySelector('[data-workspace-action="chat"]').click();
+    assert.deepEqual(switched, ["opencode"]);
+
+    dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:surface-changed", { detail: { surface: "qwen" } }));
+    assert.equal(select.value, "opencode");
+
+    select.value = "qwen";
+    select.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    assert.deepEqual(switched, ["opencode"], "spurious qwen change must not switch backend");
     nav.destroy();
   } finally {
     Object.assign(globalThis, prior);

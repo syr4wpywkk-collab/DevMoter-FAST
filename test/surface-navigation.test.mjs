@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createSurfaceNavigation, initialMainSurface } from "../src/surface-navigation.mjs";
+import { createSurfaceNavigation, initialMainSurface, isMainSurface } from "../src/surface-navigation.mjs";
 
 function fakeWindow(path = "/") {
   const entries = [{ href: `http://devmoter.test${path}`, state: null }];
@@ -144,4 +144,29 @@ test("same-surface Home navigation dismisses an active Review route without stal
   assert.deepEqual(changes, ["home"], "notify listeners to close the visible Review overlay");
   assert.equal(nav.navigate("home"), false);
   nav.destroy();
+});
+
+test("hidden Qwen routes and persisted qwen selection fall back to a visible backend", () => {
+  assert.equal(isMainSurface("qwen"), false);
+  assert.equal(initialMainSurface("?surface=qwen"), "opencode");
+  assert.equal(initialMainSurface("?backend=qwen"), "opencode");
+  assert.equal(initialMainSurface("?backend=qwen&session=s1"), "opencode");
+  assert.equal(initialMainSurface("?session=s1", { savedBackend: "qwen" }), "opencode");
+  assert.equal(initialMainSurface("", { hasProjectDeepLink: true, savedBackend: "qwen" }), "opencode");
+  assert.equal(initialMainSurface("", { savedBackend: "qwen" }), "home");
+
+  const staleWin = fakeWindow("/?surface=qwen");
+  const staleNav = createSurfaceNavigation({ window: staleWin });
+  assert.equal(staleNav.current(), "opencode");
+  assert.equal(new URL(staleWin.location.href).searchParams.get("surface"), "opencode");
+  staleNav.destroy();
+
+  const homeWin = fakeWindow("/");
+  const events = [];
+  const homeNav = createSurfaceNavigation({ window: homeWin, onSurface: surface => events.push(surface) });
+  assert.equal(homeNav.navigate("qwen"), true);
+  assert.equal(homeNav.current(), "opencode");
+  assert.equal(new URL(homeWin.location.href).searchParams.get("surface"), "opencode");
+  assert.deepEqual(events, ["opencode"]);
+  homeNav.destroy();
 });
