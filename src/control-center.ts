@@ -301,6 +301,7 @@ export function mountControlCenter() {
       void renderIndex();
     } else if (next === "index") {
       void refreshIndexView?.().catch(error => {
+        if (showSectionGate(indexSection, error)) return;
         const status = indexSection.querySelector<HTMLElement>("[role='status']");
         if (status && !indexSection.classList.contains("hidden")) {
           status.textContent = errorMessage(error);
@@ -325,16 +326,57 @@ export function mountControlCenter() {
     inertSnapshots.clear();
   }
 
+  function releaseInertFor(target: HTMLElement | null) {
+    if (!target) return;
+    const state = inertSnapshots.get(target);
+    if (!state) return;
+    target.inert = state.inert;
+    if (state.ariaHidden === null) target.removeAttribute("aria-hidden");
+    else target.setAttribute("aria-hidden", state.ariaHidden);
+    inertSnapshots.delete(target);
+  }
+
+  function unlockSettingsOverlay() {
+    if (!modalOpen) return;
+    releaseInertFor(document.querySelector<HTMLElement>(".devmoter-settings-root"));
+  }
+
   function lockBackground() {
     releaseBackgroundInert();
     for (const child of [...document.body.children]) {
       if (!(child instanceof HTMLElement) || child === launcher || child === panel || child === scrim) continue;
       // The unified workspace header stays usable: ☰ is how users leave this panel.
       if (child.id === "dmTaskFirstWorkspace") continue;
+      if (child.classList.contains("devmoter-settings-root") && child.querySelector(".devmoter-settings-modal:not(.hidden)")) continue;
       inertSnapshots.set(child, { inert: child.inert, ariaHidden: child.getAttribute("aria-hidden") });
       child.inert = true;
       child.setAttribute("aria-hidden", "true");
     }
+  }
+
+  function hasAnySectionGate() {
+    return [terminalSection, safetySection, indexSection].some(section => section.dataset.deviceGated === "true");
+  }
+
+  let trustDirty = false;
+  function refreshPanelState(options: { includeBackgroundTabs?: boolean } = {}) {
+    return loadProjects().then(() => {
+      renderProjectOptions();
+      if (safetyInitialized && (options.includeBackgroundTabs || !safetySection.classList.contains("hidden"))) {
+        void refreshSafetyView?.();
+      }
+      if (indexInitialized && (options.includeBackgroundTabs || !indexSection.classList.contains("hidden"))) {
+        void refreshIndexView?.();
+      }
+      return refreshTerminalSessions();
+    }).then(() => {
+      if (modalOpen && terminalRecord) void reattachTerminal().catch(showTerminalLoadError);
+      if (modalOpen && !terminalSection.classList.contains("hidden") && terminalView && terminalSection.dataset.deviceGated !== "true") {
+        fitTerminal();
+      }
+    }).catch(error => {
+      if (modalOpen) showTerminalLoadError(error);
+    });
   }
 
   function openPanel() {
@@ -348,15 +390,9 @@ export function mountControlCenter() {
     lockBackground();
     close.focus({ preventScroll: true });
     window.dispatchEvent(new window.CustomEvent("devmoter:workspace-panel-changed", { detail: { tab: "terminal", open: true } }));
-    void loadProjects().then(() => {
-      renderProjectOptions();
-      if (indexInitialized && !indexSection.classList.contains("hidden")) void refreshIndexView?.();
-      return refreshTerminalSessions();
-    }).then(() => {
-      if (modalOpen && terminalRecord) void reattachTerminal().catch(showTerminalLoadError);
-    }).catch(error => {
-      if (modalOpen) showTerminalLoadError(error);
-    });
+    const includeBackgroundTabs = trustDirty;
+    trustDirty = false;
+    void refreshPanelState({ includeBackgroundTabs });
   }
 
   function closePanel(options: { restoreFocus?: boolean } = {}) {
@@ -387,8 +423,29 @@ export function mountControlCenter() {
   window.addEventListener("devmoter:global-nav-opened", () => closePanel({ restoreFocus: false }));
   window.addEventListener("devmoter:surface-changed", () => closePanel({ restoreFocus: false }));
   window.addEventListener("devmoter:workspace-tab-changing", () => closePanel({ restoreFocus: false }));
+  window.addEventListener("devmoter:open-settings", unlockSettingsOverlay);
+  window.addEventListener("devmoter:settings-opened", unlockSettingsOverlay);
+  window.addEventListener("devmoter:settings-closed", () => {
+    if (!modalOpen) return;
+    lockBackground();
+    if (!panel.contains(document.activeElement)) close.focus({ preventScroll: true });
+    if (hasAnySectionGate()) void refreshPanelState({ includeBackgroundTabs: true });
+  });
+  window.addEventListener("devmoter:device-trust-changed", () => {
+    if (modalOpen) void refreshPanelState({ includeBackgroundTabs: true });
+    else trustDirty = true;
+  });
+  window.addEventListener("focus", () => {
+    if (modalOpen && hasAnySectionGate()) void refreshPanelState({ includeBackgroundTabs: true });
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && modalOpen && hasAnySectionGate()) {
+      void refreshPanelState({ includeBackgroundTabs: true });
+    }
+  });
   window.addEventListener("keydown", event => {
     if (!modalOpen) return;
+    if (document.body.classList.contains("devmoter-settings-open") || document.querySelector(".devmoter-settings-modal:not(.hidden), .devmoter-system-modal:not(.hidden)")) return;
     if (event.key === "Escape") {
       event.preventDefault();
       closePanel();
@@ -439,13 +496,36 @@ export function mountControlCenter() {
     }
   }
 
-  // An unregistered or revoked device sees one button into Settings →
-  // 信頼済み端末 in place of the whole tab (Terminal, Safety or Index), never
-  // the raw 401/403 text. CSS hides the tab's other children while it shows.
+  async function checkTrustedDeviceStatus(): Promise<Error | null> {
+    try {
+      const response = await fetch("/api/devices", { cache: "no-store" });
+      await jsonOrError(response);
+      return null;
+    } catch (error) {
+      return isDeviceAuthError(error) ? error as Error : null;
+    }
+  }
+
+  function sectionFeatureName(section: HTMLElement) {
+    if (section === terminalSection) return tabTitles.terminal;
+    if (section === safetySection) return tabTitles.safety;
+    return tabTitles.index;
+  }
+
+  // An unregistered or revoked device sees a status explanation and direct link
+  // to Settings → Trusted devices in place of the whole tab (Terminal, Safety
+  // or Index), never a dead form or raw 401/403 text. CSS hides the tab's other children.
   function showSectionGate(section: HTMLElement, error: unknown) {
     if (!isDeviceAuthError(error)) return false;
     if (!section.querySelector(":scope > [data-device-gate]")) {
-      const gate = createDeviceGate(document, { compact: true, onRegister: () => closePanel({ restoreFocus: false }) });
+      const feature = sectionFeatureName(section);
+      const gate = createDeviceGate(document, {
+        className: "dm-tools-card dm-tools-device-gate",
+        title: t("deviceGate.unregisteredTitle"),
+        copy: t("deviceGate.toolsLockedCopy", { feature }),
+        buttonLabel: t("deviceGate.openToRegisterButton"),
+        onRegister: unlockSettingsOverlay
+      });
       if (section === terminalSection) gate.dataset.terminalDeviceGate = "true";
       section.prepend(gate);
     }
@@ -977,6 +1057,10 @@ export function mountControlCenter() {
             ].join("\n");
           } catch (error) {
             scanner.classList.remove("dm-risk-high", "dm-risk-low");
+            if (showSectionGate(safetySection, error)) {
+              scanResult.textContent = "";
+              return;
+            }
             scanResult.textContent = errorMessage(error);
           } finally {
             scanButton.disabled = false;
@@ -998,7 +1082,12 @@ export function mountControlCenter() {
     approvalList.replaceChildren();
 
     try {
-      const response = await fetch("/api/safety/permissions", { cache: "no-store" });
+      const [authError, response] = await Promise.all([
+        checkTrustedDeviceStatus(),
+        fetch("/api/safety/permissions", { cache: "no-store" })
+      ]);
+      if (revision !== safetyRevision) return;
+      if (authError && showSectionGate(safetySection, authError)) return;
       const payload = await jsonOrError<{ rules?: PermissionRule[] }>(response);
       if (revision !== safetyRevision) return;
       clearSectionGate(safetySection);
@@ -1027,6 +1116,7 @@ export function mountControlCenter() {
               await jsonOrError(response);
               await renderSafety();
             } catch (error) {
+              if (showSectionGate(safetySection, error)) return;
               const fail = document.createElement("small");
               fail.textContent = errorMessage(error);
               row.append(fail);
@@ -1112,17 +1202,37 @@ export function mountControlCenter() {
 
     const currentProject = () => select.value || activeProjectId;
     let projectRevision = 0;
+    let indexStatusRevision = 0;
+    const showIndexError = (error: unknown) => {
+      status.textContent = showSectionGate(indexSection, error) ? "" : errorMessage(error);
+    };
 
     async function refreshStatus() {
-      if (!currentProject()) return;
+      const trustCheck = checkTrustedDeviceStatus();
       const projectId = currentProject();
       const revision = projectRevision;
+      const statusRevision = ++indexStatusRevision;
+      if (!projectId) {
+        const authError = await trustCheck;
+        if (revision !== projectRevision || statusRevision !== indexStatusRevision) return;
+        if (authError && showSectionGate(indexSection, authError)) {
+          status.textContent = "";
+          return;
+        }
+        clearSectionGate(indexSection);
+        return;
+      }
       status.textContent = t("index.loadingStatus");
       try {
-        const response = await fetch(
-          `/api/projects/${encodeURIComponent(projectId)}/index/status`,
-          { cache: "no-store" }
-        );
+        const [authError, response] = await Promise.all([
+          trustCheck,
+          fetch(`/api/projects/${encodeURIComponent(projectId)}/index/status`, { cache: "no-store" })
+        ]);
+        if (revision !== projectRevision || statusRevision !== indexStatusRevision || projectId !== currentProject()) return;
+        if (authError && showSectionGate(indexSection, authError)) {
+          status.textContent = "";
+          return;
+        }
         const payload = await jsonOrError<{
           ready: boolean;
           builtAt?: number;
@@ -1131,7 +1241,7 @@ export function mountControlCenter() {
           reusedFiles?: number;
           exclude?: string[];
         }>(response);
-        if (revision !== projectRevision || projectId !== currentProject()) return;
+        if (revision !== projectRevision || statusRevision !== indexStatusRevision || projectId !== currentProject()) return;
         clearSectionGate(indexSection);
         status.textContent = payload.ready
           ? t("index.readyStatus", {
@@ -1142,9 +1252,8 @@ export function mountControlCenter() {
           : t("index.notBuiltStatus");
         if (payload.exclude?.length && !excludesTouched) excludes.value = payload.exclude.join(", ");
       } catch (error) {
-        if (revision === projectRevision && projectId === currentProject()) {
-          if (showSectionGate(indexSection, error)) status.textContent = "";
-          else status.textContent = errorMessage(error);
+        if (revision === projectRevision && statusRevision === indexStatusRevision && projectId === currentProject()) {
+          showIndexError(error);
         }
       }
     }
@@ -1194,7 +1303,7 @@ export function mountControlCenter() {
           });
         }
       } catch (error) {
-        if (revision === projectRevision) status.textContent = errorMessage(error);
+        if (revision === projectRevision) showIndexError(error);
       } finally {
         rebuild.disabled = false;
         remove.disabled = false;
@@ -1223,7 +1332,7 @@ export function mountControlCenter() {
           status.textContent = t("index.deletedStatus");
         }
       } catch (error) {
-        if (revision === projectRevision) status.textContent = errorMessage(error);
+        if (revision === projectRevision) showIndexError(error);
       } finally {
         remove.disabled = false;
         rebuild.disabled = false;
@@ -1266,7 +1375,7 @@ export function mountControlCenter() {
           results.append(empty);
         }
       } catch (error) {
-        if (revision === projectRevision) status.textContent = errorMessage(error);
+        if (revision === projectRevision) showIndexError(error);
       } finally {
         searchButton.disabled = false;
       }
@@ -1318,15 +1427,14 @@ export function mountControlCenter() {
         if (revision === projectRevision) {
           status.dataset.state = "error";
           status.textContent = t("index.mapFailedStatus", { error: errorMessage(error) });
+          if (showSectionGate(indexSection, error)) status.textContent = "";
         }
       } finally {
         showMap.disabled = false;
       }
     });
 
-    await refreshStatus().catch(error => {
-      status.textContent = errorMessage(error);
-    });
+    await refreshStatus().catch(showIndexError);
   }
 
   renderTerminalShell();

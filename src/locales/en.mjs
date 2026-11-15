@@ -55,6 +55,8 @@ export const en = {
   "deviceGate.unregisteredTitle": "This device is not registered",
   "deviceGate.unregisteredCopy": "Register this device to use this feature",
   "deviceGate.registerButton": "Register device",
+  "deviceGate.toolsLockedCopy": "{feature} is unavailable because this browser is not registered as a trusted device yet. Open Settings → Trusted devices below to register or pair this device, and it will become usable here without reopening.",
+  "deviceGate.openToRegisterButton": "Open Trusted devices to register",
 
   "diagnostics.unknown": "Unknown",
   "diagnostics.fetching": "Fetching…",

@@ -895,9 +895,11 @@ export function mountSettingsPanel() {
   }
 
   function close() {
+    const wasOpen = !modal.classList.contains("hidden");
     modal.classList.add("hidden");
     document.body.classList.remove("devmoter-settings-open");
     page = "root";
+    if (wasOpen) window.dispatchEvent(new CustomEvent("devmoter:settings-closed"));
   }
 
   const clickFirst = (selector: string) => {
@@ -1138,6 +1140,7 @@ export function mountSettingsPanel() {
               method: "POST",
               body: JSON.stringify({ label: deviceBrowserLabel() })
             });
+            window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { trusted: true, action: "bootstrap" } }));
             toast(t("settings.devices.bootstrapped"));
             await renderDevices();
           } catch (error) {
@@ -1164,6 +1167,7 @@ export function mountSettingsPanel() {
                 label: deviceBrowserLabel()
               })
             });
+            window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { trusted: true, action: "claim" } }));
             toast(t("settings.devices.pairedToast"));
             await renderDevices();
           } catch (error) {
@@ -1174,6 +1178,7 @@ export function mountSettingsPanel() {
         if (action === "device:revoke") {
           try {
             await request(`/api/devices/${encodeURIComponent(button.dataset.deviceId || "")}`, { method: "DELETE" }, true);
+            window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { action: "revoke" } }));
             toast(t("settings.devices.revokedToast"));
             await renderDevices();
           } catch (error) {
@@ -1292,6 +1297,7 @@ export function mountSettingsPanel() {
     page = targetPage;
     modal.classList.remove("hidden");
     document.body.classList.add("devmoter-settings-open");
+    window.dispatchEvent(new CustomEvent("devmoter:settings-opened", { detail: { page } }));
     void refresh();
   }
 

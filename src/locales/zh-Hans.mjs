@@ -55,6 +55,8 @@ export const zhHans = {
   "deviceGate.unregisteredTitle": "此设备尚未注册",
   "deviceGate.unregisteredCopy": "注册此设备后即可使用此功能",
   "deviceGate.registerButton": "注册设备",
+  "deviceGate.toolsLockedCopy": "此浏览器尚未注册为受信任设备，因此{feature}当前不可用。点击下方按钮打开“设置 → 受信任设备”完成注册或配对后，无需重新打开即可直接在此使用。",
+  "deviceGate.openToRegisterButton": "打开受信任设备并注册",
 
   "diagnostics.unknown": "未知",
   "diagnostics.fetching": "获取中…",

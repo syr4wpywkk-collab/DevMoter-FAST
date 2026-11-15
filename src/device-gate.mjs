@@ -43,7 +43,17 @@ export function openDeviceRegistration(win = window) {
  * registration / pairing page. `onRegister` runs before navigation so the
  * host surface can close itself first.
  */
-export function createDeviceGate(doc, { onRegister, className = "", compact = false } = {}) {
+export function createDeviceGate(
+  doc,
+  {
+    onRegister,
+    className = "",
+    compact = false,
+    title: titleText,
+    copy: copyText,
+    buttonLabel
+  } = {}
+) {
   const win = doc.defaultView;
   const gate = doc.createElement("div");
   gate.className = ["dm-device-gate", compact ? "dm-device-gate-compact" : "", className].filter(Boolean).join(" ");
@@ -56,7 +66,7 @@ export function createDeviceGate(doc, { onRegister, className = "", compact = fa
     const open = doc.createElement("button");
     open.type = "button";
     open.dataset.deviceGateRegister = "true";
-    open.textContent = t("deviceGate.openTrustedDevices");
+    open.textContent = buttonLabel || t("deviceGate.openTrustedDevices");
     open.addEventListener("click", () => {
       onRegister?.();
       if (win) openDeviceRegistration(win);
@@ -66,13 +76,13 @@ export function createDeviceGate(doc, { onRegister, className = "", compact = fa
   }
 
   const title = doc.createElement("strong");
-  title.textContent = t("deviceGate.unregisteredTitle");
+  title.textContent = titleText || t("deviceGate.unregisteredTitle");
   const copy = doc.createElement("small");
-  copy.textContent = t("deviceGate.unregisteredCopy");
+  copy.textContent = copyText || t("deviceGate.unregisteredCopy");
   const register = doc.createElement("button");
   register.type = "button";
   register.dataset.deviceGateRegister = "true";
-  register.textContent = t("deviceGate.registerButton");
+  register.textContent = buttonLabel || t("deviceGate.registerButton");
   register.addEventListener("click", () => {
     onRegister?.();
     if (win) openDeviceRegistration(win);
