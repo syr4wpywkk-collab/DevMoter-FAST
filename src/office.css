@@ -1,18 +1,19 @@
 /* Office/Docs. Colours come from the shared theme tokens (zcode-theme.css),
  * so light and dark follow the app theme. Fallbacks keep it usable alone. */
 .dm-office {
-  --of-bg: var(--canvas-base, #212121);
-  --of-panel: var(--surface-panel, #212121);
-  --of-card: var(--surface-card, #2f2f2f);
-  --of-hover: var(--surface-hover, #3a3a3a);
-  --of-line: var(--border-hairline, #3a3a3a);
-  --of-line-strong: var(--border-subtle, #4a4a4a);
-  --of-focus: var(--border-focus, #ececec);
-  --of-accent: var(--accent, #ececec);
-  --of-text: var(--text-primary, #ececec);
-  --of-text-2: var(--text-secondary, #b4b4b4);
-  --of-muted: var(--text-muted, #8e8e8e);
-  --of-error: var(--status-error, #f08b8b);
+  --of-bg: var(--canvas-base, #191f1c);
+  --of-panel: var(--surface-panel, #232a26);
+  --of-card: var(--surface-card, #29312d);
+  --of-hover: var(--surface-hover, #303934);
+  --of-line: var(--border-hairline, #3a4540);
+  --of-line-strong: var(--border-subtle, #4a5750);
+  --of-focus: var(--border-focus, #b8ddcf);
+  --of-accent: var(--accent, #92c3b4);
+  --of-on-accent: var(--on-accent, #191f1c);
+  --of-text: var(--text-primary, #edf4ef);
+  --of-text-2: var(--text-secondary, #b5c0b9);
+  --of-muted: var(--text-muted, #9ba9a1);
+  --of-error: var(--status-error, #f2a39a);
   --of-ease: cubic-bezier(0.23, 1, 0.32, 1);
   box-sizing: border-box;
   position: fixed;
@@ -49,6 +50,10 @@
 .dm-office h1,
 .dm-office h2 {
   margin: 0;
+  letter-spacing: normal;
+}
+.dm-office :where(p, li) {
+  color: inherit;
 }
 
 /* ------------------------------------------------------------ controls --- */
@@ -75,8 +80,11 @@
   transform: scale(0.97);
 }
 .dm-office button:disabled {
-  opacity: 0.4;
-  cursor: default;
+  border-style: dashed;
+  border-color: var(--of-line);
+  color: var(--of-muted);
+  opacity: 0.58;
+  cursor: not-allowed;
 }
 @media (hover: hover) {
   .dm-office button:hover:not(:disabled) {
@@ -97,7 +105,20 @@
   border: 1px solid var(--of-line-strong);
   border-radius: 10px;
   background: var(--of-panel);
+  color: var(--of-text);
+  color-scheme: inherit;
   font-size: 16px; /* no iOS zoom */
+}
+.dm-office input::placeholder,
+.dm-office textarea::placeholder {
+  color: var(--of-muted);
+  opacity: 1;
+}
+.dm-office select:disabled,
+.dm-office input:disabled,
+.dm-office textarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 .dm-office textarea {
   line-height: 1.6;
@@ -106,13 +127,20 @@
 .dm-office .office-primary {
   border-color: transparent;
   background: var(--of-accent);
-  color: var(--of-bg);
+  color: var(--of-on-accent);
   font-weight: 500;
 }
 @media (hover: hover) {
   .dm-office .office-primary:hover:not(:disabled) {
     background: var(--accent-pressed, var(--of-accent));
   }
+}
+.dm-office .office-primary:disabled {
+  border-style: dashed;
+  border-color: var(--of-line-strong);
+  background: var(--of-hover);
+  color: var(--of-muted);
+  opacity: 0.65;
 }
 .dm-office .office-icon-button {
   display: inline-grid;
@@ -121,7 +149,13 @@
   width: 44px;
   padding: 0;
   border-color: transparent;
-  color: var(--of-text-2);
+  color: var(--of-text);
+}
+.dm-office .office-icon-button:disabled {
+  border-color: transparent;
+  background: transparent;
+  color: var(--of-muted);
+  opacity: 0.42;
 }
 .office-icon-button svg,
 .office-tool svg {
@@ -129,7 +163,7 @@
 }
 .office-quiet {
   margin: 0;
-  color: var(--of-muted);
+  color: var(--of-text-2);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -250,9 +284,9 @@
   font-size: 14px;
 }
 .office-doc-meta {
-  color: var(--of-muted);
+  color: var(--of-text-2);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
+  font-size: var(--font-size-caption, 12px);
   font-variant-numeric: tabular-nums;
 }
 .office-rename {
@@ -306,7 +340,7 @@
   align-items: center;
   gap: 6px;
   flex: none;
-  color: var(--of-muted);
+  color: var(--of-text-2);
   font-size: 12px;
 }
 .office-save-state:not(:empty)::before {
@@ -318,7 +352,7 @@
 }
 .office-save-state[data-state="dirty"],
 .office-save-state[data-state="saving"] {
-  color: var(--of-text-2);
+  color: var(--of-text);
 }
 .office-save-state[data-state="error"] {
   color: var(--of-error);
@@ -358,12 +392,23 @@
   width: 44px;
   padding: 0;
   border-color: transparent;
-  color: var(--of-text-2);
+  color: var(--of-text);
+}
+.dm-office .office-tool:disabled {
+  border-color: transparent;
+  background: transparent;
+  color: var(--of-muted);
+  opacity: 0.42;
 }
 .dm-office .office-tool[aria-pressed="true"] {
-  border-color: var(--of-line);
+  border-color: var(--of-line-strong);
   background: var(--of-hover);
   color: var(--of-text);
+}
+.dm-office .office-tool[aria-pressed="true"]:disabled {
+  border-color: var(--of-line);
+  background: var(--of-hover);
+  color: var(--of-muted);
 }
 .office-tool-gap {
   flex: none;
@@ -392,7 +437,7 @@
 .office-note {
   max-width: 760px;
   margin: 0 auto 12px;
-  color: var(--of-muted);
+  color: var(--of-text-2);
   font-size: 12px;
   line-height: 1.6;
 }
@@ -400,7 +445,7 @@
   display: grid;
   place-items: center;
   min-height: 240px;
-  color: var(--of-muted);
+  color: var(--of-text-2);
   font-size: 14px;
 }
 .office-page {
@@ -469,7 +514,7 @@
   left: calc(var(--office-ilvl, 0) * 24px);
   width: 22px;
   text-align: right;
-  color: var(--of-muted);
+  color: var(--of-text-2);
   font-variant-numeric: tabular-nums;
   user-select: none;
   -webkit-user-select: none;
@@ -477,7 +522,7 @@
 .office-page a {
   color: inherit;
   text-decoration: underline;
-  text-decoration-color: var(--of-muted);
+  text-decoration-color: var(--of-text-2);
   text-underline-offset: 2px;
 }
 .office-locked {
@@ -497,7 +542,7 @@
   padding-left: 4px;
 }
 .office-locked-bar small {
-  color: var(--of-muted);
+  color: var(--of-text-2);
   font-size: 12px;
 }
 .office-table-scroll {
@@ -560,12 +605,14 @@
   align-items: flex-start;
   gap: 8px;
   margin-top: 8px;
+  color: var(--of-text);
 }
 .office-consent input {
   flex: none;
   width: 20px;
   height: 20px;
   margin: 2px 0 0;
+  accent-color: var(--of-accent);
 }
 .office-ai-actions {
   display: flex;
@@ -574,15 +621,27 @@
 .office-ai-actions button:first-child {
   border-color: transparent;
   background: var(--of-accent);
-  color: var(--of-bg);
+  color: var(--of-on-accent);
   font-weight: 500;
+}
+@media (hover: hover) {
+  .office-ai-actions button:first-child:hover:not(:disabled) {
+    background: var(--accent-pressed, var(--of-accent));
+  }
+}
+.office-ai-actions button:first-child:disabled {
+  border-style: dashed;
+  border-color: var(--of-line-strong);
+  background: var(--of-hover);
+  color: var(--of-muted);
+  opacity: 0.65;
 }
 [data-ai-status]:not(:empty) {
   margin-top: 12px;
 }
 .office-sharing-notice {
   padding-left: 8px;
-  border-left: 2px solid var(--status-warning, #e0b15a);
+  border-left: 2px solid var(--status-warning, #e4c16e);
   font-size: 13px;
 }
 [data-proposal] summary {
@@ -606,7 +665,7 @@
 }
 [data-proposal] del {
   background: var(--of-hover);
-  color: var(--of-muted);
+  color: var(--of-text-2);
 }
 [data-proposal] ins {
   border: 1px solid var(--of-line);
