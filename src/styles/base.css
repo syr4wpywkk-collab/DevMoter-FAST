@@ -226,7 +226,7 @@ button.primary {
 
 button.compact {
   width: auto;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 13px;
   white-space: nowrap;
 }
@@ -256,8 +256,8 @@ button.compact {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: .72rem;
-  color: #777;
+  font-size: var(--font-size-caption);
+  color: var(--text-secondary);
 }
 
 .thread.selected {
@@ -394,6 +394,11 @@ textarea:focus {
   border-color: var(--border-focus);
 }
 
+textarea:focus-visible {
+  outline: var(--focus-ring-width) solid var(--border-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
 .prompt button {
   min-width: 74px;
   padding: 0 16px;
@@ -513,19 +518,19 @@ select:disabled {
 }
 
 .backend-switch-button {
-  min-height: 36px;
-  padding: 0 11px;
+  min-height: 44px;
+  padding: 0 12px;
   border: 0;
   border-radius: 10px;
   background: transparent;
-  color: #8e8e8e;
-  font-size: .78rem;
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
   font-weight: 650;
 }
 
 .backend-switch-button.active {
-  background: #f2f2f2;
-  color: #0b0b0b;
+  background: var(--text-primary);
+  color: var(--canvas-base);
 }
 
 .backend-panel.hidden {
@@ -544,14 +549,14 @@ select:disabled {
   }
 
   .status {
-    min-height: 32px;
-    padding: 0 9px;
-    font-size: .72rem;
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: var(--font-size-caption);
   }
 
   .backend-switch-button {
-    min-height: 34px;
-    padding: 0 9px;
+    min-height: 44px;
+    padding: 0 10px;
   }
 }
 
@@ -1145,11 +1150,11 @@ body.codex-mode #app {
 }
 
 .cx-library-empty { padding: 34px 12px; text-align: center; }
-.cx-library-empty p { margin: 8px auto 0; max-width: 30ch; color: #92929a; font-size: .84rem; }
+.cx-library-empty p { margin: 8px auto 0; max-width: 30ch; color: var(--text-secondary); font-size: var(--font-size-label); }
 
-/* Codex history drawer: one row rhythm (36 / 34px rows, 2px gaps, 18px icon box, 14px text). */
+/* Codex history drawer: 44px touch-safe controls with 2px gaps and 18px icon boxes. */
 .cx-side-action {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 10px;
   display: flex;
   align-items: center;
@@ -1179,7 +1184,7 @@ body.codex-mode #app {
 }
 
 .cx-search {
-  height: 36px;
+  min-height: 44px;
   margin: 4px 0 8px;
   padding: 0 10px;
   display: flex;
@@ -1190,6 +1195,10 @@ body.codex-mode #app {
   background: #141414;
 }
 
+.cx-search:focus-within {
+  border-color: var(--border-focus);
+}
+
 .cx-search input {
   min-width: 0;
   width: 100%;
@@ -1197,6 +1206,11 @@ body.codex-mode #app {
   outline: none;
   color: #eee;
   background: transparent;
+  font-size: var(--font-size-body);
+}
+
+.cx-search input:focus-visible {
+  outline: none;
 }
 
 .cx-side-nav {
@@ -1208,7 +1222,7 @@ body.codex-mode #app {
 }
 
 .cx-nav-item {
-  min-height: 34px;
+  min-height: 44px;
   padding: 0 10px;
   display: flex;
   align-items: center;
@@ -1235,8 +1249,8 @@ body.codex-mode #app {
 
 .cx-side-label {
   padding: 0 10px 4px;
-  color: #777;
-  font-size: 12px;
+  color: var(--text-muted);
+  font-size: var(--font-size-caption);
   font-weight: 500;
 }
 
@@ -1246,7 +1260,7 @@ body.codex-mode #app {
 }
 
 .cx-thread-row {
-  min-height: 34px;
+  min-height: 44px;
   padding: 0 10px;
   border-radius: 10px;
   background: transparent;
