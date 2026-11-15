@@ -4,6 +4,13 @@ import "./unified-workspace-nav.css";
 // unmounting/reparenting their live input, stream, history or approval controls.
 import "./unified-workspace-chat.css";
 import { bindLanguageSelectors, t } from "./i18n";
+import {
+  QWEN_UI_ENABLED,
+  isHiddenQwenTarget,
+  isVisibleChatBackend,
+  normalizeVisibleBackend,
+  normalizeVisibleSurface
+} from "./feature-flags.mjs";
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -72,7 +79,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
           <option value="codex">Codex</option>
           <option value="opencode">OpenCode</option>
           <option value="api">API Chat</option>
-          <option value="qwen">Qwen Code</option>
+          ${QWEN_UI_ENABLED ? '<option value="qwen">Qwen Code</option>' : ""}
         </select>
       </label>
       <button type="button" class="dm-task-first-menu-button" data-workspace-menu-button aria-haspopup="true" aria-expanded="false" aria-controls="dmTaskFirstMenu" aria-label="${escapeHtml(t("nav.switchScreenAria"))}">☰</button>
@@ -159,13 +166,11 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     if (next && !isMenuTarget(next)) setMenuOpen(false);
   });
 
-  let surface: MainSurface = actions.initialSurface;
+  let surface: MainSurface = normalizeVisibleSurface(actions.initialSurface);
   // Preserve the last real backend when starting on Home or Integrations.
-  let currentBackend: ChatBackend = surface === "codex" || surface === "api" || surface === "opencode" || surface === "qwen"
+  let currentBackend: ChatBackend = isVisibleChatBackend(surface)
     ? surface
-    : actions.initialBackend === "codex" || actions.initialBackend === "api" || actions.initialBackend === "opencode" || actions.initialBackend === "qwen"
-      ? actions.initialBackend
-      : "opencode";
+    : normalizeVisibleBackend(actions.initialBackend);
 
   const updateProject = () => {
     // Project selection is owned by the existing backend; this is a label only.
@@ -197,10 +202,11 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     );
   };
   const updateSurface = (next: MainSurface) => {
-    surface = next;
-    if (next === "codex" || next === "opencode" || next === "api" || next === "qwen") currentBackend = next;
+    const resolved = normalizeVisibleSurface(next);
+    surface = resolved;
+    if (isVisibleChatBackend(resolved)) currentBackend = resolved;
     backendSelect.value = currentBackend;
-    activeTab = next === "codex" || next === "opencode" || next === "api" || next === "qwen" ? "chat" : null;
+    activeTab = isVisibleChatBackend(resolved) ? "chat" : null;
     renderSelection();
     updateProject();
   };
@@ -215,16 +221,16 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
 
   const onBackendChanged = (event: Event) => {
     const next = (event as CustomEvent<{ backend?: ChatBackend }>).detail?.backend;
-    if (next === "codex" || next === "opencode" || next === "api" || next === "qwen") {
-      currentBackend = next;
-      backendSelect.value = next;
+    if (isVisibleChatBackend(next) || isHiddenQwenTarget(next)) {
+      currentBackend = normalizeVisibleBackend(next);
+      backendSelect.value = currentBackend;
     }
   };
   window.addEventListener("devmoter:backend-changed", onBackendChanged);
 
   backendSelect.addEventListener("change", () => {
     const next = backendSelect.value;
-    if (next !== "codex" && next !== "opencode" && next !== "api" && next !== "qwen") return;
+    if (!isVisibleChatBackend(next)) return;
     feedback.textContent = "";
     selectTab("chat", "push", next);
   });
@@ -260,6 +266,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
       else if (tab === "tools") actions.openTools();
       else if (tab === "terminal") actions.openTerminal();
       else if (backend || surface === "home" || surface === "integrations") {
+        if (backend) backend = normalizeVisibleBackend(backend);
         const previousSurface = new URL(window.location.href).searchParams.get("surface");
         actions.switchBackend(backend || currentBackend);
         // The main-surface navigator already pushed a history entry. Reuse it

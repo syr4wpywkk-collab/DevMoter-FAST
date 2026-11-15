@@ -1,7 +1,9 @@
 import { t, translateServerMessage } from "./i18n";
+import { isVisibleIntegration } from "./feature-flags.mjs";
 
 type IntegrationId = "antigravity" | "claude" | "qwen";
-const INTEGRATION_IDS: IntegrationId[] = ["antigravity", "claude", "qwen"];
+const ALL_INTEGRATION_IDS: IntegrationId[] = ["antigravity", "claude", "qwen"];
+const INTEGRATION_IDS: IntegrationId[] = ALL_INTEGRATION_IDS.filter(isVisibleIntegration);
 
 type ProjectSummary = {
   id: string;
@@ -235,6 +237,7 @@ export function mountIntegrations(
   async function handleAction(button: HTMLButtonElement) {
     const action = button.dataset.action;
     const id = button.dataset.id as IntegrationId | undefined;
+    if (id && !isVisibleIntegration(id)) return;
 
     if (action === "open-url") {
       const url = button.dataset.url;
@@ -301,7 +304,7 @@ export function mountIntegrations(
       method: "POST",
       body: "{}"
     });
-    integrations = result.integrations || [];
+    integrations = (result.integrations || []).filter(info => isVisibleIntegration(info.id));
     renderCards();
   }
 
