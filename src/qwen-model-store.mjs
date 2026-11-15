@@ -2,6 +2,8 @@
 // picker renders (search, provider filter, recent first). Loaded standalone
 // by tests.
 
+import { getLanguage, t, translate } from "./i18n-core.mjs";
+
 export const QWEN_MODEL_KEY = "devmoter-qwen-model";
 export const QWEN_RECENT_KEY = "devmoter-qwen-model-recent";
 const RECENT_LIMIT = 5;
@@ -55,15 +57,15 @@ export function saveQwenModel(storage, choice) {
 }
 
 /** Short label for the header chip: the id, without the "[Provider] " prefix. */
-export function qwenModelChipLabel(choice) {
-  return choice ? choice.id.split("/").at(-1) : "既定";
+export function qwenModelChipLabel(choice, language) {
+  return choice ? choice.id.split("/").at(-1) : translate(language ?? getLanguage(), "qwenStore.defaultChip");
 }
 
 /**
  * Sections for the list: recent (still listed, not filtered out) first, then
  * each provider group in its listed order. Disabled models stay visible.
  */
-export function qwenModelSections({ groups = [], models = [] }, { query = "", group = "all", recent = [] } = {}) {
+export function qwenModelSections({ groups = [], models = [] }, { query = "", group = "all", recent = [], language } = {}) {
   const needle = String(query || "").trim().toLowerCase();
   const match = model => !needle || `${model.id} ${model.name} ${model.host || ""}`.toLowerCase().includes(needle);
   const visible = models.filter(model => (group === "all" || model.group === group) && match(model));
@@ -74,7 +76,7 @@ export function qwenModelSections({ groups = [], models = [] }, { query = "", gr
       .map(choice => visible.find(model => !model.disabled && qwenModelKey(model) === qwenModelKey(choice)))
       .filter(Boolean);
     if (items.length) {
-      sections.push({ id: "recent", label: "最近使ったモデル", items });
+      sections.push({ id: "recent", label: translate(language ?? getLanguage(), "qwenStore.recentModels"), items });
       for (const item of items) recentKeys.add(`${item.group}\0${qwenModelKey(item)}`);
     }
   }

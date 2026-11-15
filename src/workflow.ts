@@ -1,5 +1,23 @@
 import { projectOptionLabels } from "./project-labels.mjs";
 import { createSheetHeader } from "./sheet-header.mjs";
+import { formatNumber, t, translateServerMessage } from "./i18n";
+
+function wfError(error: unknown) {
+  return translateServerMessage(error instanceof Error ? error.message : String(error));
+}
+
+const WF_DECISION_KEYS: Record<string, string> = {
+  pending: "workflow.decision.pending",
+  accept: "workflow.decision.accept",
+  reject: "workflow.decision.reject",
+  partial: "workflow.decision.partial",
+  applied: "workflow.decision.applied",
+  committed: "workflow.decision.committed"
+};
+
+function wfDecisionLabel(value: string) {
+  return WF_DECISION_KEYS[value] ? t(WF_DECISION_KEYS[value]) : translateServerMessage(value);
+}
 
 const REFRESH_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
 
@@ -98,7 +116,7 @@ async function api<T>(url: string, init: RequestInit = {}): Promise<T> {
     headers
   });
   const payload = await response.json().catch(() => ({})) as Json;
-  if (!response.ok) throw new Error(String(payload.error || `HTTP ${response.status}`));
+  if (!response.ok) throw new Error(translateServerMessage(String(payload.error || t("common.httpError", { status: response.status }))));
   return payload as T;
 }
 
@@ -116,41 +134,41 @@ function textareaValue(root: ParentNode, selector: string) {
 
 export function mountTaskWorkflow(root: HTMLElement) {
   root.innerHTML = `
-    <button id="wfLaunch" class="wf-launch" type="button" aria-label="Review changes and tasks">
-      <span>⌁</span><b>Review</b>
+    <button id="wfLaunch" class="wf-launch" type="button" aria-label="${escapeHtml(t("workflow.launchAria"))}">
+      <span>⌁</span><b>${escapeHtml(t("workflow.launchLabel"))}</b>
     </button>
     <div id="wfModal" class="wf-modal hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="wfTitle" tabindex="-1">
       <div class="wf-sheet dm-sheet-frame">
         <div class="wf-toolbar">
           <label>
-            <span>Project</span>
+            <span>${escapeHtml(t("workflow.projectLabel"))}</span>
             <select id="wfProject"></select>
           </label>
         </div>
-        <nav class="wf-tabs" role="tablist" aria-label="Workflow sections">
-          <button type="button" class="active" role="tab" aria-selected="true" data-wf-tab="changes">Changes</button>
-          <button type="button" role="tab" aria-selected="false" data-wf-tab="worktrees">Worktrees</button>
-          <button type="button" role="tab" aria-selected="false" data-wf-tab="github">GitHub</button>
+        <nav class="wf-tabs" role="tablist" aria-label="${escapeHtml(t("workflow.tabsAria"))}">
+          <button type="button" class="active" role="tab" aria-selected="true" data-wf-tab="changes">${escapeHtml(t("workflow.tabChanges"))}</button>
+          <button type="button" role="tab" aria-selected="false" data-wf-tab="worktrees">${escapeHtml(t("workflow.tabWorktrees"))}</button>
+          <button type="button" role="tab" aria-selected="false" data-wf-tab="github">${escapeHtml(t("workflow.tabGithub"))}</button>
         </nav>
         <div id="wfStatus" class="wf-status" role="status" aria-live="polite"></div>
         <main class="wf-body">
           <section id="wfChangesPanel" data-wf-panel="changes">
             <div class="wf-section-head">
-              <div><strong>Reviewed changes</strong><small>Files change only after you accept</small></div>
-              <button id="wfLoadDiff" type="button">Working diff</button>
+              <div><strong>${escapeHtml(t("workflow.reviewedChangesHeading"))}</strong><small>${escapeHtml(t("workflow.reviewedChangesSubheading"))}</small></div>
+              <button id="wfLoadDiff" type="button">${escapeHtml(t("workflow.workingDiffBtn"))}</button>
             </div>
             <div id="wfDiffBox" class="wf-inspector hidden">
               <div class="wf-inspector-head">
-                <strong>Bounded diff window</strong>
-                <button id="wfNextDiff" class="hidden" type="button">Load next</button>
+                <strong>${escapeHtml(t("workflow.boundedDiffHeading"))}</strong>
+                <button id="wfNextDiff" class="hidden" type="button">${escapeHtml(t("workflow.loadNextBtn"))}</button>
               </div>
               <div id="wfDiffNotice" class="wf-notice"></div>
               <pre id="wfDiff"></pre>
             </div>
             <div id="wfFileBox" class="wf-inspector hidden">
               <div class="wf-inspector-head">
-                <strong id="wfFileTitle">File window</strong>
-                <button id="wfNextFile" class="hidden" type="button">Load next</button>
+                <strong id="wfFileTitle">${escapeHtml(t("workflow.fileWindowHeading"))}</strong>
+                <button id="wfNextFile" class="hidden" type="button">${escapeHtml(t("workflow.loadNextBtn"))}</button>
               </div>
               <div id="wfFileNotice" class="wf-notice"></div>
               <pre id="wfFile"></pre>
@@ -160,14 +178,14 @@ export function mountTaskWorkflow(root: HTMLElement) {
 
           <section id="wfWorktreesPanel" class="hidden" data-wf-panel="worktrees">
             <div class="wf-section-head">
-              <div><strong>Isolated worktrees</strong><small>Task branches stay inside DevMoter's managed worktree root.</small></div>
+              <div><strong>${escapeHtml(t("workflow.worktreesHeading"))}</strong><small>${escapeHtml(t("workflow.worktreesSubheading"))}</small></div>
             </div>
             <form id="wfWorktreeForm" class="wf-form">
-              <label><span>Base branch</span><input id="wfBaseBranch" value="main" required /></label>
-              <label><span>Task branch</span><input id="wfTaskBranch" placeholder="issue-57" required /></label>
-              <label><span>Agent</span><input id="wfWorktreeAgent" placeholder="codex" /></label>
-              <label><span>Session ID</span><input id="wfSessionId" placeholder="optional" /></label>
-              <button class="primary" type="submit">Create isolated worktree</button>
+              <label><span>${escapeHtml(t("workflow.baseBranchLabel"))}</span><input id="wfBaseBranch" value="main" required /></label>
+              <label><span>${escapeHtml(t("workflow.taskBranchLabel"))}</span><input id="wfTaskBranch" placeholder="issue-57" required /></label>
+              <label><span>${escapeHtml(t("workflow.agentLabel"))}</span><input id="wfWorktreeAgent" placeholder="codex" /></label>
+              <label><span>${escapeHtml(t("workflow.sessionIdLabel"))}</span><input id="wfSessionId" placeholder="${escapeHtml(t("workflow.optionalPlaceholder"))}" /></label>
+              <button class="primary" type="submit">${escapeHtml(t("workflow.createWorktreeBtn"))}</button>
             </form>
             <div id="wfWorktrees" class="wf-stack"></div>
           </section>
@@ -176,31 +194,31 @@ export function mountTaskWorkflow(root: HTMLElement) {
             <div class="wf-grid">
               <form id="wfIssueForm" class="wf-form wf-card">
                 <div class="wf-section-head">
-                  <div><strong>GitHub Issue → task</strong><small>Issue text is always treated as untrusted input.</small></div>
+                  <div><strong>${escapeHtml(t("workflow.issueToTaskHeading"))}</strong><small>${escapeHtml(t("workflow.issueUntrustedNote"))}</small></div>
                 </div>
-                <label><span>Repository</span><input id="wfIssueRepo" placeholder="owner/repo" required /></label>
-                <label><span>Issue #</span><input id="wfIssueNumber" type="number" min="1" required /></label>
-                <label><span>Task branch</span><input id="wfIssueBranch" placeholder="devmoter/issue-59" required /></label>
-                <label><span>Agent</span><input id="wfIssueAgent" placeholder="codex" required /></label>
-                <label><span>Session ID</span><input id="wfIssueSession" placeholder="optional" /></label>
-                <label><span>Selected context / attachments (one per line)</span><textarea id="wfIssueAttachments" rows="3" placeholder="README.md&#10;src/main.ts"></textarea></label>
-                <button class="primary" type="submit">Create bounded task</button>
+                <label><span>${escapeHtml(t("workflow.repositoryLabel"))}</span><input id="wfIssueRepo" placeholder="owner/repo" required /></label>
+                <label><span>${escapeHtml(t("workflow.issueNumberLabel"))}</span><input id="wfIssueNumber" type="number" min="1" required /></label>
+                <label><span>${escapeHtml(t("workflow.taskBranchLabel"))}</span><input id="wfIssueBranch" placeholder="devmoter/issue-59" required /></label>
+                <label><span>${escapeHtml(t("workflow.agentLabel"))}</span><input id="wfIssueAgent" placeholder="codex" required /></label>
+                <label><span>${escapeHtml(t("workflow.sessionIdLabel"))}</span><input id="wfIssueSession" placeholder="${escapeHtml(t("workflow.optionalPlaceholder"))}" /></label>
+                <label><span>${escapeHtml(t("workflow.issueAttachmentsLabel"))}</span><textarea id="wfIssueAttachments" rows="3" placeholder="README.md&#10;src/main.ts"></textarea></label>
+                <button class="primary" type="submit">${escapeHtml(t("workflow.createBoundedTaskBtn"))}</button>
               </form>
 
               <form id="wfPrForm" class="wf-form wf-card">
                 <div class="wf-section-head">
-                  <div><strong>Task → pull request</strong><small>Preview first. No force-push and no auto-merge.</small></div>
+                  <div><strong>${escapeHtml(t("workflow.taskToPrHeading"))}</strong><small>${escapeHtml(t("workflow.taskToPrNote"))}</small></div>
                 </div>
-                <label><span>Repository</span><input id="wfPrRepo" placeholder="owner/repo" required /></label>
-                <label><span>Task</span><select id="wfPrTask"><option value="">No task link</option></select></label>
-                <label><span>Worktree</span><select id="wfPrWorktree" required></select></label>
-                <label><span>Base</span><input id="wfPrBase" value="main" required /></label>
-                <label><span>Head</span><input id="wfPrHead" placeholder="devmoter/issue-60" required /></label>
-                <label><span>Title</span><input id="wfPrTitle" required /></label>
-                <label><span>Body</span><textarea id="wfPrBody" rows="4"></textarea></label>
+                <label><span>${escapeHtml(t("workflow.repositoryLabel"))}</span><input id="wfPrRepo" placeholder="owner/repo" required /></label>
+                <label><span>${escapeHtml(t("workflow.taskLabel"))}</span><select id="wfPrTask"><option value="">${escapeHtml(t("workflow.noTaskLink"))}</option></select></label>
+                <label><span>${escapeHtml(t("workflow.worktreeLabel"))}</span><select id="wfPrWorktree" required></select></label>
+                <label><span>${escapeHtml(t("workflow.baseLabel"))}</span><input id="wfPrBase" value="main" required /></label>
+                <label><span>${escapeHtml(t("workflow.headLabel"))}</span><input id="wfPrHead" placeholder="devmoter/issue-60" required /></label>
+                <label><span>${escapeHtml(t("workflow.titleLabel"))}</span><input id="wfPrTitle" required /></label>
+                <label><span>${escapeHtml(t("workflow.bodyLabel"))}</span><textarea id="wfPrBody" rows="4"></textarea></label>
                 <div class="wf-actions">
-                  <button id="wfPreviewPr" type="button">Preview PR</button>
-                  <button class="primary" type="submit">Create PR</button>
+                  <button id="wfPreviewPr" type="button">${escapeHtml(t("workflow.previewPrBtn"))}</button>
+                  <button class="primary" type="submit">${escapeHtml(t("workflow.createPrBtn"))}</button>
                 </div>
                 <pre id="wfPrPreview" class="wf-preview hidden"></pre>
               </form>
@@ -214,12 +232,12 @@ export function mountTaskWorkflow(root: HTMLElement) {
 
   const launch = root.querySelector<HTMLButtonElement>("#wfLaunch")!;
   // Shared sheet header: title, refresh (icon action) and close.
-  const head = createSheetHeader(document, { title: "Review & Tasks", titleId: "wfTitle" });
+  const head = createSheetHeader(document, { title: t("workflow.sheetTitle"), titleId: "wfTitle" });
   head.closeButton.id = "wfClose";
   const refreshButton = document.createElement("button");
   refreshButton.type = "button";
   refreshButton.id = "wfRefresh";
-  refreshButton.setAttribute("aria-label", "Refresh");
+  refreshButton.setAttribute("aria-label", t("common.refresh"));
   refreshButton.innerHTML = REFRESH_ICON;
   head.actions.append(refreshButton);
   root.querySelector<HTMLElement>(".wf-sheet")!.prepend(head.element);
@@ -297,13 +315,13 @@ export function mountTaskWorkflow(root: HTMLElement) {
   }
 
   async function refreshAll() {
-    setStatus("Refreshing…");
+    setStatus(t("workflow.refreshing"));
     try {
       await refreshProjects();
       await refreshData();
-      setStatus("Ready");
+      setStatus(t("workflow.ready"));
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error), true);
+      setStatus(wfError(error), true);
     }
   }
 
@@ -315,27 +333,27 @@ export function mountTaskWorkflow(root: HTMLElement) {
 
   function renderChanges() {
     if (!changes.length) {
-      changesBox.innerHTML = '<div class="wf-empty">No changes to review</div>';
+      changesBox.innerHTML = `<div class="wf-empty">${escapeHtml(t("workflow.noChangesToReview"))}</div>`;
       return;
     }
     changesBox.innerHTML = changes.map(change => {
       const files = change.files.map(file => {
         const controls = change.status === "pending" ? `
           <div class="wf-inline-actions">
-            <button type="button" data-wf-action="file-accept" data-change="${escapeHtml(change.id)}" data-path="${escapeHtml(file.path)}">Accept file</button>
-            <button type="button" data-wf-action="file-reject" data-change="${escapeHtml(change.id)}" data-path="${escapeHtml(file.path)}">Reject file</button>
+            <button type="button" data-wf-action="file-accept" data-change="${escapeHtml(change.id)}" data-path="${escapeHtml(file.path)}">${escapeHtml(t("workflow.acceptFileBtn"))}</button>
+            <button type="button" data-wf-action="file-reject" data-change="${escapeHtml(change.id)}" data-path="${escapeHtml(file.path)}">${escapeHtml(t("workflow.rejectFileBtn"))}</button>
           </div>` : "";
         const hunks = file.hunks.map(hunk => `
           <details class="wf-hunk" ${file.hunks.length === 1 ? "open" : ""}>
             <summary>
               <span>${escapeHtml(hunk.id)} · -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines}</span>
-              <span class="wf-badge ${escapeHtml(hunk.decision)}">${escapeHtml(hunk.decision)}</span>
+              <span class="wf-badge ${escapeHtml(hunk.decision)}">${escapeHtml(wfDecisionLabel(hunk.decision))}</span>
             </summary>
             <pre>${escapeHtml(hunkDiff(hunk))}</pre>
             ${change.status === "pending" ? `
               <div class="wf-inline-actions">
-                <button type="button" data-wf-action="hunk-accept" data-change="${escapeHtml(change.id)}" data-path="${escapeHtml(file.path)}" data-hunk="${escapeHtml(hunk.id)}">Accept hunk</button>
-                <button type="button" data-wf-action="hunk-reject" data-change="${escapeHtml(change.id)}" data-path="${escapeHtml(file.path)}" data-hunk="${escapeHtml(hunk.id)}">Reject hunk</button>
+                <button type="button" data-wf-action="hunk-accept" data-change="${escapeHtml(change.id)}" data-path="${escapeHtml(file.path)}" data-hunk="${escapeHtml(hunk.id)}">${escapeHtml(t("workflow.acceptHunkBtn"))}</button>
+                <button type="button" data-wf-action="hunk-reject" data-change="${escapeHtml(change.id)}" data-path="${escapeHtml(file.path)}" data-hunk="${escapeHtml(hunk.id)}">${escapeHtml(t("workflow.rejectHunkBtn"))}</button>
               </div>` : ""}
           </details>
         `).join("");
@@ -343,53 +361,59 @@ export function mountTaskWorkflow(root: HTMLElement) {
           <article class="wf-file">
             <div class="wf-file-head">
               <strong>${escapeHtml(file.path)}</strong>
-              <span class="wf-badge ${escapeHtml(file.decision)}">${escapeHtml(file.decision)}</span>
+              <span class="wf-badge ${escapeHtml(file.decision)}">${escapeHtml(wfDecisionLabel(file.decision))}</span>
             </div>
             ${controls}
-            <div class="wf-hunks">${hunks || '<div class="wf-notice">No textual hunks.</div>'}</div>
+            <div class="wf-hunks">${hunks || `<div class="wf-notice">${escapeHtml(t("workflow.noTextualHunks"))}</div>`}</div>
             ${file.hunks.some(hunk => hunk.decision === "accept") ? `
               <details class="wf-raw-preview wf-accepted-preview" open>
-                <summary>Accepted result preview · only selected hunks</summary>
+                <summary>${escapeHtml(t("workflow.acceptedPreviewSummary"))}</summary>
                 <pre>${escapeHtml(file.acceptedPreview.content)}</pre>
               </details>` : ""}
             <details class="wf-raw-preview">
-              <summary>Full proposal preview · ${file.preview.totalLines} lines · ${file.preview.totalBytes} bytes</summary>
+              <summary>${escapeHtml(t("workflow.fullPreviewSummary", {
+                lines: formatNumber(file.preview.totalLines),
+                bytes: formatNumber(file.preview.totalBytes)
+              }))}</summary>
               <pre>${escapeHtml(file.preview.content)}</pre>
             </details>
             ${file.preview.truncated ? `
               <div class="wf-truncated">
-                Preview truncated by safety limits.
-                <button type="button" data-wf-action="file-window" data-path="${escapeHtml(file.path)}">Fetch bounded file window</button>
+                ${escapeHtml(t("workflow.previewTruncatedNote"))}
+                <button type="button" data-wf-action="file-window" data-path="${escapeHtml(file.path)}">${escapeHtml(t("workflow.fetchFileWindowBtn"))}</button>
               </div>` : ""}
           </article>
         `;
       }).join("");
 
       const action = change.status === "pending"
-        ? `<button class="primary" type="button" data-wf-action="apply" data-change="${escapeHtml(change.id)}">Apply accepted changes</button>`
+        ? `<button class="primary" type="button" data-wf-action="apply" data-change="${escapeHtml(change.id)}">${escapeHtml(t("workflow.applyAcceptedBtn"))}</button>`
         : change.status === "applied"
           ? `
             <div class="wf-commit">
-              <label><span>Commit message</span><input data-commit-message="${escapeHtml(change.id)}" placeholder="Generate or edit a commit message" /></label>
+              <label><span>${escapeHtml(t("workflow.commitMessageLabel"))}</span><input data-commit-message="${escapeHtml(change.id)}" placeholder="${escapeHtml(t("workflow.commitMessagePlaceholder"))}" /></label>
               <div class="wf-inline-actions">
-                <button type="button" data-wf-action="generate-message" data-change="${escapeHtml(change.id)}">Generate message</button>
-                <button class="primary" type="button" data-wf-action="commit" data-change="${escapeHtml(change.id)}">Commit…</button>
+                <button type="button" data-wf-action="generate-message" data-change="${escapeHtml(change.id)}">${escapeHtml(t("workflow.generateMessageBtn"))}</button>
+                <button class="primary" type="button" data-wf-action="commit" data-change="${escapeHtml(change.id)}">${escapeHtml(t("workflow.commitBtn"))}</button>
               </div>
             </div>`
-          : `<span class="wf-commit-sha">${escapeHtml(change.commit?.sha?.slice(0, 12) || "committed")}</span>`;
+          : `<span class="wf-commit-sha">${escapeHtml(change.commit?.sha?.slice(0, 12) || t("workflow.committedFallback"))}</span>`;
 
       return `
         <section class="wf-change">
           <div class="wf-change-head">
             <div>
-              <strong>${escapeHtml(change.source || "agent change")}</strong>
-              <small>${change.files.length} file(s) · auto-commit ${change.autoCommit ? "enabled" : "off"}</small>
+              <strong>${escapeHtml(change.source || t("workflow.agentChangeFallback"))}</strong>
+              <small>${escapeHtml(t("workflow.changeMeta", {
+                count: formatNumber(change.files.length),
+                autoCommit: change.autoCommit ? t("workflow.autoCommitEnabled") : t("workflow.autoCommitOff")
+              }))}</small>
             </div>
-            <span class="wf-badge ${escapeHtml(change.status)}">${escapeHtml(change.status)}</span>
+            <span class="wf-badge ${escapeHtml(change.status)}">${escapeHtml(wfDecisionLabel(change.status))}</span>
           </div>
           <div class="wf-files">${files}</div>
           <div class="wf-change-actions">
-            <span>${change.appliedFiles.length ? "Applied: " + escapeHtml(change.appliedFiles.join(", ")) : ""}</span>
+            <span>${change.appliedFiles.length ? escapeHtml(t("workflow.appliedFiles", { files: change.appliedFiles.join(", ") })) : ""}</span>
             ${action}
           </div>
         </section>
@@ -404,33 +428,33 @@ export function mountTaskWorkflow(root: HTMLElement) {
           <strong>${escapeHtml(item.branch)}</strong>
           <small>${escapeHtml(item.baseBranch)} → ${escapeHtml(item.branch)}</small>
           <code>${escapeHtml(item.path)}</code>
-          <small>${escapeHtml(item.agent || "agent not set")} · ${escapeHtml(item.sessionId || "no session")}</small>
+          <small>${escapeHtml(item.agent || t("workflow.agentNotSet"))} · ${escapeHtml(item.sessionId || t("workflow.noSession"))}</small>
         </div>
         <div class="wf-worktree-actions">
-          <span class="wf-badge ${item.dirty ? "reject" : "accept"}">${item.dirty ? "dirty" : "clean"}</span>
-          <button type="button" data-wf-action="cleanup" data-worktree="${escapeHtml(item.id)}">Cleanup…</button>
+          <span class="wf-badge ${item.dirty ? "reject" : "accept"}">${escapeHtml(item.dirty ? t("workflow.dirty") : t("workflow.clean"))}</span>
+          <button type="button" data-wf-action="cleanup" data-worktree="${escapeHtml(item.id)}">${escapeHtml(t("workflow.cleanupBtn"))}</button>
         </div>
       </article>
-    `).join("") : '<div class="wf-empty">No worktrees</div>';
+    `).join("") : `<div class="wf-empty">${escapeHtml(t("workflow.noWorktrees"))}</div>`;
 
     prWorktree.innerHTML = worktrees.length
-      ? '<option value="">Select a worktree</option>' + worktrees.map(item =>
-        `<option value="${escapeHtml(item.id)}" data-branch="${escapeHtml(item.branch)}">${escapeHtml(item.branch)}${item.dirty ? " · dirty" : ""}</option>`
+      ? `<option value="">${escapeHtml(t("workflow.selectWorktreeOption"))}</option>` + worktrees.map(item =>
+        `<option value="${escapeHtml(item.id)}" data-branch="${escapeHtml(item.branch)}">${escapeHtml(item.branch)}${item.dirty ? ` · ${escapeHtml(t("workflow.dirty"))}` : ""}</option>`
       ).join("")
-      : '<option value="">No active worktrees</option>';
+      : `<option value="">${escapeHtml(t("workflow.noActiveWorktreesOption"))}</option>`;
   }
 
   function renderTasks() {
-    prTask.innerHTML = '<option value="">No task link</option>' + tasks.map(task =>
+    prTask.innerHTML = `<option value="">${escapeHtml(t("workflow.noTaskLink"))}</option>` + tasks.map(task =>
       `<option value="${escapeHtml(task.id)}">${escapeHtml(task.repo)}#${task.issue.number} — ${escapeHtml(task.issue.title)}</option>`
     ).join("");
     tasksBox.innerHTML = tasks.length ? `
-      <div class="wf-section-head"><div><strong>Prepared tasks</strong><small>Stored locally; GitHub issues remain open.</small></div></div>
+      <div class="wf-section-head"><div><strong>${escapeHtml(t("workflow.preparedTasksHeading"))}</strong><small>${escapeHtml(t("workflow.preparedTasksNote"))}</small></div></div>
       ${tasks.map(task => `
         <article class="wf-task">
           <div>
             <strong>${escapeHtml(task.repo)}#${task.issue.number} · ${escapeHtml(task.issue.title)}</strong>
-            <small>${escapeHtml(task.agent)} · ${escapeHtml(task.branch)} · ${escapeHtml(task.status)}</small>
+            <small>${escapeHtml(task.agent)} · ${escapeHtml(task.branch)} · ${escapeHtml(wfDecisionLabel(task.status))}</small>
           </div>
           <code>${escapeHtml(task.id)}</code>
         </article>
@@ -470,8 +494,10 @@ export function mountTaskWorkflow(root: HTMLElement) {
       `/api/workflow/projects/${encodeURIComponent(activeProjectId)}/diff?${params}`
     );
     diffBox.classList.remove("hidden");
-    diffPre.textContent = payload.content || "(empty diff)";
-    diffNotice.textContent = payload.notice || `Bounded response: ${payload.returnedLines} lines.`;
+    diffPre.textContent = payload.content || t("workflow.emptyDiff");
+    diffNotice.textContent = payload.notice
+      ? translateServerMessage(payload.notice)
+      : t("workflow.boundedResponseNotice", { lines: formatNumber(payload.returnedLines) });
     nextDiff.classList.toggle("hidden", !payload.truncated);
     nextDiff.dataset.nextOffset = String(diffOffset + payload.returnedLines);
   }
@@ -483,9 +509,11 @@ export function mountTaskWorkflow(root: HTMLElement) {
     );
     fileWindow = { path, offset, returned: payload.returnedLines };
     fileBox.classList.remove("hidden");
-    fileTitle.textContent = `File window · ${path}`;
-    filePre.textContent = payload.content || "(empty)";
-    fileNotice.textContent = payload.notice || `Bounded response: ${payload.returnedLines} lines.`;
+    fileTitle.textContent = t("workflow.fileWindowTitle", { path });
+    filePre.textContent = payload.content || t("workflow.emptyFile");
+    fileNotice.textContent = payload.notice
+      ? translateServerMessage(payload.notice)
+      : t("workflow.boundedResponseNotice", { lines: formatNumber(payload.returnedLines) });
     nextFile.classList.toggle("hidden", !payload.truncated);
   }
 
@@ -555,16 +583,16 @@ export function mountTaskWorkflow(root: HTMLElement) {
   });
 
   root.querySelector<HTMLButtonElement>("#wfLoadDiff")!.addEventListener("click", () => {
-    void loadDiff(true).catch(error => setStatus(error instanceof Error ? error.message : String(error), true));
+    void loadDiff(true).catch(error => setStatus(wfError(error), true));
   });
   nextDiff.addEventListener("click", () => {
     diffOffset = Number(nextDiff.dataset.nextOffset || 0);
-    void loadDiff(false).catch(error => setStatus(error instanceof Error ? error.message : String(error), true));
+    void loadDiff(false).catch(error => setStatus(wfError(error), true));
   });
   nextFile.addEventListener("click", () => {
     if (!fileWindow) return;
     void loadFile(fileWindow.path, fileWindow.offset + fileWindow.returned)
-      .catch(error => setStatus(error instanceof Error ? error.message : String(error), true));
+      .catch(error => setStatus(wfError(error), true));
   });
 
   changesBox.addEventListener("click", event => {
@@ -576,7 +604,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
     const hunk = button.dataset.hunk || "";
 
     const run = async () => {
-      setStatus("Working…");
+      setStatus(t("workflow.working"));
       if (action === "file-accept" || action === "file-reject") {
         await reviewFile(changeId, path, action === "file-accept" ? "accept" : "reject");
       } else if (action === "hunk-accept" || action === "hunk-reject") {
@@ -590,7 +618,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
           endpoint + "/apply",
           { method: "POST", body: jsonBody({}) }
         );
-        setStatus(`Applied exactly: ${result.change.appliedFiles.join(", ")}`);
+        setStatus(t("workflow.appliedExactly", { files: result.change.appliedFiles.join(", ") }));
 
         if (selectedChange?.autoCommit) {
           const preview = await api<{ preview: { files: string[]; message: string } }>(
@@ -598,25 +626,25 @@ export function mountTaskWorkflow(root: HTMLElement) {
             { method: "POST", body: jsonBody({}) }
           );
           const edited = window.prompt(
-            `Auto-commit is enabled for this change set.\n\nFiles:\n${preview.preview.files.join("\n")}\n\nEdit the commit message before continuing:`,
+            t("workflow.autoCommitPrompt", { files: preview.preview.files.join("\n") }),
             preview.preview.message
           );
           if (edited !== null) {
             const message = edited.trim() || preview.preview.message;
             const approved = window.confirm(
-              `Create the opt-in commit now?\n\nMessage: ${message}\nFiles:\n${preview.preview.files.join("\n")}`
+              t("workflow.autoCommitConfirm", { message, files: preview.preview.files.join("\n") })
             );
             if (approved) {
               await api(endpoint + "/commit", {
                 method: "POST",
                 body: jsonBody({ message, confirm: true })
               });
-              setStatus("Accepted changes were applied and committed.");
+              setStatus(t("workflow.autoCommitSuccess"));
             } else {
-              setStatus("Changes applied; automatic commit was cancelled.");
+              setStatus(t("workflow.autoCommitCancelled"));
             }
           } else {
-            setStatus("Changes applied; automatic commit was cancelled.");
+            setStatus(t("workflow.autoCommitCancelled"));
           }
         }
 
@@ -629,7 +657,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
         );
         const input = changesBox.querySelector<HTMLInputElement>(`[data-commit-message="${CSS.escape(changeId)}"]`);
         if (input) input.value = result.preview.message;
-        setStatus(`Commit preview: ${result.preview.files.join(", ")}`);
+        setStatus(t("workflow.commitPreviewStatus", { files: result.preview.files.join(", ") }));
         return;
       } else if (action === "commit") {
         const input = changesBox.querySelector<HTMLInputElement>(`[data-commit-message="${CSS.escape(changeId)}"]`);
@@ -639,17 +667,19 @@ export function mountTaskWorkflow(root: HTMLElement) {
           { method: "POST", body: jsonBody({ message }) }
         );
         if (input && !input.value.trim()) input.value = preview.preview.message;
-        const approved = window.confirm(`Create this commit?\n\nMessage: ${preview.preview.message}\nFiles:\n${preview.preview.files.join("\n")}`);
-        if (!approved) { setStatus("Commit cancelled; files remain applied but uncommitted."); return; }
+        const approved = window.confirm(
+          t("workflow.commitConfirm", { message: preview.preview.message, files: preview.preview.files.join("\n") })
+        );
+        if (!approved) { setStatus(t("workflow.commitCancelled")); return; }
         await api(
           `/api/workflow/projects/${encodeURIComponent(activeProjectId)}/changes/${encodeURIComponent(changeId)}/commit`,
           { method: "POST", body: jsonBody({ message: input?.value.trim() || preview.preview.message, confirm: true }) }
         );
         await refreshData();
       }
-      setStatus("Ready");
+      setStatus(t("workflow.ready"));
     };
-    void run().catch(error => setStatus(error instanceof Error ? error.message : String(error), true));
+    void run().catch(error => setStatus(wfError(error), true));
   });
 
   root.querySelector<HTMLFormElement>("#wfWorktreeForm")!.addEventListener("submit", event => {
@@ -665,10 +695,10 @@ export function mountTaskWorkflow(root: HTMLElement) {
         `/api/workflow/projects/${encodeURIComponent(activeProjectId)}/worktrees`,
         { method: "POST", body: jsonBody(payload) }
       );
-      setStatus(`Created ${result.worktree.branch}`);
+      setStatus(t("workflow.createdWorktree", { branch: result.worktree.branch }));
       await refreshData();
     };
-    void run().catch(error => setStatus(error instanceof Error ? error.message : String(error), true));
+    void run().catch(error => setStatus(wfError(error), true));
   });
 
   worktreesBox.addEventListener("click", event => {
@@ -679,15 +709,19 @@ export function mountTaskWorkflow(root: HTMLElement) {
       const endpoint = `/api/workflow/projects/${encodeURIComponent(activeProjectId)}/worktrees/${encodeURIComponent(id)}/cleanup`;
       const preview = await api<Json>(endpoint, { method: "POST", body: jsonBody({}) });
       if (preview.blocked) {
-        setStatus(`Cleanup blocked: dirty worktree ${preview.branch} at ${preview.path}`, true);
+        setStatus(t("workflow.cleanupBlocked", { branch: preview.branch, path: preview.path }), true);
         return;
       }
-      if (!window.confirm(`Remove clean worktree?\n\nPath: ${preview.preview.path}\nBranch: ${preview.preview.branch}\nBase: ${preview.preview.baseBranch}`)) return;
+      if (!window.confirm(t("workflow.cleanupConfirm", {
+        path: preview.preview.path,
+        branch: preview.preview.branch,
+        baseBranch: preview.preview.baseBranch
+      }))) return;
       await api(endpoint, { method: "POST", body: jsonBody({ confirm: true }) });
-      setStatus("Worktree removed. Branch was not force-deleted.");
+      setStatus(t("workflow.worktreeRemoved"));
       await refreshData();
     };
-    void run().catch(error => setStatus(error instanceof Error ? error.message : String(error), true));
+    void run().catch(error => setStatus(wfError(error), true));
   });
 
   root.querySelector<HTMLFormElement>("#wfIssueForm")!.addEventListener("submit", event => {
@@ -708,13 +742,13 @@ export function mountTaskWorkflow(root: HTMLElement) {
           })
         }
       );
-      setStatus(`Task created: ${result.task.repo}#${result.task.issue.number}. Issue content remains untrusted.`);
+      setStatus(t("workflow.taskCreated", { repo: result.task.repo, number: result.task.issue.number }));
       await refreshData();
       prTask.value = result.task.id;
       const title = root.querySelector<HTMLInputElement>("#wfPrTitle")!;
       if (!title.value) title.value = result.task.issue.title;
     };
-    void run().catch(error => setStatus(error instanceof Error ? error.message : String(error), true));
+    void run().catch(error => setStatus(wfError(error), true));
   });
 
   prWorktree.addEventListener("change", () => {
@@ -750,8 +784,8 @@ export function mountTaskWorkflow(root: HTMLElement) {
   }
 
   root.querySelector<HTMLButtonElement>("#wfPreviewPr")!.addEventListener("click", () => {
-    void previewPr().then(() => setStatus("PR preview ready. Nothing was pushed or created."))
-      .catch(error => setStatus(error instanceof Error ? error.message : String(error), true));
+    void previewPr().then(() => setStatus(t("workflow.prPreviewReady")))
+      .catch(error => setStatus(wfError(error), true));
   });
 
   root.querySelector<HTMLFormElement>("#wfPrForm")!.addEventListener("submit", event => {
@@ -759,16 +793,21 @@ export function mountTaskWorkflow(root: HTMLElement) {
     const run = async () => {
       const { payload, preview } = await previewPr();
       const approved = window.confirm(
-        `Create pull request?\n\n${preview.repo}\n${preview.base} ← ${preview.head}\n\n${preview.title}\n\nThis may push the selected branch normally. It never force-pushes or auto-merges.`
+        t("workflow.createPrConfirm", {
+          repo: preview.repo,
+          base: preview.base,
+          head: preview.head,
+          title: preview.title
+        })
       );
       if (!approved) return;
       const result = await api<{ created: boolean; url: string }>(
         `/api/workflow/projects/${encodeURIComponent(activeProjectId)}/github/pr`,
         { method: "POST", body: jsonBody({ ...payload, confirm: true }) }
       );
-      setStatus(result.created ? `Pull request created: ${result.url}` : "Pull request was not created.");
+      setStatus(result.created ? t("workflow.prCreated", { url: result.url }) : t("workflow.prNotCreated"));
       await refreshData();
     };
-    void run().catch(error => setStatus(error instanceof Error ? error.message : String(error), true));
+    void run().catch(error => setStatus(wfError(error), true));
   });
 }

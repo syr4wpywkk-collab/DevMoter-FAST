@@ -4,6 +4,7 @@
 // API keys are typed here once and go straight to the server; nothing about a
 // key is kept in the browser.
 import { SYSTEM_ICONS } from "./app-registry";
+import { formatNumber, getLanguage, t, translateServerMessage } from "./i18n";
 import { createSheetHeader } from "./sheet-header.mjs";
 import {
   loadQwenModel,
@@ -53,7 +54,12 @@ export type QwenModelPicker = {
   element: HTMLElement;
 };
 
-const PROTOCOL_LABELS: Record<string, string> = { openai: "OpenAI 互換", anthropic: "Anthropic", gemini: "Gemini" };
+function protocolLabel(value: string) {
+  if (value === "openai") return t("qwen.picker.protocolOpenAiCompatible");
+  if (value === "anthropic") return "Anthropic";
+  if (value === "gemini") return "Gemini";
+  return value;
+}
 
 function option(label: string, value: string) {
   const node = document.createElement("option");
@@ -78,9 +84,9 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
   sheet.setAttribute("aria-labelledby", "qwenModelTitle");
   sheet.hidden = true;
   const head = createSheetHeader(document, {
-    title: "モデル",
+    title: t("qwen.picker.title"),
     titleId: "qwenModelTitle",
-    closeLabel: "閉じる",
+    closeLabel: t("qwen.picker.closeAria"),
     onClose: () => close()
   });
   const body = el("div", "qx-picker-body");
@@ -101,7 +107,7 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
   const back = el("button", "dm-sheet-head-back");
   back.type = "button";
   back.dataset.qwenPickerBack = "";
-  back.setAttribute("aria-label", "戻る");
+  back.setAttribute("aria-label", t("qwen.picker.backAria"));
   back.innerHTML = SYSTEM_ICONS.back;
   back.addEventListener("click", () => {
     view = view === "form" ? "providers" : "list";
@@ -113,7 +119,7 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
     const projectId = options.projectId();
     if (!projectId) {
       listing = null;
-      loadError = "先にプロジェクトを選んでください";
+      loadError = t("qwen.picker.selectProjectFirst");
       render();
       return;
     }
@@ -124,7 +130,7 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
     try {
       const res = await fetch(`/api/qwen/models?projectId=${encodeURIComponent(projectId)}`, { cache: "no-store", headers: options.headers() });
       const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(String(payload?.error || `HTTP ${res.status}`));
+      if (!res.ok) throw new Error(String(payload?.error || t("common.httpError", { status: res.status })));
       listing = {
         version: String(payload.version || ""),
         scope: payload.scope === "workspace" || payload.scope === "user" ? payload.scope : "none",
@@ -136,7 +142,7 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
       loadedFor = projectId;
       if (group !== "all" && !listing.groups.some(item => item.id === group)) group = "all";
     } catch (error) {
-      loadError = error instanceof Error ? error.message : String(error);
+      loadError = translateServerMessage(error instanceof Error ? error.message : String(error));
     } finally {
       loading = false;
       render();
@@ -170,11 +176,11 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
   }
 
   function renderList() {
-    head.setTitle("モデル");
-    head.setSubtitle(listing?.version ? `Qwen Code ${listing.version} で使えるモデル` : "Qwen Code で使えるモデル");
-    // With nothing listed the empty state carries the one 「APIを追加」 button.
+    head.setTitle(t("qwen.picker.title"));
+    head.setSubtitle(listing?.version ? t("qwen.picker.subtitleWithVersion", { version: listing.version }) : t("qwen.picker.subtitleDefault"));
+    // With nothing listed the empty state carries the one Add API button.
     const empty = Boolean(listing && !listing.models.length && !loadError);
-    head.setPrimary(empty ? null : { label: "APIを追加", onClick: () => { view = "providers"; render(); } });
+    head.setPrimary(empty ? null : { label: t("qwen.picker.addApi"), onClick: () => { view = "providers"; render(); } });
     back.hidden = true;
 
     const search = el("label", "qx-picker-search");
@@ -182,8 +188,8 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
     const input = el("input");
     input.type = "search";
     input.dataset.qwenModelSearch = "";
-    input.placeholder = "モデルを検索";
-    input.setAttribute("aria-label", "モデルを検索");
+    input.placeholder = t("qwen.picker.searchPlaceholder");
+    input.setAttribute("aria-label", t("qwen.picker.searchAria"));
     input.autocomplete = "off";
     input.spellcheck = false;
     input.value = query;
@@ -195,14 +201,14 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
 
     const chips = el("div", "qx-picker-chips");
     chips.setAttribute("role", "tablist");
-    chips.setAttribute("aria-label", "プロバイダー");
+    chips.setAttribute("aria-label", t("qwen.picker.providersAria"));
     const results = el("div", "qx-picker-results");
     results.setAttribute("role", "listbox");
-    results.setAttribute("aria-label", "モデル");
+    results.setAttribute("aria-label", t("qwen.picker.modelsAria"));
 
     const renderChips = () => {
       chips.replaceChildren();
-      const all = [{ id: "all", label: "すべて" }, ...(listing?.groups ?? [])];
+      const all = [{ id: "all", label: t("qwen.picker.allGroups") }, ...(listing?.groups ?? [])];
       chips.hidden = all.length < 3;
       for (const entry of all) {
         const chip = el("button", "qx-picker-chip", entry.label);
@@ -222,22 +228,24 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
     const renderResults = () => {
       results.replaceChildren();
       if (!query.trim() && group === "all") {
-        const fallback = listing?.defaultModel ? `qwen の設定どおり · ${listing.defaultModel}` : "qwen の設定どおり（/auth と /model）";
-        const item = row("Qwen Code の既定", fallback, { selected: !choice });
+        const fallback = listing?.defaultModel
+          ? t("qwen.picker.defaultFallbackWithModel", { model: listing.defaultModel })
+          : t("qwen.picker.defaultFallback");
+        const item = row(t("qwen.picker.defaultTitle"), fallback, { selected: !choice });
         item.dataset.qwenModel = "";
         item.classList.add("qx-picker-default");
         item.addEventListener("click", () => select(null));
         results.append(item);
       }
       if (loading && !listing) {
-        results.append(el("p", "qx-picker-state", "読み込み中"));
+        results.append(el("p", "qx-picker-state", t("qwen.picker.loading")));
         return;
       }
       if (loadError) {
         const state = el("div", "qx-picker-state");
         state.setAttribute("role", "alert");
         state.append(el("p", "", loadError));
-        const retry = el("button", "qx-picker-secondary", "再読み込み");
+        const retry = el("button", "qx-picker-secondary", t("qwen.picker.reload"));
         retry.type = "button";
         retry.dataset.qwenPickerRetry = "";
         retry.addEventListener("click", () => void load(true));
@@ -248,17 +256,17 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
       if (!listing?.models.length) {
         const empty = el("div", "qx-picker-state");
         empty.dataset.qwenPickerEmpty = "";
-        empty.append(el("p", "", "Qwen Code に登録されたモデルはまだありません"));
-        const add = el("button", "qx-picker-primary", "APIを追加");
+        empty.append(el("p", "", t("qwen.picker.emptyState")));
+        const add = el("button", "qx-picker-primary", t("qwen.picker.addApi"));
         add.type = "button";
         add.addEventListener("click", () => { view = "providers"; render(); });
         empty.append(add);
         results.append(empty);
         return;
       }
-      const sections = qwenModelSections(listing, { query, group, recent: loadRecentQwenModels(localStorage) });
+      const sections = qwenModelSections(listing, { query, group, recent: loadRecentQwenModels(localStorage), language: getLanguage() });
       if (!sections.length) {
-        results.append(el("p", "qx-picker-state", `「${query.trim()}」に一致するモデルはありません`));
+        results.append(el("p", "qx-picker-state", t("qwen.picker.noMatches", { query: query.trim() })));
         return;
       }
       for (const section of sections) {
@@ -274,7 +282,7 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
           const item = row(label, meta, {
             selected: qwenModelKey(choice) === qwenModelKey(model),
             disabled: Boolean(model.disabled),
-            reason: model.reason || ""
+            reason: model.reason ? translateServerMessage(model.reason) : ""
           });
           item.dataset.qwenModel = qwenModelKey(model);
           item.addEventListener("click", () => select({ id: model.id, authType: model.authType, name: model.name }));
@@ -283,7 +291,7 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
         results.append(block);
       }
       if (listing.scope === "workspace") {
-        results.append(el("p", "qx-picker-note", "このプロジェクトの .qwen/settings.json のモデル一覧を表示しています"));
+        results.append(el("p", "qx-picker-note", t("qwen.picker.workspaceScopeNote")));
       }
     };
 
@@ -293,21 +301,28 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
   }
 
   function renderProviders() {
-    head.setTitle("APIを追加");
-    head.setSubtitle("Qwen Code の /auth と同じプロバイダー");
+    head.setTitle(t("qwen.picker.addApi"));
+    head.setSubtitle(t("qwen.picker.providersSubtitle"));
     head.setPrimary(null);
     back.hidden = false;
     const wrap = el("div", "qx-picker-results");
     const presets = listing?.presets ?? [];
     if (!presets.length) {
-      wrap.append(el("p", "qx-picker-state", loadError || "読み込み中"));
+      wrap.append(el("p", "qx-picker-state", loadError || t("qwen.picker.loading")));
     }
     const titles = [...new Set(presets.map(item => item.title))];
     for (const title of titles) {
       const block = el("div", "qx-picker-section");
       block.append(el("h3", "", title));
       for (const item of presets.filter(entry => entry.title === title)) {
-        const count = item.custom ? "Base URL とモデルIDを入力" : `${item.models.length} モデル${item.baseUrls.length > 1 ? ` · ${item.baseUrls.length} リージョン` : ""}`;
+        const count = item.custom
+          ? t("qwen.picker.customProviderHint")
+          : item.baseUrls.length > 1
+            ? t("qwen.picker.providerCountWithRegions", {
+                models: formatNumber(item.models.length),
+                regions: formatNumber(item.baseUrls.length)
+              })
+            : t("qwen.picker.providerCount", { models: formatNumber(item.models.length) });
         const button = row(item.label, count);
         button.removeAttribute("role");
         button.removeAttribute("aria-selected");
@@ -346,14 +361,14 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
       region = el("select");
       region.name = "baseUrlId";
       for (const entry of item.baseUrls) region.append(option(entry.label, entry.id));
-      form.append(field("リージョン", region));
+      form.append(field(t("qwen.picker.regionLabel"), region));
     }
     let protocol: HTMLSelectElement | null = null;
     let baseUrl: HTMLInputElement | null = null;
     if (item.custom) {
       protocol = el("select");
       protocol.name = "protocol";
-      for (const value of item.protocols) protocol.append(option(PROTOCOL_LABELS[value] || value, value));
+      for (const value of item.protocols) protocol.append(option(protocolLabel(value), value));
       baseUrl = el("input");
       baseUrl.name = "baseUrl";
       baseUrl.type = "url";
@@ -361,20 +376,20 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
       baseUrl.autocomplete = "off";
       baseUrl.spellcheck = false;
       baseUrl.placeholder = "https://example.com/v1";
-      form.append(field("プロトコル", protocol), field("Base URL", baseUrl, "https のみ（http は localhost だけ）"));
+      form.append(field(t("qwen.picker.protocolLabel"), protocol), field(t("qwen.picker.baseUrlLabel"), baseUrl, t("qwen.picker.baseUrlHint")));
     }
     const key = el("input");
     key.name = "apiKey";
     key.type = "password";
     key.autocomplete = "off";
     key.spellcheck = false;
-    key.placeholder = item.keyPlaceholder || "APIキー";
-    form.append(field("APIキー", key, "このサーバーの Qwen Code 設定に保存します。ブラウザには残りません"));
+    key.placeholder = item.keyPlaceholder || t("qwen.picker.apiKeyPlaceholder");
+    form.append(field(t("qwen.picker.apiKeyLabel"), key, t("qwen.picker.apiKeyHint")));
 
     const boxes: HTMLInputElement[] = [];
     if (item.models.length) {
       const set = el("fieldset", "qx-picker-models");
-      set.append(el("legend", "", "モデル"));
+      set.append(el("legend", "", t("qwen.picker.modelsLegend")));
       for (const model of item.models) {
         const line = el("label", "qx-check");
         const box = el("input");
@@ -385,7 +400,7 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
         boxes.push(box);
         const text = el("span", "", model.id);
         line.append(box, text);
-        if (model.disabled) line.append(el("small", "", model.reason || "使えません"));
+        if (model.disabled) line.append(el("small", "", model.reason ? translateServerMessage(model.reason) : t("qwen.picker.unavailableReason")));
         set.append(line);
       }
       form.append(set);
@@ -396,12 +411,12 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
       extra.name = "modelIds";
       extra.autocomplete = "off";
       extra.spellcheck = false;
-      extra.placeholder = item.custom ? "例: qwen3-coder-plus" : "一覧にないモデルID（任意）";
-      form.append(field(item.custom ? "モデルID" : "追加のモデルID", extra, "カンマ区切りで複数入力できます"));
+      extra.placeholder = item.custom ? t("qwen.picker.customModelPlaceholder") : t("qwen.picker.extraModelPlaceholder");
+      form.append(field(item.custom ? t("qwen.picker.modelIdsLabel") : t("qwen.picker.extraModelIdsLabel"), extra, t("qwen.picker.modelIdsHint")));
     }
     const message = el("p", "qx-picker-message");
     message.setAttribute("role", "status");
-    const submit = el("button", "qx-picker-primary", "追加");
+    const submit = el("button", "qx-picker-primary", t("qwen.picker.submitAdd"));
     submit.type = "submit";
     submit.dataset.qwenProviderSubmit = "";
     const foot = el("div", "qx-picker-form-foot");
@@ -421,13 +436,13 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
         message.setAttribute("role", "alert");
         focus?.focus();
       };
-      if (item.custom && !baseUrl!.value.trim()) return fail("Base URL を入力してください", baseUrl);
-      if (!apiKey) return fail("APIキーを入力してください", key);
-      if (!modelIds.length) return fail("モデルを1つ以上選んでください", extra);
+      if (item.custom && !baseUrl!.value.trim()) return fail(t("qwen.picker.enterBaseUrl"), baseUrl);
+      if (!apiKey) return fail(t("qwen.picker.enterApiKey"), key);
+      if (!modelIds.length) return fail(t("qwen.picker.selectAtLeastOneModel"), extra);
       submit.disabled = true;
       message.dataset.state = "loading";
       message.setAttribute("role", "status");
-      message.textContent = "保存中";
+      message.textContent = t("qwen.picker.saving");
       try {
         const res = await fetch("/api/qwen/providers", {
           method: "POST",
@@ -442,7 +457,7 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
           })
         });
         const payload = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(String(payload?.error || `HTTP ${res.status}`));
+        if (!res.ok) throw new Error(String(payload?.error || t("common.httpError", { status: res.status })));
         key.value = "";
         await load(true);
         const first = (payload.added ?? [])[0];
@@ -454,7 +469,7 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
         else render();
       } catch (error) {
         submit.disabled = false;
-        fail(error instanceof Error ? error.message : String(error));
+        fail(translateServerMessage(error instanceof Error ? error.message : String(error)));
       }
     });
     body.replaceChildren(form);
