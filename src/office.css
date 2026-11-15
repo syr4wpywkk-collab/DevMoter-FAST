@@ -81,9 +81,9 @@
 }
 .dm-office button:disabled {
   border-style: dashed;
-  border-color: var(--of-line);
+  border-color: color-mix(in srgb, var(--of-muted) 65%, var(--of-line-strong));
   color: var(--of-muted);
-  opacity: 0.58;
+  opacity: 1;
   cursor: not-allowed;
 }
 @media (hover: hover) {
@@ -117,7 +117,11 @@
 .dm-office select:disabled,
 .dm-office input:disabled,
 .dm-office textarea:disabled {
-  opacity: 0.55;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--of-muted) 65%, var(--of-line-strong));
+  background: var(--of-hover);
+  color: var(--of-muted);
+  opacity: 1;
   cursor: not-allowed;
 }
 .dm-office textarea {
@@ -152,10 +156,11 @@
   color: var(--of-text);
 }
 .dm-office .office-icon-button:disabled {
-  border-color: transparent;
-  background: transparent;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--of-muted) 65%, var(--of-line-strong));
+  background: color-mix(in srgb, var(--of-muted) 8%, transparent);
   color: var(--of-muted);
-  opacity: 0.42;
+  opacity: 1;
 }
 .office-icon-button svg,
 .office-tool svg {
@@ -395,10 +400,11 @@
   color: var(--of-text);
 }
 .dm-office .office-tool:disabled {
-  border-color: transparent;
-  background: transparent;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--of-muted) 65%, var(--of-line-strong));
+  background: color-mix(in srgb, var(--of-muted) 8%, transparent);
   color: var(--of-muted);
-  opacity: 0.42;
+  opacity: 1;
 }
 .dm-office .office-tool[aria-pressed="true"] {
   border-color: var(--of-line-strong);
@@ -406,9 +412,11 @@
   color: var(--of-text);
 }
 .dm-office .office-tool[aria-pressed="true"]:disabled {
-  border-color: var(--of-line);
-  background: var(--of-hover);
-  color: var(--of-muted);
+  border-style: dashed;
+  border-color: var(--of-muted);
+  background: color-mix(in srgb, var(--of-muted) 16%, transparent);
+  color: var(--of-text-2);
+  opacity: 1;
 }
 .office-tool-gap {
   flex: none;
