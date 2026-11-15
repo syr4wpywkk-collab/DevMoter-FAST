@@ -423,10 +423,6 @@ html[data-devmoter-theme="light"] .qx-app { color-scheme: light; }
   .qx-app .dm-code-copy:hover { background: var(--surface-hover); }
 }
 
-/* Inside the unified workspace the workspace header already clears the notch. */
-body.dm-task-first-enabled .qx-app { --qx-header-height: 56px; }
-body.dm-task-first-enabled .qx-topbar { padding-top: 0; }
-
 @media (prefers-reduced-motion: reduce) {
   .qx-app button { transition: none; }
   .qx-sheet, .qx-picker { animation: none; }

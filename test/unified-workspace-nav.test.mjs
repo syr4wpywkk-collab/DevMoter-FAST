@@ -105,13 +105,18 @@ test("task-first navigator has no fake execution, server state or permission han
   const chatCss = await readFile(new URL("../src/unified-workspace-chat.css", import.meta.url), "utf8");
   assert.ok(chatCss.includes("padding-bottom: calc(8px + env(safe-area-inset-bottom))"), "composers keep the home indicator clear");
   assert.ok(css.includes("min-height:44px") || css.includes("min-height: 44px"));
-  // Each provider is fixed to the viewport, not laid out by #app.
-  // Prevent mobile navigation from covering headers, composer and approvals.
+  // Each provider fills the viewport cleanly without a top header bar,
+  // while overlay panels/drawers clear the floating top-left menu button.
+  assert.ok(!moduleCode.includes("<header"), "no header markup rendered in unified workspace nav");
+  assert.ok(!moduleCode.includes("dm-task-first-header"), "header class removed from unified workspace nav");
   assert.ok(css.includes(":is(.cx-app, .ocx-app, .api-app, .ix-app, .qx-app)"));
-  assert.ok(css.includes("top:calc(var(--dw-top-height) + var(--dm-viewport-offset-top, 0px))"));
+  assert.ok(css.includes("top: var(--dm-viewport-offset-top, 0px);"));
+  assert.ok(css.includes("height: var(--dm-viewport-height, 100dvh);"));
   assert.ok(!css.includes("--dw-bottom-height"), "no bottom tab bar reserves space");
   assert.ok(!moduleCode.includes("dm-task-first-tabs"));
-  assert.ok(css.includes("height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height))"));
+  assert.ok(css.includes("top: calc(var(--dw-top-height) + var(--dm-viewport-offset-top, 0px))"));
+  assert.ok(css.includes("height: calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height))"));
+  assert.ok(css.includes(".adv-drawer"), "Files & Preview drawer keeps clearance below the floating menu button");
   assert.ok(!css.includes("body.dm-task-first-enabled #ocxSidebar,"));
 });
 
@@ -382,7 +387,10 @@ test("A-5: ☰ toggles through one state path; a tap on ☰ is never an outside 
     assert.equal(menu.hidden, false, "the next ☰ tap opens again");
     const brand = doc.querySelector("[data-workspace-home]");
     brand.dispatchEvent(new dom.window.Event("pointerdown", { bubbles: true }));
-    assert.equal(menu.hidden, true, "other header controls count as outside the menu");
+    assert.equal(menu.hidden, false, "drawer brand/backend controls live inside the drawer and do not trigger outside-tap close");
+    doc.querySelector("[data-workspace-scrim]").click();
+    assert.equal(menu.hidden, true, "tapping the backdrop scrim closes the drawer cleanly");
+    assert.equal(doc.getElementById("dmTaskFirstDrawer").hidden, true);
     nav.destroy();
   } finally {
     Object.assign(globalThis, prior);
@@ -489,6 +497,144 @@ test("unified AI backend selector hides Qwen Code and normalizes stale qwen stat
     select.value = "qwen";
     select.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
     assert.deepEqual(switched, ["opencode"], "spurious qwen change must not switch backend");
+    nav.destroy();
+  } finally {
+    Object.assign(globalThis, prior);
+    dom.window.close();
+  }
+});
+
+test("issue #555: header removed, only menu button remains on screen, drawer holds logo/project/AI switch and closes cleanly without narrow-width overlap", async () => {
+  const dom = new JSDOM('<!doctype html><div id="app"></div><aside class="adv-drawer"><div class="adv-head"><div><strong>Files</strong></div><button type="button" data-close>×</button></div></aside>', {
+    url: "https://localhost/?unifiedUI=1&surface=home"
+  });
+  const prior = { window: globalThis.window, document: globalThis.document, localStorage: globalThis.localStorage };
+  Object.assign(globalThis, { window: dom.window, document: dom.window.document, localStorage: dom.window.localStorage });
+  try {
+    dom.window.localStorage.setItem("opencode-pocket-project", "/tmp/worktrees/my-repo");
+    const switched = [];
+    let wentHome = 0;
+    const mount = await loadNavigator();
+    const nav = mount({
+      initialSurface: "home",
+      initialBackend: "opencode",
+      switchBackend: backend => switched.push(backend),
+      openHome: () => { wentHome += 1; },
+      openTasks() {},
+      openReview() {},
+      openTools() {},
+      openTerminal() {}
+    });
+    const doc = dom.window.document;
+    const root = doc.getElementById("dmTaskFirstWorkspace");
+    const button = root.querySelector("[data-workspace-menu-button]");
+    const drawer = root.querySelector("#dmTaskFirstDrawer");
+    const scrim = root.querySelector("[data-workspace-scrim]");
+    const menu = root.querySelector("#dmTaskFirstMenu");
+    const closeBtn = root.querySelector("[data-workspace-menu-close]");
+    const brand = root.querySelector("[data-workspace-home]");
+    const project = root.querySelector("[data-workspace-project]");
+    const backendSelect = root.querySelector("[data-workspace-backend]");
+
+    // 1. No <header> is rendered anywhere in #dmTaskFirstWorkspace; only menu trigger is visible initially.
+    assert.equal(root.querySelector("header"), null);
+    assert.equal(root.querySelector(".dm-task-first-header"), null);
+    assert.ok(button && button.tagName === "BUTTON");
+    assert.ok(button.getAttribute("aria-label"), "menu button has an accessible label");
+    assert.equal(button.tabIndex, 0, "menu button is keyboard focusable");
+    assert.equal(button.getAttribute("aria-expanded"), "false");
+    assert.equal(drawer.hidden, true);
+    assert.equal(scrim.hidden, true);
+    assert.equal(menu.hidden, true);
+
+    // 2. Menu button opens drawer; logo is at the top of the drawer; project & AI backend live inside drawer.
+    button.click();
+    assert.equal(drawer.hidden, false);
+    assert.equal(scrim.hidden, false);
+    assert.equal(menu.hidden, false);
+    assert.equal(button.getAttribute("aria-expanded"), "true");
+    assert.ok(drawer.contains(brand), "logo/title home button is inside the drawer");
+    assert.equal(drawer.firstElementChild.contains(brand), true, "logo sits at the very top of the drawer");
+    assert.ok(drawer.contains(project), "project ID display is inside the drawer");
+    assert.equal(project.textContent, "my-repo");
+    assert.ok(drawer.contains(backendSelect), "AI backend switcher is inside the drawer");
+
+    // 3. Switching AI backend in the drawer switches chat backend and closes the drawer cleanly.
+    backendSelect.value = "codex";
+    backendSelect.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+    assert.deepEqual(switched, ["codex"]);
+    assert.equal(drawer.hidden, true);
+    assert.equal(scrim.hidden, true);
+
+    // 4. Drawer closes cleanly via close button, scrim backdrop, and Escape, restoring focus to menu button.
+    button.click();
+    assert.equal(drawer.hidden, false);
+    closeBtn.click();
+    assert.equal(drawer.hidden, true);
+    assert.equal(scrim.hidden, true);
+    assert.equal(button.getAttribute("aria-expanded"), "false");
+    assert.equal(doc.activeElement, button, "close button restores focus to menu trigger");
+
+    button.click();
+    assert.equal(drawer.hidden, false);
+    scrim.click();
+    assert.equal(drawer.hidden, true);
+    assert.equal(doc.activeElement, button, "scrim click restores focus to menu trigger");
+
+    button.click();
+    assert.equal(drawer.hidden, false);
+    doc.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    assert.equal(drawer.hidden, true);
+    assert.equal(doc.activeElement, button, "Escape restores focus to menu trigger");
+
+    // 5. Clicking the drawer logo navigates Home and closes the drawer cleanly.
+    button.click();
+    brand.click();
+    assert.equal(wentHome, 1);
+    assert.equal(drawer.hidden, true);
+
+    // 6. Narrow-width (360px) CSS & geometry verification: no top-right header element overlaps close (×).
+    const [css, advCss] = await Promise.all([
+      readFile(new URL("../src/unified-workspace-nav.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/advanced.css", import.meta.url), "utf8")
+    ]);
+    assert.ok(!css.includes(".dm-task-first-header"), "removed header styles");
+    const navRule = css.match(/\.dm-task-first-nav\s*\{([^}]+)\}/)?.[1] || "";
+    const btnRule = css.match(/\.dm-task-first-menu-button\s*\{([^}]+)\}/)?.[1] || "";
+    assert.ok(!navRule.includes("right:"), "nav wrapper must not span across the top edge");
+    assert.ok(navRule.includes("pointer-events: none"), "nav wrapper does not block clicks");
+    assert.ok(btnRule.includes("left:") && !btnRule.includes("right:"), "menu button sits top-left, never top-right");
+    assert.match(css, /body\.dm-task-first-enabled\s+#app\s*\{[^}]*margin-top:\s*0;/s);
+    assert.doesNotMatch(css, /@media\s*\(max-width:\s*680px\)\s*\{\s*\.dm-task-first-project\s*\{\s*display:\s*none/s, "project ID remains visible inside the drawer at narrow width");
+    assert.ok(css.includes("dialog.dm-office[open]"), "Docs modal hides background trigger when open");
+    assert.match(css, /body\.dm-task-first-enabled\s+:is\([^)]*\.adv-drawer[^)]*\)\s*\{[^}]*top:\s*calc\(var\(--dw-top-height\)\s*\+\s*var\(--dm-viewport-offset-top,\s*0px\)\)/s);
+
+    // Derive box positions from declared CSS values at 360px width: zero intersection in X or Y.
+    const topPx = Number(btnRule.match(/max\((\d+)px,\s*env\(safe-area-inset-top\)\)/)?.[1]);
+    const leftPx = Number(btnRule.match(/left:\s*max\((\d+)px,\s*env\(safe-area-inset-left\)\)/)?.[1]);
+    const btnSize = Number(btnRule.match(/width:\s*(\d+)px;/)?.[1]);
+    const btnH = Number(btnRule.match(/height:\s*(\d+)px;/)?.[1]);
+    const topClearance = Number(css.match(/--dw-top-height:\s*calc\((\d+)px\s*\+/)?.[1]);
+    const advWidthVw = Number(advCss.match(/\.adv-drawer\{[^}]*width:min\((\d+)vw,/)?.[1]);
+    const viewportW = 360;
+    const menuBtnRect = { left: leftPx, top: topPx, right: leftPx + btnSize, bottom: topPx + btnH };
+    const advDrawerRect = {
+      left: Math.max(0, viewportW - (viewportW * advWidthVw) / 100),
+      top: topClearance,
+      right: viewportW,
+      bottom: 800
+    };
+    const advCloseRect = {
+      left: advDrawerRect.right - 16 - 44,
+      top: advDrawerRect.top + 12,
+      right: advDrawerRect.right - 16,
+      bottom: advDrawerRect.top + 12 + 44
+    };
+    const intersects = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    assert.ok(menuBtnRect.bottom <= advDrawerRect.top, "menu button sits strictly above overlay top clearance");
+    assert.equal(intersects(menuBtnRect, advDrawerRect), false, "menu button does not collide with .adv-drawer at 360px");
+    assert.equal(intersects(menuBtnRect, advCloseRect), false, "menu button does not overlap .adv-drawer close (×) at 360px");
+
     nav.destroy();
   } finally {
     Object.assign(globalThis, prior);
