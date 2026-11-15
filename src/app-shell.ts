@@ -285,7 +285,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
         <option value="codex">Codex</option><option value="opencode">OpenCode</option><option value="api">API Chat</option><option value="qwen">Qwen Code</option>
       </select></label>
       <label><span>${escapeHtml(t("nav.language"))}</span><select data-language-select aria-label="${escapeHtml(t("language.ariaLabel"))}">
-        <option value="ja">日本語</option><option value="en">English</option><option value="zh">简体中文</option>
+        <option value="ja">日本語</option><option value="en">English</option><option value="zh-Hans">简体中文</option><option value="zh-Hant">繁體中文</option>
       </select></label>`;
     bindLanguageSelectors(row, { reload: true });
     const backendSelect = row.querySelector<HTMLSelectElement>("[data-fallback-backend]")!;

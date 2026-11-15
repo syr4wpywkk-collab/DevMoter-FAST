@@ -232,7 +232,8 @@ export function mountCodexRemote(
             <select data-language-select aria-label="${escapeHtml(t("nav.language"))}">
               <option value="en">English</option>
               <option value="ja">日本語</option>
-              <option value="zh">简体中文</option>
+              <option value="zh-Hans">简体中文</option>
+              <option value="zh-Hant">繁體中文</option>
             </select>
           </label>
           <span id="cxSideStatus" class="cx-online-pill offline"><i></i> ${escapeHtml(t("common.offline"))}</span>

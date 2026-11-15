@@ -96,7 +96,7 @@
         errGeneric: "サインインできませんでした。もう一度お試しください。",
         loadFailed: "サインイン方法の読み込みに失敗しました。再読み込みしてお試しください。"
       },
-      zh: {
+      "zh-Hans": {
         pageTitle: "登录 · DevMoter FAST",
         brandSubtitle: "随时随地掌控您的 AI 编程代理。",
         signInCardLabel: "登录",
@@ -143,19 +143,82 @@
         errCancelled: "登录已取消，您可以重试。",
         errGeneric: "无法完成登录，请重试。",
         loadFailed: "无法加载登录选项，请刷新后重试。"
+      },
+      "zh-Hant": {
+        pageTitle: "登入 · DevMoter FAST",
+        brandSubtitle: "隨時隨地掌控您的 AI 程式設計代理程式。",
+        signInCardLabel: "登入",
+        languageLabel: "語言",
+        githubDevicePrompt: "請在 GitHub 上輸入此驗證碼以完成登入。",
+        openGithub: "開啟 GitHub",
+        copyCode: "複製驗證碼",
+        copied: "已複製",
+        copyCodeManual: "請選取並複製上方的驗證碼。",
+        otherOptions: "其他選項",
+        useLocalRecovery: "使用本機復原登入",
+        setupRecoverySummary: "使用本機復原設定登入方式",
+        usernameLabel: "使用者名稱",
+        recoveryPasswordLabel: "復原密碼",
+        continueRecovery: "使用復原密碼繼續",
+        sessionFoot: "您的工作階段將安全地維持在此裝置的登入狀態。",
+        passkey: "使用密碼金鑰繼續",
+        verifyPasskey: "使用密碼金鑰驗證",
+        github: "使用 GitHub 繼續",
+        google: "使用 Google 繼續",
+        microsoft: "使用 Microsoft 繼續",
+        providerNamePasskey: "密碼金鑰",
+        stepUpRequired: "此主機需要額外的密碼金鑰驗證。",
+        noProvidersRecovery: "請使用本機復原登入並設定一種登入方式。",
+        oauthErrGoogle: "無法完成 Google 登入。",
+        oauthErrMicrosoft: "無法完成 Microsoft 登入。",
+        oauthErrUnlinked: "該帳號尚未連結至此 DevMoter 擁有者。",
+        oauthErrExpired: "該登入連結已過期，請重試。",
+        oauthErrDenied: "已取消登入。",
+        oauthErrFailed: "無法完成登入，請重試。",
+        oauthErrLinkConflict: "該帳號已連結至其他擁有者。",
+        checkingRecovery: "正在驗證復原資訊…",
+        errPasskeyUnsupported: "此瀏覽器不支援密碼金鑰。",
+        signedInRedirecting: "已登入，正在重新導向…",
+        linkAfterRecovery: "請先使用本機復原登入，再於帳號設定中連結此登入方式。",
+        githubFirstRecovery: "請先使用本機復原登入，以連結第一個 GitHub 帳號。",
+        approveGithubDevice: "請在 GitHub 上核准此驗證碼。此頁面將自動完成登入。",
+        connectingSecurely: "正在安全連線…",
+        cancelledOrTimedOut: "登入已取消或逾時。",
+        err401: "系統未接受該登入資訊，請重試。",
+        errUnlinkedProvider: "{provider} 尚未連結至此 DevMoter 擁有者。請先使用復原密碼或已連結的登入方式登入。",
+        errUnavailableProvider: "此主機不支援 {provider} 登入。",
+        errUnavailableGeneric: "此主機不支援該登入方式。",
+        errCancelled: "登入已取消，您可以重試。",
+        errGeneric: "無法為您登入，請重試。",
+        loadFailed: "無法載入登入選項，請重新整理後重試。"
       }
     };
     function normalizeLang(value) {
-      const lower = String(value || "").trim().toLowerCase();
-      if (lower.startsWith("ja")) return "ja";
-      if (lower.startsWith("zh")) return "zh";
-      if (lower.startsWith("en")) return "en";
+      const lower = String(value || "").trim().toLowerCase().replace(/_/g, "-");
+      if (!lower) return "";
+      if (lower === "ja" || lower.startsWith("ja-")) return "ja";
+      if (lower === "en" || lower.startsWith("en-")) return "en";
+      if (lower === "zh" || lower.startsWith("zh-")) {
+        const subtags = lower.split("-").slice(1);
+        const extIdx = subtags.indexOf("x");
+        const tags = extIdx === -1 ? subtags : subtags.slice(0, extIdx);
+        if (tags.includes("hant")) return "zh-Hant";
+        if (tags.includes("hans")) return "zh-Hans";
+        if (tags.includes("tw") || tags.includes("hk") || tags.includes("mo")) return "zh-Hant";
+        return "zh-Hans";
+      }
       return "";
     }
     function resolveInitialLang() {
       try {
-        const stored = normalizeLang(localStorage.getItem(STORAGE_KEY));
-        if (stored) return stored;
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const stored = normalizeLang(raw);
+        if (stored) {
+          if (stored === "zh-Hans" && typeof raw === "string" && raw.trim().toLowerCase() === "zh") {
+            try { localStorage.setItem(STORAGE_KEY, "zh-Hans"); } catch {}
+          }
+          return stored;
+        }
       } catch {}
       const list = Array.isArray(navigator.languages) && navigator.languages.length
         ? navigator.languages

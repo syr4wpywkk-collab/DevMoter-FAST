@@ -841,7 +841,8 @@ export function mountSettingsPanel() {
       ${section(t("settings.appearance.languageSection"),
         row("language", t("language.ja"), { action: "lang:ja", value: lang === "ja" ? t("settings.selected") : "" }) +
         row("language", t("language.en"), { action: "lang:en", value: lang === "en" ? t("settings.selected") : "" }) +
-        row("language", t("language.zh"), { action: "lang:zh", value: lang === "zh" ? t("settings.selected") : "" })
+        row("language", t("language.zh-Hans"), { action: "lang:zh-Hans", value: lang === "zh-Hans" ? t("settings.selected") : "" }) +
+        row("language", t("language.zh-Hant"), { action: "lang:zh-Hant", value: lang === "zh-Hant" ? t("settings.selected") : "" })
       )}
       <div class="devmoter-settings-note">
         ${escapeHtml(t("settings.appearance.languageNote"))}
