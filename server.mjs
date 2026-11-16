@@ -3085,8 +3085,14 @@ const server = http.createServer(async (req, res) => {
       if (await sessionControl.handle(req, res, url)) return;
     }
 
+    const allowOwnerDeviceRecovery = () => Boolean(
+      ownerSession?.assurance === "passkey" ||
+      ownerSession?.assurance === "external" ||
+      systemFeatures.isLocalBootstrapRequest(req)
+    );
+
     if (req.method === "GET" && url.pathname === "/api/system/diagnostics") {
-      await featureJson(res, () => systemFeatures.diagnostics());
+      await featureJson(res, () => systemFeatures.diagnostics(req, { ownerRecovery: allowOwnerDeviceRecovery() }));
       return;
     }
 
@@ -3138,7 +3144,11 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "DELETE" && trustedDeviceMatch) {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
       try {
-        const result = await systemFeatures.revokeDevice(req, decodeURIComponent(trustedDeviceMatch[1]));
+        const result = await systemFeatures.revokeDevice(
+          req,
+          decodeURIComponent(trustedDeviceMatch[1]),
+          { allowOwnerRecovery: allowOwnerDeviceRecovery() }
+        );
         if (result.revokedCurrentDevice) {
           jsonWithCookie(res, 200, result, deviceSessionCookie(req, "", 0));
         } else {
@@ -3152,7 +3162,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/api/pairings") {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
-      await featureJson(res, () => systemFeatures.createPairing(req), 201);
+      await featureJson(res, () => systemFeatures.createPairing(req, { allowOwnerRecovery: allowOwnerDeviceRecovery() }), 201);
       return;
     }
 

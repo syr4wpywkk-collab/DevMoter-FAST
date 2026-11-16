@@ -28,10 +28,61 @@ type Model = {
   limitation?: string;
 };
 
+type BrowserLimits = { textBytes?: number; imageBytes?: number };
+type BrowserEntry = {
+  name: string;
+  path: string;
+  kind: string;
+  size: number | null;
+  previewable?: boolean;
+  limit?: number | null;
+};
+
 type Preview =
   | { kind: "text"; name: string; path: string; size: number; language: string; content: string }
   | { kind: "image"; name: string; path: string; size: number; mime: string; data: string }
-  | { kind: "binary"; name: string; path: string; size: number; reason: string };
+  | { kind: "binary"; name: string; path: string; size: number; reason: string; limit?: number };
+
+const TEXT_PREVIEW_LIMIT_BYTES = 1024 * 1024;
+const IMAGE_PREVIEW_LIMIT_BYTES = 8 * 1024 * 1024;
+
+function formatByteLimit(bytes: number): string {
+  if (bytes >= 1024 * 1024 && bytes % (1024 * 1024) === 0) {
+    return `${formatNumber(bytes / (1024 * 1024))} MB`;
+  }
+  if (bytes >= 1024 && bytes % 1024 === 0) {
+    return `${formatNumber(bytes / 1024)} KB`;
+  }
+  return `${formatNumber(bytes)} B`;
+}
+
+function describeBrowserEntryKind(item: BrowserEntry, limits?: BrowserLimits): string {
+  if (item.kind === "directory") return t("advanced.kindDirectory");
+  if (item.kind === "text") return t("advanced.kindText");
+  if (item.kind === "image") return t("advanced.kindImage");
+  if (item.kind === "binary") return t("advanced.kindBinary");
+  if (item.kind === "large") {
+    const limit = item.limit || limits?.textBytes || TEXT_PREVIEW_LIMIT_BYTES;
+    return t("advanced.kindLarge", { limit: formatByteLimit(limit) });
+  }
+  if (item.kind === "file") return t("advanced.kindFile");
+  return item.kind;
+}
+
+function formatUnavailableReason(preview: Extract<Preview, { kind: "binary" }>): string {
+  if (preview.reason === "file-too-large") {
+    const limit = preview.limit || TEXT_PREVIEW_LIMIT_BYTES;
+    return t("advanced.previewReasonTooLarge", { limit: formatByteLimit(limit), bytes: formatNumber(limit) });
+  }
+  if (preview.reason === "image-too-large") {
+    const limit = preview.limit || IMAGE_PREVIEW_LIMIT_BYTES;
+    return t("advanced.previewReasonImageTooLarge", { limit: formatByteLimit(limit), bytes: formatNumber(limit) });
+  }
+  if (preview.reason === "binary-or-unsupported") {
+    return t("advanced.previewReasonBinaryOrUnsupported");
+  }
+  return translateServerMessage(preview.reason);
+}
 
 function operationId() {
   return globalThis.crypto?.randomUUID?.() ??
@@ -157,6 +208,10 @@ export function mountAdvancedTools() {
   const previewBox = q<HTMLElement>("[data-preview]");
   const fileBrowser = q<HTMLElement>("[data-file-browser]");
   const browserPath = q<HTMLElement>("[data-browser-path]");
+  const browserUpBtn = q<HTMLButtonElement>("[data-browser-up]");
+  const fileInput = q<HTMLInputElement>("[data-file-path]");
+  const filesSection = fileBrowser.closest<HTMLElement>(".adv-section");
+  const previewSection = previewBox.closest<HTMLElement>(".adv-section");
   const urlInput = q<HTMLInputElement>("[data-url-input]");
   const urlStatus = q<HTMLElement>("[data-url-status]");
   const urlAttach = q<HTMLButtonElement>("[data-url-attach]");
@@ -170,9 +225,47 @@ export function mountAdvancedTools() {
   const agentBrowserResult = q<HTMLPreElement>("[data-agent-browser-result]");
   let models: Model[] = [];
   let currentBrowserPath = "";
+  let currentBrowserParent: string | null = null;
+  let activePreviewPath = "";
+  let browserRequestId = 0;
+  let previewRequestId = 0;
   let previewedUrl = "";
+  browserUpBtn.disabled = true;
 
   const projectId = () => projectSelect.value;
+
+  function syncActiveFileRow() {
+    for (const button of fileBrowser.querySelectorAll<HTMLButtonElement>(".adv-file-btn")) {
+      if (activePreviewPath && button.dataset.entryKind !== "directory" && button.dataset.entryPath === activePreviewPath) {
+        button.setAttribute("aria-current", "true");
+      } else {
+        button.removeAttribute("aria-current");
+      }
+    }
+  }
+
+  function renderPreviewPayload(target: HTMLElement, preview: Preview, options: { includeMeta: boolean }) {
+    target.replaceChildren();
+    if (options.includeMeta) {
+      const meta = element("div", "adv-status");
+      meta.textContent = t("advanced.previewFileMeta", { name: preview.name, size: formatNumber(preview.size) });
+      target.append(meta);
+    }
+    if (preview.kind === "image") {
+      const img = element("img");
+      img.alt = preview.name;
+      img.src = "data:" + preview.mime + ";base64," + preview.data;
+      target.append(img);
+    } else if (preview.kind === "text") {
+      const pre = element("pre", "adv-code language-" + preview.language);
+      highlightText(pre, preview.content, preview.language);
+      target.append(pre);
+    } else {
+      const fallback = element("div", "adv-binary");
+      fallback.textContent = t("advanced.previewUnavailable", { reason: formatUnavailableReason(preview) });
+      target.append(fallback);
+    }
+  }
 
   function appendUrlAttachmentToComposer(source: string, title: string, text: string) {
     const candidates = [
@@ -187,8 +280,13 @@ export function mountAdvancedTools() {
     input.focus();
   }
 
-  async function loadFileBrowser(path = currentBrowserPath) {
+  async function loadFileBrowser(path = currentBrowserPath, options?: { scrollIntoView?: boolean }) {
+    const reqId = ++browserRequestId;
     if (!projectId()) {
+      currentBrowserPath = "";
+      currentBrowserParent = null;
+      browserPath.textContent = "/";
+      browserUpBtn.disabled = true;
       fileBrowser.textContent = t("advanced.selectProjectFirst");
       return;
     }
@@ -198,43 +296,59 @@ export function mountAdvancedTools() {
         browser: {
           path: string;
           parent: string | null;
-          entries: Array<{ name: string; path: string; kind: string; size: number | null; previewable?: boolean }>;
+          entries: BrowserEntry[];
           truncated: boolean;
+          limits?: BrowserLimits;
         };
       }>("/api/projects/" + encodeURIComponent(projectId()) + "/files?path=" + encodeURIComponent(path));
+      if (reqId !== browserRequestId) return;
       currentBrowserPath = data.browser.path;
+      currentBrowserParent = typeof data.browser.parent === "string" ? data.browser.parent : null;
+      browserUpBtn.disabled = currentBrowserParent === null && !currentBrowserPath;
       browserPath.textContent = "/" + currentBrowserPath;
       fileBrowser.replaceChildren();
       if (!data.browser.entries.length) fileBrowser.textContent = t("advanced.noVisibleFiles");
       for (const item of data.browser.entries) {
-        const row = element("div", "adv-item");
-        const open = element("button");
+        const row = element("div", "adv-item adv-item-file");
+        const open = element("button", "adv-file-btn");
         open.type = "button";
+        open.dataset.entryKind = item.kind;
+        open.dataset.entryPath = item.path;
+        if (item.kind !== "directory" && item.previewable === false) {
+          open.classList.add("is-unpreviewable");
+        }
         // Line icon (same set as Home/Settings) instead of emoji; the name stays text.
         open.innerHTML = item.kind === "directory" ? ICONS.projects : ICONS.file;
-        open.append(document.createTextNode(item.name));
-        open.addEventListener("click", () => {
-          if (item.kind === "directory") void loadFileBrowser(item.path);
-          else if (item.previewable) {
-            q<HTMLInputElement>("[data-file-path]").value = item.path;
-            void showPreview(item.path);
-          }
-        });
-        if (item.kind !== "directory" && !item.previewable) open.disabled = true;
-        const meta = element("small");
-        const kindLabel = item.kind === "directory" ? t("advanced.kindDirectory") : item.kind === "file" ? t("advanced.kindFile") : item.kind;
+        const nameNode = element("span", "adv-file-name");
+        nameNode.textContent = item.name;
+        const meta = element("small", "adv-file-meta");
+        const kindLabel = describeBrowserEntryKind(item, data.browser.limits);
         meta.textContent = item.size == null
           ? kindLabel
           : t("advanced.fileEntryMeta", { kind: kindLabel, size: formatNumber(item.size) });
-        row.append(open, meta);
+        open.append(nameNode, meta);
+        open.addEventListener("click", () => {
+          if (item.kind === "directory") {
+            void loadFileBrowser(item.path, { scrollIntoView: true });
+            return;
+          }
+          activePreviewPath = item.path;
+          syncActiveFileRow();
+          fileInput.value = item.path;
+          void showPreview(item.path, { scrollIntoView: true });
+        });
+        row.append(open);
         fileBrowser.append(row);
       }
+      syncActiveFileRow();
       if (data.browser.truncated) {
         const note = element("div", "adv-status");
         note.textContent = t("advanced.directoryTruncated");
         fileBrowser.append(note);
       }
+      if (options?.scrollIntoView) filesSection?.scrollIntoView?.({ block: "nearest" });
     } catch (error) {
+      if (reqId !== browserRequestId) return;
       fileBrowser.textContent = formatAdvError(error);
     }
   }
@@ -305,45 +419,36 @@ export function mountAdvancedTools() {
           ? t("advanced.projectCount", { count: formatNumber(data.projects.length) })
           : t("advanced.registerProjectFirst")
       );
-      if (projectSelect.value) await Promise.all([loadArtifacts(), loadLivePreview(), loadFileBrowser(""), loadAgentBrowser()]);
+      if (projectSelect.value) {
+        await Promise.all([loadArtifacts(), loadLivePreview(), loadFileBrowser(""), loadAgentBrowser()]);
+      } else {
+        browserUpBtn.disabled = true;
+      }
     } catch (error) {
       setStatus(projectStatus, formatAdvError(error), true);
     }
   }
 
-  async function showPreview(path: string) {
+  async function showPreview(path: string, options?: { scrollIntoView?: boolean }) {
+    const reqId = ++previewRequestId;
     previewBox.replaceChildren();
     if (!projectId()) {
       previewBox.textContent = t("advanced.selectProjectFirst");
+      if (options?.scrollIntoView) previewSection?.scrollIntoView?.({ block: "start" });
       return;
     }
     const loading = element("div", "adv-status");
     loading.textContent = t("advanced.loadingPreview");
     previewBox.append(loading);
+    if (options?.scrollIntoView) previewSection?.scrollIntoView?.({ block: "start" });
     try {
       const data = await api<{ preview: Preview }>(
         "/api/projects/" + encodeURIComponent(projectId()) + "/preview?path=" + encodeURIComponent(path)
       );
-      previewBox.replaceChildren();
-      const preview = data.preview;
-      const meta = element("div", "adv-status");
-      meta.textContent = t("advanced.previewFileMeta", { name: preview.name, size: formatNumber(preview.size) });
-      previewBox.append(meta);
-      if (preview.kind === "image") {
-        const img = element("img");
-        img.alt = preview.name;
-        img.src = "data:" + preview.mime + ";base64," + preview.data;
-        previewBox.append(img);
-      } else if (preview.kind === "text") {
-        const pre = element("pre", "adv-code language-" + preview.language);
-        highlightText(pre, preview.content, preview.language);
-        previewBox.append(pre);
-      } else {
-        const fallback = element("div", "adv-binary");
-        fallback.textContent = t("advanced.previewUnavailable", { reason: translateServerMessage(preview.reason) });
-        previewBox.append(fallback);
-      }
+      if (reqId !== previewRequestId) return;
+      renderPreviewPayload(previewBox, data.preview, { includeMeta: true });
     } catch (error) {
+      if (reqId !== previewRequestId) return;
       previewBox.replaceChildren();
       const message = element("div", "adv-status error");
       message.textContent = formatAdvError(error);
@@ -371,26 +476,17 @@ export function mountAdvancedTools() {
         preview.type = "button";
         preview.textContent = t("advanced.previewBtn");
         preview.addEventListener("click", async () => {
+          const reqId = ++previewRequestId;
+          activePreviewPath = "";
+          syncActiveFileRow();
           try {
             const payload = await api<{ preview: Preview }>(
               "/api/artifacts/" + encodeURIComponent(item.id) + "/preview"
             );
-            previewBox.replaceChildren();
-            if (payload.preview.kind === "text") {
-              const pre = element("pre", "adv-code");
-              highlightText(pre, payload.preview.content, payload.preview.language);
-              previewBox.append(pre);
-            } else if (payload.preview.kind === "image") {
-              const img = element("img");
-              img.alt = payload.preview.name;
-              img.src = "data:" + payload.preview.mime + ";base64," + payload.preview.data;
-              previewBox.append(img);
-            } else {
-              previewBox.textContent = t("advanced.previewUnavailable", {
-                reason: translateServerMessage(payload.preview.reason)
-              });
-            }
+            if (reqId !== previewRequestId) return;
+            renderPreviewPayload(previewBox, payload.preview, { includeMeta: false });
           } catch (error) {
+            if (reqId !== previewRequestId) return;
             setStatus(projectStatus, formatAdvError(error), true);
           }
         });
@@ -638,16 +734,31 @@ export function mountAdvancedTools() {
   });
   q<HTMLButtonElement>("[data-close]").addEventListener("click", closeDrawer);
   window.addEventListener("devmoter:surface-changed", closeDrawer);
+  function openManualPreview() {
+    const path = fileInput.value.trim();
+    activePreviewPath = path;
+    syncActiveFileRow();
+    void showPreview(path);
+  }
   projectSelect.addEventListener("change", () => {
     currentBrowserPath = "";
+    currentBrowserParent = null;
+    activePreviewPath = "";
+    fileInput.value = "";
+    previewRequestId++;
+    previewBox.replaceChildren();
+    browserUpBtn.disabled = true;
     void Promise.all([loadArtifacts(), loadLivePreview(), loadFileBrowser(""), loadAgentBrowser()]);
   });
   q<HTMLButtonElement>("[data-browser-refresh]").addEventListener("click", () => void loadFileBrowser());
-  q<HTMLButtonElement>("[data-browser-up]").addEventListener("click", () => {
-    const next = currentBrowserPath.includes("/")
-      ? currentBrowserPath.slice(0, currentBrowserPath.lastIndexOf("/"))
-      : "";
-    void loadFileBrowser(next);
+  browserUpBtn.addEventListener("click", () => {
+    if (!currentBrowserPath && currentBrowserParent === null) return;
+    const next =
+      currentBrowserParent ??
+      (currentBrowserPath.includes("/")
+        ? currentBrowserPath.slice(0, currentBrowserPath.lastIndexOf("/"))
+        : "");
+    void loadFileBrowser(next, { scrollIntoView: true });
   });
   q<HTMLButtonElement>("[data-url-preview]").addEventListener("click", () => void previewUrl());
   urlAttach.addEventListener("click", () => void fetchAndAttachUrl());
@@ -656,9 +767,12 @@ export function mountAdvancedTools() {
     urlAttach.disabled = true;
     setStatus(urlStatus, t("advanced.urlChangedHint"));
   });
-  q<HTMLButtonElement>("[data-file-open]").addEventListener("click", () =>
-    void showPreview(q<HTMLInputElement>("[data-file-path]").value.trim())
-  );
+  q<HTMLButtonElement>("[data-file-open]").addEventListener("click", openManualPreview);
+  fileInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    openManualPreview();
+  });
   q<HTMLInputElement>("[data-session]").addEventListener("change", () => void loadArtifacts());
   q<HTMLButtonElement>("[data-artifact-add]").addEventListener("click", async () => {
     if (!projectId()) return;
