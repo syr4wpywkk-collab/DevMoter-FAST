@@ -162,44 +162,32 @@ export function mountAdvancedTools() {
   drawer.setAttribute("aria-modal", "true");
   drawer.innerHTML =
     `<div class="adv-head"><div><strong>${escapeHtml(t("advanced.drawerTitle"))}</strong></div><button type="button" data-close aria-label="${escapeHtml(t("advanced.closeAria"))}">×</button></div>` +
+    `<nav class="adv-tabs" role="tablist" aria-label="${escapeHtml(t("advanced.jumpNavAria"))}">` +
+    `<button type="button" role="tab" id="adv-tab-files" aria-controls="adv-panel-files" aria-selected="true" data-adv-tab="files" class="active">${escapeHtml(t("advanced.jumpFiles"))}</button>` +
+    `<button type="button" role="tab" id="adv-tab-outputs" aria-controls="adv-panel-outputs" aria-selected="false" data-adv-tab="outputs" tabindex="-1">${escapeHtml(t("advanced.jumpOutputs"))}</button>` +
+    `<button type="button" role="tab" id="adv-tab-preview" aria-controls="adv-panel-preview" aria-selected="false" data-adv-tab="preview" tabindex="-1">${escapeHtml(t("advanced.jumpPreview"))}</button>` +
+    `<button type="button" role="tab" id="adv-tab-models" aria-controls="adv-panel-models" aria-selected="false" data-adv-tab="models" tabindex="-1">${escapeHtml(t("advanced.jumpModels"))}</button>` +
+    "</nav>" +
     '<div class="adv-scroll">' +
-    `<section class="adv-section"><label>${escapeHtml(t("advanced.projectLabel"))}<select data-project></select></label><div class="adv-status" data-project-status></div></section>` +
+    `<div class="adv-project"><label>${escapeHtml(t("advanced.projectLabel"))}<select data-project></select></label><div class="adv-status" data-project-status></div></div>` +
+    `<div class="adv-panel" id="adv-panel-files" role="tabpanel" aria-labelledby="adv-tab-files" data-adv-panel="files">` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.projectFilesHeading"))}</h3><div class="adv-row"><button type="button" data-browser-up>${escapeHtml(t("advanced.upBtn"))}</button><code data-browser-path>/</code><button type="button" data-browser-refresh>${escapeHtml(t("advanced.refreshBtn"))}</button></div><div class="adv-list" data-file-browser></div></section>` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.safePreviewHeading"))}</h3><div class="adv-row"><input data-file-path placeholder="src/main.ts"/><button type="button" data-file-open>${escapeHtml(t("advanced.previewBtn"))}</button></div><div class="adv-preview" data-preview></div></section>` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.urlAttachHeading"))}</h3><div class="adv-row"><input data-url-input inputmode="url" placeholder="https://example.com/docs"/><button type="button" data-url-preview>${escapeHtml(t("advanced.previewUrlBtn"))}</button><button type="button" data-url-attach disabled>${escapeHtml(t("advanced.fetchAttachBtn"))}</button></div><div class="adv-status" data-url-status>${escapeHtml(t("advanced.urlMetadataNote"))}</div></section>` +
-    `<section class="adv-section"><h3>${escapeHtml(t("advanced.generatedOutputsHeading"))}</h3><div class="adv-row"><input data-artifact-path placeholder="dist/report.json"/><button type="button" data-artifact-add>${escapeHtml(t("advanced.addBtn"))}</button></div><input data-session placeholder="${escapeHtml(t("advanced.sessionPlaceholder"))}"/><div class="adv-list" data-artifacts></div></section>` +
+    "</div>" +
+    `<div class="adv-panel hidden" id="adv-panel-outputs" role="tabpanel" aria-labelledby="adv-tab-outputs" data-adv-panel="outputs" hidden>` +
+    `<section class="adv-section"><div class="adv-row"><input data-artifact-path placeholder="dist/report.json"/><button type="button" data-artifact-add>${escapeHtml(t("advanced.addBtn"))}</button></div><input data-session placeholder="${escapeHtml(t("advanced.sessionPlaceholder"))}"/><div class="adv-list" data-artifacts></div><div class="adv-preview" data-artifact-preview></div></section>` +
+    "</div>" +
+    `<div class="adv-panel hidden" id="adv-panel-preview" role="tabpanel" aria-labelledby="adv-tab-preview" data-adv-panel="preview" hidden>` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.livePreviewHeading"))}</h3><div class="adv-row"><input data-preview-port inputmode="numeric" placeholder="3000"/><button type="button" data-preview-start>${escapeHtml(t("advanced.startRestartBtn"))}</button><button type="button" data-preview-stop>${escapeHtml(t("advanced.stopBtn"))}</button></div><div class="adv-status" data-live-status></div><iframe class="adv-frame hidden" data-live-frame sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"></iframe></section>` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.browserAutoHeading"))}</h3><div class="adv-status">${escapeHtml(t("advanced.browserAutoPolicyNote"))}</div><div class="adv-row"><button type="button" data-agent-browser-start>${escapeHtml(t("advanced.startBrowserBtn"))}</button><button type="button" data-agent-browser-inspect>${escapeHtml(t("advanced.inspectDomBtn"))}</button><button type="button" data-agent-browser-stop>${escapeHtml(t("advanced.stopBtn"))}</button></div><div class="adv-status" data-agent-browser-status>${escapeHtml(t("advanced.checking"))}</div><pre class="adv-code hidden" data-agent-browser-result></pre></section>` +
+    "</div>" +
+    `<div class="adv-panel hidden" id="adv-panel-models" role="tabpanel" aria-labelledby="adv-tab-models" data-adv-panel="models" hidden>` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.modelsHeading"))}</h3><div class="adv-checks"><label><input type="checkbox" data-cap="vision"/>${escapeHtml(t("advanced.capVision"))}</label><label><input type="checkbox" data-cap="tools"/>${escapeHtml(t("advanced.capTools"))}</label><label><input type="checkbox" data-cap="reasoning"/>${escapeHtml(t("advanced.capReasoning"))}</label></div><select data-model></select><div class="adv-row"><input data-model-prompt placeholder="${escapeHtml(t("advanced.modelPromptPlaceholder"))}"/><button type="button" data-model-run>${escapeHtml(t("advanced.runBtn"))}</button></div><div class="adv-status" data-model-status></div><pre class="adv-code hidden" data-model-result></pre></section>` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.directoryGrantsHeading"))}</h3><div class="adv-row"><input data-grant-path placeholder="/home/me/shared"/><select data-grant-mode><option value="read">${escapeHtml(t("advanced.grantRead"))}</option><option value="read-write">${escapeHtml(t("advanced.grantReadWrite"))}</option></select><button type="button" data-grant-add>${escapeHtml(t("advanced.grantBtn"))}</button></div><div class="adv-list" data-grants></div></section>` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.osSandboxHeading"))}</h3><div class="adv-status" data-sandbox>${escapeHtml(t("advanced.checking"))}</div></section>` +
+    "</div>" +
     "</div>";
-  const groups = [
-    { index: 1, id: "files", title: t("advanced.jumpFiles") },
-    { index: 4, id: "outputs", title: t("advanced.jumpOutputs") },
-    { index: 5, id: "preview", title: t("advanced.jumpPreview") },
-    { index: 7, id: "models", title: t("advanced.jumpModels") }
-  ];
-  const sections = drawer.querySelectorAll<HTMLElement>(".adv-section");
-  const jumpNav = element("nav", "adv-jump-nav");
-  jumpNav.setAttribute("aria-label", t("advanced.jumpNavAria"));
-  for (const group of groups) {
-    const section = sections[group.index];
-    section.id = "adv-group-" + group.id;
-    const heading = element("h2", "adv-group-title");
-    heading.textContent = group.title;
-    heading.tabIndex = -1;
-    section.prepend(heading);
-    const jump = element("button");
-    jump.type = "button";
-    jump.textContent = group.title;
-    jump.addEventListener("click", () => {
-      section.scrollIntoView({ block: "start" });
-      heading.focus({ preventScroll: true });
-    });
-    jumpNav.append(jump);
-  }
-  drawer.querySelector(".adv-scroll")!.prepend(jumpNav);
   document.body.append(drawer);
 
   const q = <T extends Element>(selector: string) => drawer.querySelector<T>(selector)!;
@@ -216,6 +204,7 @@ export function mountAdvancedTools() {
   const urlStatus = q<HTMLElement>("[data-url-status]");
   const urlAttach = q<HTMLButtonElement>("[data-url-attach]");
   const artifactList = q<HTMLElement>("[data-artifacts]");
+  const artifactPreviewBox = q<HTMLElement>("[data-artifact-preview]");
   const grantList = q<HTMLElement>("[data-grants]");
   const modelSelect = q<HTMLSelectElement>("[data-model]");
   const modelStatus = q<HTMLElement>("[data-model-status]");
@@ -429,35 +418,68 @@ export function mountAdvancedTools() {
     }
   }
 
+  const previewTokens = new WeakMap<HTMLElement, number>();
+
+  function clearPreview(container: HTMLElement) {
+    previewTokens.set(container, (previewTokens.get(container) ?? 0) + 1);
+    container.replaceChildren();
+  }
+
+  async function fetchAndRenderPreview(
+    container: HTMLElement,
+    url: string,
+    options: {
+      includeMeta: boolean;
+      requestId?: number;
+      scrollTarget?: HTMLElement | null;
+    }
+  ) {
+    const token = (previewTokens.get(container) ?? 0) + 1;
+    previewTokens.set(container, token);
+    container.replaceChildren();
+    const loading = element("div", "adv-status");
+    loading.textContent = t("advanced.loadingPreview");
+    container.append(loading);
+    options.scrollTarget?.scrollIntoView?.({ block: "start" });
+    try {
+      const data = await api<{ preview: Preview }>(url);
+      if (previewTokens.get(container) !== token) return;
+      if (options.requestId !== undefined && options.requestId !== previewRequestId) return;
+      renderPreviewPayload(container, data.preview, { includeMeta: options.includeMeta });
+    } catch (error) {
+      if (previewTokens.get(container) !== token) return;
+      if (options.requestId !== undefined && options.requestId !== previewRequestId) return;
+      container.replaceChildren();
+      const message = element("div", "adv-status error");
+      message.textContent = formatAdvError(error);
+      container.append(message);
+    }
+  }
+
   async function showPreview(path: string, options?: { scrollIntoView?: boolean }) {
     const reqId = ++previewRequestId;
-    previewBox.replaceChildren();
     if (!projectId()) {
+      clearPreview(previewBox);
       previewBox.textContent = t("advanced.selectProjectFirst");
       if (options?.scrollIntoView) previewSection?.scrollIntoView?.({ block: "start" });
       return;
     }
-    const loading = element("div", "adv-status");
-    loading.textContent = t("advanced.loadingPreview");
-    previewBox.append(loading);
-    if (options?.scrollIntoView) previewSection?.scrollIntoView?.({ block: "start" });
-    try {
-      const data = await api<{ preview: Preview }>(
-        "/api/projects/" + encodeURIComponent(projectId()) + "/preview?path=" + encodeURIComponent(path)
-      );
-      if (reqId !== previewRequestId) return;
-      renderPreviewPayload(previewBox, data.preview, { includeMeta: true });
-    } catch (error) {
-      if (reqId !== previewRequestId) return;
-      previewBox.replaceChildren();
-      const message = element("div", "adv-status error");
-      message.textContent = formatAdvError(error);
-      previewBox.append(message);
-    }
+    await fetchAndRenderPreview(
+      previewBox,
+      "/api/projects/" + encodeURIComponent(projectId()) + "/preview?path=" + encodeURIComponent(path),
+      {
+        includeMeta: true,
+        requestId: reqId,
+        scrollTarget: options?.scrollIntoView ? previewSection : null
+      }
+    );
   }
 
   async function loadArtifacts() {
-    if (!projectId()) return;
+    if (!projectId()) {
+      clearPreview(artifactPreviewBox);
+      return;
+    }
     const session = q<HTMLInputElement>("[data-session]").value.trim();
     try {
       const data = await api<{ artifacts: Array<{ id: string; name: string; path: string; size: number }> }>(
@@ -465,6 +487,7 @@ export function mountAdvancedTools() {
       );
       artifactList.replaceChildren();
       if (!data.artifacts.length) {
+        clearPreview(artifactPreviewBox);
         artifactList.textContent = t("advanced.noOutputsForSession");
         return;
       }
@@ -475,20 +498,13 @@ export function mountAdvancedTools() {
         const preview = element("button");
         preview.type = "button";
         preview.textContent = t("advanced.previewBtn");
-        preview.addEventListener("click", async () => {
+        preview.addEventListener("click", () => {
           const reqId = ++previewRequestId;
-          activePreviewPath = "";
-          syncActiveFileRow();
-          try {
-            const payload = await api<{ preview: Preview }>(
-              "/api/artifacts/" + encodeURIComponent(item.id) + "/preview"
-            );
-            if (reqId !== previewRequestId) return;
-            renderPreviewPayload(previewBox, payload.preview, { includeMeta: false });
-          } catch (error) {
-            if (reqId !== previewRequestId) return;
-            setStatus(projectStatus, formatAdvError(error), true);
-          }
+          void fetchAndRenderPreview(
+            artifactPreviewBox,
+            "/api/artifacts/" + encodeURIComponent(item.id) + "/preview",
+            { includeMeta: false, requestId: reqId }
+          );
         });
         const download = element("a");
         download.textContent = t("advanced.downloadBtn");
@@ -705,6 +721,52 @@ export function mountAdvancedTools() {
     }
   }
 
+  type AdvTabId = "files" | "outputs" | "preview" | "models";
+  let activeTab: AdvTabId = "files";
+  const tabButtons = Array.from(drawer.querySelectorAll<HTMLButtonElement>("[data-adv-tab]"));
+  const tabPanels = Array.from(drawer.querySelectorAll<HTMLElement>("[data-adv-panel]"));
+  const scrollBox = q<HTMLElement>(".adv-scroll");
+
+  function selectTab(next: AdvTabId) {
+    activeTab = next;
+    for (const button of tabButtons) {
+      const selected = button.dataset.advTab === next;
+      button.classList.toggle("active", selected);
+      button.setAttribute("aria-selected", String(selected));
+      button.tabIndex = selected ? 0 : -1;
+    }
+    for (const panel of tabPanels) {
+      const selected = panel.dataset.advPanel === next;
+      panel.hidden = !selected;
+      panel.classList.toggle("hidden", !selected);
+    }
+    scrollBox.scrollTop = 0;
+  }
+
+  for (const button of tabButtons) {
+    button.addEventListener("click", () => {
+      const next = button.dataset.advTab as AdvTabId | undefined;
+      if (next) selectTab(next);
+    });
+  }
+  q<HTMLElement>(".adv-tabs").addEventListener("keydown", event => {
+    const currentIndex = tabButtons.findIndex(button => button === document.activeElement);
+    if (currentIndex < 0) return;
+    let nextIndex = currentIndex;
+    if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % tabButtons.length;
+    else if (event.key === "ArrowLeft") nextIndex = (currentIndex + tabButtons.length - 1) % tabButtons.length;
+    else if (event.key === "Home") nextIndex = 0;
+    else if (event.key === "End") nextIndex = tabButtons.length - 1;
+    else return;
+    event.preventDefault();
+    const nextTab = tabButtons[nextIndex];
+    const nextId = nextTab?.dataset.advTab as AdvTabId | undefined;
+    if (nextId) {
+      selectTab(nextId);
+      nextTab.focus({ preventScroll: true });
+    }
+  });
+
   let returnFocus: HTMLElement | null = null;
   let previousOverflow = "";
   fab.addEventListener("click", async () => {
@@ -713,6 +775,7 @@ export function mountAdvancedTools() {
     previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     drawer.classList.remove("hidden");
+    selectTab(activeTab);
     q<HTMLButtonElement>("[data-close]").focus({ preventScroll: true });
     await Promise.all([loadProjects(), loadModels(), loadGrants(), loadSandbox()]);
   });
@@ -726,7 +789,7 @@ export function mountAdvancedTools() {
     if (event.key === "Escape") { event.preventDefault(); closeDrawer(); return; }
     if (event.key !== "Tab") return;
     const controls = Array.from(drawer.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href], summary'))
-      .filter(node => !node.closest(".hidden, [hidden]") && (!node.closest("details:not([open])") || node.tagName === "SUMMARY"));
+      .filter(node => !node.closest(".hidden, [hidden]") && node.getAttribute("tabindex") !== "-1" && (!node.closest("details:not([open])") || node.tagName === "SUMMARY"));
     const first = controls[0];
     const last = controls.at(-1);
     if (event.shiftKey && document.activeElement === first && last) { event.preventDefault(); last.focus(); }
@@ -746,7 +809,8 @@ export function mountAdvancedTools() {
     activePreviewPath = "";
     fileInput.value = "";
     previewRequestId++;
-    previewBox.replaceChildren();
+    clearPreview(previewBox);
+    clearPreview(artifactPreviewBox);
     browserUpBtn.disabled = true;
     void Promise.all([loadArtifacts(), loadLivePreview(), loadFileBrowser(""), loadAgentBrowser()]);
   });
@@ -773,7 +837,10 @@ export function mountAdvancedTools() {
     event.preventDefault();
     openManualPreview();
   });
-  q<HTMLInputElement>("[data-session]").addEventListener("change", () => void loadArtifacts());
+  q<HTMLInputElement>("[data-session]").addEventListener("change", () => {
+    clearPreview(artifactPreviewBox);
+    void loadArtifacts();
+  });
   q<HTMLButtonElement>("[data-artifact-add]").addEventListener("click", async () => {
     if (!projectId()) return;
     try {
