@@ -298,6 +298,15 @@ export function createSystemFeatures({
     return issueDevice(label, { requireNoActive: true });
   }
 
+  function deviceSummary(device, currentId = null) {
+    const { tokenHash: _tokenHash, ...publicDevice } = device;
+    return {
+      ...publicDevice,
+      lastUsedAt: recentDeviceUse.get(device.id) || device.lastUsedAt,
+      current: Boolean(currentId && device.id === currentId)
+    };
+  }
+
   async function listDevices(req) {
     const current = await authenticate(req);
     const devices = await readDevices();
@@ -305,16 +314,21 @@ export function createSystemFeatures({
       currentDeviceId: current.id,
       devices: devices
         .filter(device => !device.revokedAt)
-        .map(({ tokenHash, ...device }) => ({
-          ...device,
-          lastUsedAt: recentDeviceUse.get(device.id) || device.lastUsedAt,
-          current: device.id === current.id
-        }))
+        .map(device => deviceSummary(device, current.id))
     };
   }
 
-  async function createPairing(req) {
-    const current = await authenticate(req);
+  async function authenticateForRecovery(req, allowOwnerRecovery = false) {
+    try {
+      return await authenticate(req);
+    } catch (error) {
+      if (allowOwnerRecovery && error?.status !== 503) return null;
+      throw error;
+    }
+  }
+
+  async function createPairing(req, { allowOwnerRecovery = false } = {}) {
+    const current = await authenticateForRecovery(req, allowOwnerRecovery);
     const currentNow = now();
     for (const [existingId, existing] of pairings) {
       if (existing.expiresAt <= currentNow) pairings.delete(existingId);
@@ -330,7 +344,7 @@ export function createSystemFeatures({
     pairings.set(id, {
       id,
       codeHash: sha256(code),
-      approvedByDeviceId: current.id,
+      approvedByDeviceId: current?.id || null,
       createdAt: currentNow,
       expiresAt
     });
@@ -382,10 +396,10 @@ export function createSystemFeatures({
     throw Object.assign(new Error("Pairing code is invalid or expired"), { status: 400 });
   }
 
-  async function revokeDevice(req, deviceId) {
-    const current = await authenticate(req);
+  async function revokeDevice(req, deviceId, { allowOwnerRecovery = false } = {}) {
+    const current = await authenticateForRecovery(req, allowOwnerRecovery);
     await updateDevices(devices => {
-      if (!devices.some(device => device.id === current.id && !device.revokedAt)) {
+      if (current && !devices.some(device => device.id === current.id && !device.revokedAt)) {
         throw Object.assign(new Error("Invalid or revoked device token"), { status: 401 });
       }
       const index = devices.findIndex(device => device.id === deviceId && !device.revokedAt);
@@ -400,7 +414,7 @@ export function createSystemFeatures({
 
     const subscriptions = await readSubscriptions();
     await writeSubscriptions(subscriptions.filter(item => item.deviceId !== deviceId));
-    return { ok: true, revokedCurrentDevice: current.id === deviceId };
+    return { ok: true, revokedCurrentDevice: Boolean(current && current.id === deviceId) };
   }
 
   async function readSubscriptions() {
@@ -565,8 +579,8 @@ export function createSystemFeatures({
     return { notification: pending };
   }
 
-  async function diagnostics() {
-    const [node, git, npm, python, curl, opencode, codex, gh, tailscale, backends, projects, devices] = await Promise.all([
+  async function diagnostics(req = null, { ownerRecovery = false } = {}) {
+    const [node, git, npm, python, curl, opencode, codex, gh, tailscale, backends, projects, devices, current] = await Promise.all([
       commandStatus("node"),
       commandStatus("git"),
       commandStatus("npm"),
@@ -578,12 +592,17 @@ export function createSystemFeatures({
       commandStatus("tailscale", ["version"]),
       getBackendHealth(),
       getProjects(),
-      readDevices()
+      readDevices(),
+      req ? authenticate(req).catch(() => null) : Promise.resolve(null)
     ]);
 
     const required = { node, git, npm, python, curl, opencode, codex };
     const missing = Object.entries(required).filter(([, value]) => !value.available).map(([name]) => name);
-    const activeDevices = devices.filter(device => !device.revokedAt).length;
+    const activeDeviceList = devices
+      .filter(device => !device.revokedAt)
+      .map(device => deviceSummary(device, current?.id || null));
+    const activeDevices = activeDeviceList.length;
+    const localBootstrap = req ? isLocalBootstrapRequest(req) : false;
 
     return {
       app: {
@@ -607,6 +626,13 @@ export function createSystemFeatures({
       },
       deviceSecurity: {
         trustedDevices: activeDevices,
+        currentTrusted: Boolean(current),
+        currentDeviceId: current?.id || null,
+        localBootstrap,
+        bootstrapAvailable: localBootstrap && activeDevices === 0,
+        canIssuePairing: Boolean(current) || ownerRecovery,
+        canRevokeDevices: Boolean(current) || ownerRecovery,
+        devices: activeDeviceList,
         message: activeDevices ? "Trusted device sessions are configured." : "No trusted device session exists yet."
       },
       network: {
@@ -625,6 +651,7 @@ export function createSystemFeatures({
   return {
     authenticate,
     isDeviceActive,
+    isLocalBootstrapRequest,
     bootstrapDevice,
     listDevices,
     createPairing,

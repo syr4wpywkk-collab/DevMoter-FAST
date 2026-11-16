@@ -574,6 +574,36 @@ html[data-devmoter-theme="light"] .devmoter-guide-hero {
   line-height: 1.5;
 }
 
+.devmoter-settings-pairing-code {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--canvas-base);
+}
+
+.devmoter-settings-pairing-code > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.devmoter-settings-pairing-code strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 20px;
+  letter-spacing: 0.14em;
+  color: var(--text-primary);
+}
+
+.devmoter-settings-pairing-code small {
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
+  line-height: 1.4;
+}
+
 .devmoter-vault-list {
   padding: 0 12px;
 }

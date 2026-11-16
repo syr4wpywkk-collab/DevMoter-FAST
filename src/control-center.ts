@@ -337,6 +337,15 @@ export function mountControlCenter() {
     }
   }
 
+  function refreshWorkspaceState() {
+    clearTrustedDeviceGate();
+    return loadProjects().then(() => {
+      renderProjectOptions();
+      if (indexInitialized && !indexSection.classList.contains("hidden")) void refreshIndexView?.();
+      return refreshTerminalSessions();
+    });
+  }
+
   function openPanel() {
     if (modalOpen) return;
     const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -348,11 +357,7 @@ export function mountControlCenter() {
     lockBackground();
     close.focus({ preventScroll: true });
     window.dispatchEvent(new window.CustomEvent("devmoter:workspace-panel-changed", { detail: { tab: "terminal", open: true } }));
-    void loadProjects().then(() => {
-      renderProjectOptions();
-      if (indexInitialized && !indexSection.classList.contains("hidden")) void refreshIndexView?.();
-      return refreshTerminalSessions();
-    }).then(() => {
+    void refreshWorkspaceState().then(() => {
       if (modalOpen && terminalRecord) void reattachTerminal().catch(showTerminalLoadError);
     }).catch(error => {
       if (modalOpen) showTerminalLoadError(error);
@@ -1330,9 +1335,8 @@ export function mountControlCenter() {
   }
 
   renderTerminalShell();
-  void loadProjects().then(() => {
-    renderProjectOptions();
-    if (indexInitialized && !indexSection.classList.contains("hidden")) void refreshIndexView?.();
-    return refreshTerminalSessions();
-  }).catch(showTerminalLoadError);
+  void refreshWorkspaceState().catch(showTerminalLoadError);
+  window.addEventListener("devmoter:device-trusted", () => {
+    void refreshWorkspaceState().catch(showTerminalLoadError);
+  });
 }

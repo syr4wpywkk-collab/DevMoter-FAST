@@ -8,3 +8,12 @@
 
 .adv-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px;border-bottom:1px solid var(--border-hairline)}.adv-tabs button{flex:1 1 auto;min-width:0;min-height:44px;padding:8px 12px;border:1px solid transparent;border-radius:12px;background:transparent;color:var(--text-secondary);cursor:pointer;touch-action:manipulation}.adv-tabs button[aria-selected="true"]{border-color:var(--border-subtle);background:var(--surface-hover);color:var(--text-primary);font-weight:500}.adv-head button:focus-visible,.adv-tabs button:focus-visible,:is(.adv-project,.adv-section) :is(button,input,select,a):focus-visible{outline:2px solid var(--border-focus);outline-offset:3px}
 .adv-item button{display:inline-flex;align-items:center;gap:8px;min-height:44px}.adv-item button>svg{flex:0 0 18px;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.adv-row button:disabled{opacity:.45;cursor:not-allowed}
+.adv-item.adv-item-file{padding:0;border:0;border-radius:10px}
+.adv-file-btn{width:100%;justify-content:flex-start;text-align:left;cursor:pointer}
+.adv-file-btn:hover{border-color:var(--border-subtle);background:var(--surface-card)}
+.adv-file-btn[aria-current="true"]{border-color:var(--accent);background:var(--surface-card)}
+.adv-file-btn.is-unpreviewable{border-style:dashed;color:var(--text-secondary)}
+.adv-file-btn.is-unpreviewable .adv-file-name{color:var(--text-primary)}
+.adv-file-meta{flex:0 0 auto;color:var(--text-secondary);font-size:var(--font-size-caption);white-space:nowrap}
+@media(max-width:520px){.adv-file-btn{flex-wrap:wrap}.adv-file-btn .adv-file-name{flex:1 1 0;flex-basis:auto}.adv-file-btn .adv-file-meta{flex-basis:100%;padding-left:26px}}

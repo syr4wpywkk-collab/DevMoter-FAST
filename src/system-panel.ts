@@ -120,9 +120,24 @@ export function mountSystemPanel() {
     ).join("");
   }
 
-  function deviceRows(data: any) {
-    const list = Array.isArray(data?.devices) ? data.devices : [];
-    if (!list.length) return `<p class="devmoter-system-muted">${escapeHtml(t("system.noTrustedDevices"))}</p>`;
+  function deviceRows(data: any, diag: any) {
+    const diagSec = diag?.deviceSecurity;
+    const list = Array.isArray(data?.devices)
+      ? data.devices
+      : Array.isArray(diagSec?.devices)
+        ? diagSec.devices
+        : [];
+    const trustedCount = Number.isFinite(Number(diagSec?.trustedDevices))
+      ? Math.max(Number(diagSec.trustedDevices), list.length)
+      : list.length;
+    const canRevoke = typeof diagSec?.canRevokeDevices === "boolean"
+      ? Boolean(diagSec.canRevokeDevices) || Boolean(data)
+      : Boolean(data);
+    if (!list.length) {
+      return trustedCount > 0
+        ? `<p class="devmoter-system-muted">${escapeHtml(t("settings.devices.countSummary", { count: String(trustedCount) }))}</p>`
+        : `<p class="devmoter-system-muted">${escapeHtml(t("system.noTrustedDevices"))}</p>`;
+    }
     return list.map((device: any) => `
       <div class="devmoter-device-row">
         <div><strong>${escapeHtml(device.label)}</strong><small>${escapeHtml(t("system.deviceMeta", {
@@ -130,7 +145,7 @@ export function mountSystemPanel() {
           lastUsed: formatDateTime(device.lastUsedAt),
           current: device.current ? t("system.thisDeviceSuffix") : ""
         }))}</small></div>
-        <button type="button" data-revoke-device="${escapeHtml(device.id)}">${escapeHtml(t("common.revoke"))}</button>
+        ${canRevoke ? `<button type="button" data-revoke-device="${escapeHtml(device.id)}">${escapeHtml(t("common.revoke"))}</button>` : ""}
       </div>
     `).join("");
   }
@@ -143,6 +158,16 @@ export function mountSystemPanel() {
       hostSnapshot()
     ]);
     const trusted = Boolean(deviceData);
+    const diagSec = diag?.deviceSecurity;
+    const trustedCount = Number.isFinite(Number(diagSec?.trustedDevices))
+      ? Number(diagSec.trustedDevices)
+      : (Array.isArray(deviceData?.devices) ? deviceData.devices.length : 0);
+    const bootstrapAllowed = typeof diagSec?.bootstrapAvailable === "boolean"
+      ? Boolean(diagSec.bootstrapAvailable) && !trusted
+      : (!trusted && trustedCount === 0);
+    const canIssuePairing = typeof diagSec?.canIssuePairing === "boolean"
+      ? Boolean(diagSec.canIssuePairing) || trusted
+      : trusted;
     const identity = authStatus?.identity || null;
 
     body.innerHTML = `
@@ -187,11 +212,14 @@ export function mountSystemPanel() {
 
       <section class="devmoter-system-section">
         <strong>${escapeHtml(t("system.trustedDevicesHeading"))}</strong>
-        <div data-device-list>${deviceRows(deviceData)}</div>
+        <div data-device-list>${deviceRows(deviceData, diag)}</div>
         <div class="devmoter-system-actions">
-          ${trusted
+          ${canIssuePairing
             ? `<button type="button" data-create-pairing>${escapeHtml(t("system.createPairingCode"))}</button>`
-            : `<button type="button" data-bootstrap-device>${escapeHtml(t("system.trustLocalhost"))}</button>`}
+            : ""}
+          ${bootstrapAllowed
+            ? `<button type="button" data-bootstrap-device>${escapeHtml(t("system.trustLocalhost"))}</button>`
+            : ""}
         </div>
         <div class="devmoter-pairing-claim">
           <input data-pairing-code inputmode="numeric" maxlength="6" placeholder="${escapeHtml(t("system.pairPlaceholder"))}" />
@@ -235,6 +263,7 @@ export function mountSystemPanel() {
           method: "POST",
           body: JSON.stringify({ label: deviceBrowserLabel() })
         });
+        window.dispatchEvent(new CustomEvent("devmoter:device-trusted"));
         await render();
         setMessage(t("system.browserTrusted"), "ok");
       } catch (error) {
@@ -256,8 +285,9 @@ export function mountSystemPanel() {
       try {
         await request("/api/pairings/claim", {
           method: "POST",
-          body: JSON.stringify({ code: input.value, label: deviceBrowserLabel() })
+          body: JSON.stringify({ code: input.value.trim(), label: deviceBrowserLabel() })
         });
+        window.dispatchEvent(new CustomEvent("devmoter:device-trusted"));
         await render();
         setMessage(t("system.devicePaired"), "ok");
       } catch (error) {
