@@ -939,10 +939,12 @@ export function mountSettingsPanel() {
   }
 
   function close() {
+    const wasOpen = !modal.classList.contains("hidden");
     issuedPairing = null;
     modal.classList.add("hidden");
     document.body.classList.remove("devmoter-settings-open");
     page = "root";
+    if (wasOpen) window.dispatchEvent(new CustomEvent("devmoter:settings-closed"));
   }
 
   const clickFirst = (selector: string) => {
@@ -1184,6 +1186,7 @@ export function mountSettingsPanel() {
               body: JSON.stringify({ label: deviceBrowserLabel() })
             });
             issuedPairing = null;
+            window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { trusted: true, action: "bootstrap" } }));
             toast(t("settings.devices.bootstrapped"));
             window.dispatchEvent(new CustomEvent("devmoter:device-trusted"));
             await renderDevices();
@@ -1223,6 +1226,7 @@ export function mountSettingsPanel() {
               })
             });
             issuedPairing = null;
+            window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { trusted: true, action: "claim" } }));
             toast(t("settings.devices.pairedToast"));
             window.dispatchEvent(new CustomEvent("devmoter:device-trusted"));
             await renderDevices();
@@ -1235,6 +1239,7 @@ export function mountSettingsPanel() {
           try {
             await request(`/api/devices/${encodeURIComponent(button.dataset.deviceId || "")}`, { method: "DELETE" }, true);
             issuedPairing = null;
+            window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { action: "revoke" } }));
             toast(t("settings.devices.revokedToast"));
             await renderDevices();
           } catch (error) {
@@ -1353,6 +1358,7 @@ export function mountSettingsPanel() {
     page = targetPage;
     modal.classList.remove("hidden");
     document.body.classList.add("devmoter-settings-open");
+    window.dispatchEvent(new CustomEvent("devmoter:settings-opened", { detail: { page } }));
     void refresh();
   }
 
@@ -1378,6 +1384,8 @@ export function mountSettingsPanel() {
   });
   document.addEventListener("keydown", event => {
     if (event.key !== "Escape" || modal.classList.contains("hidden")) return;
+    event.preventDefault();
+    event.stopPropagation();
     if (page !== "root") setPage("root");
     else close();
   });

@@ -263,6 +263,7 @@ export function mountSystemPanel() {
           method: "POST",
           body: JSON.stringify({ label: deviceBrowserLabel() })
         });
+        window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { trusted: true, action: "bootstrap" } }));
         window.dispatchEvent(new CustomEvent("devmoter:device-trusted"));
         await render();
         setMessage(t("system.browserTrusted"), "ok");
@@ -287,6 +288,7 @@ export function mountSystemPanel() {
           method: "POST",
           body: JSON.stringify({ code: input.value.trim(), label: deviceBrowserLabel() })
         });
+        window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { trusted: true, action: "claim" } }));
         window.dispatchEvent(new CustomEvent("devmoter:device-trusted"));
         await render();
         setMessage(t("system.devicePaired"), "ok");
@@ -299,6 +301,7 @@ export function mountSystemPanel() {
       button.addEventListener("click", async () => {
         try {
           const result = await request(`/api/devices/${encodeURIComponent(button.dataset.revokeDevice || "")}`, { method: "DELETE" }, true);
+          window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { action: "revoke" } }));
           await render();
           setMessage(result.revokedCurrentDevice ? t("system.currentDeviceRevoked") : t("system.deviceRevoked"), "ok");
         } catch (error) {

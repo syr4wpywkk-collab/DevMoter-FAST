@@ -147,14 +147,22 @@ test("mounting and opening Tools only lists sessions and shows the Trusted-devic
   assert.ok(gate);
   // The raw server error is replaced by the shared gate, not shown next to it.
   assert.equal(app.document.querySelector(".dm-terminal-status").textContent, "");
-  // Unregistered device: the tab shows only the 信頼済み端末 button (Group G).
-  assert.equal(gate.querySelector("[data-device-gate-register]").textContent, i18nCore.translate("en", "deviceGate.openTrustedDevices"));
+  // Unregistered device: the tab explains the locked state and points to Trusted devices registration.
+  assert.equal(gate.querySelector("strong").textContent, i18nCore.translate("en", "deviceGate.unregisteredTitle"));
+  assert.equal(
+    gate.querySelector("small").textContent,
+    i18nCore.translate("en", "deviceGate.toolsLockedCopy", {
+      feature: i18nCore.translate("en", "controlCenter.tab.terminal")
+    })
+  );
+  assert.equal(gate.querySelector("[data-device-gate-register]").textContent, i18nCore.translate("en", "deviceGate.openToRegisterButton"));
   assert.equal(gate.querySelectorAll("button").length, 1);
   assert.equal(gate.closest("section").dataset.deviceGated, "true");
   const opened = [];
   app.window.addEventListener("devmoter:open-settings", event => opened.push(event.detail));
   gate.querySelector("[data-device-gate-register]").click();
   assert.deepEqual(opened, [{ page: "devices" }]);
+  assert.equal(app.document.querySelector(".dm-tools-panel").classList.contains("hidden"), false, "modal stays open while Settings handles registration");
   assert.ok(requests.filter(item => item.url === "/api/terminal/sessions").length > 0);
   assert.ok(requests.filter(item => item.url === "/api/terminal/sessions").every(item => item.method === "GET"));
   assert.equal(requests.some(item => item.method === "POST" || item.method === "DELETE"), false);

@@ -55,6 +55,8 @@ export const zhHant = {
   "deviceGate.unregisteredTitle": "此裝置尚未註冊",
   "deviceGate.unregisteredCopy": "註冊此裝置後即可使用此功能",
   "deviceGate.registerButton": "註冊裝置",
+  "deviceGate.toolsLockedCopy": "此瀏覽器尚未註冊為受信任裝置，因此{feature}目前無法使用。點擊下方按鈕開啟「設定 → 受信任裝置」完成註冊或配對後，無須重新開啟即可直接在此使用。",
+  "deviceGate.openToRegisterButton": "開啟受信任裝置並註冊",
 
   "diagnostics.unknown": "未知",
   "diagnostics.fetching": "取得中…",

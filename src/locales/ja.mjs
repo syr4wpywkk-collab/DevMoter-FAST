@@ -55,6 +55,8 @@ export const ja = {
   "deviceGate.unregisteredTitle": "この端末は未登録です",
   "deviceGate.unregisteredCopy": "端末を登録すると使えます",
   "deviceGate.registerButton": "端末を登録",
+  "deviceGate.toolsLockedCopy": "このブラウザは信頼済み端末として未登録のため、{feature}は現在使えません。下のボタンから「設定 → 信頼済み端末」を開いてこの端末を登録またはペアリングすると、この画面を開き直さずに使えるようになります。",
+  "deviceGate.openToRegisterButton": "信頼済み端末を開いて登録",
 
   "diagnostics.unknown": "不明",
   "diagnostics.fetching": "取得中…",
