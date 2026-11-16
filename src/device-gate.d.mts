@@ -7,5 +7,12 @@ export function responseError(status: number, message?: string): Error;
 export function openDeviceRegistration(win?: Window): void;
 export function createDeviceGate(
   doc: Document,
-  options?: { onRegister?: () => void; className?: string; compact?: boolean }
+  options?: {
+    onRegister?: () => void;
+    className?: string;
+    compact?: boolean;
+    title?: string;
+    copy?: string;
+    buttonLabel?: string;
+  }
 ): HTMLDivElement;

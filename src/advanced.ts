@@ -28,10 +28,61 @@ type Model = {
   limitation?: string;
 };
 
+type BrowserLimits = { textBytes?: number; imageBytes?: number };
+type BrowserEntry = {
+  name: string;
+  path: string;
+  kind: string;
+  size: number | null;
+  previewable?: boolean;
+  limit?: number | null;
+};
+
 type Preview =
   | { kind: "text"; name: string; path: string; size: number; language: string; content: string }
   | { kind: "image"; name: string; path: string; size: number; mime: string; data: string }
-  | { kind: "binary"; name: string; path: string; size: number; reason: string };
+  | { kind: "binary"; name: string; path: string; size: number; reason: string; limit?: number };
+
+const TEXT_PREVIEW_LIMIT_BYTES = 1024 * 1024;
+const IMAGE_PREVIEW_LIMIT_BYTES = 8 * 1024 * 1024;
+
+function formatByteLimit(bytes: number): string {
+  if (bytes >= 1024 * 1024 && bytes % (1024 * 1024) === 0) {
+    return `${formatNumber(bytes / (1024 * 1024))} MB`;
+  }
+  if (bytes >= 1024 && bytes % 1024 === 0) {
+    return `${formatNumber(bytes / 1024)} KB`;
+  }
+  return `${formatNumber(bytes)} B`;
+}
+
+function describeBrowserEntryKind(item: BrowserEntry, limits?: BrowserLimits): string {
+  if (item.kind === "directory") return t("advanced.kindDirectory");
+  if (item.kind === "text") return t("advanced.kindText");
+  if (item.kind === "image") return t("advanced.kindImage");
+  if (item.kind === "binary") return t("advanced.kindBinary");
+  if (item.kind === "large") {
+    const limit = item.limit || limits?.textBytes || TEXT_PREVIEW_LIMIT_BYTES;
+    return t("advanced.kindLarge", { limit: formatByteLimit(limit) });
+  }
+  if (item.kind === "file") return t("advanced.kindFile");
+  return item.kind;
+}
+
+function formatUnavailableReason(preview: Extract<Preview, { kind: "binary" }>): string {
+  if (preview.reason === "file-too-large") {
+    const limit = preview.limit || TEXT_PREVIEW_LIMIT_BYTES;
+    return t("advanced.previewReasonTooLarge", { limit: formatByteLimit(limit), bytes: formatNumber(limit) });
+  }
+  if (preview.reason === "image-too-large") {
+    const limit = preview.limit || IMAGE_PREVIEW_LIMIT_BYTES;
+    return t("advanced.previewReasonImageTooLarge", { limit: formatByteLimit(limit), bytes: formatNumber(limit) });
+  }
+  if (preview.reason === "binary-or-unsupported") {
+    return t("advanced.previewReasonBinaryOrUnsupported");
+  }
+  return translateServerMessage(preview.reason);
+}
 
 function operationId() {
   return globalThis.crypto?.randomUUID?.() ??
@@ -111,44 +162,32 @@ export function mountAdvancedTools() {
   drawer.setAttribute("aria-modal", "true");
   drawer.innerHTML =
     `<div class="adv-head"><div><strong>${escapeHtml(t("advanced.drawerTitle"))}</strong></div><button type="button" data-close aria-label="${escapeHtml(t("advanced.closeAria"))}">×</button></div>` +
+    `<nav class="adv-tabs" role="tablist" aria-label="${escapeHtml(t("advanced.jumpNavAria"))}">` +
+    `<button type="button" role="tab" id="adv-tab-files" aria-controls="adv-panel-files" aria-selected="true" data-adv-tab="files" class="active">${escapeHtml(t("advanced.jumpFiles"))}</button>` +
+    `<button type="button" role="tab" id="adv-tab-outputs" aria-controls="adv-panel-outputs" aria-selected="false" data-adv-tab="outputs" tabindex="-1">${escapeHtml(t("advanced.jumpOutputs"))}</button>` +
+    `<button type="button" role="tab" id="adv-tab-preview" aria-controls="adv-panel-preview" aria-selected="false" data-adv-tab="preview" tabindex="-1">${escapeHtml(t("advanced.jumpPreview"))}</button>` +
+    `<button type="button" role="tab" id="adv-tab-models" aria-controls="adv-panel-models" aria-selected="false" data-adv-tab="models" tabindex="-1">${escapeHtml(t("advanced.jumpModels"))}</button>` +
+    "</nav>" +
     '<div class="adv-scroll">' +
-    `<section class="adv-section"><label>${escapeHtml(t("advanced.projectLabel"))}<select data-project></select></label><div class="adv-status" data-project-status></div></section>` +
+    `<div class="adv-project"><label>${escapeHtml(t("advanced.projectLabel"))}<select data-project></select></label><div class="adv-status" data-project-status></div></div>` +
+    `<div class="adv-panel" id="adv-panel-files" role="tabpanel" aria-labelledby="adv-tab-files" data-adv-panel="files">` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.projectFilesHeading"))}</h3><div class="adv-row"><button type="button" data-browser-up>${escapeHtml(t("advanced.upBtn"))}</button><code data-browser-path>/</code><button type="button" data-browser-refresh>${escapeHtml(t("advanced.refreshBtn"))}</button></div><div class="adv-list" data-file-browser></div></section>` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.safePreviewHeading"))}</h3><div class="adv-row"><input data-file-path placeholder="src/main.ts"/><button type="button" data-file-open>${escapeHtml(t("advanced.previewBtn"))}</button></div><div class="adv-preview" data-preview></div></section>` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.urlAttachHeading"))}</h3><div class="adv-row"><input data-url-input inputmode="url" placeholder="https://example.com/docs"/><button type="button" data-url-preview>${escapeHtml(t("advanced.previewUrlBtn"))}</button><button type="button" data-url-attach disabled>${escapeHtml(t("advanced.fetchAttachBtn"))}</button></div><div class="adv-status" data-url-status>${escapeHtml(t("advanced.urlMetadataNote"))}</div></section>` +
-    `<section class="adv-section"><h3>${escapeHtml(t("advanced.generatedOutputsHeading"))}</h3><div class="adv-row"><input data-artifact-path placeholder="dist/report.json"/><button type="button" data-artifact-add>${escapeHtml(t("advanced.addBtn"))}</button></div><input data-session placeholder="${escapeHtml(t("advanced.sessionPlaceholder"))}"/><div class="adv-list" data-artifacts></div></section>` +
+    "</div>" +
+    `<div class="adv-panel hidden" id="adv-panel-outputs" role="tabpanel" aria-labelledby="adv-tab-outputs" data-adv-panel="outputs" hidden>` +
+    `<section class="adv-section"><div class="adv-row"><input data-artifact-path placeholder="dist/report.json"/><button type="button" data-artifact-add>${escapeHtml(t("advanced.addBtn"))}</button></div><input data-session placeholder="${escapeHtml(t("advanced.sessionPlaceholder"))}"/><div class="adv-list" data-artifacts></div><div class="adv-preview" data-artifact-preview></div></section>` +
+    "</div>" +
+    `<div class="adv-panel hidden" id="adv-panel-preview" role="tabpanel" aria-labelledby="adv-tab-preview" data-adv-panel="preview" hidden>` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.livePreviewHeading"))}</h3><div class="adv-row"><input data-preview-port inputmode="numeric" placeholder="3000"/><button type="button" data-preview-start>${escapeHtml(t("advanced.startRestartBtn"))}</button><button type="button" data-preview-stop>${escapeHtml(t("advanced.stopBtn"))}</button></div><div class="adv-status" data-live-status></div><iframe class="adv-frame hidden" data-live-frame sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"></iframe></section>` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.browserAutoHeading"))}</h3><div class="adv-status">${escapeHtml(t("advanced.browserAutoPolicyNote"))}</div><div class="adv-row"><button type="button" data-agent-browser-start>${escapeHtml(t("advanced.startBrowserBtn"))}</button><button type="button" data-agent-browser-inspect>${escapeHtml(t("advanced.inspectDomBtn"))}</button><button type="button" data-agent-browser-stop>${escapeHtml(t("advanced.stopBtn"))}</button></div><div class="adv-status" data-agent-browser-status>${escapeHtml(t("advanced.checking"))}</div><pre class="adv-code hidden" data-agent-browser-result></pre></section>` +
+    "</div>" +
+    `<div class="adv-panel hidden" id="adv-panel-models" role="tabpanel" aria-labelledby="adv-tab-models" data-adv-panel="models" hidden>` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.modelsHeading"))}</h3><div class="adv-checks"><label><input type="checkbox" data-cap="vision"/>${escapeHtml(t("advanced.capVision"))}</label><label><input type="checkbox" data-cap="tools"/>${escapeHtml(t("advanced.capTools"))}</label><label><input type="checkbox" data-cap="reasoning"/>${escapeHtml(t("advanced.capReasoning"))}</label></div><select data-model></select><div class="adv-row"><input data-model-prompt placeholder="${escapeHtml(t("advanced.modelPromptPlaceholder"))}"/><button type="button" data-model-run>${escapeHtml(t("advanced.runBtn"))}</button></div><div class="adv-status" data-model-status></div><pre class="adv-code hidden" data-model-result></pre></section>` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.directoryGrantsHeading"))}</h3><div class="adv-row"><input data-grant-path placeholder="/home/me/shared"/><select data-grant-mode><option value="read">${escapeHtml(t("advanced.grantRead"))}</option><option value="read-write">${escapeHtml(t("advanced.grantReadWrite"))}</option></select><button type="button" data-grant-add>${escapeHtml(t("advanced.grantBtn"))}</button></div><div class="adv-list" data-grants></div></section>` +
     `<section class="adv-section"><h3>${escapeHtml(t("advanced.osSandboxHeading"))}</h3><div class="adv-status" data-sandbox>${escapeHtml(t("advanced.checking"))}</div></section>` +
+    "</div>" +
     "</div>";
-  const groups = [
-    { index: 1, id: "files", title: t("advanced.jumpFiles") },
-    { index: 4, id: "outputs", title: t("advanced.jumpOutputs") },
-    { index: 5, id: "preview", title: t("advanced.jumpPreview") },
-    { index: 7, id: "models", title: t("advanced.jumpModels") }
-  ];
-  const sections = drawer.querySelectorAll<HTMLElement>(".adv-section");
-  const jumpNav = element("nav", "adv-jump-nav");
-  jumpNav.setAttribute("aria-label", t("advanced.jumpNavAria"));
-  for (const group of groups) {
-    const section = sections[group.index];
-    section.id = "adv-group-" + group.id;
-    const heading = element("h2", "adv-group-title");
-    heading.textContent = group.title;
-    heading.tabIndex = -1;
-    section.prepend(heading);
-    const jump = element("button");
-    jump.type = "button";
-    jump.textContent = group.title;
-    jump.addEventListener("click", () => {
-      section.scrollIntoView({ block: "start" });
-      heading.focus({ preventScroll: true });
-    });
-    jumpNav.append(jump);
-  }
-  drawer.querySelector(".adv-scroll")!.prepend(jumpNav);
   document.body.append(drawer);
 
   const q = <T extends Element>(selector: string) => drawer.querySelector<T>(selector)!;
@@ -157,10 +196,15 @@ export function mountAdvancedTools() {
   const previewBox = q<HTMLElement>("[data-preview]");
   const fileBrowser = q<HTMLElement>("[data-file-browser]");
   const browserPath = q<HTMLElement>("[data-browser-path]");
+  const browserUpBtn = q<HTMLButtonElement>("[data-browser-up]");
+  const fileInput = q<HTMLInputElement>("[data-file-path]");
+  const filesSection = fileBrowser.closest<HTMLElement>(".adv-section");
+  const previewSection = previewBox.closest<HTMLElement>(".adv-section");
   const urlInput = q<HTMLInputElement>("[data-url-input]");
   const urlStatus = q<HTMLElement>("[data-url-status]");
   const urlAttach = q<HTMLButtonElement>("[data-url-attach]");
   const artifactList = q<HTMLElement>("[data-artifacts]");
+  const artifactPreviewBox = q<HTMLElement>("[data-artifact-preview]");
   const grantList = q<HTMLElement>("[data-grants]");
   const modelSelect = q<HTMLSelectElement>("[data-model]");
   const modelStatus = q<HTMLElement>("[data-model-status]");
@@ -170,9 +214,47 @@ export function mountAdvancedTools() {
   const agentBrowserResult = q<HTMLPreElement>("[data-agent-browser-result]");
   let models: Model[] = [];
   let currentBrowserPath = "";
+  let currentBrowserParent: string | null = null;
+  let activePreviewPath = "";
+  let browserRequestId = 0;
+  let previewRequestId = 0;
   let previewedUrl = "";
+  browserUpBtn.disabled = true;
 
   const projectId = () => projectSelect.value;
+
+  function syncActiveFileRow() {
+    for (const button of fileBrowser.querySelectorAll<HTMLButtonElement>(".adv-file-btn")) {
+      if (activePreviewPath && button.dataset.entryKind !== "directory" && button.dataset.entryPath === activePreviewPath) {
+        button.setAttribute("aria-current", "true");
+      } else {
+        button.removeAttribute("aria-current");
+      }
+    }
+  }
+
+  function renderPreviewPayload(target: HTMLElement, preview: Preview, options: { includeMeta: boolean }) {
+    target.replaceChildren();
+    if (options.includeMeta) {
+      const meta = element("div", "adv-status");
+      meta.textContent = t("advanced.previewFileMeta", { name: preview.name, size: formatNumber(preview.size) });
+      target.append(meta);
+    }
+    if (preview.kind === "image") {
+      const img = element("img");
+      img.alt = preview.name;
+      img.src = "data:" + preview.mime + ";base64," + preview.data;
+      target.append(img);
+    } else if (preview.kind === "text") {
+      const pre = element("pre", "adv-code language-" + preview.language);
+      highlightText(pre, preview.content, preview.language);
+      target.append(pre);
+    } else {
+      const fallback = element("div", "adv-binary");
+      fallback.textContent = t("advanced.previewUnavailable", { reason: formatUnavailableReason(preview) });
+      target.append(fallback);
+    }
+  }
 
   function appendUrlAttachmentToComposer(source: string, title: string, text: string) {
     const candidates = [
@@ -187,8 +269,13 @@ export function mountAdvancedTools() {
     input.focus();
   }
 
-  async function loadFileBrowser(path = currentBrowserPath) {
+  async function loadFileBrowser(path = currentBrowserPath, options?: { scrollIntoView?: boolean }) {
+    const reqId = ++browserRequestId;
     if (!projectId()) {
+      currentBrowserPath = "";
+      currentBrowserParent = null;
+      browserPath.textContent = "/";
+      browserUpBtn.disabled = true;
       fileBrowser.textContent = t("advanced.selectProjectFirst");
       return;
     }
@@ -198,43 +285,59 @@ export function mountAdvancedTools() {
         browser: {
           path: string;
           parent: string | null;
-          entries: Array<{ name: string; path: string; kind: string; size: number | null; previewable?: boolean }>;
+          entries: BrowserEntry[];
           truncated: boolean;
+          limits?: BrowserLimits;
         };
       }>("/api/projects/" + encodeURIComponent(projectId()) + "/files?path=" + encodeURIComponent(path));
+      if (reqId !== browserRequestId) return;
       currentBrowserPath = data.browser.path;
+      currentBrowserParent = typeof data.browser.parent === "string" ? data.browser.parent : null;
+      browserUpBtn.disabled = currentBrowserParent === null && !currentBrowserPath;
       browserPath.textContent = "/" + currentBrowserPath;
       fileBrowser.replaceChildren();
       if (!data.browser.entries.length) fileBrowser.textContent = t("advanced.noVisibleFiles");
       for (const item of data.browser.entries) {
-        const row = element("div", "adv-item");
-        const open = element("button");
+        const row = element("div", "adv-item adv-item-file");
+        const open = element("button", "adv-file-btn");
         open.type = "button";
+        open.dataset.entryKind = item.kind;
+        open.dataset.entryPath = item.path;
+        if (item.kind !== "directory" && item.previewable === false) {
+          open.classList.add("is-unpreviewable");
+        }
         // Line icon (same set as Home/Settings) instead of emoji; the name stays text.
         open.innerHTML = item.kind === "directory" ? ICONS.projects : ICONS.file;
-        open.append(document.createTextNode(item.name));
-        open.addEventListener("click", () => {
-          if (item.kind === "directory") void loadFileBrowser(item.path);
-          else if (item.previewable) {
-            q<HTMLInputElement>("[data-file-path]").value = item.path;
-            void showPreview(item.path);
-          }
-        });
-        if (item.kind !== "directory" && !item.previewable) open.disabled = true;
-        const meta = element("small");
-        const kindLabel = item.kind === "directory" ? t("advanced.kindDirectory") : item.kind === "file" ? t("advanced.kindFile") : item.kind;
+        const nameNode = element("span", "adv-file-name");
+        nameNode.textContent = item.name;
+        const meta = element("small", "adv-file-meta");
+        const kindLabel = describeBrowserEntryKind(item, data.browser.limits);
         meta.textContent = item.size == null
           ? kindLabel
           : t("advanced.fileEntryMeta", { kind: kindLabel, size: formatNumber(item.size) });
-        row.append(open, meta);
+        open.append(nameNode, meta);
+        open.addEventListener("click", () => {
+          if (item.kind === "directory") {
+            void loadFileBrowser(item.path, { scrollIntoView: true });
+            return;
+          }
+          activePreviewPath = item.path;
+          syncActiveFileRow();
+          fileInput.value = item.path;
+          void showPreview(item.path, { scrollIntoView: true });
+        });
+        row.append(open);
         fileBrowser.append(row);
       }
+      syncActiveFileRow();
       if (data.browser.truncated) {
         const note = element("div", "adv-status");
         note.textContent = t("advanced.directoryTruncated");
         fileBrowser.append(note);
       }
+      if (options?.scrollIntoView) filesSection?.scrollIntoView?.({ block: "nearest" });
     } catch (error) {
+      if (reqId !== browserRequestId) return;
       fileBrowser.textContent = formatAdvError(error);
     }
   }
@@ -305,54 +408,78 @@ export function mountAdvancedTools() {
           ? t("advanced.projectCount", { count: formatNumber(data.projects.length) })
           : t("advanced.registerProjectFirst")
       );
-      if (projectSelect.value) await Promise.all([loadArtifacts(), loadLivePreview(), loadFileBrowser(""), loadAgentBrowser()]);
+      if (projectSelect.value) {
+        await Promise.all([loadArtifacts(), loadLivePreview(), loadFileBrowser(""), loadAgentBrowser()]);
+      } else {
+        browserUpBtn.disabled = true;
+      }
     } catch (error) {
       setStatus(projectStatus, formatAdvError(error), true);
     }
   }
 
-  async function showPreview(path: string) {
-    previewBox.replaceChildren();
-    if (!projectId()) {
-      previewBox.textContent = t("advanced.selectProjectFirst");
-      return;
+  const previewTokens = new WeakMap<HTMLElement, number>();
+
+  function clearPreview(container: HTMLElement) {
+    previewTokens.set(container, (previewTokens.get(container) ?? 0) + 1);
+    container.replaceChildren();
+  }
+
+  async function fetchAndRenderPreview(
+    container: HTMLElement,
+    url: string,
+    options: {
+      includeMeta: boolean;
+      requestId?: number;
+      scrollTarget?: HTMLElement | null;
     }
+  ) {
+    const token = (previewTokens.get(container) ?? 0) + 1;
+    previewTokens.set(container, token);
+    container.replaceChildren();
     const loading = element("div", "adv-status");
     loading.textContent = t("advanced.loadingPreview");
-    previewBox.append(loading);
+    container.append(loading);
+    options.scrollTarget?.scrollIntoView?.({ block: "start" });
     try {
-      const data = await api<{ preview: Preview }>(
-        "/api/projects/" + encodeURIComponent(projectId()) + "/preview?path=" + encodeURIComponent(path)
-      );
-      previewBox.replaceChildren();
-      const preview = data.preview;
-      const meta = element("div", "adv-status");
-      meta.textContent = t("advanced.previewFileMeta", { name: preview.name, size: formatNumber(preview.size) });
-      previewBox.append(meta);
-      if (preview.kind === "image") {
-        const img = element("img");
-        img.alt = preview.name;
-        img.src = "data:" + preview.mime + ";base64," + preview.data;
-        previewBox.append(img);
-      } else if (preview.kind === "text") {
-        const pre = element("pre", "adv-code language-" + preview.language);
-        highlightText(pre, preview.content, preview.language);
-        previewBox.append(pre);
-      } else {
-        const fallback = element("div", "adv-binary");
-        fallback.textContent = t("advanced.previewUnavailable", { reason: translateServerMessage(preview.reason) });
-        previewBox.append(fallback);
-      }
+      const data = await api<{ preview: Preview }>(url);
+      if (previewTokens.get(container) !== token) return;
+      if (options.requestId !== undefined && options.requestId !== previewRequestId) return;
+      renderPreviewPayload(container, data.preview, { includeMeta: options.includeMeta });
     } catch (error) {
-      previewBox.replaceChildren();
+      if (previewTokens.get(container) !== token) return;
+      if (options.requestId !== undefined && options.requestId !== previewRequestId) return;
+      container.replaceChildren();
       const message = element("div", "adv-status error");
       message.textContent = formatAdvError(error);
-      previewBox.append(message);
+      container.append(message);
     }
   }
 
+  async function showPreview(path: string, options?: { scrollIntoView?: boolean }) {
+    const reqId = ++previewRequestId;
+    if (!projectId()) {
+      clearPreview(previewBox);
+      previewBox.textContent = t("advanced.selectProjectFirst");
+      if (options?.scrollIntoView) previewSection?.scrollIntoView?.({ block: "start" });
+      return;
+    }
+    await fetchAndRenderPreview(
+      previewBox,
+      "/api/projects/" + encodeURIComponent(projectId()) + "/preview?path=" + encodeURIComponent(path),
+      {
+        includeMeta: true,
+        requestId: reqId,
+        scrollTarget: options?.scrollIntoView ? previewSection : null
+      }
+    );
+  }
+
   async function loadArtifacts() {
-    if (!projectId()) return;
+    if (!projectId()) {
+      clearPreview(artifactPreviewBox);
+      return;
+    }
     const session = q<HTMLInputElement>("[data-session]").value.trim();
     try {
       const data = await api<{ artifacts: Array<{ id: string; name: string; path: string; size: number }> }>(
@@ -360,6 +487,7 @@ export function mountAdvancedTools() {
       );
       artifactList.replaceChildren();
       if (!data.artifacts.length) {
+        clearPreview(artifactPreviewBox);
         artifactList.textContent = t("advanced.noOutputsForSession");
         return;
       }
@@ -370,29 +498,13 @@ export function mountAdvancedTools() {
         const preview = element("button");
         preview.type = "button";
         preview.textContent = t("advanced.previewBtn");
-        preview.addEventListener("click", async () => {
-          try {
-            const payload = await api<{ preview: Preview }>(
-              "/api/artifacts/" + encodeURIComponent(item.id) + "/preview"
-            );
-            previewBox.replaceChildren();
-            if (payload.preview.kind === "text") {
-              const pre = element("pre", "adv-code");
-              highlightText(pre, payload.preview.content, payload.preview.language);
-              previewBox.append(pre);
-            } else if (payload.preview.kind === "image") {
-              const img = element("img");
-              img.alt = payload.preview.name;
-              img.src = "data:" + payload.preview.mime + ";base64," + payload.preview.data;
-              previewBox.append(img);
-            } else {
-              previewBox.textContent = t("advanced.previewUnavailable", {
-                reason: translateServerMessage(payload.preview.reason)
-              });
-            }
-          } catch (error) {
-            setStatus(projectStatus, formatAdvError(error), true);
-          }
+        preview.addEventListener("click", () => {
+          const reqId = ++previewRequestId;
+          void fetchAndRenderPreview(
+            artifactPreviewBox,
+            "/api/artifacts/" + encodeURIComponent(item.id) + "/preview",
+            { includeMeta: false, requestId: reqId }
+          );
         });
         const download = element("a");
         download.textContent = t("advanced.downloadBtn");
@@ -609,6 +721,52 @@ export function mountAdvancedTools() {
     }
   }
 
+  type AdvTabId = "files" | "outputs" | "preview" | "models";
+  let activeTab: AdvTabId = "files";
+  const tabButtons = Array.from(drawer.querySelectorAll<HTMLButtonElement>("[data-adv-tab]"));
+  const tabPanels = Array.from(drawer.querySelectorAll<HTMLElement>("[data-adv-panel]"));
+  const scrollBox = q<HTMLElement>(".adv-scroll");
+
+  function selectTab(next: AdvTabId) {
+    activeTab = next;
+    for (const button of tabButtons) {
+      const selected = button.dataset.advTab === next;
+      button.classList.toggle("active", selected);
+      button.setAttribute("aria-selected", String(selected));
+      button.tabIndex = selected ? 0 : -1;
+    }
+    for (const panel of tabPanels) {
+      const selected = panel.dataset.advPanel === next;
+      panel.hidden = !selected;
+      panel.classList.toggle("hidden", !selected);
+    }
+    scrollBox.scrollTop = 0;
+  }
+
+  for (const button of tabButtons) {
+    button.addEventListener("click", () => {
+      const next = button.dataset.advTab as AdvTabId | undefined;
+      if (next) selectTab(next);
+    });
+  }
+  q<HTMLElement>(".adv-tabs").addEventListener("keydown", event => {
+    const currentIndex = tabButtons.findIndex(button => button === document.activeElement);
+    if (currentIndex < 0) return;
+    let nextIndex = currentIndex;
+    if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % tabButtons.length;
+    else if (event.key === "ArrowLeft") nextIndex = (currentIndex + tabButtons.length - 1) % tabButtons.length;
+    else if (event.key === "Home") nextIndex = 0;
+    else if (event.key === "End") nextIndex = tabButtons.length - 1;
+    else return;
+    event.preventDefault();
+    const nextTab = tabButtons[nextIndex];
+    const nextId = nextTab?.dataset.advTab as AdvTabId | undefined;
+    if (nextId) {
+      selectTab(nextId);
+      nextTab.focus({ preventScroll: true });
+    }
+  });
+
   let returnFocus: HTMLElement | null = null;
   let previousOverflow = "";
   fab.addEventListener("click", async () => {
@@ -617,6 +775,7 @@ export function mountAdvancedTools() {
     previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     drawer.classList.remove("hidden");
+    selectTab(activeTab);
     q<HTMLButtonElement>("[data-close]").focus({ preventScroll: true });
     await Promise.all([loadProjects(), loadModels(), loadGrants(), loadSandbox()]);
   });
@@ -630,7 +789,7 @@ export function mountAdvancedTools() {
     if (event.key === "Escape") { event.preventDefault(); closeDrawer(); return; }
     if (event.key !== "Tab") return;
     const controls = Array.from(drawer.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href], summary'))
-      .filter(node => !node.closest(".hidden, [hidden]") && (!node.closest("details:not([open])") || node.tagName === "SUMMARY"));
+      .filter(node => !node.closest(".hidden, [hidden]") && node.getAttribute("tabindex") !== "-1" && (!node.closest("details:not([open])") || node.tagName === "SUMMARY"));
     const first = controls[0];
     const last = controls.at(-1);
     if (event.shiftKey && document.activeElement === first && last) { event.preventDefault(); last.focus(); }
@@ -638,16 +797,32 @@ export function mountAdvancedTools() {
   });
   q<HTMLButtonElement>("[data-close]").addEventListener("click", closeDrawer);
   window.addEventListener("devmoter:surface-changed", closeDrawer);
+  function openManualPreview() {
+    const path = fileInput.value.trim();
+    activePreviewPath = path;
+    syncActiveFileRow();
+    void showPreview(path);
+  }
   projectSelect.addEventListener("change", () => {
     currentBrowserPath = "";
+    currentBrowserParent = null;
+    activePreviewPath = "";
+    fileInput.value = "";
+    previewRequestId++;
+    clearPreview(previewBox);
+    clearPreview(artifactPreviewBox);
+    browserUpBtn.disabled = true;
     void Promise.all([loadArtifacts(), loadLivePreview(), loadFileBrowser(""), loadAgentBrowser()]);
   });
   q<HTMLButtonElement>("[data-browser-refresh]").addEventListener("click", () => void loadFileBrowser());
-  q<HTMLButtonElement>("[data-browser-up]").addEventListener("click", () => {
-    const next = currentBrowserPath.includes("/")
-      ? currentBrowserPath.slice(0, currentBrowserPath.lastIndexOf("/"))
-      : "";
-    void loadFileBrowser(next);
+  browserUpBtn.addEventListener("click", () => {
+    if (!currentBrowserPath && currentBrowserParent === null) return;
+    const next =
+      currentBrowserParent ??
+      (currentBrowserPath.includes("/")
+        ? currentBrowserPath.slice(0, currentBrowserPath.lastIndexOf("/"))
+        : "");
+    void loadFileBrowser(next, { scrollIntoView: true });
   });
   q<HTMLButtonElement>("[data-url-preview]").addEventListener("click", () => void previewUrl());
   urlAttach.addEventListener("click", () => void fetchAndAttachUrl());
@@ -656,10 +831,16 @@ export function mountAdvancedTools() {
     urlAttach.disabled = true;
     setStatus(urlStatus, t("advanced.urlChangedHint"));
   });
-  q<HTMLButtonElement>("[data-file-open]").addEventListener("click", () =>
-    void showPreview(q<HTMLInputElement>("[data-file-path]").value.trim())
-  );
-  q<HTMLInputElement>("[data-session]").addEventListener("change", () => void loadArtifacts());
+  q<HTMLButtonElement>("[data-file-open]").addEventListener("click", openManualPreview);
+  fileInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    openManualPreview();
+  });
+  q<HTMLInputElement>("[data-session]").addEventListener("change", () => {
+    clearPreview(artifactPreviewBox);
+    void loadArtifacts();
+  });
   q<HTMLButtonElement>("[data-artifact-add]").addEventListener("click", async () => {
     if (!projectId()) return;
     try {

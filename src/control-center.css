@@ -325,10 +325,25 @@
   border-color: color-mix(in srgb, var(--status-success) 40%, transparent);
 }
 
-/* Unregistered device: the tab shows only the 信頼済み端末 button. */
+/* Unregistered device: explain the locked tab and link directly to Trusted devices registration. */
 .dm-tools-section[data-device-gated] > :not([data-device-gate]) { display: none; }
 .dm-device-gate-compact { display: flex; justify-content: center; padding: 24px 0; }
-.dm-device-gate-compact button {
+.dm-tools-device-gate {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  margin-top: 8px;
+}
+.dm-tools-device-gate strong {
+  font-size: 0.96rem;
+}
+.dm-tools-device-gate small {
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+.dm-device-gate-compact button,
+.dm-tools-device-gate button {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--canvas-base);

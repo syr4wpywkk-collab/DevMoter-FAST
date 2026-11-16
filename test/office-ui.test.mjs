@@ -322,3 +322,114 @@ test("Office model list shows Gemini ids without the models/ prefix but sends th
   assert.equal(q("[data-ai-form]").hidden, false);
   assert.equal(q("[data-ai-unconfigured]").hidden, true);
 });
+
+test("Office zero-document empty state shows icon and CTAs, hides history and AI form, and updates on create/delete", async (t) => {
+  const calls = [];
+  let store = [];
+  const createdDoc = {
+    ...doc,
+    id: "created-1",
+    name: "無題の文書.docx",
+    updatedAt: new Date().toISOString(),
+  };
+  const dom = mount(t, async (path, options = {}) => {
+    const method = options.method || "GET";
+    const body = options.body ? JSON.parse(options.body) : undefined;
+    calls.push({ path, method, body });
+    if (path.endsWith("/context")) {
+      return response({
+        projects: [],
+        providers: [{ id: "gemini", name: "Google Gemini", ready: true, models: ["gemini-2.5-flash"] }],
+      });
+    }
+    if (path === "/api/office/documents" && method === "GET") {
+      return response(store.map(({ blocks, ...meta }) => meta));
+    }
+    if (path === "/api/office/documents" && method === "POST") {
+      store = [createdDoc];
+      return response(createdDoc);
+    }
+    if (path === `/api/office/documents/${createdDoc.id}` && method === "DELETE") {
+      store = [];
+      return response({ deleted: true });
+    }
+    return response(createdDoc);
+  });
+  const w = dom.window;
+  const q = (s) => w.document.querySelector(s);
+  w.exports.openOffice();
+  await tick();
+
+  // Zero documents: centered empty state with icon + CTAs, history hidden, AI replaced with guidance.
+  const empty = q("[data-empty]");
+  assert.equal(empty.hidden, false);
+  assert.equal(empty.dataset.emptyState, "zero");
+  assert.equal(q("[data-empty-icon]").hidden, false);
+  assert.ok(q("[data-empty-icon] svg"));
+  assert.equal(q("[data-empty-message]").textContent, "まだ文書はありません。");
+  assert.equal(q("[data-empty-actions]").hidden, false);
+  const newCta = q("[data-empty-new]");
+  const openCta = q("[data-empty-open]");
+  assert.equal(newCta.textContent, "新規作成");
+  assert.ok(newCta.classList.contains("office-primary"));
+  assert.equal(openCta.textContent, "DOCXを開く");
+  assert.equal(q("[data-history-section]").hidden, true);
+  assert.equal(q("[data-ai-form]").hidden, true);
+  assert.equal(q("[data-ai-empty]").hidden, false);
+  assert.equal(q("[data-ai-empty]").textContent.trim(), "文書を開くと使えます。");
+
+  // Secondary CTA triggers the same file input as the sidebar Open DOCX button.
+  let uploadClicks = 0;
+  q("[data-upload]").addEventListener("click", () => {
+    uploadClicks += 1;
+  });
+  openCta.click();
+  assert.equal(uploadClicks, 1);
+
+  // Primary CTA creates the first document via the same path as 新規 and transitions all regions.
+  newCta.click();
+  await tick();
+  assert.ok(calls.some((c) => c.method === "POST" && c.path === "/api/office/documents" && c.body?.blank === true));
+  assert.equal(empty.hidden, true);
+  assert.equal(q("[data-page]").hidden, false);
+  assert.equal(q("[data-history-section]").hidden, false);
+  assert.equal(q("[data-ai-empty]").hidden, true);
+  assert.equal(q("[data-ai-form]").hidden, false);
+
+  // Deleting the last document restores the zero-document empty state, hides history, and restores AI guidance.
+  q(`[aria-label="「${createdDoc.name}」を削除"]`).click();
+  await tick();
+  assert.equal(empty.hidden, false);
+  assert.equal(empty.dataset.emptyState, "zero");
+  assert.equal(q("[data-empty-icon]").hidden, false);
+  assert.equal(q("[data-empty-actions]").hidden, false);
+  assert.equal(q("[data-history-section]").hidden, true);
+  assert.equal(q("[data-ai-form]").hidden, true);
+  assert.equal(q("[data-ai-empty]").hidden, false);
+});
+
+test("Office shows history section and pick prompt when documents exist but none is open", async (t) => {
+  const api = server({
+    docs: [{ ...doc, updatedAt: new Date().toISOString() }],
+    providers: [{ id: "gemini", name: "Google Gemini", ready: true, models: ["gemini-2.5-flash"] }],
+  });
+  const dom = mount(t, api.fetch);
+  const q = (s) => dom.window.document.querySelector(s);
+  dom.window.exports.openOffice();
+  await tick();
+
+  assert.equal(q("[data-history-section]").hidden, false);
+  assert.equal(q("[data-empty]").hidden, false);
+  assert.equal(q("[data-empty]").dataset.emptyState, "pick");
+  assert.equal(q("[data-empty-icon]").hidden, true);
+  assert.equal(q("[data-empty-actions]").hidden, true);
+  assert.equal(q("[data-empty-message]").textContent, "文書を選ぶか、新規作成してください。");
+  assert.equal(q("[data-ai-form]").hidden, true);
+  assert.equal(q("[data-ai-empty]").hidden, false);
+
+  q(".office-doc-open").click();
+  await tick();
+  assert.equal(q("[data-empty]").hidden, true);
+  assert.equal(q("[data-ai-empty]").hidden, true);
+  assert.equal(q("[data-ai-form]").hidden, false);
+});

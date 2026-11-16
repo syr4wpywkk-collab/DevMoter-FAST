@@ -205,6 +205,7 @@ export function mountSettingsPanel() {
   let vaultSecrets: Json[] = [];
   let notificationRenderId = 0;
   let accountData: Json | null = null;
+  let issuedPairing: { code: string; expiresAt: number } | null = null;
   let githubLink: Json | null = null;
 
   function toast(message: string) {
@@ -267,6 +268,7 @@ export function mountSettingsPanel() {
   }
 
   function setPage(next: SettingsPage) {
+    if (next !== "devices") issuedPairing = null;
     page = next;
     scroll.scrollTop = 0;
     void renderPage();
@@ -453,43 +455,93 @@ export function mountSettingsPanel() {
 
   async function renderDevices() {
     setHeader(t("settings.root.devices"), t("settings.devices.subtitle"));
-    let deviceData: Json | null = null;
-    try {
-      deviceData = await request("/api/devices", {}, true);
-    } catch {
-      deviceData = null;
-    }
+    const [, deviceData] = await Promise.all([
+      refreshDiagnostics(),
+      request("/api/devices", {}, true).catch(() => null)
+    ]);
+    if (page !== "devices") return;
+    if (issuedPairing && issuedPairing.expiresAt <= Date.now()) issuedPairing = null;
+
+    const diagSec = diagnostics?.deviceSecurity;
     const trusted = Boolean(deviceData);
-    const devices = Array.isArray(deviceData?.devices) ? deviceData!.devices : [];
-    const localBootstrap = isLoopbackBrowser();
-    const trustedDeviceCount = Number(diagnostics?.deviceSecurity?.trustedDevices || 0);
-    const untrustedGuidance = localBootstrap
+    const devices = Array.isArray(deviceData?.devices)
+      ? deviceData.devices
+      : Array.isArray(diagSec?.devices)
+        ? diagSec.devices
+        : [];
+    const trustedDeviceCount = Number.isFinite(Number(diagSec?.trustedDevices))
+      ? Math.max(Number(diagSec.trustedDevices), devices.length)
+      : devices.length;
+    const localBootstrap = typeof diagSec?.localBootstrap === "boolean"
+      ? diagSec.localBootstrap
+      : isLoopbackBrowser();
+    const bootstrapAllowed = typeof diagSec?.bootstrapAvailable === "boolean"
+      ? Boolean(diagSec.bootstrapAvailable) && !trusted
+      : (!trusted && localBootstrap && trustedDeviceCount === 0 && Boolean(diagnosticsFetch.fetchedAt));
+    const canIssuePairing = typeof diagSec?.canIssuePairing === "boolean"
+      ? Boolean(diagSec.canIssuePairing) || trusted
+      : (trusted || (localBootstrap && Boolean(diagnosticsFetch.fetchedAt)));
+    const canRevokeDevices = typeof diagSec?.canRevokeDevices === "boolean"
+      ? Boolean(diagSec.canRevokeDevices) || trusted
+      : trusted;
+    const untrustedGuidance = bootstrapAllowed
       ? t("settings.devices.guidanceLocal")
+      : trustedDeviceCount === 0
+        ? t("settings.devices.guidanceBootstrap")
+        : canIssuePairing
+          ? t("settings.devices.guidanceRecovery", { count: formatNumber(trustedDeviceCount) })
+          : t("settings.devices.guidanceRemote");
+    const pairingCodeCard = issuedPairing ? `
+      <div class="devmoter-settings-pairing-code" data-issued-pairing role="status">
+        <div>
+          <small>${escapeHtml(t("settings.devices.issuedCodeLabel"))}</small>
+          <strong data-issued-pairing-code>${escapeHtml(issuedPairing.code)}</strong>
+          <small>${escapeHtml(t("settings.devices.issuedCodeHint", { expiresAt: formatDateTime(issuedPairing.expiresAt) }))}</small>
+        </div>
+        <button type="button" class="devmoter-settings-copy" data-action="device:copy-code">${escapeHtml(t("common.copy"))}</button>
+      </div>
+    ` : "";
+    const registeredListHtml = devices.length
+      ? devices.map((device: Json) => `
+          <div class="devmoter-settings-device">
+            <span><strong>${escapeHtml(device.label || t("settings.devices.deviceDefaultLabel"))}</strong><small>${escapeHtml(t("settings.devices.deviceMeta", {
+              current: device.current ? t("settings.devices.thisDevicePrefix") : "",
+              lastUsed: formatDateTime(device.lastUsedAt)
+            }))}</small></span>
+            ${canRevokeDevices
+              ? `<button type="button" data-action="device:revoke" data-device-id="${escapeHtml(device.id)}">${escapeHtml(t("common.revoke"))}</button>`
+              : ""}
+          </div>
+        `).join("")
       : trustedDeviceCount > 0
-        ? t("settings.devices.guidanceRemote")
-        : t("settings.devices.guidanceBootstrap");
+        ? `<div class="devmoter-settings-note">${escapeHtml(t("settings.devices.countSummary", { count: formatNumber(trustedDeviceCount) }))}</div>`
+        : `<div class="devmoter-settings-empty">${escapeHtml(t("settings.devices.empty"))}</div>`;
+
     scroll.innerHTML = `
       <section class="devmoter-settings-section">
         <h2>${escapeHtml(t("settings.devices.thisDevice"))}</h2>
         <div class="devmoter-settings-card devmoter-settings-detail-card">
           <div class="devmoter-settings-detail-row">
-            <span>${escapeHtml(t("settings.devices.status"))}</span><strong>${escapeHtml(trusted ? t("settings.devices.trusted") : t("settings.devices.unregistered"))}</strong>
+            <span>${escapeHtml(t("settings.devices.status"))}</span><strong data-device-status>${escapeHtml(trusted ? t("settings.devices.trusted") : t("settings.devices.unregistered"))}</strong>
           </div>
-          <div class="devmoter-settings-actions">
-            ${trusted
-              ? `<button type="button" data-action="device:create-code">${escapeHtml(t("settings.devices.createCode"))}</button>`
-              : localBootstrap
-                ? `<button type="button" data-action="device:bootstrap">${escapeHtml(t("settings.devices.trustThisBrowser"))}</button>`
-                : ""}
+          <div class="devmoter-settings-detail-row">
+            <span>${escapeHtml(t("settings.devices.terminalPermission"))}</span><strong data-terminal-permission>${escapeHtml(trusted ? t("settings.devices.terminalReady") : t("settings.devices.terminalLocked"))}</strong>
           </div>
-          ${trusted ? "" : `<div class="devmoter-settings-note">${escapeHtml(untrustedGuidance)}</div>`}
+          ${trusted
+            ? `<div class="devmoter-settings-actions"><button type="button" data-action="open:terminal">${escapeHtml(t("settings.devices.openTerminal"))}</button></div>`
+            : bootstrapAllowed
+              ? `<div class="devmoter-settings-actions"><button type="button" data-action="device:bootstrap">${escapeHtml(t("settings.devices.trustThisBrowser"))}</button></div>`
+              : ""}
+          ${trusted ? "" : `<div class="devmoter-settings-note" data-device-guidance>${escapeHtml(untrustedGuidance)}</div>`}
         </div>
       </section>
 
       <section class="devmoter-settings-section">
         <h2>${escapeHtml(t("settings.devices.pairAnother"))}</h2>
         <div class="devmoter-settings-card devmoter-settings-form-card">
-          <input data-pair-code inputmode="numeric" maxlength="6" placeholder="${escapeHtml(t("settings.devices.pairPlaceholder"))}" />
+          ${canIssuePairing ? `<button type="button" data-action="device:create-code">${escapeHtml(t("settings.devices.createCode"))}</button>` : ""}
+          ${pairingCodeCard}
+          <input data-pair-code inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="${escapeHtml(t("settings.devices.pairPlaceholder"))}" />
           <button type="button" data-action="device:claim">${escapeHtml(t("settings.devices.pairButton"))}</button>
         </div>
       </section>
@@ -497,15 +549,7 @@ export function mountSettingsPanel() {
       <section class="devmoter-settings-section">
         <h2>${escapeHtml(t("settings.devices.registeredHeading"))}</h2>
         <div class="devmoter-settings-card">
-          ${devices.length ? devices.map((device: Json) => `
-            <div class="devmoter-settings-device">
-              <span><strong>${escapeHtml(device.label || t("settings.devices.deviceDefaultLabel"))}</strong><small>${escapeHtml(t("settings.devices.deviceMeta", {
-                current: device.current ? t("settings.devices.thisDevicePrefix") : "",
-                lastUsed: formatDateTime(device.lastUsedAt)
-              }))}</small></span>
-              <button type="button" data-action="device:revoke" data-device-id="${escapeHtml(device.id)}">${escapeHtml(t("common.revoke"))}</button>
-            </div>
-          `).join("") : `<div class="devmoter-settings-empty">${escapeHtml(t("settings.devices.empty"))}</div>`}
+          ${registeredListHtml}
         </div>
       </section>
       <div class="devmoter-settings-note">${escapeHtml(t("settings.devices.note"))}</div>
@@ -895,9 +939,12 @@ export function mountSettingsPanel() {
   }
 
   function close() {
+    const wasOpen = !modal.classList.contains("hidden");
+    issuedPairing = null;
     modal.classList.add("hidden");
     document.body.classList.remove("devmoter-settings-open");
     page = "root";
+    if (wasOpen) window.dispatchEvent(new CustomEvent("devmoter:settings-closed"));
   }
 
   const clickFirst = (selector: string) => {
@@ -1138,7 +1185,10 @@ export function mountSettingsPanel() {
               method: "POST",
               body: JSON.stringify({ label: deviceBrowserLabel() })
             });
+            issuedPairing = null;
+            window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { trusted: true, action: "bootstrap" } }));
             toast(t("settings.devices.bootstrapped"));
+            window.dispatchEvent(new CustomEvent("devmoter:device-trusted"));
             await renderDevices();
           } catch (error) {
             toast(errorMessage(error, t("common.error")));
@@ -1148,9 +1198,20 @@ export function mountSettingsPanel() {
         if (action === "device:create-code") {
           try {
             const result = await request("/api/pairings", { method: "POST" }, true);
-            toast(t("settings.devices.codeToast", { code: result.code }));
+            issuedPairing = {
+              code: String(result.code || ""),
+              expiresAt: Number(result.expiresAt || Date.now() + 5 * 60_000)
+            };
+            toast(t("settings.devices.codeToast", { code: issuedPairing.code }));
+            await renderDevices();
           } catch (error) {
             toast(errorMessage(error, t("common.error")));
+          }
+          return;
+        }
+        if (action === "device:copy-code") {
+          if (issuedPairing?.code) {
+            toast(await copyText(issuedPairing.code) ? t("settings.devices.codeCopied") : t("common.copyFailed"));
           }
           return;
         }
@@ -1160,11 +1221,14 @@ export function mountSettingsPanel() {
             await request("/api/pairings/claim", {
               method: "POST",
               body: JSON.stringify({
-                code: input?.value || "",
+                code: input?.value?.trim() || "",
                 label: deviceBrowserLabel()
               })
             });
+            issuedPairing = null;
+            window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { trusted: true, action: "claim" } }));
             toast(t("settings.devices.pairedToast"));
+            window.dispatchEvent(new CustomEvent("devmoter:device-trusted"));
             await renderDevices();
           } catch (error) {
             toast(errorMessage(error, t("common.error")));
@@ -1174,6 +1238,8 @@ export function mountSettingsPanel() {
         if (action === "device:revoke") {
           try {
             await request(`/api/devices/${encodeURIComponent(button.dataset.deviceId || "")}`, { method: "DELETE" }, true);
+            issuedPairing = null;
+            window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { action: "revoke" } }));
             toast(t("settings.devices.revokedToast"));
             await renderDevices();
           } catch (error) {
@@ -1292,6 +1358,7 @@ export function mountSettingsPanel() {
     page = targetPage;
     modal.classList.remove("hidden");
     document.body.classList.add("devmoter-settings-open");
+    window.dispatchEvent(new CustomEvent("devmoter:settings-opened", { detail: { page } }));
     void refresh();
   }
 
@@ -1317,6 +1384,8 @@ export function mountSettingsPanel() {
   });
   document.addEventListener("keydown", event => {
     if (event.key !== "Escape" || modal.classList.contains("hidden")) return;
+    event.preventDefault();
+    event.stopPropagation();
     if (page !== "root") setPage("root");
     else close();
   });
