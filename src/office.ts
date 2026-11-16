@@ -25,8 +25,8 @@ type Provider = { id: string; name: string; models: string[]; ready: boolean; pr
 type Pane = "list" | "editor" | "ai";
 
 // Inline line icons (18px, 1.5 stroke) so the module also loads standalone in tests.
-const svg = (paths: string) =>
-  `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+const svg = (paths: string, size = 18, box = 18) =>
+  `<svg viewBox="0 0 ${box} ${box}" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
 const H = '<path d="M2.5 4v10M8.5 4v10M2.5 9h6"/>';
 const ICONS = {
   undo: svg('<path d="M6.5 4 3 7.5 6.5 11"/><path d="M3 7.5h7.5a3.75 3.75 0 0 1 0 7.5H8"/>'),
@@ -48,6 +48,7 @@ const ICONS = {
   download: svg('<path d="M9 3v8.5M5.5 8 9 11.5 12.5 8M3.5 14.5h11"/>'),
   rename: svg('<path d="M11.5 3.5l3 3L6 15H3v-3z"/>'),
   remove: svg('<path d="M3.5 5h11M7.5 5V3.5h3V5M5 5l.7 9.5h6.6L13 5"/>'),
+  doc: svg('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>', 28, 24),
 };
 const TOOLS: [string, keyof typeof ICONS, string][] = [
   ["undo", "undo", "office.tool.undo"],
@@ -100,16 +101,17 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     <div class="office-layout">
       <aside class="office-side" aria-label="${esc(t("office.sideAria"))}">
         <section class="office-section"><div class="office-section-head"><h2>${esc(t("office.tab.list"))}</h2><button type="button" data-upload-open>${esc(t("office.openDocx"))}</button><input data-upload type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden></div><ul class="office-library" data-library></ul></section>
-        <details class="office-section office-history"><summary>${esc(t("office.historySummary"))}</summary><ul data-history></ul></details>
+        <details class="office-section office-history" data-history-section hidden><summary>${esc(t("office.historySummary"))}</summary><ul data-history></ul></details>
       </aside>
       <main class="office-main" aria-label="${esc(t("office.tab.editor"))}">
         <div class="office-doc-bar"><h2 data-name>${esc(t("office.noDocOpen"))}</h2><span class="office-save-state" data-save-state role="status" aria-live="polite"></span><button type="button" class="office-retry" data-retry hidden>${esc(t("common.retry"))}</button><button type="button" class="office-icon-button" data-download aria-label="${esc(t("office.downloadAria"))}" title="${esc(t("office.downloadAria"))}" disabled>${ICONS.download}</button></div>
         <div class="office-toolbar" role="toolbar" aria-label="${esc(t("office.toolbarAria"))}" data-toolbar>${tools}</div>
         <form class="office-link-form" data-link-form hidden><input type="url" inputmode="url" data-link-input placeholder="https://" aria-label="${esc(t("office.linkUrlAria"))}" autocomplete="off"><button type="submit">${esc(t("office.linkApply"))}</button><button type="button" data-link-remove>${esc(t("office.linkRemove"))}</button><button type="button" data-link-cancel>${esc(t("common.cancel"))}</button></form>
-        <div class="office-scroll"><p class="office-note" data-note hidden></p><article class="office-page" data-page aria-label="${esc(t("office.bodyAria"))}" role="textbox" aria-multiline="true" spellcheck="true" hidden></article><div class="office-empty" data-empty><p>${esc(t("office.emptyDocPrompt"))}</p></div></div>
+        <div class="office-scroll"><p class="office-note" data-note hidden></p><article class="office-page" data-page aria-label="${esc(t("office.bodyAria"))}" role="textbox" aria-multiline="true" spellcheck="true" hidden></article><div class="office-empty" data-empty data-empty-state="pick"><div class="office-empty-card"><div class="office-empty-icon" data-empty-icon aria-hidden="true" hidden>${ICONS.doc}</div><p class="office-empty-message" data-empty-message>${esc(t("office.emptyDocPrompt"))}</p><div class="office-empty-actions" data-empty-actions hidden><button type="button" class="office-primary" data-empty-new>${esc(t("office.createNew"))}</button><button type="button" data-empty-open>${esc(t("office.openDocx"))}</button></div></div></div></div>
       </main>
       <aside class="office-ai" aria-label="${esc(t("office.tab.ai"))}">
         <h2>${esc(t("office.tab.ai"))}</h2>
+        <div class="office-ai-empty" data-ai-empty hidden><p>${esc(t("office.aiRequiresDoc"))}</p></div>
         <div class="office-ai-setup" data-ai-unconfigured hidden><p>${esc(t("office.aiUnconfigured"))}</p><button type="button" data-configure>${esc(t("office.aiOpenSettings"))}</button></div>
         <form data-ai-form hidden><label>${esc(t("office.aiGoalLabel"))}<textarea data-goal rows="3" placeholder="${esc(t("office.aiGoalPlaceholder"))}"></textarea></label><details><summary>${esc(t("office.aiTargetSummary"))}</summary><label>${esc(t("office.aiProviderLabel"))}<select data-provider></select></label><label>${esc(t("office.aiModelLabel"))}<select data-model></select></label><label>${esc(t("office.aiProjectLabel"))}<select data-project></select></label></details><p class="office-quiet" data-provider-notice></p><label class="office-consent"><input type="checkbox" data-share>${esc(t("office.aiConsent"))}</label><div class="office-ai-actions"><button data-ai-send>${esc(t("office.aiGenerate"))}</button><button type="button" data-stop hidden>${esc(t("common.stop"))}</button></div></form>
         <p class="office-quiet" data-ai-status role="status" aria-live="polite"></p><div data-proposal></div>
@@ -122,6 +124,9 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   const model = get<HTMLSelectElement>("[data-model]");
   const project = get<HTMLSelectElement>("[data-project]");
   let doc: Doc | null = null;
+  let docsCount = 0;
+  let libraryLoaded = false;
+  let aiLoaded = false;
   let providers: Provider[] = [];
   let run: AiRun | null = null;
   let busy = false;
@@ -275,9 +280,21 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       else tool.setAttribute("aria-pressed", String(pressed));
     }
   };
+  const renderEmptyState = () => {
+    const empty = get("[data-empty]");
+    const zero = libraryLoaded && docsCount === 0;
+    empty.dataset.emptyState = zero ? "zero" : "pick";
+    empty.hidden = !!doc;
+    get("[data-empty-icon]").hidden = !zero;
+    get("[data-empty-actions]").hidden = !zero;
+    get("[data-empty-message]").textContent = t(zero ? "office.emptyLibrary" : "office.emptyDocPrompt");
+    get("[data-history-section]").hidden = !libraryLoaded || docsCount === 0;
+  };
   const controls = () => {
     get<HTMLButtonElement>("[data-new]").disabled = busy;
     get<HTMLButtonElement>("[data-upload-open]").disabled = busy;
+    get<HTMLButtonElement>("[data-empty-new]").disabled = busy;
+    get<HTMLButtonElement>("[data-empty-open]").disabled = busy;
     get<HTMLButtonElement>("[data-download]").disabled = busy || !doc;
     get<HTMLButtonElement>("[data-ai-send]").disabled = busy || !doc || ["planning", "stop_requested"].includes(run?.status || "");
     const state = get("[data-save-state]");
@@ -286,6 +303,8 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     state.dataset.state = !doc ? "" : saveError ? "error" : saving ? "saving" : dirty ? "dirty" : "saved";
     state.title = saveError;
     get("[data-retry]").hidden = !saveError;
+    renderEmptyState();
+    renderAiSetup();
     updateToolbar();
   };
   root.querySelector("[data-toolbar]")!.addEventListener("pointerdown", (e) => {
@@ -345,6 +364,8 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   // ----------------------------------------------------------- library ---
   const library = async () => {
     const docs = await api<DocMeta[]>("/api/office/documents");
+    docsCount = docs.length;
+    libraryLoaded = true;
     const list = get("[data-library]");
     list.replaceChildren();
     for (const item of docs) {
@@ -360,6 +381,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       list.append(row);
     }
     if (!docs.length) list.append(node("li", t("office.emptyLibrary"), "office-quiet"));
+    renderEmptyState();
   };
   const when = (iso: string) => {
     const date = new Date(iso);
@@ -453,6 +475,8 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   };
   const showDoc = (data: Doc) => {
     doc = data;
+    docsCount = Math.max(docsCount, 1);
+    libraryLoaded = true;
     dirty = false;
     saveError = "";
     localStorage.setItem("devmoter-office-document", data.id);
@@ -490,9 +514,11 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   // ---------------------------------------------------------------- AI ---
   const aiReady = () => providers.some((p) => p.ready);
   const renderAiSetup = () => {
+    if (!aiLoaded) return;
     const ready = aiReady();
     get("[data-ai-unconfigured]").hidden = ready;
-    get("[data-ai-form]").hidden = !ready;
+    get("[data-ai-empty]").hidden = !ready || !!doc;
+    get("[data-ai-form]").hidden = !ready || !doc;
   };
   const fillModels = () => {
     model.replaceChildren();
@@ -608,18 +634,21 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   });
 
   // ------------------------------------------------------------- shell ---
-  for (const tab of root.querySelectorAll<HTMLElement>("[data-pane-tab]"))
-    tab.addEventListener("click", () => setPane(tab.dataset.paneTab as Pane));
-  get("[data-upload-open]").addEventListener("click", () => get<HTMLInputElement>("[data-upload]").click());
-  get("[data-new]").addEventListener("click", () =>
+  const createNewDocument = () =>
     void task(async () => {
       if (!(await settle())) return;
       showDoc(await api<Doc>("/api/office/documents", "POST", { blank: true, name: t("office.untitledDocx") }));
       setPane("editor");
       await library();
       editor.focus();
-    }),
-  );
+    });
+  const openDocxPicker = () => get<HTMLInputElement>("[data-upload]").click();
+  for (const tab of root.querySelectorAll<HTMLElement>("[data-pane-tab]"))
+    tab.addEventListener("click", () => setPane(tab.dataset.paneTab as Pane));
+  get("[data-upload-open]").addEventListener("click", openDocxPicker);
+  get("[data-empty-open]").addEventListener("click", openDocxPicker);
+  get("[data-new]").addEventListener("click", createNewDocument);
+  get("[data-empty-new]").addEventListener("click", createNewDocument);
   get<HTMLInputElement>("[data-upload]").addEventListener("change", (e) =>
     void task(async () => {
       const input = e.target as HTMLInputElement;
@@ -677,6 +706,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     if (saved && providers.some((p) => p.id === saved)) provider.value = saved;
     else if (providers.some((p) => p.ready)) provider.value = providers.find((p) => p.ready)!.id;
     fillModels();
+    aiLoaded = true;
     renderAiSetup();
     project.append(new Option(t("office.noProjectOption"), ""));
     for (const p of context.projects) project.append(new Option(p.name, p.id));

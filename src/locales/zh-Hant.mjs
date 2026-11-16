@@ -957,6 +957,8 @@ export const zhHant = {
   "office.renameAria": "重新命名「{name}」",
   "office.deleteAria": "刪除「{name}」",
   "office.emptyLibrary": "尚無文件。",
+  "office.createNew": "建立新文件",
+  "office.aiRequiresDoc": "開啟文件後即可使用。",
   "office.newNameAria": "新文件名稱",
   "office.confirmDeleteDoc": "確定要刪除「{name}」嗎？原始檔案與歷史版本也將一併永久刪除。",
   "office.history.original": "原始檔案",

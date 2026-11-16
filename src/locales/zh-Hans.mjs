@@ -957,6 +957,8 @@ export const zhHans = {
   "office.renameAria": "重命名“{name}”",
   "office.deleteAria": "删除“{name}”",
   "office.emptyLibrary": "暂无文档。",
+  "office.createNew": "新建文档",
+  "office.aiRequiresDoc": "打开文档后即可使用。",
   "office.newNameAria": "新文档名称",
   "office.confirmDeleteDoc": "确定删除“{name}”吗？原文件和历史版本也会一并删除且无法恢复。",
   "office.history.original": "原文件",

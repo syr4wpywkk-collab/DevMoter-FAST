@@ -957,6 +957,8 @@ export const en = {
   "office.renameAria": "Rename \"{name}\"",
   "office.deleteAria": "Delete \"{name}\"",
   "office.emptyLibrary": "No documents yet.",
+  "office.createNew": "New document",
+  "office.aiRequiresDoc": "Open a document to use AI.",
   "office.newNameAria": "New document name",
   "office.confirmDeleteDoc": "Delete \"{name}\"? The original file and history will also be permanently deleted.",
   "office.history.original": "Original",
