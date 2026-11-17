@@ -12,10 +12,12 @@ test("Office real HTTP: owner/origin gates, edits, provider adapter, download an
   const password = "office-http-test-password-2026";
   const authorization = `Basic ${Buffer.from(`devmoter:${password}`).toString("base64")}`;
   let shared;
+  let firstRequestedModel;
   const mock = createServer(async (req, res) => {
     let data = "";
     for await (const chunk of req) data += chunk;
     const payload = JSON.parse(data);
+    firstRequestedModel = payload.model;
     shared = JSON.parse(payload.messages.at(-1).content);
     res.writeHead(200, { "content-type": "application/json" });
     res.end(
@@ -38,8 +40,37 @@ test("Office real HTTP: owner/origin gates, edits, provider adapter, download an
       }),
     );
   });
+  let secondRequestedModel;
+  const mock2 = createServer(async (req, res) => {
+    let data = "";
+    for await (const chunk of req) data += chunk;
+    const payload = JSON.parse(data);
+    secondRequestedModel = payload.model;
+    const body = JSON.parse(payload.messages.at(-1).content);
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(
+      JSON.stringify({
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              content: JSON.stringify({
+                edits: [
+                  {
+                    blockId: body.blocks[0].blockId,
+                    text: "Second provider proposal",
+                  },
+                ],
+              }),
+            },
+          },
+        ],
+      }),
+    );
+  });
   mock.listen(0, "127.0.0.1");
-  await once(mock, "listening");
+  mock2.listen(0, "127.0.0.1");
+  await Promise.all([once(mock, "listening"), once(mock2, "listening")]);
   const probe = createServer();
   probe.listen(0, "127.0.0.1");
   await once(probe, "listening");
@@ -62,7 +93,7 @@ test("Office real HTTP: owner/origin gates, edits, provider adapter, download an
     await new Promise((resolve, reject) => {
       const timer = setTimeout(
         () => reject(new Error("Office HTTP server startup timed out")),
-        8000,
+        20000,
       );
       child.stdout.on("data", (chunk) => {
         if (chunk.toString().includes("DevMoter FAST:")) {
@@ -81,7 +112,7 @@ test("Office real HTTP: owner/origin gates, edits, provider adapter, download an
       child.kill();
       await once(child, "exit");
     }
-    await new Promise((r) => mock.close(r));
+    await Promise.all([new Promise((r) => mock.close(r)), new Promise((r) => mock2.close(r))]);
     await rm(home, { recursive: true, force: true });
   });
   await start();
@@ -138,9 +169,27 @@ test("Office real HTTP: owner/origin gates, edits, provider adapter, download an
     baseUrl: `http://127.0.0.1:${mock.address().port}/v1`,
     protocol: "openai-compatible",
     apiKey: "dummy-office-local-key",
-    models: ["office-model"],
+    models: ["office-model", "office-model-alt"],
   });
   assert.equal(response.status, 200);
+  response = await request("/api/llm/providers", "POST", {
+    id: "office-test-2",
+    name: "Office mock 2",
+    presetId: "custom",
+    baseUrl: `http://127.0.0.1:${mock2.address().port}/v1`,
+    protocol: "openai-compatible",
+    apiKey: "dummy-office-local-key-2",
+    models: ["office-model-2a", "office-model-2b"],
+  });
+  assert.equal(response.status, 200);
+  const contextRes = await (await request("/api/tools-ai/context")).json();
+  assert.deepEqual(
+    contextRes.providers.map((p) => ({ id: p.id, models: p.models })),
+    [
+      { id: "office-test", models: ["office-model", "office-model-alt"] },
+      { id: "office-test-2", models: ["office-model-2a", "office-model-2b"] },
+    ],
+  );
   response = await request("/api/office/ai/runs", "POST", {
     documentId: doc.id,
     revision: saved.revision,
@@ -156,7 +205,28 @@ test("Office real HTTP: owner/origin gates, edits, provider adapter, download an
     run = await (await request(`/api/office/ai/runs/${run.id}`)).json();
   }
   assert.equal(run.status, "proposed", run.error);
+  assert.equal(firstRequestedModel, "office-model");
+  assert.equal(run.edits[0].text, "Actual provider adapter proposal");
   assert.equal(shared.blocks[0].text, "Read this text");
+  response = await request("/api/office/ai/runs", "POST", {
+    documentId: doc.id,
+    revision: saved.revision,
+    goal: "Switch provider and model",
+    providerId: "office-test-2",
+    model: "office-model-2b",
+    share: true,
+  });
+  assert.equal(response.status, 202);
+  let run2 = await response.json();
+  for (let i = 0; i < 50 && run2.status === "planning"; i++) {
+    await new Promise((r) => setTimeout(r, 20));
+    run2 = await (await request(`/api/office/ai/runs/${run2.id}`)).json();
+  }
+  assert.equal(run2.status, "proposed", run2.error);
+  assert.equal(secondRequestedModel, "office-model-2b");
+  assert.equal(run2.provider, "Office mock 2");
+  assert.equal(run2.model, "office-model-2b");
+  assert.equal(run2.edits[0].text, "Second provider proposal");
   assert.equal(
     (await (await request(`/api/office/documents/${doc.id}`)).json()).revision,
     saved.revision,

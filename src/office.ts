@@ -73,6 +73,23 @@ const TOOLS: [string, keyof typeof ICONS, string][] = [
   ["link", "link", "office.tool.link"],
 ];
 const AUTOSAVE_MS = 1200;
+const OFFICE_AI_PROVIDER_KEY = "devmoter-office-ai-provider";
+const OFFICE_AI_PROJECT_KEY = "devmoter-office-ai-project";
+const officeAiModelKey = (providerId: string) => `devmoter-office-ai-model:${providerId}`;
+const readStorage = (key: string) => {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+const writeStorage = (key: string, value: string) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* storage unavailable */
+  }
+};
 const draftKey = (id: string) => `devmoter-office-draft:${id}`;
 const esc = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -113,7 +130,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
         <h2>${esc(t("office.tab.ai"))}</h2>
         <div class="office-ai-empty" data-ai-empty hidden><p>${esc(t("office.aiRequiresDoc"))}</p></div>
         <div class="office-ai-setup" data-ai-unconfigured hidden><p>${esc(t("office.aiUnconfigured"))}</p><button type="button" data-configure>${esc(t("office.aiOpenSettings"))}</button></div>
-        <form data-ai-form hidden><label>${esc(t("office.aiGoalLabel"))}<textarea data-goal rows="3" placeholder="${esc(t("office.aiGoalPlaceholder"))}"></textarea></label><details><summary>${esc(t("office.aiTargetSummary"))}</summary><label>${esc(t("office.aiProviderLabel"))}<select data-provider></select></label><label>${esc(t("office.aiModelLabel"))}<select data-model></select></label><label>${esc(t("office.aiProjectLabel"))}<select data-project></select></label></details><p class="office-quiet" data-provider-notice></p><label class="office-consent"><input type="checkbox" data-share>${esc(t("office.aiConsent"))}</label><div class="office-ai-actions"><button data-ai-send>${esc(t("office.aiGenerate"))}</button><button type="button" data-stop hidden>${esc(t("common.stop"))}</button></div></form>
+        <form data-ai-form hidden><label>${esc(t("office.aiGoalLabel"))}<textarea data-goal rows="3" placeholder="${esc(t("office.aiGoalPlaceholder"))}"></textarea></label><div class="office-ai-selectors" role="group" aria-label="${esc(t("office.aiSelectorGroupAria"))}"><label>${esc(t("office.aiProviderLabel"))}<select data-provider></select></label><label>${esc(t("office.aiModelLabel"))}<select data-model></select></label></div><details data-project-details hidden><summary>${esc(t("office.aiProjectLabel"))}</summary><label>${esc(t("office.aiProjectLabel"))}<select data-project></select></label></details><p class="office-quiet" data-provider-notice></p><p class="office-quiet office-ai-single-hint" data-ai-single-hint hidden>${esc(t("office.aiSingleOptionHint"))}</p><label class="office-consent"><input type="checkbox" data-share>${esc(t("office.aiConsent"))}</label><div class="office-ai-actions"><button data-ai-send>${esc(t("office.aiGenerate"))}</button><button type="button" data-stop hidden>${esc(t("common.stop"))}</button></div></form>
         <p class="office-quiet" data-ai-status role="status" aria-live="polite"></p><div data-proposal></div>
       </aside>
     </div>`;
@@ -290,13 +307,17 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     get("[data-empty-message]").textContent = t(zero ? "office.emptyLibrary" : "office.emptyDocPrompt");
     get("[data-history-section]").hidden = !libraryLoaded || docsCount === 0;
   };
+  const availableProviders = () => providers.filter((p) => p.ready && p.models.length > 0);
+  const selectedProvider = () => availableProviders().find((p) => p.id === provider.value);
+  const aiReady = () => availableProviders().length > 0;
   const controls = () => {
     get<HTMLButtonElement>("[data-new]").disabled = busy;
     get<HTMLButtonElement>("[data-upload-open]").disabled = busy;
     get<HTMLButtonElement>("[data-empty-new]").disabled = busy;
     get<HTMLButtonElement>("[data-empty-open]").disabled = busy;
     get<HTMLButtonElement>("[data-download]").disabled = busy || !doc;
-    get<HTMLButtonElement>("[data-ai-send]").disabled = busy || !doc || ["planning", "stop_requested"].includes(run?.status || "");
+    get<HTMLButtonElement>("[data-ai-send]").disabled =
+      busy || !doc || !aiReady() || !selectedProvider() || !model.value || ["planning", "stop_requested"].includes(run?.status || "");
     const state = get("[data-save-state]");
     const label = !doc ? "" : saveError ? t("office.saveState.error") : saving ? t("office.saveState.saving") : dirty ? t("office.saveState.dirty") : t("office.saveState.saved");
     state.textContent = label;
@@ -512,26 +533,93 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   };
 
   // ---------------------------------------------------------------- AI ---
-  const aiReady = () => providers.some((p) => p.ready);
+  const syncProviderNotice = () => {
+    const available = availableProviders();
+    const selected = selectedProvider();
+    const singleProvider = available.length <= 1;
+    const singleModel = model.options.length <= 1;
+    provider.disabled = busy || singleProvider;
+    model.disabled = busy || singleModel;
+    project.disabled = busy;
+    provider.title = singleProvider ? t("office.aiSingleOptionTitle") : (selected?.name || "");
+    model.title = singleModel ? t("office.aiSingleOptionTitle") : (model.value ? apiModelLabel(model.value) : "");
+    get("[data-provider-notice]").textContent = selected?.ready && model.value
+      ? t("office.usingAi", { provider: selected.name, model: apiModelLabel(model.value) })
+      : t("office.providerUnconfigured");
+    get("[data-ai-single-hint]").hidden = !(available.length === 1 && model.options.length === 1);
+  };
   const renderAiSetup = () => {
-    if (!aiLoaded) return;
+    if (!aiLoaded) {
+      provider.disabled = true;
+      model.disabled = true;
+      project.disabled = true;
+      return;
+    }
     const ready = aiReady();
     get("[data-ai-unconfigured]").hidden = ready;
     get("[data-ai-empty]").hidden = !ready || !!doc;
     get("[data-ai-form]").hidden = !ready || !doc;
+    syncProviderNotice();
   };
-  const fillModels = () => {
+  const syncProjectForProvider = () => {
+    const selected = selectedProvider();
+    if (selected?.projectId && [...project.options].some((o) => o.value === selected.projectId)) {
+      project.value = selected.projectId;
+      return;
+    }
+    const savedProject = readStorage(OFFICE_AI_PROJECT_KEY);
+    if (savedProject && [...project.options].some((o) => o.value === savedProject)) project.value = savedProject;
+    else project.value = "";
+  };
+  const fillModels = (preferredModel = "") => {
     model.replaceChildren();
-    const selected = providers.find((p) => p.id === provider.value);
+    const selected = selectedProvider();
     for (const value of selected?.models || []) model.append(new Option(apiModelLabel(value), value));
-    const saved = localStorage.getItem(`devmoter-api-model:${provider.value}`);
+    const saved =
+      (preferredModel && [...model.options].some((o) => o.value === preferredModel) ? preferredModel : null) ||
+      (selected ? readStorage(officeAiModelKey(selected.id)) || readStorage(`devmoter-api-model:${selected.id}`) : null);
     if (saved && [...model.options].some((o) => o.value === saved)) model.value = saved;
-    get("[data-provider-notice]").textContent = selected?.ready
-      ? t("office.usingAi", { provider: selected.name, model: apiModelLabel(model.value) })
-      : t("office.providerUnconfigured");
+    syncProjectForProvider();
+    controls();
   };
-  provider.addEventListener("change", fillModels);
-  model.addEventListener("change", fillModels);
+  provider.addEventListener("change", () => {
+    if (provider.value) writeStorage(OFFICE_AI_PROVIDER_KEY, provider.value);
+    fillModels();
+  });
+  model.addEventListener("change", () => {
+    if (provider.value) {
+      writeStorage(OFFICE_AI_PROVIDER_KEY, provider.value);
+      if (model.value) writeStorage(officeAiModelKey(provider.value), model.value);
+    }
+    controls();
+  });
+  project.addEventListener("change", () => {
+    writeStorage(OFFICE_AI_PROJECT_KEY, project.value);
+  });
+  let aiContextGeneration = 0;
+  const loadAiContext = async () => {
+    const generation = ++aiContextGeneration;
+    const previousProvider = provider.value;
+    const previousModel = model.value;
+    const context = await api<{ providers: Provider[]; projects: { id: string; name: string }[] }>("/api/tools-ai/context");
+    if (generation !== aiContextGeneration) return;
+    providers = context.providers;
+    const available = availableProviders();
+    provider.replaceChildren();
+    for (const p of available) provider.append(new Option(p.name, p.id));
+    const savedProvider =
+      (previousProvider && available.some((p) => p.id === previousProvider) ? previousProvider : null) ||
+      readStorage(OFFICE_AI_PROVIDER_KEY) ||
+      readStorage("devmoter-api-provider");
+    if (savedProvider && available.some((p) => p.id === savedProvider)) provider.value = savedProvider;
+    else if (available.length) provider.value = available[0].id;
+    project.replaceChildren(new Option(t("office.noProjectOption"), ""));
+    for (const p of context.projects) project.append(new Option(p.name, p.id));
+    get<HTMLDetailsElement>("[data-project-details]").hidden = context.projects.length === 0;
+    aiLoaded = true;
+    const keepModel = Boolean(previousProvider && previousProvider === provider.value && previousModel);
+    fillModels(keepModel ? previousModel : "");
+  };
   const renderRun = () => {
     const aiStatusKeys = new Set(["planning", "proposed", "stop_requested", "stopped", "failed", "unknown"]);
     const statusText = run
@@ -598,19 +686,20 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   get("[data-ai-form]").addEventListener("submit", (e) => {
     e.preventDefault();
     void task(async () => {
-      if (!doc) return;
+      const selected = selectedProvider();
+      if (!doc || !selected || !model.value) return;
       await save();
       if (dirty) throw new Error(t("office.saveBeforeAi"));
       run = await api<AiRun>("/api/office/ai/runs", "POST", {
         documentId: doc.id,
         revision: doc.revision,
         goal: get<HTMLTextAreaElement>("[data-goal]").value,
-        providerId: provider.value,
+        providerId: selected.id,
         model: model.value,
         projectId: project.value || null,
         share: get<HTMLInputElement>("[data-share]").checked,
       });
-      localStorage.setItem("devmoter-office-ai-run", run.id);
+      writeStorage("devmoter-office-ai-run", run.id);
       renderRun();
       void pollRun();
     });
@@ -691,6 +780,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   syncViewport();
   window.addEventListener("devmoter:show-office", () => {
     if (!root.open) root.showModal();
+    void loadAiContext().catch((e) => error(translateServerMessage((e as Error).message)));
     if (run) void pollRun();
   });
   window.addEventListener("pagehide", () => void save());
@@ -699,18 +789,8 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   controls();
   void task(async () => {
     await library();
-    const context = await api<{ providers: Provider[]; projects: { id: string; name: string }[] }>("/api/tools-ai/context");
-    providers = context.providers;
-    for (const p of providers) provider.append(new Option(p.name, p.id));
-    const saved = localStorage.getItem("devmoter-api-provider");
-    if (saved && providers.some((p) => p.id === saved)) provider.value = saved;
-    else if (providers.some((p) => p.ready)) provider.value = providers.find((p) => p.ready)!.id;
-    fillModels();
-    aiLoaded = true;
-    renderAiSetup();
-    project.append(new Option(t("office.noProjectOption"), ""));
-    for (const p of context.projects) project.append(new Option(p.name, p.id));
-    const last = localStorage.getItem("devmoter-office-document");
+    await loadAiContext();
+    const last = readStorage("devmoter-office-document");
     if (last) {
       try {
         showDoc(await api<Doc>(`/api/office/documents/${last}`));
@@ -720,7 +800,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
         localStorage.removeItem("devmoter-office-document");
       }
     }
-    const lastRun = localStorage.getItem("devmoter-office-ai-run");
+    const lastRun = readStorage("devmoter-office-ai-run");
     if (lastRun) {
       run = { id: lastRun, status: "planning" };
       void pollRun();
