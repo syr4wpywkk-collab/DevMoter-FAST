@@ -1,4 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { isIP } from "node:net";
 import * as oauth from "oauth4webapi";
 
 const FLOW_TTL_MS = 5 * 60 * 1000;
@@ -35,13 +36,31 @@ function cookieMap(req) {
   return values;
 }
 
-function first(value) {
-  return (Array.isArray(value) ? value[0] : value || "").toString().split(",", 1)[0].trim();
+function parseRequestHost(req) {
+  const raw = req?.headers?.host;
+  const value = Array.isArray(raw) ? (raw.length === 1 ? raw[0] : "") : raw;
+  if (typeof value !== "string") return "";
+  const hostHeader = value.trim().toLowerCase();
+  if (!hostHeader || hostHeader.endsWith(":") || /[\s,/\\@?#%]/.test(hostHeader)) return "";
+  return hostHeader;
+}
+
+function parseAuthority(protocol, hostHeader) {
+  let url;
+  try {
+    url = new URL(`${protocol}//${hostHeader}`);
+  } catch {
+    return null;
+  }
+  if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
+    return null;
+  }
+  return url;
 }
 
 function loopbackAddress(value) {
-  const address = String(value || "").replace(/^::ffff:/, "").toLowerCase();
-  return address === "::1" || address === "127.0.0.1" || address.startsWith("127.");
+  const address = String(value || "").trim().toLowerCase().replace(/^::ffff:/, "");
+  return address === "::1" || address === "127.0.0.1" || (isIP(address) === 4 && address.startsWith("127."));
 }
 
 function validatePublicOrigin(value) {
@@ -63,25 +82,33 @@ function validatePublicOrigin(value) {
 }
 
 function trustedOrigin(req, configuredOrigin) {
-  if (configuredOrigin) return configuredOrigin;
+  const reject = () => fail("OIDC login origin is not configured for this host", 503);
+  const hostHeader = parseRequestHost(req);
+  if (!hostHeader) throw reject();
 
-  const hostHeader = first(req?.headers?.host).toLowerCase();
-  if (!hostHeader || hostHeader.includes("/") || hostHeader.includes("\\") || hostHeader.includes("@")) {
-    throw fail("OIDC login origin is not configured for this host", 503);
+  // Allowlist: (1) Host exactly matching configured publicOrigin, else (2) direct loopback
+  // socket + loopback Host; all other hosts (and any forwarded headers) are rejected.
+  const publicOrigin = validatePublicOrigin(String(configuredOrigin || "").trim());
+  if (publicOrigin) {
+    const publicUrl = new URL(publicOrigin);
+    const publicCandidate = parseAuthority(publicUrl.protocol, hostHeader);
+    if (publicCandidate && publicCandidate.origin === publicUrl.origin) {
+      return publicUrl.origin;
+    }
   }
-  let parsed;
-  try {
-    parsed = new URL(`http://${hostHeader}`);
-  } catch {
-    throw fail("OIDC login origin is not configured for this host", 503);
-  }
-  const hostname = parsed.hostname.replace(/^\[|\]$/g, "").toLowerCase();
-  const socketIsLoopback = loopbackAddress(req?.socket?.remoteAddress);
-  const hostIsLoopback = hostname === "localhost" || hostname === "::1" || hostname === "127.0.0.1" || hostname.startsWith("127.");
-  if (!socketIsLoopback || !hostIsLoopback) throw fail("OIDC login origin is not configured for this host", 503);
+
   const protocol = req?.socket?.encrypted ? "https:" : "http:";
-  if (protocol === "https:" && hostname === "localhost") return `https://${hostHeader}`;
-  return `${protocol}//${hostHeader}`;
+  const localCandidate = parseAuthority(protocol, hostHeader);
+  if (localCandidate) {
+    const hostname = localCandidate.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+    const socketIsLoopback = loopbackAddress(req?.socket?.remoteAddress);
+    const hostIsLoopback = hostname === "localhost" || loopbackAddress(hostname);
+    if (socketIsLoopback && hostIsLoopback) {
+      return localCandidate.origin;
+    }
+  }
+
+  throw reject();
 }
 
 function cookieHeader(name, value, origin, maxAge) {
