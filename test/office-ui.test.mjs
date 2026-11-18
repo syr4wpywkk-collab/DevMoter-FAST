@@ -26,10 +26,11 @@ const officeJs = await compile("../src/office.ts");
 const editorJs = await compile("../src/office-editor.ts");
 const tick = (ms = 25) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function mount(t, fetch) {
+function mount(t, fetch, initialStorage = {}) {
   const dom = new JSDOM("<!doctype html><body></body>", { url: "http://localhost", runScripts: "outside-only", pretendToBeVisual: true });
   t.after(() => dom.window.close());
   const w = dom.window;
+  for (const [key, value] of Object.entries(initialStorage)) w.localStorage.setItem(key, value);
   w.exports = {};
   w.eval(editorJs);
   const editorModule = w.exports;
@@ -72,14 +73,22 @@ const doc = {
 };
 const response = (value, ok = true, status = 200) => ({ ok, status, json: async () => structuredClone(value) });
 /** Server double: echoes the saved blocks back as the next revision. */
-function server({ providers = [], fail = 0, docs = [doc] } = {}) {
+function server({ providers = [], projects = [], fail = 0, docs = [doc] } = {}) {
   const calls = [];
   let revision = 1;
+  let runSeq = 0;
+  let lastRun = null;
   let failures = fail;
   const fetch = async (path, options = {}) => {
     const body = options.body ? JSON.parse(options.body) : undefined;
     calls.push({ path, method: options.method || "GET", body });
-    if (path.endsWith("/context")) return response({ projects: [], providers });
+    if (path.endsWith("/context")) return response({ projects, providers });
+    if (path === "/api/office/ai/runs" && options.method === "POST") {
+      runSeq += 1;
+      lastRun = { id: `run-${runSeq}`, documentId: body.documentId, revision: body.revision, status: "proposed", edits: [] };
+      return response(lastRun, true, 202);
+    }
+    if (path.startsWith("/api/office/ai/runs/")) return response(lastRun || { id: path.split("/").pop(), status: "unknown" });
     if (options.method === "PATCH") {
       if (failures > 0) {
         failures--;
@@ -432,4 +441,133 @@ test("Office shows history section and pick prompt when documents exist but none
   assert.equal(q("[data-empty]").hidden, true);
   assert.equal(q("[data-ai-empty]").hidden, true);
   assert.equal(q("[data-ai-form]").hidden, false);
+});
+
+test("Office AI panel renders visible provider/model selectors and disables single-option selectors sensibly", async (t) => {
+  const one = await open(t, {
+    providers: [
+      { id: "gemini", name: "Google Gemini", ready: true, models: ["models/gemini-2.5-flash"] },
+      { id: "unready", name: "OpenAI", ready: false, models: ["gpt-4o"] },
+    ],
+  });
+  assert.equal(one.q("[data-provider]").closest("details"), null);
+  assert.equal(one.q("[data-model]").closest("details"), null);
+  assert.deepEqual([...one.q("[data-provider]").options].map((o) => o.value), ["gemini"]);
+  assert.equal(one.q("[data-provider]").disabled, true);
+  assert.equal(one.q("[data-model]").disabled, true);
+  assert.equal(one.q("[data-ai-single-hint]").hidden, false);
+
+  const twoModels = await open(t, {
+    providers: [
+      { id: "gemini", name: "Google Gemini", ready: true, models: ["models/gemini-2.5-flash", "models/gemini-2.5-pro"] },
+    ],
+  });
+  assert.equal(twoModels.q("[data-provider]").disabled, true);
+  assert.equal(twoModels.q("[data-model]").disabled, false);
+  assert.equal(twoModels.q("[data-ai-single-hint]").hidden, true);
+});
+
+test("Office AI selector changes take effect on subsequent requests, persist across sessions, and refresh on reopen", async (t) => {
+  const providers = [
+    { id: "gemini", name: "Google Gemini", ready: true, models: ["models/gemini-2.5-flash", "models/gemini-2.5-pro"] },
+    { id: "anthropic", name: "Anthropic Claude", ready: true, models: ["claude-sonnet-4-20250514", "claude-3-5-haiku-latest"] },
+    { id: "vault-openai", name: "OpenAI Vault", ready: true, models: ["gpt-4o"], projectId: "proj-vault" },
+  ];
+  const projects = [
+    { id: "proj-other", name: "Other Project" },
+    { id: "proj-vault", name: "Vault Project" },
+  ];
+  const session1 = await open(t, { providers, projects });
+  const providerSelect = session1.q("[data-provider]");
+  const modelSelect = session1.q("[data-model]");
+  assert.equal(providerSelect.disabled, false);
+  assert.deepEqual([...providerSelect.options].map((o) => o.value), ["gemini", "anthropic", "vault-openai"]);
+  assert.equal(providerSelect.value, "gemini");
+  assert.equal(modelSelect.value, "models/gemini-2.5-flash");
+
+  // Switching model on the same provider must stick (regression: fillModels used to reset it).
+  modelSelect.value = "models/gemini-2.5-pro";
+  modelSelect.dispatchEvent(new session1.w.Event("change"));
+  assert.equal(modelSelect.value, "models/gemini-2.5-pro");
+  assert.match(session1.q("[data-provider-notice]").textContent, /Google Gemini \/ gemini-2\.5-pro$/);
+
+  // Switch provider & model, then submit a Docs AI request.
+  providerSelect.value = "anthropic";
+  providerSelect.dispatchEvent(new session1.w.Event("change"));
+  assert.equal(modelSelect.value, "claude-sonnet-4-20250514");
+  modelSelect.value = "claude-3-5-haiku-latest";
+  modelSelect.dispatchEvent(new session1.w.Event("change"));
+  assert.match(session1.q("[data-provider-notice]").textContent, /Anthropic Claude \/ claude-3-5-haiku-latest$/);
+
+  session1.q("[data-goal]").value = "簡潔にして";
+  session1.q("[data-share]").checked = true;
+  session1.q("[data-ai-form]").dispatchEvent(new session1.w.Event("submit", { cancelable: true }));
+  await tick(50);
+
+  // Switch to Vault-bound provider and send a second Docs AI request; Vault project auto-binds.
+  providerSelect.value = "vault-openai";
+  providerSelect.dispatchEvent(new session1.w.Event("change"));
+  assert.equal(session1.q("[data-project]").value, "proj-vault");
+  session1.q("[data-ai-form]").dispatchEvent(new session1.w.Event("submit", { cancelable: true }));
+  await tick(50);
+
+  // Switch back to Gemini and verify its previously chosen model is retained and sent.
+  providerSelect.value = "gemini";
+  providerSelect.dispatchEvent(new session1.w.Event("change"));
+  assert.equal(modelSelect.value, "models/gemini-2.5-pro");
+  session1.q("[data-ai-form]").dispatchEvent(new session1.w.Event("submit", { cancelable: true }));
+  await tick(50);
+
+  const aiPosts = session1.calls.filter((c) => c.method === "POST" && c.path === "/api/office/ai/runs");
+  assert.deepEqual(
+    aiPosts.map((c) => ({ providerId: c.body.providerId, model: c.body.model, projectId: c.body.projectId })),
+    [
+      { providerId: "anthropic", model: "claude-3-5-haiku-latest", projectId: null },
+      { providerId: "vault-openai", model: "gpt-4o", projectId: "proj-vault" },
+      { providerId: "gemini", model: "models/gemini-2.5-pro", projectId: null },
+    ],
+  );
+
+  // Switch back to Anthropic (index 1, non-default) before ending session 1 so persistence proves non-default selection survives.
+  providerSelect.value = "anthropic";
+  providerSelect.dispatchEvent(new session1.w.Event("change"));
+  assert.equal(modelSelect.value, "claude-3-5-haiku-latest");
+
+  // Persist into a fresh session (new JSDOM window sharing stored localStorage).
+  const persistedStorage = {};
+  for (let i = 0; i < session1.w.localStorage.length; i++) {
+    const key = session1.w.localStorage.key(i);
+    if (key) persistedStorage[key] = session1.w.localStorage.getItem(key);
+  }
+  delete persistedStorage["devmoter-office-ai-run"];
+
+  const dynamicProviders = [providers[0], providers[1]];
+  const api2 = server({ providers: dynamicProviders, projects });
+  const dom2 = mount(t, api2.fetch, persistedStorage);
+  dom2.window.exports.openOffice();
+  await tick();
+  assert.equal(dom2.window.document.querySelector("[data-provider]").value, "anthropic");
+  assert.equal(dom2.window.document.querySelector("[data-model]").value, "claude-3-5-haiku-latest");
+  assert.match(dom2.window.document.querySelector("[data-provider-notice]").textContent, /Anthropic Claude \/ claude-3-5-haiku-latest$/);
+  assert.equal(dom2.window.document.querySelector("[data-provider]").disabled, false);
+
+  // If the persisted provider is removed while Docs is closed, reopening refreshes context and falls back cleanly.
+  dynamicProviders.pop();
+  dom2.window.document.querySelector("[data-close]").click();
+  dom2.window.exports.openOffice();
+  await tick();
+  assert.equal(dom2.window.document.querySelector("[data-provider]").disabled, true);
+  assert.deepEqual([...dom2.window.document.querySelector("[data-provider]").options].map((o) => o.value), ["gemini"]);
+  assert.equal(dom2.window.document.querySelector("[data-provider]").value, "gemini");
+  assert.equal(dom2.window.document.querySelector("[data-model]").value, "models/gemini-2.5-pro");
+
+  // Reopening again after adding Anthropic back restores the multi-provider selector while keeping current selection.
+  dynamicProviders.push(providers[1]);
+  dom2.window.document.querySelector("[data-close]").click();
+  dom2.window.exports.openOffice();
+  await tick();
+  assert.equal(dom2.window.document.querySelector("[data-provider]").disabled, false);
+  assert.deepEqual([...dom2.window.document.querySelector("[data-provider]").options].map((o) => o.value), ["gemini", "anthropic"]);
+  assert.equal(dom2.window.document.querySelector("[data-provider]").value, "gemini");
+  assert.equal(dom2.window.document.querySelector("[data-model]").value, "models/gemini-2.5-pro");
 });

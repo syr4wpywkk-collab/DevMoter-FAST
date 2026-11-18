@@ -647,6 +647,16 @@
   line-height: 1.6;
   color: var(--of-text-2);
 }
+.office-ai label > select,
+.office-ai label > textarea {
+  margin-top: 4px;
+}
+.office-ai-selectors {
+  display: grid;
+}
+.office-ai-single-hint {
+  margin-top: 4px;
+}
 .office-ai details {
   margin: 0 0 8px;
 }
