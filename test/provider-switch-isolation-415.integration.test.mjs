@@ -46,9 +46,9 @@ const SYNTHETIC = {
   ocAttachName: "synthetic-oc-secret-415.txt",
   ocAttachBody: "SYNTHETIC_OC_ATTACHMENT_BODY_415",
   ocUploadId: "SYNTHETIC_OC_UPLOAD_ID_415",
-  ocProviderSecret: "SYNTHETIC_OC_PROVIDER_SECRET_415_DUMMY",
   // Codex state & secrets
   cxThreadId: "synthetic-cx-thread-415",
+  cxModel: "synthetic-cx-only-model-415",
   cxHistoryUser: "SYNTHETIC_CX_HISTORY_USER_415",
   cxHistoryAssistant: "SYNTHETIC_CX_HISTORY_ASSISTANT_415",
   cxUnsentDraft: "SYNTHETIC_CX_UNSENT_DRAFT_415",
@@ -59,9 +59,9 @@ const SYNTHETIC = {
   cxNewAttachName: "synthetic-cx-new-415.txt",
   cxNewAttachBody: "SYNTHETIC_CX_NEW_BODY_415",
   cxNewUploadId: "SYNTHETIC_CX_NEW_UPLOAD_ID_415",
-  cxProviderSecret: "SYNTHETIC_CX_PROVIDER_SECRET_415_DUMMY",
   // API Chat state & secrets
   apiProviderId: "synthetic-api-provider-415",
+  apiSavedProviderId: "synthetic-saved-api-provider-415",
   apiVaultProviderId: "synthetic-vault-provider-415",
   apiModel: "synthetic-api-model-415",
   apiExternalBaseUrl: "https://api.provider-example.invalid/v1",
@@ -728,13 +728,13 @@ async function mountRealFrontend(t, {
     if (pathname === "/api/codex/rpc") {
       const rpc = JSON.parse(bodyText || "{}");
       if (rpc.method === "model/list") {
-        return jsonReply({ result: { data: [{ id: "synthetic-cx-model", model: "synthetic-cx-model", displayName: "Synthetic Codex", isDefault: true }] } });
+        return jsonReply({ result: { data: [{ id: SYNTHETIC.cxModel, model: SYNTHETIC.cxModel, displayName: "Synthetic Codex", isDefault: true }] } });
       }
       if (rpc.method === "thread/list") {
         return jsonReply({ result: { data: [{ id: SYNTHETIC.cxThreadId, name: "Synthetic CX Thread", cwd: PROJECT_PATH }] } });
       }
       if (rpc.method === "thread/resume") {
-        return jsonReply({ result: { model: "synthetic-cx-model", cwd: PROJECT_PATH } });
+        return jsonReply({ result: { model: SYNTHETIC.cxModel, cwd: PROJECT_PATH } });
       }
       if (rpc.method === "thread/read") {
         return jsonReply({
@@ -781,7 +781,7 @@ async function mountRealFrontend(t, {
       if (method === "POST") {
         const saved = JSON.parse(bodyText || "{}");
         const created = {
-          id: saved.id || "synthetic-saved-api-provider-415",
+          id: saved.id || SYNTHETIC.apiSavedProviderId,
           name: saved.name || "Saved Synthetic Provider",
           presetId: saved.presetId || "openai",
           protocol: saved.protocol || "openai-compatible",
@@ -814,7 +814,14 @@ async function mountRealFrontend(t, {
       });
     }
     if (pathname === "/api/llm/chat") {
-      return jsonReply({ message: { content: "SYNTHETIC_API_ASSISTANT_REPLY_415" } });
+      const reqPayload = JSON.parse(bodyText || "{}");
+      const lastUserText = Array.isArray(reqPayload.messages)
+        ? [...reqPayload.messages].reverse().find(m => m?.role === "user")?.content
+        : "";
+      const content = lastUserText === SYNTHETIC.apiHistoryUser
+        ? SYNTHETIC.apiHistoryAssistant
+        : "SYNTHETIC_API_ASSISTANT_REPLY_415";
+      return jsonReply({ message: { content } });
     }
 
     return jsonReply({ error: `Unhandled synthetic path: ${method} ${pathname}` }, 404);
@@ -891,8 +898,7 @@ const ALL_SOURCE_SENTINELS = {
     { label: "ocAttachBody", value: SYNTHETIC.ocAttachBody },
     { label: "ocUploadId", value: SYNTHETIC.ocUploadId },
     { label: "ocSessionId", value: SYNTHETIC.ocSessionId },
-    { label: "ocModel", value: "synthetic-oc-m1" },
-    { label: "ocProviderSecret", value: SYNTHETIC.ocProviderSecret }
+    { label: "ocModel", value: "synthetic-oc-m1" }
   ],
   codex: [
     { label: "cxHistoryUser", value: SYNTHETIC.cxHistoryUser },
@@ -903,8 +909,7 @@ const ALL_SOURCE_SENTINELS = {
     { label: "cxAttachBody", value: SYNTHETIC.cxAttachBody },
     { label: "cxUploadId", value: SYNTHETIC.cxUploadId },
     { label: "cxThreadId", value: SYNTHETIC.cxThreadId },
-    { label: "cxModel", value: "synthetic-cx-only-model-415" },
-    { label: "cxProviderSecret", value: SYNTHETIC.cxProviderSecret }
+    { label: "cxModel", value: SYNTHETIC.cxModel }
   ],
   api: [
     { label: "apiHistoryUser", value: SYNTHETIC.apiHistoryUser },
@@ -1037,26 +1042,70 @@ test("negative controls: #415 boundary auditor rejects encoded/split sentinels, 
     assert.ok(external.findings.some(f => f.includes("external origin forbidden")));
   }
 
-  // 5. Raw binary Blob/File body + percent-encoded sentinel + non-HTTP traps
+  // 5. Raw binary Blob/File body vs percent-encoded URL query (tested independently)
   {
     const dom = new JSDOM("<!doctype html><div></div>", { url: ORIGIN });
-    const file = new dom.window.File([`prefix-${SYNTHETIC.ocAttachBody}-suffix`], "synthetic.png", { type: "image/png" });
-    const serialized = await serializeBody(file, dom.window);
-    const auditor = createBoundaryAuditor();
-    auditor.setScope({
+    const leakedFile = new dom.window.File([`prefix-${SYNTHETIC.ocAttachBody}-suffix`], "synthetic.png", { type: "image/png" });
+    const leakedSerialized = await serializeBody(leakedFile, dom.window);
+    const cleanFile = new dom.window.File(["clean-synthetic-image-bytes"], "clean.png", { type: "image/png" });
+    const cleanSerialized = await serializeBody(cleanFile, dom.window);
+
+    // (a) Clean URL + leaked File body (must catch File payload without relying on URL query).
+    const fileBodyAuditor = createBoundaryAuditor();
+    fileBodyAuditor.setScope({
       nextPhase: "prepare-target-attachment",
       nextTarget: "api",
       preparingFor: "api",
       sentinels: [{ label: "ocAttachBody", value: SYNTHETIC.ocAttachBody }]
     });
-    const binaryHit = auditor.inspect({
-      url: `${ORIGIN}/api/llm/attachments?note=${encodeURIComponent(SYNTHETIC.ocAttachBody)}`,
+    const fileBodyHit = fileBodyAuditor.inspect({
+      url: `${ORIGIN}/api/llm/attachments`,
       method: "POST",
       headers: { "content-type": "image/png" },
-      body: serialized.text,
-      rawBytesBase64: serialized.base64
+      body: leakedSerialized.text,
+      rawBytesBase64: leakedSerialized.base64
     });
-    assert.ok(binaryHit.findings.some(f => f.includes("source sentinel leaked (ocAttachBody)")));
+    assert.deepEqual(fileBodyHit.findings, ["source sentinel leaked (ocAttachBody)"]);
+
+    // Verify raw Base64 byte scanning alone catches the File payload even when text body is empty.
+    const rawBytesAuditor = createBoundaryAuditor();
+    rawBytesAuditor.setScope({
+      nextPhase: "prepare-target-attachment",
+      nextTarget: "api",
+      preparingFor: "api",
+      sentinels: [{ label: "ocAttachBody", value: SYNTHETIC.ocAttachBody }]
+    });
+    const rawBytesHit = rawBytesAuditor.inspect({
+      url: `${ORIGIN}/api/llm/attachments`,
+      method: "POST",
+      headers: { "content-type": "image/png" },
+      body: "",
+      rawBytesBase64: leakedSerialized.base64
+    });
+    assert.deepEqual(rawBytesHit.findings, ["source sentinel leaked (ocAttachBody)"]);
+
+    // (b) Clean File body + percent-encoded URL query.
+    // encodeURIComponent leaves [A-Za-z0-9_] unencoded, so percent-encode every byte
+    // to verify multi-pass %XX URL decoding with zero plaintext sentinel in the URL.
+    const pctEncodeAll = text => Array.from(Buffer.from(text, "utf8"), b => `%${b.toString(16).padStart(2, "0")}`).join("");
+    const encodedQuery = pctEncodeAll(SYNTHETIC.ocAttachBody);
+    assert.equal(encodedQuery.includes(SYNTHETIC.ocAttachBody), false);
+
+    const queryAuditor = createBoundaryAuditor();
+    queryAuditor.setScope({
+      nextPhase: "prepare-target-attachment",
+      nextTarget: "api",
+      preparingFor: "api",
+      sentinels: [{ label: "ocAttachBody", value: SYNTHETIC.ocAttachBody }]
+    });
+    const queryHit = queryAuditor.inspect({
+      url: `${ORIGIN}/api/llm/attachments?note=${encodedQuery}`,
+      method: "POST",
+      headers: { "content-type": "image/png" },
+      body: cleanSerialized.text,
+      rawBytesBase64: cleanSerialized.base64
+    });
+    assert.ok(queryHit.findings.some(f => f.includes("source sentinel leaked (ocAttachBody)")));
     dom.window.close();
   }
 
@@ -1099,7 +1148,7 @@ test("OpenCode → Codex / API Chat (unifiedUI=1): switch isolates state and exp
       "opencode-pocket-project": PROJECT_ID,
       "opencode-pocket-opencode-session": SYNTHETIC.ocSessionId,
       "opencode-pocket-codex-thread": SYNTHETIC.cxThreadId,
-      "opencode-pocket-codex-model": "synthetic-cx-only-model-415",
+      "opencode-pocket-codex-model": SYNTHETIC.cxModel,
       "devmoter-device-token": SYNTHETIC.deviceToken,
       "devmoter-api-provider": SYNTHETIC.apiProviderId
     }
@@ -1196,6 +1245,8 @@ test("OpenCode → Codex / API Chat (unifiedUI=1): switch isolates state and exp
   assert.ok(codexTurnStart, "Codex turn/start request recorded");
   const codexRpcBody = JSON.parse(codexTurnStart.body);
   assert.equal(codexRpcBody.params.threadId, SYNTHETIC.cxThreadId);
+  assert.equal(codexRpcBody.params.model, SYNTHETIC.cxModel);
+  assert.equal(app.window.localStorage.getItem("opencode-pocket-codex-model"), SYNTHETIC.cxModel);
   assert.deepEqual(
     codexRpcBody.params.input.map(item => item.type),
     ["text", "mention"]
@@ -1285,6 +1336,7 @@ test("OpenCode → Codex / API Chat (unifiedUI=1): switch isolates state and exp
     { label: "cxNewUploadId", value: SYNTHETIC.cxNewUploadId },
     { label: "apiSendPrompt", value: SYNTHETIC.apiSendPrompt },
     { label: "apiNewAttachName", value: SYNTHETIC.apiNewAttachName },
+    { label: "apiNewAttachBody", value: SYNTHETIC.apiNewAttachBody },
     { label: "apiNewAttachId", value: SYNTHETIC.apiNewAttachId }
   ];
   app.auditor.setScope({ nextPhase: "switch", nextTarget: "opencode", sentinels: cxAndApiForbidden });
@@ -1457,12 +1509,46 @@ test("API Chat external API keys, unsaved secrets, and Vault secretRef stay isol
   app.$("#apiSettingsModal form").dispatchEvent(new app.window.Event("submit", { bubbles: true, cancelable: true }));
 
   await waitFor(
-    () => app.auditor.records.some(r => r.pathname === "/api/llm/providers" && r.method === "POST"),
-    "provider saved via /api/llm/providers"
+    () =>
+      app.auditor.records.some(r => r.pathname === "/api/llm/providers" && r.method === "POST") &&
+      app.$("#apiSettingsModal").classList.contains("hidden") &&
+      app.$("#apiProvider").value === SYNTHETIC.apiSavedProviderId,
+    "provider saved, refresh finished, and settings modal closed"
   );
-  await tick(20);
+
+  // Send one explicit API Chat turn via the newly saved provider so both its routing and
+  // API Chat history sentinels (apiHistoryUser / apiHistoryAssistant) are live in runtime state.
+  app.auditor.setScope({
+    nextPhase: "explicit-send",
+    nextTarget: "api",
+    sentinels: [
+      { label: "apiEnteredSecret", value: SYNTHETIC.apiEnteredSecret },
+      { label: "apiVaultSecretRef", value: SYNTHETIC.apiVaultSecretRef },
+      ...ALL_SOURCE_SENTINELS.opencode,
+      ...ALL_SOURCE_SENTINELS.codex
+    ]
+  });
+  app.setComposerValue("#apiPrompt", SYNTHETIC.apiHistoryUser);
+  const savedProviderSendIdx = app.auditor.records.length;
+  app.$("#apiSend").click();
+  await waitFor(
+    () =>
+      app.auditor.records.slice(savedProviderSendIdx).some(r => r.pathname === "/api/llm/chat") &&
+      app.$("#apiTranscript").textContent.includes(SYNTHETIC.apiHistoryAssistant) &&
+      app.$("#apiForm").getAttribute("aria-busy") === "false",
+    "API Chat explicit send via newly saved provider settled"
+  );
+  const savedChatReq = app.auditor.records.slice(savedProviderSendIdx).find(r => r.pathname === "/api/llm/chat");
+  assert.ok(savedChatReq);
+  assert.equal(savedChatReq.headers["x-devmoter-device-token"], SYNTHETIC.deviceToken);
+  const savedChatPayload = JSON.parse(savedChatReq.body);
+  assert.equal(savedChatPayload.providerId, SYNTHETIC.apiSavedProviderId);
+  assert.equal(savedChatPayload.projectId, PROJECT_ID);
+  assert.deepEqual(savedChatPayload.messages, [{ role: "user", content: SYNTHETIC.apiHistoryUser, attachments: [] }]);
+  assert.ok(app.$("#apiHistory").textContent.includes(SYNTHETIC.apiHistoryUser));
 
   // Reopen form and leave an UNSAVED secret typed in the password input before switching away.
+  app.auditor.setScope({ nextPhase: "prepare-source", nextTarget: "api", sentinels: [] });
   app.$("#apiSettingsTop").click();
   await waitFor(() => Boolean(app.$(".api-settings-toolbar button")), "API settings list reopened");
   app.$(".api-settings-toolbar button").click();
@@ -1472,6 +1558,7 @@ test("API Chat external API keys, unsaved secrets, and Vault secretRef stay isol
   // Step 2: Switch API Chat → Codex and explicitly send on Codex.
   const apiAuthForbidden = [
     ...ALL_SOURCE_SENTINELS.api,
+    { label: "apiSavedProviderId", value: SYNTHETIC.apiSavedProviderId },
     ...ALL_SOURCE_SENTINELS.opencode
   ];
   app.auditor.setScope({ nextPhase: "switch", nextTarget: "codex", sentinels: apiAuthForbidden });
@@ -1496,6 +1583,7 @@ test("API Chat external API keys, unsaved secrets, and Vault secretRef stay isol
   // Step 3: Switch Codex → OpenCode and explicitly send on OpenCode.
   const cxAndApiAuthForbidden = [
     ...ALL_SOURCE_SENTINELS.api,
+    { label: "apiSavedProviderId", value: SYNTHETIC.apiSavedProviderId },
     ...ALL_SOURCE_SENTINELS.codex,
     { label: "cxSendPrompt", value: SYNTHETIC.cxSendPrompt }
   ];
@@ -1535,9 +1623,16 @@ test("API Chat external API keys, unsaved secrets, and Vault secretRef stay isol
   await waitFor(() => Boolean(app.$("[aria-label='Open API Chat workspace']")), "Home React quick-switch rendered");
 
   app.auditor.setScope({ nextPhase: "switch", nextTarget: "api", sentinels: ocAndCxForbiddenForApi });
+  const apiSwitchStartIdx = app.auditor.records.length;
   app.$("[aria-label='Open API Chat workspace']").click();
-  await waitFor(() => new URL(app.window.location.href).searchParams.get("surface") === "api", "Home React quick-switch opened API Chat");
-  await tick(20);
+  await waitFor(
+    () =>
+      new URL(app.window.location.href).searchParams.get("surface") === "api" &&
+      app.auditor.records.slice(apiSwitchStartIdx).some(r => r.pathname === "/api/llm/providers" && r.method === "GET") &&
+      app.$("#apiStatus").textContent === "" &&
+      Array.from(app.$("#apiProvider").options).some(o => o.value === SYNTHETIC.apiVaultProviderId),
+    "Home React quick-switch opened API Chat and provider refresh settled"
+  );
 
   const apiProviderSelect = app.$("#apiProvider");
   apiProviderSelect.value = SYNTHETIC.apiVaultProviderId;
@@ -1547,7 +1642,13 @@ test("API Chat external API keys, unsaved secrets, and Vault secretRef stay isol
   app.setComposerValue("#apiPrompt", SYNTHETIC.apiSendPrompt);
   const apiSendIdx = app.auditor.records.length;
   app.$("#apiSend").click();
-  await waitFor(() => app.auditor.records.slice(apiSendIdx).some(r => r.pathname === "/api/llm/chat"), "API Chat Vault send");
+  await waitFor(
+    () =>
+      app.auditor.records.slice(apiSendIdx).some(r => r.pathname === "/api/llm/chat") &&
+      app.$("#apiTranscript").textContent.includes("SYNTHETIC_API_ASSISTANT_REPLY_415") &&
+      app.$("#apiForm").getAttribute("aria-busy") === "false",
+    "API Chat Vault send"
+  );
 
   const chatReq = app.auditor.records.slice(apiSendIdx).find(r => r.pathname === "/api/llm/chat");
   assert.ok(chatReq);
@@ -1555,7 +1656,14 @@ test("API Chat external API keys, unsaved secrets, and Vault secretRef stay isol
   const chatPayload = JSON.parse(chatReq.body);
   assert.equal(chatPayload.providerId, SYNTHETIC.apiVaultProviderId);
   assert.equal(chatPayload.projectId, PROJECT_ID);
-  assert.equal(chatPayload.messages[0].content, SYNTHETIC.apiSendPrompt);
+  assert.deepEqual(
+    chatPayload.messages.map(m => ({ role: m.role, content: m.content })),
+    [
+      { role: "user", content: SYNTHETIC.apiHistoryUser },
+      { role: "assistant", content: SYNTHETIC.apiHistoryAssistant },
+      { role: "user", content: SYNTHETIC.apiSendPrompt }
+    ]
+  );
 
   // Confirm URL & storage never acquired cross-provider secrets or drafts.
   assert.equal(app.window.location.search.includes(SYNTHETIC.apiEnteredSecret), false);
