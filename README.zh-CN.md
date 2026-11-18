@@ -94,7 +94,7 @@ DevMoter 明确区分 **Shipped / Experimental / Planned**。UI 中出现入口�
 | OpenCode | ✅ Shipped | sessions、agents、models/providers、modes、commands、skills、streaming、permissions/questions、interrupt |
 | Codex | ✅ Shipped | threads、resume/fork、动态 model discovery、reasoning effort、streaming、approvals、attachments、plugins/MCP inventory |
 | Projects | ✅ Shipped | registered working directory、project switching、有边界的 Markdown 浏览/编辑 |
-| GitHub workspace | ✅ Shipped | host-`gh` repo discovery、managed clone/open、branch/fetch safety checks |
+| GitHub workspace | 🧪 Experimental | host-`gh` repo discovery、managed clone/open、branch/fetch safety checks |
 | Session control | 🧪 Experimental | handoff、follow-up、checkpoint、rewind/fork、transcript search、background-run controls |
 | Reviewed Changes / Tasks | 🧪 Experimental | proposal review、hunk decision、drift check、apply/commit、worktree、PR flow |
 | Project context / local index | 🧪 Experimental | bounded project search、structure/symbol context、local indexing |
