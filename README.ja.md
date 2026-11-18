@@ -44,7 +44,7 @@ DevMoter FASTは、**AIを活用したソフトウェア開発のための、オ
 | --- | --- | --- |
 | Agent Workspace | OpenCode / Codexのセッション、ストリーミング、モデル・Agent選択、承認、割り込み | 実装済み・上流依存 |
 | Projects | Project登録、切替、制限付きファイル・Markdownアクセス | 実装済み |
-| GitHub Workspace | ホスト認証を使ったRepository検索と管理対象Repository操作 | 実装済み・範囲限定 |
+| GitHub Workspace | ホスト認証を使ったRepository検索と管理対象Repository操作 | 実験的・範囲限定 |
 | Tools AI | 自然言語の目的を、制限されたProject / Host観測へルーティング | 実験的 |
 | Reviewed Changes | Diff提案、ファイル・Hunkレビュー、Context drift確認、明示的Apply / Commit | 実験的 |
 | Session Control | Follow-up、Handoff、Checkpoint、Fork、履歴検索、Background run制御 | 実験的 |

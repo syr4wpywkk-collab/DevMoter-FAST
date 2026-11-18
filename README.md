@@ -42,7 +42,7 @@ The goal:
 | --- | --- | --- |
 | Agent workspace | OpenCode and Codex sessions, streaming, model/agent selection, approvals and interruption | Shipped; upstream-dependent |
 | Projects | Registered project identities, project switching, bounded file and Markdown access | Shipped |
-| GitHub workspace | Host-authenticated repository discovery and managed repository operations | Shipped; scope-limited |
+| GitHub workspace | Host-authenticated repository discovery and managed repository operations | Experimental; scope-limited |
 | Tools AI | Natural-language requests routed to bounded project and host observations | Experimental |
 | Reviewed Changes | Diff proposals, file/hunk review, drift checks, explicit apply and commit flows | Experimental |
 | Session control | Follow-ups, handoff, checkpoints, forks, transcript search and background-run controls | Experimental |
