@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { EventEmitter } from "node:events";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, rmdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createAgentRunService } from "../server/agent-run-service.mjs";
@@ -148,4 +148,36 @@ test("persisted active runs fail closed after host restart instead of silently r
   assert.equal(restored.state, "failed");
   assert.match(restored.error, /Host restarted/);
   assert.equal(secondCodex.calls.length, 0);
+  const saved = JSON.parse(await readFile(filePath, "utf8"));
+  assert.equal(saved.runs.find(item => item.id === run.id).state, "failed");
+  assert.equal((await stat(filePath)).mode & 0o077, 0);
+  assert.deepEqual(await readdir(dir), ["agent-runs.json"]);
+});
+
+test("a failed state replacement cleans up its temporary file and later writes can recover", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-agent-write-failure-"));
+  const filePath = join(dir, "agent-runs.json");
+  const service = createAgentRunService({ filePath, codex: new FakeCodex() });
+  t.after(async () => {
+    await service.dispose();
+    await rm(dir, { recursive: true, force: true });
+  });
+  await service.ready();
+  await mkdir(filePath);
+  const errors = t.mock.method(console, "error", () => {});
+
+  const run = await service.spawn({
+    parentSessionId: "parent",
+    task: "Run with temporarily unavailable state storage",
+    context: { projectId: "project-1" }
+  });
+  assert.equal(run.state, "running");
+  assert.deepEqual(await readdir(dir), ["agent-runs.json"]);
+  assert.ok(errors.mock.calls.some(({ arguments: args }) => args[0] === "Agent run state persistence failed"));
+
+  await rmdir(filePath);
+  await service.flushPersistence();
+  const saved = JSON.parse(await readFile(filePath, "utf8"));
+  assert.equal(saved.runs.find(item => item.id === run.id).state, "running");
+  assert.deepEqual(await readdir(dir), ["agent-runs.json"]);
 });
