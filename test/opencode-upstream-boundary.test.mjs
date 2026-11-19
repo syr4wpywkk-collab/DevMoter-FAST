@@ -18,7 +18,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { chmod, mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -44,8 +44,19 @@ async function launcherBootstrap() {
   return { script, block: lines.slice(start, end).join("\n") };
 }
 
-async function runBootstrap(home) {
-  const { block } = await launcherBootstrap();
+async function runBootstrap(home, launcher = "start-pocket.sh") {
+  let block;
+  if (launcher === "start-pocket.sh") {
+    ({ block } = await launcherBootstrap());
+  } else {
+    const source = await readFile(join(repoRoot, "scripts", launcher), "utf8");
+    const lines = source.split("\n");
+    const start = lines.findIndex(line => line.startsWith("STATE_DIR="));
+    const setup = lines.findIndex(line => line === 'PREV_UMASK="$(umask)"');
+    const end = lines.findIndex(line => line === 'umask "$PREV_UMASK"');
+    assert.ok(start >= 0 && setup > start + 2 && end > setup, "systemd bootstrap anchors must exist");
+    block = [...lines.slice(start, start + 3), ...lines.slice(setup, end + 1)].join("\n");
+  }
   // umask 022 simulates a default interactive shell: the script must
   // harden the credential files itself, not inherit safe permissions.
   await execFileAsync("bash", ["-c", "umask 022\nset -euo pipefail\n" + block], {
@@ -60,25 +71,28 @@ async function runBootstrap(home) {
   };
 }
 
-test("launcher bootstrap creates owner-only credentials and reuses them (no rotation)", async () => {
-  const home = await mkdtemp(join(tmpdir(), "devmoter-589-"));
-  const { dir, ocSecretPath, authSecretPath } = await runBootstrap(home);
+for (const launcher of ["start-pocket.sh", "systemd-entrypoint.sh"]) {
+  test(`${launcher}: bootstrap creates owner-only credentials and reuses them`, async t => {
+    const home = await mkdtemp(join(tmpdir(), "devmoter-589-"));
+    t.after(() => rm(home, { recursive: true, force: true }));
+    const { dir, ocSecretPath, authSecretPath } = await runBootstrap(home, launcher);
 
-  assert.equal(await modeOf(dir), 0o700, "credential directory must be 700");
-  assert.equal(await modeOf(ocSecretPath), 0o600, "OpenCode password file must be 600");
-  assert.equal(await modeOf(authSecretPath), 0o600, "DevMoter password file must be 600");
+    assert.equal(await modeOf(dir), 0o700, "credential directory must be 700");
+    assert.equal(await modeOf(ocSecretPath), 0o600, "OpenCode password file must be 600");
+    assert.equal(await modeOf(authSecretPath), 0o600, "DevMoter password file must be 600");
 
-  const ocSecret = (await readFile(ocSecretPath, "utf8")).trim();
-  const authSecret = (await readFile(authSecretPath, "utf8")).trim();
-  assert.ok(ocSecret.length >= 40, "generated OpenCode password is a long random token");
-  assert.ok(authSecret.length >= 40, "generated DevMoter password is a long random token");
-  assert.notEqual(ocSecret, authSecret, "the two credentials are independent");
+    const ocSecret = (await readFile(ocSecretPath, "utf8")).trim();
+    const authSecret = (await readFile(authSecretPath, "utf8")).trim();
+    assert.ok(ocSecret.length >= 40, "generated OpenCode password is a long random token");
+    assert.ok(authSecret.length >= 40, "generated DevMoter password is a long random token");
+    assert.notEqual(ocSecret, authSecret, "the two credentials are independent");
 
-  // A restart reuses the existing files: the bootstrap never rotates.
-  await runBootstrap(home);
-  assert.equal((await readFile(ocSecretPath, "utf8")).trim(), ocSecret, "restart must reuse the OpenCode password");
-  assert.equal((await readFile(authSecretPath, "utf8")).trim(), authSecret, "restart must reuse the DevMoter password");
-});
+    // A restart reuses the existing files: the bootstrap never rotates.
+    await runBootstrap(home, launcher);
+    assert.equal((await readFile(ocSecretPath, "utf8")).trim(), ocSecret, "restart must reuse the OpenCode password");
+    assert.equal((await readFile(authSecretPath, "utf8")).trim(), authSecret, "restart must reuse the DevMoter password");
+  });
+}
 
 test("launcher scripts keep the chmod/umask contract (static guardrails)", async () => {
   const { script } = await launcherBootstrap();
