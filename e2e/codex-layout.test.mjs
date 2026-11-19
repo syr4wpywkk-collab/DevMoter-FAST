@@ -74,6 +74,9 @@ test("desktop Codex sidebar remains clickable before and after a modal", async t
 
 test("mobile Codex details drawer restores focus and removes hidden controls", async t => {
   const page = await setup(t, { width: 390, height: 844 });
+  // #330: the mobile Codex screen must not be wider than the viewport.
+  const overflow = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, width: window.innerWidth }));
+  assert.ok(overflow.scroll <= overflow.width, `page is ${overflow.scroll}px wide in a ${overflow.width}px viewport`);
   const details = page.locator("#cxDetailsPanel");
   const toggle = page.locator("#cxDetailsTop");
   await toggle.click();
