@@ -61,7 +61,7 @@ test("DevMoter integrates with mocked OpenCode and Codex happy/failure paths", a
       res.end(JSON.stringify({ directory: projectDir, project: { name: "mock" } }));
       return;
     }
-    if (req.url === "/api/fail") {
+    if (req.url === "/api/session/fail") {
       res.writeHead(503);
       res.end(JSON.stringify({ message: "synthetic OpenCode failure" }));
       return;
@@ -143,7 +143,7 @@ rl.on("line", line => {
     assert.equal(openCodeOk.status, 200);
     assert.equal((await openCodeOk.json()).directory, projectDir);
 
-    const openCodeFailure = await fetch(`${baseUrl}/api/opencode/fail`, {
+    const openCodeFailure = await fetch(`${baseUrl}/api/opencode/session/fail`, {
       headers: headers()
     });
     assert.equal(openCodeFailure.status, 503);

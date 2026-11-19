@@ -35,6 +35,7 @@ import { ControlPlane } from "./server/control-plane.mjs";
 import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/workspace-control.mjs";
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
 import { isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, parseAgentMode, readOnlyToolsFor, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
+import { classifyProxyRoute } from "./server/proxy-route-policy.mjs";
 import { assertAuthPassword, parseBasicAuthorization, requireSameOriginMutation } from "./server/auth.mjs";
 import { createBasicAuthGuard, parseTrustedProxies } from "./server/auth-guard.mjs";
 import { OidcAuth } from "./server/oidc-auth.mjs";
@@ -1997,20 +1998,37 @@ async function proxy(req, res) {
   if (sessionId && requestedMode) openCodeSessionModes.set(sessionId, requestedMode);
   const mode = requestedMode || (sessionId ? openCodeSessionModes.get(sessionId) : null) || "build";
 
-  if (isReadOnlyMode(mode) && isDirectMutationRoute(policyPath)) {
-    json(res, 403, { error: `${mode} mode blocks direct shell and command mutations`, mode });
-    return;
-  }
-
   if (isAdapterOwnedRoute(policyPath)) {
     json(res, 404, { error: "This OpenCode session route is served by DevMoter at /api/opencode/session/{id}/…" });
     return;
   }
 
-  const sandboxPolicy = externalBackendSandboxPolicy("opencode");
-  if (!sandboxPolicy.allowed && isDirectMutationRoute(policyPath)) {
-    json(res, 409, { error: sandboxPolicy.reason, sandbox: sandboxPolicy });
+  // Deny-by-default (#588): only allowlisted method + route pairs are
+  // forwarded; anything else is rejected without contacting upstream.
+  const route = classifyProxyRoute(req.method, policyPath);
+  if (!route) {
+    json(res, 404, { error: "OpenCode proxy route is not allowed" });
     return;
+  }
+
+  if (route.kind === "write") {
+    // The read-only guard keeps its session scope: it blocks writes that act
+    // on an existing session. Session creation declares the new session's own
+    // mode, so it is not blocked here (the sandbox guard below still applies).
+    if (sessionId && isReadOnlyMode(mode)) {
+      json(res, 403, {
+        error: isDirectMutationRoute(policyPath)
+          ? `${mode} mode blocks direct shell and command mutations`
+          : `${mode} mode blocks write operations`,
+        mode
+      });
+      return;
+    }
+    const sandboxPolicy = externalBackendSandboxPolicy("opencode");
+    if (!sandboxPolicy.allowed) {
+      json(res, 409, { error: sandboxPolicy.reason, sandbox: sandboxPolicy });
+      return;
+    }
   }
 
   let body;
