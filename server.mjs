@@ -1766,7 +1766,7 @@ function canonicalDecodedPath(rawPath) {
   } catch {
     return null;
   }
-  if (decoded.includes("%")) return null;
+  if (fullyDecodePath(rawPath) !== decoded) return null;
   if (decoded.includes("//")) return null;
   if (decoded.split("/").some(segment => segment === "." || segment === "..")) return null;
   return decoded;
@@ -1777,7 +1777,8 @@ function canonicalDecodedPath(rawPath) {
  * plain string: fixed OpenCode origin + "/api/" + allowlisted path (+ query).
  * ONE canonical (decoded, normalized) path drives validation, the policy
  * classification, and the upstream URL, so the route DevMoter checks is the
- * route OpenCode serves. Returns { upstreamUrl, policyPath } or { error }.
+ * route OpenCode serves. Returns { upstreamUrl, policyPath, upstreamAlias }
+ * or { error }.
  */
 export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   const raw = String(rawRequestUrl || "");
@@ -1804,7 +1805,9 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   }
 
   // Strip the optional client-side "/api" prefix; the upstream root is fixed.
-  let apiRelative = canonicalPath.startsWith("/api/") ? canonicalPath.slice("/api/".length) : canonicalPath.slice(1);
+  // The upstream-style alias does not grant access to adapter-owned operations.
+  const upstreamAlias = canonicalPath.startsWith("/api/");
+  let apiRelative = upstreamAlias ? canonicalPath.slice("/api/".length) : canonicalPath.slice(1);
   if (apiRelative.startsWith("/")) {
     return { error: "OpenCode proxy path is not allowed" };
   }
@@ -1813,7 +1816,7 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   apiRelative = apiRelative.replace(/\/+$/, "");
   const policyPath = `/api/${apiRelative}`;
   const upstreamUrl = `${OPENCODE_ORIGIN}/api/${apiRelative}${rawQuery}`;
-  return { upstreamUrl, policyPath };
+  return { upstreamUrl, policyPath, upstreamAlias };
 }
 
 // DevMoter's OpenCode session surface. The browser (and every other DevMoter
@@ -3617,7 +3620,7 @@ const server = http.createServer(async (req, res) => {
     }
 
 
-    if (req.method === "GET" && openCodeTarget?.policyPath === "/api/pocket/providers") {
+    if (req.method === "GET" && openCodeTarget?.policyPath === "/api/pocket/providers" && !openCodeTarget.upstreamAlias) {
       await opencodeProviders(url, res);
       return;
     }
@@ -3658,7 +3661,7 @@ const server = http.createServer(async (req, res) => {
         req.method !== "HEAD" &&
         !claimOperation(req, res, `${req.method}:${policyPath}`)
       ) return;
-      if (await opencodeSessionRoute(req, res, policyPath)) return;
+      if (!openCodeTarget.upstreamAlias && await opencodeSessionRoute(req, res, policyPath)) return;
       await proxy(req, res, openCodeTarget);
       return;
     }
