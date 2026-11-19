@@ -72,12 +72,13 @@ export function codexExecutionSettingsFor(capabilityPolicy) {
     !allows("files") ||
     !allows("commands") ||
     effective.mutationPolicy === "read-only-until-explicit-transition";
-  return {
-    sandbox: readOnly ? "read-only" : "workspace-write",
-    // "untrusted" asks before anything but known-safe read commands; never inherit
-    // an operator-level "never" for a delegated run.
-    approvalPolicy: allows("commands") ? "on-request" : "untrusted"
-  };
+  // Only ever tighten: an unrestricted run inherits the host's Codex configuration, which
+  // may itself be read-only or "untrusted" and must not be widened by a delegated run.
+  const settings = {};
+  if (readOnly) settings.sandbox = "read-only";
+  // "untrusted" asks before anything but known-safe read commands.
+  if (!allows("commands")) settings.approvalPolicy = "untrusted";
+  return settings;
 }
 
 export function createAgentRunService({
@@ -109,8 +110,8 @@ export function createAgentRunService({
       assertExecutionAllowed();
       // Only a registered project selects the working directory; the id itself is never sent to Codex.
       const project = await resolveProject(projectId);
-      const cwd = String(project?.path || "").trim();
-      if (!cwd) throw new Error("Registered project not found or unavailable");
+      const cwd = typeof project?.path === "string" ? project.path : "";
+      if (!cwd.trim()) throw new Error("Registered project not found or unavailable");
 
       const threadParams = { cwd, ...codexExecutionSettingsFor(run.capabilityPolicy) };
       if (run.model) threadParams.model = run.model;

@@ -199,18 +199,15 @@ test("a failed state replacement cleans up its temporary file and later writes c
 });
 
 test("capability policy maps to an enforced Codex sandbox and approval policy", () => {
-  assert.deepEqual(codexExecutionSettingsFor(undefined), { sandbox: "workspace-write", approvalPolicy: "on-request" });
-  assert.deepEqual(
-    codexExecutionSettingsFor({ deny: ["files"] }),
-    { sandbox: "read-only", approvalPolicy: "on-request" }
-  );
+  assert.deepEqual(codexExecutionSettingsFor(undefined), {});
+  assert.deepEqual(codexExecutionSettingsFor({ deny: ["files"] }), { sandbox: "read-only" });
   assert.deepEqual(
     codexExecutionSettingsFor({ deny: ["commands"] }),
     { sandbox: "read-only", approvalPolicy: "untrusted" }
   );
   assert.deepEqual(
     codexExecutionSettingsFor({ mutationPolicy: "read-only-until-explicit-transition" }),
-    { sandbox: "read-only", approvalPolicy: "on-request" }
+    { sandbox: "read-only" }
   );
 });
 
@@ -230,6 +227,17 @@ test("subagents only start in a registered project and never forward the project
   const start = codex.calls.find(call => call.method === "thread/start");
   assert.equal(start.params.cwd, "/srv/projects/project-1");
   assert.equal("projectId" in start.params, false);
+  // Unrestricted runs inherit the host's Codex sandbox and approval settings unchanged.
+  assert.deepEqual(Object.keys(start.params), ["cwd"]);
+
+  const spaced = createAgentRunService({
+    filePath: await tempFile(t),
+    codex,
+    resolveProject: async () => ({ path: "/srv/projects/trailing " })
+  });
+  t.after(() => spaced.dispose());
+  await spaced.spawn({ parentSessionId: "parent", task: "space", context: { projectId: "p" } });
+  assert.equal(codex.calls.filter(call => call.method === "thread/start").at(-1).params.cwd, "/srv/projects/trailing ");
 });
 
 test("required sandbox mode blocks subagent start and approval acceptance", async t => {
