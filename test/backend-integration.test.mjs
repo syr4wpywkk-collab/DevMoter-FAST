@@ -182,6 +182,36 @@ rl.on("line", line => {
     });
     assert.equal(arbitraryCwd.status, 400);
 
+    const overrides = [
+      ["thread/start", { projectId: registeredProject.id, sandbox: "danger-full-access" }],
+      ["thread/start", { projectId: registeredProject.id, approvalPolicy: "never" }],
+      ["thread/start", { projectId: registeredProject.id, config: { mcp_servers: { x: { command: "sh" } } } }],
+      ["thread/resume", { threadId: "t1", cwd: "/tmp/not-registered" }],
+      ["thread/fork", { threadId: "t1", sandbox: "danger-full-access" }],
+      ["turn/start", { threadId: "t1", input: [], sandboxPolicy: { type: "dangerFullAccess" } }],
+      ["turn/start", { threadId: "t1", input: [], approvalPolicy: "never" }],
+      ["turn/start", { threadId: "t1", input: [], cwd: "/" }],
+      ["turn/start", ["not-an-object"]]
+    ];
+    for (const [index, [method, params]] of overrides.entries()) {
+      const response = await fetch(`${baseUrl}/api/codex/rpc`, {
+        method: "POST",
+        headers: headers({ "content-type": "application/json", "x-pocket-operation-id": `codex-authority-${index}` }),
+        body: JSON.stringify({ method, params })
+      });
+      assert.equal(response.status, 400, `${method} ${JSON.stringify(params)}`);
+    }
+
+    const steerPath = await fetch(`${baseUrl}/api/codex/rpc`, {
+      method: "POST",
+      headers: headers({ "content-type": "application/json", "x-pocket-operation-id": "codex-steer-path" }),
+      body: JSON.stringify({
+        method: "turn/steer",
+        params: { threadId: "t1", expectedTurnId: "u1", input: [{ type: "localImage", path: "/etc/passwd" }] }
+      })
+    });
+    assert.equal(steerPath.status, 400);
+
     const projectBound = await fetch(`${baseUrl}/api/codex/rpc`, {
       method: "POST",
       headers: headers({ "content-type": "application/json", "x-pocket-operation-id": "codex-project-bound" }),

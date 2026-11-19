@@ -4,7 +4,7 @@ import { EventEmitter } from "node:events";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { createAgentRunService } from "../server/agent-run-service.mjs";
+import { codexExecutionSettingsFor, createAgentRunService } from "../server/agent-run-service.mjs";
 
 class FakeCodex extends EventEmitter {
   constructor() {
@@ -34,12 +34,23 @@ class FakeCodex extends EventEmitter {
   }
 }
 
+const resolveProject = async id => {
+  if (id !== "project-1") throw new Error("Project not found");
+  return { id, path: "/srv/projects/project-1" };
+};
+
+async function tempFile(t) {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-agent-sec-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  return join(dir, "agent-runs.json");
+}
+
 test("host agent service owns run lifecycle and persists authoritative capability policy", async t => {
   const dir = await mkdtemp(join(tmpdir(), "devmoter-agent-host-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const filePath = join(dir, "agent-runs.json");
   const codex = new FakeCodex();
-  const service = createAgentRunService({ filePath, codex });
+  const service = createAgentRunService({ filePath, codex, resolveProject });
   t.after(() => service.dispose());
 
   const run = await service.spawn({
@@ -57,6 +68,10 @@ test("host agent service owns run lifecycle and persists authoritative capabilit
 
   assert.equal(run.state, "running");
   assert.equal(run.sessionId, "thread-1");
+  assert.deepEqual(codex.calls[0], {
+    method: "thread/start",
+    params: { cwd: "/srv/projects/project-1", sandbox: "read-only", approvalPolicy: "untrusted" }
+  });
   assert.deepEqual(run.capabilityPolicy.allow, ["read", "git"]);
 
   codex.emit("server-request", {
@@ -94,7 +109,8 @@ test("host fleet scheduler starts queued siblings without a live browser", async
   const codex = new FakeCodex();
   const service = createAgentRunService({
     filePath: join(dir, "agent-runs.json"),
-    codex
+    codex,
+    resolveProject
   });
   t.after(() => service.dispose());
 
@@ -130,7 +146,7 @@ test("persisted active runs fail closed after host restart instead of silently r
   const filePath = join(dir, "agent-runs.json");
 
   const firstCodex = new FakeCodex();
-  const first = createAgentRunService({ filePath, codex: firstCodex });
+  const first = createAgentRunService({ filePath, codex: firstCodex, resolveProject });
   const run = await first.spawn({
     parentSessionId: "parent",
     task: "long running",
@@ -140,7 +156,7 @@ test("persisted active runs fail closed after host restart instead of silently r
   await first.dispose();
 
   const secondCodex = new FakeCodex();
-  const second = createAgentRunService({ filePath, codex: secondCodex });
+  const second = createAgentRunService({ filePath, codex: secondCodex, resolveProject });
   t.after(() => second.dispose());
   await second.ready();
 
@@ -148,4 +164,103 @@ test("persisted active runs fail closed after host restart instead of silently r
   assert.equal(restored.state, "failed");
   assert.match(restored.error, /Host restarted/);
   assert.equal(secondCodex.calls.length, 0);
+});
+
+test("capability policy maps to an enforced Codex sandbox and approval policy", () => {
+  assert.deepEqual(codexExecutionSettingsFor(undefined), { sandbox: "workspace-write", approvalPolicy: "on-request" });
+  assert.deepEqual(
+    codexExecutionSettingsFor({ deny: ["files"] }),
+    { sandbox: "read-only", approvalPolicy: "on-request" }
+  );
+  assert.deepEqual(
+    codexExecutionSettingsFor({ deny: ["commands"] }),
+    { sandbox: "read-only", approvalPolicy: "untrusted" }
+  );
+  assert.deepEqual(
+    codexExecutionSettingsFor({ mutationPolicy: "read-only-until-explicit-transition" }),
+    { sandbox: "read-only", approvalPolicy: "on-request" }
+  );
+});
+
+test("subagents only start in a registered project and never forward the project id to Codex", async t => {
+  const codex = new FakeCodex();
+  assert.throws(() => createAgentRunService({ filePath: "x", codex }), /project resolver/);
+  const service = createAgentRunService({ filePath: await tempFile(t), codex, resolveProject });
+  t.after(() => service.dispose());
+
+  await assert.rejects(
+    service.spawn({ parentSessionId: "parent", task: "escape", context: { projectId: "../../etc" } }),
+    /Project not found/
+  );
+  assert.equal(codex.calls.length, 0);
+
+  await service.spawn({ parentSessionId: "parent", task: "ok", context: { projectId: "project-1" } });
+  const start = codex.calls.find(call => call.method === "thread/start");
+  assert.equal(start.params.cwd, "/srv/projects/project-1");
+  assert.equal("projectId" in start.params, false);
+});
+
+test("required sandbox mode blocks subagent start and approval acceptance", async t => {
+  const codex = new FakeCodex();
+  let blocked = true;
+  const service = createAgentRunService({
+    filePath: await tempFile(t),
+    codex,
+    resolveProject,
+    assertExecutionAllowed: () => {
+      if (blocked) throw new Error("DEVMOTER_SANDBOX=required blocks external backend agent execution");
+    }
+  });
+  t.after(() => service.dispose());
+  const spec = { parentSessionId: "parent", task: "work", context: { projectId: "project-1" } };
+
+  await assert.rejects(service.spawn(spec), /DEVMOTER_SANDBOX=required/);
+  assert.equal(codex.calls.length, 0);
+
+  blocked = false;
+  const run = await service.spawn(spec);
+  codex.emit("server-request", {
+    id: 7,
+    method: "item/commandExecution/requestApproval",
+    params: { threadId: run.sessionId, command: "npm test" }
+  });
+  assert.equal((await service.getRun(run.id)).state, "waiting_for_approval");
+
+  await assert.rejects(service.respondApproval(run.id, "acceptForSession"), /one request at a time/);
+  blocked = true;
+  await assert.rejects(service.respondApproval(run.id, "accept"), /DEVMOTER_SANDBOX=required/);
+  assert.deepEqual(codex.approvals, []);
+  blocked = false;
+  await service.respondApproval(run.id, "accept");
+  assert.deepEqual(codex.approvals, [{ id: 7, decision: "accept" }]);
+});
+
+test("runs are bounded in wall-clock time and output size, and stay terminal", async t => {
+  const codex = new FakeCodex();
+  const service = createAgentRunService({ filePath: await tempFile(t), codex, resolveProject, maxRunMs: 30 });
+  t.after(() => service.dispose());
+  const run = await service.spawn({ parentSessionId: "parent", task: "loop", context: { projectId: "project-1" } });
+
+  const chunk = "x".repeat(150_000);
+  for (let i = 0; i < 4; i += 1) {
+    codex.emit("notification", { method: "item/agentMessage/delta", params: { threadId: run.sessionId, delta: chunk } });
+  }
+  const capped = await service.getRun(run.id);
+  assert.equal(capped.output.length, 400_000);
+  assert.equal(capped.outputTruncated, true);
+
+  await new Promise(resolve => setTimeout(resolve, 80));
+  const timedOut = await service.getRun(run.id);
+  assert.equal(timedOut.state, "failed");
+  assert.match(timedOut.error, /execution time limit/);
+  assert.ok(codex.calls.some(call => call.method === "turn/interrupt" && call.params.threadId === run.sessionId));
+
+  codex.emit("notification", { method: "turn/started", params: { threadId: run.sessionId, turn: { id: "late" } } });
+  codex.emit("server-request", {
+    id: 9,
+    method: "item/commandExecution/requestApproval",
+    params: { threadId: run.sessionId, command: "rm -rf ." }
+  });
+  assert.equal((await service.getRun(run.id)).state, "failed");
+  assert.deepEqual(codex.approvals, [{ id: 9, decision: "decline" }]);
 });

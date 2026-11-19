@@ -12,7 +12,7 @@ import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/ope
 import { canonicalOpenCodeEvent, createSseReader, lastAssistantText, parseDevMoterPrompt, parsePermissionDecision, parseQuestionAnswers } from "./server/opencode-adapter.mjs";
 import { createOpenCodeClient } from "./server/opencode-api.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
-import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, fullyDecodePath, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
+import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, fullyDecodePath, isInsideHome, isAllowedCodexRpc, codexRpcAuthorityOverride, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { staticSecurityHeaders } from "./server/security-headers.mjs";
 import { readHandle, withOpenFile } from "./server/safe-file.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
@@ -136,7 +136,9 @@ const codex = new CodexBridge({
 });
 const agentRunService = createAgentRunService({
   filePath: join(PROJECT_CONFIG_DIR, "agent-runs.json"),
-  codex
+  codex,
+  resolveProject: id => getProjectById(id),
+  assertExecutionAllowed: () => assertExternalBackendExecutionAllowed("codex")
 });
 void agentRunService.ready().catch(error => {
   console.error("Agent run service initialization failed", redactText(errorMessage(error)));
@@ -1713,7 +1715,7 @@ function materializeOpenCodeUploadText(text) {
 }
 
 async function materializeCodexUploadInputs(method, params) {
-  if (method !== "turn/start" || !Array.isArray(params?.input)) return params;
+  if ((method !== "turn/start" && method !== "turn/steer") || !Array.isArray(params?.input)) return params;
   const input = params.input.map(item => {
     if (!item || typeof item !== "object") return item;
 
@@ -2100,6 +2102,24 @@ async function codexRpc(req, res) {
       return;
     }
 
+    if (/^(?:thread|turn)\//.test(String(method)) && (!params || typeof params !== "object" || Array.isArray(params))) {
+      json(res, 400, { error: "Codex thread and turn params must be an object" });
+      return;
+    }
+
+    const authorityOverride = codexRpcAuthorityOverride(method, params);
+    if (authorityOverride === "cwd") {
+      json(res, 400, { error: "Codex cwd must be selected by registered project id" });
+      return;
+    }
+    if (authorityOverride) {
+      json(res, 400, {
+        error: `Codex ${authorityOverride} is controlled by the DevMoter host and cannot be set by clients`,
+        code: "DEVMOTER_CODEX_AUTHORITY_OVERRIDE"
+      });
+      return;
+    }
+
     if (method === "turn/start" || method === "turn/steer") {
       try {
         assertExternalBackendExecutionAllowed("codex");
@@ -2113,15 +2133,6 @@ async function codexRpc(req, res) {
     }
 
     if (method === "thread/start") {
-      if (!params || typeof params !== "object" || Array.isArray(params)) {
-        json(res, 400, { error: "Codex thread/start params must be an object" });
-        return;
-      }
-      if (Object.prototype.hasOwnProperty.call(params, "cwd")) {
-        json(res, 400, { error: "Codex cwd must be selected by registered project id" });
-        return;
-      }
-
       const projectId = String(params.projectId || "").trim();
       const nextParams = { ...params };
       delete nextParams.projectId;
