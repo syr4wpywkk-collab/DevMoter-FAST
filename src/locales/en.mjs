@@ -143,6 +143,9 @@ export const en = {
   "auth.loadFailed": "Sign-in options could not be loaded. Refresh and try again.",
 
   "errors.server.authRequired": "Authentication required.",
+  "sessionExpiry.message": "Your sign-in has expired. Sign in again to continue; unsent drafts are kept.",
+  "sessionExpiry.signIn": "Sign in again",
+  "sessionExpiry.dismiss": "Dismiss",
   "errors.server.rateLimited": "Too many authentication attempts. Try again later.",
   "errors.server.trustedDeviceRequired": "Trusted device registration is required.",
   "errors.server.trustedDeviceRevoked": "This trusted device has been revoked.",

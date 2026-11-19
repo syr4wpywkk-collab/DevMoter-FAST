@@ -143,6 +143,9 @@ export const zhHans = {
   "auth.loadFailed": "无法加载登录选项，请刷新后重试。",
 
   "errors.server.authRequired": "需要身份验证。",
+  "sessionExpiry.message": "登录已过期。请重新登录以继续；未发送的草稿会保留。",
+  "sessionExpiry.signIn": "重新登录",
+  "sessionExpiry.dismiss": "关闭",
   "errors.server.rateLimited": "身份验证尝试次数过多，请稍后再试。",
   "errors.server.trustedDeviceRequired": "需要注册受信任设备。",
   "errors.server.trustedDeviceRevoked": "此受信任设备已被撤销。",
