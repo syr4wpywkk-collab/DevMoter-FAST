@@ -12,7 +12,7 @@ import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/ope
 import { canonicalOpenCodeEvent, createSseReader, lastAssistantText, parseDevMoterPrompt, parsePermissionDecision, parseQuestionAnswers } from "./server/opencode-adapter.mjs";
 import { createOpenCodeClient } from "./server/opencode-api.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
-import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, fullyDecodePath, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
+import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { staticSecurityHeaders } from "./server/security-headers.mjs";
 import { readHandle, withOpenFile } from "./server/safe-file.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
@@ -34,8 +34,16 @@ import { createUploadRegistry } from "./server/upload-registry.mjs";
 import { ControlPlane } from "./server/control-plane.mjs";
 import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/workspace-control.mjs";
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
+import { normalizeProxyRoutePath } from "./server/opencode-proxy-path.mjs";
 import { isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, isSessionAgentRoute, isSessionCreateRoute, modeFromAgent, parseAgentMode, readOnlyToolsFor, resolveEffectiveAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
-import { assertAuthPassword, parseBasicAuthorization, requireSameOriginMutation } from "./server/auth.mjs";
+import {
+  assertAuthPassword,
+  assertSafeHttpBind,
+  isLoopbackAddress,
+  isLoopbackBindHost,
+  parseBasicAuthorization,
+  requireSameOriginMutation
+} from "./server/auth.mjs";
 import { createBasicAuthGuard, parseTrustedProxies } from "./server/auth-guard.mjs";
 import { OidcAuth } from "./server/oidc-auth.mjs";
 import { ExternalAuth } from "./server/external-auth.mjs";
@@ -92,6 +100,7 @@ const OPENCODE_DIRECTORY =
   process.cwd();
 const PORT = Number(process.env.POCKET_PORT || 8787);
 const HOST = process.env.POCKET_HOST || "127.0.0.1";
+assertSafeHttpBind(HOST, process.env);
 const DIST = fileURLToPath(new URL("./dist/", import.meta.url));
 // The login page is plain static source (not processed by Vite), so it is served
 // straight from public/: sign-in works before the first build, and in tests.
@@ -506,11 +515,10 @@ function openCodeHeaders(extra = {}) {
   return headers;
 }
 
-async function openCodeHeadersForRequest(req, extra = {}) {
+async function openCodeHeadersForRequest(req, extra = {}, policyPath = "") {
   const projectId = String(req.headers["x-pocket-project-id"] || "").trim();
   let directory = OPENCODE_DIRECTORY;
-  const requestPath = String(req.url || "").split("?", 1)[0];
-  const isExistingSession = /^\/api\/opencode\/session\/[^/]+/.test(requestPath) || /^\/api\/session\/[^/]+/.test(requestPath);
+  const isExistingSession = Boolean(sessionIdFromOpenCodePath(policyPath));
   if (projectId && !isExistingSession) directory = (await getProjectById(projectId)).path;
   return openCodeHeaders({ "x-opencode-directory": directory, ...extra });
 }
@@ -1746,7 +1754,10 @@ const OPENCODE_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
 /**
  * Validate the client path once and build the OpenCode request target as a
  * plain string: fixed OpenCode origin + "/api/" + allowlisted path (+ query).
- * Returns { upstreamUrl, policyPath } or { error } (400).
+ * ONE canonical (decoded, normalized) path drives validation, the policy
+ * classification, and the upstream URL, so the route DevMoter checks is the
+ * route OpenCode serves. Returns { upstreamUrl, policyPath, upstreamAlias }
+ * or { error }.
  */
 export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   const raw = String(rawRequestUrl || "");
@@ -1761,27 +1772,27 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   if (!OPENCODE_SAFE_PATH.test(rawPath) || !OPENCODE_SAFE_QUERY.test(rawQuery)) {
     return { error: "OpenCode proxy path is not allowed" };
   }
-  const decodedPath = fullyDecodePath(rawPath);
+  const canonicalPath = normalizeProxyRoutePath(rawPath);
   if (
-    decodedPath === null ||
-    decodedPath.startsWith("//") ||
-    rawPath.startsWith("//") ||
-    decodedPath.includes("..") ||
-    decodedPath.includes("\\") ||
-    OPENCODE_SCHEME_SEGMENT.test(decodedPath) ||
-    CONTROL_CHARS.test(decodedPath)
+    canonicalPath === null ||
+    canonicalPath.includes("..") ||
+    OPENCODE_SCHEME_SEGMENT.test(canonicalPath) ||
+    CONTROL_CHARS.test(canonicalPath) ||
+    !OPENCODE_SAFE_PATH.test(canonicalPath)
   ) {
     return { error: "OpenCode proxy path is not allowed" };
   }
 
   // Strip the optional client-side "/api" prefix; the upstream root is fixed.
-  const apiRelative = rawPath.startsWith("/api/") ? rawPath.slice("/api/".length) : rawPath.slice(1);
+  // The upstream-style alias does not grant access to adapter-owned operations.
+  const upstreamAlias = canonicalPath.startsWith("/api/");
+  const apiRelative = upstreamAlias ? canonicalPath.slice("/api/".length) : canonicalPath.slice(1);
   if (apiRelative.startsWith("/")) {
     return { error: "OpenCode proxy path is not allowed" };
   }
   const policyPath = `/api/${apiRelative}`;
   const upstreamUrl = `${OPENCODE_ORIGIN}/api/${apiRelative}${rawQuery}`;
-  return { upstreamUrl, policyPath };
+  return { upstreamUrl, policyPath, upstreamAlias };
 }
 
 // DevMoter's OpenCode session surface. The browser (and every other DevMoter
@@ -1798,7 +1809,7 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
 //   POST /session/{id}/question/{rid}/reply       { answers: string[][] }
 //   POST /session/{id}/question/{rid}/reject
 //   GET  /event                                   canonical SSE events
-const OPENCODE_SESSION_ROUTE = /^\/api\/opencode\/session\/([^/]+)\/(prompt|context|interrupt|permission|question)(?:\/([^/]+)\/(reply|reject))?$/;
+const OPENCODE_SESSION_ROUTE = /^\/api\/session\/([^/]+)\/(prompt|context|interrupt|permission|question)(?:\/([^/]+)\/(reply|reject))?$/;
 const OPENCODE_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 function openCodeAdapterFailure(res, error) {
@@ -1859,13 +1870,13 @@ function tryParseJsonObject(buffer) {
   }
 }
 
-async function opencodeSessionRoute(req, res, url) {
-  if (url.pathname === "/api/opencode/event") {
+async function opencodeSessionRoute(req, res, pathname) {
+  if (pathname === "/api/event") {
     if (req.method !== "GET") return false;
     await opencodeEvents(req, res);
     return true;
   }
-  if (url.pathname === "/api/opencode/session/active") {
+  if (pathname === "/api/session/active") {
     if (req.method !== "GET") return false;
     try {
       json(res, 200, await openCode.active());
@@ -1874,12 +1885,10 @@ async function opencodeSessionRoute(req, res, url) {
     }
     return true;
   }
-  const match = url.pathname.match(OPENCODE_SESSION_ROUTE);
+  const match = pathname.match(OPENCODE_SESSION_ROUTE);
   if (!match) return false;
-  const [, rawSessionId, operation, rawRequestId, action] = match;
-  const sessionId = fullyDecodePath(rawSessionId);
-  const requestId = rawRequestId === undefined ? null : fullyDecodePath(rawRequestId);
-  if (!sessionId || !OPENCODE_ID.test(sessionId) || (requestId !== null && (!requestId || !OPENCODE_ID.test(requestId)))) {
+  const [, sessionId, operation, requestId = null, action] = match;
+  if (!OPENCODE_ID.test(sessionId) || (requestId !== null && !OPENCODE_ID.test(requestId))) {
     json(res, 400, { error: "OpenCode session or request id is invalid" });
     return true;
   }
@@ -2041,17 +2050,8 @@ async function opencodeEvents(req, res) {
   }
 }
 
-async function proxy(req, res) {
-  const target = buildOpenCodeUpstreamTarget(req.url);
-  if (target.error) {
-    json(res, 400, { error: target.error });
-    return;
-  }
-  const { upstreamUrl, policyPath } = target;
+async function proxy(req, res, { upstreamUrl, policyPath }) {
   const sessionId = sessionIdFromOpenCodePath(policyPath);
-  // Create/agent matchers run on the trailing-slash-normalized policy path:
-  // "/api/session/{id}/agent/" is the agent route and must not slip past the
-  // mode-transition guard below (#591 audit).
   const isSessionCreate = req.method === "POST" && isSessionCreateRoute(policyPath);
   const isSessionAgentUpdate = req.method === "POST" && Boolean(sessionId) && isSessionAgentRoute(policyPath);
 
@@ -2146,7 +2146,7 @@ async function proxy(req, res) {
       headers: await openCodeHeadersForRequest(req, {
         "content-type": req.headers["content-type"] || "application/json",
         "accept": req.headers["accept"] || "*/*"
-      }),
+      }, policyPath),
       body,
       redirect: "error",
       signal: upstreamAbort.signal
@@ -2688,15 +2688,13 @@ async function serveStatic(req, res) {
   }
 }
 
-function isLoopbackAddress(address) {
-  const value = String(address || "").toLowerCase();
-  return value === "127.0.0.1" || value === "::1" || value.startsWith("127.") || value === "::ffff:127.0.0.1";
-}
-
 function isLoopbackHost(hostHeader) {
   try {
-    const hostname = new URL(`http://${hostHeader || ""}`).hostname.toLowerCase().replace(/^\\[|\\]$/g, "");
-    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+    const parsed = new URL(`http://${hostHeader || ""}`);
+    if (parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
+      return false;
+    }
+    return isLoopbackBindHost(parsed.hostname);
   } catch {
     return false;
   }
@@ -2718,6 +2716,15 @@ const PUBLIC_STATIC_PATHS = new Set([
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+    // URL parsing can erase dot segments. Validate the original request target
+    // before dispatching to either an OpenCode adapter or any other route.
+    const openCodeTarget = req.url.startsWith(OPENCODE_PROXY_PREFIX) || url.pathname.startsWith(OPENCODE_PROXY_PREFIX)
+      ? buildOpenCodeUpstreamTarget(req.url)
+      : null;
+    if (openCodeTarget?.error) {
+      json(res, 400, { error: openCodeTarget.error });
+      return;
+    }
 
     if (req.method === "POST" && url.pathname === "/api/control/events/github") {
       await githubWebhookRoute(req, res);
@@ -3732,7 +3739,7 @@ const server = http.createServer(async (req, res) => {
     }
 
 
-    if (req.method === "GET" && url.pathname === "/api/opencode/pocket/providers") {
+    if (req.method === "GET" && openCodeTarget?.policyPath === "/api/pocket/providers" && !openCodeTarget.upstreamAlias) {
       await opencodeProviders(url, res);
       return;
     }
@@ -3766,14 +3773,15 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (url.pathname.startsWith("/api/opencode") || String(req.url || "").startsWith("/api/opencode")) {
+    if (openCodeTarget) {
+      const { policyPath } = openCodeTarget;
       if (
         req.method !== "GET" &&
         req.method !== "HEAD" &&
-        !claimOperation(req, res, `${req.method}:${url.pathname}`)
+        !claimOperation(req, res, `${req.method}:${policyPath}`)
       ) return;
-      if (await opencodeSessionRoute(req, res, url)) return;
-      await proxy(req, res);
+      if (!openCodeTarget.upstreamAlias && await opencodeSessionRoute(req, res, policyPath)) return;
+      await proxy(req, res, openCodeTarget);
       return;
     }
 
