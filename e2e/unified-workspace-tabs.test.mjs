@@ -5,7 +5,7 @@ import path from "node:path";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import { build } from "esbuild";
-import { webkit } from "playwright";
+import { launchWebKit } from "./launch-webkit.mjs";
 
 const repo = path.resolve(import.meta.dirname, "..");
 
@@ -146,7 +146,7 @@ for (const device of [
     t.after(async () => {
       try { await browser?.close(); } finally { await server.close(); }
     });
-    browser = await webkit.launch({ headless: true });
+    browser = await launchWebKit();
     const context = await browser.newContext({ viewport: device.viewport, isMobile: device.mobile, hasTouch: device.hasTouch });
     const page = await context.newPage();
     const apiRequests = [];
