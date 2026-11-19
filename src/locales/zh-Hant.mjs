@@ -2425,6 +2425,7 @@ export const zhHant = {
   "opencode.transcript.agentSwitched": "代理程式 → {agent}",
   "opencode.transcript.modelSwitched": "模型 → {model}",
   "opencode.transcript.compacted": "已壓縮脈絡",
+  "opencode.commands.openPalette": "斜線指令",
   "opencode.commands.customDesc": "DevMoter 自訂命令",
   "opencode.commands.opencodeDesc": "OpenCode 命令",
   "opencode.commands.customFailed": "自訂命令失敗。",

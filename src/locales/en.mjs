@@ -2425,6 +2425,7 @@ export const en = {
   "opencode.transcript.agentSwitched": "agent → {agent}",
   "opencode.transcript.modelSwitched": "model → {model}",
   "opencode.transcript.compacted": "context compacted",
+  "opencode.commands.openPalette": "Slash commands",
   "opencode.commands.customDesc": "DevMoter custom command",
   "opencode.commands.opencodeDesc": "OpenCode command",
   "opencode.commands.customFailed": "Custom command failed.",
