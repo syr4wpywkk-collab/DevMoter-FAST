@@ -1913,6 +1913,8 @@ export const zhHans = {
   "qwen.chat.runningTool": "正在运行工具：{tool}",
   "qwen.chat.replying": "正在回复",
   "qwen.chat.statusWithSeconds": "{what} · {seconds}秒",
+  "qwen.chat.searchHistory": "搜索聊天",
+  "qwen.chat.noHistoryMatches": "没有与“{query}”匹配的聊天。",
   "qwen.chat.emptyHistory": "还没有对话。",
   "qwen.chat.deleteChatAria": "删除“{title}”",
   "qwen.chat.deleteChatConfirm": "确定要删除“{title}”吗？",

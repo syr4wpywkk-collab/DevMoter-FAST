@@ -1913,6 +1913,8 @@ export const zhHant = {
   "qwen.chat.runningTool": "正在執行工具：{tool}",
   "qwen.chat.replying": "正在回覆",
   "qwen.chat.statusWithSeconds": "{what} · {seconds} 秒",
+  "qwen.chat.searchHistory": "搜尋聊天",
+  "qwen.chat.noHistoryMatches": "沒有符合「{query}」的聊天。",
   "qwen.chat.emptyHistory": "尚無對話。",
   "qwen.chat.deleteChatAria": "刪除「{title}」",
   "qwen.chat.deleteChatConfirm": "確定要刪除「{title}」嗎？",

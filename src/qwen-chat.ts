@@ -101,6 +101,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       </section>
       <div class="qx-scrim" data-qwen-scrim hidden></div>
       <section class="qx-sheet" id="qwenHistorySheet" data-qwen-sheet role="dialog" aria-modal="true" aria-labelledby="qwenHistoryTitle" hidden>
+        <input class="qx-history-search" type="search" data-qwen-history-search placeholder="${escapeHtml(t("qwen.chat.searchHistory"))}" aria-label="${escapeHtml(t("qwen.chat.searchHistory"))}" />
         <div class="qx-history" data-qwen-history-list></div>
       </section>
     </div>`;
@@ -120,6 +121,8 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   const scrim = root.querySelector<HTMLElement>("[data-qwen-scrim]")!;
   const sheet = root.querySelector<HTMLElement>("[data-qwen-sheet]")!;
   const historyList = root.querySelector<HTMLElement>("[data-qwen-history-list]")!;
+  const historySearch = root.querySelector<HTMLInputElement>("[data-qwen-history-search]")!;
+  historySearch.addEventListener("input", () => renderHistory());
   const modelButton = root.querySelector<HTMLButtonElement>("[data-qwen-model-button]")!;
   const modelLabel = root.querySelector<HTMLElement>("[data-qwen-model-label]")!;
   const background = [".qx-topbar", ".qx-main", ".qx-composer-wrap"].map(selector => root.querySelector<HTMLElement>(selector)!);
@@ -309,7 +312,10 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   }
 
   function renderHistory() {
-    const sorted = sortQwenChats(chats);
+    const query = historySearch.value.trim().toLowerCase();
+    const sorted = sortQwenChats(chats).filter(chat => !query
+      || chat.title.toLowerCase().includes(query)
+      || chat.messages.some(message => message.text.toLowerCase().includes(query)));
     historyList.replaceChildren();
     if (lastDeleted) {
       const restore = document.createElement("button");
@@ -323,7 +329,9 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     if (!sorted.length) {
       const empty = document.createElement("p");
       empty.className = "qx-history-empty";
-      empty.textContent = t("qwen.chat.emptyHistory");
+      empty.textContent = query && chats.length
+        ? t("qwen.chat.noHistoryMatches", { query: historySearch.value.trim() })
+        : t("qwen.chat.emptyHistory");
       historyList.append(empty);
       return;
     }
@@ -601,7 +609,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       return;
     }
     if (event.key !== "Tab") return;
-    const controls = Array.from(sheet.querySelectorAll<HTMLElement>("button:not([disabled]):not([hidden])"));
+    const controls = Array.from(sheet.querySelectorAll<HTMLElement>(":is(button, input):not([disabled]):not([hidden])"));
     const first = controls[0];
     const last = controls.at(-1);
     if (!first || !last) return;
