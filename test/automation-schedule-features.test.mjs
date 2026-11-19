@@ -27,6 +27,23 @@ async function settle(plane, predicate) {
   throw new Error("runs did not settle");
 }
 
+// A run's endedAt becomes visible before its final state write and its
+// concurrency slot release finish, so wait for those instead of racing them.
+async function eventually(read, done) {
+  let value;
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    try {
+      value = await read();
+      if (done(value)) return value;
+    } catch (error) {
+      value = error;
+    }
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  if (value instanceof Error) throw value;
+  return value;
+}
+
 const definition = { name: "Nightly", cron: "0 21 * * *", timeZone: "Asia/Tokyo", backend: "codex", task: "Review" };
 
 test("#462 next run is computed in the schedule timezone and shown in device-local time", () => {
@@ -126,7 +143,10 @@ test("#465 run history filters by result without changing stored history", async
     await plane.createSchedule({ ...definition, task: "fail" });
     await plane.tick(new Date("2026-11-20T12:00:00Z"));
     await settle(plane, runs => runs.length === 2 && runs.every(run => run.endedAt));
-    const before = await readFile(join(dir, "control-plane.json"), "utf8");
+    const before = await eventually(
+      () => readFile(join(dir, "control-plane.json"), "utf8"),
+      text => JSON.parse(text).runs?.filter(run => run.endedAt).length === 2
+    );
 
     assert.deepEqual((await plane.listRuns({ result: "success" })).map(run => run.status), ["completed"]);
     assert.deepEqual((await plane.listRuns({ result: "failed" })).map(run => run.status), ["failed"]);
@@ -280,7 +300,7 @@ test("retrying a trigger run respects the trigger's concurrency limit", async ()
     assert.equal((await plane.listRuns()).length, 2);
     release();
     await settle(plane, runs => runs.every(run => run.endedAt));
-    const retry = await plane.retryRun(failed.id, { confirm: true });
+    const retry = await eventually(() => plane.retryRun(failed.id, { confirm: true }), value => !(value instanceof Error));
     await settle(plane, runs => runs.find(run => run.id === retry.runId)?.status === "completed");
   } finally {
     await cleanup();
