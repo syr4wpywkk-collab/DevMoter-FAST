@@ -3,6 +3,7 @@ import { isAbsolute, resolve } from "node:path";
 import { listContextEntries, resolveContextReferences } from "./context-references.mjs";
 import { errorMessage } from "./error-message.mjs";
 import { lastAssistantText } from "./opencode-adapter.mjs";
+import { modeFromAgent, readOnlyToolsFor } from "./agent-mode-policy.mjs";
 
 export const AUTOMATION_API_VERSION = 1;
 const TASK_TIMEOUT_MS = 10 * 60 * 1000;
@@ -264,7 +265,8 @@ export function createAutomationApi({
     try {
       await openCode.prompt(sessionId, { text: task, agent, ...(selectedModel ? { model: selectedModel } : {}) }, {
         headers,
-        signal: controller.signal
+        signal: controller.signal,
+        readOnlyTools: readOnlyToolsFor(modeFromAgent(agent))
       });
       await openCode.waitForIdle(sessionId, { headers, signal: controller.signal });
 

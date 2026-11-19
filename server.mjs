@@ -439,10 +439,21 @@ function redactText(value) {
   return redactSecretsInText(value, REDACTED_SECRETS);
 }
 
+function redactJsonSecrets(value) {
+  if (typeof value === "string") return redactText(value);
+  if (Array.isArray(value)) return value.map(redactJsonSecrets);
+  if (value && typeof value === "object") {
+    const redacted = {};
+    for (const [key, entry] of Object.entries(value)) {
+      redacted[redactText(key)] = redactJsonSecrets(entry);
+    }
+    return redacted;
+  }
+  return value;
+}
+
 function stringifyRedactedJson(body) {
-  return JSON.stringify(body, (_key, value) =>
-    typeof value === "string" ? redactText(value) : value
-  );
+  return JSON.stringify(redactJsonSecrets(body));
 }
 
 function endIfResponseStarted(res) {
@@ -1022,7 +1033,8 @@ async function dispatchControlQueued(backend, sessionId, text) {
     return;
   }
 
-  await openCode.prompt(sessionId, { text });
+  const sessionMode = await resolveOpenCodeSessionMode(sessionId);
+  await openCode.prompt(sessionId, { text }, { readOnlyTools: readOnlyToolsFor(sessionMode) });
 }
 
 async function interruptControlSession(backend, sessionId, snapshot = {}) {
@@ -1321,8 +1333,9 @@ async function executeControlTaskCore(definition, context = {}) {
     };
     context.setCancel?.(cancel);
 
+    const sessionMode = await resolveOpenCodeSessionMode(sessionId);
     const signal = AbortSignal.timeout(taskTimeoutMs(context));
-    await openCode.prompt(sessionId, { text: task }, { headers, signal });
+    await openCode.prompt(sessionId, { text: task }, { headers, signal, readOnlyTools: readOnlyToolsFor(sessionMode) });
     await openCode.waitForIdle(sessionId, { headers, signal });
     const answer = lastAssistantText(await openCode.context(sessionId, { headers }));
     const promptSummary = answer.slice(-4000);
@@ -1781,6 +1794,8 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
     rawPath.startsWith("//") ||
     decodedPath.includes("..") ||
     decodedPath.includes("\\") ||
+    decodedPath.includes("?") ||
+    decodedPath.includes("#") ||
     OPENCODE_SCHEME_SEGMENT.test(decodedPath) ||
     CONTROL_CHARS.test(decodedPath)
   ) {
@@ -1788,10 +1803,15 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   }
 
   // Strip the optional client-side "/api" prefix; the upstream root is fixed.
-  const apiRelative = rawPath.startsWith("/api/") ? rawPath.slice("/api/".length) : rawPath.slice(1);
-  if (apiRelative.startsWith("/")) {
+  // Policy checks and the upstream request must agree on the target, so both
+  // are derived from the DECODED path: a percent-encoded action segment
+  // (%73hell, %70rompt) or a trailing slash must not slip past the route
+  // policy regexes that guard mutations and adapter-owned routes.
+  const decodedRelative = decodedPath.startsWith("/api/") ? decodedPath.slice("/api/".length) : decodedPath.slice(1);
+  if (decodedRelative.startsWith("/")) {
     return { error: "OpenCode proxy path is not allowed" };
   }
+  const apiRelative = decodedRelative.replace(/\/+$/, "") || decodedRelative;
   const policyPath = `/api/${apiRelative}`;
   const upstreamUrl = `${OPENCODE_ORIGIN}/api/${apiRelative}${rawQuery}`;
   return { upstreamUrl, policyPath };
@@ -1938,7 +1958,10 @@ async function opencodeSessionRoute(req, res, url) {
       } catch (error) {
         throw badOpenCodeRequest(errorMessage(error));
       }
-      const sessionMode = (await resolveOpenCodeSessionMode(sessionId)) || "build";
+      const resolvedSessionMode = await resolveOpenCodeSessionMode(sessionId);
+      // Fail closed: when the server-side mode cannot be verified (upstream
+      // lookup failed), treat the session as read-only instead of "build".
+      const sessionMode = resolvedSessionMode || "plan";
       const promptAgentMode = modeFromAgent(prompt.agent);
       if (isReadOnlyMode(sessionMode) && promptAgentMode && !isReadOnlyMode(promptAgentMode)) {
         json(res, 403, { error: `${sessionMode} mode blocks switching to non-read-only agent "${prompt.agent}"`, mode: sessionMode });
@@ -1949,7 +1972,17 @@ async function opencodeSessionRoute(req, res, url) {
         promptAgentMode && isReadOnlyMode(promptAgentMode) ? promptAgentMode : requestedMode
       );
       prompt.text = materializeOpenCodeUploadText(prompt.text);
+      if (isReadOnlyMode(effectiveMode)) {
+        // OpenCode 2.x has no per-prompt tool map and follows prompt.agent,
+        // so pin the agent to the read-only effective mode as well.
+        prompt.agent = effectiveMode;
+      }
       await openCode.prompt(sessionId, prompt, { readOnlyTools: readOnlyToolsFor(effectiveMode) });
+      if (promptAgentMode && isReadOnlyMode(promptAgentMode)) {
+        // The client explicitly downgraded this session's agent; persist it
+        // so the server-side mode map follows the upstream session.
+        setOpenCodeSessionMode(sessionId, promptAgentMode);
+      }
       json(res, 200, { ok: true });
     } else if (subroute === "context") {
       json(res, 200, await openCode.context(sessionId));
@@ -2074,7 +2107,13 @@ async function proxy(req, res) {
   const isSessionAgentUpdate = req.method === "POST" && Boolean(sessionId) && /^\/api\/session\/[^/]+\/agent$/.test(policyPath);
 
   if (isDirectMutationRoute(policyPath)) {
-    const sessionMode = (await resolveOpenCodeSessionMode(sessionId)) || "build";
+    const sessionMode = await resolveOpenCodeSessionMode(sessionId);
+    if (sessionMode === null) {
+      // Fail closed: a session whose server-side mode cannot be verified
+      // (upstream lookup failed) must not be treated as "build".
+      json(res, 403, { error: "Session mode could not be verified; direct shell and command mutations are blocked", mode: null });
+      return;
+    }
     const effectiveMode = resolveEffectiveAgentMode(sessionMode, requestedMode);
     if (isReadOnlyMode(effectiveMode)) {
       json(res, 403, { error: `${effectiveMode} mode blocks direct shell and command mutations`, mode: effectiveMode });
@@ -2112,6 +2151,26 @@ async function proxy(req, res) {
     ? resolveEffectiveAgentMode(bodyAgentMode || "build", requestedMode)
     : null;
 
+  // Agent updates are mode transitions, so the proxy itself must authorize
+  // them against the session's current server-side mode before forwarding:
+  // a read-only session may only move between read-only agents, and an
+  // update that cannot be verified (or names no read-only target) is refused.
+  let agentUpdateCurrentMode = null;
+  if (isSessionAgentUpdate) {
+    agentUpdateCurrentMode = await resolveOpenCodeSessionMode(sessionId);
+    if (agentUpdateCurrentMode === null) {
+      json(res, 403, { error: "Session mode could not be verified; agent updates are blocked", mode: null });
+      return;
+    }
+    if (isReadOnlyMode(agentUpdateCurrentMode) && (!bodyAgentMode || !isReadOnlyMode(bodyAgentMode))) {
+      json(res, 403, {
+        error: `${agentUpdateCurrentMode} mode blocks switching to non-read-only agent "${reqJson?.agent || reqJson?.mode || "build"}"`,
+        mode: agentUpdateCurrentMode
+      });
+      return;
+    }
+  }
+
   const upstreamAbort = new AbortController();
   const abortUpstream = () => {
     upstreamAbort.abort();
@@ -2135,7 +2194,9 @@ async function proxy(req, res) {
     });
 
     if (isSessionAgentUpdate && upstream.ok && bodyAgentMode) {
-      setOpenCodeSessionMode(sessionId, resolveEffectiveAgentMode(bodyAgentMode, requestedMode));
+      // Record the transition with the server-side mode as the base; the
+      // client-supplied body mode must never become the new authority.
+      setOpenCodeSessionMode(sessionId, resolveEffectiveAgentMode(agentUpdateCurrentMode, bodyAgentMode));
     }
 
     const { headers, rawContentType, mediaType } = buildProxyResponseHeaders(

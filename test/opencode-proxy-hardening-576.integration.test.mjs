@@ -220,7 +220,7 @@ rl.on("line", line => {
   if (message.method === "thread/list") {
     process.stdout.write(JSON.stringify({
       method: "item/agentMessage/delta",
-      params: { threadId: "th_576", delta: "codex leak ${authPassword} and ${openCodePassword}" }
+      params: { threadId: "th_576", delta: "codex leak ${authPassword} and ${openCodePassword}", "key-${authPassword}": "codex key leak" }
     }) + "\\n");
     process.stdout.write(JSON.stringify({ id: message.id, result: { data: [] } }) + "\\n");
     return;
@@ -380,6 +380,8 @@ rl.on("line", line => {
     assert.ok(notifDataLine);
     const notifPayload = JSON.parse(notifDataLine.slice(6));
     assert.equal(notifPayload.params.delta, "codex leak [REDACTED] and [REDACTED]");
+    assert.match(codexBuffer, /key-\[REDACTED\]/, "secrets appearing as JSON keys must be redacted on SSE paths");
+    assert.equal(notifPayload.params["key-[REDACTED]"], "codex key leak");
 
     // 3. Agent mode authority: spoofing x-pocket-agent-mode cannot escalate read-only sessions.
     // 3a. Create a plan session (even while sending a spoofed build header at creation).
@@ -522,7 +524,8 @@ rl.on("line", line => {
     });
     assert.equal(switchToPlan.status, 200);
 
-    // Calling /agent without an agent field + build header cannot escalate back to build.
+    // Calling /agent without an agent field on a now read-only session is
+    // refused outright (fail closed), so it cannot escalate back to build.
     const emptyAgentUpdate = await fetch(`${baseUrl}/api/opencode/session/ses_rw_created/agent`, {
       method: "POST",
       headers: {
@@ -534,7 +537,7 @@ rl.on("line", line => {
       body: JSON.stringify({}),
       signal: AbortSignal.timeout(4000)
     });
-    assert.equal(emptyAgentUpdate.status, 200);
+    assert.equal(emptyAgentUpdate.status, 403);
 
     const rwNowBlocked = await fetch(`${baseUrl}/api/opencode/session/ses_rw_created/shell`, {
       method: "POST",
@@ -548,6 +551,159 @@ rl.on("line", line => {
       signal: AbortSignal.timeout(4000)
     });
     assert.equal(rwNowBlocked.status, 403);
+
+    // 4. Audit fix round: /agent transitions, encoded paths, and unverifiable
+    //    sessions must not bypass the mode authority established above.
+    // 4a. A read-only session cannot be switched to build through the proxy
+    //     /agent route, whatever shape the request body takes.
+    for (const [label, payload] of [
+      ["agent-build", { agent: "build" }],
+      ["mode-build", { mode: "build" }],
+      ["empty", {}]
+    ]) {
+      const rejected = await fetch(`${baseUrl}/api/opencode/session/ses_ro_created/agent`, {
+        method: "POST",
+        headers: {
+          ...baseHeaders,
+          "content-type": "application/json",
+          "x-pocket-agent-mode": "build",
+          "x-pocket-operation-id": `ro-agent-${label}-576`
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(4000)
+      });
+      assert.equal(rejected.status, 403, `/agent with ${label} on a read-only session must be rejected`);
+    }
+    assert.equal(
+      received.some(r => r.method === "POST" && r.path === "/api/session/ses_ro_created/agent"),
+      false,
+      "rejected agent updates must never reach upstream"
+    );
+    const roShellAfterAgentAttempts = await fetch(`${baseUrl}/api/opencode/session/ses_ro_created/shell`, {
+      method: "POST",
+      headers: {
+        ...baseHeaders,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "ro-shell-after-agent-576"
+      },
+      body: JSON.stringify({ command: "id" }),
+      signal: AbortSignal.timeout(4000)
+    });
+    assert.equal(roShellAfterAgentAttempts.status, 403, "read-only session must stay read-only after /agent attempts");
+
+    // 4b. Percent-encoded and trailing-slash action segments are classified
+    //     by their decoded canonical path, not the raw request path.
+    const encodedShell = await fetch(`${baseUrl}/api/opencode/session/ses_ro_created/%73hell`, {
+      method: "POST",
+      headers: {
+        ...baseHeaders,
+        "content-type": "application/json",
+        "x-pocket-agent-mode": "build",
+        "x-pocket-operation-id": "ro-encoded-shell-576"
+      },
+      body: JSON.stringify({ command: "id" }),
+      signal: AbortSignal.timeout(4000)
+    });
+    assert.equal(encodedShell.status, 403, "encoded shell segment must hit the mutation guard");
+
+    const beforeEncodedPrompt = received.length;
+    const encodedPrompt = await fetch(`${baseUrl}/api/opencode/session/ses_ro_created/%70rompt`, {
+      method: "POST",
+      headers: {
+        ...baseHeaders,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "ro-encoded-prompt-576"
+      },
+      body: JSON.stringify({ text: "sneak" }),
+      signal: AbortSignal.timeout(4000)
+    });
+    assert.equal(encodedPrompt.status, 404, "encoded prompt segment must hit the adapter-owned guard");
+    assert.equal(
+      received.slice(beforeEncodedPrompt).some(r => r.path === "/session/ses_ro_created/prompt_async"),
+      false,
+      "encoded prompt must never be forwarded as a raw prompt"
+    );
+
+    const trailingSlashShell = await fetch(`${baseUrl}/api/opencode/session/ses_ro_created/shell/`, {
+      method: "POST",
+      headers: {
+        ...baseHeaders,
+        "content-type": "application/json",
+        "x-pocket-agent-mode": "build",
+        "x-pocket-operation-id": "ro-trailing-shell-576"
+      },
+      body: JSON.stringify({ command: "id" }),
+      signal: AbortSignal.timeout(4000)
+    });
+    assert.equal(trailingSlashShell.status, 403, "trailing-slash shell must hit the mutation guard");
+    assert.equal(
+      received.some(r => r.path === "/api/session/ses_ro_created/shell"),
+      false,
+      "blocked shell mutations must never reach upstream"
+    );
+
+    // 4c. A session the upstream cannot resolve fails closed on mutations
+    //     instead of falling back to "build".
+    const unknownShell = await fetch(`${baseUrl}/api/opencode/session/ses_unresolvable/shell`, {
+      method: "POST",
+      headers: {
+        ...baseHeaders,
+        "content-type": "application/json",
+        "x-pocket-agent-mode": "build",
+        "x-pocket-operation-id": "unknown-shell-576"
+      },
+      body: JSON.stringify({ command: "id" }),
+      signal: AbortSignal.timeout(4000)
+    });
+    assert.equal(unknownShell.status, 403, "unverifiable session mode must fail closed");
+    assert.equal(
+      received.some(r => r.method === "POST" && r.path === "/api/session/ses_unresolvable/shell"),
+      false,
+      "unverifiable session mutations must never reach upstream"
+    );
+
+    // 5. Downgrade sync: an explicit read-only prompt agent on a build
+    //    session persists server-side, so later mutations stay blocked even
+    //    without a downgrade header.
+    const recreateRw = await fetch(`${baseUrl}/api/opencode/session`, {
+      method: "POST",
+      headers: {
+        ...baseHeaders,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "recreate-rw-576"
+      },
+      body: JSON.stringify({ agent: "build" }),
+      signal: AbortSignal.timeout(4000)
+    });
+    assert.equal(recreateRw.status, 200);
+    assert.equal((await recreateRw.json()).id, "ses_rw_created");
+
+    const downgradePrompt = await fetch(`${baseUrl}/api/opencode/session/ses_rw_created/prompt`, {
+      method: "POST",
+      headers: {
+        ...baseHeaders,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "rw-agent-downgrade-prompt-576"
+      },
+      body: JSON.stringify({ text: "switch to planning", agent: "plan" }),
+      signal: AbortSignal.timeout(4000)
+    });
+    assert.equal(downgradePrompt.status, 200);
+    const downgradeUpstream = received.filter(r => r.path === "/session/ses_rw_created/prompt_async").at(-1);
+    assert.equal(downgradeUpstream.body.agent, "plan");
+    assert.equal(downgradeUpstream.body.tools["*"], false);
+
+    const shellAfterDowngrade = await fetch(`${baseUrl}/api/opencode/session/ses_rw_created/shell`, {
+      method: "POST",
+      headers: {
+        ...baseHeaders,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "rw-shell-after-downgrade-576"
+      },
+      body: JSON.stringify({ command: "id" }),
+      signal: AbortSignal.timeout(4000)
+    });
+    assert.equal(shellAfterDowngrade.status, 403, "mode map must follow the explicit prompt-agent downgrade");
   } finally {
     child.kill("SIGTERM");
     await Promise.race([once(child, "exit"), new Promise(resolve => setTimeout(resolve, 1500))]);
