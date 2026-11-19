@@ -531,11 +531,17 @@ export function assertExternalBackendExecutionAllowed(backend, options = {}) {
   return policy;
 }
 
-export function buildBubblewrapCommand({ projectPath, grants = [], command, args = [], allowNetwork = false, env = process.env, spawn = spawnSync }) {
+/**
+ * Builds a bubblewrap (`bwrap`) command wrapper when available, or fails closed when `failClosed` or `DEVMOTER_SANDBOX=required` is set.
+ */
+export function buildBubblewrapCommand({ projectPath, grants = [], command, args = [], allowNetwork = false, failClosed = false, env = process.env, spawn = spawnSync }) {
   const status = sandboxStatus({ env, spawn });
-  if (status.mode === "off") return { sandboxed: false, command, args, policy: status };
+  if (status.mode === "off") {
+    if (failClosed) throw new Error("Sandbox is disabled (DEVMOTER_SANDBOX=off) and fail-closed sandboxing is required");
+    return { sandboxed: false, command, args, policy: status };
+  }
   if (!status.available) {
-    if (status.mode === "required") throw new Error("Sandbox is required but bubblewrap (bwrap) is unavailable");
+    if (status.mode === "required" || failClosed) throw new Error("Sandbox is required but bubblewrap (bwrap) is unavailable");
     return { sandboxed: false, command, args, warning: "bubblewrap unavailable", policy: status };
   }
   if (!projectPath || !String(projectPath).startsWith("/")) {

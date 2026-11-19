@@ -20,13 +20,15 @@ test("the control-character regex is defined once and shared by both path checks
   const sources = await Promise.all(files.map(file => readFile(new URL(file, import.meta.url), "utf8")));
   const definitions = sources.join("\n").match(/\/\[\\u0000-\\u001f\\u007f\]\//g) || [];
   assert.equal(definitions.length, 1);
-  assert.match(sources[0], /CONTROL_CHARS\.test\(decodedPath\)/);
+  assert.match(sources[0], /CONTROL_CHARS\.test\(canonicalPath\)/);
   assert.match(sources[1], /CONTROL_CHARS\.test\(decoded\)/);
   assert.doesNotMatch(sources.join("\n"), /OPENCODE_CONTROL_CHARS|PREVIEW_CONTROL_CHARS/);
 });
 
 test("live preview still rejects percent-encoded control characters", () => {
-  assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/a%00b"), /Invalid live preview path/);
-  assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/a%7Fb"), /Invalid live preview path/);
-  assert.doesNotThrow(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/ok/path"));
+  // Live Preview is fail-closed: allowlist the port so path checks are reached.
+  const previewPolicy = { env: { DEVMOTER_PREVIEW_ALLOWED_PORTS: "3000" } };
+  assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/a%00b", "", previewPolicy), /Invalid live preview path/);
+  assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/a%7Fb", "", previewPolicy), /Invalid live preview path/);
+  assert.doesNotThrow(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/ok/path", "", previewPolicy));
 });

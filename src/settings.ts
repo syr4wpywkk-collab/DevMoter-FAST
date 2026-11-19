@@ -1,5 +1,13 @@
 import "./settings.css";
-import { describeHealthFetch, formatBuildId, formatNodeVersion } from "./diagnostics-format.mjs";
+import {
+  buildDiagnosticsReport, classifyFetchFailure, describeConnection, describeFetchFailure, describeHealthFetch,
+  buildsDiffer, formatBuildId, formatCheckedAt, formatNodeVersion, listConnections, type FailureKind
+} from "./diagnostics-format.mjs";
+
+declare const __DEVMOTER_BUILD__: string | undefined;
+// Build id baked into this bundle at build time; a cached bundle can differ from the host's.
+const CLIENT_BUILD = typeof __DEVMOTER_BUILD__ === "string" ? __DEVMOTER_BUILD__ : "";
+const CONNECTION_NAMES: Record<string, string> = { opencode: "OpenCode", codex: "Codex" };
 import { boundedPushWait, inspectPushReadiness, type PushReadiness } from "./push-readiness.js";
 import { formatDateTime, formatNumber, getLanguage, setLanguage, t, translateServerMessage } from "./i18n";
 
@@ -75,7 +83,9 @@ async function request(path: string, init: RequestInit = {}, deviceAuth = false)
   }
   const response = await fetch(path, { ...init, headers, cache: "no-store", credentials: "same-origin" });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(translateServerMessage(payload?.error) || t("common.httpError", { status: response.status }));
+  if (!response.ok) {
+    throw Object.assign(new Error(translateServerMessage(payload?.error) || t("common.httpError", { status: response.status })), { status: response.status });
+  }
   return payload as Json;
 }
 
@@ -110,6 +120,30 @@ function themeLabel(mode: string) {
 
 function densityLabel(value: string) {
   return value === "compact" ? t("settings.density.compact") : t("settings.density.comfortable");
+}
+
+const ORIGIN_PARTS = ["scheme", "host", "port"];
+
+// Explains the server's public-Origin diagnosis; no origin or URL is shown.
+export function describePublicOrigin(origin: Json | null | undefined) {
+  const status = typeof origin?.status === "string" ? origin.status : "unverified";
+  const parts = (Array.isArray(origin?.differs) ? origin.differs : [])
+    .filter((part: unknown) => ORIGIN_PARTS.includes(String(part)))
+    .map((part: string) => t(`settings.diagnostics.originPart.${part}`))
+    .join(t("settings.diagnostics.originPartSeparator"));
+  if (status === "ok") {
+    return { status, tone: "ok", label: t("settings.diagnostics.originOk"), detail: origin?.configured || !origin?.forwardedHeaders ? "" : t("settings.diagnostics.originProxyHint") };
+  }
+  if (status === "invalid") return { status, tone: "error", label: t("settings.diagnostics.originMismatch"), detail: t("settings.diagnostics.originInvalidDetail") };
+  if (status === "configured-mismatch") return { status, tone: "error", label: t("settings.diagnostics.originMismatch"), detail: t("settings.diagnostics.originConfiguredMismatchDetail", { parts }) };
+  if (status === "proxy-mismatch") return { status, tone: "error", label: t("settings.diagnostics.originMismatch"), detail: t("settings.diagnostics.originProxyMismatchDetail", { parts }) };
+  return { status: "unverified", tone: "muted", label: t("common.unknown"), detail: "" };
+}
+
+// Only a stored, valid timestamp is shown; anything else reads as unknown.
+function deviceLastUsedLabel(value: unknown) {
+  const stamp = typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+  return (stamp !== null && formatDateTime(stamp)) || t("common.unknown");
 }
 
 function deviceBrowserLabel() {
@@ -199,7 +233,7 @@ export function mountSettingsPanel() {
   let authStatus: Json = {};
   let diagnostics: Json = {};
   // #473: when /api/system/diagnostics last succeeded / failed, so stale health is never shown as current.
-  const diagnosticsFetch: { fetchedAt: number | null; failedAt: number | null; loading: boolean } = { fetchedAt: null, failedAt: null, loading: false };
+  const diagnosticsFetch: { fetchedAt: number | null; failedAt: number | null; loading: boolean; failure: FailureKind | null } = { fetchedAt: null, failedAt: null, loading: false, failure: null };
   let cliStatus: Json[] = [];
   let vaultFormElement: HTMLFormElement | null = null;
   let vaultSecrets: Json[] = [];
@@ -506,10 +540,10 @@ export function mountSettingsPanel() {
           <div class="devmoter-settings-device">
             <span><strong>${escapeHtml(device.label || t("settings.devices.deviceDefaultLabel"))}</strong><small>${escapeHtml(t("settings.devices.deviceMeta", {
               current: device.current ? t("settings.devices.thisDevicePrefix") : "",
-              lastUsed: formatDateTime(device.lastUsedAt)
+              lastUsed: deviceLastUsedLabel(device.lastUsedAt)
             }))}</small></span>
             ${canRevokeDevices
-              ? `<button type="button" data-action="device:revoke" data-device-id="${escapeHtml(device.id)}">${escapeHtml(t("common.revoke"))}</button>`
+              ? `<button type="button" data-action="device:revoke" data-device-id="${escapeHtml(device.id)}" data-device-label="${escapeHtml(device.label || t("settings.devices.deviceDefaultLabel"))}" data-device-last-used="${escapeHtml(deviceLastUsedLabel(device.lastUsedAt))}" data-device-current="${device.current ? "true" : "false"}">${escapeHtml(t("common.revoke"))}</button>`
               : ""}
           </div>
         `).join("")
@@ -825,23 +859,73 @@ export function mountSettingsPanel() {
     `).join("");
   }
 
+  function diagnosticsStale() {
+    const { fetchedAt, failedAt } = diagnosticsFetch;
+    return fetchedAt === null || (failedAt !== null && failedAt >= fetchedAt);
+  }
+
+  function connectionRows() {
+    const connections = listConnections(diagnostics, { stale: diagnosticsStale() });
+    const rows = connections.map(connection => {
+      const view = describeConnection(connection);
+      const mark = view.tone === "ok" ? ICONS.check : view.tone === "error" ? ICONS.report : "–";
+      return `
+        <div class="devmoter-settings-health-row" data-connection="${escapeHtml(connection.id)}" data-state="${escapeHtml(connection.state)}">
+          <span class="${view.tone === "ok" ? "ok" : view.tone === "error" ? "bad" : ""}" aria-hidden="true">${mark}</span>
+          <strong>${escapeHtml(CONNECTION_NAMES[connection.id] || connection.id)}</strong>
+          <small>${escapeHtml(view.label)} · ${escapeHtml(formatCheckedAt(connection.checkedAt))}</small>
+        </div>`;
+    }).join("");
+    const guides = connections.map(connection => {
+      const view = describeConnection(connection);
+      return view.guide
+        ? `<div class="devmoter-settings-note" data-connection-guide="${escapeHtml(connection.id)}"><strong>${escapeHtml(CONNECTION_NAMES[connection.id] || connection.id)}: ${escapeHtml(view.label)}</strong><br>${escapeHtml(view.guide)}</div>`
+        : "";
+    }).join("");
+    return `<div class="devmoter-settings-card devmoter-settings-health">${rows}</div>${guides}`;
+  }
+
+  function hostFailureGuide() {
+    if (!diagnosticsStale() || !diagnosticsFetch.failure || diagnosticsFetch.loading) return "";
+    const view = describeFetchFailure(diagnosticsFetch.failure);
+    return `<div class="devmoter-settings-note" data-diagnostics-host-guide="${escapeHtml(diagnosticsFetch.failure)}"><strong>${escapeHtml(view.label)}</strong><br>${escapeHtml(view.guide)}</div>`;
+  }
+
   function renderDiagnostics() {
     setHeader(t("settings.root.diagnostics"), t("settings.diagnostics.subtitle"));
     const fetchState = describeHealthFetch(diagnosticsFetch);
+    const originState = describePublicOrigin(diagnostics?.publicOrigin);
+    const buildMismatch = buildsDiffer(diagnostics?.app?.build, CLIENT_BUILD);
+    let hostBuild = formatBuildId(diagnostics?.app?.build);
+    let deviceBuild = formatBuildId(CLIENT_BUILD);
+    if (buildMismatch && hostBuild === deviceBuild) {
+      hostBuild = String(diagnostics.app.build).trim();
+      deviceBuild = CLIENT_BUILD.trim();
+    }
     scroll.innerHTML = `
       <section class="devmoter-settings-section">
         <h2>${escapeHtml(t("settings.diagnostics.statusHeading"))}</h2>
         <div class="devmoter-settings-note" data-diagnostics-fetched data-tone="${escapeHtml(fetchState.tone)}" role="status">${escapeHtml(fetchState.text)}</div>
-        <div class="devmoter-settings-actions"><button type="button" data-action="diagnostics:refresh" ${diagnosticsFetch.loading ? "disabled" : ""}>${escapeHtml(t("common.refresh"))}</button></div>
+        ${hostFailureGuide()}
+        <div class="devmoter-settings-actions">
+          <button type="button" data-action="diagnostics:refresh" ${diagnosticsFetch.loading ? "disabled" : ""}>${escapeHtml(t("common.refresh"))}</button>
+          <button type="button" data-action="diagnostics:copy">${escapeHtml(t("settings.diagnostics.copyButton"))}</button>
+        </div>
+        <div class="devmoter-settings-note">${escapeHtml(t("settings.diagnostics.copyHint"))}</div>
         <div class="devmoter-settings-card devmoter-settings-detail-card">
           <div class="devmoter-settings-detail-row"><span>${escapeHtml(t("settings.diagnostics.appLabel"))}</span><strong>${escapeHtml(diagnostics?.app?.version || t("common.unknown"))}</strong></div>
           <div class="devmoter-settings-detail-row"><span>${escapeHtml(t("settings.diagnostics.nodeLabel"))}</span><strong data-diagnostics-node>${escapeHtml(formatNodeVersion(diagnostics?.app?.node))}</strong></div>
-          <div class="devmoter-settings-detail-row"><span>${escapeHtml(t("settings.diagnostics.buildLabel"))}</span><strong data-diagnostics-build>${escapeHtml(formatBuildId(diagnostics?.app?.build))}</strong></div>
-          <div class="devmoter-settings-detail-row"><span>OpenCode</span><strong>${escapeHtml(diagnostics?.backends?.opencode?.online ? t("common.online") : t("common.offline"))}</strong></div>
-          <div class="devmoter-settings-detail-row"><span>Codex</span><strong>${escapeHtml(diagnostics?.backends?.codex?.online ? t("common.online") : t("common.offline"))}</strong></div>
+          <div class="devmoter-settings-detail-row"><span>${escapeHtml(t("settings.diagnostics.hostBuildLabel"))}</span><strong data-diagnostics-build>${escapeHtml(hostBuild)}</strong></div>
+          <div class="devmoter-settings-detail-row"><span>${escapeHtml(t("settings.diagnostics.deviceBuildLabel"))}</span><strong data-diagnostics-device-build>${escapeHtml(deviceBuild)}</strong></div>
           <div class="devmoter-settings-detail-row"><span>${escapeHtml(t("settings.diagnostics.projectsLabel"))}</span><strong>${escapeHtml(formatNumber(Number(diagnostics?.projects?.count ?? 0)))}</strong></div>
+          <div class="devmoter-settings-detail-row"><span>${escapeHtml(t("settings.diagnostics.originLabel"))}</span><strong data-diagnostics-origin="${escapeHtml(originState.status)}">${escapeHtml(originState.label)}</strong></div>
           <div class="devmoter-settings-detail-row"><span>${escapeHtml(t("settings.diagnostics.networkLabel"))}</span><strong>${escapeHtml(diagnostics?.network?.localhostFirst ? t("settings.diagnostics.networkLocalhost") : t("settings.diagnostics.networkCustom"))}</strong></div>
         </div>
+        ${buildMismatch ? `<div class="devmoter-settings-note" data-diagnostics-build-mismatch>${escapeHtml(t("settings.diagnostics.buildMismatch"))}</div>` : ""}
+      </section>
+      <section class="devmoter-settings-section">
+        <h2>${escapeHtml(t("settings.diagnostics.connectionsHeading"))}</h2>
+        ${connectionRows()}
       </section>
       <section class="devmoter-settings-section">
         <h2>${escapeHtml(t("settings.diagnostics.cliHeading"))}</h2>
@@ -851,8 +935,10 @@ export function mountSettingsPanel() {
         <h2>${escapeHtml(t("settings.diagnostics.prereqHeading"))}</h2>
         <div class="devmoter-settings-card devmoter-settings-health">${prerequisiteRows()}</div>
       </section>
+      ${originState.detail ? `<div class="devmoter-settings-note" data-diagnostics-origin-detail data-tone="${escapeHtml(originState.tone)}" role="status">${escapeHtml(originState.detail)}</div>` : ""}
       <div class="devmoter-settings-note">${escapeHtml(diagnostics?.network?.message || "")}</div>
     `;
+    wireRows();
   }
 
   function renderGuide() {
@@ -1085,13 +1171,18 @@ export function mountSettingsPanel() {
           leave(action.slice(5));
           return;
         }
+        if (action === "diagnostics:copy") {
+          const report = buildDiagnosticsReport({
+            diagnostics, fetchState: diagnosticsFetch, fetchFailure: diagnosticsFetch.failure, clientBuild: CLIENT_BUILD, cliStatus
+          });
+          toast(await copyText(report) ? t("settings.diagnostics.copied") : t("common.copyFailed"));
+          return;
+        }
         if (action === "diagnostics:refresh") {
           diagnosticsFetch.loading = true;
           renderDiagnostics();
-          wireRows();
           await refreshDiagnostics();
           if (page === "diagnostics") renderDiagnostics();
-          wireRows();
           return;
         }
         if (action === "account:connect") {
@@ -1236,10 +1327,18 @@ export function mountSettingsPanel() {
           return;
         }
         if (action === "device:revoke") {
+          const confirmKey = button.dataset.deviceCurrent === "true"
+            ? "settings.devices.confirmRevokeCurrent"
+            : "settings.devices.confirmRevoke";
+          if (!window.confirm(t(confirmKey, {
+            label: button.dataset.deviceLabel || t("settings.devices.deviceDefaultLabel"),
+            lastUsed: button.dataset.deviceLastUsed || t("common.unknown")
+          }))) return;
           try {
-            await request(`/api/devices/${encodeURIComponent(button.dataset.deviceId || "")}`, { method: "DELETE" }, true);
+            const result = await request(`/api/devices/${encodeURIComponent(button.dataset.deviceId || "")}`, { method: "DELETE" }, true);
             issuedPairing = null;
-            window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { action: "revoke" } }));
+            const revokedCurrent = result.revokedCurrentDevice === true;
+            window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { action: "revoke", revokedCurrent } }));
             toast(t("settings.devices.revokedToast"));
             await renderDevices();
           } catch (error) {
@@ -1328,11 +1427,13 @@ export function mountSettingsPanel() {
   async function refreshDiagnostics() {
     diagnosticsFetch.loading = true;
     try {
-      diagnostics = await request("/api/system/diagnostics");
+      diagnostics = await request("/api/system/diagnostics", { headers: { "x-devmoter-client-origin": window.location.origin } });
       diagnosticsFetch.fetchedAt = Date.now();
-    } catch {
+      diagnosticsFetch.failure = null;
+    } catch (error) {
       // Keep the last good values but mark them as stale (#473).
       diagnosticsFetch.failedAt = Date.now();
+      diagnosticsFetch.failure = classifyFetchFailure(error, { online: navigator.onLine });
     } finally {
       diagnosticsFetch.loading = false;
     }

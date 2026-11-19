@@ -57,7 +57,7 @@ test("checkpoints and extensions panels route device-auth failures to the gate",
   assert.ok(ui.includes('t("workspaceControl.checkpoints.title")'));
   assert.ok(ui.includes('t("workspaceControl.extensions.title")'));
   assert.ok(ui.includes('showFailure(title, error)'));
-  assert.ok(ui.includes("createDeviceGate(document, { onRegister: closePanel })"));
+  assert.ok(ui.includes("createDeviceGate(document, { error, onRegister: closePanel })"));
   // Errors no longer get appended under the stale "Loading…" line.
   assert.ok(!ui.includes("panel.append(error instanceof Error ? error.message : String(error))"));
 });
