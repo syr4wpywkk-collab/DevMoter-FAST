@@ -163,6 +163,17 @@ body.dm-task-first-enabled .ocx-app .ocx-assistant-text {
   font-size: 1rem;
   font-family: inherit;
 }
+/* Codex turns read as prompt→reply pairs; command/status lines sit below the reply
+ * as compact secondary rows instead of competing with it. */
+body.dm-task-first-enabled .cx-app .cx-message-row.user { margin-bottom: 12px; }
+body.dm-task-first-enabled .cx-app .cx-message-row.system { margin-top: -8px; }
+body.dm-task-first-enabled .cx-app .cx-message.system {
+  width: fit-content;
+  max-width: 100%;
+  padding: 8px 12px;
+  font-size: var(--font-size-caption, 12px);
+  line-height: 1.5;
+}
 body.dm-task-first-enabled :is(.cx-app .cx-message.system, .ocx-app .ocx-tool-card, .ocx-app .ocx-reasoning) {
   border: 1px solid var(--dw-chat-line);
   border-radius: 13px;
