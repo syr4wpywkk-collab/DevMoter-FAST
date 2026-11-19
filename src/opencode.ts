@@ -1476,6 +1476,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         if (activeSession?.id !== sessionId) return;
         try {
           await loadContext();
+          await recoverExecutionState();
         } catch (error) {
           showToast(error instanceof Error ? translateServerMessage(error.message) : translateServerMessage(String(error)));
         }
@@ -3939,9 +3940,20 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   imageButton.addEventListener("click", () => imageInput.click());
   root.querySelector<HTMLButtonElement>("#ocxCopyLatest")!.addEventListener("click", () => {
     closeAttachmentMenu();
-    const text = latestAssistantText(
-      Array.from(transcript.querySelectorAll<HTMLElement>("[data-assistant-text]"), body => assistantText.get(body))
-    );
+    // One answer can be rendered as several text parts: copy every part after the last user message.
+    // While the newest turn has no answer yet, the previous answer stays the latest one.
+    let previous = "";
+    const parts: string[] = [];
+    for (const row of Array.from(transcript.children)) {
+      if (row.classList.contains("user")) {
+        if (parts.length) previous = parts.join("\n\n");
+        parts.length = 0;
+      }
+      const body = row.querySelector<HTMLElement>("[data-assistant-text]");
+      const part = body ? assistantText.get(body) : "";
+      if (part?.trim()) parts.push(part);
+    }
+    const text = latestAssistantText([previous, parts.join("\n\n")]);
     if (text) void copyAssistantCode(text);
     else showToast(t("chat.copyLatest.none"));
   });

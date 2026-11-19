@@ -85,6 +85,8 @@ export function createChatDraftBinding({
   input.addEventListener("input", capture);
   input.addEventListener("blur", capture);
   input.addEventListener("focus", sync);
+  // Voice input and command expansion set the value without an input event.
+  input.ownerDocument?.defaultView?.addEventListener("pagehide", capture);
 
   return { capture, sync };
 }

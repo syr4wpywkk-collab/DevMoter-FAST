@@ -220,7 +220,7 @@ test("failed OpenCode history load keeps the session and retries without sending
   assert.equal(ui.window.localStorage.getItem("opencode-pocket-opencode-session"), "session-1");
 });
 
-test("OpenCode copies only the latest answer and reports when there is none", async t => {
+test("OpenCode copies every text part of the latest answer and reports when there is none", async t => {
   const empty = await harness(t);
   empty.root.querySelector("#ocxCopyLatest").click();
   await settle();
@@ -228,10 +228,9 @@ test("OpenCode copies only the latest answer and reports when there is none", as
   assert.equal(empty.root.querySelector("#ocxToast").classList.contains("hidden"), false);
 
   const ui = await harness(t, [
-    { type: "assistant", content: [{ type: "text", text: "First answer" }] },
-    { type: "assistant", content: [{ type: "text", text: "**Latest** answer" }] }
+    { type: "assistant", content: [{ type: "text", text: "First part" }, { type: "text", text: "**Second** part" }] }
   ]);
   ui.root.querySelector("#ocxCopyLatest").click();
   await settle();
-  assert.deepEqual(ui.copied, ["**Latest** answer"]);
+  assert.deepEqual(ui.copied, ["First part\n\n**Second** part"]);
 });
