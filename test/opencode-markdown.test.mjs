@@ -30,7 +30,7 @@ const compiled = compile(await readFile(new URL("../src/opencode.ts", import.met
 const compiledBounds = compile(await readFile(new URL("../src/bounded-transcript.ts", import.meta.url), "utf8"));
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
-async function harness(t, initialContext = [], { listFailures = 0 } = {}) {
+async function harness(t, initialContext = [], { listFailures = 0, storedDraft = null } = {}) {
   const listFailuresAtStart = listFailures;
   const dom = new JSDOM('<!doctype html><main id="root"></main>', {
     url: "https://devmoter.example/chat", runScripts: "outside-only"
@@ -55,6 +55,7 @@ async function harness(t, initialContext = [], { listFailures = 0 } = {}) {
     value: { writeText: async text => copied.push(text) }
   });
   window.localStorage.setItem("opencode-pocket-opencode-session", session.id);
+  if (storedDraft) window.sessionStorage.setItem(chatDraft.chatDraftKey("opencode", null), storedDraft);
   window.EventSource = class {
     constructor() { source = this; }
     close() {}
@@ -233,6 +234,7 @@ test("failed OpenCode session list offers an in-place retry that keeps the draft
   assert.equal(notice.querySelector("p").textContent, i18nCore.translate("en", "chat.history.listLoadFailed"));
 
   ui.root.querySelector("#ocxPromptInput").value = "unsent draft";
+  ui.root.querySelector("#ocxPromptInput").dispatchEvent(new ui.window.Event("input", { bubbles: true }));
   const before = ui.requests.length;
   notice.querySelector("button").click();
   await settle();
@@ -259,4 +261,14 @@ test("OpenCode copies every text part of the latest answer and reports when ther
   ui.root.querySelector("#ocxCopyLatest").click();
   await settle();
   assert.deepEqual(ui.copied, ["First part\n\n**Second** part"]);
+});
+
+test("OpenCode list retry still opens the saved session for a draft restored at load", async t => {
+  const ui = await harness(t, [], { listFailures: 1, storedDraft: "draft kept across reload" });
+  assert.equal(ui.root.querySelector("#ocxPromptInput").value, "draft kept across reload");
+  const before = ui.requests.length;
+  ui.root.querySelector("#ocxSessions [data-history-retry] button").click();
+  await settle();
+  assert.ok(ui.requests.slice(before).some(request => request.path.startsWith("/api/opencode/session/session-1")), "the restored draft keeps its saved session");
+  assert.equal(ui.root.querySelector("#ocxPromptInput").value, "draft kept across reload");
 });

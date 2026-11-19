@@ -174,7 +174,7 @@ test("native completion reason survives the thread/read transcript replacement",
   assert.equal(document.activeElement, document.querySelector("#cxPromptInput"));
 });
 
-async function mountWithFailedThreadList(t, { savedThread = null } = {}) {
+async function mountWithFailedThreadList(t, { savedThread = null, storedDraft = null } = {}) {
   const dom = new JSDOM('<!doctype html><main id="root"></main>', {
     url: "https://devmoter.example/?surface=codex",
     runScripts: "outside-only"
@@ -191,6 +191,7 @@ async function mountWithFailedThreadList(t, { savedThread = null } = {}) {
   window.requestAnimationFrame = callback => { callback(); return 1; };
   window.EventSource = class { addEventListener() {} close() {} };
   if (savedThread) window.localStorage.setItem("opencode-pocket-codex-thread", savedThread);
+  if (storedDraft) window.sessionStorage.setItem(chatDraft.chatDraftKey("codex", null), storedDraft);
   window.fetch = async (input, init = {}) => {
     const path = String(input);
     const ok = (result, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => result });
@@ -257,6 +258,7 @@ test("Codex list retry survives a search and does not swap a draft for the saved
   assert.ok(notice, "clearing the search brings the retry back while the list is still missing");
 
   document.querySelector("#cxPromptInput").value = "draft for a new chat";
+  document.querySelector("#cxPromptInput").dispatchEvent(new window.Event("input", { bubbles: true }));
   const before = methods.length;
   notice.querySelector("button").click();
   await settle();
@@ -271,4 +273,14 @@ test("Codex list retry survives a search and does not swap a draft for the saved
   await settle();
   assert.ok(!methods.slice(beforeRefresh).includes("thread/resume"), "a later periodic refresh does not reopen it either");
   assert.equal(document.querySelector("#cxPromptInput").value, "draft for a new chat");
+});
+
+test("Codex list retry still reopens the saved thread for a draft restored at load", async t => {
+  const { document, methods } = await mountWithFailedThreadList(t, { savedThread: "thread-1", storedDraft: "draft kept across reload" });
+  assert.equal(document.querySelector("#cxPromptInput").value, "draft kept across reload");
+  const before = methods.length;
+  document.querySelector("#cxSidebarThreads [data-history-retry] button").click();
+  await settle();
+  await settle();
+  assert.ok(methods.slice(before).includes("thread/resume"), "the restored draft keeps its saved thread");
 });

@@ -1549,6 +1549,18 @@ export function mountCodexRemote(
     }));
   }
 
+  // Text the user types (or files they attach) while no conversation is open
+  // belong to a new chat: a later list load (retry, periodic refresh) must not
+  // open the saved conversation under them. A draft restored from storage at
+  // load fires no input event, so the saved conversation still comes back.
+  let typedWithoutConversation = false;
+  promptInput.addEventListener("input", () => {
+    if (!activeThreadId) typedWithoutConversation = true;
+  });
+  function draftStartedWithoutConversation() {
+    return (typedWithoutConversation && Boolean(promptInput.value.trim())) || pendingAttachments.length > 0 || selectedContextRefs.length > 0;
+  }
+
   async function loadThreads() {
     const requestGeneration = threadListRequests.begin();
     let result: Json;
@@ -1576,10 +1588,7 @@ export function mountCodexRemote(
 
     // thread/list can briefly lag a just-created or just-resumed thread.
     // Preserve the current identity instead of silently falling back to a new chat.
-    // A draft typed meanwhile belongs to a new chat: any later list load
-    // (retry, periodic refresh) must not swap it for the saved thread.
-    const hasDraft = Boolean(promptInput.value.trim() || pendingAttachments.length || selectedContextRefs.length);
-    if (!activeThreadId && !hasDraft) {
+    if (!activeThreadId && !draftStartedWithoutConversation()) {
       const saved = localStorage.getItem("opencode-pocket-codex-thread");
       const target = allThreads.find(thread => thread.id === saved);
       if (target) await selectThread(target);

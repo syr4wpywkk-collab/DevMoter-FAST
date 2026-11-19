@@ -1672,6 +1672,18 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     }
   }
 
+  // Text the user types (or files they attach) while no conversation is open
+  // belong to a new chat: a later list load (retry, periodic refresh) must not
+  // open the saved conversation under them. A draft restored from storage at
+  // load fires no input event, so the saved conversation still comes back.
+  let typedWithoutConversation = false;
+  promptInput.addEventListener("input", () => {
+    if (!activeSession) typedWithoutConversation = true;
+  });
+  function draftStartedWithoutConversation() {
+    return (typedWithoutConversation && Boolean(promptInput.value.trim())) || pendingAttachments.length > 0 || selectedContextRefs.length > 0;
+  }
+
   async function loadSessions() {
     const requestGeneration = sessionListRequests.begin();
     latestSessionListRequest = requestGeneration;
@@ -1749,10 +1761,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     renderSessions();
     renderAttention();
 
-    // A draft typed while no session was open belongs to a new chat: a later
-    // list load must not open the saved session under it.
-    const hasDraft = Boolean(promptInput.value.trim() || pendingAttachments.length || selectedContextRefs.length);
-    if (!activeSession && !hasDraft) {
+    if (!activeSession && !draftStartedWithoutConversation()) {
       const saved = localStorage.getItem("opencode-pocket-opencode-session");
       const target = sessions.find(session => session.id === saved);
       if (target) await selectSession(target);
