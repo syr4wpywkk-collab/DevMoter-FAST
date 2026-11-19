@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { EventEmitter } from "node:events";
-import { mkdir, mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, rmdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createAgentRunService } from "../server/agent-run-service.mjs";
@@ -172,11 +172,10 @@ test("a failed state replacement cleans up its temporary file and later writes c
     context: { projectId: "project-1" }
   });
   assert.equal(run.state, "running");
-  assert.ok((await stat(filePath)).isDirectory());
   assert.deepEqual(await readdir(dir), ["agent-runs.json"]);
   assert.ok(errors.mock.calls.some(({ arguments: args }) => args[0] === "Agent run state persistence failed"));
 
-  await rm(filePath, { recursive: true });
+  await rmdir(filePath);
   await service.flushPersistence();
   const saved = JSON.parse(await readFile(filePath, "utf8"));
   assert.equal(saved.runs.find(item => item.id === run.id).state, "running");
