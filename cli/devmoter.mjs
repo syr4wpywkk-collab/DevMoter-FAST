@@ -64,27 +64,115 @@ export function parseArgs(argv) {
   return { command: positional.shift() || "", positional, options };
 }
 
-function writeJson(value) {
-  process.stdout.write(JSON.stringify(value) + "\n");
+function assertValidBaseUrl(baseUrl) {
+  let base;
+  try {
+    base = baseUrl instanceof URL ? new URL(baseUrl.href) : new URL(String(baseUrl ?? ""));
+  } catch {
+    throw new Error("Invalid DevMoter base URL");
+  }
+  if (!["http:", "https:"].includes(base.protocol) || base.origin === "null") {
+    throw new Error("Invalid DevMoter base URL");
+  }
+  return base;
 }
 
-function printTable(rows, columns) {
+export function validateBrowserUrl(rawUrl, baseUrl) {
+  const base = assertValidBaseUrl(baseUrl);
+  if (typeof rawUrl !== "string") {
+    throw new DevMoterError("Server returned an invalid browser launch URL", {
+      code: "invalid_launch_url"
+    });
+  }
+  if (/[\u0000-\u001f\u007f]/.test(rawUrl)) {
+    throw new DevMoterError("Invalid browser launch URL: control characters are not allowed", {
+      code: "invalid_launch_url"
+    });
+  }
+  const raw = rawUrl.trim();
+  if (!raw) {
+    throw new DevMoterError("Server returned an empty browser launch URL", {
+      code: "invalid_launch_url"
+    });
+  }
+  if (raw.startsWith("-")) {
+    throw new DevMoterError("Invalid browser launch URL: URL must not begin with '-'", {
+      code: "invalid_launch_url"
+    });
+  }
+  if (raw !== rawUrl) {
+    throw new DevMoterError("Invalid browser launch URL: leading or trailing whitespace is not allowed", {
+      code: "invalid_launch_url"
+    });
+  }
+  if (raw.startsWith("//") || raw.startsWith("\\\\")) {
+    throw new DevMoterError("Invalid browser launch URL: protocol-relative URLs are not allowed", {
+      code: "invalid_launch_url"
+    });
+  }
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw) && !/^https?:\/\//i.test(raw)) {
+    throw new DevMoterError("Invalid browser launch URL: only http and https URLs are allowed", {
+      code: "invalid_launch_url"
+    });
+  }
+
+  let parsed;
+  try {
+    parsed = /^https?:\/\//i.test(raw) ? new URL(raw) : new URL(raw, base);
+  } catch {
+    throw new DevMoterError("Invalid browser launch URL: malformed URL", {
+      code: "invalid_launch_url"
+    });
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new DevMoterError("Invalid browser launch URL: only http and https URLs are allowed", {
+      code: "invalid_launch_url"
+    });
+  }
+  if (parsed.username || parsed.password) {
+    throw new DevMoterError("Invalid browser launch URL: embedded credentials are not allowed", {
+      code: "invalid_launch_url"
+    });
+  }
+  if (parsed.origin === "null" || parsed.origin !== base.origin) {
+    throw new DevMoterError(
+      `Invalid browser launch URL: origin ${parsed.origin} does not match ${base.origin}`,
+      { code: "invalid_launch_url" }
+    );
+  }
+
+  const normalized = parsed.href;
+  if (!/^https?:\/\//i.test(normalized) || normalized.startsWith("-")) {
+    throw new DevMoterError("Invalid browser launch URL", {
+      code: "invalid_launch_url"
+    });
+  }
+  return normalized;
+}
+
+function writeJson(value, stdout = process.stdout) {
+  stdout.write(JSON.stringify(value) + "\n");
+}
+
+function printTable(rows, columns, stdout = process.stdout) {
   if (!rows.length) return;
   const widths = columns.map(col =>
     Math.max(col.label.length, ...rows.map(row => String(row[col.key] ?? "").length))
   );
-  process.stdout.write(columns.map((col, i) => col.label.padEnd(widths[i])).join("  ") + "\n");
+  stdout.write(columns.map((col, i) => col.label.padEnd(widths[i])).join("  ") + "\n");
   for (const row of rows) {
-    process.stdout.write(columns.map((col, i) => String(row[col.key] ?? "").padEnd(widths[i])).join("  ") + "\n");
+    stdout.write(columns.map((col, i) => String(row[col.key] ?? "").padEnd(widths[i])).join("  ") + "\n");
   }
 }
 
-function fixedBrowserCommand(url) {
-  if (process.platform === "darwin") return ["open", [url]];
-  if (process.platform === "win32") {
-    return ["rundll32", ["url.dll,FileProtocolHandler", url]];
+export function fixedBrowserCommand(url, baseUrl, platform = process.platform) {
+  const safeUrl = validateBrowserUrl(url, baseUrl);
+  if (platform === "darwin") return ["open", [safeUrl]];
+  if (platform === "win32") {
+    return ["rundll32", ["url.dll,FileProtocolHandler", safeUrl]];
   }
-  return ["xdg-open", [url]];
+  return ["xdg-open", [safeUrl]];
 }
 
 function isLocalUrl(value) {
@@ -130,45 +218,52 @@ export async function resolveCliAuth(options = {}, env = process.env) {
   return { username, password: "" };
 }
 
-export async function main(argv = process.argv.slice(2)) {
+export async function main(argv = process.argv.slice(2), deps = {}) {
+  const stdout = deps.stdout || process.stdout;
+  const stderr = deps.stderr || process.stderr;
+  const env = deps.env || process.env;
+  const spawnImpl = deps.spawnImpl || spawn;
+  const platform = deps.platform || process.platform;
+
   let parsed;
   try {
     parsed = parseArgs(argv);
   } catch (error) {
-    process.stderr.write((error instanceof Error ? error.message : String(error)) + "\n\n" + usage() + "\n");
+    stderr.write((error instanceof Error ? error.message : String(error)) + "\n\n" + usage() + "\n");
     return EXIT.USAGE;
   }
 
   const { command, positional, options } = parsed;
   if (options.help || !command) {
-    process.stdout.write(usage() + "\n");
+    stdout.write(usage() + "\n");
     return options.help ? EXIT.OK : EXIT.USAGE;
   }
 
   let auth;
   try {
-    auth = await resolveCliAuth(options);
+    auth = await resolveCliAuth(options, env);
   } catch (error) {
-    process.stderr.write((error instanceof Error ? error.message : String(error)) + "\n");
+    stderr.write((error instanceof Error ? error.message : String(error)) + "\n");
     return EXIT.USAGE;
   }
 
   let client;
   try {
     client = new DevMoterClient({
-      baseUrl: options.url || process.env.DEVMOTER_URL,
+      baseUrl: options.url || env.DEVMOTER_URL,
       username: auth.username,
-      password: auth.password
+      password: auth.password,
+      fetchImpl: deps.fetchImpl
     });
   } catch (error) {
-    process.stderr.write((error instanceof Error ? error.message : String(error)) + "\n");
+    stderr.write((error instanceof Error ? error.message : String(error)) + "\n");
     return EXIT.USAGE;
   }
 
   try {
     if (command === "status") {
       const health = await client.health();
-      if (options.json) writeJson(health);
+      if (options.json) writeJson(health, stdout);
       else {
         const rows = Object.entries(health.backends || {}).map(([name, info]) => ({
           backend: name,
@@ -179,7 +274,7 @@ export async function main(argv = process.argv.slice(2)) {
           { key: "backend", label: "BACKEND" },
           { key: "state", label: "STATE" },
           { key: "version", label: "VERSION" }
-        ]);
+        ], stdout);
       }
       return health.online ? EXIT.OK : EXIT.SERVER;
     }
@@ -187,12 +282,12 @@ export async function main(argv = process.argv.slice(2)) {
     if (command === "projects") {
       const payload = await client.projects();
       const projects = payload.projects || [];
-      if (options.json) writeJson(payload);
+      if (options.json) writeJson(payload, stdout);
       else printTable(projects, [
         { key: "id", label: "ID" },
         { key: "name", label: "NAME" },
         { key: "available", label: "AVAILABLE" }
-      ]);
+      ], stdout);
       return EXIT.OK;
     }
 
@@ -200,11 +295,12 @@ export async function main(argv = process.argv.slice(2)) {
       const project = positional[0];
       if (!project) throw new Error("open requires a project id or name");
       const payload = await client.openProject(project);
-      if (options.json) writeJson(payload);
-      else process.stdout.write(String(payload.url || "") + "\n");
+      const launchUrl = validateBrowserUrl(payload?.url, client.baseUrl);
+      if (options.json) writeJson({ ...payload, url: launchUrl }, stdout);
+      else stdout.write(launchUrl + "\n");
       if (options.browser) {
-        const [bin, args] = fixedBrowserCommand(payload.url);
-        const child = spawn(bin, args, { detached: true, stdio: "ignore" });
+        const [bin, args] = fixedBrowserCommand(launchUrl, client.baseUrl, platform);
+        const child = spawnImpl(bin, args, { detached: true, stdio: "ignore" });
         child.unref();
       }
       return EXIT.OK;
@@ -218,14 +314,14 @@ export async function main(argv = process.argv.slice(2)) {
         backend: options.backend || ""
       });
       const sessions = payload.sessions || [];
-      if (options.json) writeJson(payload);
+      if (options.json) writeJson(payload, stdout);
       else printTable(sessions, [
         { key: "backend", label: "BACKEND" },
         { key: "id", label: "ID" },
         { key: "title", label: "TITLE" },
         { key: "agent", label: "AGENT" },
         { key: "status", label: "STATUS" }
-      ]);
+      ], stdout);
       return EXIT.OK;
     }
 
@@ -255,11 +351,11 @@ export async function main(argv = process.argv.slice(2)) {
           "task.accepted",
           { project, agent, backend },
           { operationId: opId }
-        ));
+        ), stdout);
 
         let finalResult = null;
         for await (const event of client.streamTask(taskInput, { operationId: opId })) {
-          writeJson(event);
+          writeJson(event, stdout);
           if (event?.type === "task.result") finalResult = event.data;
           if (event?.type === "task.error") finalResult = { status: "failed" };
         }
@@ -271,22 +367,22 @@ export async function main(argv = process.argv.slice(2)) {
 
       const result = await client.runTask(taskInput, { operationId: opId });
       if (options.json) {
-        writeJson(createEventEnvelope("task.result", result, { operationId: opId }));
+        writeJson(createEventEnvelope("task.result", result, { operationId: opId }), stdout);
       } else {
-        process.stdout.write(String(result.output || result.message || "Task submitted") + "\n");
-        if (result.sessionId) process.stderr.write("session: " + result.sessionId + "\n");
+        stdout.write(String(result.output || result.message || "Task submitted") + "\n");
+        if (result.sessionId) stderr.write("session: " + result.sessionId + "\n");
       }
       return ["failed", "blocked"].includes(result.status) ? EXIT.TASK_FAILED : EXIT.OK;
     }
 
-    process.stderr.write("Unknown command: " + command + "\n\n" + usage() + "\n");
+    stderr.write("Unknown command: " + command + "\n\n" + usage() + "\n");
     return EXIT.USAGE;
   } catch (error) {
     const notFound = error instanceof DevMoterError && error.status === 404;
     const authError = error instanceof DevMoterError && error.status === 401;
-    process.stderr.write((error instanceof Error ? error.message : String(error)) + "\n");
+    stderr.write((error instanceof Error ? error.message : String(error)) + "\n");
     if (authError) {
-      process.stderr.write("Provide DEVMOTER_AUTH_PASSWORD, --password-file, or use the local DevMoter password file.\n");
+      stderr.write("Provide DEVMOTER_AUTH_PASSWORD, --password-file, or use the local DevMoter password file.\n");
     }
     return notFound ? EXIT.NOT_FOUND : error instanceof DevMoterError ? EXIT.SERVER : EXIT.USAGE;
   }
