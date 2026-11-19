@@ -375,7 +375,16 @@ export function createUserAutomationService({
         text = firstNewline === -1 ? "" : text.slice(firstNewline + 1);
       }
       const lines = text.split("\n").filter(Boolean);
-      return lines.slice(-bounded).map(line => JSON.parse(line));
+      const entries = [];
+      for (let index = lines.length - 1; index >= 0 && entries.length < bounded; index--) {
+        try {
+          const entry = JSON.parse(lines[index]);
+          if (plain(entry)) entries.push(entry);
+        } catch {
+          // Ignore torn or malformed audit records.
+        }
+      }
+      return entries.reverse();
     } catch (error) {
       if (error?.code === "ENOENT") return [];
       throw error;
@@ -395,23 +404,28 @@ export function createUserAutomationService({
     sandboxMode,
     optInUsed = false,
     error = ""
-  }) {
-    await recordHookAudit({
-      at: Date.now(),
-      event,
-      hookId: hook.id,
-      hookName: hook.name,
-      command: hook.command,
-      args: hook.args,
-      projectId: projectId || null,
-      projectPath,
-      status,
-      sandboxed: sandboxed === true,
-      ...(sandboxed ? {} : { sandboxReason }),
-      sandboxMode,
-      optInUsed: optInUsed === true,
-      ...(error ? { error } : {})
-    });
+  }, result) {
+    try {
+      await recordHookAudit({
+        at: Date.now(),
+        event,
+        hookId: hook.id,
+        hookName: hook.name,
+        command: hook.command,
+        args: hook.args,
+        projectId: projectId || null,
+        projectPath,
+        status,
+        sandboxed: sandboxed === true,
+        ...(sandboxed ? {} : { sandboxReason }),
+        sandboxMode,
+        optInUsed: optInUsed === true,
+        ...(error ? { error } : {})
+      });
+    } catch (auditError) {
+      result.auditError = errorMessage(auditError).slice(0, 2000);
+      console.error("Hook audit persistence failed", result.auditError);
+    }
   }
 
   async function readState() {
@@ -467,7 +481,7 @@ export function createUserAutomationService({
           sandboxReason: result.sandboxReason,
           sandboxMode: policy.mode,
           error: result.error
-        });
+        }, result);
         return result;
       }
 
@@ -509,7 +523,7 @@ export function createUserAutomationService({
           sandboxReason: plan.sandboxReason,
           sandboxMode: plan.policy.mode,
           error
-        });
+        }, result);
         return result;
       }
 
@@ -551,7 +565,7 @@ export function createUserAutomationService({
         sandboxMode: plan.policy.mode,
         optInUsed: plan.optInUsed,
         error: result.error || ""
-      });
+      }, result);
       return result;
     }));
     return { schema, results };

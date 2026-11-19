@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -27,6 +27,57 @@ function serviceAt(configDir, overrides = {}) {
     ...overrides
   });
 }
+
+test("hook audit skips malformed and non-object records before applying the valid-entry limit", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-hook-audit-read-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const service = serviceAt(dir);
+  assert.deepEqual(await service.readHookAudit(), []);
+  await writeFile(join(dir, "hook-audit.jsonl"), [
+    '{"id":"first"}', "garbage", '{"id":"second"}', "null", "[]", "123", '"text"', '{"torn":'
+  ].join("\n"));
+  assert.deepEqual(await service.readHookAudit(), [{ id: "first" }, { id: "second" }]);
+  assert.deepEqual(await service.readHookAudit(1), [{ id: "second" }]);
+  await writeFile(join(dir, "hook-audit.jsonl"), "garbage\nnull\n[]\n");
+  assert.deepEqual(await service.readHookAudit(), []);
+});
+
+test("audit write failures are logged and retain executed and blocked hook results", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-hook-audit-write-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const logs = [];
+  t.mock.method(console, "error", (...args) => logs.push(args));
+  let executions = 0;
+  const service = serviceAt(dir, {
+    env: { DEVMOTER_SANDBOX: "off", DEVMOTER_ALLOW_UNSANDBOXED_HOOKS: "1" },
+    execFile: async () => {
+      executions++;
+      return { stdout: "executed", stderr: "" };
+    }
+  });
+  await service.writeState({ hooks: [
+    { id: "run", event: "after-run", kind: "command", command: "test-command", approved: true },
+    { id: "unapproved", event: "after-run", kind: "command", command: "test-command", approved: false }
+  ] });
+  await mkdir(join(dir, "hook-audit.jsonl"));
+  const emitted = await service.emitHook("after-run");
+  assert.equal(executions, 1);
+  assert.equal(emitted.results[0].status, "completed");
+  assert.equal(emitted.results[0].stdout, "executed");
+  assert.equal(emitted.results[1].status, "blocked");
+  const blockedService = serviceAt(dir, { env: { DEVMOTER_SANDBOX: "off" } });
+  const blocked = await blockedService.emitHook("after-run");
+  assert.ok(blocked.results.every(result => result.status === "blocked"));
+  for (const result of [...emitted.results, ...blocked.results]) {
+    assert.match(result.auditError, /EISDIR/);
+  }
+  assert.equal(logs.length, 4);
+  assert.ok(logs.every(args => args[0] === "Hook audit persistence failed" && /EISDIR/.test(args[1])));
+  await rm(join(dir, "hook-audit.jsonl"), { recursive: true });
+  const recovered = await service.emitHook("after-run");
+  assert.ok(recovered.results.every(result => !Object.hasOwn(result, "auditError")));
+  assert.equal((await service.readHookAudit()).length, 2);
+});
 
 test("hooks use versioned schema and unapproved mutating hooks fail closed", async t => {
   const dir = await mkdtemp(join(tmpdir(), "devmoter-hooks-"));

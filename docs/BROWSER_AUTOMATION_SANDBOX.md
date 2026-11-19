@@ -38,6 +38,18 @@ The bwrap wrapper:
 - unshares networking by default;
 - enables network access only for tools whose function requires it, such as the local browser-preview inspector.
 
+### Command lifecycle hooks
+
+Command hooks require explicit approval and fail closed unless bubblewrap and a registered
+project boundary are available, even in `preferred` mode. Events without a `projectId`
+cannot establish that boundary and are blocked by default. To explicitly allow unsandboxed
+hooks, set `DEVMOTER_ALLOW_UNSANDBOXED_HOOKS=1`; this never overrides
+`DEVMOTER_SANDBOX=required`. Notify-only hooks do not execute commands.
+
+Command-hook decisions and results are recorded in `hook-audit.jsonl` in the user config
+directory (`~/.config/opencode-pocket`). Audit write failures are logged and reported as
+`auditError` on the hook result without discarding its execution or blocked status.
+
 ### External agent backends
 
 Codex and OpenCode execute their own tools outside DevMoter's process boundary. DevMoter cannot truthfully claim that wrapping its own Node process also wraps every command those external backends may launch.
