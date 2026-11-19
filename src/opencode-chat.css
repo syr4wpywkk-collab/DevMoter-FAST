@@ -303,3 +303,16 @@ body.opencode-mode { background: var(--canvas-base); }
 
 html[data-devmoter-theme="dark"] .ocx-app .cx-markdown a,
 html[data-devmoter-theme="dark"] .ocx-app .ocx-eyebrow { color: var(--oc-text); }
+
+.ocx-app .ocx-history-retry {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+  width: min(100%, var(--ocx-content-width)); margin: 16px auto; padding: 12px 16px;
+  border: 1px solid var(--oc-line); border-radius: 8px; color: var(--oc-text); font-size: .9rem; line-height: 1.5;
+}
+.ocx-app .ocx-history-retry p { flex: 1 1 16em; margin: 0; color: var(--oc-text); }
+.ocx-app .ocx-history-retry button {
+  min-height: 44px; padding: 0 16px; border: 1px solid var(--oc-line); border-radius: 8px;
+  background: var(--oc-panel-2); color: var(--oc-text); font: inherit;
+}
+.ocx-app .ocx-history-retry button:disabled { opacity: .6; }
+.ocx-app .ocx-history-retry button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
