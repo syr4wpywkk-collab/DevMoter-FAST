@@ -55,7 +55,7 @@ body.api-mode { padding: 0; overflow: hidden; background: var(--canvas-base, #ff
 }
 .api-app .api-icon-button,
 .api-app .api-sidebar-head > button { width: 44px; height: 44px; min-height: 44px; flex: 0 0 44px; border: 0; background: transparent; color: var(--api-text); }
-.api-app .api-brand { display: grid; min-width: 0; grid-column: 2; grid-row: 1; }
+.api-app .api-brand { display: grid; min-width: 0; grid-column: 2; grid-row: 1; justify-self: end; text-align: end; }
 .api-app .api-brand strong { font-size: 1.05rem; font-weight: 500; }
 .api-app .api-brand small { display: block; color: var(--api-muted); font-size: var(--font-size-caption, 12px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .api-app .api-header-actions { grid-column: 3; grid-row: 1; display: flex; align-items: center; justify-content: flex-end; gap: 4px; min-width: 0; }
