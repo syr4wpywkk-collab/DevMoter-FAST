@@ -1749,7 +1749,10 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     renderSessions();
     renderAttention();
 
-    if (!activeSession) {
+    // A draft typed while no session was open belongs to a new chat: a later
+    // list load must not open the saved session under it.
+    const hasDraft = Boolean(promptInput.value.trim() || pendingAttachments.length || selectedContextRefs.length);
+    if (!activeSession && !hasDraft) {
       const saved = localStorage.getItem("opencode-pocket-opencode-session");
       const target = sessions.find(session => session.id === saved);
       if (target) await selectSession(target);

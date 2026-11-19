@@ -240,6 +240,7 @@ test("failed OpenCode session list offers an in-place retry that keeps the draft
   const retried = ui.requests.slice(before);
   assert.ok(retried.some(request => request.path === "/api/opencode/session"));
   assert.deepEqual(retried.filter(request => request.method !== "GET"), []);
+  assert.deepEqual(retried.filter(request => request.path.startsWith("/api/opencode/session/session-1")), [], "the saved session is not opened under the draft");
   assert.equal(ui.root.querySelector("#ocxSessions [data-history-retry]"), null);
   assert.ok(ui.root.querySelector("#ocxSessions").textContent.includes("Test session"));
   assert.equal(ui.root.querySelector("#ocxPromptInput").value, "unsent draft");
