@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer as createNetServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -71,13 +71,14 @@ test("OpenCode proxy forwards only allowlisted query parameters (#590)", async (
   const projectDir = join(home, "project");
   await mkdir(projectDir);
   const authPassword = "query-allowlist-password-123";
+  const fixture = JSON.parse(await readFile(new URL("./fixtures/opencode/opencode-v1.19.5.json", import.meta.url), "utf8"));
 
   const upstreamHits = [];
   const openCode = http.createServer((req, res) => {
     upstreamHits.push(req.url);
     res.setHeader("content-type", "application/json");
     res.writeHead(200);
-    res.end(JSON.stringify({ ok: true, path: req.url }));
+    res.end(JSON.stringify(fixture[req.url] ?? { ok: true, path: req.url }));
   });
   openCode.listen(0, "127.0.0.1");
   await once(openCode, "listening");
@@ -124,17 +125,17 @@ test("OpenCode proxy forwards only allowlisted query parameters (#590)", async (
       assert.ok(upstreamHits.includes(expectedUpstream), `${expectedUpstream} should reach OpenCode`);
     }
 
-    // refresh belongs to /pocket/providers only. The GET form of that route
-    // is served by the DevMoter adapter, so the generic-proxy contract is
-    // exercised with a POST, which falls through to proxy().
-    const providersRefresh = await rawPost(port, "/api/opencode/pocket/providers?refresh=1", headers);
-    assert.equal(
-      providersRefresh.status,
-      200,
-      `providers refresh should be proxied, got ${providersRefresh.status}: ${providersRefresh.body}`
-    );
-    assert.equal(JSON.parse(providersRefresh.body).path, "/api/pocket/providers?refresh=1");
-    assert.ok(upstreamHits.includes("/api/pocket/providers?refresh=1"), "providers refresh should reach OpenCode");
+    const providerPath = "/api/opencode/pocket/providers";
+    const initialCatalog = await rawGet(port, providerPath, headers);
+    assert.equal(initialCatalog.status, 200, initialCatalog.body);
+    const catalogLoads = () => upstreamHits.filter(path => path === "/api/provider").length;
+    assert.equal(catalogLoads(), 1);
+    const cachedCatalog = await rawGet(port, `${providerPath}?refresh=0`, headers);
+    assert.equal(cachedCatalog.status, 200, cachedCatalog.body);
+    assert.equal(catalogLoads(), 1);
+    const providersRefresh = await rawGet(port, `${providerPath}?refresh=1`, headers);
+    assert.equal(providersRefresh.status, 200, providersRefresh.body);
+    assert.equal(catalogLoads(), 2);
 
     const hitsBeforeRejected = upstreamHits.length;
     const rejected = [
@@ -175,14 +176,16 @@ test("OpenCode proxy forwards only allowlisted query parameters (#590)", async (
       assert.equal(response.status, 400, `${path} should be rejected, got ${response.status}: ${response.body}`);
       assert.match(JSON.parse(response.body).error, /OpenCode proxy query/);
     }
-    // The refresh validator still applies on its own route.
-    const providersBadRefresh = await rawPost(port, "/api/opencode/pocket/providers?refresh=2", headers);
-    assert.equal(
-      providersBadRefresh.status,
-      400,
-      `providers refresh=2 should be rejected, got ${providersBadRefresh.status}: ${providersBadRefresh.body}`
-    );
-    assert.match(JSON.parse(providersBadRefresh.body).error, /OpenCode proxy query/);
+    for (const query of ["refresh=2", "refresh=0&refresh=1", "limit=10"]) {
+      const invalid = await rawGet(port, `${providerPath}?${query}`, headers);
+      assert.equal(invalid.status, 400, invalid.body);
+      assert.match(JSON.parse(invalid.body).error, /OpenCode proxy query/);
+    }
+    for (const path of ["/api/opencode/session?limit=10", `${providerPath}?refresh=1`]) {
+      const invalid = await rawPost(port, path, headers);
+      assert.equal(invalid.status, 400, invalid.body);
+      assert.match(JSON.parse(invalid.body).error, /OpenCode proxy query/);
+    }
     assert.equal(
       upstreamHits.length,
       hitsBeforeRejected,

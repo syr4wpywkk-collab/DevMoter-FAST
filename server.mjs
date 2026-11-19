@@ -1161,9 +1161,9 @@ async function loadOpenCodeProviderCatalog(refresh) {
   }
 }
 
-async function opencodeProviders(url, res) {
+async function opencodeProviders(refresh, res) {
   try {
-    const payload = await loadOpenCodeProviderCatalog(url.searchParams.get("refresh") === "1");
+    const payload = await loadOpenCodeProviderCatalog(refresh);
     json(res, 200, payload);
   } catch (error) {
     json(res, 502, {
@@ -1755,11 +1755,11 @@ const OPENCODE_QUERY_VALIDATORS = {
   refresh: value => value === "0" || value === "1"
 };
 const OPENCODE_QUERY_ALLOWLIST_BY_ROUTE = new Map([
-  ["session", new Map([
+  ["GET /api/session", new Map([
     ["limit", OPENCODE_QUERY_VALIDATORS.limit],
     ["order", OPENCODE_QUERY_VALIDATORS.order]
   ])],
-  ["pocket/providers", new Map([
+  ["GET /api/pocket/providers", new Map([
     ["refresh", OPENCODE_QUERY_VALIDATORS.refresh]
   ])]
 ]);
@@ -1772,11 +1772,11 @@ const OPENCODE_QUERY_MAX_LENGTH = 1024;
 
 /**
  * Validate the raw query (leading "?" included, or "") against the allowlist
- * for the route being proxied (apiRelative, e.g. "session") and rebuild it
+ * for the HTTP method and policy path being served, and rebuild it
  * from the validated pairs only. Returns { query } where query is "" or
  * "?..." in canonical URLSearchParams encoding, or { error } (400).
  */
-function buildOpenCodeUpstreamQuery(rawQuery, route) {
+function buildOpenCodeUpstreamQuery(rawQuery, method, policyPath) {
   if (!rawQuery) return { query: "" };
   if (rawQuery.length > OPENCODE_QUERY_MAX_LENGTH) {
     return { error: "OpenCode proxy query is not allowed" };
@@ -1785,7 +1785,7 @@ function buildOpenCodeUpstreamQuery(rawQuery, route) {
   if (pairs.length > OPENCODE_QUERY_MAX_PARAMS) {
     return { error: "OpenCode proxy query is not allowed" };
   }
-  const allowlist = OPENCODE_QUERY_ALLOWLIST_BY_ROUTE.get(route) || OPENCODE_QUERY_NO_PARAMS;
+  const allowlist = OPENCODE_QUERY_ALLOWLIST_BY_ROUTE.get(`${method} ${policyPath}`) || OPENCODE_QUERY_NO_PARAMS;
   const rebuilt = new URLSearchParams();
   const seen = new Set();
   for (const [name, value] of pairs) {
@@ -1814,7 +1814,7 @@ function buildOpenCodeUpstreamQuery(rawQuery, route) {
  * plain string: fixed OpenCode origin + "/api/" + allowlisted path (+ query).
  * Returns { upstreamUrl, policyPath } or { error } (400).
  */
-export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
+export function buildOpenCodeUpstreamTarget(rawRequestUrl, method) {
   const raw = String(rawRequestUrl || "");
   if (!raw.startsWith(OPENCODE_PROXY_PREFIX)) {
     return { error: "OpenCode proxy path is invalid" };
@@ -1853,7 +1853,7 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   // contract and are not validated here.
   const validatedQuery = isAdapterOwnedRoute(policyPath)
     ? { query: "" }
-    : buildOpenCodeUpstreamQuery(rawQuery, apiRelative);
+    : buildOpenCodeUpstreamQuery(rawQuery, method, policyPath);
   if (validatedQuery.error) {
     return { error: validatedQuery.error };
   }
@@ -1862,7 +1862,7 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
     return { error: "OpenCode proxy path is not allowed" };
   }
   const upstreamUrl = `${OPENCODE_ORIGIN}/api/${apiRelative}${validatedQuery.query}`;
-  return { upstreamUrl, policyPath };
+  return { upstreamUrl, policyPath, query: validatedQuery.query };
 }
 
 // DevMoter's OpenCode session surface. The browser (and every other DevMoter
@@ -2067,7 +2067,7 @@ async function opencodeEvents(req, res) {
 }
 
 async function proxy(req, res) {
-  const target = buildOpenCodeUpstreamTarget(req.url);
+  const target = buildOpenCodeUpstreamTarget(req.url, req.method);
   if (target.error) {
     json(res, 400, { error: target.error });
     return;
@@ -3666,7 +3666,12 @@ const server = http.createServer(async (req, res) => {
 
 
     if (req.method === "GET" && url.pathname === "/api/opencode/pocket/providers") {
-      await opencodeProviders(url, res);
+      const target = buildOpenCodeUpstreamTarget(req.url, req.method);
+      if (target.error) {
+        json(res, 400, { error: target.error });
+        return;
+      }
+      await opencodeProviders(new URLSearchParams(target.query).get("refresh") === "1", res);
       return;
     }
 
