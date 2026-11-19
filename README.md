@@ -223,6 +223,8 @@ tailscale serve status
 
 Open the private HTTPS address from a device on the same tailnet. Do not use Tailscale Funnel or an arbitrary public tunnel as a substitute for a public-ready authorization model.
 
+Because DevMoter itself serves plain HTTP, setting `POCKET_HOST` to a non-loopback address refuses startup unless `DEVMOTER_ALLOW_INSECURE_HTTP=1` is explicitly set (and `DEVMOTER_PUBLIC_ORIGIN` alone does not satisfy this check). Keep `POCKET_HOST=127.0.0.1` when terminating TLS locally with Tailscale Serve or a local reverse proxy.
+
 ### iOS client
 
 The repository includes an iOS client that connects to an already-running DevMoter server over HTTPS. It does **not** run the Linux server or coding agents on the iPhone. IPA generation is handled by GitHub Actions; installation/signing and real-device checks are separate steps. See [iPhone / AltStore instructions](./docs/ios-altstore.md) and the [Linux-to-iPhone guide](./docs/iphone-linux.ja.md). Do not treat a successful Linux build or an IPA artifact as proof of physical-device compatibility.
