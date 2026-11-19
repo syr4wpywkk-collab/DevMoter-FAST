@@ -169,8 +169,7 @@ export function encodeEventPayload(payload) {
 }
 
 function triggerTask(trigger, payloadText) {
-  // Per-event unpredictable boundary and JSON angle-bracket escaping restore the
-  // structural data boundary; server-side approval gates remain mandatory separately.
+  // These delimiters protect the JSON block's structure, not model behavior.
   const boundary = randomBytes(16).toString("hex");
   return `${trigger.task}
 

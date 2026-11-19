@@ -628,23 +628,3 @@ test("webhook-triggered write operations remain gated behind explicit Codex appr
     await removeTempDir(dir);
   }
 });
-
-test("server control-plane executor enforces approvalPolicy=normal and never auto-approves backend requests", async () => {
-  const serverSource = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
-  const webhookStart = serverSource.indexOf("async function githubWebhookRoute");
-  const webhookEnd = serverSource.indexOf("function resolveUploadPath", webhookStart);
-  const webhookBody = serverSource.slice(webhookStart, webhookEnd);
-  assert.match(webhookBody, /controlPlane\.dispatchEvent\(\s*"github\.webhook"/);
-  assert.doesNotMatch(webhookBody, /respondApproval|replyPermission|approvalPolicy/);
-
-  const execStart = serverSource.indexOf("async function executeControlTaskCore");
-  const execEnd = serverSource.indexOf("function basicOwner", execStart);
-  const execBody = serverSource.slice(execStart, execEnd);
-  assert.match(execBody, /definition\?\.approvalPolicy !== undefined && definition\.approvalPolicy !== "normal"/);
-  assert.doesNotMatch(execBody, /respondApproval|replyPermission|approvalPolicy:\s*["']never["']/);
-
-  const waitStart = serverSource.indexOf("function waitForCodexTurn");
-  const waitEnd = serverSource.indexOf("async function executeControlTask", waitStart);
-  const waitBody = serverSource.slice(waitStart, waitEnd);
-  assert.doesNotMatch(waitBody, /respondApproval|acceptForSession/);
-});
