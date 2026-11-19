@@ -226,6 +226,21 @@ test("client drift guard: every browser proxy call is allowlisted or adapter-ser
   }
 });
 
+test("proxy forwards each spelling of the API root to the same upstream path", async () => {
+  const { call, received, stop } = await startServer();
+  try {
+    const paths = ["/api/opencode", "/api/opencode/", "/api/opencode/api", "/api/opencode/api/"];
+    for (const path of paths) {
+      const response = await call("GET", path);
+      assert.equal(response.status, 200, `${path} should forward`);
+      assert.equal((await response.json()).path, "/api/");
+    }
+    assert.equal(received.filter(hit => hit.method === "GET" && hit.path === "/api/").length, paths.length);
+  } finally {
+    await stop();
+  }
+});
+
 test("proxy enforces the deny-by-default route allowlist and read-only write blocks", async () => {
   const { call, received, stop } = await startServer();
   try {
