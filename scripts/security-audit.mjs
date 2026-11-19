@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { basename } from "node:path";
 
 const failures = [];
@@ -38,6 +38,7 @@ const server = await text("server.mjs");
 const auth = await text("server/auth.mjs");
 const helpers = await text("server/security-helpers.mjs");
 const launcher = await text("scripts/start-pocket.sh");
+const systemdEntrypoint = await text("scripts/systemd-entrypoint.sh");
 const vite = await text("vite.config.ts");
 const headers = await text("server/security-headers.mjs");
 
@@ -49,6 +50,23 @@ check(helpers.includes("CODEX_RPC_ALLOWLIST"), "Codex RPC allowlist is present")
 check(launcher.includes('chmod 700 "$STATE_DIR"'), "launcher protects the config directory");
 check(launcher.includes('chmod 600 "$SECRET_FILE"'), "launcher protects the OpenCode password file");
 check(launcher.includes('chmod 600 "$AUTH_SECRET_FILE"'), "launcher protects the DevMoter password file");
+for (const [name, script] of [["launcher", launcher], ["systemd entrypoint", systemdEntrypoint]]) {
+  const withoutComments = script
+    .split("\n")
+    .filter(line => !/^\s*#/.test(line))
+    .join("\n")
+    .replace(/\\\n/g, " ");
+  check(/^\s*umask 077\b/m.test(withoutComments), name + " sets restrictive umask 077");
+  check(
+    !/\bcurl\b[^\n|;&]*\s(?:-[A-Za-z]*u|--user(?:=|\s|$))/.test(withoutComments),
+    name + " does not pass curl credentials in argv"
+  );
+  check(withoutComments.includes("curl -fsS -K -"), name + " passes curl credentials via stdin config");
+}
+check(
+  !/^\s*npm install\b/m.test(launcher) && /^\s*npm ci\b/m.test(launcher),
+  "launcher installs dependencies reproducibly with npm ci"
+);
 check(server.includes("staticSecurityHeaders("), "static responses use centralized security headers");
 check(headers.includes('"script-src \'self\'"'), "CSP restricts scripts to self");
 check(headers.includes('"frame-ancestors \'none\'"'), "CSP blocks framing");
@@ -91,6 +109,42 @@ for (const [name, workflow] of [["CI", ciWorkflow], ["Security Audit", auditWork
   check(!/uses: (?:actions|github)\/[^@\s]+@v\d+\b/m.test(workflow),
     name + " GitHub Actions are pinned to immutable commit SHAs");
 }
+
+// Supply chain: every locked package must come from the public npm registry
+// with an integrity hash, so `npm ci` can never install an unverified tarball.
+const unpinnedLockEntries = Object.entries(lock.packages || {})
+  .filter(([path, entry]) => path && !entry.link)
+  .filter(([, entry]) =>
+    !/^sha512-[A-Za-z0-9+/]+=*$/.test(String(entry.integrity || "")) ||
+    !String(entry.resolved || "").startsWith("https://registry.npmjs.org/"))
+  .map(([path]) => path);
+check(unpinnedLockEntries.length === 0,
+  "every package-lock entry has an npm registry URL and a sha512 integrity hash" +
+  (unpinnedLockEntries.length ? " (missing: " + unpinnedLockEntries.join(", ") + ")" : ""));
+check(/^>=\s*22\b/.test(String(pkg.engines?.node || "")), "package.json declares the supported Node.js range");
+
+// Every workflow, not only CI and Security Audit, must keep a least-privilege
+// token, drop checkout credentials and pin third-party actions to commit SHAs.
+const workflowDir = ".github/workflows";
+for (const file of (await readdir(workflowDir)).filter(name => /\.ya?ml$/.test(name)).sort()) {
+  const workflow = await text(workflowDir + "/" + file);
+  const uses = [...workflow.matchAll(/^\s*(?:-\s+)?uses:\s*(\S+)/gm)].map(match => match[1]);
+  const unpinned = uses.filter(ref => !ref.startsWith("./") && !/@[0-9a-f]{40}$/.test(ref));
+  check(unpinned.length === 0,
+    file + " pins every action to a full commit SHA" + (unpinned.length ? " (unpinned: " + unpinned.join(", ") + ")" : ""));
+  check(/^permissions:\n(?:  [a-z-]+: (?:read|none)\n)*  contents: read\n/m.test(workflow) &&
+    !/^\s*permissions:\s*write-all\s*$/m.test(workflow),
+    file + " declares a top-level read-only contents permission");
+  const checkouts = (workflow.match(/uses:\s*actions\/checkout@/g) || []).length;
+  const hardenedCheckouts = (workflow.match(/persist-credentials:\s*false/g) || []).length;
+  check(checkouts === hardenedCheckouts, file + " never persists checkout credentials");
+  check(!/^\s*pull_request_target\s*:/m.test(workflow), file + " does not run on pull_request_target");
+  check(/^\s*timeout-minutes:\s*\d+/m.test(workflow), file + " bounds job runtime with timeout-minutes");
+}
+const dependabot = await text(".github/dependabot.yml").catch(() => "");
+check(/package-ecosystem:\s*"?npm"?/.test(dependabot) && /package-ecosystem:\s*"?github-actions"?/.test(dependabot),
+  "Dependabot watches npm and GitHub Actions dependencies");
+check(/npm audit signatures/.test(auditWorkflow), "Security Audit verifies npm registry signatures");
 
 for (const required of ["SECURITY.md", "THREAT_MODEL.md"]) {
   try {

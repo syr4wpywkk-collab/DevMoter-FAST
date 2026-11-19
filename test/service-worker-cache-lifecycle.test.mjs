@@ -6,10 +6,14 @@ import vm from "node:vm";
 const ORIGIN = "https://devmoter.test";
 const source = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
 
-function loadWorker({ cacheNames = [], network } = {}) {
+function loadWorker({ cacheNames = [], network, windows = [] } = {}) {
   const listeners = new Map();
   const stores = new Map(cacheNames.map(name => [name, new Map()]));
   const deleted = [];
+  const fetchCalls = [];
+  const matchCalls = [];
+  const matchAllCalls = [];
+  const openWindowCalls = [];
   const caches = {
     async open(name) {
       if (!stores.has(name)) stores.set(name, new Map());
@@ -23,6 +27,7 @@ function loadWorker({ cacheNames = [], network } = {}) {
     async delete(name) { deleted.push(name); return stores.delete(name); },
     async match(request) {
       const key = String(request.url ?? request);
+      matchCalls.push(key);
       for (const store of stores.values()) if (store.has(key)) return store.get(key);
       return undefined;
     }
@@ -32,14 +37,33 @@ function loadWorker({ cacheNames = [], network } = {}) {
   const self = {
     addEventListener(type, handler) { listeners.set(type, handler); },
     skipWaiting() { skipped = true; },
-    clients: { claim: async () => { claimed = true; } },
-    location: { origin: "https://devmoter.test" },
+    clients: {
+      claim: async () => { claimed = true; },
+      matchAll: async options => { matchAllCalls.push({ ...options }); return windows; },
+      openWindow: async url => { openWindowCalls.push(url); return { url }; }
+    },
+    location: { origin: ORIGIN },
     registration: {}
   };
-  const context = vm.createContext({ self, caches, URL, fetch: network ?? (async () => { throw new Error("offline"); }), console });
+  const fetchImpl = async (request, init) => {
+    fetchCalls.push({ url: String(request.url ?? request), init });
+    if (network) return network(request, init);
+    throw new Error("offline");
+  };
+  const context = vm.createContext({ self, caches, URL, fetch: fetchImpl, console });
   vm.runInContext(source, context);
   const cacheName = vm.runInContext("CACHE", context);
-  return { listeners, stores, deleted, cacheName, state: () => ({ claimed, skipped }) };
+  return {
+    listeners,
+    stores,
+    deleted,
+    cacheName,
+    fetchCalls,
+    matchCalls,
+    matchAllCalls,
+    openWindowCalls,
+    state: () => ({ claimed, skipped })
+  };
 }
 
 async function dispatch(handler, extra = {}) {
@@ -48,6 +72,44 @@ async function dispatch(handler, extra = {}) {
   handler({ waitUntil: promise => waits.push(promise), respondWith: promise => { responded = promise; }, ...extra });
   await Promise.all(waits);
   return responded === undefined ? undefined : await responded;
+}
+
+async function dispatchFetch(worker, request) {
+  let intercepted = false;
+  let responded;
+  await dispatch(worker.listeners.get("fetch"), {
+    request,
+    respondWith: promise => {
+      intercepted = true;
+      responded = promise;
+    }
+  });
+  return {
+    intercepted,
+    response: responded === undefined ? undefined : await responded
+  };
+}
+
+function makeClient(url) {
+  const events = [];
+  const navigated = [];
+  let focused = 0;
+  return {
+    url,
+    events,
+    navigated,
+    focused: () => focused,
+    async navigate(target) {
+      events.push(`navigate:${target}`);
+      navigated.push(target);
+      return this;
+    },
+    async focus() {
+      events.push("focus");
+      focused += 1;
+      return this;
+    }
+  };
 }
 
 test("install precaches the app shell and activates without waiting", async () => {
@@ -66,6 +128,21 @@ test("activate removes every cache from older builds and claims open clients", a
   assert.deepEqual([...worker.stores.keys()], [worker.cacheName]);
   assert.deepEqual(worker.deleted.sort(), ["devmoter-fast-v1", "devmoter-fast-v20", "unrelated-old"].sort());
   assert.equal(worker.state().claimed, true);
+});
+
+test("upgrading from v21 removes old login and cross-origin entries", async () => {
+  const legacyCache = "devmoter-fast-v21";
+  const worker = loadWorker({ cacheNames: [legacyCache] });
+  const urls = [`${ORIGIN}/login.js`, "https://other.test/app.js"];
+  for (const url of urls) worker.stores.get(legacyCache).set(url, { body: "legacy" });
+
+  await dispatch(worker.listeners.get("install"));
+  await dispatch(worker.listeners.get("activate"));
+
+  assert.deepEqual(worker.deleted, [legacyCache]);
+  assert.deepEqual([...worker.stores.keys()], [worker.cacheName]);
+  assert.ok(worker.stores.get(worker.cacheName).has(`${ORIGIN}/`));
+  for (const url of urls) assert.equal(worker.stores.get(worker.cacheName).has(url), false);
 });
 
 test("cache name is versioned so a new build replaces the old shell", () => {
@@ -96,15 +173,52 @@ test("offline requests fall back to the cached copy", async () => {
   assert.equal(response.shell, true);
 });
 
-test("API, login, and non-GET requests are never served from the cache", async () => {
-  const worker = loadWorker();
+test("API, login, and non-GET requests are never intercepted or cached", async () => {
+  const worker = loadWorker({
+    network: async () => ({ ok: true, redirected: false, clone() { return { body: "secret" }; }, body: "secret" })
+  });
   for (const request of [
     { method: "GET", url: "https://devmoter.test/api/health" },
     { method: "GET", url: "https://devmoter.test/login.html" },
+    { method: "GET", url: "https://devmoter.test/login.js" },
+    { method: "GET", url: "https://devmoter.test/login.js?v=1" },
     { method: "POST", url: "https://devmoter.test/" }
   ]) {
-    assert.equal(await dispatch(worker.listeners.get("fetch"), { request }), undefined, request.url);
+    const result = await dispatchFetch(worker, request);
+    assert.equal(result.intercepted, false, request.url);
+    assert.equal(result.response, undefined, request.url);
   }
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(worker.fetchCalls, []);
+  assert.deepEqual(worker.matchCalls, []);
+  assert.equal(worker.stores.has(worker.cacheName), false);
+});
+
+test("cross-origin and non-http(s) fetches are never intercepted, fetched, or cached", async () => {
+  const worker = loadWorker({
+    network: async () => ({ ok: true, redirected: false, clone() { return { body: "remote-copy" }; }, body: "remote" })
+  });
+  worker.stores.set(worker.cacheName, new Map());
+  worker.stores.get(worker.cacheName).set("https://evil.example/seeded.js", { body: "poisoned" });
+
+  for (const request of [
+    { method: "GET", url: "https://evil.example/seeded.js" },
+    { method: "GET", url: "https://evil.example/script.js" },
+    { method: "GET", url: "http://devmoter.test/app.js" },
+    { method: "GET", url: "https://devmoter.test:8443/app.js" },
+    { method: "GET", url: "https://sub.devmoter.test/app.js" },
+    { method: "GET", url: "blob:https://devmoter.test/00000000-0000-0000-0000-000000000000" },
+    { method: "GET", url: "data:text/javascript,alert(1)" },
+    { method: "GET", url: "not-a-valid-url" }
+  ]) {
+    const result = await dispatchFetch(worker, request);
+    assert.equal(result.intercepted, false, request.url);
+    assert.equal(result.response, undefined, request.url);
+  }
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(worker.fetchCalls, []);
+  assert.deepEqual(worker.matchCalls, []);
+  assert.deepEqual([...worker.stores.get(worker.cacheName).keys()], ["https://evil.example/seeded.js"]);
 });
 
 test("redirected or failed responses are not written to the cache", async () => {
@@ -114,5 +228,84 @@ test("redirected or failed responses are not written to the cache", async () => 
     await dispatch(worker.listeners.get("fetch"), { request });
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(worker.stores.get(worker.cacheName)?.has(request.url) ?? false, false);
+  }
+});
+
+test("notificationclick navigates same-origin URLs and skips cross-origin clients", async () => {
+  const crossOrigin = makeClient("https://evil.example/app");
+  const sameOrigin = makeClient(`${ORIGIN}/old`);
+  const worker = loadWorker({ windows: [crossOrigin, sameOrigin] });
+  let closed = false;
+
+  await dispatch(worker.listeners.get("notificationclick"), {
+    notification: {
+      close() { closed = true; },
+      data: { url: "/?backend=codex&session=thread-1#latest" }
+    }
+  });
+
+  assert.equal(closed, true);
+  assert.deepEqual(worker.matchAllCalls, [{ type: "window", includeUncontrolled: true }]);
+  assert.deepEqual(crossOrigin.navigated, []);
+  assert.equal(crossOrigin.focused(), 0);
+  assert.deepEqual(sameOrigin.events, [
+    `navigate:${ORIGIN}/?backend=codex&session=thread-1#latest`,
+    "focus"
+  ]);
+  assert.deepEqual(worker.openWindowCalls, []);
+});
+
+test("notificationclick opens same-origin absolute URLs in a new window when no client matches", async () => {
+  const crossOrigin = makeClient("https://evil.example/app");
+  const worker = loadWorker({ windows: [crossOrigin] });
+
+  await dispatch(worker.listeners.get("notificationclick"), {
+    notification: {
+      close() {},
+      data: { url: `${ORIGIN}/sessions/42` }
+    }
+  });
+
+  assert.deepEqual(crossOrigin.navigated, []);
+  assert.deepEqual(worker.openWindowCalls, [`${ORIGIN}/sessions/42`]);
+});
+
+test("notificationclick falls back to root for cross-origin, non-http(s), or invalid URLs", async () => {
+  const unsafeTargets = [
+    "https://evil.example/phish",
+    "http://devmoter.test/downgrade",
+    "https://devmoter.test:8443/alt-port",
+    "//evil.example/protocol-relative",
+    "///evil.example/triple-slash",
+    "/\\evil.example/backslash",
+    "javascript:alert(1)",
+    "java\tscript:alert(1)",
+    "data:text/html,<script>alert(1)</script>",
+    "blob:https://devmoter.test/123",
+    "https://[invalid",
+    "",
+    undefined
+  ];
+
+  for (const url of unsafeTargets) {
+    const sameOrigin = makeClient(`${ORIGIN}/current`);
+    const workerWithClient = loadWorker({ windows: [sameOrigin] });
+    await dispatch(workerWithClient.listeners.get("notificationclick"), {
+      notification: {
+        close() {},
+        data: url === undefined ? {} : { url }
+      }
+    });
+    assert.deepEqual(sameOrigin.navigated, [`${ORIGIN}/`], `navigate fallback for ${String(url)}`);
+    assert.equal(sameOrigin.focused(), 1);
+
+    const workerNoClient = loadWorker({ windows: [] });
+    await dispatch(workerNoClient.listeners.get("notificationclick"), {
+      notification: {
+        close() {},
+        data: url === undefined ? {} : { url }
+      }
+    });
+    assert.deepEqual(workerNoClient.openWindowCalls, [`${ORIGIN}/`], `openWindow fallback for ${String(url)}`);
   }
 });
