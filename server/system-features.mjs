@@ -3,6 +3,7 @@ import { readCookie } from "./cookies.mjs";
 import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expectedRequestOrigin } from "./auth.mjs";
 import { createClientIpResolver, parseTrustedProxies } from "./auth-guard.mjs";
 import {
@@ -56,6 +57,51 @@ function safeEqualHex(left, right) {
 export function safeBuildId(value) {
   const text = typeof value === "string" ? value.trim() : "";
   return /^[0-9A-Za-z][0-9A-Za-z._-]{0,63}$/.test(text) ? text : null;
+}
+
+// Build id of the web bundle this host serves, written by `vite build` (dist/build.json).
+// The bundle the host serves lives next to server.mjs, not in the launch directory.
+const SERVED_DIST_DIR = fileURLToPath(new URL("../dist/", import.meta.url));
+
+async function readDistBuildId(distDir) {
+  try {
+    const manifest = JSON.parse(await readFile(join(distDir, "build.json"), "utf8"));
+    return safeBuildId(manifest?.build);
+  } catch {
+    return null;
+  }
+}
+
+const AUTH_FAILURE_PATTERN = /unauthori[sz]ed|forbidden|not logged in|login required|authentication (?:failed|required)/i;
+const TIMEOUT_FAILURE_PATTERN = /timed? ?out|timeout|operation was aborted/i;
+const OFFLINE_FAILURE_PATTERN = /ECONNREFUSED|ECONNRESET|ENOTFOUND|EHOSTUNREACH|ENETUNREACH|EAI_AGAIN|fetch failed|socket hang up/i;
+const OFFLINE_LAUNCH_CODES = new Set(["not_installed", "not_executable", "failed"]);
+
+// Maps a failed backend health result to the guidance category shown in Settings > Diagnostics (#472).
+// Anything that is not clearly recognised stays "unknown"; nothing is inferred.
+export function classifyBackendFailure(health) {
+  const status = Number(health?.status);
+  if (status === 401 || status === 403) return "auth";
+  if (status === 408 || status === 504) return "timeout";
+  const error = typeof health?.error === "string" ? health.error : "";
+  if (TIMEOUT_FAILURE_PATTERN.test(error)) return "timeout";
+  if (OFFLINE_FAILURE_PATTERN.test(error) || OFFLINE_LAUNCH_CODES.has(health?.code)) return "offline";
+  if (AUTH_FAILURE_PATTERN.test(error)) return "auth";
+  return "unknown";
+}
+
+// One row of the backend connection list (#468). Carries no error text, paths or credentials.
+export function summarizeConnection(id, health, checkedAt) {
+  const online = health && typeof health === "object" ? health.online : undefined;
+  const state = online === true ? "connected" : online === false ? "failed" : "unknown";
+  const status = Number(health?.status);
+  return {
+    id,
+    state,
+    failure: state === "failed" ? classifyBackendFailure(health) : null,
+    httpStatus: state === "failed" && Number.isInteger(status) && status >= 100 && status <= 599 ? status : null,
+    checkedAt: state === "unknown" ? null : checkedAt
+  };
 }
 
 function safeLabel(value, fallback = "Browser") {
@@ -212,6 +258,7 @@ function storedTimestamp(value) {
 export function createSystemFeatures({
   stateDir,
   appRoot,
+  distDir = SERVED_DIST_DIR,
   getProjects,
   getBackendHealth,
   host = "127.0.0.1",
@@ -600,7 +647,7 @@ export function createSystemFeatures({
       commandStatus("codex"),
       commandStatus("gh"),
       commandStatus("tailscale", ["version"]),
-      getBackendHealth(),
+      Promise.resolve().then(getBackendHealth).catch(() => null),
       getProjects(),
       readDevices(),
       req ? authenticate(req).catch(() => null) : Promise.resolve(null)
@@ -613,14 +660,17 @@ export function createSystemFeatures({
       .map(device => deviceSummary(device, current?.id || null));
     const activeDevices = activeDeviceList.length;
     const localBootstrap = req ? isLocalBootstrapRequest(req) : false;
+    const generatedAt = new Date().toISOString();
+    const build = safeBuildId(process.env.DEVMOTER_BUILD) || safeBuildId(process.env.GITHUB_SHA) || await readDistBuildId(distDir);
 
     return {
+      generatedAt,
       app: {
         name: "DevMoter FAST",
         version,
         node: process.version,
         host,
-        build: safeBuildId(process.env.DEVMOTER_BUILD) || safeBuildId(process.env.GITHUB_SHA) || null
+        build
       },
       prerequisites: {
         required,
@@ -629,7 +679,8 @@ export function createSystemFeatures({
         missing,
         message: missing.length ? `Install missing prerequisites: ${missing.join(", ")}` : "Required host prerequisites are available."
       },
-      backends,
+      backends: backends || {},
+      connections: ["opencode", "codex"].map(id => summarizeConnection(id, backends?.[id], generatedAt)),
       projects: {
         count: Array.isArray(projects) ? projects.length : 0,
         message: Array.isArray(projects) ? "Project registry readable." : "Project registry unavailable."
