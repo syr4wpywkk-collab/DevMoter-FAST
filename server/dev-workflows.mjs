@@ -709,6 +709,8 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
   async function agentTurn({ prompt, cwd, model, readOnly, deadlineMs }) {
     const params = cwd ? { cwd } : {};
     if (model) params.model = model;
+    // Declining approvals alone does not stop writes the Codex sandbox already permits.
+    if (readOnly) Object.assign(params, { sandbox: "read-only", approvalPolicy: "on-request" });
     const started = await codex.request("thread/start", params, { timeoutMs: 15000 });
     const threadId = started?.thread?.id;
     if (!threadId) throw new Error("Codex did not return a thread id");
