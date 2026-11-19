@@ -4,7 +4,7 @@ import { createSign, generateKeyPairSync } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { OidcAuth } from "../server/oidc-auth.mjs";
+import { OidcAuth, oidcAuthInternals } from "../server/oidc-auth.mjs";
 import { ExternalAuth } from "../server/external-auth.mjs";
 
 const TENANT = "11111111-2222-4333-8444-555555555555";
@@ -52,7 +52,7 @@ function json(body, status = 200) {
   });
 }
 
-function providerHarness({ provider = "google", claims = {}, tenant = "common", wrongSignature = false } = {}) {
+function providerHarness({ provider = "google", claims = {}, tenant = "common", wrongSignature = false, publicOrigin = PUBLIC_ORIGIN, expectedRedirectOrigin = PUBLIC_ORIGIN } = {}) {
   const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
   const wrongSigningKey = wrongSignature ? generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey : privateKey;
   const publicJwk = publicKey.export({ format: "jwk" });
@@ -96,7 +96,7 @@ function providerHarness({ provider = "google", claims = {}, tenant = "common", 
       const form = new URLSearchParams(options.body);
       const verifier = form.get("code_verifier");
       assert.ok(verifier, "PKCE verifier sent to token endpoint");
-      assert.equal(form.get("redirect_uri"), `https://login.dev.test/api/auth/${provider}/callback`);
+      assert.equal(form.get("redirect_uri"), `${expectedRedirectOrigin}/api/auth/${provider}/callback`);
       const tokenNonce = claims.nonce || harnessNonce;
       const idToken = signedIdToken(wrongSigningKey, {
         issuer: claims.issuer || issuer,
@@ -115,7 +115,7 @@ function providerHarness({ provider = "google", claims = {}, tenant = "common", 
   };
   let harnessNonce = "";
   const auth = new OidcAuth({
-    publicOrigin: "https://login.dev.test",
+    publicOrigin,
     ...(provider === "google"
       ? { googleClientId: clientId, googleClientSecret: clientSecret }
       : { microsoftClientId: clientId, microsoftClientSecret: clientSecret, microsoftTenant: tenant }),
@@ -406,4 +406,209 @@ test("unbound and wrong provider identities cannot log in or become linked impli
   const wrongResult = await callback(wrongIdentity, "google", wrongFlow);
   await assert.rejects(() => ownerAuth.acceptOidc(request(), wrongResult), error => error?.status === 403);
   assert.equal((await ownerAuth.load()).providers.google.subject, "unbound-subject");
+});
+
+test("trustedOrigin allowlist matrix covers public origin, loopback, lookalikes, and socket checks", () => {
+  const { trustedOrigin } = oidcAuthInternals;
+  const expect503 = (req, configuredOrigin) => {
+    assert.throws(
+      () => trustedOrigin(req, configuredOrigin),
+      error => error?.status === 503
+    );
+  };
+
+  // 1. Public origin configured + Host matches it exactly -> allowed, configured origin used
+  assert.equal(
+    trustedOrigin({ headers: { host: "login.dev.test" }, socket: { remoteAddress: "10.0.0.5" } }, PUBLIC_ORIGIN),
+    PUBLIC_ORIGIN
+  );
+  assert.equal(
+    trustedOrigin({ headers: { host: "Login.Dev.Test" }, socket: { remoteAddress: "192.168.1.20" } }, PUBLIC_ORIGIN),
+    PUBLIC_ORIGIN
+  );
+  assert.equal(
+    trustedOrigin({ headers: { host: "login.dev.test" }, socket: { remoteAddress: "127.0.0.1", encrypted: false } }, PUBLIC_ORIGIN),
+    PUBLIC_ORIGIN
+  );
+  assert.equal(
+    trustedOrigin({ headers: { host: "login.dev.test:443" }, socket: { remoteAddress: "10.0.0.5" } }, PUBLIC_ORIGIN),
+    PUBLIC_ORIGIN
+  );
+  assert.equal(
+    trustedOrigin({ headers: { host: "login.dev.test:8443" }, socket: { remoteAddress: "10.0.0.5" } }, "https://login.dev.test:8443"),
+    "https://login.dev.test:8443"
+  );
+
+  // 2. Public origin configured + loopback socket + loopback Host -> allowed, request origin used
+  assert.equal(
+    trustedOrigin({ headers: { host: "localhost:8787" }, socket: { remoteAddress: "127.0.0.1" } }, PUBLIC_ORIGIN),
+    "http://localhost:8787"
+  );
+  assert.equal(
+    trustedOrigin({ headers: { host: "127.0.0.1:8787" }, socket: { remoteAddress: "::ffff:127.0.0.1" } }, PUBLIC_ORIGIN),
+    "http://127.0.0.1:8787"
+  );
+  assert.equal(
+    trustedOrigin({ headers: { host: "127.0.0.1:8787" }, socket: { remoteAddress: "::FFFF:127.0.0.1" } }, PUBLIC_ORIGIN),
+    "http://127.0.0.1:8787"
+  );
+  assert.equal(
+    trustedOrigin({ headers: { host: "[::1]:8787" }, socket: { remoteAddress: "::1" } }, PUBLIC_ORIGIN),
+    "http://[::1]:8787"
+  );
+  assert.equal(
+    trustedOrigin({ headers: { host: "localhost:8443" }, socket: { remoteAddress: "127.0.0.1", encrypted: true } }, PUBLIC_ORIGIN),
+    "https://localhost:8443"
+  );
+
+  // 3. Public origin configured + lookalike or mismatched port Host -> rejected (503)
+  for (const badHost of [
+    "evil-login.dev.test",
+    "sub.login.dev.test",
+    "login.dev.test.evil.test",
+    "login.dev.test-evil.test",
+    "login.dev.test.",
+    "login.dev.test:8443",
+    "login.dev.test:80",
+    "login%2edev.test",
+    "localhost.",
+    "evil.localhost:8787",
+    "localhost.evil.test",
+    "evil-localhost",
+    "local%68ost:8787",
+    "127.evil.test",
+    "[::ffff:127.0.0.1]:8787",
+    ":8787",
+    "login.dev.test@evil.test",
+    "evil.test@login.dev.test",
+    "login.dev.test/evil",
+    "login.dev.test\\evil",
+    "login.dev.test?next=evil",
+    "login.dev.test#frag",
+    "login.dev.test, evil.test",
+    "login.dev.test:",
+    ""
+  ]) {
+    expect503({ headers: { host: badHost }, socket: { remoteAddress: "127.0.0.1" } }, PUBLIC_ORIGIN);
+    expect503({ headers: { host: badHost }, socket: { remoteAddress: "10.0.0.5" } }, PUBLIC_ORIGIN);
+  }
+  expect503({ headers: {}, socket: { remoteAddress: "127.0.0.1" } }, PUBLIC_ORIGIN);
+  expect503({ headers: { host: ["login.dev.test", "login.dev.test"] }, socket: { remoteAddress: "10.0.0.5" } }, PUBLIC_ORIGIN);
+  expect503({ headers: { host: ["localhost:8787", "evil.test"] }, socket: { remoteAddress: "127.0.0.1" } }, PUBLIC_ORIGIN);
+  expect503({ headers: { host: "login.dev.test" }, socket: { remoteAddress: "127.0.0.1" } }, "https://login.dev.test:8443");
+  expect503(
+    {
+      headers: { host: "evil.test", "x-forwarded-host": "login.dev.test", "x-forwarded-proto": "https" },
+      socket: { remoteAddress: "127.0.0.1" }
+    },
+    PUBLIC_ORIGIN
+  );
+
+  // 4. Non-loopback socket + loopback-looking Host -> rejected (503), with or without public origin
+  for (const loopbackHost of ["localhost:8787", "127.0.0.1:8787", "[::1]:8787"]) {
+    expect503({ headers: { host: loopbackHost }, socket: { remoteAddress: "10.0.0.5" } }, PUBLIC_ORIGIN);
+    expect503({ headers: { host: loopbackHost }, socket: { remoteAddress: "10.0.0.5" } }, "");
+    expect503({ headers: { host: loopbackHost }, socket: {} }, PUBLIC_ORIGIN);
+    expect503({ headers: { host: loopbackHost }, socket: {} }, "");
+  }
+
+  // 5. Public origin unset + loopback socket + loopback Host -> allowed (unchanged)
+  assert.equal(
+    trustedOrigin({ headers: { host: "localhost:8787" }, socket: { remoteAddress: "127.0.0.1" } }, ""),
+    "http://localhost:8787"
+  );
+  assert.equal(
+    trustedOrigin({ headers: { host: "127.0.0.1:8787" }, socket: { remoteAddress: "::ffff:127.0.0.1" } }, ""),
+    "http://127.0.0.1:8787"
+  );
+
+  // 6. Public origin unset + non-loopback Host -> rejected (unchanged)
+  expect503({ headers: { host: "login.dev.test" }, socket: { remoteAddress: "127.0.0.1" } }, "");
+  expect503({ headers: { host: "login.dev.test" }, socket: { remoteAddress: "10.0.0.5" } }, "");
+});
+
+test("OidcAuth allows flows on both public origin and loopback while keeping host-binding intact", async () => {
+  const localOrigin = "http://localhost:8787";
+  const localHarness = providerHarness({ publicOrigin: PUBLIC_ORIGIN, expectedRedirectOrigin: localOrigin });
+  const localReq = (cookie = "") => ({
+    headers: { host: "localhost:8787", ...(cookie ? { cookie } : {}) },
+    socket: { remoteAddress: "127.0.0.1" }
+  });
+  const localStart = await localHarness.auth.start(localReq(), "google");
+  const localAuthUrl = new URL(localStart.authorizationUrl);
+  assert.equal(localAuthUrl.searchParams.get("redirect_uri"), `${localOrigin}/api/auth/google/callback`);
+  assert.equal(/;\s*Secure(?:;|$)/i.test(localStart.setCookie), false);
+  localHarness.setNonce(localAuthUrl.searchParams.get("nonce"));
+  const localCookie = cookiePair(localStart.setCookie);
+  const localState = localAuthUrl.searchParams.get("state");
+
+  // Starting on localhost and calling back on the configured public origin is still rejected by host-binding.
+  await assert.rejects(
+    () => localHarness.auth.callback(
+      { headers: { host: "login.dev.test", cookie: localCookie }, socket: { remoteAddress: "10.0.0.5" } },
+      "google",
+      new URL(`/api/auth/google/callback?state=${encodeURIComponent(localState)}&code=code`, PUBLIC_ORIGIN)
+    ),
+    error => error?.status === 400
+  );
+
+  // Loopback flow still enforces browser-binding cookie before token exchange.
+  const localBindingFlow = await localHarness.auth.start(localReq(), "google");
+  const localBindingUrl = new URL(localBindingFlow.authorizationUrl);
+  await assert.rejects(
+    () => localHarness.auth.callback(
+      localReq(),
+      "google",
+      new URL(`/api/auth/google/callback?state=${encodeURIComponent(localBindingUrl.searchParams.get("state"))}&code=code`, localOrigin)
+    ),
+    error => error?.status === 400
+  );
+
+  // Fresh flow on localhost completes end-to-end on localhost even when publicOrigin is configured.
+  const localFlow2 = await localHarness.auth.start(localReq(), "google");
+  const localAuthUrl2 = new URL(localFlow2.authorizationUrl);
+  localHarness.setNonce(localAuthUrl2.searchParams.get("nonce"));
+  const localResult = await localHarness.auth.callback(
+    localReq(cookiePair(localFlow2.setCookie)),
+    "google",
+    new URL(`/api/auth/google/callback?state=${encodeURIComponent(localAuthUrl2.searchParams.get("state"))}&code=code`, localOrigin)
+  );
+  assert.equal(localResult.identity.provider, "google");
+  assert.equal(localResult.identity.subject, "subject-42");
+
+  // Flow on the configured public origin also completes when Host matches (even over a non-loopback proxy hop).
+  const publicHarness = providerHarness({ publicOrigin: PUBLIC_ORIGIN, expectedRedirectOrigin: PUBLIC_ORIGIN });
+  const remotePublicReq = (cookie = "") => ({
+    headers: { host: "login.dev.test", ...(cookie ? { cookie } : {}) },
+    socket: { remoteAddress: "10.0.0.5" }
+  });
+  const publicStart = await publicHarness.auth.start(remotePublicReq(), "google");
+  const publicAuthUrl = new URL(publicStart.authorizationUrl);
+  assert.equal(publicAuthUrl.searchParams.get("redirect_uri"), `${PUBLIC_ORIGIN}/api/auth/google/callback`);
+  assert.match(publicStart.setCookie, /;\s*Secure(?:;|$)/);
+  publicHarness.setNonce(publicAuthUrl.searchParams.get("nonce"));
+  const publicResult = await publicHarness.auth.callback(
+    remotePublicReq(cookiePair(publicStart.setCookie)),
+    "google",
+    new URL(`/api/auth/google/callback?state=${encodeURIComponent(publicAuthUrl.searchParams.get("state"))}&code=code`, PUBLIC_ORIGIN)
+  );
+  assert.equal(publicResult.identity.provider, "google");
+  assert.equal(publicResult.identity.subject, "subject-42");
+
+  // Starting or calling back with a lookalike host or spoofed forwarded host is rejected with 503.
+  await assert.rejects(
+    () => publicHarness.auth.start(
+      { headers: { host: "login.dev.test.evil.test", "x-forwarded-host": "login.dev.test" }, socket: { remoteAddress: "127.0.0.1" } },
+      "google"
+    ),
+    error => error?.status === 503
+  );
+  await assert.rejects(
+    () => publicHarness.auth.callback(
+      { headers: { host: "login.dev.test.evil.test", "x-forwarded-host": "login.dev.test" }, socket: { remoteAddress: "127.0.0.1" } },
+      "google",
+      new URL("/api/auth/google/callback?state=any&code=code", PUBLIC_ORIGIN)
+    ),
+    error => error?.status === 503
+  );
 });

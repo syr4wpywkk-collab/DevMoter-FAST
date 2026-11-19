@@ -70,3 +70,36 @@ test("SDK helper classifies mutation methods", () => {
   assert.equal(sdkInternals.isMutation("HEAD"), false);
   assert.equal(sdkInternals.isMutation("POST"), true);
 });
+
+test("SDK rejects cross-origin, dot-segment, and encoded traversal request paths and disables redirects", async () => {
+  const calls = [];
+  const client = new DevMoterClient({
+    baseUrl: "https://devmoter.example/control",
+    password: "0123456789abcdef",
+    fetchImpl: async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      });
+    }
+  });
+
+  for (const unsafe of [
+    "//attacker.example/api/health",
+    "https://attacker.example/api/health",
+    "/api/../secret",
+    "/api/%2e%2e/secret",
+    "/api/%252e%252e/secret",
+    "/api/projects/%2f/context",
+    "/api\\evil"
+  ]) {
+    await assert.rejects(() => client.request(unsafe), /Invalid DevMoter request path/, unsafe);
+  }
+  assert.equal(calls.length, 0);
+
+  await client.health();
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "https://devmoter.example/control/api/health");
+  assert.equal(calls[0].init.redirect, "error");
+});

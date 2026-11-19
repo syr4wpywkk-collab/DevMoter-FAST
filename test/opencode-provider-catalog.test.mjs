@@ -107,14 +107,14 @@ test("OpenCode validates provider payload before replacing the current catalog",
   assert.match(loader, /refresh=1/);
   assert.match(source, /PROVIDER_REFRESH_MS/);
   assert.match(source, /provider\.updated/);
-  assert.match(source, /Search models/);
+  assert.match(source, /t\("opencode\.models\.searchPlaceholder"\)/);
   // PR #500 item N: one filter select (all / free / ready / needs key / deprecated) replaces the chips;
   // a single choice keeps "ready" and "needs key" mutually exclusive.
   assert.match(source, /const MODEL_FILTERS: ModelPickerFilter\[\] = \["all", "free", "available", "needsKey", "deprecated"\]/);
   assert.match(source, /modelPickerAvailable = value === "available";\n\s*modelPickerNeedsKey = value === "needsKey";/);
   assert.match(source, /ocxModelScroll/);
   assert.doesNotMatch(source, /ocxDeprecatedScroll/);
-  assert.match(source, /modalTitle\.textContent = "Provider · Model";/);
+  assert.match(source, /modalTitle\.textContent = t\("opencode\.models\.modalTitle"\);/);
   assert.doesNotMatch(source, /async function showModels\(/);
 });
 

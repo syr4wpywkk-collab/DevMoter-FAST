@@ -1,4 +1,4 @@
-import { getLanguage } from "./i18n";
+import { formatNumber, t, translateServerMessage } from "./i18n";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { normalizeApiProviderCatalog } from "./api-provider-catalog.mjs";
@@ -67,11 +67,13 @@ export type ApiChatController = {
   refresh(): Promise<void>;
 };
 
-function apiLocale(en: string, ja: string, zhCN: string) {
-  const language = getLanguage();
-  if (language === "ja") return ja;
-  if (language === "zh-CN") return zhCN;
-  return en;
+function escapeHtml(value: string) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function operationId() {
@@ -93,7 +95,7 @@ async function apiJson<T = any>(path: string, init: RequestInit = {}): Promise<T
     headers
   });
   const payload = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
+  if (!res.ok) throw new Error(translateServerMessage(payload?.error || t("common.httpError", { status: res.status })));
   return payload as T;
 }
 
@@ -104,42 +106,42 @@ export function mountApiChat(
   root.innerHTML = `
     <div class="api-app">
       <div id="apiScrim" class="api-scrim hidden"></div>
-      <aside id="apiSidebar" class="api-sidebar" aria-hidden="true" aria-label="API Chat conversation history" tabindex="-1" inert>
+      <aside id="apiSidebar" class="api-sidebar" aria-hidden="true" aria-label="${escapeHtml(t("apiChat.sidebarAria"))}" tabindex="-1" inert>
         <div class="api-sidebar-head dm-agent-head">
-          <div class="dm-unified-agent-identity" data-unified-agent-label hidden aria-label="API Chat チャット履歴">
+          <div class="dm-unified-agent-identity" data-unified-agent-label hidden aria-label="${escapeHtml(t("apiChat.unifiedIdentityAria"))}">
             <span class="dm-unified-agent-icon" aria-hidden="true">✦</span>
-            <span class="dm-unified-agent-copy"><strong>API Chat</strong><small>チャット履歴</small></span>
+            <span class="dm-unified-agent-copy"><strong>API Chat</strong><small>${escapeHtml(t("apiChat.chatHistory"))}</small></span>
           </div>
           <div class="dm-agent-switch-shell">
             <button id="apiAgentSwitchButton" class="dm-agent-switch-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
               <span class="dm-agent-switch-icon">✦</span>
-              <span class="dm-agent-switch-copy"><strong>API Chat</strong><small>現在のエージェント</small></span>
+              <span class="dm-agent-switch-copy"><strong>API Chat</strong><small>${escapeHtml(t("apiChat.currentAgent"))}</small></span>
               <span class="dm-agent-switch-chevron">⌄</span>
             </button>
-            <div id="apiAgentSwitchMenu" class="dm-agent-switch-menu hidden" role="listbox" aria-label="エージェントを選択">
-              <button id="apiGoCodex" type="button" data-agent="codex"><span>⌘</span><span><strong>Codex</strong><small>実装・修正</small></span><span></span></button>
-              <button id="apiGoOpenCode" type="button" data-agent="opencode"><span>◈</span><span><strong>OpenCode</strong><small>エージェント実行</small></span><span></span></button>
-              <button id="apiAgentCurrent" class="active" type="button" data-agent="api"><span>✦</span><span><strong>API Chat</strong><small>マルチプロバイダー</small></span><span>✓</span></button>
+            <div id="apiAgentSwitchMenu" class="dm-agent-switch-menu hidden" role="listbox" aria-label="${escapeHtml(t("apiChat.selectAgentAria"))}">
+              <button id="apiGoCodex" type="button" data-agent="codex"><span>⌘</span><span><strong>Codex</strong><small>${escapeHtml(t("apiChat.agentCodexSummary"))}</small></span><span></span></button>
+              <button id="apiGoOpenCode" type="button" data-agent="opencode"><span>◈</span><span><strong>OpenCode</strong><small>${escapeHtml(t("apiChat.agentOpenCodeSummary"))}</small></span><span></span></button>
+              <button id="apiAgentCurrent" class="active" type="button" data-agent="api"><span>✦</span><span><strong>API Chat</strong><small>${escapeHtml(t("apiChat.agentApiSummary"))}</small></span><span>✓</span></button>
             </div>
           </div>
-          <button id="apiSidebarClose" type="button" aria-label="閉じる">×</button>
+          <button id="apiSidebarClose" type="button" aria-label="${escapeHtml(t("common.close"))}">×</button>
         </div>
-        <button id="apiNewChat" class="api-new-chat" type="button">＋ 新しいチャット</button>
+        <button id="apiNewChat" class="api-new-chat" type="button">${escapeHtml(t("apiChat.newChatButton"))}</button>
         <div class="api-sidebar-scroll">
-        <section class="api-history" aria-label="${apiLocale("Chats", "会話", "会话")}">
+        <section class="api-history" aria-label="${escapeHtml(t("apiChat.chatsAria"))}">
           <div id="apiHistory"></div>
         </section>
         </div>
       </aside>
 
       <header class="api-topbar">
-        <button id="apiMenu" class="api-icon-button" type="button" aria-label="メニュー">☰</button>
+        <button id="apiMenu" class="api-icon-button" type="button" aria-label="${escapeHtml(t("apiChat.menuAria"))}">☰</button>
         <div class="api-brand">
           <strong>API Chat</strong>
-          <small id="apiModelTopLabel">Provider / model未設定</small>
+          <small id="apiModelTopLabel">${escapeHtml(t("apiChat.topModelUnset"))}</small>
         </div>
         <div class="api-header-actions">
-          <button id="apiSettingsTop" class="api-icon-button api-settings-button" type="button" aria-label="API Providers">⚙</button>
+          <button id="apiSettingsTop" class="api-icon-button api-settings-button" type="button" aria-label="${escapeHtml(t("apiChat.providersTitle"))}">⚙</button>
         </div>
       </header>
 
@@ -147,7 +149,7 @@ export function mountApiChat(
         <div id="apiTranscript" class="api-transcript">
           <section id="apiWelcome" class="api-welcome">
             <h1>API Chat</h1>
-            <p>接続先を選んでメッセージを入力</p>
+            <p>${escapeHtml(t("apiChat.welcomePrompt"))}</p>
           </section>
         </div>
       </main>
@@ -155,17 +157,17 @@ export function mountApiChat(
       <section class="api-composer-wrap">
         <form id="apiForm" class="api-composer">
           <div id="apiAttachments" class="api-attachment-tray hidden"></div>
-          <textarea id="apiPrompt" rows="1" placeholder="メッセージを入力" aria-label="メッセージ"></textarea>
+          <textarea id="apiPrompt" rows="1" placeholder="${escapeHtml(t("apiChat.promptPlaceholder"))}" aria-label="${escapeHtml(t("apiChat.promptAria"))}"></textarea>
           <input id="apiImageInput" class="hidden" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple />
-          <small id="apiStatus" class="api-status" role="status" aria-live="polite">接続先を読み込み中…</small>
+          <small id="apiStatus" class="api-status" role="status" aria-live="polite">${escapeHtml(t("apiChat.loadingProviders"))}</small>
           <div class="api-composer-foot">
-            <button id="apiAttachImage" class="api-attach-button" type="button" aria-label="画像を添付">＋</button>
+            <button id="apiAttachImage" class="api-attach-button" type="button" aria-label="${escapeHtml(t("apiChat.attachImageAria"))}">＋</button>
             <div class="api-picker-row">
-              <select id="apiProvider" aria-label="API provider"></select>
-              <select id="apiModel" aria-label="Model"></select>
-              <select id="apiReasoning" aria-label="推論モード"></select>
+              <select id="apiProvider" aria-label="${escapeHtml(t("apiChat.providerSelectAria"))}"></select>
+              <select id="apiModel" aria-label="${escapeHtml(t("apiChat.modelSelectAria"))}"></select>
+              <select id="apiReasoning" aria-label="${escapeHtml(t("apiChat.reasoningAria"))}"></select>
             </div>
-            <button id="apiSend" type="submit" aria-label="送信">↑</button>
+            <button id="apiSend" type="submit" aria-label="${escapeHtml(t("common.send"))}">↑</button>
           </div>
         </form>
       </section>
@@ -174,9 +176,9 @@ export function mountApiChat(
         <div class="api-settings-card">
           <header class="api-settings-head">
             <div>
-              <strong id="apiSettingsTitle">API Providers</strong>
+              <strong id="apiSettingsTitle">${escapeHtml(t("apiChat.providersTitle"))}</strong>
             </div>
-            <button id="apiSettingsClose" type="button" aria-label="閉じる">×</button>
+            <button id="apiSettingsClose" type="button" aria-label="${escapeHtml(t("common.close"))}">×</button>
           </header>
           <div id="apiSettingsBody" class="api-settings-body"></div>
         </div>
@@ -300,7 +302,7 @@ export function mountApiChat(
 
   function archiveConversation() {
     if (messages.length) {
-      const title = (messages.find(message => message.role === "user")?.content || "Chat").replace(/\s+/g, " ");
+      const title = (messages.find(message => message.role === "user")?.content || t("apiChat.defaultTitle")).replace(/\s+/g, " ");
       const conversation: ChatConversation = {
         id: activeConversationId,
         title: Array.from(title).slice(0, 60).join(""),
@@ -378,7 +380,7 @@ export function mountApiChat(
       select.title = select.selectedOptions[0]?.textContent || select.getAttribute("aria-label") || "";
     }
     send.textContent = sending ? "…" : "↑";
-    send.setAttribute("aria-label", sending ? apiLocale("Waiting for response", "応答待ち", "等待响应") : apiLocale("Send", "送信", "发送"));
+    send.setAttribute("aria-label", sending ? t("apiChat.waitingResponse") : t("common.send"));
     form.setAttribute("aria-busy", String(sending));
     status.title = status.textContent || "";
   }
@@ -394,7 +396,7 @@ export function mountApiChat(
       document.body.appendChild(helper);
       try {
         helper.select();
-        if (!document.execCommand("copy")) throw new Error("Copy failed");
+        if (!document.execCommand("copy")) throw new Error(t("common.copyFailed"));
       } finally {
         helper.remove();
       }
@@ -443,13 +445,13 @@ export function mountApiChat(
 
   function reasoningLabel(mode: string) {
     const label = ({
-      auto: "Auto",
-      none: "Off",
-      low: "Low",
-      medium: "Medium",
-      high: "High"
+      auto: t("apiChat.reasoning.auto"),
+      none: t("apiChat.reasoning.off"),
+      low: t("apiChat.reasoning.low"),
+      medium: t("apiChat.reasoning.medium"),
+      high: t("apiChat.reasoning.high")
     } as Record<string, string>)[mode] || mode;
-    return apiLocale("Reasoning: " + label, "推論: " + label, "推理: " + label);
+    return t("apiChat.reasoningPrefix", { label });
   }
 
   function updateReasoning() {
@@ -488,17 +490,19 @@ export function mountApiChat(
     updateHeader();
     // Ready needs no line: the selectors in the composer foot already show the choice.
     status.textContent = !provider
-      ? apiLocale("⚙ Add an API provider", "⚙ API Providerを追加", "⚙ 添加 API Provider")
+      ? t("apiChat.addApiHint")
       : provider.ready
         ? ""
-        : `${provider.name} · ${apiLocale("API key missing", "APIキー未設定", "未设置 API 密钥")}`;
+        : `${provider.name} · ${t("apiChat.keyMissing")}`;
     updateAvailability();
   }
 
   function updateHeader() {
     const label = root.querySelector<HTMLElement>("#apiModelTopLabel")!;
     const provider = currentProvider();
-    label.textContent = provider ? `${provider.name} · ${modelSelect.value ? apiModelLabel(modelSelect.value) : "model未設定"}` : "Provider / model未設定";
+    label.textContent = provider
+      ? `${provider.name} · ${modelSelect.value ? apiModelLabel(modelSelect.value) : t("apiChat.modelUnset")}`
+      : t("apiChat.topModelUnset");
     label.title = label.textContent;
   }
 
@@ -514,8 +518,7 @@ export function mountApiChat(
     for (const message of messages) {
       const row = document.createElement("article");
       row.className = `api-message ${message.role}`;
-      row.setAttribute("aria-label", message.role === "user"
-        ? apiLocale("You", "あなた", "你") : apiLocale("Assistant", "アシスタント", "助手"));
+      row.setAttribute("aria-label", message.role === "user" ? t("apiChat.roleYou") : t("apiChat.roleAssistant"));
       const bubble = document.createElement("div");
       bubble.className = "api-message-bubble";
       if (message.role === "assistant") {
@@ -540,12 +543,12 @@ export function mountApiChat(
         const copy = document.createElement("button");
         copy.type = "button";
         copy.className = "api-message-copy";
-        copy.textContent = apiLocale("Copy", "コピー", "复制");
-        copy.setAttribute("aria-label", apiLocale("Copy answer", "回答をコピー", "复制回答"));
+        copy.textContent = t("common.copy");
+        copy.setAttribute("aria-label", t("apiChat.copyAnswerAria"));
         copy.addEventListener("click", () => {
           void copyMessage(message.content).then(() => {
-            copy.textContent = apiLocale("Copied", "コピーしました", "已复制");
-          }).catch(() => { copy.textContent = apiLocale("Copy failed", "コピーできませんでした", "复制失败"); });
+            copy.textContent = t("common.copied");
+          }).catch(() => { copy.textContent = t("common.copyFailed"); });
         });
         row.appendChild(copy);
       }
@@ -577,7 +580,7 @@ export function mountApiChat(
 
       const remove = document.createElement("button");
       remove.type = "button";
-      remove.setAttribute("aria-label", `${attachment.name} を削除`);
+      remove.setAttribute("aria-label", t("apiChat.removeAttachmentAria", { name: attachment.name }));
       remove.textContent = "×";
       remove.addEventListener("click", async () => {
         pendingAttachments = pendingAttachments.filter(item => item.id !== attachment.id);
@@ -598,10 +601,10 @@ export function mountApiChat(
 
   async function uploadImage(file: File) {
     if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
-      throw new Error(apiLocale("Only JPEG / PNG / WebP / GIF are supported", "JPEG / PNG / WebP / GIF のみ対応しています", "仅支持 JPEG / PNG / WebP / GIF"));
+      throw new Error(t("apiChat.unsupportedImageType"));
     }
     if (file.size <= 0 || file.size > 15 * 1024 * 1024) {
-      throw new Error(apiLocale("Images must be 15 MB or smaller", "画像は15MB以下にしてください", "图片必须不超过 15MB"));
+      throw new Error(t("apiChat.imageTooLarge"));
     }
 
     const res = await fetchWithTimeout(
@@ -617,14 +620,10 @@ export function mountApiChat(
         body: file
       },
       API_CHAT_REQUEST_TIMEOUT_MS,
-      () => new Error(apiLocale(
-        "Image upload timed out. Remove the image and retry.",
-        "画像のアップロードがタイムアウトしました。画像を削除して再試行してください。",
-        "图片上传超时。请移除图片后重试。"
-      ))
+      () => new Error(t("apiChat.imageUploadTimeout"))
     );
     const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
+    if (!res.ok) throw new Error(translateServerMessage(payload?.error || t("common.httpError", { status: res.status })));
 
     return {
       ...normalizeApiAttachment(payload, file),
@@ -638,11 +637,10 @@ export function mountApiChat(
 
     uploadingCount += list.length;
     updateModels();
-    status.textContent = apiLocale(
-      `Saving images to Linux… 0/${list.length}`,
-      `画像をLinuxへ保存中… 0/${list.length}`,
-      `正在将图片保存到 Linux… 0/${list.length}`
-    );
+    status.textContent = t("apiChat.uploadingImagesProgress", {
+      done: formatNumber(0),
+      total: formatNumber(list.length)
+    });
 
     let completed = 0;
     let uploadError: string | null = null;
@@ -651,16 +649,15 @@ export function mountApiChat(
         const attachment = await uploadImage(file);
         pendingAttachments.push(attachment);
         completed += 1;
-        status.textContent = apiLocale(
-          `Saving images to Linux… ${completed}/${list.length}`,
-          `画像をLinuxへ保存中… ${completed}/${list.length}`,
-          `正在将图片保存到 Linux… ${completed}/${list.length}`
-        );
+        status.textContent = t("apiChat.uploadingImagesProgress", {
+          done: formatNumber(completed),
+          total: formatNumber(list.length)
+        });
         renderPendingAttachments();
       }
-      status.textContent = `${currentProvider()?.name || "API"} · ${apiLocale("image ready", "画像準備OK", "图片已准备")}`;
+      status.textContent = `${currentProvider()?.name || "API"} · ${t("apiChat.imageReady")}`;
     } catch (error) {
-      uploadError = error instanceof Error ? error.message : String(error);
+      uploadError = translateServerMessage(error instanceof Error ? error.message : String(error));
     } finally {
       uploadingCount -= list.length;
       imageInput.value = "";
@@ -674,7 +671,7 @@ export function mountApiChat(
 
   async function refresh() {
     const requestGeneration = ++providerCatalogRequestGeneration;
-    status.textContent = apiLocale("Loading providers…", "接続先を読み込み中…", "正在加载 Provider…");
+    status.textContent = t("apiChat.loadingProviders");
     try {
       const payload = await apiJson<unknown>("/api/llm/providers");
       if (requestGeneration !== providerCatalogRequestGeneration) return;
@@ -687,14 +684,14 @@ export function mountApiChat(
       if (providers.length === 0) {
         const option = document.createElement("option");
         option.value = "";
-        option.textContent = "APIを追加";
+        option.textContent = t("apiChat.addApiOption");
         providerSelect.appendChild(option);
       }
 
       for (const provider of providers) {
         const option = document.createElement("option");
         option.value = provider.id;
-        option.textContent = provider.ready ? provider.name : `${provider.name} (key required)`;
+        option.textContent = provider.ready ? provider.name : `${provider.name} (${t("apiChat.keyRequiredSuffix")})`;
         providerSelect.appendChild(option);
       }
 
@@ -705,7 +702,7 @@ export function mountApiChat(
     } catch (error) {
       if (requestGeneration !== providerCatalogRequestGeneration) return;
       providerCatalogAvailable = false;
-      status.textContent = error instanceof Error ? error.message : String(error);
+      status.textContent = translateServerMessage(error instanceof Error ? error.message : String(error));
       updateAvailability();
     }
   }
@@ -728,9 +725,16 @@ export function mountApiChat(
     const title = document.createElement("strong");
     title.textContent = provider.name;
     const meta = document.createElement("small");
-    const source = provider.source === "env" ? "環境変数 · 読み取り専用" : "DevMoter設定";
-    meta.textContent = `${source} · ${provider.models.length} models · ${provider.ready ? "Key saved" : "No key"}`;
-    if (provider.secretRef) meta.textContent = `${source} · Host Vault · ${provider.models.length} models`;
+    const source = provider.source === "env" ? t("apiChat.sourceEnvReadonly") : t("apiChat.sourceFileConfig");
+    const modelCount = formatNumber(provider.models.length);
+    meta.textContent = t("apiChat.providerMeta", {
+      source,
+      count: modelCount,
+      state: provider.ready ? t("apiChat.keySaved") : t("apiChat.noKey")
+    });
+    if (provider.secretRef) {
+      meta.textContent = t("apiChat.providerMetaVault", { source, count: modelCount });
+    }
     copy.append(title, meta);
 
     const protocol = document.createElement("span");
@@ -750,11 +754,11 @@ export function mountApiChat(
     const toolbar = document.createElement("div");
     toolbar.className = "api-settings-toolbar";
     const text = document.createElement("div");
-    text.innerHTML = "<strong>接続先</strong>";
+    text.innerHTML = `<strong>${escapeHtml(t("apiChat.providersListTitle"))}</strong>`;
     const add = document.createElement("button");
     add.type = "button";
     add.className = "primary";
-    add.textContent = "＋ APIを追加";
+    add.textContent = t("apiChat.addApiButton");
     add.addEventListener("click", () => void showProviderForm());
     toolbar.append(text, add);
     settingsBody.appendChild(toolbar);
@@ -762,7 +766,7 @@ export function mountApiChat(
     if (!providers.length) {
       const empty = document.createElement("div");
       empty.className = "api-settings-empty";
-      empty.innerHTML = "<strong>APIがありません</strong>";
+      empty.innerHTML = `<strong>${escapeHtml(t("apiChat.noProvidersEmpty"))}</strong>`;
       settingsBody.appendChild(empty);
       return;
     }
@@ -779,17 +783,17 @@ export function mountApiChat(
         const migrate = document.createElement("button");
         migrate.type = "button";
         migrate.className = "api-provider-migrate";
-        migrate.textContent = migrationEligible ? "暗号化Vaultへ移行" : "このProviderは移行対象外";
+        migrate.textContent = migrationEligible ? t("apiChat.migrateToVault") : t("apiChat.notMigrationEligible");
         migrate.disabled = !migrationEligible || !localStorage.getItem(DEVICE_TOKEN_KEY) || !localStorage.getItem(PROJECT_KEY);
         migrate.title = !migrationEligible
-          ? "Vault移行には対応Provider presetと正規Endpointが必要"
-          : migrate.disabled ? "端末を登録し、Projectを選択してね" : "保存済みAPIキーをVaultへ移動";
+          ? t("apiChat.migrationRequiresPreset")
+          : migrate.disabled ? t("apiChat.migrationRequiresDeviceProject") : t("apiChat.migrationTitleReady");
         migrate.addEventListener("click", async () => {
           const projectId = localStorage.getItem(PROJECT_KEY) || "";
           if (!projectId || !localStorage.getItem(DEVICE_TOKEN_KEY)) return;
-          if (!confirm(`${provider.name} のAPIキーを選択中のProjectに紐付けた暗号化Vaultへ移動し、旧Provider設定から削除するよ。続ける？`)) return;
+          if (!confirm(t("apiChat.migrationConfirm", { name: provider.name }))) return;
           migrate.disabled = true;
-          migrate.textContent = "Vaultへ移動中…";
+          migrate.textContent = t("apiChat.movingToVault");
           try {
             await apiJson(`/api/llm/providers/${encodeURIComponent(provider.id)}/migrate-to-vault`, {
               method: "POST",
@@ -799,10 +803,10 @@ export function mountApiChat(
             await renderSettingsList();
           } catch (error) {
             migrate.disabled = false;
-            migrate.textContent = "暗号化Vaultへ移行";
+            migrate.textContent = t("apiChat.migrateToVault");
             const message = document.createElement("small");
             message.className = "api-provider-migrate-error";
-            message.textContent = error instanceof Error ? error.message : String(error);
+            message.textContent = translateServerMessage(error instanceof Error ? error.message : String(error));
             item.appendChild(message);
           }
         });
@@ -826,7 +830,7 @@ export function mountApiChat(
     settingsModal.classList.remove("hidden");
     syncOverlayState();
     settingsClose.focus({ preventScroll: true });
-    settingsBody.innerHTML = '<div class="api-settings-loading">読み込み中…</div>';
+    settingsBody.innerHTML = `<div class="api-settings-loading">${escapeHtml(t("common.loading"))}</div>`;
     const serial = ++settingsOpenSerial;
     try {
       await Promise.all([refresh(), loadPresets()]);
@@ -834,7 +838,7 @@ export function mountApiChat(
       await renderSettingsList();
     } catch (error) {
       if (serial !== settingsOpenSerial || settingsModal.classList.contains("hidden")) return;
-      settingsBody.textContent = error instanceof Error ? error.message : String(error);
+      settingsBody.textContent = translateServerMessage(error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -859,72 +863,72 @@ export function mountApiChat(
     const back = document.createElement("button");
     back.type = "button";
     back.className = "api-settings-back";
-    back.textContent = "‹ Providers";
+    back.textContent = t("apiChat.backToProviders");
     back.addEventListener("click", () => void renderSettingsList());
 
     const heading = document.createElement("div");
     heading.className = "api-settings-form-title";
     const headingTitle = document.createElement("strong");
-    headingTitle.textContent = provider ? provider.name : "APIを追加";
+    headingTitle.textContent = provider ? provider.name : t("apiChat.addApiTitle");
     heading.append(headingTitle);
 
     const providerForm = document.createElement("form");
     providerForm.className = "api-provider-form api-provider-form-simple";
     providerForm.innerHTML = `
       <label>
-        <span>企業 / Provider</span>
+        <span>${escapeHtml(t("apiChat.fieldCompanyProvider"))}</span>
         <div class="api-preset-grid" data-field="preset-grid"></div>
-        <select data-field="preset" class="api-preset-select-hidden" aria-label="Provider preset"></select>
+        <select data-field="preset" class="api-preset-select-hidden" aria-label="${escapeHtml(t("apiChat.presetAria"))}"></select>
       </label>
 
       <label>
-        <span>認証情報の保存先</span>
+        <span>${escapeHtml(t("apiChat.credentialStore"))}</span>
         <select data-field="credentialMode">
-          <option value="api-key">API Key（既存方式）</option>
-          <option value="vault" ${provider?.secretRef ? "selected" : ""} ${bindingProjectId && (vaultSecrets.length || provider?.secretRef) ? "" : "disabled"}>Host API Vault</option>
+          <option value="api-key">${escapeHtml(t("apiChat.credentialApiKeyOption"))}</option>
+          <option value="vault" ${provider?.secretRef ? "selected" : ""} ${bindingProjectId && (vaultSecrets.length || provider?.secretRef) ? "" : "disabled"}>${escapeHtml(t("apiChat.credentialVaultOption"))}</option>
         </select>
         <small data-credential-hint></small>
       </label>
 
       <label data-vault-reference-row hidden>
-        <span>Vault Secret（選択Projectに紐付いたもの）</span>
+        <span>${escapeHtml(t("apiChat.vaultSecretLabel"))}</span>
         <select data-field="secretRef"></select>
         <small data-vault-status></small>
       </label>
 
       <label data-api-key-row>
-        <span>API Key</span>
+        <span>${escapeHtml(t("apiChat.apiKeyLabel"))}</span>
         <input data-field="apiKey" type="password" autocomplete="new-password" />
       </label>
 
       <details class="api-advanced-settings" data-advanced>
-        <summary>詳細設定</summary>
+        <summary>${escapeHtml(t("apiChat.advancedSummary"))}</summary>
         <div class="api-advanced-settings-body">
           <label>
-            <span>表示名</span>
+            <span>${escapeHtml(t("apiChat.displayNameLabel"))}</span>
             <input data-field="name" type="text" maxlength="100" />
           </label>
           <label>
-            <span>API形式</span>
+            <span>${escapeHtml(t("apiChat.apiFormatLabel"))}</span>
             <select data-field="protocol">
-              <option value="openai-compatible">OpenAI compatible</option>
-              <option value="anthropic">Anthropic Messages</option>
+              <option value="openai-compatible">${escapeHtml(t("apiChat.protocolOpenAiCompatible"))}</option>
+              <option value="anthropic">${escapeHtml(t("apiChat.protocolAnthropicMessages"))}</option>
             </select>
           </label>
           <label>
-            <span>Base URL</span>
+            <span>${escapeHtml(t("apiChat.baseUrlLabel"))}</span>
             <input data-field="baseUrl" type="url" inputmode="url" autocomplete="off" />
           </label>
           <label>
-            <span>Models</span>
-            <textarea data-field="models" rows="5" placeholder="自動取得できない場合だけ入力"></textarea>
+            <span>${escapeHtml(t("apiChat.modelsLabel"))}</span>
+            <textarea data-field="models" rows="5" placeholder="${escapeHtml(t("apiChat.modelsPlaceholder"))}"></textarea>
           </label>
         </div>
       </details>
 
       <div data-form-message class="api-form-message"></div>
       <button data-action="save" type="submit" class="api-auto-connect-button">
-        ${provider ? "更新" : "接続して追加"}
+        ${escapeHtml(provider ? t("apiChat.updateProvider") : t("apiChat.connectAndAdd"))}
       </button>
     `;
 
@@ -1015,10 +1019,10 @@ export function mountApiChat(
       vaultReferenceRow.hidden = credentialModeSelect.value !== "vault";
       apiKeyRow.hidden = credentialModeSelect.value === "vault";
       apiKeyInput.required = credentialModeSelect.value === "api-key" && (!provider?.ready || provider.credentialSource === "vault");
-      credentialHint.textContent = bindingProjectId ? "" : "Vaultを使うにはProjectを選択";
+      credentialHint.textContent = bindingProjectId ? "" : t("apiChat.selectProjectForVault");
       vaultStatus.textContent = vaultSecrets.length
-        ? `使えるSecret: ${matching.length}件`
-        : "使えるSecretがありません（Settings → API Vault）";
+        ? t("apiChat.usableSecretsCount", { count: formatNumber(matching.length) })
+        : t("apiChat.noUsableSecretsHint");
     }
 
     if (provider) {
@@ -1029,15 +1033,15 @@ export function mountApiChat(
       baseUrlInput.value = provider.baseUrl;
       modelsInput.value = provider.models.join("\n");
       apiKeyInput.placeholder = provider.ready
-        ? provider.secretRef ? "Vaultで管理中" : "保存済み（変更するときだけ入力）"
-        : "APIキーを貼り付け";
+        ? provider.secretRef ? t("apiChat.managedInVault") : t("apiChat.keySavedPlaceholder")
+        : t("apiChat.pasteApiKeyPlaceholder");
       credentialModeSelect.value = provider.secretRef ? "vault" : "api-key";
       advanced.open = provider.presetId === "custom";
       syncPresetButtons();
     } else {
       const initial = presets[0];
       if (initial) presetSelect.value = initial.id;
-      apiKeyInput.placeholder = "APIキーを貼り付け";
+      apiKeyInput.placeholder = t("apiChat.pasteApiKeyPlaceholder");
       applyPreset();
     }
 
@@ -1071,7 +1075,7 @@ export function mountApiChat(
       const selectedSecretRef = secretRefSelect.value;
 
       if (!usesVault && !provider && !enteredKey) {
-        formMessage.textContent = "APIキーを貼ってね";
+        formMessage.textContent = t("apiChat.pasteApiKeyError");
         formMessage.dataset.state = "error";
         apiKeyInput.focus();
         return;
@@ -1082,7 +1086,7 @@ export function mountApiChat(
 
       try {
         if (usesVault && !selectedSecretRef) {
-          formMessage.textContent = "このProjectで使えるVault Secretを選んでね。";
+          formMessage.textContent = t("apiChat.selectVaultSecretError");
           formMessage.dataset.state = "error";
           return;
         }
@@ -1092,7 +1096,7 @@ export function mountApiChat(
           .filter(Boolean);
 
         if (enteredKey || usesVault) {
-          formMessage.textContent = "接続確認 → モデルを自動取得中…";
+          formMessage.textContent = t("apiChat.testingConnection");
           const tested = await apiJson<{ ok?: boolean; models?: string[] }>("/api/llm/test", {
             method: "POST",
             body: JSON.stringify(formPayload([]))
@@ -1103,7 +1107,7 @@ export function mountApiChat(
             modelsInput.value = discovered.join("\n");
           } else if (!models.length) {
             advanced.open = true;
-            formMessage.textContent = "接続は成功したけどモデル一覧を取得できませんでした。詳細設定でモデル名を1つ入力してね。";
+            formMessage.textContent = t("apiChat.modelsDiscoveryEmpty");
             formMessage.dataset.state = "error";
             return;
           }
@@ -1111,12 +1115,12 @@ export function mountApiChat(
 
         if (!models.length) {
           advanced.open = true;
-          formMessage.textContent = "モデル情報がありません。詳細設定でモデル名を入力してね。";
+          formMessage.textContent = t("apiChat.noModelsError");
           formMessage.dataset.state = "error";
           return;
         }
 
-        formMessage.textContent = "安全に保存中…";
+        formMessage.textContent = t("apiChat.savingSafely");
         const saved = await apiJson<{ provider?: ApiProvider }>("/api/llm/providers", {
           method: "POST",
           body: JSON.stringify(formPayload(models))
@@ -1137,7 +1141,9 @@ export function mountApiChat(
         prompt.focus();
       } catch (error) {
         advanced.open = true;
-        formMessage.textContent = `接続できませんでした: ${error instanceof Error ? error.message : String(error)}`;
+        formMessage.textContent = t("apiChat.connectFailed", {
+          error: translateServerMessage(error instanceof Error ? error.message : String(error))
+        });
         formMessage.dataset.state = "error";
       } finally {
         saveButton.disabled = false;
@@ -1151,9 +1157,9 @@ export function mountApiChat(
       danger.className = "api-provider-danger";
       const remove = document.createElement("button");
       remove.type = "button";
-      remove.textContent = "このAPI設定を削除";
+      remove.textContent = t("apiChat.deleteProviderButton");
       remove.addEventListener("click", async () => {
-        if (!confirm(`${provider.name} のAPI設定を削除しますか？`)) return;
+        if (!confirm(t("apiChat.deleteProviderConfirm", { name: provider.name }))) return;
         remove.disabled = true;
         try {
           await apiJson(`/api/llm/providers/${encodeURIComponent(provider.id)}`, {
@@ -1165,7 +1171,7 @@ export function mountApiChat(
           await refresh();
           await renderSettingsList();
         } catch (error) {
-          formMessage.textContent = error instanceof Error ? error.message : String(error);
+          formMessage.textContent = translateServerMessage(error instanceof Error ? error.message : String(error));
           formMessage.dataset.state = "error";
           remove.disabled = false;
         }
@@ -1181,11 +1187,7 @@ export function mountApiChat(
     const model = modelSelect.value;
     if ((!rawText && pendingAttachments.length === 0) || !provider?.ready || !model || sending || uploadingCount > 0) return;
     if (provider.secretRef && (localStorage.getItem(PROJECT_KEY) || "") !== provider.projectId) {
-      status.textContent = apiLocale(
-        "Select the project bound to this Vault provider",
-        "このVault Providerに紐付いたProjectを選択してね",
-        "请选择绑定到此 Vault Provider 的项目"
-      );
+      status.textContent = t("apiChat.vaultProjectMismatch");
       return;
     }
 
@@ -1198,7 +1200,7 @@ export function mountApiChat(
     pendingAttachments = [];
     renderPendingAttachments();
 
-    const text = rawText || "この画像を確認してください。";
+    const text = rawText || t("apiChat.imagePromptFallback");
     messages.push({ role: "user", content: text, attachments });
     trimHistory();
     const generation = conversationGeneration;
@@ -1215,7 +1217,7 @@ export function mountApiChat(
     renderMessages();
     sending = true;
     updateAvailability();
-    status.textContent = `${provider.name} · 考え中…`;
+    status.textContent = t("apiChat.thinkingStatus", { provider: provider.name });
     status.title = status.textContent;
     let responseFailed = false;
 
@@ -1237,7 +1239,7 @@ export function mountApiChat(
       });
       if (generation !== conversationGeneration) return;
       const content = String(payload?.message?.content || "");
-      if (!content.trim()) throw new Error(apiLocale("The provider returned an empty response", "空の応答が返されました", "Provider 返回了空响应"));
+      if (!content.trim()) throw new Error(t("apiChat.emptyResponseError"));
       messages.push({ role: "assistant", content });
       trimHistory();
       renderMessages();
@@ -1248,12 +1250,14 @@ export function mountApiChat(
       messages.push({
         role: "assistant",
         content: requestTimedOut
-          ? apiLocale("Error: The request timed out. Your message is still in this conversation; retry when ready.", "エラー: 要求がタイムアウトしました。メッセージはこの会話に残っています。準備ができたら再試行してください。", "错误：请求超时。消息仍保留在此会话中；准备好后可以重试。")
-          : `${apiLocale("Error", "エラー", "错误")}: ${error instanceof Error ? error.message : String(error)}`
+          ? t("apiChat.requestTimeoutError")
+          : t("apiChat.errorPrefix", {
+              error: translateServerMessage(error instanceof Error ? error.message : String(error))
+            })
       });
       trimHistory();
       renderMessages();
-      status.textContent = `${provider.name} · Error`;
+      status.textContent = t("apiChat.errorStatus", { provider: provider.name });
     } finally {
       window.clearTimeout(requestTimeout);
       if (activeChatController === controller) activeChatController = null;
@@ -1261,7 +1265,7 @@ export function mountApiChat(
         sending = false;
         updateModels();
         if (responseFailed) {
-          status.textContent = `${provider.name} · Error`;
+          status.textContent = t("apiChat.errorStatus", { provider: provider.name });
           status.title = status.textContent;
         }
         prompt.focus();

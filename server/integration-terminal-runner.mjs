@@ -1,10 +1,27 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { writeFile } from "node:fs/promises";
+import { delimiter, dirname, isAbsolute } from "node:path";
 import { createInterface } from "node:readline";
 import { setTimeout as delay } from "node:timers/promises";
 import { assertCliReady, cliDefinition } from "./cli-launch.mjs";
 import { errorMessage } from "./error-message.mjs";
+
+function runnerChildEnv(command, baseEnv = process.env) {
+  const env = { ...baseEnv };
+  const pathEntries = String(env.PATH || "")
+    .split(delimiter)
+    .filter(Boolean);
+  for (const candidate of [dirname(command), dirname(process.execPath)]) {
+    if (isAbsolute(candidate) && !pathEntries.includes(candidate)) {
+      pathEntries.push(candidate);
+    }
+  }
+  if (pathEntries.length > 0) {
+    env.PATH = pathEntries.join(delimiter);
+  }
+  return env;
+}
 
 // The parent passes fixed argv elements. Do not interpret commands through a shell.
 const [ackPath, executable, cwd, ...args] = process.argv.slice(2);
@@ -38,7 +55,7 @@ async function main() {
     try {
       command = (await assertCliReady(executable)).resolvedPath;
     } catch (error) {
-      console.errorerrorMessage(error);
+      console.error(errorMessage(error));
       await report({ ok: false, reason: error?.code || "failed" });
       await holdFailure();
       process.exitCode = 1;
@@ -48,7 +65,7 @@ async function main() {
   const child = spawn(command, args, {
     cwd,
     stdio: "inherit",
-    env: process.env,
+    env: runnerChildEnv(command, process.env),
     shell: false
   });
   const finished = new Promise(resolve => {

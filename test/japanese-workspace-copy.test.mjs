@@ -101,23 +101,23 @@ test("Japanese locale translates Home, workspace navigation, and Review copy and
   assert.equal(nav.querySelector("[data-workspace-menu-button]").getAttribute("aria-label"), "画面を切り替え");
   assert.equal(nav.querySelector('[data-workspace-action="tasks"]').getAttribute("aria-label"), "タスクとセッション");
   assert.equal(nav.querySelector('[data-workspace-action="chat"]').getAttribute("aria-label"), "現在のチャットと会話履歴");
-  assert.equal(nav.querySelector('[data-workspace-action="review"]').getAttribute("aria-label"), "変更を確認");
+  assert.equal(nav.querySelector('[data-workspace-action="review"]').getAttribute("aria-label"), "変更をレビュー");
   assert.equal(nav.querySelector('[data-workspace-action="tools"]').getAttribute("aria-label"), "ツールを開く");
 
   const review = window.document.querySelector("#workflow");
   assert.equal(review.querySelector("#wfLaunch b").textContent, "レビュー");
-  assert.equal(review.querySelector("#wfLaunch").getAttribute("aria-label"), "変更とタスクを確認");
+  assert.equal(review.querySelector("#wfLaunch").getAttribute("aria-label"), "変更点とタスクをレビュー");
   const wfModal = review.querySelector("#wfModal");
   assert.equal(review.querySelector("#" + wfModal.getAttribute("aria-labelledby")).textContent, "レビューとタスク");
   assert.equal(review.querySelector("#wfClose").getAttribute("aria-label"), "閉じる");
-  assert.equal(review.querySelector(".wf-tabs").getAttribute("aria-label"), "ワークフローのセクション");
+  assert.equal(review.querySelector(".wf-tabs").getAttribute("aria-label"), "ワークフローセクション");
   assert.equal(review.querySelector('[data-wf-tab="changes"]').textContent, "変更");
-  assert.equal(review.querySelector('[data-wf-tab="worktrees"]').textContent, "作業ツリー");
+  assert.equal(review.querySelector('[data-wf-tab="worktrees"]').textContent, "ワークツリー");
   assert.equal(review.querySelector("#wfStatus").textContent, "準備完了");
-  assert.equal(review.querySelector("#wfWorktreesPanel .wf-empty").textContent, "作業ツリーはありません");
-  assert.equal(review.querySelector(".wf-section-head strong").textContent, "変更内容");
-  assert.equal(review.querySelector(".wf-section-head small").textContent, "承認するまでファイルは変わりません");
-  assert.equal(review.querySelector("#wfLoadDiff").textContent, "作業中の差分");
+  assert.equal(review.querySelector("#wfWorktreesPanel .wf-empty").textContent, "ワークツリーはありません");
+  assert.equal(review.querySelector(".wf-section-head strong").textContent, "レビュー対象の変更");
+  assert.equal(review.querySelector(".wf-section-head small").textContent, "承認した変更のみファイルに反映されます");
+  assert.equal(review.querySelector("#wfLoadDiff").textContent, "作業ツリー差分");
   assert.equal(review.querySelector(".wf-empty").textContent, "レビュー待ちの変更はありません");
 
   // Verify the observer also handles Home recent-action labels and changing counts.

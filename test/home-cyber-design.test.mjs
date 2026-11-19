@@ -30,9 +30,9 @@ test("Home keeps a real two-column launcher and uses the canonical app registry"
     onLaunchApp: id => launched.push(id),
     onPreviewApp: (id, message) => previews.push({ id, message })
   });
-  assert.match(root.textContent, /作業スペース/);
+  assert.match(root.textContent, /Workspace/);
   assert.equal(root.querySelectorAll("[data-home-app]").length, 13);
-  assert.equal(root.querySelector("[data-home-app-count]").textContent, "13件");
+  assert.equal(root.querySelector("[data-home-app-count]").textContent, "13 apps");
   assert.equal(root.querySelector("[data-home-app-grid]").children.length, 13);
   assert.equal(root.querySelector('[data-home-app="chat"]').getAttribute("type"), "button");
   assert.equal(root.querySelector("[data-home-health]").dataset.state, "checking", "never assume online");
@@ -42,7 +42,7 @@ test("Home keeps a real two-column launcher and uses the canonical app registry"
   assert.deepEqual(launched, ["terminal"]);
   assert.equal(previews.length, 1);
   assert.equal(previews[0].id, "knowledge");
-  assert.match(root.querySelector("[data-home-recent]").textContent, /ターミナル/);
+  assert.match(root.querySelector("[data-home-recent]").textContent, /Terminal/);
   dom.window.close();
 });
 
@@ -62,7 +62,7 @@ test("search, Ctrl+K and Escape filter existing real app launchers", async () =>
   input.value = "terminal";
   input.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
   assert.equal(root.querySelectorAll("[data-home-app]:not(.hidden)").length, 1);
-  assert.equal(root.querySelector("[data-home-app-count]").textContent, "1件");
+  assert.equal(root.querySelector("[data-home-app-count]").textContent, "1 apps");
   root.querySelector('[data-home-app="terminal"]').click();
   assert.deepEqual(launched, ["terminal"]);
   dom.window.document.dispatchEvent(new dom.window.KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));

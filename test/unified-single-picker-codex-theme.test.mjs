@@ -8,7 +8,10 @@ const source = async name => readFile(new URL("../src/" + name, import.meta.url)
 
 async function navigator() {
   const sourceText = await source("unified-workspace-nav.ts");
-  const clean = sourceText.replace(/import "\.\/unified-workspace-(?:nav|chat)\.css";/g, "");
+  const clean = sourceText
+    .replace(/import "\.\/unified-workspace-(?:nav|chat)\.css";/g, "")
+    .replace(/from "\.\/i18n";/g, `from ${JSON.stringify(new URL("../src/i18n-core.mjs", import.meta.url).href)};`)
+    .replace(/from "\.\/feature-flags\.mjs";/g, `from ${JSON.stringify(new URL("../src/feature-flags.mjs", import.meta.url).href)};`);
   const js = await transform(clean, { loader: "ts", format: "esm", target: "es2022" });
   const uri = "data:text/javascript;base64," + Buffer.from(js.code).toString("base64");
   return (await import(uri)).mountTaskFirstWorkspace;

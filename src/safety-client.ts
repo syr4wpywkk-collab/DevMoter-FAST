@@ -1,3 +1,5 @@
+import { t, translateServerMessage } from "./i18n";
+
 export type GuardFinding = {
   code: string;
   severity: "warn" | "block";
@@ -50,7 +52,13 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body)
   });
   const payload = await response.json().catch(() => ({})) as T & { error?: string };
-  if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+  if (!response.ok) {
+    throw new Error(
+      payload.error
+        ? translateServerMessage(payload.error)
+        : t("common.httpError", { status: response.status })
+    );
+  }
   return payload;
 }
 
@@ -103,11 +111,17 @@ export async function rememberPermission(
     })
   });
   const payload = await response.json().catch(() => ({})) as { error?: string };
-  if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+  if (!response.ok) {
+    throw new Error(
+      payload.error
+        ? translateServerMessage(payload.error)
+        : t("common.httpError", { status: response.status })
+    );
+  }
 }
 
 export function guardMessage(result: GuardResult) {
-  return result.findings.map(item => `• ${item.message}`).join("\n");
+  return result.findings.map(item => `• ${translateServerMessage(item.message)}`).join("\n");
 }
 
 export function loopMessage(result: LoopResult) {
@@ -115,5 +129,5 @@ export function loopMessage(result: LoopResult) {
     .slice(-6)
     .map(item => `• ${item.tool}: ${item.action}`)
     .join("\n");
-  return [result.reason || "Repeated action detected.", recent].filter(Boolean).join("\n");
+  return [result.reason ? translateServerMessage(result.reason) : t("safety.repeatedActionDetected"), recent].filter(Boolean).join("\n");
 }

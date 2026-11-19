@@ -3,6 +3,7 @@ import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import { join } from "node:path";
 import { expectedRequestOrigin } from "./auth.mjs";
+import { createClientIpResolver, parseTrustedProxies } from "./auth-guard.mjs";
 import {
   createHash,
   createPrivateKey,
@@ -10,10 +11,21 @@ import {
   randomBytes,
   randomInt,
   randomUUID,
-  sign
+  sign,
+  timingSafeEqual
 } from "node:crypto";
 
+// Pairing codes are 6-digit numbers (900,000 values, 100000..999999) valid for
+// PAIRING_TTL_MS (5 minutes). Failed claim attempts are throttled per caller IP
+// (MAX_PAIRING_ATTEMPTS = 5 failed guesses per 5-minute PAIRING_CLAIM_WINDOW_MS)
+// with a global cap of MAX_PAIRING_CLAIM_CALLERS (256) distinct failing callers
+// per window, bounding total brute-force guesses across all sources without
+// ever deleting or invalidating active pairing codes on failed guesses.
 const PAIRING_TTL_MS = 5 * 60 * 1000;
+const MAX_ACTIVE_PAIRINGS = 16;
+const MAX_PAIRING_ATTEMPTS = 5;
+const PAIRING_CLAIM_WINDOW_MS = PAIRING_TTL_MS;
+const MAX_PAIRING_CLAIM_CALLERS = 256;
 const VISIBLE_TTL_MS = 45 * 1000;
 const NOTIFY_DEDUPE_MS = 30 * 1000;
 const DEVICE_COOKIE_NAME = "devmoter_device";
@@ -25,6 +37,17 @@ function base64url(buffer) {
 
 function sha256(value) {
   return createHash("sha256").update(String(value)).digest("hex");
+}
+
+function safeEqualHex(left, right) {
+  if (typeof left !== "string" || typeof right !== "string" || left.length !== 64 || right.length !== 64) {
+    return false;
+  }
+  try {
+    return timingSafeEqual(Buffer.from(left, "hex"), Buffer.from(right, "hex"));
+  } catch {
+    return false;
+  }
 }
 
 // Build identifiers come from the environment, so only echo values that look
@@ -185,12 +208,16 @@ export function createSystemFeatures({
   host = "127.0.0.1",
   version = "0.0.0",
   pushSender = sendEmptyPush,
-  onDeviceRevoked = async () => {}
+  onDeviceRevoked = async () => {},
+  trustedProxies = parseTrustedProxies(process.env.DEVMOTER_TRUST_PROXY),
+  now = () => Date.now()
 }) {
   const devicesFile = join(stateDir, "devices.json");
   const subscriptionsFile = join(stateDir, "push-subscriptions.json");
   const vapidFile = join(stateDir, "vapid.json");
   const pairings = new Map();
+  const claimAttempts = new Map();
+  const clientIp = createClientIpResolver({ trustedProxies });
   const pendingNotifications = new Map();
   const recentNotifications = new Map();
   let deviceMutationQueue = Promise.resolve();
@@ -226,7 +253,7 @@ export function createSystemFeatures({
 
     const tokenHash = sha256(token);
     const devices = await readDevices();
-    const index = devices.findIndex(device => device.tokenHash === tokenHash && !device.revokedAt);
+    const index = devices.findIndex(device => safeEqualHex(device.tokenHash, tokenHash) && !device.revokedAt);
     if (index < 0) {
       if (optional) return null;
       throw Object.assign(new Error("Invalid or revoked device token"), { status: 401 });
@@ -271,6 +298,15 @@ export function createSystemFeatures({
     return issueDevice(label, { requireNoActive: true });
   }
 
+  function deviceSummary(device, currentId = null) {
+    const { tokenHash: _tokenHash, ...publicDevice } = device;
+    return {
+      ...publicDevice,
+      lastUsedAt: recentDeviceUse.get(device.id) || device.lastUsedAt,
+      current: Boolean(currentId && device.id === currentId)
+    };
+  }
+
   async function listDevices(req) {
     const current = await authenticate(req);
     const devices = await readDevices();
@@ -278,51 +314,92 @@ export function createSystemFeatures({
       currentDeviceId: current.id,
       devices: devices
         .filter(device => !device.revokedAt)
-        .map(({ tokenHash, ...device }) => ({
-          ...device,
-          lastUsedAt: recentDeviceUse.get(device.id) || device.lastUsedAt,
-          current: device.id === current.id
-        }))
+        .map(device => deviceSummary(device, current.id))
     };
   }
 
-  async function createPairing(req) {
-    const current = await authenticate(req);
+  async function authenticateForRecovery(req, allowOwnerRecovery = false) {
+    try {
+      return await authenticate(req);
+    } catch (error) {
+      if (allowOwnerRecovery && error?.status !== 503) return null;
+      throw error;
+    }
+  }
+
+  async function createPairing(req, { allowOwnerRecovery = false } = {}) {
+    const current = await authenticateForRecovery(req, allowOwnerRecovery);
+    const currentNow = now();
+    for (const [existingId, existing] of pairings) {
+      if (existing.expiresAt <= currentNow) pairings.delete(existingId);
+    }
+    while (pairings.size >= MAX_ACTIVE_PAIRINGS) {
+      const oldestKey = pairings.keys().next().value;
+      if (!oldestKey) break;
+      pairings.delete(oldestKey);
+    }
     const code = String(randomInt(100000, 1000000));
     const id = randomUUID();
+    const expiresAt = currentNow + PAIRING_TTL_MS;
     pairings.set(id, {
       id,
       codeHash: sha256(code),
-      approvedByDeviceId: current.id,
-      createdAt: Date.now(),
-      expiresAt: Date.now() + PAIRING_TTL_MS
+      approvedByDeviceId: current?.id || null,
+      createdAt: currentNow,
+      expiresAt
     });
-    return { pairingId: id, code, expiresAt: Date.now() + PAIRING_TTL_MS };
+    return { pairingId: id, code, expiresAt };
   }
 
-  async function claimPairing(code, label) {
-    const codeHash = sha256(String(code || "").trim());
-    const now = Date.now();
+  function pruneClaimAttempts(currentNow) {
+    for (const [key, entry] of claimAttempts) {
+      if (currentNow - entry.firstFailedAt >= PAIRING_CLAIM_WINDOW_MS) {
+        claimAttempts.delete(key);
+      }
+    }
+  }
+
+  async function claimPairing(code, label, req = null) {
+    const currentNow = now();
+    pruneClaimAttempts(currentNow);
+    const callerKey = clientIp(req);
+    const existingAttempt = claimAttempts.get(callerKey);
+    if (existingAttempt && existingAttempt.count >= MAX_PAIRING_ATTEMPTS) {
+      throw Object.assign(new Error("Too many failed pairing attempts; try again later"), { status: 429 });
+    }
+
+    const normalizedCode = String(code || "").trim();
+    const codeHash = sha256(normalizedCode);
     for (const [id, pairing] of pairings) {
-      if (pairing.expiresAt <= now) {
+      if (pairing.expiresAt <= currentNow) {
         pairings.delete(id);
         continue;
       }
-      if (pairing.codeHash !== codeHash) continue;
+      if (!safeEqualHex(pairing.codeHash, codeHash)) continue;
       pairings.delete(id);
+      claimAttempts.delete(callerKey);
       const issued = await issueDevice(label, { approvedByDeviceId: pairing.approvedByDeviceId });
       return {
         ...issued,
         approvedByDeviceId: pairing.approvedByDeviceId
       };
     }
+
+    if (existingAttempt) {
+      existingAttempt.count += 1;
+    } else {
+      if (claimAttempts.size >= MAX_PAIRING_CLAIM_CALLERS) {
+        throw Object.assign(new Error("Too many failed pairing attempts; try again later"), { status: 429 });
+      }
+      claimAttempts.set(callerKey, { count: 1, firstFailedAt: currentNow });
+    }
     throw Object.assign(new Error("Pairing code is invalid or expired"), { status: 400 });
   }
 
-  async function revokeDevice(req, deviceId) {
-    const current = await authenticate(req);
+  async function revokeDevice(req, deviceId, { allowOwnerRecovery = false } = {}) {
+    const current = await authenticateForRecovery(req, allowOwnerRecovery);
     await updateDevices(devices => {
-      if (!devices.some(device => device.id === current.id && !device.revokedAt)) {
+      if (current && !devices.some(device => device.id === current.id && !device.revokedAt)) {
         throw Object.assign(new Error("Invalid or revoked device token"), { status: 401 });
       }
       const index = devices.findIndex(device => device.id === deviceId && !device.revokedAt);
@@ -337,7 +414,7 @@ export function createSystemFeatures({
 
     const subscriptions = await readSubscriptions();
     await writeSubscriptions(subscriptions.filter(item => item.deviceId !== deviceId));
-    return { ok: true, revokedCurrentDevice: current.id === deviceId };
+    return { ok: true, revokedCurrentDevice: Boolean(current && current.id === deviceId) };
   }
 
   async function readSubscriptions() {
@@ -502,8 +579,8 @@ export function createSystemFeatures({
     return { notification: pending };
   }
 
-  async function diagnostics() {
-    const [node, git, npm, python, curl, opencode, codex, gh, tailscale, backends, projects, devices] = await Promise.all([
+  async function diagnostics(req = null, { ownerRecovery = false } = {}) {
+    const [node, git, npm, python, curl, opencode, codex, gh, tailscale, backends, projects, devices, current] = await Promise.all([
       commandStatus("node"),
       commandStatus("git"),
       commandStatus("npm"),
@@ -515,12 +592,17 @@ export function createSystemFeatures({
       commandStatus("tailscale", ["version"]),
       getBackendHealth(),
       getProjects(),
-      readDevices()
+      readDevices(),
+      req ? authenticate(req).catch(() => null) : Promise.resolve(null)
     ]);
 
     const required = { node, git, npm, python, curl, opencode, codex };
     const missing = Object.entries(required).filter(([, value]) => !value.available).map(([name]) => name);
-    const activeDevices = devices.filter(device => !device.revokedAt).length;
+    const activeDeviceList = devices
+      .filter(device => !device.revokedAt)
+      .map(device => deviceSummary(device, current?.id || null));
+    const activeDevices = activeDeviceList.length;
+    const localBootstrap = req ? isLocalBootstrapRequest(req) : false;
 
     return {
       app: {
@@ -544,6 +626,13 @@ export function createSystemFeatures({
       },
       deviceSecurity: {
         trustedDevices: activeDevices,
+        currentTrusted: Boolean(current),
+        currentDeviceId: current?.id || null,
+        localBootstrap,
+        bootstrapAvailable: localBootstrap && activeDevices === 0,
+        canIssuePairing: Boolean(current) || ownerRecovery,
+        canRevokeDevices: Boolean(current) || ownerRecovery,
+        devices: activeDeviceList,
         message: activeDevices ? "Trusted device sessions are configured." : "No trusted device session exists yet."
       },
       network: {
@@ -562,6 +651,7 @@ export function createSystemFeatures({
   return {
     authenticate,
     isDeviceActive,
+    isLocalBootstrapRequest,
     bootstrapDevice,
     listDevices,
     createPairing,

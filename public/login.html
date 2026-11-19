@@ -8,77 +8,90 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <style>
-    :root { color-scheme: light dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color:#171717; background:#f7f7f6; }
+    :root { color-scheme: light dark; font-family: "Inter", "Noto Sans JP", "Hiragino Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color:#1a211d; background:#f4f6f4; }
     * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; min-height:100dvh; display:grid; place-items:center; padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom)); background:#f7f7f6; }
+    body { margin:0; min-height:100vh; min-height:100dvh; display:grid; place-items:center; padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom)); background:#f4f6f4; }
     main { width:min(100%,380px); }
     .brand { text-align:center; margin-bottom:26px; }
-    .mark { display:grid; place-items:center; margin:0 auto 14px; width:42px; height:42px; border-radius:13px; background:#171717; color:white; font-size:22px; }
+    .mark { display:grid; place-items:center; margin:0 auto 14px; width:44px; height:44px; border-radius:13px; background:#2d6b5d; color:#ffffff; font-size:22px; }
     h1 { margin:0; font-size:23px; letter-spacing:-.045em; font-weight:680; }
-    .sub { margin:7px 0 0; color:#666; font-size:14px; }
-    .card { background:#fff; border:1px solid #e5e5e3; border-radius:18px; padding:18px; box-shadow:0 12px 36px #0000000a; }
+    .sub { margin:7px 0 0; color:#526159; font-size:14px; }
+    .card { background:#ffffff; border:1px solid #d6dfda; border-radius:18px; padding:18px; box-shadow:0 12px 36px #0000000a; }
     .providers { display:grid; gap:10px; }
-    button, input, a.action { width:100%; min-height:48px; border-radius:11px; font:inherit; }
-    button { display:flex; align-items:center; justify-content:center; gap:11px; padding:0 14px; border:1px solid #dededc; background:#fff; color:#171717; font-size:14px; font-weight:620; cursor:pointer; }
-    button:hover { background:#f5f5f4; border-color:#c6c6c3; }
+    button, input, a.action { width:100%; min-height:48px; border-radius:11px; font:inherit; font-size:16px; }
+    button { display:flex; align-items:center; justify-content:center; gap:11px; padding:0 14px; border:1px solid #c9d4ce; background:#ffffff; color:#1a211d; font-size:15px; font-weight:620; cursor:pointer; }
+    button:hover { background:#ecefeb; border-color:#aab9b1; }
     button:disabled { opacity:.58; cursor:wait; }
-    button.primary { color:#fff; background:#171717; border-color:#171717; }
-    button.primary:hover { background:#303030; }
+    button.primary { color:#ffffff; background:#2d6b5d; border-color:#2d6b5d; }
+    button.primary:hover { background:#24574b; border-color:#24574b; }
     .icon { width:18px; height:18px; flex:none; }
-    :focus-visible { outline:3px solid #7568f5; outline-offset:3px; }
-    .divider { display:flex; align-items:center; gap:12px; margin:18px 0; color:#777; font-size:12px; }
-    .divider::before,.divider::after { content:""; flex:1; height:1px; background:#e5e5e3; }
-    details { border-top:1px solid #ececea; padding-top:15px; }
-    summary { min-height:44px; display:flex; align-items:center; cursor:pointer; font-size:13px; font-weight:620; color:#444; border-radius:10px; }
-    label { display:block; margin:12px 0 6px; font-size:12px; font-weight:600; color:#555; }
-    input { padding:0 12px; border:1px solid #dededc; background:#fff; color:#171717; }
-    input:focus { outline:3px solid #7568f555; border-color:#7568f5; }
+    :focus-visible { outline:3px solid #255f53; outline-offset:3px; }
+    .divider { display:flex; align-items:center; gap:12px; margin:18px 0; color:#526159; font-size:12px; }
+    .divider::before,.divider::after { content:""; flex:1; height:1px; background:#d6dfda; }
+    details { border-top:1px solid #e1e8e4; padding-top:15px; }
+    summary { min-height:44px; display:flex; align-items:center; cursor:pointer; font-size:14px; font-weight:620; color:#33423a; border-radius:10px; }
+    label { display:block; margin:12px 0 6px; font-size:12px; font-weight:600; color:#435049; }
+    input { padding:0 12px; border:1px solid #c9d4ce; background:#ffffff; color:#1a211d; }
+    input:focus { outline:3px solid #255f5344; border-color:#255f53; }
     .recovery { margin-top:12px; }
-    .message { min-height:20px; margin:14px 2px 0; color:#656565; font-size:13px; line-height:1.45; text-align:center; }
-    .message.error { color:#b42318; }.message.ok { color:#067647; }
-    .device { margin-top:14px; padding:14px; border:1px solid #e5e5e3; border-radius:13px; background:#f8f8f7; }
+    .message { min-height:20px; margin:14px 2px 0; color:#435049; font-size:13px; line-height:1.45; text-align:center; }
+    .message.error { color:#b42318; }.message.ok { color:#1f6e4a; }
+    .device { margin-top:14px; padding:14px; border:1px solid #d6dfda; border-radius:13px; background:#f4f6f4; }
     .device[hidden], [hidden] { display:none!important; }
-    .device p { margin:0 0 10px; color:#555; font-size:13px; line-height:1.45; }
-    .code { padding:12px; border:1px dashed #aaa; border-radius:10px; background:#fff; font:750 25px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.1em; text-align:center; user-select:all; }
+    .device p { margin:0 0 10px; color:#435049; font-size:13px; line-height:1.45; }
+    .code { padding:12px; border:1px dashed #8fa096; border-radius:10px; background:#ffffff; font:750 25px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.1em; text-align:center; user-select:all; }
     .device-actions { display:grid; grid-template-columns:1fr auto; gap:8px; margin-top:10px; }
-    a.action { display:grid; place-items:center; min-height:48px; padding:0 12px; background:#171717; color:white; text-decoration:none; font-weight:650; font-size:13px; }
+    a.action { display:grid; place-items:center; min-height:48px; padding:0 12px; background:#2d6b5d; color:#ffffff; text-decoration:none; font-weight:650; font-size:14px; }
+    a.action:hover { background:#24574b; }
     .copy { width:auto; min-width:92px; }
-    .foot { margin:16px 0 0; color:#777; font-size:11px; line-height:1.55; text-align:center; }
+    .foot { margin:16px 0 0; color:#526159; font-size:12px; line-height:1.55; text-align:center; }
+    .lang-bar { display:flex; justify-content:flex-end; margin:0 0 12px; }
+    .lang-select { min-height:44px; padding:0 12px; border:1px solid #c9d4ce; border-radius:10px; background:#ffffff; color:#1a211d; font:inherit; font-size:16px; font-weight:500; cursor:pointer; }
     @media (prefers-reduced-motion: no-preference) { button, a.action { transition:background-color .15s ease,border-color .15s ease; } }
     @media (prefers-color-scheme:dark) {
-      :root { color:#f4f4f3; background:#101010; } body { background:#101010; }
-      .mark { background:#f4f4f3; color:#151515; }
-      .sub,.foot { color:#a4a4a2; }
-      .card { background:#181818; border-color:#303030; box-shadow:0 12px 36px #0005; }
-      button { color:#f3f3f3; background:#222; border-color:#3d3d3d; } button:hover { background:#2b2b2b; border-color:#565656; }
-      button.primary,a.action { color:#171717; background:#f4f4f3; border-color:#f4f4f3; } button.primary:hover { background:#ddd; }
-      .divider::before,.divider::after { background-color:#333; }
-      details { border-color:#333; }
-      summary,label { color:#c4c4c2; } input,.code { color:#f4f4f3; background:#222; border-color:#414141; }
-      .device { background:#202020; border-color:#393939; }.device p,.message { color:#b6b6b4; }
-      .message.error { color:#ff8b83; }.message.ok { color:#7ee0ad; }
+      :root { color:#ecefed; background:#191f1c; } body { background:#191f1c; }
+      .mark { background:#92c3b4; color:#191f1c; }
+      .sub,.foot,.divider { color:#b2beb8; }
+      .card { background:#232a26; border-color:#3a443f; box-shadow:0 12px 36px #0005; }
+      button { color:#ecefed; background:#29312d; border-color:#424e48; } button:hover { background:#333d38; border-color:#5b6a62; }
+      button.primary,a.action { color:#191f1c; background:#92c3b4; border-color:#92c3b4; } button.primary:hover,a.action:hover { background:#a8d2c5; border-color:#a8d2c5; }
+      :focus-visible { outline-color:#b8ddcf; }
+      input:focus { outline-color:#b8ddcf44; border-color:#b8ddcf; }
+      .divider::before,.divider::after { background-color:#36403b; }
+      details { border-color:#36403b; }
+      summary,label { color:#cad6d0; } input,.code,.lang-select { color:#ecefed; background:#29312d; border-color:#424e48; }
+      .device { background:#1e2521; border-color:#3a443f; }.device p,.message { color:#b2beb8; }
+      .message.error { color:#ee958e; }.message.ok { color:#81c995; }
     }
     @media(max-width:340px) { body { padding-left:12px; padding-right:12px; } .card { padding:14px; } }
   </style>
 </head>
 <body>
   <main>
-    <header class="brand"><div class="mark" aria-hidden="true">✦</div><h1>DevMoter FAST</h1><p class="sub">Your AI coding agents, anywhere.</p></header>
-    <section class="card" aria-label="Sign in">
+    <div class="lang-bar">
+      <select id="languageSelect" class="lang-select" data-language-select aria-label="Language">
+        <option value="ja">日本語</option>
+        <option value="en">English</option>
+        <option value="zh-Hans">简体中文</option>
+        <option value="zh-Hant">繁體中文</option>
+      </select>
+    </div>
+    <header class="brand"><div class="mark" aria-hidden="true">✦</div><h1>DevMoter FAST</h1><p class="sub" data-i18n="brandSubtitle">Your AI coding agents, anywhere.</p></header>
+    <section id="loginCard" class="card" aria-label="Sign in">
       <div id="providers" class="providers" aria-live="polite"></div>
       <div id="device" class="device" hidden>
-        <p>Enter this code on GitHub to finish signing in.</p><div id="userCode" class="code"></div>
-        <div class="device-actions"><a id="verifyLink" class="action" target="_blank" rel="noopener noreferrer">Open GitHub</a><button id="copyCode" class="copy" type="button">Copy code</button></div>
+        <p data-i18n="githubDevicePrompt">Enter this code on GitHub to finish signing in.</p><div id="userCode" class="code"></div>
+        <div class="device-actions"><a id="verifyLink" class="action" target="_blank" rel="noopener noreferrer" data-i18n="openGithub">Open GitHub</a><button id="copyCode" class="copy" type="button" data-i18n="copyCode">Copy code</button></div>
       </div>
-      <div class="divider">Other options</div>
-      <details id="recovery"><summary>Use local recovery</summary>
-        <label for="username">Username</label><input id="username" autocomplete="username" value="devmoter" />
-        <label for="password">Recovery password</label><input id="password" type="password" autocomplete="current-password" />
-        <button id="localLogin" class="recovery" type="button">Continue with recovery</button>
+      <div class="divider" data-i18n="otherOptions">Other options</div>
+      <details id="recovery"><summary id="recoverySummary" data-i18n="useLocalRecovery">Use local recovery</summary>
+        <label for="username" data-i18n="usernameLabel">Username</label><input id="username" autocomplete="username" value="devmoter" />
+        <label for="password" data-i18n="recoveryPasswordLabel">Recovery password</label><input id="password" type="password" autocomplete="current-password" />
+        <button id="localLogin" class="recovery" type="button" data-i18n="continueRecovery">Continue with recovery</button>
       </details>
       <p id="message" class="message" role="status" aria-live="polite"></p>
     </section>
-    <p class="foot">Your session stays signed in securely on this device.</p>
+    <p class="foot" data-i18n="sessionFoot">Your session stays signed in securely on this device.</p>
   </main>
   <script src="/login.js" defer></script>
 </body>

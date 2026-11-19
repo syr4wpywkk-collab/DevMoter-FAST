@@ -16,9 +16,11 @@ html[data-devmoter-theme="light"] {
   --accent-glow: transparent;
   --text-primary: #1e2924;
   --text-secondary: #526159;
-  --text-muted: #68766f;
-  --text-dim: #7a867f;
+  --text-muted: #56645d;
+  --text-dim: #5e6d65;
   --user-bubble: #edf2ef;
+  --on-accent: #f4f6f4;
+  --surface-overlay: rgba(18, 25, 21, .42);
   --status-error: #a32e22;
   --status-warning: #795506;
   --status-success: #28643e;
@@ -26,8 +28,9 @@ html[data-devmoter-theme="light"] {
 
 html, body { background: var(--canvas-base); color: var(--text-primary); }
 body { font-family: var(--font-ui); }
-:is(button, input, textarea, select):focus-visible {
-  outline-color: var(--border-focus);
+:is(button, input, textarea, select, a, summary):focus-visible {
+  outline: var(--focus-ring-width, 2px) solid var(--border-focus);
+  outline-offset: var(--focus-ring-offset, 2px);
 }
 :is(input, textarea, select) {
   accent-color: var(--accent);
@@ -42,13 +45,15 @@ body.codex-mode, body.opencode-mode, body.api-mode { background: var(--canvas-ba
   --cx-muted: var(--text-secondary);
   --cx-border: var(--border-hairline);
   font-family: var(--font-ui);
-  color-scheme: dark;
+  color-scheme: inherit;
 }
+html[data-devmoter-theme="dark"] .cx-app { color-scheme: dark; }
+html[data-devmoter-theme="light"] .cx-app { color-scheme: light; }
 .cx-app :is(.cx-topbar, .cx-composer, .cx-message.system) { border-color: var(--border-hairline); }
 .cx-app :is(.cx-composer, .cx-message.system) { background: var(--surface-card); }
 .cx-app :is(button, a, input, select, textarea):focus-visible {
-  outline: 1px solid var(--border-focus);
-  outline-offset: 1px;
+  outline: var(--focus-ring-width, 2px) solid var(--border-focus);
+  outline-offset: var(--focus-ring-offset, 2px);
 }
 .cx-app .cx-message.user { border-radius: var(--radius-panel); background: var(--surface-card); }
 .cx-app .cx-send-button { background: var(--accent); color: var(--canvas-base); }
@@ -122,8 +127,8 @@ html[data-devmoter-theme="light"] body.dm-task-first-enabled {
   --dw-chat-text: var(--text-primary);
   --dw-chat-muted: var(--text-secondary);
   --dw-chat-accent: var(--accent);
-  --dw-chat-accent-soft: var(--accent-glow);
-  --dw-chat-send-text: #fff;
+  --dw-chat-accent-soft: var(--surface-hover);
+  --dw-chat-send-text: var(--on-accent);
   --dw-chat-code: var(--surface-hover);
 }
 
@@ -209,7 +214,7 @@ body.dm-task-first-enabled { --dm-sheet-top: calc(var(--dw-top-height) + 8px); }
   box-shadow: none;
 }
 .dm-sheet-head .dm-sheet-head-primary {
-  min-height: 36px;
+  min-height: 44px;
   margin: 0 4px;
   padding: 0 14px;
   border: 1px solid var(--accent);

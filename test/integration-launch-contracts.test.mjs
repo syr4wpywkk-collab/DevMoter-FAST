@@ -72,5 +72,5 @@ test("desktop launcher reports unsupported platforms and missing terminals", asy
 
 test("integration UI surfaces launch failures instead of silently swallowing them", async () => {
   const source = await readFile(new URL("../src/integrations.ts", import.meta.url), "utf8");
-  assert.match(source, /showNotice\(error instanceof Error \? error\.message : String\(error\), "error"\)/);
+  assert.match(source, /showNotice\(translateServerMessage\(error instanceof Error \? error\.message : String\(error\)\), "error"\)/);
 });

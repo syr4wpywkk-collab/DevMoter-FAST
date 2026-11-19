@@ -1,5 +1,6 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
+import { t } from "../i18n";
 
 export type ChatBackend = "opencode" | "codex" | "api";
 
@@ -15,7 +16,7 @@ type ShortcutsProps = {
 
 function BackendShortcuts({ onSelect }: ShortcutsProps) {
   return (
-    <nav className="dm-home-quick-switch" aria-label="チャット環境の切り替え">
+    <nav className="dm-home-quick-switch" aria-label={t("home.backendSwitchAria")}>
       <div className="dm-home-shortcut-grid">
         {WORKSPACES.map(workspace => (
           <button
@@ -23,7 +24,7 @@ function BackendShortcuts({ onSelect }: ShortcutsProps) {
             type="button"
             key={workspace.id}
             onClick={() => onSelect(workspace.id)}
-            aria-label={`${workspace.title}のワークスペースを開く`}
+            aria-label={t("home.openBackendAria", { backend: workspace.title })}
           >
             <strong>{workspace.title}</strong>
             <span aria-hidden="true">↗</span>

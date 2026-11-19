@@ -49,8 +49,8 @@ test("Integrations has no Project card or intro copy, one action column per card
       assert.equal(card.querySelectorAll(".ix-actions").length, 1, "one action column");
       assert.ok(card.querySelector(".ix-description").textContent.trim(), "card description stays");
     }
-    assert.deepEqual([...cards[0].querySelectorAll(".ix-actions button")].map(b => b.textContent.trim()), ["PCで開く", "Remote停止", "Remoteを開く", "QR表示"]);
-    assert.deepEqual([...cards[1].querySelectorAll(".ix-actions button")].map(b => b.textContent.trim()), ["PCで開く", "Claude Code Web", "QR表示"]);
+    assert.deepEqual([...cards[0].querySelectorAll(".ix-actions button")].map(b => b.textContent.trim()), ["Open on PC", "Stop Remote", "Open Remote", "Show QR"]);
+    assert.deepEqual([...cards[1].querySelectorAll(".ix-actions button")].map(b => b.textContent.trim()), ["Open on PC", "Claude Code Web", "Show QR"]);
     const pill = cards[0].querySelector(".ix-pill");
     assert.equal(pill.title, "Remote: " + longRemote, "full name stays available when truncated");
     cards[1].querySelector('[data-action="launch"]').click();
@@ -62,7 +62,9 @@ test("Integrations has no Project card or intro copy, one action column per card
   }
 });
 
-test("Qwen Code card launches the local CLI in the current project", async () => {
+test("Qwen Code card is hidden behind QWEN_UI_ENABLED while its integration handler stays intact", async () => {
+  const { QWEN_UI_ENABLED } = await import("../src/feature-flags.mjs");
+  assert.equal(QWEN_UI_ENABLED, false);
   const { mountIntegrations } = await loadIntegrations();
   const dom = new JSDOM("<div id='root'></div>", { url: "https://devmoter.test/" });
   const prior = { window: globalThis.window, document: globalThis.document, localStorage: globalThis.localStorage, fetch: globalThis.fetch };
@@ -72,6 +74,7 @@ test("Qwen Code card launches the local CLI in the current project", async () =>
     fetch: async (path, init = {}) => {
       if (path === "/api/projects") return { ok: true, json: async () => ({ projects: [{ id: "p1", name: "First", path: "/work/first" }] }) };
       if (path === "/api/integrations/status") return { ok: true, json: async () => ({ integrations: [
+        { id: "antigravity", name: "Antigravity", installed: true },
         { id: "qwen", name: "Qwen Code", installed: true }
       ] }) };
       if (String(path).endsWith("/launch")) { launches.push(String(path)); return { ok: true, json: async () => ({ terminal: "tmux" }) }; }
@@ -79,14 +82,15 @@ test("Qwen Code card launches the local CLI in the current project", async () =>
     }
   });
   try {
+    dom.window.localStorage.setItem("devmoter-enabled-integrations", JSON.stringify(["antigravity", "qwen"]));
     const root = dom.window.document.getElementById("root");
     await mountIntegrations(root).refresh();
-    const card = root.querySelector(".ix-card");
-    assert.ok(!card.classList.contains("disabled"), "enabled by default");
-    assert.deepEqual([...card.querySelectorAll(".ix-actions button")].map(b => b.textContent.trim()), ["PCで開く"]);
-    card.querySelector('[data-action="launch"]').click();
-    await new Promise(resolve => setTimeout(resolve, 0));
-    assert.deepEqual(launches, ["/api/integrations/qwen/launch"]);
+    const cards = [...root.querySelectorAll(".ix-card")];
+    assert.equal(cards.length, 1, "only visible integrations render");
+    assert.doesNotMatch(root.textContent, /Qwen Code/);
+    assert.equal(root.querySelector('[data-id="qwen"]'), null);
+    assert.deepEqual(JSON.parse(dom.window.localStorage.getItem("devmoter-enabled-integrations")), ["antigravity", "qwen"]);
+    assert.deepEqual(launches, []);
   } finally {
     Object.assign(globalThis, prior);
     dom.window.close();

@@ -19,15 +19,68 @@ import { type SubagentRun } from "./subagent-runtime.mjs";
 import { HostAgentRuntime } from "./host-agent-runtime";
 import {
   AGENT_ROLES,
-  describeModelRoutes,
   normalizeModelRoutes,
   resolveRoleModel,
   type AgentRole,
   type ModelRoute
 } from "./model-routing.mjs";
+import { formatNumber, t, translateServerMessage } from "./i18n";
 
 const CUSTOM_MODES_KEY = "devmoter-agent-custom-modes";
 const MODEL_ROUTES_KEY = "devmoter-agent-model-routes";
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+const ROLE_KEYS: Record<string, string> = {
+  planner: "agentConsole.role.planner",
+  executor: "agentConsole.role.executor",
+  reviewer: "agentConsole.role.reviewer",
+  vision: "agentConsole.role.vision",
+  summarizer: "agentConsole.role.summarizer"
+};
+
+function roleLabel(role: string) {
+  return ROLE_KEYS[role] ? t(ROLE_KEYS[role]) : role;
+}
+
+function localizedModeName(mode: ModeConfig) {
+  if (!mode.custom && ["debug", "review", "orchestrator"].includes(mode.id)) {
+    return t(`agentConsole.modeName.${mode.id}`);
+  }
+  return mode.name;
+}
+
+function localizedPolicyText(mode: ModeConfig) {
+  const builtinInstCount: Record<string, { prefix: string; count: number }> = {
+    debug: { prefix: "agentConsole.builtinDebugInst", count: 6 },
+    review: { prefix: "agentConsole.builtinReviewInst", count: 6 },
+    orchestrator: { prefix: "agentConsole.builtinOrchInst", count: 5 }
+  };
+  const meta = !mode.custom ? builtinInstCount[mode.id] : undefined;
+  const instructions = meta
+    ? Array.from({ length: meta.count }, (_, index) => t(`${meta.prefix}${index + 1}`))
+    : mode.instructions;
+  const allowLabel = mode.tools.allow.join(", ") || t("agentConsole.none");
+  const denyLabel = mode.tools.deny.join(", ") || t("agentConsole.none");
+  const mutationLabel = mode.mutationPolicy === "read-only-until-explicit-transition"
+    ? t("agentConsole.mutationReadOnlyUntilTransition")
+    : t("agentConsole.mutationApprovalRequired");
+  return [
+    t("agentConsole.policyTitle", { name: localizedModeName(mode) }),
+    ...instructions.map((line, index) => `${index + 1}. ${line}`),
+    mode.provider ? t("agentConsole.policyPreferredProvider", { provider: mode.provider }) : "",
+    mode.model ? t("agentConsole.policyPreferredModel", { model: mode.model }) : "",
+    t("agentConsole.policyAllowedTools", { tools: allowLabel }),
+    t("agentConsole.policyDeniedTools", { tools: denyLabel }),
+    t("agentConsole.policyMutation", { policy: mutationLabel })
+  ].filter(Boolean).join("\n");
+}
 
 function visible<T extends HTMLElement>(element: T | null): element is T {
   if (!element) return false;
@@ -51,8 +104,10 @@ function dispatchToActiveComposer(prompt: string) {
   ];
 
   const target = candidates.find(candidate => visible(candidate.input) && visible(candidate.form));
-  if (!target?.input || !target.form || !target.send) throw new Error("Active DevMoter composer was not found");
-  if (target.input.disabled || target.send.disabled) throw new Error(`${target.backend} is offline or reconnecting`);
+  if (!target?.input || !target.form || !target.send) throw new Error(t("agentConsole.composerNotFound"));
+  if (target.input.disabled || target.send.disabled) {
+    throw new Error(t("agentConsole.backendOffline", { backend: target.backend }));
+  }
 
   target.input.value = prompt;
   target.input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -95,11 +150,11 @@ function persistModelRoutes(routes: ModelRoute[]) {
   localStorage.setItem(MODEL_ROUTES_KEY, JSON.stringify(routes));
 }
 
-// One line per built-in mode; the full policy stays under 詳細.
-const MODE_SUMMARIES: Record<string, string> = {
-  debug: "Reproduce a failure and propose the smallest fix",
-  review: "Review a diff and report risks without editing",
-  orchestrator: "Split a large task and delegate after approval"
+// One line per built-in mode; the full policy stays under Details.
+const MODE_SUMMARY_KEYS: Record<string, string> = {
+  debug: "agentConsole.modeSummary.debug",
+  review: "agentConsole.modeSummary.review",
+  orchestrator: "agentConsole.modeSummary.orchestrator"
 };
 
 function parseToolGroups(value: string) {
@@ -120,96 +175,96 @@ export function mountAgentConsole() {
   launcher.id = "devmoterAgentLauncher";
   launcher.className = "devmoter-agent-launcher";
   launcher.type = "button";
-  launcher.textContent = "Agent mode";
+  launcher.textContent = t("agentConsole.launcherLabel");
 
   const panel = document.createElement("section");
   // Shared sheet frame + header (zcode-theme.css / sheet-header.mjs).
   panel.className = "devmoter-agent-panel dm-sheet-frame hidden";
   panel.setAttribute("role", "dialog");
-  panel.setAttribute("aria-label", "Agent mode control");
+  panel.setAttribute("aria-label", t("agentConsole.panelAria"));
   panel.innerHTML = `
     <div class="devmoter-agent-body">
     <div class="devmoter-agent-field">
-      <label for="devmoterAgentMode">Mode</label>
+      <label for="devmoterAgentMode">${escapeHtml(t("agentConsole.modeLabel"))}</label>
       <select id="devmoterAgentMode"></select>
       <small id="devmoterAgentModeSummary" class="devmoter-agent-summary"></small>
     </div>
     <details class="devmoter-agent-details">
-      <summary>Details</summary>
+      <summary>${escapeHtml(t("agentConsole.detailsSummary"))}</summary>
       <pre id="devmoterAgentPolicy" class="devmoter-agent-policy"></pre>
     </details>
     <div class="devmoter-agent-mode-tools">
-      <button id="devmoterAgentNewMode" type="button">＋ Custom mode</button>
-      <button id="devmoterAgentEditMode" type="button">Edit selected</button>
+      <button id="devmoterAgentNewMode" type="button">${escapeHtml(t("agentConsole.newModeBtn"))}</button>
+      <button id="devmoterAgentEditMode" type="button">${escapeHtml(t("agentConsole.editModeBtn"))}</button>
     </div>
     <section id="devmoterAgentEditor" class="devmoter-agent-editor hidden">
-      <div class="devmoter-agent-field"><label>Mode id</label><input id="devmoterModeId" type="text" placeholder="security-review" /></div>
-      <div class="devmoter-agent-field"><label>Name</label><input id="devmoterModeName" type="text" placeholder="Security review" /></div>
-      <div class="devmoter-agent-field"><label>Instructions (one per line)</label><textarea id="devmoterModeInstructions"></textarea></div>
+      <div class="devmoter-agent-field"><label>${escapeHtml(t("agentConsole.modeIdLabel"))}</label><input id="devmoterModeId" type="text" placeholder="security-review" /></div>
+      <div class="devmoter-agent-field"><label>${escapeHtml(t("agentConsole.modeNameLabel"))}</label><input id="devmoterModeName" type="text" placeholder="${escapeHtml(t("agentConsole.modeNamePlaceholder"))}" /></div>
+      <div class="devmoter-agent-field"><label>${escapeHtml(t("agentConsole.instructionsLabel"))}</label><textarea id="devmoterModeInstructions"></textarea></div>
       <div class="devmoter-agent-grid">
-        <div class="devmoter-agent-field"><label>Preferred provider</label><input id="devmoterModeProvider" type="text" placeholder="optional" /></div>
-        <div class="devmoter-agent-field"><label>Preferred model</label><input id="devmoterModeModel" type="text" placeholder="optional" /></div>
+        <div class="devmoter-agent-field"><label>${escapeHtml(t("agentConsole.preferredProviderLabel"))}</label><input id="devmoterModeProvider" type="text" placeholder="${escapeHtml(t("agentConsole.optionalPlaceholder"))}" /></div>
+        <div class="devmoter-agent-field"><label>${escapeHtml(t("agentConsole.preferredModelLabel"))}</label><input id="devmoterModeModel" type="text" placeholder="${escapeHtml(t("agentConsole.optionalPlaceholder"))}" /></div>
       </div>
-      <div class="devmoter-agent-field"><label>Allowed tool groups</label><input id="devmoterModeAllow" type="text" value="read" placeholder="read, diagnostics, git" /></div>
-      <div class="devmoter-agent-field"><label>Denied tool groups</label><input id="devmoterModeDeny" type="text" placeholder="files, network" /></div>
-      <div class="devmoter-agent-field"><label>Mutation policy</label><select id="devmoterModeMutation"><option value="approval-required">Approval required</option><option value="read-only-until-explicit-transition">Read-only until explicit transition</option></select></div>
+      <div class="devmoter-agent-field"><label>${escapeHtml(t("agentConsole.allowedToolsLabel"))}</label><input id="devmoterModeAllow" type="text" value="read" placeholder="read, diagnostics, git" /></div>
+      <div class="devmoter-agent-field"><label>${escapeHtml(t("agentConsole.deniedToolsLabel"))}</label><input id="devmoterModeDeny" type="text" placeholder="files, network" /></div>
+      <div class="devmoter-agent-field"><label>${escapeHtml(t("agentConsole.mutationPolicyLabel"))}</label><select id="devmoterModeMutation"><option value="approval-required">${escapeHtml(t("agentConsole.mutationApprovalRequired"))}</option><option value="read-only-until-explicit-transition">${escapeHtml(t("agentConsole.mutationReadOnlyUntilTransition"))}</option></select></div>
       <div class="devmoter-agent-mode-tools">
-        <button id="devmoterModeSave" type="button">Save mode</button>
-        <button id="devmoterModeDelete" type="button">Delete</button>
+        <button id="devmoterModeSave" type="button">${escapeHtml(t("agentConsole.saveModeBtn"))}</button>
+        <button id="devmoterModeDelete" type="button">${escapeHtml(t("agentConsole.deleteBtn"))}</button>
       </div>
     </section>
     <details class="devmoter-model-routing">
-      <summary>Role model routing</summary>
+      <summary>${escapeHtml(t("agentConsole.roleRoutingSummary"))}</summary>
       <pre id="devmoterModelRoutePreview" class="devmoter-agent-policy"></pre>
       <div id="devmoterModelRouteRows"></div>
-      <button id="devmoterModelRoutesSave" class="devmoter-agent-secondary-run" type="button">Save role models</button>
+      <button id="devmoterModelRoutesSave" class="devmoter-agent-secondary-run" type="button">${escapeHtml(t("agentConsole.saveRoleModelsBtn"))}</button>
     </details>
     <div class="devmoter-agent-field">
-      <label for="devmoterAgentTask">Task</label>
-      <textarea id="devmoterAgentTask" placeholder="Describe the task"></textarea>
+      <label for="devmoterAgentTask">${escapeHtml(t("agentConsole.taskLabel"))}</label>
+      <textarea id="devmoterAgentTask" placeholder="${escapeHtml(t("agentConsole.taskPlaceholder"))}"></textarea>
     </div>
     <section id="devmoterOrchestrationPreview" class="devmoter-orchestration-preview hidden">
-      <strong>Decomposition preview</strong>
+      <strong>${escapeHtml(t("agentConsole.decompositionPreviewHeading"))}</strong>
       <div id="devmoterOrchestrationChildren"></div>
       <div class="devmoter-fleet-launch">
-        <label>Concurrency <select id="devmoterFleetConcurrency"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
-        <button id="devmoterFleetLaunch" type="button">Approve & launch Agent Fleet</button>
+        <label>${escapeHtml(t("agentConsole.concurrencyLabel"))} <select id="devmoterFleetConcurrency"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
+        <button id="devmoterFleetLaunch" type="button">${escapeHtml(t("agentConsole.approveLaunchFleetBtn"))}</button>
       </div>
-      <button id="devmoterOrchestrationApprove" class="devmoter-agent-run" type="button">Approve & send plan to active chat</button>
+      <button id="devmoterOrchestrationApprove" class="devmoter-agent-run" type="button">${escapeHtml(t("agentConsole.approveSendPlanBtn"))}</button>
     </section>
-    <button id="devmoterAgentRun" class="devmoter-agent-run" type="button">Run in active chat</button>
-    <button id="devmoterSubagentRun" class="devmoter-agent-secondary-run" type="button">Run as subagent</button>
+    <button id="devmoterAgentRun" class="devmoter-agent-run" type="button">${escapeHtml(t("agentConsole.runActiveChatBtn"))}</button>
+    <button id="devmoterSubagentRun" class="devmoter-agent-secondary-run" type="button">${escapeHtml(t("agentConsole.runSubagentBtn"))}</button>
     <section id="devmoterSubagentRuns" class="devmoter-subagent-runs hidden">
       <div class="devmoter-fleet-dashboard-head">
-        <strong>Agent Fleet dashboard</strong>
-        <span id="devmoterSubagentSummary">0 agents</span>
+        <strong>${escapeHtml(t("agentConsole.fleetDashboardHeading"))}</strong>
+        <span id="devmoterSubagentSummary">${escapeHtml(t("agentConsole.zeroAgents"))}</span>
       </div>
       <div id="devmoterSubagentList"></div>
     </section>
     <section id="devmoterSecondOpinionComposer" class="devmoter-second-opinion-composer hidden">
-      <strong>Ask for a second opinion</strong>
+      <strong>${escapeHtml(t("agentConsole.secondOpinionHeading"))}</strong>
       <small id="devmoterSecondOpinionTarget"></small>
       <div class="devmoter-second-opinion-share">
-        <label><input id="devmoterOpinionShareTask" type="checkbox" checked /> Share task</label>
-        <label><input id="devmoterOpinionShareOutput" type="checkbox" checked /> Share current output</label>
-        <label><input id="devmoterOpinionShareError" type="checkbox" /> Share error details</label>
+        <label><input id="devmoterOpinionShareTask" type="checkbox" checked /> ${escapeHtml(t("agentConsole.shareTask"))}</label>
+        <label><input id="devmoterOpinionShareOutput" type="checkbox" checked /> ${escapeHtml(t("agentConsole.shareOutput"))}</label>
+        <label><input id="devmoterOpinionShareError" type="checkbox" /> ${escapeHtml(t("agentConsole.shareError"))}</label>
       </div>
-      <textarea id="devmoterOpinionQuestion">Review the shared work independently. State agreements, disagreements, risks, and recommended next steps.</textarea>
+      <textarea id="devmoterOpinionQuestion">${escapeHtml(t("agentConsole.opinionQuestionDefault"))}</textarea>
       <div class="devmoter-agent-mode-tools">
-        <button id="devmoterOpinionLaunch" type="button">Ask reviewer</button>
-        <button id="devmoterOpinionClose" type="button">Cancel</button>
+        <button id="devmoterOpinionLaunch" type="button">${escapeHtml(t("agentConsole.askReviewerBtn"))}</button>
+        <button id="devmoterOpinionClose" type="button">${escapeHtml(t("agentConsole.cancelBtn"))}</button>
       </div>
     </section>
     <section id="devmoterSecondOpinionRuns" class="devmoter-subagent-runs hidden">
-      <div class="devmoter-fleet-dashboard-head"><strong>Second opinions</strong><span>separate results</span></div>
+      <div class="devmoter-fleet-dashboard-head"><strong>${escapeHtml(t("agentConsole.secondOpinionsHeading"))}</strong><span>${escapeHtml(t("agentConsole.separateResults"))}</span></div>
       <div id="devmoterSecondOpinionList"></div>
     </section>
     <p id="devmoterAgentStatus" class="devmoter-agent-status" role="status" aria-live="polite"></p>
     </div>
   `;
   const head = createSheetHeader(document, {
-    title: "Agent mode",
-    subtitle: "Runs through the normal DevMoter approval flow.",
+    title: t("agentConsole.sheetTitle"),
+    subtitle: t("agentConsole.sheetSubtitle"),
     titleId: "devmoterAgentTitle"
   });
   panel.setAttribute("aria-labelledby", "devmoterAgentTitle");
@@ -259,7 +314,15 @@ export function mountAgentConsole() {
   const opinionList = panel.querySelector<HTMLDivElement>("#devmoterSecondOpinionList")!;
 
   function renderModelRouting() {
-    modelRoutePreview.textContent = describeModelRoutes(modelRoutes);
+    const normalized = normalizeModelRoutes(modelRoutes);
+    modelRoutePreview.textContent = normalized.length
+      ? [
+        t("agentConsole.roleRoutesHeader"),
+        ...normalized.map(route =>
+          `- ${roleLabel(route.role)} -> ${route.provider ? `${route.provider}/` : ""}${route.model} [${route.capabilities.join(", ")}]`
+        )
+      ].join("\n")
+      : t("agentConsole.roleDefaultsLine");
     modelRouteRows.replaceChildren();
     for (const role of AGENT_ROLES) {
       const route = modelRoutes.find(item => item.role === role);
@@ -267,10 +330,10 @@ export function mountAgentConsole() {
       row.className = "devmoter-model-route-row";
       row.dataset.role = role;
       row.innerHTML = `
-        <strong>${role}</strong>
-        <input data-route-model type="text" placeholder="backend default" />
-        <input data-route-provider type="text" placeholder="provider (optional)" />
-        <input data-route-capabilities type="text" placeholder="text, vision…" />
+        <strong>${escapeHtml(roleLabel(role))}</strong>
+        <input data-route-model type="text" placeholder="${escapeHtml(t("agentConsole.routeModelPlaceholder"))}" />
+        <input data-route-provider type="text" placeholder="${escapeHtml(t("agentConsole.routeProviderPlaceholder"))}" />
+        <input data-route-capabilities type="text" placeholder="${escapeHtml(t("agentConsole.routeCapabilitiesPlaceholder"))}" />
       `;
       row.querySelector<HTMLInputElement>("[data-route-model]")!.value = route?.model || "";
       row.querySelector<HTMLInputElement>("[data-route-provider]")!.value = route?.provider || "";
@@ -300,7 +363,7 @@ export function mountAgentConsole() {
   // Device-token refusals become one button into 信頼済み端末, not raw text.
   function reportError(error: unknown) {
     if (!isDeviceAuthError(error)) {
-      setStatus(error instanceof Error ? error.message : String(error), true);
+      setStatus(translateServerMessage(error instanceof Error ? error.message : String(error)), true);
       return;
     }
     setStatus("");
@@ -318,7 +381,9 @@ export function mountAgentConsole() {
     for (const mode of modes) {
       const option = document.createElement("option");
       option.value = mode.id;
-      option.textContent = mode.custom ? `${mode.name} · custom` : mode.name;
+      option.textContent = mode.custom
+        ? t("agentConsole.customModeOption", { name: mode.name })
+        : localizedModeName(mode);
       option.selected = mode.id === activeModeId;
       select.appendChild(option);
     }
@@ -326,16 +391,20 @@ export function mountAgentConsole() {
 
   function renderMode() {
     const mode = resolveMode(activeModeId, customModes);
-    policy.textContent = renderModePolicy(mode);
-    modeSummary.textContent = MODE_SUMMARIES[mode.id] || mode.description || "";
+    policy.textContent = localizedPolicyText(mode);
+    modeSummary.textContent = !mode.custom && MODE_SUMMARY_KEYS[mode.id]
+      ? t(MODE_SUMMARY_KEYS[mode.id])
+      : mode.description || "";
     task.placeholder = mode.id === "debug"
-      ? "Describe the failure, regression, or test you want reproduced"
+      ? t("agentConsole.taskPlaceholderDebug")
       : mode.id === "review"
-        ? "Describe the working tree, diff, or range to review"
+        ? t("agentConsole.taskPlaceholderReview")
         : mode.id === "orchestrator"
-          ? "Describe the large task to decompose"
-          : "Describe the task";
-    run.textContent = mode.id === "orchestrator" ? "Preview decomposition" : "Run in active chat";
+          ? t("agentConsole.taskPlaceholderOrchestrator")
+          : t("agentConsole.taskPlaceholder");
+    run.textContent = mode.id === "orchestrator"
+      ? t("agentConsole.previewDecompositionBtn")
+      : t("agentConsole.runActiveChatBtn");
     orchestrationPlan = null;
     orchestrationPreview.classList.add("hidden");
   }
@@ -378,8 +447,12 @@ export function mountAgentConsole() {
   }
 
   function dashboardState(state: SubagentRun["state"]) {
-    if (state === "waiting_for_approval") return "waiting";
-    if (state === "completed") return "done";
+    if (state === "waiting_for_approval") return t("agentConsole.stateWaiting");
+    if (state === "completed") return t("agentConsole.stateDone");
+    if (state === "running") return t("agentConsole.stateRunning");
+    if (state === "starting") return t("agentConsole.stateStarting");
+    if (state === "failed") return t("agentConsole.stateFailed");
+    if (state === "cancelled") return t("agentConsole.stateCancelled");
     return state;
   }
 
@@ -387,7 +460,12 @@ export function mountAgentConsole() {
     const runs = subagents.listRuns();
     const active = runs.filter(run => ["starting", "running", "waiting_for_approval"].includes(run.state)).length;
     const failed = runs.filter(run => run.state === "failed").length;
-    subagentSummary.textContent = `${runs.length} agents · ${active} active${failed ? ` · ${failed} failed` : ""}`;
+    const failedPart = failed ? t("agentConsole.dashboardFailedPart", { failed: formatNumber(failed) }) : "";
+    subagentSummary.textContent = t("agentConsole.dashboardSummary", {
+      total: formatNumber(runs.length),
+      active: formatNumber(active),
+      failedPart
+    });
   }
 
   function renderSubagentRun(run: SubagentRun) {
@@ -407,20 +485,29 @@ export function mountAgentConsole() {
     head.className = "devmoter-subagent-card-head";
     const identity = document.createElement("div");
     const name = document.createElement("strong");
-    name.textContent = `${run.role} · ${dashboardState(run.state)}`;
+    name.textContent = t("agentConsole.cardHead", {
+      role: roleLabel(run.role),
+      state: dashboardState(run.state)
+    });
     const agentName = document.createElement("small");
-    agentName.textContent = `Agent ${run.id}`;
+    agentName.textContent = t("agentConsole.agentIdLabel", { id: run.id });
     identity.append(name, agentName);
     const model = document.createElement("span");
-    model.textContent = run.effectiveModel || run.model || "default model";
+    model.textContent = run.effectiveModel || run.model || t("agentConsole.defaultModel");
     head.append(identity, model);
 
     const taskText = document.createElement("p");
     taskText.textContent = run.task;
     const lineageText = document.createElement("small");
-    lineageText.textContent = `Lineage: ${lineage}`;
+    lineageText.textContent = t("agentConsole.lineageLabel", { lineage });
     const budget = document.createElement("small");
-    budget.textContent = `Depth ${run.depth} · budget ${run.budget.tokensRemaining}/${run.budget.tokenLimit} tok · ${run.budget.turnsRemaining}/${run.budget.turnLimit} turns`;
+    budget.textContent = t("agentConsole.budgetLabel", {
+      depth: formatNumber(run.depth),
+      tokensRemaining: formatNumber(run.budget.tokensRemaining),
+      tokenLimit: formatNumber(run.budget.tokenLimit),
+      turnsRemaining: formatNumber(run.budget.turnsRemaining),
+      turnLimit: formatNumber(run.budget.turnLimit)
+    });
     card.append(head, taskText, lineageText, budget);
     if (run.kind === "second-opinion" && run.output) {
       const result = document.createElement("pre");
@@ -435,7 +522,7 @@ export function mountAgentConsole() {
     if (run.sessionId) {
       const open = document.createElement("button");
       open.type = "button";
-      open.textContent = "Open session";
+      open.textContent = t("agentConsole.openSessionBtn");
       open.addEventListener("click", () => {
         localStorage.setItem("opencode-pocket-backend", "codex");
         localStorage.setItem("opencode-pocket-codex-thread", run.sessionId!);
@@ -447,10 +534,10 @@ export function mountAgentConsole() {
     if (run.kind !== "second-opinion") {
       const opinion = document.createElement("button");
       opinion.type = "button";
-      opinion.textContent = "Second opinion";
+      opinion.textContent = t("agentConsole.secondOpinionBtn");
       opinion.addEventListener("click", () => {
         secondOpinionTargetId = run.id;
-        opinionTarget.textContent = `${run.role} · ${run.id}`;
+        opinionTarget.textContent = `${roleLabel(run.role)} · ${run.id}`;
         opinionShareTask.checked = true;
         opinionShareOutput.checked = Boolean(run.output);
         opinionShareError.checked = Boolean(run.error);
@@ -462,14 +549,14 @@ export function mountAgentConsole() {
     if (!["completed", "failed", "cancelled"].includes(run.state)) {
       const cancel = document.createElement("button");
       cancel.type = "button";
-      cancel.textContent = "Cancel";
+      cancel.textContent = t("agentConsole.cancelBtn");
       cancel.addEventListener("click", () => void subagents.cancel(run.id).catch(error =>
         reportError(error)
       ));
       actions.appendChild(cancel);
 
       if (run.pendingApproval) {
-        for (const [decision, label] of [["decline", "Deny"], ["accept", "Allow once"]] as const) {
+        for (const [decision, label] of [["decline", t("agentConsole.denyBtn")], ["accept", t("agentConsole.allowOnceBtn")]] as const) {
           const button = document.createElement("button");
           button.type = "button";
           button.textContent = label;
@@ -500,7 +587,7 @@ export function mountAgentConsole() {
   opinionLaunch.addEventListener("click", () => {
     void (async () => {
       try {
-        if (!secondOpinionTargetId) throw new Error("Choose an agent first");
+        if (!secondOpinionTargetId) throw new Error(t("agentConsole.chooseAgentFirst"));
         const reviewer = resolveRoleModel("reviewer", modelRoutes);
         const opinion = await subagents.spawnSecondOpinion(secondOpinionTargetId, {
           role: "reviewer",
@@ -514,7 +601,7 @@ export function mountAgentConsole() {
         });
         opinionComposer.classList.add("hidden");
         secondOpinionTargetId = null;
-        if (opinion) setStatus(`Second opinion started: ${opinion.id}`);
+        if (opinion) setStatus(t("agentConsole.secondOpinionStarted", { id: opinion.id }));
       } catch (error) {
         reportError(error);
       }
@@ -544,7 +631,7 @@ export function mountAgentConsole() {
       modelRoutes = normalized;
       persistModelRoutes(modelRoutes);
       renderModelRouting();
-      setStatus("Saved role model routing.");
+      setStatus(t("agentConsole.savedModelRouting"));
     } catch (error) {
       reportError(error);
     }
@@ -568,7 +655,7 @@ export function mountAgentConsole() {
   editMode.addEventListener("click", () => {
     const mode = resolveMode(activeModeId, customModes);
     if (!mode.custom) {
-      setStatus("Built-in modes are inspectable but not editable. Create a custom mode to customize them.", true);
+      setStatus(t("agentConsole.builtinNotEditable"), true);
       return;
     }
     fillEditor(mode);
@@ -579,7 +666,7 @@ export function mountAgentConsole() {
       const mode = validateCustomMode({
         id: editorId.value,
         name: editorName.value,
-        description: "User-defined DevMoter mode",
+        description: t("agentConsole.customModeDescription"),
         instructions: editorInstructions.value.split(/\r?\n/),
         provider: editorProvider.value,
         model: editorModel.value,
@@ -592,7 +679,7 @@ export function mountAgentConsole() {
       rebuildModeSelect();
       renderMode();
       fillEditor(mode);
-      setStatus(`Saved custom mode: ${mode.name}`);
+      setStatus(t("agentConsole.savedCustomMode", { name: mode.name }));
     } catch (error) {
       reportError(error);
     }
@@ -605,7 +692,7 @@ export function mountAgentConsole() {
     editor.classList.add("hidden");
     rebuildModeSelect();
     renderMode();
-    setStatus(`Deleted custom mode: ${id}`);
+    setStatus(t("agentConsole.deletedCustomMode", { id }));
   });
   run.addEventListener("click", () => {
     try {
@@ -615,17 +702,33 @@ export function mountAgentConsole() {
         for (const child of orchestrationPlan.children) {
           const row = document.createElement("div");
           row.className = "devmoter-orchestration-child";
-          row.innerHTML = `<span>${child.state}</span><strong>${child.owner}</strong><p></p>`;
-          row.querySelector("p")!.textContent = child.title;
+          const childStateKeys: Record<string, string> = {
+            planned: "agentConsole.statePlanned",
+            approved: "agentConsole.stateApproved",
+            running: "agentConsole.stateRunning",
+            done: "agentConsole.stateDone",
+            failed: "agentConsole.stateFailed",
+            cancelled: "agentConsole.stateCancelled"
+          };
+          const childStateLabel = childStateKeys[child.state]
+            ? t(childStateKeys[child.state])
+            : child.state;
+          const stateEl = document.createElement("span");
+          stateEl.textContent = childStateLabel;
+          const ownerEl = document.createElement("strong");
+          ownerEl.textContent = roleLabel(child.owner);
+          const titleEl = document.createElement("p");
+          titleEl.textContent = child.title;
+          row.append(stateEl, ownerEl, titleEl);
           orchestrationChildren.appendChild(row);
         }
         orchestrationPreview.classList.remove("hidden");
-        setStatus("Review the decomposition, then explicitly approve it.");
+        setStatus(t("agentConsole.reviewDecompositionStatus"));
         return;
       }
       const prompt = compileModePrompt(activeModeId, task.value, {}, customModes);
       const backend = dispatchToActiveComposer(prompt);
-      setStatus(`Sent to ${backend}. Approvals and diffs stay in the normal flow.`);
+      setStatus(t("agentConsole.sentToBackendStatus", { backend }));
       panel.classList.add("hidden");
     } catch (error) {
       reportError(error);
@@ -636,7 +739,7 @@ export function mountAgentConsole() {
     void (async () => {
       try {
         const parent = parentSessionId();
-        if (!parent) throw new Error("Open a parent chat/session before spawning a subagent");
+        if (!parent) throw new Error(t("agentConsole.openParentFirstSubagent"));
         const mode = resolveMode(activeModeId, customModes);
         const run = await subagents.spawn({
           backend: "codex",
@@ -655,7 +758,7 @@ export function mountAgentConsole() {
             modePolicy: renderModePolicy(mode)
           }
         });
-        if (run) setStatus(`Spawned bounded subagent ${run.id}`);
+        if (run) setStatus(t("agentConsole.spawnedSubagent", { id: run.id }));
       } catch (error) {
         reportError(error);
       }
@@ -665,9 +768,9 @@ export function mountAgentConsole() {
   fleetLaunch.addEventListener("click", () => {
     void (async () => {
       try {
-        if (!orchestrationPlan) throw new Error("Preview a decomposition first");
+        if (!orchestrationPlan) throw new Error(t("agentConsole.previewDecompositionFirst"));
         const parent = parentSessionId();
-        if (!parent) throw new Error("Open a parent chat/session before launching a fleet");
+        if (!parent) throw new Error(t("agentConsole.openParentFirstFleet"));
         if (orchestrationPlan.state === "awaiting_approval") approveOrchestrationPlan(orchestrationPlan);
         const mode = resolveMode(activeModeId, customModes);
         const fleet = await subagents.runFleet(
@@ -690,7 +793,11 @@ export function mountAgentConsole() {
           })),
           { concurrency: Number(fleetConcurrency.value) || 2 }
         );
-        setStatus(`Fleet ${fleet.id}: ${fleet.runIds.length} running/started, ${fleet.queued} queued.`);
+        setStatus(t("agentConsole.fleetLaunchedStatus", {
+          id: fleet.id,
+          started: formatNumber(fleet.runIds.length),
+          queued: formatNumber(fleet.queued)
+        }));
         subagentRuns.classList.remove("hidden");
       } catch (error) {
         reportError(error);
@@ -700,10 +807,10 @@ export function mountAgentConsole() {
 
   orchestrationApprove.addEventListener("click", () => {
     try {
-      if (!orchestrationPlan) throw new Error("Preview a decomposition first");
+      if (!orchestrationPlan) throw new Error(t("agentConsole.previewDecompositionFirst"));
       approveOrchestrationPlan(orchestrationPlan);
       const backend = dispatchToActiveComposer(renderOrchestrationPrompt(orchestrationPlan));
-      setStatus(`Approved plan sent to ${backend}. Extra delegation still requires approval.`);
+      setStatus(t("agentConsole.approvedPlanSentStatus", { backend }));
       panel.classList.add("hidden");
     } catch (error) {
       reportError(error);

@@ -1,3 +1,9 @@
+import { t } from "./i18n";
+
+function escapeHtml(value: string) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 export function mountDemo(root: HTMLElement) {
   document.body.classList.remove("codex-mode", "opencode-mode");
   document.body.classList.add("devmoter-demo-mode");
@@ -6,32 +12,30 @@ export function mountDemo(root: HTMLElement) {
     <main class="devmoter-demo">
       <header class="devmoter-demo-head">
         <div>
-          <span class="devmoter-demo-badge">OFFLINE SCRIPTED DEMO</span>
+          <span class="devmoter-demo-badge">${escapeHtml(t("demo.eyebrow"))}</span>
           <h1>DevMoter FAST</h1>
-          <p>No real CLI, project file, credential, or backend is used in this mode.</p>
+          <p>${escapeHtml(t("demo.lead"))}</p>
         </div>
-        <a href="/">Exit demo</a>
+        <a href="/">${escapeHtml(t("demo.exit"))}</a>
       </header>
 
       <section class="devmoter-demo-grid">
         <article>
-          <small>SESSION</small>
-          <strong>Refactor mobile settings</strong>
-          <p>Fake session · Codex · demo-project</p>
-          <div id="demoState" class="devmoter-demo-state">Ready</div>
+          <small>${escapeHtml(t("demo.sessionLabel"))}</small>
+          <strong>${escapeHtml(t("demo.sessionTitle"))}</strong>
+          <p>${escapeHtml(t("demo.sessionMeta"))}</p>
+          <div id="demoState" class="devmoter-demo-state">${escapeHtml(t("demo.stateReady"))}</div>
         </article>
         <article>
-          <small>SAFE PREVIEW</small>
-          <strong>Scripted activity</strong>
-          <pre id="demoLog">✓ Loaded fake project metadata
-✓ Prepared a fake change plan
-· Waiting for demo input</pre>
+          <small>${escapeHtml(t("demo.safePreviewLabel"))}</small>
+          <strong>${escapeHtml(t("demo.scriptedActivity"))}</strong>
+          <pre id="demoLog">${escapeHtml(t("demo.initialLog"))}</pre>
         </article>
       </section>
 
       <section class="devmoter-demo-actions">
-        <button id="demoRun" type="button">Run scripted demo</button>
-        <button id="demoReset" type="button">Reset</button>
+        <button id="demoRun" type="button">${escapeHtml(t("demo.runButton"))}</button>
+        <button id="demoReset" type="button">${escapeHtml(t("demo.resetButton"))}</button>
       </section>
     </main>
   `;
@@ -49,23 +53,23 @@ export function mountDemo(root: HTMLElement) {
 
   const resetDemo = () => {
     clear();
-    state.textContent = "Ready";
-    log.textContent = "✓ Loaded fake project metadata\n✓ Prepared a fake change plan\n· Waiting for demo input";
+    state.textContent = t("demo.stateReady");
+    log.textContent = t("demo.initialLog");
     run.disabled = false;
   };
 
   run.addEventListener("click", () => {
     resetDemo();
     run.disabled = true;
-    state.textContent = "Running";
-    log.textContent += "\n● Fake agent is working…";
+    state.textContent = t("demo.stateRunning");
+    log.textContent += t("demo.logWorking");
     timers.push(window.setTimeout(() => {
-      state.textContent = "Approval needed";
-      log.textContent += "\n! Demo approval requested (nothing will execute)";
+      state.textContent = t("demo.stateApproval");
+      log.textContent += t("demo.logApproval");
     }, 700));
     timers.push(window.setTimeout(() => {
-      state.textContent = "Completed";
-      log.textContent += "\n✓ Scripted demo completed";
+      state.textContent = t("demo.stateCompleted");
+      log.textContent += t("demo.logComplete");
       run.disabled = false;
     }, 1500));
   });

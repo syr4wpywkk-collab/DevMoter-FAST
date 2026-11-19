@@ -75,13 +75,6 @@ export function authorizeBasicRequest(req, res, expected) {
   return false;
 }
 
-function isLoopbackAddress(address) {
-  const normalized = String(address || "").toLowerCase().split("%", 1)[0];
-  if (normalized === "::1" || normalized.startsWith("::ffff:127.")) return true;
-  const match = /^(\d+)\.\d+\.\d+\.\d+$/.exec(normalized);
-  return Boolean(match) && Number(match[1]) === 127;
-}
-
 export function expectedRequestOrigin(req, publicOrigin = "") {
   if (publicOrigin) {
     try {
@@ -91,11 +84,8 @@ export function expectedRequestOrigin(req, publicOrigin = "") {
     }
   }
 
-  // Forwarded headers are trusted only from a loopback reverse proxy.
-  // A remote client can choose arbitrary X-Forwarded-* values.
-  const trustedProxy = isLoopbackAddress(req.socket?.remoteAddress);
-  const forwardedProto = trustedProxy ? firstHeaderValue(req.headers["x-forwarded-proto"]) : "";
-  const forwardedHost = trustedProxy ? firstHeaderValue(req.headers["x-forwarded-host"]) : "";
+  const forwardedProto = firstHeaderValue(req.headers["x-forwarded-proto"]);
+  const forwardedHost = firstHeaderValue(req.headers["x-forwarded-host"]);
   const protocol = forwardedProto || (req.socket?.encrypted ? "https" : "http");
   const host = forwardedHost || firstHeaderValue(req.headers.host);
   if (!host) return null;

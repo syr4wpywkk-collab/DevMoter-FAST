@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { DICTIONARIES } from "../src/i18n-core.mjs";
 import { normalizeCodexThreadHistory } from "../src/codex-thread-history.mjs";
 
 test("Codex thread history accepts an empty and populated canonical thread", () => {
@@ -30,6 +31,7 @@ test("Codex validates thread/read before clearing the current transcript", async
   const loader = source.slice(start, end);
   assert.match(loader, /normalizeCodexThreadHistory\(result\)/);
   assert.ok(loader.indexOf("normalizeCodexThreadHistory(result)") < loader.indexOf("transcript.replaceChildren()"));
-  assert.match(loader, /Codexから有効な会話履歴を受け取れませんでした/);
+  assert.match(loader, /t\("codex\.threads\.historyInvalid"\)/);
+  assert.equal(DICTIONARIES.ja["codex.threads.historyInvalid"], "Codex から有効な会話履歴を受け取れませんでした");
   assert.match(loader, /return false;/);
 });

@@ -31,8 +31,10 @@ test("#470 server only returns a build id that looks like a plain identifier", (
 });
 
 test("#473 fetch state distinguishes success, failure (stale) and never-fetched", () => {
-  assert.equal(describeHealthFetch({ fetchedAt: null, failedAt: null }).text, "まだ取得していません");
-  assert.equal(describeHealthFetch({ fetchedAt: null, failedAt: null, loading: true }).text, "取得中…");
+  assert.equal(describeHealthFetch({ fetchedAt: null, failedAt: null }).text, "Not fetched yet");
+  assert.equal(describeHealthFetch({ fetchedAt: null, failedAt: null, loading: true }).text, "Fetching…");
+  assert.equal(describeHealthFetch({ fetchedAt: null, failedAt: null }, "ja-JP").text, "まだ取得していません");
+  assert.equal(describeHealthFetch({ fetchedAt: null, failedAt: null, loading: true }, "ja-JP").text, "取得中…");
   const ok = describeHealthFetch({ fetchedAt: Date.UTC(2026, 10, 3, 7, 0, 0), failedAt: null }, "ja-JP");
   assert.equal(ok.tone, "ok");
   assert.match(ok.text, /^最終取得: /);

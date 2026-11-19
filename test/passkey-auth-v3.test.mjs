@@ -4,21 +4,22 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { PasskeyAuth } from "../server/passkey-auth.mjs";
+import { PasskeyAuth, passkeyInternals } from "../server/passkey-auth.mjs";
 
 function request({
   host = "localhost:8787",
   origin = "http://localhost:8787",
   remoteAddress = "127.0.0.1",
-  cookie = ""
+  cookie = "",
+  headers = {}
 } = {}) {
   return {
-    headers: { host, origin, cookie },
+    headers: { host, ...(origin !== null ? { origin } : {}), cookie, ...headers },
     socket: { remoteAddress }
   };
 }
 
-test("registration options are generated for true loopback and reject proxy-only bootstrap", async () => {
+test("registration options are generated for true loopback (including IPv6 [::1]/::1) and reject proxy-only or forged forwarded headers", async () => {
   const previous = process.env.DEVMOTER_PASSKEY_BOOTSTRAP;
   delete process.env.DEVMOTER_PASSKEY_BOOTSTRAP;
   const dir = await mkdtemp(join(tmpdir(), "devmoter-passkey-v3-"));
@@ -30,6 +31,22 @@ test("registration options are generated for true loopback and reject proxy-only
     assert.equal(local.publicKey.authenticatorSelection.userVerification, "required");
     assert.ok(local.publicKey.challenge);
 
+    const ipv6Bracketed = await auth.registrationOptions(request({
+      host: "[::1]:8787",
+      origin: "http://[::1]:8787",
+      remoteAddress: "::1"
+    }));
+    assert.equal(ipv6Bracketed.publicKey.rp.id, "::1");
+
+    const ipv6BareHost = await auth.registrationOptions(request({
+      host: "::1",
+      origin: "http://[::1]",
+      remoteAddress: "::1"
+    }));
+    assert.equal(ipv6BareHost.publicKey.rp.id, "::1");
+    assert.equal(passkeyInternals.isLoopback(request({ host: "[::1]:8787", origin: "http://[::1]:8787", remoteAddress: "::1" })), true);
+    assert.equal(passkeyInternals.isLoopback(request({ host: "::1", origin: "http://[::1]", remoteAddress: "::1" })), true);
+
     await assert.rejects(
       () => auth.registrationOptions(request({
         host: "mari-opencode.example.test",
@@ -37,6 +54,41 @@ test("registration options are generated for true loopback and reject proxy-only
         remoteAddress: "127.0.0.1"
       })),
       /requires localhost/
+    );
+    await assert.rejects(
+      () => auth.registrationOptions(request({
+        host: "mari-opencode.example.test",
+        origin: "http://localhost:8787",
+        remoteAddress: "127.0.0.1"
+      })),
+      /does not match this host|requires localhost/
+    );
+    // Forged X-Forwarded-Host cannot satisfy Origin-vs-Host checks or spoof loopback RP ID.
+    await assert.rejects(
+      () => auth.registrationOptions(request({
+        host: "mari-opencode.example.test",
+        origin: "https://evil.example.test",
+        remoteAddress: "127.0.0.1",
+        headers: { "x-forwarded-host": "evil.example.test" }
+      })),
+      /does not match this host/
+    );
+    await assert.rejects(
+      () => auth.registrationOptions(request({
+        host: "mari-opencode.example.test",
+        origin: null,
+        remoteAddress: "127.0.0.1",
+        headers: { "x-forwarded-host": "localhost:8787" }
+      })),
+      /requires localhost/
+    );
+    assert.equal(
+      auth.origin(request({
+        host: "mari-opencode.example.test",
+        origin: null,
+        headers: { "x-forwarded-host": "localhost:8787", "x-forwarded-proto": "https" }
+      })),
+      "http://mari-opencode.example.test"
     );
   } finally {
     if (previous === undefined) delete process.env.DEVMOTER_PASSKEY_BOOTSTRAP;

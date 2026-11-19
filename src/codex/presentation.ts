@@ -1,10 +1,10 @@
 /** Pure Codex presentation helpers; no DOM, events, or session state. */
 
-export function formatCodexResetTime(value: unknown) {
+export function formatCodexResetTime(value: unknown, locale?: string) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric) || numeric <= 0) return "";
   const date = new Date(numeric < 1e12 ? numeric * 1000 : numeric);
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(locale || undefined, {
     month: "short",
     day: "numeric",
     hour: "2-digit",

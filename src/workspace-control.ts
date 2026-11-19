@@ -1,4 +1,5 @@
 import { createDeviceGate, isDeviceAuthError, responseError } from "./device-gate.mjs";
+import { formatDateTime, formatNumber, t, translateServerMessage } from "./i18n";
 
 type ThemeMode = "system" | "light" | "dark";
 type Json = Record<string, any>;
@@ -92,7 +93,7 @@ export function renderSafeMarkdown(source: string) {
         const raw = fence.join("\n");
         if (fenceLang.toLowerCase() === "mermaid") {
           html.push(
-            `<div class="dm-mermaid-fallback" role="note"><strong>Mermaid preview disabled</strong><span>Diagram source is shown as text because no sandboxed Mermaid runtime is installed.</span><pre><code>${escapeHtml(raw)}</code></pre></div>`
+            `<div class="dm-mermaid-fallback" role="note"><strong>${escapeHtml(t("workspaceControl.mermaidTitle"))}</strong><span>${escapeHtml(t("workspaceControl.mermaidBody"))}</span><pre><code>${escapeHtml(raw)}</code></pre></div>`
           );
         } else {
           html.push(
@@ -157,13 +158,13 @@ function enhanceToolOutput(details: HTMLElement) {
     pre.dataset.dmRaw = raw;
     if (raw.length > RAW_OUTPUT_LIMIT) {
       pre.textContent =
-        `${raw.slice(0, RAW_OUTPUT_LIMIT)}\n\n… ${raw.length - RAW_OUTPUT_LIMIT} more characters hidden`;
+        `${raw.slice(0, RAW_OUTPUT_LIMIT)}\n\n${t("workspaceControl.hiddenChars", { count: formatNumber(raw.length - RAW_OUTPUT_LIMIT) })}`;
       pre.classList.add("dm-output-bounded");
     }
     const copy = document.createElement("button");
     copy.type = "button";
     copy.className = "dm-copy-raw";
-    copy.textContent = "Copy raw";
+    copy.textContent = t("workspaceControl.copyRaw");
     copy.addEventListener("click", () => void navigator.clipboard?.writeText(raw));
     pre.insertAdjacentElement("beforebegin", copy);
   });
@@ -182,15 +183,13 @@ function virtualizeTranscript(transcript: HTMLElement) {
     placeholder.type = "button";
     placeholder.className = "dm-virtual-placeholder";
     placeholder.addEventListener("click", () => {
-      placeholder!.textContent =
-        "Older transcript remains canonical on the server. Reopen/reload the session to replay it.";
+      placeholder!.textContent = t("workspaceControl.virtualizedNote");
     });
     transcript.prepend(placeholder);
   }
   const previous = Number(placeholder.dataset.hidden || 0);
   placeholder.dataset.hidden = String(previous + excess);
-  placeholder.textContent =
-    `${previous + excess} earlier transcript items virtualized · tap for replay note`;
+  placeholder.textContent = t("workspaceControl.virtualizedButton", { count: formatNumber(previous + excess) });
 }
 
 function applyTheme(mode: ThemeMode) {
@@ -229,7 +228,7 @@ function createWorkspacePanel() {
   const panel = document.createElement("div");
   panel.className = "dm-panel hidden";
   panel.setAttribute("role", "dialog");
-  panel.setAttribute("aria-label", "DevMoter controls");
+  panel.setAttribute("aria-label", t("workspaceControl.panelAria"));
   document.body.appendChild(panel);
 
   const activeSessionId = () => {
@@ -249,7 +248,7 @@ function createWorkspacePanel() {
 
   const closePanel = () => panel.classList.add("hidden");
   const panelHead = (title: string) =>
-    `<div class="dm-panel-head"><strong>${escapeHtml(title)}</strong><button type="button" data-close aria-label="閉じる">×</button></div>`;
+    `<div class="dm-panel-head"><strong>${escapeHtml(title)}</strong><button type="button" data-close aria-label="${escapeHtml(t("common.close"))}">×</button></div>`;
   const wireClose = () => panel.querySelector("[data-close]")?.addEventListener("click", closePanel);
   // Device-bound panels show one registration gate instead of a raw 401/403 message.
   const showFailure = (title: string, error: unknown) => {
@@ -260,7 +259,7 @@ function createWorkspacePanel() {
       return;
     }
     const message = document.createElement("p");
-    message.textContent = error instanceof Error ? error.message : String(error);
+    message.textContent = translateServerMessage(error instanceof Error ? error.message : String(error));
     panel.append(message);
   };
 
@@ -281,14 +280,15 @@ function createWorkspacePanel() {
         body: JSON.stringify({ sessionId: activeSessionId(), mode })
       });
       const payload = await res.json();
-      if (!res.ok) throw new Error(payload?.error || "Compaction failed");
+      if (!res.ok) throw new Error(translateServerMessage(payload?.error) || t("workspaceControl.compactionFailed"));
       localStorage.setItem(LAST_COMPACT_KEY, String(Date.now()));
       if (status) {
-        status.textContent =
-          `Compacted view created at cursor ${payload?.event?.cursor || "unknown"}.`;
+        status.textContent = t("workspaceControl.compactedCursor", {
+          cursor: String(payload?.event?.cursor || t("common.unknown"))
+        });
       }
     } catch (error) {
-      if (status) status.textContent = error instanceof Error ? error.message : String(error);
+      if (status) status.textContent = translateServerMessage(error instanceof Error ? error.message : String(error));
     } finally {
       compactInFlight = false;
     }
@@ -310,14 +310,15 @@ function createWorkspacePanel() {
   const openContext = () => {
     const state = renderContext();
     panel.classList.remove("hidden");
+    const lastWhen = state.lastCompactAt ? formatDateTime(state.lastCompactAt) : t("workspaceControl.context.never");
     panel.innerHTML =
-      panelHead("表示履歴") +
-      `<p>表示テキストからの概算: <strong>${state.used.toLocaleString()}</strong> token相当。実際の送信token数やモデルの上限はここでは取得していません。</p>
-       <label>表示整理の基準（${state.max.toLocaleString()} token相当）の割合 <input data-threshold type="range" min="0.5" max="0.95" step="0.01" value="${state.threshold}" ${state.eventViewSupported ? "" : "disabled"}><span>${Math.round(state.threshold * 100)}%</span></label>
-       <button type="button" data-compact ${state.eventViewSupported ? "" : "disabled"}>イベント表示を整理</button>
-       ${state.eventViewSupported ? "" : "<p>Codex / OpenCode の会話のみ。API Chatの会話履歴はこの機能の対象外です。</p>"}
-       <small>前回の整理: ${state.lastCompactAt ? new Date(state.lastCompactAt).toLocaleString() : "まだありません"}</small>
-       <small data-status>表示だけを整理します。AIへ送る内容の圧縮やtoken・料金削減は行いません。元の記録はサーバーに残ります。</small>`;
+      panelHead(t("workspaceControl.context.title")) +
+      `<p>${escapeHtml(t("workspaceControl.context.estimatePrefix"))}<strong>${escapeHtml(formatNumber(state.used))}</strong>${escapeHtml(t("workspaceControl.context.estimateSuffix"))}</p>
+       <label>${escapeHtml(t("workspaceControl.context.thresholdLabel", { max: formatNumber(state.max) }))} <input data-threshold type="range" min="0.5" max="0.95" step="0.01" value="${state.threshold}" ${state.eventViewSupported ? "" : "disabled"}><span>${Math.round(state.threshold * 100)}%</span></label>
+       <button type="button" data-compact ${state.eventViewSupported ? "" : "disabled"}>${escapeHtml(t("workspaceControl.context.compactButton"))}</button>
+       ${state.eventViewSupported ? "" : `<p>${escapeHtml(t("workspaceControl.context.unsupportedNote"))}</p>`}
+       <small>${escapeHtml(t("workspaceControl.context.lastCompact", { when: lastWhen }))}</small>
+       <small data-status>${escapeHtml(t("workspaceControl.context.footerNote"))}</small>`;
     wireClose();
     const threshold = panel.querySelector<HTMLInputElement>("[data-threshold]")!;
     threshold.addEventListener("input", () => {
@@ -332,22 +333,29 @@ function createWorkspacePanel() {
     });
   };
 
+  const KNOWN_STEP_STATUSES = new Set(["pending", "running", "waiting", "done", "failed", "stopped"]);
+  const formatStepStatus = (value: unknown) => {
+    const key = String(value || "pending");
+    return KNOWN_STEP_STATUSES.has(key) ? t(`workspaceControl.stepStatus.${key}`) : key;
+  };
+
   const openCheckpoints = async () => {
     const parentId = activeSessionId();
+    const title = t("workspaceControl.checkpoints.title");
     panel.classList.remove("hidden");
-    panel.innerHTML = panelHead("チェックポイント") + "<p>現在のタスクを読み込んでいます…</p>";
+    panel.innerHTML = panelHead(title) + `<p>${escapeHtml(t("workspaceControl.checkpoints.loading"))}</p>`;
     wireClose();
     try {
       const res = await workspaceControlFetch(
         `/api/workspace-control/microtasks?parentId=${encodeURIComponent(parentId)}`
       );
       const payload = await res.json();
-      if (!res.ok) throw responseError(res.status, payload?.error || "Could not load task plan");
+      if (!res.ok) throw responseError(res.status, payload?.error ? translateServerMessage(String(payload.error)) : t("workspaceControl.checkpoints.loadError"));
       const plan = payload?.plan as Json | null;
       if (!plan || !Array.isArray(plan.steps) || !plan.steps.length) {
         panel.innerHTML =
-          panelHead("チェックポイント") +
-          "<p>このセッションにはチェックポイントがありません</p>";
+          panelHead(title) +
+          `<p>${escapeHtml(t("workspaceControl.checkpoints.empty"))}</p>`;
         wireClose();
         return;
       }
@@ -356,25 +364,25 @@ function createWorkspacePanel() {
         Math.min(Number(plan.current) || 0, plan.steps.length - 1)
       );
       panel.innerHTML =
-        panelHead("チェックポイント") +
-        `<p><strong>${escapeHtml(String(plan.title || "タスク"))}</strong></p><div class="dm-task-list"></div><div class="dm-task-actions"></div><small>Step ${currentIndex + 1} of ${plan.steps.length}</small>`;
+        panelHead(title) +
+        `<p><strong>${escapeHtml(String(plan.title || t("workspaceControl.checkpoints.defaultTitle")))}</strong></p><div class="dm-task-list"></div><div class="dm-task-actions"></div><small>${escapeHtml(t("workspaceControl.checkpoints.stepCounter", { current: formatNumber(currentIndex + 1), total: formatNumber(plan.steps.length) }))}</small>`;
       wireClose();
       const list = panel.querySelector<HTMLElement>(".dm-task-list")!;
       plan.steps.forEach((step: Json, index: number) => {
         const row = document.createElement("div");
         row.className = `dm-task-row ${index === currentIndex ? "current" : ""}`;
         row.innerHTML =
-          `<span>${index + 1}</span><div><strong>${escapeHtml(String(step.title || `Step ${index + 1}`))}</strong><small>${escapeHtml(String(step.status || "pending"))}${step.verification ? ` · ${escapeHtml(String(step.verification))}` : ""}</small></div>`;
+          `<span>${index + 1}</span><div><strong>${escapeHtml(String(step.title || t("workspaceControl.checkpoints.stepLabel", { num: formatNumber(index + 1) })))}</strong><small>${escapeHtml(formatStepStatus(step.status))}${step.verification ? ` · ${escapeHtml(String(step.verification))}` : ""}</small></div>`;
         list.appendChild(row);
       });
 
       const actions = panel.querySelector<HTMLElement>(".dm-task-actions")!;
       const choices = [
-        ["Continue", "running"],
-        ["Looks good", "done"],
-        ["Retry", "running"],
-        ["Needs fix", "failed"],
-        ["Stop", "stopped"]
+        [t("workspaceControl.checkpoints.action.continue"), "running"],
+        [t("workspaceControl.checkpoints.action.looksGood"), "done"],
+        [t("workspaceControl.checkpoints.action.retry"), "running"],
+        [t("workspaceControl.checkpoints.action.needsFix"), "failed"],
+        [t("workspaceControl.checkpoints.action.stop"), "stopped"]
       ] as const;
       for (const [label, statusValue] of choices) {
         const button = document.createElement("button");
@@ -403,28 +411,29 @@ function createWorkspacePanel() {
             })
           });
           const saved = await save.json();
-          if (!save.ok) throw new Error(saved?.error || "Checkpoint update failed");
+          if (!save.ok) throw new Error(translateServerMessage(saved?.error) || t("workspaceControl.checkpoints.updateFailed"));
           void openCheckpoints();
         });
         actions.appendChild(button);
       }
     } catch (error) {
-      showFailure("チェックポイント", error);
+      showFailure(title, error);
     }
   };
 
   const openExtensions = async () => {
+    const title = t("workspaceControl.extensions.title");
     panel.classList.remove("hidden");
-    panel.innerHTML = panelHead("拡張機能") + "<p>読み込み中…</p>";
+    panel.innerHTML = panelHead(title) + `<p>${escapeHtml(t("common.loading"))}</p>`;
     wireClose();
     try {
       const res = await workspaceControlFetch("/api/workspace-control");
       const data = await res.json();
-      if (!res.ok) throw responseError(res.status, data?.error || "Could not load extensions");
+      if (!res.ok) throw responseError(res.status, data?.error ? translateServerMessage(String(data.error)) : t("workspaceControl.extensions.loadError"));
       const installed = data.extensions?.installed || {};
       const items = data.extensions?.catalog || [];
       panel.innerHTML =
-        panelHead("拡張機能") + '<div class="dm-extension-list"></div>';
+        panelHead(title) + '<div class="dm-extension-list"></div>';
       wireClose();
       const list = panel.querySelector<HTMLElement>(".dm-extension-list")!;
       for (const item of items) {
@@ -437,12 +446,13 @@ function createWorkspacePanel() {
         const meta = document.createElement("small");
         meta.textContent = `${item.version || ""} · ${item.source || ""}`;
         const permissions = document.createElement("small");
-        permissions.textContent =
-          `Permissions: ${Array.isArray(item.permissions) ? item.permissions.join(", ") : "none"}`;
+        permissions.textContent = t("workspaceControl.extensions.permissions", {
+          list: Array.isArray(item.permissions) && item.permissions.length ? item.permissions.join(", ") : t("common.none")
+        });
         copy.append(name, meta, permissions);
         const button = document.createElement("button");
         button.type = "button";
-        button.textContent = active ? "Remove" : "Install";
+        button.textContent = active ? t("common.remove") : t("workspaceControl.extensions.install");
         button.addEventListener("click", async () => {
           const change = await workspaceControlFetch(
             `/api/workspace-control/extensions/${encodeURIComponent(String(item.id))}`,
@@ -450,7 +460,7 @@ function createWorkspacePanel() {
           );
           if (!change.ok) {
             const error = await change.json().catch(() => ({}));
-            throw new Error(error?.error || "Extension update failed");
+            throw new Error(translateServerMessage(error?.error) || t("workspaceControl.extensions.updateFailed"));
           }
           void openExtensions();
         });
@@ -458,7 +468,7 @@ function createWorkspacePanel() {
         list.appendChild(row);
       }
     } catch (error) {
-      showFailure("拡張機能", error);
+      showFailure(title, error);
     }
   };
 

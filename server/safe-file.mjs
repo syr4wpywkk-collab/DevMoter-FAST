@@ -67,7 +67,7 @@ export async function writeFileNoFollow(path, data, { mode = 0o600, encoding = "
   try {
     handle = await open(
       path,
-      fsConstants.O_WRONLY | fsConstants.O_CREAT | NOFOLLOW,
+      fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_NONBLOCK | NOFOLLOW,
       mode
     );
   } catch (error) {

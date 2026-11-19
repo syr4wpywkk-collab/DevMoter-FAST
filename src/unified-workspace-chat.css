@@ -27,7 +27,7 @@ body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app) {
   background: var(--dw-chat-bg);
   color: var(--dw-chat-text);
   color-scheme: dark;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-ui);
 }
 
 html[data-devmoter-theme="light"] body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app) {
@@ -311,8 +311,8 @@ body.dm-task-first-enabled :is(.cx-app #cxExecutionStatus, .ocx-app #ocxActivity
 body.dm-task-first-enabled :is(.cx-app .cx-composer button, .ocx-app .ocx-composer button, .api-app .api-composer button):focus-visible,
 body.dm-task-first-enabled :is(.cx-app .cx-topbar button, .ocx-app .ocx-topbar button, .api-app .api-topbar button):focus-visible,
 body.dm-task-first-enabled :is(.cx-app .cx-composer select, .ocx-app .ocx-composer select, .api-app .api-composer select):focus-visible {
-  outline: 2px solid var(--dw-chat-accent);
-  outline-offset: 3px;
+  outline: 2px solid var(--border-focus, var(--dw-chat-accent));
+  outline-offset: 2px;
 }
 /* Approval/permission state remains explicit and must never be recolored
  * to look like a normal assistant message or automatically acknowledged. */
@@ -321,14 +321,6 @@ body.dm-task-first-enabled :is(.cx-app .cx-approval, .ocx-app .ocx-dock) {
   border-radius: 15px;
 }
 
-/* Previous layout padded two provider headers for the legacy floating tools
- * launcher. In unified mode that launcher is hidden; don't leave dead space. */
-@media (max-width: 899px) {
-  body.dm-task-first-enabled.opencode-mode .ocx-app .ocx-topbar,
-  body.dm-task-first-enabled.api-mode .api-app .api-topbar {
-    padding-left: max(12px, env(safe-area-inset-left));
-  }
-}
 @media (max-width: 680px) {
   body.dm-task-first-enabled :is(.cx-app .cx-transcript, .ocx-app .ocx-transcript, .api-app .api-transcript) {
     padding-top: 18px;
@@ -371,7 +363,7 @@ body.dm-task-first-enabled.codex-mode {
   background: var(--dw-chat-bg);
 }
 body.dm-task-first-enabled .cx-app {
-  --cx-header-height: 60px;
+  --cx-header-height: calc(60px + env(safe-area-inset-top));
   --cx-surface: var(--dw-chat-bg);
   --cx-raised: var(--dw-chat-raised);
   --cx-text: var(--dw-chat-text);
@@ -382,7 +374,9 @@ body.dm-task-first-enabled .cx-app {
 body.dm-task-first-enabled .cx-app .cx-topbar {
   height: var(--cx-header-height);
   min-height: var(--cx-header-height);
-  padding: 8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left));
+  padding-top: calc(8px + env(safe-area-inset-top));
+  padding-right: max(12px, env(safe-area-inset-right));
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--dw-chat-line);
   background: var(--dw-chat-surface);
   color: var(--dw-chat-text);
@@ -468,11 +462,9 @@ body.dm-task-first-enabled .cx-app :is(button, input, select, textarea):focus-vi
   outline: 2px solid var(--dw-chat-accent);
   outline-offset: 3px;
 }
-/* The container is already offset around the unified top/bottom navigator.
- * Never reintroduce iOS safe-area padding inside the nested fixed topbar. */
 @media (max-width: 680px) {
   body.dm-task-first-enabled .cx-app .cx-sidebar {
-    padding-top: 10px;
+    padding-top: calc(10px + env(safe-area-inset-top));
     padding-bottom: 12px;
   }
   body.dm-task-first-enabled .cx-app .cx-composer-wrap {

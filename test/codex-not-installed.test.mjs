@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as i18nCore from "../src/i18n-core.mjs";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
@@ -184,7 +185,7 @@ test("Codex UI labels a missing CLI as 未インストール and recovers when i
 
   const require = name => {
     if (modules.has(name)) return modules.get(name);
-    if (name === "./i18n") return { speechRecognitionLanguage: () => "en-US" };
+    if (name === "./i18n") return { speechRecognitionLanguage: () => "en-US", ...i18nCore };
     if (name === "./dev-workflows-ui") return { createDevWorkflowPanel: () => ({ show: async () => {} }) };
     if (name === "./mcp-result") return { isMcpToolItem: () => false, mcpToolSummary: () => ({}), normalizeStructuredMcpResult: value => ({ value, rawText: "", truncated: false }) };
     if (name === "./bounded-transcript") return { enforceTranscriptLimit() {} };
@@ -205,7 +206,7 @@ test("Codex UI labels a missing CLI as 未インストール and recovers when i
   const notice = "codex が見つからないよ。入れ方: npm install -g @openai/codex";
   controller.setOnline(false, notice, "not_installed");
   const status = document.querySelector("#cxSideStatus");
-  assert.match(status.textContent, /未インストール/);
+  assert.match(status.textContent, new RegExp(i18nCore.translate("en", "codex.availability.notInstalled")));
   assert.equal(status.classList.contains("missing"), true);
   assert.equal(status.dataset.codexState, "not_installed");
   assert.equal(document.querySelector(".cx-welcome p").textContent, notice);

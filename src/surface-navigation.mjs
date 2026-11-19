@@ -1,5 +1,15 @@
-const SURFACES = new Set(["home", "opencode", "codex", "api", "qwen", "integrations"]);
-const LEGACY_BACKENDS = new Set(["opencode", "codex", "api", "qwen"]);
+import {
+  DEFAULT_VISIBLE_BACKEND,
+  QWEN_UI_ENABLED,
+  isHiddenQwenTarget,
+  isVisibleChatBackend
+} from "./feature-flags.mjs";
+
+const SURFACES = new Set(
+  QWEN_UI_ENABLED
+    ? ["home", "opencode", "codex", "api", "qwen", "integrations"]
+    : ["home", "opencode", "codex", "api", "integrations"]
+);
 
 export function isMainSurface(value) {
   return typeof value === "string" && SURFACES.has(value);
@@ -9,11 +19,17 @@ export function initialMainSurface(search, { hasProjectDeepLink = false, savedBa
   const params = new URLSearchParams(search || "");
   const explicit = params.get("surface");
   if (isMainSurface(explicit)) return explicit;
+  if (isHiddenQwenTarget(explicit)) return DEFAULT_VISIBLE_BACKEND;
   const requestedBackend = params.get("backend");
-  const hasResumeTarget = LEGACY_BACKENDS.has(requestedBackend) || Boolean(params.get("session")) || hasProjectDeepLink;
+  const hasResumeTarget =
+    isVisibleChatBackend(requestedBackend) ||
+    isHiddenQwenTarget(requestedBackend) ||
+    Boolean(params.get("session")) ||
+    hasProjectDeepLink;
   if (hasResumeTarget) {
-    if (LEGACY_BACKENDS.has(requestedBackend)) return requestedBackend;
-    return SURFACES.has(savedBackend) && savedBackend !== "home" ? savedBackend : "opencode";
+    if (isVisibleChatBackend(requestedBackend)) return requestedBackend;
+    if (isHiddenQwenTarget(requestedBackend)) return DEFAULT_VISIBLE_BACKEND;
+    return SURFACES.has(savedBackend) && savedBackend !== "home" ? savedBackend : DEFAULT_VISIBLE_BACKEND;
   }
   return "home";
 }
@@ -48,18 +64,19 @@ export function createSurfaceNavigation({ window, hasProjectDeepLink = false, sa
   if (!read()) replace(initial);
 
   function navigate(surface, { replaceCurrent = false } = {}) {
-    if (!isMainSurface(surface)) return false;
-    if (current() === surface) {
+    const target = isHiddenQwenTarget(surface) ? DEFAULT_VISIBLE_BACKEND : surface;
+    if (!isMainSurface(target)) return false;
+    if (current() === target) {
       // A Home/provider navigation must dismiss a workspace overlay even
       // when the underlying main surface does not change.
       if (!new URLSearchParams(location.search).has("workspaceTab")) return false;
-      replace(surface);
-      onSurface(surface);
+      replace(target);
+      onSurface(target);
       return true;
     }
-    if (replaceCurrent) replace(surface);
-    else history.pushState(stateWithSurface(history.state, surface), "", urlFor(surface));
-    onSurface(surface);
+    if (replaceCurrent) replace(target);
+    else history.pushState(stateWithSurface(history.state, target), "", urlFor(target));
+    onSurface(target);
     return true;
   }
   function onPopState() {

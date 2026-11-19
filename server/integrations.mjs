@@ -1,6 +1,6 @@
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -333,6 +333,35 @@ export async function launchInTerminal(
 // A small, argv-only terminal entrypoint confirms that the child was spawned
 // and stayed alive long enough to enter interactive initialization.
 const TERMINAL_ENTRY = fileURLToPath(new URL("./integration-terminal-runner.mjs", import.meta.url));
+const LAUNCHER_NONSECRET_ENV_KEYS = ["DISPLAY", "WAYLAND_DISPLAY", "DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR"];
+
+function quotePosixShellArg(value) {
+  const text = String(value);
+  if (text.includes("\0")) {
+    throw new IntegrationError("Invalid terminal launch argument");
+  }
+  return `'${text.replace(/'/g, "'\\''")}'`;
+}
+
+/**
+ * Write a private single-executable launcher so `x-terminal-emulator -e`
+ * receives one command path (matching direct CLI launches) even on emulators
+ * whose `-e` rejects or truncates multi-argument argv vectors.
+ */
+async function writeTerminalLauncher(launcherPath, execPath, runnerArgs, env = {}) {
+  const lines = ["#!/bin/sh"];
+  if (typeof env.PATH === "string" && env.PATH.length > 0) {
+    const quotedPath = quotePosixShellArg(env.PATH);
+    lines.push(`if [ -n "\${PATH:-}" ]; then export PATH=${quotedPath}:"$PATH"; else export PATH=${quotedPath}; fi`);
+  }
+  for (const key of LAUNCHER_NONSECRET_ENV_KEYS) {
+    if (typeof env[key] === "string" && env[key].length > 0) {
+      lines.push(`if [ -z "\${${key}:-}" ]; then export ${key}=${quotePosixShellArg(env[key])}; fi`);
+    }
+  }
+  lines.push(`exec ${[execPath, ...runnerArgs].map(quotePosixShellArg).join(" ")}`);
+  await writeFile(launcherPath, `${lines.join("\n")}\n`, { mode: 0o700, flag: "wx" });
+}
 
 async function terminalAcknowledgement(path, timeoutMs, pollMs) {
   const deadline = Date.now() + timeoutMs;
@@ -367,7 +396,7 @@ export async function launchCheckedInTerminal(
   }
   const resolve = runtime.resolveExecutable || resolveExecutable;
   const spawnTerminal = runtime.spawnDetached || spawnDetached;
-  const timeoutMs = runtime.ackTimeoutMs ?? 6_000;
+  const timeoutMs = runtime.ackTimeoutMs ?? 10_000;
   const pollMs = runtime.pollMs ?? 80;
   const privateDir = await mkdtemp(join(tmpdir(), "devmoter-cli-launch-"));
   try {
@@ -378,11 +407,20 @@ export async function launchCheckedInTerminal(
       const terminal = await resolve(candidate.bin, env);
       if (!terminal) continue;
       detectedTerminal = true;
-      const ackPath = join(privateDir, `launch-${index++}.json`);
-      const candidates = desktopTerminalCandidates(platform, process.execPath, [
-        TERMINAL_ENTRY, ackPath, command, cwd, ...extraArgs
-      ]);
-      const args = candidates.find(item => item.bin === candidate.bin)?.args;
+      const attempt = index++;
+      const ackPath = join(privateDir, `launch-${attempt}.json`);
+      const runnerArgs = [TERMINAL_ENTRY, ackPath, command, cwd, ...extraArgs];
+      let args;
+      if (candidate.bin === "x-terminal-emulator") {
+        // Many terminals behind x-terminal-emulator (lxterminal, xfce4-terminal,
+        // mate-terminal, etc.) treat `-e` as a single command rather than an argv list.
+        const launcherPath = join(privateDir, `launch-${attempt}.sh`);
+        await writeTerminalLauncher(launcherPath, process.execPath, runnerArgs, env);
+        args = ["-e", launcherPath];
+      } else {
+        const candidates = desktopTerminalCandidates(platform, process.execPath, runnerArgs);
+        args = candidates.find(item => item.bin === candidate.bin)?.args;
+      }
       try {
         await spawnTerminal(terminal, args, cwd, env);
       } catch {

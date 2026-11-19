@@ -3,6 +3,22 @@ import "./unified-workspace-nav.css";
 // Stage 2: present native provider transcripts/composers consistently, without
 // unmounting/reparenting their live input, stream, history or approval controls.
 import "./unified-workspace-chat.css";
+import { bindLanguageSelectors, t } from "./i18n";
+import {
+  QWEN_UI_ENABLED,
+  isHiddenQwenTarget,
+  isVisibleChatBackend,
+  normalizeVisibleBackend,
+  normalizeVisibleSurface
+} from "./feature-flags.mjs";
+
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 // The ☰ menu uses the same line-icon set as Home and Settings. Exact copies of
 // APP_REGISTRY / SYSTEM_ICONS (app-registry.ts); this module is loaded standalone
@@ -50,49 +66,61 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   root.id = "dmTaskFirstWorkspace";
   root.className = "dm-task-first-nav";
   root.innerHTML = `
-    <header class="dm-task-first-header">
-      <button type="button" data-workspace-home class="dm-task-first-brand" aria-label="DevMoter FAST Home">
-        <span class="dm-task-first-mark" aria-hidden="true">▦</span>
-        <span><strong>DevMoter <em>FAST</em></strong><small>UNIFIED WORKSPACE</small></span>
-      </button>
-      <p class="dm-task-first-project" data-workspace-project aria-label="Current project"></p>
-      <label class="dm-task-first-backend">
-        <span>AI backend</span>
-        <select data-workspace-backend aria-label="AIバックエンド切り替え">
-          <option value="" disabled>AIを選択</option>
-          <option value="codex">Codex</option>
-          <option value="opencode">OpenCode</option>
-          <option value="api">API Chat</option>
-          <option value="qwen">Qwen Code</option>
-        </select>
-      </label>
-      <button type="button" class="dm-task-first-menu-button" data-workspace-menu-button aria-haspopup="true" aria-expanded="false" aria-controls="dmTaskFirstMenu" aria-label="Switch screen">☰</button>
-    </header>
-    <nav id="dmTaskFirstMenu" class="dm-task-first-menu" aria-label="DevMoter workspace" hidden>
-      <button type="button" data-workspace-go="home" aria-label="Home"><span aria-hidden="true">${ICONS.home}</span><strong>Home</strong></button>
-      <button type="button" data-workspace-action="tasks" aria-label="Tasks and sessions"><span aria-hidden="true">${ICONS.sessions}</span><strong>タスク</strong></button>
-      <button type="button" data-workspace-action="chat" aria-label="Current chat and conversation history"><span aria-hidden="true">${ICONS.chat}</span><strong>Chat</strong></button>
-      <button type="button" data-workspace-action="review" aria-label="Review changes"><span aria-hidden="true">${ICONS.review}</span><strong>Review</strong></button>
-      <button type="button" data-workspace-action="tools" aria-label="Open tools"><span aria-hidden="true">${ICONS.tools}</span><strong>Tools</strong></button>
-      <button type="button" data-workspace-action="terminal" aria-label="Open terminal"><span aria-hidden="true">${ICONS.terminal}</span><strong>Terminal</strong></button>
+    <button type="button" class="dm-task-first-menu-button" data-workspace-menu-button aria-haspopup="dialog" aria-expanded="false" aria-controls="dmTaskFirstDrawer" aria-label="${escapeHtml(t("nav.switchScreenAria"))}">☰</button>
+    <div class="dm-task-first-scrim" data-workspace-scrim hidden></div>
+    <aside id="dmTaskFirstDrawer" class="dm-task-first-drawer" role="dialog" aria-modal="true" aria-label="${escapeHtml(t("nav.workspaceNavAria"))}" hidden>
+      <div class="dm-task-first-drawer-head">
+        <button type="button" data-workspace-home class="dm-task-first-brand" aria-label="${escapeHtml(t("nav.homeAria"))}">
+          <span class="dm-task-first-mark" aria-hidden="true">▦</span>
+          <span><strong>DevMoter <em>FAST</em></strong><small>${escapeHtml(t("nav.unifiedWorkspace"))}</small></span>
+        </button>
+        <button type="button" class="dm-task-first-menu-close" data-workspace-menu-close aria-label="${escapeHtml(t("shell.closeSidebar"))}">×</button>
+      </div>
+      <div class="dm-task-first-drawer-meta">
+        <div class="dm-task-first-project-row">
+          <span class="dm-task-first-meta-label">${escapeHtml(t("nav.currentProjectAria"))}</span>
+          <p class="dm-task-first-project" data-workspace-project aria-label="${escapeHtml(t("nav.currentProjectAria"))}"></p>
+        </div>
+        <label class="dm-task-first-backend">
+          <span>${escapeHtml(t("nav.aiBackend"))}</span>
+          <select data-workspace-backend aria-label="${escapeHtml(t("shell.aiSwitchAria"))}">
+            <option value="" disabled>${escapeHtml(t("nav.selectAi"))}</option>
+            <option value="codex">Codex</option>
+            <option value="opencode">OpenCode</option>
+            <option value="api">API Chat</option>
+            ${QWEN_UI_ENABLED ? '<option value="qwen">Qwen Code</option>' : ""}
+          </select>
+        </label>
+      </div>
       <hr aria-hidden="true" />
-      <button type="button" data-workspace-command="theme"><span aria-hidden="true">${ICONS.theme}</span><strong>テーマ</strong><small data-workspace-theme-value></small></button>
-      <button type="button" data-workspace-command="context"><span aria-hidden="true">${ICONS.context}</span><strong>表示履歴</strong></button>
-      <button type="button" data-workspace-command="checkpoints"><span aria-hidden="true">${ICONS.checkpoint}</span><strong>チェックポイント</strong></button>
-      <button type="button" data-workspace-command="extensions"><span aria-hidden="true">${ICONS.extensions}</span><strong>拡張機能</strong></button>
-      <hr aria-hidden="true" />
-      <button type="button" data-workspace-settings><span aria-hidden="true">${ICONS.settings}</span><strong>設定</strong></button>
-      <label class="dm-task-first-menu-row"><span aria-hidden="true">${ICONS.language}</span><strong>言語</strong>
-        <select data-language-select aria-label="Language">
-          <option value="en">English</option>
-          <option value="ja">日本語</option>
-          <option value="zh-CN">简体中文</option>
-        </select>
-      </label>
-    </nav>
+      <nav id="dmTaskFirstMenu" class="dm-task-first-menu" aria-label="${escapeHtml(t("nav.workspaceNavAria"))}" hidden>
+        <button type="button" data-workspace-go="home" aria-label="${escapeHtml(t("nav.home"))}"><span aria-hidden="true">${ICONS.home}</span><strong>${escapeHtml(t("nav.home"))}</strong></button>
+        <button type="button" data-workspace-action="tasks" aria-label="${escapeHtml(t("nav.tasksAria"))}"><span aria-hidden="true">${ICONS.sessions}</span><strong>${escapeHtml(t("nav.tasks"))}</strong></button>
+        <button type="button" data-workspace-action="chat" aria-label="${escapeHtml(t("nav.chatAria"))}"><span aria-hidden="true">${ICONS.chat}</span><strong>${escapeHtml(t("nav.chat"))}</strong></button>
+        <button type="button" data-workspace-action="review" aria-label="${escapeHtml(t("nav.reviewAria"))}"><span aria-hidden="true">${ICONS.review}</span><strong>${escapeHtml(t("nav.review"))}</strong></button>
+        <button type="button" data-workspace-action="tools" aria-label="${escapeHtml(t("nav.toolsAria"))}"><span aria-hidden="true">${ICONS.tools}</span><strong>${escapeHtml(t("nav.tools"))}</strong></button>
+        <button type="button" data-workspace-action="terminal" aria-label="${escapeHtml(t("nav.terminalAria"))}"><span aria-hidden="true">${ICONS.terminal}</span><strong>${escapeHtml(t("nav.terminal"))}</strong></button>
+        <hr aria-hidden="true" />
+        <button type="button" data-workspace-command="theme"><span aria-hidden="true">${ICONS.theme}</span><strong>${escapeHtml(t("nav.theme"))}</strong><small data-workspace-theme-value></small></button>
+        <button type="button" data-workspace-command="context"><span aria-hidden="true">${ICONS.context}</span><strong>${escapeHtml(t("nav.context"))}</strong></button>
+        <button type="button" data-workspace-command="checkpoints"><span aria-hidden="true">${ICONS.checkpoint}</span><strong>${escapeHtml(t("nav.checkpoints"))}</strong></button>
+        <button type="button" data-workspace-command="extensions"><span aria-hidden="true">${ICONS.extensions}</span><strong>${escapeHtml(t("nav.extensions"))}</strong></button>
+        <hr aria-hidden="true" />
+        <button type="button" data-workspace-settings><span aria-hidden="true">${ICONS.settings}</span><strong>${escapeHtml(t("nav.settings"))}</strong></button>
+        <label class="dm-task-first-menu-row"><span aria-hidden="true">${ICONS.language}</span><strong>${escapeHtml(t("nav.language"))}</strong>
+          <select data-language-select aria-label="${escapeHtml(t("language.ariaLabel"))}">
+            <option value="ja">日本語</option>
+            <option value="en">English</option>
+            <option value="zh-Hans">简体中文</option>
+            <option value="zh-Hant">繁體中文</option>
+          </select>
+        </label>
+      </nav>
+    </aside>
     <p class="dm-task-first-feedback" role="status" aria-live="polite" data-workspace-feedback></p>
   `;
   document.body.append(root);
+  bindLanguageSelectors(root, { reload: true });
   document.body.classList.add("dm-task-first-enabled");
   // The unified selector is the only agent switcher in this view. Native
   // Codex/API switchers stay mounted for legacy UI, but a read-only identity
@@ -104,63 +132,110 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   const projectLabel = root.querySelector<HTMLElement>("[data-workspace-project]")!;
   const feedback = root.querySelector<HTMLElement>("[data-workspace-feedback]")!;
   const menuButton = root.querySelector<HTMLButtonElement>("[data-workspace-menu-button]")!;
+  const scrim = root.querySelector<HTMLElement>("[data-workspace-scrim]")!;
+  const drawer = root.querySelector<HTMLElement>("#dmTaskFirstDrawer")!;
+  const closeButton = root.querySelector<HTMLButtonElement>("[data-workspace-menu-close]")!;
   const menu = root.querySelector<HTMLElement>(".dm-task-first-menu")!;
 
-  // One state, one transition. The ☰ button is the only toggle; outside taps,
-  // Escape, keyboard focus leaving the menu and item selection all call
-  // setMenuOpen(false). "Outside" means outside BOTH the menu and its button,
-  // so a tap on ☰ is never treated as an outside tap racing its own click.
+  const updateProject = () => {
+    // Project selection is owned by the existing backend; this is a label only.
+    const value = localStorage.getItem("opencode-pocket-project") || "";
+    const normalized = value.replace(/\\/g, "/").replace(/\/+$/, "");
+    projectLabel.textContent = normalized.split("/").filter(Boolean).pop()?.slice(0, 80) || t("nav.workspaceFallback");
+  };
+
+  // One state, one transition. The ☰ button opens the drawer; the drawer close
+  // button, backdrop scrim, outside taps, Escape, focus leaving the drawer, and
+  // item selection all call setMenuOpen(false). "Outside" means outside BOTH the
+  // drawer and its button, so a tap on ☰ never races its own click.
   let menuOpen = false;
   function setMenuOpen(next: boolean, restoreFocus = false) {
     if (next === menuOpen) return;
     menuOpen = next;
+    drawer.hidden = !next;
+    scrim.hidden = !next;
     menu.hidden = !next;
     root.classList.toggle("menu-open", next);
     menuButton.setAttribute("aria-expanded", String(next));
     if (next) {
-      // Short screens scroll the menu; it always opens at the top (Home first).
+      updateProject();
+      // Short screens scroll the drawer; it always opens at the top (brand first).
+      drawer.scrollTop = 0;
       menu.scrollTop = 0;
       const current = menu.querySelector<HTMLButtonElement>('[aria-current="page"]') || menu.querySelector<HTMLButtonElement>("button");
       current?.focus({ preventScroll: true });
     } else if (restoreFocus) menuButton.focus({ preventScroll: true });
   }
   const isMenuTarget = (target: EventTarget | null) =>
-    target instanceof window.Node && (menu.contains(target) || menuButton.contains(target));
+    target instanceof window.Node && (drawer.contains(target) || menuButton.contains(target));
   menuButton.addEventListener("click", () => setMenuOpen(!menuOpen, true));
+  closeButton.addEventListener("click", () => setMenuOpen(false, true));
+  scrim.addEventListener("click", event => {
+    event.stopPropagation();
+    setMenuOpen(false, true);
+  });
   const themeValue = root.querySelector<HTMLElement>("[data-workspace-theme-value]")!;
-  const THEME_LABELS: Record<string, string> = { system: "システム", light: "ライト", dark: "ダーク" };
+  const themeLabel = (mode: string) =>
+    mode === "light" ? t("nav.themeLight") : mode === "dark" ? t("nav.themeDark") : t("nav.themeSystem");
   const syncThemeValue = () => {
-    themeValue.textContent = THEME_LABELS[localStorage.getItem("devmoter-theme") || "system"] || THEME_LABELS.system;
+    themeValue.textContent = themeLabel(localStorage.getItem("devmoter-theme") || "system");
   };
   syncThemeValue();
   window.addEventListener("devmoter:theme-changed", syncThemeValue);
+  const FOCUSABLE_SELECTOR =
+    'button:not(:disabled), input:not([type="hidden"]):not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [href], [tabindex]:not([tabindex="-1"])';
+  const isVisibleFocusTarget = (target: HTMLElement | null): target is HTMLElement => {
+    const closedDetails = target?.closest("details:not([open])");
+    if (
+      !target?.isConnected ||
+      (closedDetails && target !== closedDetails.querySelector("summary")) ||
+      target.closest('[inert], [aria-hidden="true"], [hidden], .hidden')
+    ) {
+      return false;
+    }
+    if (drawer.getClientRects().length > 0 && !target.getClientRects().length) return false;
+    for (let el: Element | null = target; el; el = el === drawer ? null : el.parentElement) {
+      const style = window.getComputedStyle?.(el);
+      if (style && (style.display === "none" || style.visibility === "hidden")) return false;
+    }
+    return true;
+  };
   const onDocumentKeydown = (event: KeyboardEvent) => {
-    if (event.key === "Escape" && menuOpen) { event.stopPropagation(); setMenuOpen(false, true); }
+    if (!menuOpen) return;
+    if (event.key === "Escape") { event.stopPropagation(); setMenuOpen(false, true); return; }
+    if (event.key !== "Tab") return;
+    // Keep Tab trapped inside the open modal drawer and prevent underlying
+    // document-level handlers (e.g. app-shell sidebar) from pulling focus out.
+    event.stopPropagation();
+    const controls = Array.from(drawer.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+      .filter(control => control.tabIndex >= 0 && isVisibleFocusTarget(control));
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (!first || !last) { event.preventDefault(); return; }
+    const active = document.activeElement;
+    if (!drawer.contains(active) || (event.shiftKey ? active === first : active === last)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus({ preventScroll: true });
+    }
   };
   const onDocumentPointerDown = (event: Event) => {
-    if (menuOpen && !isMenuTarget(event.target)) setMenuOpen(false);
+    if (!menuOpen || isMenuTarget(event.target)) return;
+    const isScrim = event.target === scrim;
+    if (isScrim) event.preventDefault();
+    setMenuOpen(false, isScrim);
   };
   document.addEventListener("keydown", onDocumentKeydown, true);
   document.addEventListener("pointerdown", onDocumentPointerDown, true);
-  menu.addEventListener("focusout", event => {
+  drawer.addEventListener("focusout", event => {
     const next = (event as FocusEvent).relatedTarget;
     if (next && !isMenuTarget(next)) setMenuOpen(false);
   });
 
-  let surface: MainSurface = actions.initialSurface;
+  let surface: MainSurface = normalizeVisibleSurface(actions.initialSurface);
   // Preserve the last real backend when starting on Home or Integrations.
-  let currentBackend: ChatBackend = surface === "codex" || surface === "api" || surface === "opencode" || surface === "qwen"
+  let currentBackend: ChatBackend = isVisibleChatBackend(surface)
     ? surface
-    : actions.initialBackend === "codex" || actions.initialBackend === "api" || actions.initialBackend === "opencode" || actions.initialBackend === "qwen"
-      ? actions.initialBackend
-      : "opencode";
-
-  const updateProject = () => {
-    // Project selection is owned by the existing backend; this is a label only.
-    const value = localStorage.getItem("opencode-pocket-project") || "";
-    const normalized = value.replace(/\\/g, "/").replace(/\/+$/, "");
-    projectLabel.textContent = normalized.split("/").filter(Boolean).pop()?.slice(0, 80) || "Workspace";
-  };
+    : normalizeVisibleBackend(actions.initialBackend);
 
   let activeTab: WorkspaceTab | null = null;
   let changingTab = false;
@@ -185,10 +260,11 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     );
   };
   const updateSurface = (next: MainSurface) => {
-    surface = next;
-    if (next === "codex" || next === "opencode" || next === "api" || next === "qwen") currentBackend = next;
+    const resolved = normalizeVisibleSurface(next);
+    surface = resolved;
+    if (isVisibleChatBackend(resolved)) currentBackend = resolved;
     backendSelect.value = currentBackend;
-    activeTab = next === "codex" || next === "opencode" || next === "api" || next === "qwen" ? "chat" : null;
+    activeTab = isVisibleChatBackend(resolved) ? "chat" : null;
     renderSelection();
     updateProject();
   };
@@ -203,17 +279,18 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
 
   const onBackendChanged = (event: Event) => {
     const next = (event as CustomEvent<{ backend?: ChatBackend }>).detail?.backend;
-    if (next === "codex" || next === "opencode" || next === "api" || next === "qwen") {
-      currentBackend = next;
-      backendSelect.value = next;
+    if (isVisibleChatBackend(next) || isHiddenQwenTarget(next)) {
+      currentBackend = normalizeVisibleBackend(next);
+      backendSelect.value = currentBackend;
     }
   };
   window.addEventListener("devmoter:backend-changed", onBackendChanged);
 
   backendSelect.addEventListener("change", () => {
     const next = backendSelect.value;
-    if (next !== "codex" && next !== "opencode" && next !== "api" && next !== "qwen") return;
+    if (!isVisibleChatBackend(next)) return;
     feedback.textContent = "";
+    setMenuOpen(false);
     selectTab("chat", "push", next);
   });
 
@@ -223,7 +300,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
       currentBackend === "codex" ? "#cxMenu" : currentBackend === "opencode" ? "#ocxMenu" : "#apiMenu"
     );
     if (!trigger) {
-      feedback.textContent = "この画面では会話履歴を開けません。";
+      feedback.textContent = t("nav.historyUnavailable");
       return;
     }
     trigger.click();
@@ -248,6 +325,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
       else if (tab === "tools") actions.openTools();
       else if (tab === "terminal") actions.openTerminal();
       else if (backend || surface === "home" || surface === "integrations") {
+        if (backend) backend = normalizeVisibleBackend(backend);
         const previousSurface = new URL(window.location.href).searchParams.get("surface");
         actions.switchBackend(backend || currentBackend);
         // The main-surface navigator already pushed a history entry. Reuse it
@@ -292,6 +370,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   window.addEventListener("popstate", restoreTabRoute);
 
   function goHome() {
+    setMenuOpen(false);
     changingTab = true;
     try {
       window.dispatchEvent(new window.CustomEvent("devmoter:workspace-tab-changing"));
