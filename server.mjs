@@ -36,7 +36,14 @@ import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
 import { isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, isSessionAgentRoute, isSessionCreateRoute, modeFromAgent, parseAgentMode, readOnlyToolsFor, resolveEffectiveAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
 import { classifyProxyRoute } from "./server/proxy-route-policy.mjs";
-import { assertAuthPassword, parseBasicAuthorization, requireSameOriginMutation } from "./server/auth.mjs";
+import {
+  assertAuthPassword,
+  assertSafeHttpBind,
+  isLoopbackAddress,
+  isLoopbackBindHost,
+  parseBasicAuthorization,
+  requireSameOriginMutation
+} from "./server/auth.mjs";
 import { createBasicAuthGuard, parseTrustedProxies } from "./server/auth-guard.mjs";
 import { OidcAuth } from "./server/oidc-auth.mjs";
 import { ExternalAuth } from "./server/external-auth.mjs";
@@ -93,6 +100,7 @@ const OPENCODE_DIRECTORY =
   process.cwd();
 const PORT = Number(process.env.POCKET_PORT || 8787);
 const HOST = process.env.POCKET_HOST || "127.0.0.1";
+assertSafeHttpBind(HOST, process.env);
 const DIST = fileURLToPath(new URL("./dist/", import.meta.url));
 // The login page is plain static source (not processed by Vite), so it is served
 // straight from public/: sign-in works before the first build, and in tests.
@@ -2728,15 +2736,13 @@ async function serveStatic(req, res) {
   }
 }
 
-function isLoopbackAddress(address) {
-  const value = String(address || "").toLowerCase();
-  return value === "127.0.0.1" || value === "::1" || value.startsWith("127.") || value === "::ffff:127.0.0.1";
-}
-
 function isLoopbackHost(hostHeader) {
   try {
-    const hostname = new URL(`http://${hostHeader || ""}`).hostname.toLowerCase().replace(/^\\[|\\]$/g, "");
-    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+    const parsed = new URL(`http://${hostHeader || ""}`);
+    if (parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
+      return false;
+    }
+    return isLoopbackBindHost(parsed.hostname);
   } catch {
     return false;
   }
