@@ -238,6 +238,7 @@ html[data-devmoter-theme="light"] .qx-app { color-scheme: light; }
   animation: qx-sheet-in 240ms var(--qx-ease-drawer);
 }
 @keyframes qx-sheet-in { from { transform: translateX(-24px); opacity: 0; } }
+.qx-history-search { min-height: 44px; margin: var(--space-2) var(--space-2) 0; padding: 0 var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-control); background: transparent; color: var(--text-primary); font: inherit; }
 .qx-history { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-2); }
 .qx-history-row { display: flex; align-items: center; gap: var(--space-1); }
 .qx-history-row + .qx-history-row { margin-top: 2px; }
@@ -259,6 +260,7 @@ html[data-devmoter-theme="light"] .qx-app { color-scheme: light; }
 .qx-history-open small { color: var(--text-secondary); font-size: var(--font-size-caption); font-variant-numeric: tabular-nums; }
 .qx-history-delete { border-color: transparent; background: transparent; color: var(--text-secondary); }
 .qx-history-empty { margin: var(--space-4) var(--space-2); color: var(--text-secondary); font-size: var(--font-size-label); }
+.qx-history-restore { width: 100%; min-height: 44px; margin-bottom: var(--space-2); border: 1px solid var(--border-subtle); border-radius: var(--radius-control); background: transparent; color: var(--text-primary); font: inherit; font-size: var(--font-size-label); text-align: left; }
 
 
 /* Model picker: bottom sheet on phones, a centered panel on wide screens. */

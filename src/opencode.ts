@@ -360,7 +360,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         <form id="ocxPromptForm" class="ocx-composer">
           <div id="ocxAttachmentStrip" class="ocx-attachment-strip hidden"></div>
           <textarea
-            id="ocxPromptInput"
+            id="ocxPromptInput" enterkeyhint="send"
             rows="1"
             placeholder="${escapeHtml(t("opencode.composer.promptPlaceholder"))}"
             aria-label="${escapeHtml(t("opencode.composer.promptAria"))}"
