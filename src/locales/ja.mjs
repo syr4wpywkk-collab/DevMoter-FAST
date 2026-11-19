@@ -44,6 +44,7 @@ export const ja = {
   "common.newTabNotice": "新しいタブで開きます",
   "common.newTabShort": "新しいタブ",
   "common.httpError": "HTTP {status}",
+  "common.requestTimeout": "リクエストがタイムアウトしました。接続を確認して、もう一度お試しください。",
   "common.transcriptTruncated": "表示を軽量化しました（全{count}件中・最新のみ表示）",
 
   "language.label": "言語",
