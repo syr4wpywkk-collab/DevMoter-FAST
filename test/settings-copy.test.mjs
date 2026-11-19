@@ -1,4 +1,5 @@
 import test from "node:test";
+import * as fetchTimeout from "../src/fetch-with-timeout.mjs";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import ts from "typescript";
@@ -114,7 +115,9 @@ test("Remote & automation renders each section once even when opened and switche
   const exports = {};
   vm.runInNewContext(compiled, {
     exports,
-    require: name => name === "./i18n"
+    require: name => name === "./fetch-with-timeout.mjs"
+      ? fetchTimeout
+      : name === "./i18n"
       ? i18n
       : name === "./device-gate.mjs"
         ? deviceGate

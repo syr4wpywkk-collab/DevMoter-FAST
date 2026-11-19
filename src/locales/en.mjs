@@ -44,6 +44,7 @@ export const en = {
   "common.newTabNotice": "Opens in a new tab",
   "common.newTabShort": "New tab",
   "common.httpError": "HTTP {status}",
+  "common.requestTimeout": "The request timed out. Check the connection and try again.",
   "common.transcriptTruncated": "Transcript truncated: showing recent messages ({count} total)",
 
   "language.label": "Language",

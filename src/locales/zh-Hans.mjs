@@ -44,6 +44,7 @@ export const zhHans = {
   "common.newTabNotice": "在新标签页中打开",
   "common.newTabShort": "新标签页",
   "common.httpError": "HTTP {status}",
+  "common.requestTimeout": "请求超时。请检查连接后重试。",
   "common.transcriptTruncated": "已精简显示（共 {count} 条，仅显示最新内容）",
 
   "language.label": "语言",

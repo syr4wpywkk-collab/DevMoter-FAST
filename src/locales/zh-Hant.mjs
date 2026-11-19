@@ -44,6 +44,7 @@ export const zhHant = {
   "common.newTabNotice": "在新分頁中開啟",
   "common.newTabShort": "新分頁",
   "common.httpError": "HTTP {status}",
+  "common.requestTimeout": "請求逾時。請檢查連線後再試一次。",
   "common.transcriptTruncated": "已精簡顯示對話紀錄：顯示最新訊息（共 {count} 則）",
 
   "language.label": "語言",
