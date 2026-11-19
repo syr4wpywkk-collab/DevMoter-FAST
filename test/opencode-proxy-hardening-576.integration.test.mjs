@@ -199,9 +199,9 @@ test("OpenCode proxy and SSE paths harden headers, redact secrets, and enforce a
       return;
     }
 
-    if (req.method === "GET" && path === "/api/session/ses_rw_created") {
+    if (req.method === "GET" && ["/api/session/ses_rw_created", "/api/session/ses_rw_prompt"].includes(path)) {
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ data: { id: "ses_rw_created", agent: "build" } }));
+      res.end(JSON.stringify({ data: { id: path.split("/").at(-1), agent: "build" } }));
       return;
     }
 
@@ -707,23 +707,8 @@ rl.on("line", line => {
       "unverifiable session mutations must never reach upstream"
     );
 
-    // 5. Downgrade sync: an explicit read-only prompt agent on a build
-    //    session persists server-side, so later mutations stay blocked even
-    //    without a downgrade header.
-    const recreateRw = await fetch(`${baseUrl}/api/opencode/session`, {
-      method: "POST",
-      headers: {
-        ...baseHeaders,
-        "content-type": "application/json",
-        "x-pocket-operation-id": "recreate-rw-576"
-      },
-      body: JSON.stringify({ agent: "build" }),
-      signal: AbortSignal.timeout(4000)
-    });
-    assert.equal(recreateRw.status, 200);
-    assert.equal((await recreateRw.json()).id, "ses_rw_created");
-
-    const downgradePrompt = await fetch(`${baseUrl}/api/opencode/session/ses_rw_created/prompt`, {
+    // A 1.x prompt selects tools for one turn, not the session's stored agent.
+    const downgradePrompt = await fetch(`${baseUrl}/api/opencode/session/ses_rw_prompt/prompt`, {
       method: "POST",
       headers: {
         ...baseHeaders,
@@ -734,21 +719,24 @@ rl.on("line", line => {
       signal: AbortSignal.timeout(4000)
     });
     assert.equal(downgradePrompt.status, 200);
-    const downgradeUpstream = received.filter(r => r.path === "/session/ses_rw_created/prompt_async").at(-1);
+    const downgradeUpstream = received.filter(r => r.path === "/session/ses_rw_prompt/prompt_async").at(-1);
     assert.equal(downgradeUpstream.body.agent, "plan");
     assert.equal(downgradeUpstream.body.tools["*"], false);
 
-    const shellAfterDowngrade = await fetch(`${baseUrl}/api/opencode/session/ses_rw_created/shell`, {
+    const followupPrompt = await fetch(`${baseUrl}/api/opencode/session/ses_rw_prompt/prompt`, {
       method: "POST",
       headers: {
         ...baseHeaders,
         "content-type": "application/json",
-        "x-pocket-operation-id": "rw-shell-after-downgrade-576"
+        "x-pocket-operation-id": "rw-prompt-after-plan-576"
       },
-      body: JSON.stringify({ command: "id" }),
+      body: JSON.stringify({ text: "back to the session default" }),
       signal: AbortSignal.timeout(4000)
     });
-    assert.equal(shellAfterDowngrade.status, 403, "mode map must follow the explicit prompt-agent downgrade");
+    assert.equal(followupPrompt.status, 200);
+    const followupUpstream = received.filter(r => r.path === "/session/ses_rw_prompt/prompt_async").at(-1);
+    assert.equal(followupUpstream.body.agent, "build");
+    assert.equal(followupUpstream.body.tools, undefined);
   } finally {
     child.kill("SIGTERM");
     await Promise.race([once(child, "exit"), new Promise(resolve => setTimeout(resolve, 1500))]);
