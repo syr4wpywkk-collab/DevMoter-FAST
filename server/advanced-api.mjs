@@ -50,6 +50,66 @@ function loopbackHost(host) {
   return host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "[::1]";
 }
 
+function parseEnvPort(value, fallback) {
+  const raw = String(value ?? "").trim();
+  if (!raw || !/^\d+$/.test(raw)) return fallback;
+  const port = Number(raw);
+  return Number.isInteger(port) && port >= 1 && port <= 65535 ? port : fallback;
+}
+
+function deniedPreviewPorts(env = {}) {
+  const denied = new Set([
+    parseEnvPort(env?.POCKET_PORT, 8787),
+    parseEnvPort(env?.OPENCODE_PORT, 49374)
+  ]);
+  const openCodeUrl = String(env?.OPENCODE_URL ?? "").trim();
+  if (openCodeUrl) {
+    try {
+      const parsed = new URL(openCodeUrl);
+      if ((parsed.protocol === "http:" || parsed.protocol === "https:") && loopbackHost(parsed.hostname.toLowerCase())) {
+        const urlPort = parsed.port
+          ? Number(parsed.port)
+          : (parsed.protocol === "https:" ? 443 : 80);
+        if (Number.isInteger(urlPort) && urlPort >= 1 && urlPort <= 65535) {
+          denied.add(urlPort);
+        }
+      }
+    } catch {
+      // Ignore malformed OPENCODE_URL here; startup/client validation handles it.
+    }
+  }
+  return denied;
+}
+
+function parseAllowedPreviewPorts(env = {}) {
+  const raw = String(env?.DEVMOTER_PREVIEW_ALLOWED_PORTS ?? "").trim();
+  if (!raw) return null;
+  const allowed = new Set();
+  for (const part of raw.split(",")) {
+    const token = part.trim();
+    if (!token || !/^\d+$/.test(token)) continue;
+    const port = Number(token);
+    if (Number.isInteger(port) && port >= 1024 && port <= 65535) {
+      allowed.add(port);
+    }
+  }
+  return allowed;
+}
+
+function assertPreviewPortAllowed(port, env = {}) {
+  const portNumber = Number(port);
+  if (!Number.isInteger(portNumber) || portNumber < 1024 || portNumber > 65535) {
+    throw Object.assign(new Error("Preview port is not allowed"), { statusCode: 403 });
+  }
+  if (deniedPreviewPorts(env).has(portNumber)) {
+    throw Object.assign(new Error("Preview port is not allowed"), { statusCode: 403 });
+  }
+  const allowed = parseAllowedPreviewPorts(env);
+  if (allowed && !allowed.has(portNumber)) {
+    throw Object.assign(new Error("Preview port is not allowed"), { statusCode: 403 });
+  }
+}
+
 const LIVE_PREVIEW_LIMIT = 20 * 1024 * 1024;
 
 // Fixed origins per approved loopback host. The fetch target is always one of
@@ -68,13 +128,11 @@ const PREVIEW_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
  * Build the live preview request target as a plain string from a fixed
  * loopback origin, the approved port, and an allowlisted path and query.
  */
-export function resolveLivePreviewTarget(host, port, suffix, search = "") {
+export function resolveLivePreviewTarget(host, port, suffix, search = "", { env = {} } = {}) {
   const origin = LOOPBACK_ORIGINS.get(String(host));
   if (!origin) throw Object.assign(new Error("Preview host is not allowed"), { statusCode: 403 });
   const portNumber = Number(port);
-  if (!Number.isInteger(portNumber) || portNumber < 1 || portNumber > 65535) {
-    throw Object.assign(new Error("Preview port is not allowed"), { statusCode: 403 });
-  }
+  assertPreviewPortAllowed(portNumber, env);
   const rawSuffix = String(suffix || "/");
   const decoded = PREVIEW_SAFE_PATH.test(rawSuffix) ? fullyDecodePath(rawSuffix) : null;
   if (
@@ -164,7 +222,16 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
   const browser = createBrowserAutomation({
     configDir,
     resolveProject: getProjectById,
-    getPreview: projectId => previews.get(String(projectId)) || null,
+    getPreview: projectId => {
+      const preview = previews.get(String(projectId)) || null;
+      if (!preview) return null;
+      try {
+        assertPreviewPortAllowed(preview.port, env);
+      } catch {
+        return null;
+      }
+      return preview;
+    },
     env
   });
   const routingLog = [];
@@ -189,8 +256,9 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
     if (!preview) { sendJson(res, 404, { error: "Preview is stopped or token is invalid" }); return; }
     if (!new Set(["GET", "HEAD"]).has(req.method)) { sendJson(res, 405, { error: "Live preview proxy is read-only" }); return; }
     if (!loopbackHost(preview.host)) { sendJson(res, 403, { error: "Preview host is not allowed" }); return; }
+    assertPreviewPortAllowed(preview.port, env);
 
-    const target = resolveLivePreviewTarget(preview.host, preview.port, suffix || "/", url.search);
+    const target = resolveLivePreviewTarget(preview.host, preview.port, suffix || "/", url.search, { env });
     const upstream = await fetchImpl(target, {
       method: req.method,
       headers: { accept: String(req.headers.accept || "*/*"), "user-agent": "DevMoter-LivePreview/1" },
@@ -203,7 +271,7 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
         let next;
         try {
           next = new URL(location, target);
-          resolveLivePreviewTarget(preview.host, preview.port, next.pathname || "/", next.search);
+          resolveLivePreviewTarget(preview.host, preview.port, next.pathname || "/", next.search, { env });
         } catch {
           sendJson(res, 502, { error: "Preview redirect escaped the approved loopback target" });
           return;
@@ -231,7 +299,7 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
     if (location) {
       try {
         const next = new URL(location, target);
-        resolveLivePreviewTarget(preview.host, preview.port, next.pathname || "/", next.search);
+        resolveLivePreviewTarget(preview.host, preview.port, next.pathname || "/", next.search, { env });
         if (
           next.protocol === "http:" &&
           loopbackHost(next.hostname) &&
@@ -474,6 +542,7 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
           if (!loopbackHost(host)) {
             throw Object.assign(new Error("Live preview targets must use a loopback host"), { statusCode: 400 });
           }
+          assertPreviewPortAllowed(port, env);
           await browser.stop(projectId);
           const item = {
             projectId, host, port, token: randomBytes(24).toString("hex"), startedAt: Date.now()
