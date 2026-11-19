@@ -22,6 +22,8 @@ import * as reasoning from "../src/codex-reasoning.mjs";
 import * as reconnect from "../src/reconnect-policy.mjs";
 import * as markdown from "../src/chat-markdown.mjs";
 import * as sendError from "../src/codex-send-error.mjs";
+import * as chatDraft from "../src/chat-draft.mjs";
+import * as transcriptActions from "../src/chat-transcript-actions.mjs";
 import { loadPureTypeScript } from "./helpers/ts-pure-modules.mjs";
 
 const source = await readFile(new URL("../src/codex.ts", import.meta.url), "utf8");
@@ -123,6 +125,8 @@ test("native completion reason survives the thread/read transcript replacement",
     if (name === "./codex-reasoning.mjs") return reasoning;
     if (name === "./reconnect-policy.mjs") return reconnect;
     if (name === "./chat-markdown.mjs") return markdown;
+    if (name === "./chat-draft.mjs") return chatDraft;
+    if (name === "./chat-transcript-actions.mjs") return transcriptActions;
     if (name === "./codex-send-error.mjs") return sendError;
     if (name === "./wake-lock") return { setWakeLockExecutionActive() {} };
     if (name === "./safety-client") return { runPreExecutionGuard: async () => ({ decision: "allow" }), guardMessage: () => "", continueAgentRun: async () => {}, loopMessage: () => "", matchRememberedPermission: async () => ({ matched: false }), recordAgentAction: async () => null, rememberPermission: async () => {}, scanCommand: async () => ({ dangerous: false }) };
