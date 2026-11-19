@@ -174,7 +174,7 @@ test("native completion reason survives the thread/read transcript replacement",
   assert.equal(document.activeElement, document.querySelector("#cxPromptInput"));
 });
 
-test("failed Codex thread list shows an in-place retry that keeps the draft", async t => {
+async function mountWithFailedThreadList(t, { savedThread = null } = {}) {
   const dom = new JSDOM('<!doctype html><main id="root"></main>', {
     url: "https://devmoter.example/?surface=codex",
     runScripts: "outside-only"
@@ -190,6 +190,7 @@ test("failed Codex thread list shows an in-place retry that keeps the draft", as
   window.clearTimeout = () => {};
   window.requestAnimationFrame = callback => { callback(); return 1; };
   window.EventSource = class { addEventListener() {} close() {} };
+  if (savedThread) window.localStorage.setItem("opencode-pocket-codex-thread", savedThread);
   window.fetch = async (input, init = {}) => {
     const path = String(input);
     const ok = (result, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => result });
@@ -199,7 +200,7 @@ test("failed Codex thread list shows an in-place retry that keeps the draft", as
     methods.push(method);
     if (method === "thread/list") {
       if (listFailures > 0) { listFailures -= 1; return ok({ error: "list unavailable" }, 503); }
-      return ok({ result: { data: [{ id: "thread-1", name: "Recovered thread" }] } });
+      return ok({ result: { data: [{ id: "thread-1", name: "Recovered thread", cwd: "/work/other" }] } });
     }
     if (method === "model/list") return ok({ result: { models: [] } });
     return ok({ result: {} });
@@ -222,6 +223,11 @@ test("failed Codex thread list shows an in-place retry that keeps the draft", as
   await settle();
   await settle();
 
+  return { window, document, methods };
+}
+
+test("failed Codex thread list shows an in-place retry that keeps the draft", async t => {
+  const { document, methods } = await mountWithFailedThreadList(t);
   const notice = document.querySelector("#cxSidebarThreads [data-history-retry]");
   assert.ok(notice, "list failure replaces the loading placeholder with a retry notice");
   assert.equal(notice.getAttribute("role"), "alert");
@@ -237,4 +243,26 @@ test("failed Codex thread list shows an in-place retry that keeps the draft", as
   assert.equal(document.querySelector("#cxSidebarThreads [data-history-retry]"), null);
   assert.ok(document.querySelector("#cxSidebarThreads").textContent.includes("Recovered thread"));
   assert.equal(document.querySelector("#cxPromptInput").value, "unsent draft");
+});
+
+test("Codex list retry survives a search and does not swap a draft for the saved thread", async t => {
+  const { window, document, methods } = await mountWithFailedThreadList(t, { savedThread: "thread-1" });
+  const search = document.querySelector("#cxThreadSearch");
+  search.value = "abc";
+  search.dispatchEvent(new window.Event("input", { bubbles: true }));
+  assert.equal(document.querySelector("#cxSidebarThreads [data-history-retry]"), null);
+  search.value = "";
+  search.dispatchEvent(new window.Event("input", { bubbles: true }));
+  const notice = document.querySelector("#cxSidebarThreads [data-history-retry]");
+  assert.ok(notice, "clearing the search brings the retry back while the list is still missing");
+
+  document.querySelector("#cxPromptInput").value = "draft for a new chat";
+  const before = methods.length;
+  notice.querySelector("button").click();
+  await settle();
+  await settle();
+
+  assert.deepEqual(methods.slice(before), ["thread/list"], "the saved thread is not reopened under the draft");
+  assert.ok(document.querySelector("#cxSidebarThreads").textContent.includes("Recovered thread"));
+  assert.equal(document.querySelector("#cxPromptInput").value, "draft for a new chat");
 });

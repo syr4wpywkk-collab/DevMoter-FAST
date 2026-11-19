@@ -529,6 +529,7 @@ export function mountCodexRemote(
   let reconnectTimer: number | null = null;
   let reconnectAttempts = 0;
   let allThreads: ThreadSummary[] = [];
+  let threadListFailed = false;
   const threadListRequests = createLatestRequestGuard();
   const modelCatalogRequests = createLatestRequestGuard();
   let projects: ProjectSummary[] = [];
@@ -1450,6 +1451,11 @@ export function mountCodexRemote(
 
     sidebarThreads.replaceChildren();
 
+    if (!items.length && !q && threadListFailed) {
+      showThreadListFailure();
+      return;
+    }
+
     if (!items.length) {
       const empty = document.createElement("div");
       empty.className = "cx-side-empty";
@@ -1539,11 +1545,15 @@ export function mountCodexRemote(
       className: "cx-history-retry",
       message: t("chat.history.listLoadFailed"),
       retryLabel: t("common.retry"),
-      onRetry: async () => { await loadThreads(); }
+      // A draft typed meanwhile belongs to a new chat; do not swap it for the
+      // saved thread's project draft.
+      onRetry: async () => {
+        await loadThreads({ restoreSaved: !(promptInput.value.trim() || pendingAttachments.length || selectedContextRefs.length) });
+      }
     }));
   }
 
-  async function loadThreads() {
+  async function loadThreads({ restoreSaved = true }: { restoreSaved?: boolean } = {}) {
     const requestGeneration = threadListRequests.begin();
     let result: Json;
     try {
@@ -1551,7 +1561,8 @@ export function mountCodexRemote(
     } catch (error) {
       if (threadListRequests.isCurrent(requestGeneration)) {
         showToast(error instanceof Error ? translateServerMessage(error.message) : t("codex.threads.listLoadFailed"));
-        if (!allThreads.length) showThreadListFailure();
+        threadListFailed = !allThreads.length;
+        if (threadListFailed) showThreadListFailure();
       }
       return false;
     }
@@ -1560,14 +1571,16 @@ export function mountCodexRemote(
       allThreads = normalizeCodexThreadList(result);
     } catch {
       showToast(t("codex.threads.listInvalid"));
-      if (!allThreads.length) showThreadListFailure();
+      threadListFailed = !allThreads.length;
+      if (threadListFailed) showThreadListFailure();
       return false;
     }
+    threadListFailed = false;
     renderThreads();
 
     // thread/list can briefly lag a just-created or just-resumed thread.
     // Preserve the current identity instead of silently falling back to a new chat.
-    if (!activeThreadId) {
+    if (!activeThreadId && restoreSaved) {
       const saved = localStorage.getItem("opencode-pocket-codex-thread");
       const target = allThreads.find(thread => thread.id === saved);
       if (target) await selectThread(target);
