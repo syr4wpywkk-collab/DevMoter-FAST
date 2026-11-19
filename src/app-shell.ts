@@ -196,7 +196,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
       case "sessions": clickExisting(".sc-fab"); break;
       case "automation": openRemoteTab("automation"); break;
       case "developer-workflows": options.switchBackend("codex"); updateBackend("codex"); window.setTimeout(() => clickExisting("#cxDevWorkflowsNav"), 0); break;
-      case "knowledge":
+      case "knowledge": window.dispatchEvent(new CustomEvent("devmoter:open-knowledge")); break;
       case "browser":
         notify(tApp(id, "previewMessage") || t("apps.unavailable", { title: tApp(id, "title") || app.title }));
         break;

@@ -22,6 +22,7 @@ import { startViewportSync } from "./visual-viewport.mjs";
 import { startPasteSecretGuard } from "./paste-secret-guard.mjs";
 import { mountHomeSurface } from "./home";
 import { mountMissionControl } from "./mission-control";
+import { mountKnowledge } from "./knowledge";
 import { createSurfaceNavigation, type MainSurface } from "./surface-navigation.mjs";
 import {
   DEFAULT_VISIBLE_BACKEND,
@@ -205,6 +206,7 @@ const integrationsRemote = mountIntegrations(integrationsMount, {
 
 startI18n();
 mountMissionControl();
+mountKnowledge();
 mountAgentConsole();
 mountSessionControl({ switchBackend: backend => setBackend(backend) });
 mountWorkspaceTools();

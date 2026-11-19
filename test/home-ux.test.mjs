@@ -74,17 +74,18 @@ test("Home still treats non-shipped applications as previews, never launches the
   const browserCard = root.querySelector('[data-home-app="browser"]');
   assert.equal(browserCard.getAttribute("aria-disabled"), null);
   assert.equal(browserCard.disabled, false);
-  assert.equal(root.querySelector('[data-home-app="knowledge"]').getAttribute("aria-disabled"), "true");
-  root.querySelector('[data-home-app="knowledge"]').click();
-  assert.equal(root.querySelector('[data-home-app="knowledge"]')?.getAttribute("aria-label"), "Knowledge, Preview");
-  assert.equal(root.querySelector('[data-home-app="knowledge"] .dm-home-app-state')?.textContent, "Preview");
+  const knowledgeCard = root.querySelector('[data-home-app="knowledge"]');
+  assert.equal(knowledgeCard.getAttribute("aria-disabled"), null);
+  assert.equal(knowledgeCard.getAttribute("aria-label"), "Knowledge");
+  assert.equal(knowledgeCard.querySelector(".dm-home-app-state"), null);
+  assert.equal(browserCard.getAttribute("aria-label"), "Browser, Preview");
+  assert.equal(browserCard.querySelector(".dm-home-app-state")?.textContent, "Preview");
+  knowledgeCard.click();
   browserCard.click();
-  assert.deepEqual(launches, []);
-  assert.equal(previews.length, 2);
-  assert.equal(previews[0].id, "knowledge");
-  assert.equal(previews[0].message, "Knowledge is not available yet. Its app shell is planned separately.");
-  assert.equal(previews[1].id, "browser");
-  assert.match(previews[1].message, /Files & Preview/);
+  assert.deepEqual(launches, ["knowledge"], "Knowledge opens its real note list");
+  assert.equal(previews.length, 1);
+  assert.equal(previews[0].id, "browser");
+  assert.match(previews[0].message, /Files & Preview/);
   dom.window.close();
 });
 
@@ -138,7 +139,7 @@ test("#459: only available apps can be saved as favorites and they are restored 
   let { root, launched } = mountHomeAt(mountHomeSurface, dom);
   assert.equal(root.querySelector("[data-home-favorites-section]").hidden, true);
   // Preview / unavailable launchers offer no favorite control at all.
-  assert.equal(root.querySelector('[data-home-favorite-toggle="knowledge"]'), null);
+  assert.ok(root.querySelector('[data-home-favorite-toggle="knowledge"]'), "Knowledge is available, so it can be a favorite");
   assert.equal(root.querySelector('[data-home-favorite-toggle="browser"]'), null);
 
   const gitToggle = root.querySelector('[data-home-favorite-toggle="git"]');
@@ -175,7 +176,7 @@ test("#459/#460: invalid stored favorites are ignored without breaking Home", as
     assert.equal(root.querySelectorAll("[data-home-app]").length, 13);
   }
   storage.setItem(FAVORITES_KEY, JSON.stringify([
-    "terminal", "knowledge", "browser", "settings", "<img src=x onerror=alert(1)>", "__proto__",
+    "terminal", "browser", "settings", "<img src=x onerror=alert(1)>", "__proto__",
     7, null, { id: "git" }, ["chat"], "terminal", "git"
   ]));
   const { root, launched, previews } = mountHomeAt(mountHomeSurface, dom);

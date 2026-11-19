@@ -62,7 +62,8 @@ export function createOpenCodeClient({
   headers = extra => extra,
   fetchImpl = (...args) => fetch(...args),
   now = () => Date.now(),
-  infoTtlMs = OPENCODE_INFO_TTL_MS
+  infoTtlMs = OPENCODE_INFO_TTL_MS,
+  onSessionCreated = null
 }) {
   let cached = null;
   let inflight = null;
@@ -190,7 +191,11 @@ export function createOpenCodeClient({
   /** Create a session; `body` is { agent?, model?: { id, providerID } } on both generations. */
   async function createSession(body = {}, { headers: extra = {}, signal } = {}) {
     const payload = await send({ method: "POST", path: "/api/session", body }, { headers: extra, signal });
-    return payload?.data !== undefined ? payload.data : payload;
+    const created = payload?.data !== undefined ? payload.data : payload;
+    if (onSessionCreated && created && typeof created === "object") {
+      onSessionCreated(created, body);
+    }
+    return created;
   }
 
   /** Deliver a DevMoter prompt ({ text, model?, agent?, delivery? }). */

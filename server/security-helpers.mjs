@@ -214,3 +214,18 @@ export async function readDistStaticFile(
     return { status: 404, error: "Not built yet. Run npm run build." };
   }
 }
+
+// Codex app-server lets the caller of thread/* and turn/* widen execution
+// authority per request (sandbox, approval policy, cwd, raw config such as MCP
+// server commands). Those are host decisions: clients choose a registered
+// project and a model, never the sandbox or approval behaviour.
+export const CODEX_RPC_AUTHORITY_KEYS = Object.freeze([
+  "cwd", "sandbox", "sandboxPolicy", "approvalPolicy", "approvalsReviewer", "config", "permissionProfile"
+]);
+
+/** The first client-supplied execution-authority override in a thread or turn RPC, or null. */
+export function codexRpcAuthorityOverride(method, params) {
+  if (typeof method !== "string" || !/^(?:thread|turn)\//.test(method)) return null;
+  if (!params || typeof params !== "object" || Array.isArray(params)) return null;
+  return CODEX_RPC_AUTHORITY_KEYS.find(key => Object.prototype.hasOwnProperty.call(params, key)) ?? null;
+}

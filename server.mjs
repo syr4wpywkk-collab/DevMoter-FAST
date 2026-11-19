@@ -6,14 +6,15 @@ import { lstat, mkdir, open, readFile, readdir, realpath, stat, writeFile } from
 import { basename, delimiter, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
+import { MIMEType } from "node:util";
 import { CodexBridge } from "./server/codex-bridge.mjs";
 import { inspectKnownClis, launchCode } from "./server/cli-launch.mjs";
 import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/opencode-provider-catalog.mjs";
 import { canonicalOpenCodeEvent, createSseReader, lastAssistantText, OPENCODE_API_V2, parseDevMoterPrompt, parsePermissionDecision, parseQuestionAnswers } from "./server/opencode-adapter.mjs";
 import { createOpenCodeClient } from "./server/opencode-api.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
-import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, isAllowedCodexRpc, isInsideHome, normalizeNewProjectPath, readDistStaticFile } from "./server/security-helpers.mjs";
-import { staticSecurityHeaders } from "./server/security-headers.mjs";
+import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, codexRpcAuthorityOverride, normalizeNewProjectPath, readDistStaticFile } from "./server/security-helpers.mjs";
+import { buildProxyResponseHeaders, isTextualProxyMediaType, PROXY_SECURITY_HEADERS, staticSecurityHeaders } from "./server/security-headers.mjs";
 import { applyBaselineSecurityHeaders } from "./server/response-security.mjs";
 import { writeFileNoFollow } from "./server/safe-file.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
@@ -50,7 +51,7 @@ import {
 import { createBasicAuthGuard, parseTrustedProxies } from "./server/auth-guard.mjs";
 import { OidcAuth } from "./server/oidc-auth.mjs";
 import { ExternalAuth } from "./server/external-auth.mjs";
-import { redactLogText, redactSecretsInText } from "./server/secret-redaction.mjs";
+import { createStreamingBufferRedactor, createStreamingTextRedactor, redactLogText, redactSecretsInText } from "./server/secret-redaction.mjs";
 import { QwenChatError, createQwenRunRegistry, handleQwenChatRequest, isQwenId, publicQwenChatError } from "./server/qwen-chat.mjs";
 import { installQwenProvider, listQwenModels, publicQwenModelError, publicQwenModelList, publicQwenPresets, resolveQwenModelSelection } from "./server/qwen-models.mjs";
 import { antigravityRemoteAction, integrationChildEnv, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
@@ -75,8 +76,17 @@ import { errorMessage } from "./server/error-message.mjs";
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
 const OPENCODE_PASSWORD = process.env.OPENCODE_SERVER_PASSWORD || "";
-// Hoisted openCodeHeaders() is only invoked per request, after module init.
-const openCode = createOpenCodeClient({ baseUrl: OPENCODE_URL, headers: openCodeHeaders });
+// Hoisted openCodeHeaders() and setOpenCodeSessionMode() are only invoked per request, after module init.
+const openCode = createOpenCodeClient({
+  baseUrl: OPENCODE_URL,
+  headers: openCodeHeaders,
+  onSessionCreated: (session, body) => {
+    const id = typeof session?.id === "string" ? session.id : "";
+    if (!id) return;
+    const mode = modeFromAgent(session?.agent) || parseAgentMode(session?.mode) || modeFromAgent(body?.agent) || "build";
+    setOpenCodeSessionMode(id, mode);
+  }
+});
 const fetchOpenCodeJson = openCode.fetchJson;
 const DEVMOTER_AUTH_USERNAME = process.env.DEVMOTER_AUTH_USERNAME || "devmoter";
 const DEVMOTER_AUTH_PASSWORD = assertAuthPassword(process.env.DEVMOTER_AUTH_PASSWORD || "");
@@ -156,7 +166,9 @@ const codex = new CodexBridge({
 });
 const agentRunService = createAgentRunService({
   filePath: join(PROJECT_CONFIG_DIR, "agent-runs.json"),
-  codex
+  codex,
+  resolveProject: id => getProjectById(id),
+  assertExecutionAllowed: () => assertExternalBackendExecutionAllowed("codex")
 });
 void agentRunService.ready().catch(error => {
   console.error("Agent run service initialization failed", redactLog(errorMessage(error)));
@@ -456,7 +468,24 @@ function redactText(value) {
 }
 
 function redactLog(value) {
-  return redactText(redactLogText(value, REDACTED_SECRETS));
+  return redactLogText(value, REDACTED_SECRETS);
+}
+
+function redactJsonSecrets(value) {
+  if (typeof value === "string") return redactText(value);
+  if (Array.isArray(value)) return value.map(redactJsonSecrets);
+  if (value && typeof value === "object") {
+    const redacted = Object.create(null);
+    for (const [key, entry] of Object.entries(value)) {
+      redacted[redactText(key)] = redactJsonSecrets(entry);
+    }
+    return redacted;
+  }
+  return value;
+}
+
+function stringifyRedactedJson(body) {
+  return JSON.stringify(redactJsonSecrets(body));
 }
 
 function endIfResponseStarted(res) {
@@ -471,9 +500,7 @@ function json(res, status, body) {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store"
   });
-  res.end(JSON.stringify(body, (_key, value) =>
-    typeof value === "string" ? redactText(value) : value
-  ));
+  res.end(stringifyRedactedJson(body));
 }
 
 function jsonWithCookie(res, status, body, cookie) {
@@ -483,9 +510,7 @@ function jsonWithCookie(res, status, body, cookie) {
     "cache-control": "no-store",
     "set-cookie": cookie
   });
-  res.end(JSON.stringify(body, (_key, value) =>
-    typeof value === "string" ? redactText(value) : value
-  ));
+  res.end(stringifyRedactedJson(body));
 }
 
 async function featureJson(res, task, successStatus = 200) {
@@ -1024,7 +1049,7 @@ async function dispatchControlQueued(backend, sessionId, text) {
     return;
   }
 
-  await openCode.prompt(sessionId, { text });
+  await promptOpenCodeInSessionMode(sessionId, text);
 }
 
 async function interruptControlSession(backend, sessionId, snapshot = {}) {
@@ -1327,7 +1352,7 @@ async function executeControlTaskCore(definition, context = {}) {
     context.setCancel?.(cancel);
 
     const signal = AbortSignal.timeout(taskTimeoutMs(context));
-    await openCode.prompt(sessionId, { text: task }, { headers, signal });
+    await promptOpenCodeInSessionMode(sessionId, task, { headers, signal });
     await openCode.waitForIdle(sessionId, { headers, signal });
     const answer = lastAssistantText(await openCode.context(sessionId, { headers }));
     const promptSummary = answer.slice(-4000);
@@ -1748,7 +1773,7 @@ function materializeOpenCodeUploadText(text) {
 }
 
 async function materializeCodexUploadInputs(method, params) {
-  if (method !== "turn/start" || !Array.isArray(params?.input)) return params;
+  if ((method !== "turn/start" && method !== "turn/steer") || !Array.isArray(params?.input)) return params;
   const input = params.input.map(item => {
     if (!item || typeof item !== "object") return item;
 
@@ -1957,6 +1982,12 @@ async function resolveOpenCodeSessionMode(sessionId) {
   }
 }
 
+async function promptOpenCodeInSessionMode(sessionId, text, options = {}) {
+  const mode = await resolveOpenCodeSessionMode(sessionId) || "plan";
+  const prompt = isReadOnlyMode(mode) ? { text, agent: mode } : { text };
+  return openCode.prompt(sessionId, prompt, { ...options, readOnlyTools: readOnlyToolsFor(mode) });
+}
+
 function tryParseJsonObject(buffer) {
   if (!buffer || !buffer.length) return null;
   try {
@@ -1965,6 +1996,23 @@ function tryParseJsonObject(buffer) {
   } catch {
     return null;
   }
+}
+
+async function readOpenCodeProxyJson(body) {
+  const limit = 8 * 1024 * 1024;
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of body) {
+    size += chunk.byteLength;
+    if (size > limit) throw new Error("OpenCode JSON response exceeds the size limit");
+    chunks.push(chunk);
+  }
+  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks, size)));
+}
+
+function writeProxyChunk(res, textOrBuffer) {
+  if (!textOrBuffer || !textOrBuffer.length || res.writableEnded || res.destroyed) return;
+  res.write(typeof textOrBuffer === "string" ? Buffer.from(textOrBuffer, "utf8") : textOrBuffer);
 }
 
 async function opencodeSessionRoute(req, res, pathname) {
@@ -2038,7 +2086,7 @@ async function opencodeSessionRoute(req, res, pathname) {
         return true;
       }
       const effectiveMode = resolveEffectiveAgentMode(verifiedMode, promptAgentMode);
-      if (isReadOnlyMode(effectiveMode) && !prompt.agent) prompt.agent = effectiveMode;
+      if (isReadOnlyMode(effectiveMode)) prompt.agent = effectiveMode;
       if (promptAgentMode && isReadOnlyMode(promptAgentMode)) {
         const { generation } = await openCode.info();
         if (generation === OPENCODE_API_V2) setOpenCodeSessionMode(sessionId, promptAgentMode);
@@ -2113,6 +2161,7 @@ async function opencodeEvents(req, res) {
     }
     if (endIfResponseStarted(res)) return;
     res.writeHead(200, {
+      ...PROXY_SECURITY_HEADERS,
       "content-type": "text/event-stream; charset=utf-8",
       "cache-control": "no-cache, no-transform",
       connection: "keep-alive"
@@ -2120,25 +2169,32 @@ async function opencodeEvents(req, res) {
     const read = createSseReader();
     const decoder = new TextDecoder();
     const reader = upstream.body.getReader();
+    const emitFrames = chunk => {
+      for (const frame of read(chunk)) {
+        const event = canonicalOpenCodeEvent(generation, frame);
+        if (event && !res.writableEnded && !res.destroyed) {
+          if (event.type === "session.deleted") {
+            const deletedSessionId = String(
+              event.properties?.info?.id ??
+              event.properties?.sessionID ??
+              event.properties?.id ??
+              ""
+            );
+            if (deletedSessionId) openCodeSessionModes.delete(deletedSessionId);
+          }
+          res.write("data: " + stringifyRedactedJson(event) + "\n\n");
+        }
+      }
+    };
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done || res.writableEnded || res.destroyed) break;
-        for (const frame of read(decoder.decode(value, { stream: true }))) {
-          const event = canonicalOpenCodeEvent(generation, frame);
-          if (event) {
-            if (event.type === "session.deleted") {
-              const deletedSessionId = String(
-                event.properties?.info?.id ??
-                event.properties?.sessionID ??
-                event.properties?.id ??
-                ""
-              );
-              if (deletedSessionId) openCodeSessionModes.delete(deletedSessionId);
-            }
-            res.write("data: " + JSON.stringify(event) + "\n\n");
-          }
-        }
+        emitFrames(decoder.decode(value, { stream: true }));
+      }
+      const tail = decoder.decode();
+      if (tail && !res.writableEnded && !res.destroyed) {
+        emitFrames(tail);
       }
     } finally {
       reader.releaseLock();
@@ -2249,7 +2305,6 @@ async function proxy(req, res, { upstreamUrl, policyPath }) {
     }
     if (isReadOnlyMode(bodyAgentMode)) setOpenCodeSessionMode(sessionId, bodyAgentMode);
   }
-
   const upstreamAbort = new AbortController();
   const abortUpstream = () => {
     upstreamAbort.abort();
@@ -2272,76 +2327,82 @@ async function proxy(req, res, { upstreamUrl, policyPath }) {
       signal: upstreamAbort.signal
     });
 
-    if (isSessionAgentUpdate && upstream.ok && bodyAgentMode) {
-      setOpenCodeSessionMode(sessionId, resolveEffectiveAgentMode(agentUpdateCurrentMode, bodyAgentMode));
-    }
-
-    const headers = {};
-    for (const [key, value] of upstream.headers.entries()) {
-      if (![ "content-encoding", "content-length", "transfer-encoding", "connection" ].includes(key)) {
-        headers[key] = value;
-      }
-    }
-    const upstreamContentType = upstream.headers.get("content-type") || "";
-    headers["cache-control"] = upstreamContentType.includes("text/event-stream")
-      ? "no-cache, no-transform"
-      : "no-store";
+    const { headers, rawContentType, mediaType } = buildProxyResponseHeaders(
+      upstream.headers,
+      upstream.status,
+      redactText
+    );
 
     if (endIfResponseStarted(res)) return;
 
-    // A created session's initial mode is recorded server-side (#591), so
-    // capture the new session's id from the JSON response before it streams
-    // past.
-    const captureCreatedSession =
-      isSessionCreate &&
-      upstream.ok &&
-      (upstreamContentType.includes("application/json") || upstreamContentType.includes("+json"));
-    if (captureCreatedSession) {
-      const chunks = [];
-      if (upstream.body) {
-        const reader = upstream.body.getReader();
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            chunks.push(Buffer.from(value));
-          }
-        } finally {
-          reader.releaseLock();
-        }
-      }
-      const payload = Buffer.concat(chunks);
-      try {
-        const parsed = JSON.parse(payload.toString("utf8"));
-        const created = parsed?.data !== undefined ? parsed.data : parsed;
-        if (typeof created?.id === "string" && created.id) {
-          // Prefer the mode the upstream reports for the created session
-          // over the request body: server state must not drift above
-          // upstream reality (#591 audit).
-          const upstreamMode = modeFromAgent(created?.agent) || parseAgentMode(created?.mode);
-          setOpenCodeSessionMode(created.id, upstreamMode || initialCreateMode);
-        }
-      } catch {
-        // A non-JSON create response leaves the mode to upstream resolution.
-      }
-      res.writeHead(upstream.status, headers);
-      res.end(payload);
-      return;
-    }
-
-    res.writeHead(upstream.status, headers);
-
     if (!upstream.body) {
+      res.writeHead(upstream.status, headers);
       res.end();
       return;
     }
 
+    if (mediaType === "application/json" || mediaType.endsWith("+json")) {
+      let payload;
+      let redacted;
+      try {
+        payload = await readOpenCodeProxyJson(upstream.body);
+        redacted = stringifyRedactedJson(payload);
+      } catch {
+        json(res, 502, { error: "OpenCode returned an invalid or oversized JSON response" });
+        return;
+      }
+      if (endIfResponseStarted(res)) return;
+      if (isSessionCreate && upstream.ok) {
+        const createdSession = payload?.data ?? payload;
+        const createdId = typeof createdSession?.id === "string" ? createdSession.id : "";
+        if (createdId) {
+          const upstreamMode = modeFromAgent(createdSession?.agent) || parseAgentMode(createdSession?.mode);
+          setOpenCodeSessionMode(createdId, upstreamMode || initialCreateMode);
+        }
+      }
+      headers["content-type"] = `${mediaType}; charset=utf-8`;
+      res.writeHead(upstream.status, headers);
+      res.end(redacted);
+      return;
+    }
+
+    const textual = isTextualProxyMediaType(rawContentType);
+    let decoder = null;
+    if (textual) {
+      try {
+        const charset = mediaType === "text/event-stream"
+          ? "utf-8"
+          : new MIMEType(rawContentType).params.get("charset") ?? "utf-8";
+        decoder = new TextDecoder(charset);
+      } catch {
+        json(res, 502, { error: "OpenCode returned an unsupported text encoding" });
+        return;
+      }
+      if (mediaType === "text/plain" || mediaType === "text/event-stream") {
+        headers["content-type"] = `${mediaType}; charset=utf-8`;
+      }
+    }
+    res.writeHead(upstream.status, headers);
     const reader = upstream.body.getReader();
+    const redactor = textual
+      ? createStreamingTextRedactor(REDACTED_SECRETS)
+      : createStreamingBufferRedactor(REDACTED_SECRETS);
+
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done || res.writableEnded || res.destroyed) break;
-        res.write(Buffer.from(value));
+        const out = textual
+          ? redactor.push(decoder.decode(value, { stream: true }))
+          : redactor.push(value);
+        writeProxyChunk(res, out);
+      }
+
+      if (!res.writableEnded && !res.destroyed) {
+        const tail = textual
+          ? redactor.push(decoder.decode()) + redactor.flush()
+          : redactor.flush();
+        writeProxyChunk(res, tail);
       }
     } finally {
       reader.releaseLock();
@@ -2368,6 +2429,24 @@ async function codexRpc(req, res) {
       return;
     }
 
+    if (/^(?:thread|turn)\//.test(String(method)) && (!params || typeof params !== "object" || Array.isArray(params))) {
+      json(res, 400, { error: "Codex thread and turn params must be an object" });
+      return;
+    }
+
+    const authorityOverride = codexRpcAuthorityOverride(method, params);
+    if (authorityOverride === "cwd") {
+      json(res, 400, { error: "Codex cwd must be selected by registered project id" });
+      return;
+    }
+    if (authorityOverride) {
+      json(res, 400, {
+        error: `Codex ${authorityOverride} is controlled by the DevMoter host and cannot be set by clients`,
+        code: "DEVMOTER_CODEX_AUTHORITY_OVERRIDE"
+      });
+      return;
+    }
+
     if (method === "turn/start" || method === "turn/steer") {
       try {
         assertExternalBackendExecutionAllowed("codex");
@@ -2381,15 +2460,6 @@ async function codexRpc(req, res) {
     }
 
     if (method === "thread/start") {
-      if (!params || typeof params !== "object" || Array.isArray(params)) {
-        json(res, 400, { error: "Codex thread/start params must be an object" });
-        return;
-      }
-      if (Object.prototype.hasOwnProperty.call(params, "cwd")) {
-        json(res, 400, { error: "Codex cwd must be selected by registered project id" });
-        return;
-      }
-
       const projectId = String(params.projectId || "").trim();
       const nextParams = { ...params };
       delete nextParams.projectId;
@@ -2492,7 +2562,9 @@ async function codexEvents(req, res) {
     return;
   }
 
+  if (endIfResponseStarted(res)) return;
   res.writeHead(200, {
+    ...PROXY_SECURITY_HEADERS,
     "content-type": "text/event-stream; charset=utf-8",
     "cache-control": "no-cache, no-transform",
     "connection": "keep-alive",
@@ -2500,8 +2572,9 @@ async function codexEvents(req, res) {
   });
 
   const send = (event, data) => {
-    res.write(`event: ${event}\n`);
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (res.writableEnded || res.destroyed) return;
+    res.write(`event: ${redactText(event)}\n`);
+    res.write(`data: ${stringifyRedactedJson(data)}\n\n`);
   };
 
   const onNotification = event => send("notification", event);
@@ -2517,16 +2590,20 @@ async function codexEvents(req, res) {
   send("ready", { online: true });
 
   const heartbeat = setInterval(() => {
-    res.write(": heartbeat\n\n");
+    if (!res.writableEnded && !res.destroyed) {
+      res.write(": heartbeat\n\n");
+    }
   }, 20000);
 
-  req.on("close", () => {
+  const cleanup = () => {
     clearInterval(heartbeat);
     codex.off("notification", onNotification);
     codex.off("server-request", onServerRequest);
     codex.off("offline", onOffline);
     codex.off("online", onOnline);
-  });
+  };
+  req.on("close", cleanup);
+  res.on("close", cleanup);
 }
 
 
@@ -3916,6 +3993,9 @@ const server = http.createServer(async (req, res) => {
 
     if (openCodeTarget) {
       const { policyPath } = openCodeTarget;
+      for (const [name, value] of Object.entries(PROXY_SECURITY_HEADERS)) {
+        res.setHeader(name, value);
+      }
       if (
         req.method !== "GET" &&
         req.method !== "HEAD" &&
