@@ -37,6 +37,7 @@ import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
 import { normalizeProxyRoutePath } from "./server/opencode-proxy-path.mjs";
 import { isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, isSessionAgentRoute, isSessionCreateRoute, modeFromAgent, parseAgentMode, readOnlyToolsFor, resolveEffectiveAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
+import { classifyProxyRoute } from "./server/proxy-route-policy.mjs";
 import {
   assertAuthPassword,
   assertSafeHttpBind,
@@ -1800,8 +1801,8 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
 
   // Strip the optional client-side "/api" prefix; the upstream root is fixed.
   // The upstream-style alias does not grant access to adapter-owned operations.
-  const upstreamAlias = canonicalPath.startsWith("/api/");
-  const apiRelative = upstreamAlias ? canonicalPath.slice("/api/".length) : canonicalPath.slice(1);
+  const upstreamAlias = canonicalPath === "/api" || canonicalPath.startsWith("/api/");
+  const apiRelative = canonicalPath.slice(upstreamAlias ? "/api/".length : 1);
   if (apiRelative.startsWith("/")) {
     return { error: "OpenCode proxy path is not allowed" };
   }
@@ -2076,31 +2077,43 @@ async function proxy(req, res, { upstreamUrl, policyPath }) {
     json(res, 405, { error: "Session agent updates require POST" });
     return;
   }
-
-  // #591: the session mode is server-side state; the x-pocket-agent-mode
-  // header is ignored. Direct mutations resolve the mode from server-side
-  // state and fail closed when it cannot be verified.
-  if (isDirectMutationRoute(policyPath)) {
-    const sessionMode = sessionId ? await resolveOpenCodeSessionMode(sessionId) : null;
-    if (!sessionMode) {
-      json(res, 403, { error: "Session mode could not be verified", mode: null });
-      return;
-    }
-    if (isReadOnlyMode(sessionMode)) {
-      json(res, 403, { error: `${sessionMode} mode blocks direct shell and command mutations`, mode: sessionMode });
-      return;
-    }
-  }
-
   if (isAdapterOwnedRoute(policyPath)) {
     json(res, 404, { error: "This OpenCode session route is served by DevMoter at /api/opencode/session/{id}/…" });
     return;
   }
 
-  const sandboxPolicy = externalBackendSandboxPolicy("opencode");
-  if (!sandboxPolicy.allowed && isDirectMutationRoute(policyPath)) {
-    json(res, 409, { error: sandboxPolicy.reason, sandbox: sandboxPolicy });
+  // Deny-by-default (#588): only allowlisted method + route pairs are
+  // forwarded; anything else is rejected without contacting upstream.
+  const route = classifyProxyRoute(req.method, policyPath);
+  if (!route) {
+    json(res, 404, { error: "OpenCode proxy route is not allowed" });
     return;
+  }
+
+  if (route.kind === "write") {
+    const sandboxPolicy = externalBackendSandboxPolicy("opencode");
+    if (!sandboxPolicy.allowed) {
+      json(res, 409, { error: sandboxPolicy.reason, sandbox: sandboxPolicy });
+      return;
+    }
+    // Agent transitions have a separate guard below so plan/ask can still
+    // switch to another read-only mode without granting write access.
+    if (sessionId && !isSessionAgentUpdate) {
+      const mode = await resolveOpenCodeSessionMode(sessionId);
+      if (!mode) {
+        json(res, 403, { error: "Session mode could not be verified", mode: null });
+        return;
+      }
+      if (isReadOnlyMode(mode)) {
+        json(res, 403, {
+          error: isDirectMutationRoute(policyPath)
+            ? `${mode} mode blocks direct shell and command mutations`
+            : `${mode} mode blocks write operations`,
+          mode
+        });
+        return;
+      }
+    }
   }
 
   let body;
