@@ -54,7 +54,7 @@ test("Home copy describes a development workspace without generic AI slogans", a
   mountHomeSurface(root, { onLaunchApp() {}, onPreviewApp() {} });
   assert.equal(root.querySelector("h1")?.textContent, "Workspace");
   assert.equal(root.querySelector("#dm-home-apps-title")?.textContent, "Tools");
-  assert.equal(root.querySelector("[data-home-app-count]")?.textContent, "13 apps");
+  assert.equal(root.querySelector("[data-home-app-count]")?.textContent, "14 apps");
   assert.match(root.textContent, /Developer Workflows|Knowledge|Browser/);
   assert.doesNotMatch(root.textContent, /開発ワークフロー|ナレッジ|ブラウザー/);
   assert.doesNotMatch(root.textContent, /building with AI|local AI workspace/i);

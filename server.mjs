@@ -56,6 +56,8 @@ import { createSecretStore } from "./server/secret-store.mjs";
 import { createSecretVaultApi } from "./server/secret-vault-api.mjs";
 import { createKnowledgeStore } from "./server/knowledge-store.mjs";
 import { createKnowledgeApi } from "./server/knowledge-api.mjs";
+import { createPromptTemplateStore } from "./server/prompt-template-store.mjs";
+import { createPromptTemplateApi, isPromptTemplatePath } from "./server/prompt-template-api.mjs";
 import { createAgentRunService } from "./server/agent-run-service.mjs";
 import { createAgentRunApi } from "./server/agent-run-api.mjs";
 import { createSetupStatus } from "./server/setup/engine.mjs";
@@ -321,6 +323,14 @@ const knowledgeStore = createKnowledgeStore({
 });
 const knowledgeApi = createKnowledgeApi({
   store: knowledgeStore,
+  authenticateDevice: req => systemFeatures.authenticate(req),
+  claimOperation
+});
+const promptTemplateApi = createPromptTemplateApi({
+  store: createPromptTemplateStore({
+    rootDir: join(HOME_DIR, ".local", "share", "devmoter-fast", "prompt-templates"),
+    getProjectById
+  }),
   authenticateDevice: req => systemFeatures.authenticate(req),
   claimOperation
 });
@@ -3118,6 +3128,10 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === "/api/knowledge/notes" || url.pathname.startsWith("/api/knowledge/notes/")) {
       if (await knowledgeApi.handle(req, res, url)) return;
+    }
+
+    if (isPromptTemplatePath(url.pathname)) {
+      if (await promptTemplateApi.handle(req, res, url)) return;
     }
 
     if (
