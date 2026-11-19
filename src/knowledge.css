@@ -72,7 +72,7 @@
   display: block;
   width: 100%;
   min-height: 56px;
-  padding: 10px 4px;
+  padding: 12px 4px;
   border: 0;
   border-bottom: 1px solid var(--border-hairline);
   background: none;
@@ -82,7 +82,7 @@
   cursor: pointer;
 }
 .dm-know-row strong { display: block; overflow: hidden; font-size: 15px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.dm-know-row small { display: block; margin-top: 2px; color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+.dm-know-row small { display: block; margin-top: 4px; color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
 .dm-know-row[data-pinned="true"] strong { font-weight: 600; }
 
 .dm-know-empty { padding: 32px 0; }
