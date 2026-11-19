@@ -172,4 +172,10 @@ test("chat surfaces wire drafts, latest-answer copy and history retry without se
   assert.match(opencodeFailure, /if \(activeSession\?\.id !== sessionId\) return;/);
   assert.match(opencodeFailure, /await loadContext\(\)/);
   assert.doesNotMatch(opencodeFailure, /sendMessage|prompt_async|activeSession = /);
+
+  // A failed switch must not leave the previous conversation's answers on screen to be copied.
+  assert.match(codexFailure, /if \(unloadedSwitchThreadId === threadId\) transcript\.replaceChildren\(\);/);
+  assert.match(opencodeFailure, /if \(unloadedSwitchSessionId === sessionId\) \{\s*transcript\.replaceChildren\(\);/);
+  assert.match(codex, /if \(activeThreadId !== thread\.id\) unloadedSwitchThreadId = thread\.id;/);
+  assert.match(opencode, /if \(activeSession\?\.id !== session\.id\) unloadedSwitchSessionId = session\.id;/);
 });

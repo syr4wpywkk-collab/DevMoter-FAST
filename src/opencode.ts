@@ -635,6 +635,8 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   let pendingAttachments: PendingAttachment[] = [];
   let selectedContextRefs: Array<{ path: string; kind: "file" | "folder" }> = [];
   let contextRequestSerial = 0;
+  // Session selected by a switch whose history has not been rendered yet.
+  let unloadedSwitchSessionId: string | null = null;
   const drafts = createChatDraftBinding<{
     attachments: PendingAttachment[];
     contextRefs: Array<{ path: string; kind: "file" | "folder" }>;
@@ -1457,8 +1459,15 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   }
 
   // Keeps the session selected and offers a manual re-read of its history.
+  // After a session switch the previous session's messages are removed, so they
+  // are neither shown nor copied as if they belonged to the new session.
   function showContextLoadFailure(sessionId: string) {
-    transcript.querySelector("[data-history-retry]")?.remove();
+    if (unloadedSwitchSessionId === sessionId) {
+      transcript.replaceChildren();
+      clearLiveStreams();
+    } else {
+      transcript.querySelector("[data-history-retry]")?.remove();
+    }
     transcript.appendChild(createHistoryRetryNotice(document, {
       className: "ocx-history-retry",
       message: t("chat.history.loadFailed"),
@@ -1511,6 +1520,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
     transcript.replaceChildren();
     clearLiveStreams();
+    unloadedSwitchSessionId = null;
 
     const knewPrompt = sessionFirstPrompts.has(activeSession.id);
     for (const message of list) {
@@ -1823,6 +1833,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   }
 
   async function selectSession(session: OpenCodeSession) {
+    if (activeSession?.id !== session.id) unloadedSwitchSessionId = session.id;
     activeSession = session;
     localStorage.setItem("opencode-pocket-opencode-session", session.id);
 

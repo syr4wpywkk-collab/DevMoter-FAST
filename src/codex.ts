@@ -535,6 +535,8 @@ export function mountCodexRemote(
   let activeProject: ProjectSummary | null = null;
   let pendingAttachments: PendingAttachment[] = [];
   let selectedContextRefs: Array<{ path: string; kind: "file" | "folder" }> = [];
+  // Thread selected by a switch whose history has not been rendered yet.
+  let unloadedSwitchThreadId: string | null = null;
   const drafts = createChatDraftBinding<{
     attachments: PendingAttachment[];
     contextRefs: Array<{ path: string; kind: "file" | "folder" }>;
@@ -1581,8 +1583,11 @@ export function mountCodexRemote(
   }
 
   // Keeps the thread selected and offers a manual re-read of its history.
+  // After a thread switch the previous thread's messages are removed, so they
+  // are neither shown nor copied as if they belonged to the new thread.
   function showHistoryLoadFailure(threadId: string) {
-    transcript.querySelector("[data-history-retry]")?.remove();
+    if (unloadedSwitchThreadId === threadId) transcript.replaceChildren();
+    else transcript.querySelector("[data-history-retry]")?.remove();
     transcript.appendChild(createHistoryRetryNotice(document, {
       className: "cx-history-retry",
       message: t("chat.history.loadFailed"),
@@ -1636,6 +1641,7 @@ export function mountCodexRemote(
       setExecutionState("idle");
     }
 
+    unloadedSwitchThreadId = null;
     transcript.replaceChildren();
 
     const renderedFailedTurnIds = new Set<string>();
@@ -1706,6 +1712,7 @@ export function mountCodexRemote(
         "thread/resume",
         { threadId: thread.id }
       );
+      if (activeThreadId !== thread.id) unloadedSwitchThreadId = thread.id;
       activeThreadId = thread.id;
       activeTurnId = null;
       activeAssistantBubble = null;
