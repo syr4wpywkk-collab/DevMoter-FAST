@@ -54,7 +54,7 @@ test("Home copy describes a development workspace without generic AI slogans", a
   mountHomeSurface(root, { onLaunchApp() {}, onPreviewApp() {} });
   assert.equal(root.querySelector("h1")?.textContent, "Workspace");
   assert.equal(root.querySelector("#dm-home-apps-title")?.textContent, "Tools");
-  assert.equal(root.querySelector("[data-home-app-count]")?.textContent, "13 apps");
+  assert.equal(root.querySelector("[data-home-app-count]")?.textContent, "14 apps");
   assert.match(root.textContent, /Developer Workflows|Knowledge|Browser/);
   assert.doesNotMatch(root.textContent, /開発ワークフロー|ナレッジ|ブラウザー/);
   assert.doesNotMatch(root.textContent, /building with AI|local AI workspace/i);
@@ -173,7 +173,7 @@ test("#459/#460: invalid stored favorites are ignored without breaking Home", as
     storage.setItem(FAVORITES_KEY, bad);
     const { root } = mountHomeAt(mountHomeSurface, dom);
     assert.deepEqual(favoriteIds(root), [], bad);
-    assert.equal(root.querySelectorAll("[data-home-app]").length, 13);
+    assert.equal(root.querySelectorAll("[data-home-app]").length, 14);
   }
   storage.setItem(FAVORITES_KEY, JSON.stringify([
     "terminal", "browser", "settings", "<img src=x onerror=alert(1)>", "__proto__",
@@ -248,7 +248,7 @@ test("#461: clearing recents removes only the recently opened list", async () =>
   assert.equal(storage.getItem("devmoter-unrelated"), "keep");
   assert.deepEqual(JSON.parse(storage.getItem(FAVORITES_KEY)), ["git"]);
   assert.deepEqual(favoriteIds(root), ["git"]);
-  assert.equal(root.querySelectorAll("[data-home-app]").length, 13);
+  assert.equal(root.querySelectorAll("[data-home-app]").length, 14);
   assert.deepEqual(requests, [], "clearing is local only: no server request");
   assert.deepEqual(launched, ["terminal", "git"]);
   assert.equal(dom.window.document.activeElement, root.querySelector("#devmoterHomeTitle"));

@@ -31,7 +31,7 @@ const ICON_REMOVE = '<svg viewBox="0 0 24 24"><path d="m6.5 6.5 11 11m0-11-11 11
 // The reference HTML provides a visual hierarchy, not runtime capability data.
 // Keep every launcher tied to a shipped/preview entry in the canonical registry.
 const HOME_ORDER: readonly AppId[] = [
-  "chat", "projects", "terminal", "git", "agents", "knowledge",
+  "chat", "projects", "terminal", "git", "agents", "knowledge", "prompts",
   "review", "sessions", "mission-control", "automation",
   "developer-workflows", "office", "browser"
 ];

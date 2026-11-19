@@ -93,7 +93,7 @@ test("Japanese locale translates Home, workspace navigation, and Review copy and
   assert.equal(home.querySelector('[data-home-app="knowledge"]').getAttribute("aria-label"), "ナレッジ");
   assert.equal(home.querySelector('[data-home-app="browser"]').getAttribute("aria-label"), "ブラウザー、プレビュー");
   assert.equal(home.querySelector('[data-home-quick-action="chat"]').getAttribute("aria-label"), "チャットを開く");
-  assert.equal(home.querySelector("[data-home-app-count]").textContent, "13件");
+  assert.equal(home.querySelector("[data-home-app-count]").textContent, "14件");
 
   const nav = window.document.querySelector("#dmTaskFirstWorkspace");
   assert.equal(nav.querySelector("[data-workspace-home]").getAttribute("aria-label"), "DevMoter FAST ホーム");

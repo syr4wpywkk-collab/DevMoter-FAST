@@ -197,6 +197,10 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
       case "automation": openRemoteTab("automation"); break;
       case "developer-workflows": options.switchBackend("codex"); updateBackend("codex"); window.setTimeout(() => clickExisting("#cxDevWorkflowsNav"), 0); break;
       case "knowledge": window.dispatchEvent(new CustomEvent("devmoter:open-knowledge")); break;
+      case "prompts":
+        // Show the last chat behind the sheet so Insert has a composer to write to.
+        options.switchBackend(normalizeVisibleBackend(localStorage.getItem("opencode-pocket-backend")));
+        void import("./prompt-templates").then(module => module.openPromptTemplates()).catch(() => notify(t("shell.featureUnavailable"))); break;
       case "browser":
         notify(tApp(id, "previewMessage") || t("apps.unavailable", { title: tApp(id, "title") || app.title }));
         break;

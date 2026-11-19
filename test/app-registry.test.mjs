@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { DICTIONARIES } from "../src/i18n-core.mjs";
 
 const EXPECTED_APPS = [
-  "office", "chat", "projects", "mission-control", "knowledge", "terminal", "git", "review", "agents",
+  "office", "chat", "projects", "mission-control", "knowledge", "prompts", "terminal", "git", "review", "agents",
   "sessions", "browser", "automation", "developer-workflows"
 ];
 
