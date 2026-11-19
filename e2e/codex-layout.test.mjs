@@ -5,7 +5,7 @@ import path from "node:path";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { build } from "esbuild";
-import { webkit } from "playwright";
+import { launchWebKit } from "./launch-webkit.mjs";
 
 const repo = path.resolve(import.meta.dirname, "..");
 
@@ -45,7 +45,7 @@ async function setup(t, viewport) {
   const server = await fixtureServer();
   let browser;
   t.after(async () => { try { await browser?.close(); } finally { await server.close(); } });
-  browser = await webkit.launch({ headless: true });
+  browser = await launchWebKit();
   const page = await browser.newPage({ viewport });
   await page.route("**/*", route => {
     const url = new URL(route.request().url());
