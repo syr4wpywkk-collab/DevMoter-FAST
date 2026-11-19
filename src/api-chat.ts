@@ -159,7 +159,7 @@ export function mountApiChat(
       <section class="api-composer-wrap">
         <form id="apiForm" class="api-composer">
           <div id="apiAttachments" class="api-attachment-tray hidden"></div>
-          <textarea id="apiPrompt" rows="1" placeholder="${escapeHtml(t("apiChat.promptPlaceholder"))}" aria-label="${escapeHtml(t("apiChat.promptAria"))}"></textarea>
+          <textarea id="apiPrompt" rows="1" enterkeyhint="send" placeholder="${escapeHtml(t("apiChat.promptPlaceholder"))}" aria-label="${escapeHtml(t("apiChat.promptAria"))}"></textarea>
           <input id="apiImageInput" class="hidden" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple />
           <small id="apiStatus" class="api-status" role="status" aria-live="polite">${escapeHtml(t("apiChat.loadingProviders"))}</small>
           <button id="apiCopyLatest" class="api-copy-latest" type="button">${escapeHtml(t("chat.copyLatest.button"))}</button>
