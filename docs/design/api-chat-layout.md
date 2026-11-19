@@ -10,7 +10,7 @@ composer is one field with its controls in a single foot row.
 | Composer | `#apiPrompt` | Single text field at the top of the composer. |
 | Composer foot | `#apiAttachImage`, pickers, `#apiSend` | Line-icon SVG buttons (`aria-hidden` icon, `aria-label` + `title`); no font glyphs, which render as boxes on some devices. |
 
-While a reply streams, `#apiSend` shows `…` and its label becomes
-`apiChat.waitingResponse`; it returns to the send icon afterwards.
+While a reply streams, `#apiSend` shows a stop icon labelled `common.stop`;
+it returns to the send icon afterwards.
 
 Verify with `node --test test/api-chat-composer-icons.test.mjs`.

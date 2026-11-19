@@ -60,6 +60,37 @@ test("OAuth success query cannot bypass an outstanding Passkey check", async t =
   assert.match(dom.window.document.querySelector("#message").textContent, /additional Passkey check/);
 });
 
+test("local recovery sign-in that still needs a Passkey stays on login and offers only the Passkey check", async t => {
+  const dom = new JSDOM(source, { url: "https://devmoter.test/login.html", runScripts: "outside-only", pretendToBeVisual: true });
+  t.after(() => dom.window.close());
+  const providers = { passkey: { available: true }, github: { configured: true, linked: true }, google: { configured: true, linked: true } };
+  const requests = [];
+  let signedIn = false;
+  dom.window.fetch = async (path, init = {}) => {
+    requests.push([init.method || "GET", path]);
+    if (path === "/api/auth/local/login") { signedIn = true; return { ok: true, async json() { return { ok: true }; } }; }
+    assert.equal(path, "/api/auth/status");
+    const status = signedIn
+      ? { authenticated: false, ownerAuthenticated: true, stepUpRequired: true, providers }
+      : { authenticated: false, providers };
+    return { ok: true, async json() { return status; } };
+  };
+  const redirects = [];
+  dom.window.eval(scriptSource.replace(/location\.replace\(/g, "__redirect(").replace(/^/, "const __redirect = target => window.__redirects.push(target);\n"));
+  dom.window.__redirects = redirects;
+  await new Promise(resolve => setTimeout(resolve, 0));
+  const document = dom.window.document;
+  document.querySelector("#password").value = "recovery-secret";
+  document.querySelector("#localLogin").click();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(requests.map(([method, path]) => `${method} ${path}`), ["GET /api/auth/status", "POST /api/auth/local/login", "GET /api/auth/status"]);
+  assert.deepEqual(redirects, [], "a step-up session must not redirect into the app (and bounce back)");
+  assert.equal(document.querySelector("#password").value, "", "the recovery password is cleared after use");
+  assert.deepEqual([...document.querySelectorAll("#providers button")].map(button => button.dataset.provider), ["passkey"]);
+  assert.match(document.querySelector("#message").textContent, /additional Passkey check/);
+});
+
 test("login screen hides all unconfigured providers and keeps recovery collapsed", async t => {
   const dom = makeDom({ authenticated: false, providers: {
     passkey: { available: false }, github: { configured: false }, google: { configured: false }, microsoft: { configured: false }

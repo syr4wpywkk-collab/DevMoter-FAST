@@ -19,6 +19,7 @@ import { mountSettingsPanel } from "./settings";
 import { mountSetupWizard } from "./setup-wizard";
 import { mountUnifiedFeatureShell } from "./app-shell";
 import { startViewportSync } from "./visual-viewport.mjs";
+import { startSessionExpiryWatch } from "./session-expiry.mjs";
 import { startPasteSecretGuard } from "./paste-secret-guard.mjs";
 import { mountHomeSurface } from "./home";
 import { mountMissionControl } from "./mission-control";
@@ -40,6 +41,7 @@ const app = document.querySelector<HTMLDivElement>("#app")!;
 startViewportSync(window);
 startPasteSecretGuard(document);
 startI18n();
+startSessionExpiryWatch(window);
 const startupParams = new URLSearchParams(window.location.search);
 
 const requestedProject = startupParams.get("project");
