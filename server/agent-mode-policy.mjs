@@ -53,26 +53,17 @@ export function sessionIdFromOpenCodePath(value) {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-/**
- * Canonical shape for proxy route matching: query-free, with trailing
- * slashes stripped (never to empty). "/api/session/{id}/agent/" is the same
- * route as "/api/session/{id}/agent" and must not slip past the guards that
- * match on it (#591 audit).
- */
-export function normalizeProxyRoutePath(value) {
-  return pathnameOnly(value).replace(/\/+$/, "") || "/";
-}
-
+// Route matchers consume the canonical policyPath built by the proxy target builder.
 export function isSessionCreateRoute(value) {
-  return normalizeProxyRoutePath(value) === "/api/session";
+  return value === "/api/session";
 }
 
 export function isSessionAgentRoute(value) {
-  return /^\/api\/session\/[^/]+\/agent$/.test(normalizeProxyRoutePath(value));
+  return /^\/api\/session\/[^/]+\/agent$/.test(value);
 }
 
 export function isDirectMutationRoute(value) {
-  return /^\/api\/session\/[^/]+\/(?:shell|command)$/.test(normalizeProxyRoutePath(value));
+  return /^\/api\/session\/[^/]+\/(?:shell|command)$/.test(value);
 }
 
 // Session operations whose OpenCode routes differ by generation. DevMoter
@@ -80,7 +71,7 @@ export function isDirectMutationRoute(value) {
 // never forward them, or a client could bypass mode and sandbox policy.
 export function isAdapterOwnedRoute(value) {
   return /^\/api\/session\/[^/]+\/(?:prompt|prompt_async|message|interrupt|abort|context|permission|permissions|question|form)(?:\/|$)/
-    .test(normalizeProxyRoutePath(value));
+    .test(value);
 }
 
 /** The tool allowlist a read-only mode imposes on a run, or null. */

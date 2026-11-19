@@ -12,7 +12,7 @@ import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/ope
 import { canonicalOpenCodeEvent, createSseReader, lastAssistantText, parseDevMoterPrompt, parsePermissionDecision, parseQuestionAnswers } from "./server/opencode-adapter.mjs";
 import { createOpenCodeClient } from "./server/opencode-api.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
-import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, fullyDecodePath, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
+import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { staticSecurityHeaders } from "./server/security-headers.mjs";
 import { readHandle, withOpenFile } from "./server/safe-file.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
@@ -34,6 +34,7 @@ import { createUploadRegistry } from "./server/upload-registry.mjs";
 import { ControlPlane } from "./server/control-plane.mjs";
 import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/workspace-control.mjs";
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
+import { normalizeProxyRoutePath } from "./server/opencode-proxy-path.mjs";
 import { isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, isSessionAgentRoute, isSessionCreateRoute, modeFromAgent, parseAgentMode, readOnlyToolsFor, resolveEffectiveAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
 import { classifyProxyRoute } from "./server/proxy-route-policy.mjs";
 import {
@@ -1759,36 +1760,6 @@ const OPENCODE_SAFE_QUERY = /^(\?[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*)?$/;
 const OPENCODE_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
 
 /**
- * Decode a client path exactly once and return that canonical value, or null
- * when the path cannot be canonicalized: an undecodable escape, or DOUBLE
- * encoding — decoding the result again would change it (e.g. %252f decodes
- * once to %2f, again to /), which would let DevMoter classify a different
- * route than a decoding upstream serves. An accepted canonical path never
- * contains "%": any remaining escape would either decode further or fail to
- * decode, and both cases are rejected here.
- *
- * The decoded path must also be free of separator/dot ambiguity: an empty
- * segment ("//" anywhere) or a "." / ".." segment is rejected, because a
- * URL-normalizing upstream could collapse those into a different route than
- * the one DevMoter classified. Running the check after decoding covers the
- * percent-encoded forms (%2f, %2e) as well. Both the proxy target builder
- * and the adapter dispatch share this function, so a variant rejected here
- * can never fall through unclassified.
- */
-function canonicalDecodedPath(rawPath) {
-  let decoded;
-  try {
-    decoded = decodeURIComponent(rawPath);
-  } catch {
-    return null;
-  }
-  if (fullyDecodePath(rawPath) !== decoded) return null;
-  if (decoded.includes("//")) return null;
-  if (decoded.split("/").some(segment => segment === "." || segment === "..")) return null;
-  return decoded;
-}
-
-/**
  * Validate the client path once and build the OpenCode request target as a
  * plain string: fixed OpenCode origin + "/api/" + allowlisted path (+ query).
  * ONE canonical (decoded, normalized) path drives validation, the policy
@@ -1809,7 +1780,7 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   if (!OPENCODE_SAFE_PATH.test(rawPath) || !OPENCODE_SAFE_QUERY.test(rawQuery)) {
     return { error: "OpenCode proxy path is not allowed" };
   }
-  const canonicalPath = canonicalDecodedPath(rawPath);
+  const canonicalPath = normalizeProxyRoutePath(rawPath);
   if (
     canonicalPath === null ||
     canonicalPath.includes("..") ||
@@ -1823,13 +1794,10 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   // Strip the optional client-side "/api" prefix; the upstream root is fixed.
   // The upstream-style alias does not grant access to adapter-owned operations.
   const upstreamAlias = canonicalPath.startsWith("/api/");
-  let apiRelative = upstreamAlias ? canonicalPath.slice("/api/".length) : canonicalPath.slice(1);
+  const apiRelative = upstreamAlias ? canonicalPath.slice("/api/".length) : canonicalPath.slice(1);
   if (apiRelative.startsWith("/")) {
     return { error: "OpenCode proxy path is not allowed" };
   }
-  // Canonicalize separators: an action subroute means the same with or
-  // without trailing slashes, for the policy checks and the upstream alike.
-  apiRelative = apiRelative.replace(/\/+$/, "");
   const policyPath = `/api/${apiRelative}`;
   const upstreamUrl = `${OPENCODE_ORIGIN}/api/${apiRelative}${rawQuery}`;
   return { upstreamUrl, policyPath, upstreamAlias };
@@ -2092,9 +2060,6 @@ async function opencodeEvents(req, res) {
 
 async function proxy(req, res, { upstreamUrl, policyPath }) {
   const sessionId = sessionIdFromOpenCodePath(policyPath);
-  // Create/agent matchers run on the trailing-slash-normalized policy path:
-  // "/api/session/{id}/agent/" is the agent route and must not slip past the
-  // mode-transition guard below (#591 audit).
   const isSessionCreate = req.method === "POST" && isSessionCreateRoute(policyPath);
   const isSessionAgentUpdate = req.method === "POST" && Boolean(sessionId) && isSessionAgentRoute(policyPath);
 
