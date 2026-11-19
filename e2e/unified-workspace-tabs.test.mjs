@@ -169,6 +169,9 @@ for (const device of [
     await page.goto(server.url);
     await page.locator("[data-workspace-menu-button]").waitFor();
     await page.waitForFunction(() => Boolean(document.querySelector("#dmTaskFirstWorkspace")));
+    // #330: no screen may be wider than the viewport (iOS Safari would let the page pan sideways).
+    const overflow = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, width: window.innerWidth }));
+    assert.ok(overflow.scroll <= overflow.width, `page is ${overflow.scroll}px wide in a ${overflow.width}px viewport`);
     const tab = name => page.locator(`#dmTaskFirstMenu [data-workspace-action='${name}']`);
     const select = async name => {
       await openMenu(page);
