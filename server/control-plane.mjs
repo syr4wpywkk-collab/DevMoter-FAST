@@ -756,17 +756,20 @@ export class ControlPlane {
     await this.save();
   }
 
-  // A run only rejects when its state could not be written. The task itself
-  // is already recorded in memory, so report it instead of crashing the host.
+  // A run only rejects when its state could not be written. Its outcome is
+  // already recorded in memory, so report it instead of crashing the host.
   #reportRunPersistenceFailure(error) {
     console.error("Automation run state could not be saved:", errorMessage(error));
   }
 
-  /** Resolves once no schedule or trigger run is in flight and state is on disk. */
+  /**
+   * Resolves once no schedule or trigger run is in flight and state is on
+   * disk. Rejects when the latest save failed, so state is not on disk.
+   */
   async whenIdle() {
     do {
       await Promise.allSettled([...this.inFlightRuns]);
-      await this.saveQueue.catch(() => {});
+      await this.saveQueue;
     } while (this.inFlightRuns.size > 0);
   }
 
@@ -815,7 +818,15 @@ export class ControlPlane {
       endedAt: null,
       summary: ""
     };
-    await this.#recordRun(run);
+    try {
+      await this.#recordRun(run);
+    } catch (error) {
+      // Never leave a task that was not started looking like it is running.
+      run.status = "failed";
+      run.summary = "Run state could not be saved, so the task was not started: " + errorMessage(error);
+      run.endedAt = Date.now();
+      throw error;
+    }
     try {
       const result = await this.executeTask(normalizedDefinition, { runId: id, kind });
       run.status = "completed";

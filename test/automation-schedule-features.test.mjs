@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, rmdir, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -292,6 +292,37 @@ test("retrying a trigger run respects the trigger's concurrency limit", async ()
     const retry = await plane.retryRun(failed.id, { confirm: true });
     await settle(plane, runs => runs.find(run => run.id === retry.runId)?.status === "completed");
   } finally {
+    await cleanup();
+  }
+});
+
+test("a run whose state cannot be saved is not started, is recorded as failed, and whenIdle reports the failed save", async t => {
+  let calls = 0;
+  const { dir, plane, cleanup } = await tempPlane({ executeTask: async () => { calls += 1; return {}; } });
+  const file = join(dir, "control-plane.json");
+  const errors = t.mock.method(console, "error", () => {});
+  try {
+    await plane.createSchedule(definition);
+    // A directory in place of the state file makes every save fail.
+    await unlink(file);
+    await mkdir(file);
+    await assert.rejects(plane.tick(new Date("2026-11-20T12:00:00Z")));
+    await assert.rejects(plane.whenIdle());
+
+    const [run] = await plane.listRuns();
+    assert.equal(calls, 0);
+    assert.equal(run.status, "failed");
+    assert.ok(run.endedAt);
+    assert.match(run.summary, /task was not started/);
+    assert.ok(errors.mock.calls.some(({ arguments: args }) => /could not be saved/.test(String(args[0]))));
+
+    await rmdir(file);
+    await plane.save();
+    await plane.whenIdle();
+    assert.equal(JSON.parse(await readFile(file, "utf8")).runs[0].status, "failed");
+  } finally {
+    await rmdir(file).catch(() => {});
+    await plane.save().catch(() => {});
     await cleanup();
   }
 });
