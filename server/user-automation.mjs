@@ -345,17 +345,16 @@ export function createUserAutomationService({
     const line = JSON.stringify(entry) + "\n";
     const write = auditQueue.catch(() => {}).then(async () => {
       await mkdir(configDir, { recursive: true, mode: 0o700 });
-      let handle = await open(auditFile, "a", 0o600);
+      const handle = await open(auditFile, "a+", 0o600);
       try {
+        await handle.chmod(0o600);
         if ((await handle.stat()).size > HOOK_AUDIT_MAX_BYTES) {
-          await handle.close();
-          handle = null;
-          await rename(auditFile, auditFile + ".1").catch(() => {});
-          handle = await open(auditFile, "a", 0o600);
+          await writeFile(auditFile + ".1", await handle.readFile(), { mode: 0o600 });
+          await handle.truncate(0);
         }
         await handle.appendFile(line);
       } finally {
-        await handle?.close();
+        await handle.close();
       }
     });
     auditQueue = write;
