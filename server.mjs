@@ -1859,8 +1859,8 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl, method) {
 
   // Strip the optional client-side "/api" prefix; the upstream root is fixed.
   // The upstream-style alias does not grant access to adapter-owned operations.
-  const upstreamAlias = canonicalPath.startsWith("/api/");
-  const apiRelative = upstreamAlias ? canonicalPath.slice("/api/".length) : canonicalPath.slice(1);
+  const upstreamAlias = canonicalPath === "/api" || canonicalPath.startsWith("/api/");
+  const apiRelative = canonicalPath.slice(upstreamAlias ? "/api/".length : 1);
   if (apiRelative.startsWith("/")) {
     return { error: "OpenCode proxy path is not allowed" };
   }
