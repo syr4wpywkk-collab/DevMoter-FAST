@@ -161,6 +161,12 @@ test("session mode authority is server-side; the agent-mode header is ignored", 
     assert.equal(roShell.status, 403);
     assert.equal(upstreamCalls("POST", "/api/session/ses_c1/shell").length, 0);
 
+    for (const route of ["shell", "command"]) {
+      const blocked = await call("POST", `${base}/session/ses_c1/${route}/`, { command: "id" });
+      assert.equal(blocked.status, 403, blocked.text);
+      assert.equal(upstreamCalls("POST", `/api/session/ses_c1/${route}/`).length, 0);
+    }
+
     // Its prompt keeps read-only tools even with a build header.
     const roPrompt = await call("POST", `${base}/session/ses_c1/prompt`, { text: "inspect" }, { "x-pocket-agent-mode": "build" });
     assert.equal(roPrompt.status, 200, roPrompt.text);
@@ -257,10 +263,20 @@ test("session mode authority is server-side; the agent-mode header is ignored", 
     // not cached as "build" (each attempt re-resolves and re-blocks).
     const noModeShell1 = await call("POST", `${base}/session/ses_nomode/shell`, { command: "id" });
     assert.equal(noModeShell1.status, 403);
+    assert.match(noModeShell1.text, /could not be verified/);
     const noModeShell2 = await call("POST", `${base}/session/ses_nomode/shell`, { command: "id" });
     assert.equal(noModeShell2.status, 403);
     assert.equal(upstreamCalls("POST", "/api/session/ses_nomode/shell").length, 0);
     assert.ok(upstreamCalls("GET", "/api/session/ses_nomode").length >= 2, "unverifiable mode must not be cached");
+
+    const noModePrompt = await call("POST", `${base}/session/ses_nomode/prompt`, { text: "inspect" });
+    assert.equal(noModePrompt.status, 200, noModePrompt.text);
+    assert.equal(promptsFor("ses_nomode").length, 1);
+    assert.equal(promptsFor("ses_nomode")[0].body.tools["*"], false);
+    assert.equal(promptsFor("ses_nomode")[0].body.tools.read, true);
+    const noModeAgent = await call("POST", `${base}/session/ses_nomode/agent`, { agent: "build" });
+    assert.equal(noModeAgent.status, 403, noModeAgent.text);
+    assert.equal(upstreamCalls("POST", "/api/session/ses_nomode/agent").length, 0);
 
     // Create-response sync: when the upstream reports a stricter mode for
     // the created session than the request body asked for, the recorded

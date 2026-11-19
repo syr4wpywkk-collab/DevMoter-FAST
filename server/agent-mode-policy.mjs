@@ -72,7 +72,7 @@ export function isSessionAgentRoute(value) {
 }
 
 export function isDirectMutationRoute(value) {
-  return /^\/api\/session\/[^/]+\/(?:shell|command)$/.test(pathnameOnly(value));
+  return /^\/api\/session\/[^/]+\/(?:shell|command)$/.test(normalizeProxyRoutePath(value));
 }
 
 // Session operations whose OpenCode routes differ by generation. DevMoter
@@ -80,7 +80,7 @@ export function isDirectMutationRoute(value) {
 // never forward them, or a client could bypass mode and sandbox policy.
 export function isAdapterOwnedRoute(value) {
   return /^\/api\/session\/[^/]+\/(?:prompt|prompt_async|message|interrupt|abort|context|permission|permissions|question|form)(?:\/|$)/
-    .test(pathnameOnly(value));
+    .test(normalizeProxyRoutePath(value));
 }
 
 /** The tool allowlist a read-only mode imposes on a run, or null. */

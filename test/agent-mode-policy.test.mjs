@@ -51,6 +51,19 @@ test("mode and session route parsing are strict and query-safe", () => {
   assert.equal(isDirectMutationRoute("/api/session/abc/shell-extra?x=1"), false);
 });
 
+test("mutation and adapter routes tolerate trailing slashes and queries", () => {
+  for (const suffix of ["", "/", "///", "/?x=1"]) {
+    for (const route of ["shell", "command"]) {
+      assert.equal(isDirectMutationRoute(`/api/session/abc/${route}${suffix}`), true);
+    }
+    assert.equal(isAdapterOwnedRoute(`/api/session/abc/prompt${suffix}`), true);
+    assert.equal(isDirectMutationRoute(`/api/session/abc/shell-extra${suffix}`), false);
+    assert.equal(isAdapterOwnedRoute(`/api/session/abc/prompt-extra${suffix}`), false);
+  }
+  assert.equal(isDirectMutationRoute(""), false);
+  assert.equal(isAdapterOwnedRoute(""), false);
+});
+
 test("session create/agent route matchers tolerate trailing slashes and queries", () => {
   // A trailing slash is the same route: it must not slip past the guards
   // that match on the canonical shape (#591 audit).
