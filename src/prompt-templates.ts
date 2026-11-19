@@ -120,12 +120,13 @@ export function openPromptTemplates() {
     const project = projects.find(item => item.id === id);
     return project ? project.name || project.path || id : t("promptTemplates.scopeUnregistered", { id });
   }
-  function scopeSelect(selected: string, id: string) {
+  // `unregistered` are project ids to offer although the project is gone: every such id in
+  // the list filter, only the template's own in the editor, since nothing new can be saved there.
+  function scopeSelect(selected: string, id: string, unregistered: Array<string | null>) {
     const select = el("select");
     select.id = id;
     const ids = projects.map(item => item.id);
-    // Templates of a project that is no longer registered stay reachable for editing and deletion.
-    for (const template of templates) if (template.projectId && !ids.includes(template.projectId)) ids.push(template.projectId);
+    for (const projectId of unregistered) if (projectId && !ids.includes(projectId)) ids.push(projectId);
     const options: Array<[string, string]> = [["", t("promptTemplates.scopeGlobal")], ...ids.map(id => [id, projectLabel(id)] as [string, string])];
     for (const [value, label] of options) {
       const option = el("option", "", label);
@@ -145,7 +146,7 @@ export function openPromptTemplates() {
     body.replaceChildren();
 
     const toolbar = el("div", "pt-toolbar");
-    const scopeControl = scopeSelect(scope, "ptScope");
+    const scopeControl = scopeSelect(scope, "ptScope", templates.map(item => item.projectId));
     scopeControl.addEventListener("change", () => { scope = scopeControl.value; renderItems(); });
     const search = el("input");
     search.type = "search";
@@ -230,7 +231,7 @@ export function openPromptTemplates() {
     text.rows = 8;
     text.required = true;
     text.value = template?.body ?? "";
-    const scopeControl = scopeSelect(template ? template.projectId ?? "" : scope, "ptEditScope");
+    const scopeControl = scopeSelect(template ? template.projectId ?? "" : scope, "ptEditScope", [template?.projectId ?? null]);
     const save = el("button", "pt-primary", t("common.save"));
     save.type = "submit";
     const actions = el("div", "pt-footer");
