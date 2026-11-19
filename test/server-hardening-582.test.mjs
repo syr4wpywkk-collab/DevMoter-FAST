@@ -458,6 +458,21 @@ test("multi-API provider test and chat mask plaintext apiKey values in errors an
 // ---------------------------------------------------------------------------
 // Sub-item 3: openCodeSessionModes bounded growth, TTL, and session cleanup
 
+test("createSessionModeMap has checks expiry without renewing TTL", () => {
+  let clock = 0;
+  const store = createSessionModeMap({ ttlMs: 1000, now: () => clock });
+  assert.equal(store.has("missing"), false);
+  assert.equal(store.has(""), false);
+  store.set("session", "plan");
+  assert.equal(store.has("session"), true);
+  clock = 999;
+  assert.equal(store.has("session"), true);
+  clock = 1000;
+  assert.equal(store.has("session"), false);
+  assert.equal(store.delete("session"), false);
+  assert.equal(store.size, 0);
+});
+
 test("createSessionModeMap bounds size with oldest-first eviction, enforces TTL, and supports delete", () => {
   let clock = 100;
   const store = createSessionModeMap({ maxEntries: 3, ttlMs: 1000, now: () => clock });

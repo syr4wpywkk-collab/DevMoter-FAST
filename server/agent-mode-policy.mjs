@@ -75,6 +75,15 @@ export function createSessionModeMap({ maxEntries = 1000, ttlMs = 24 * 60 * 60 *
   }
 
   return {
+    has(sessionId, timestamp = now()) {
+      const entry = entries.get(sessionId);
+      if (!entry) return false;
+      if (entry.expiresAt <= timestamp) {
+        entries.delete(sessionId);
+        return false;
+      }
+      return true;
+    },
     get(sessionId, timestamp = now()) {
       if (!sessionId) return undefined;
       const entry = entries.get(sessionId);
