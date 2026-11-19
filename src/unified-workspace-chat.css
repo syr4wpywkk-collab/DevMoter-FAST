@@ -125,7 +125,7 @@ body.dm-task-first-enabled :is(.cx-app .cx-message-row, .ocx-app .ocx-message-ro
   width: min(100%, 800px);
   margin-left: auto;
   margin-right: auto;
-  margin-bottom: 20px;
+  margin-bottom: var(--dw-chat-row-gap, 20px);
 }
 body.dm-task-first-enabled :is(.cx-app .cx-message, .api-app .api-message-bubble, .ocx-app .ocx-assistant-text) {
   color: var(--dw-chat-text);
@@ -165,12 +165,12 @@ body.dm-task-first-enabled .ocx-app .ocx-assistant-text {
 }
 /* Codex turns read as prompt→reply pairs; command/status lines sit below the reply
  * as compact secondary rows instead of competing with it. */
-body.dm-task-first-enabled .cx-app .cx-message-row.user { margin-bottom: 12px; }
-body.dm-task-first-enabled .cx-app .cx-message-row.system { margin-top: -8px; }
+body.dm-task-first-enabled .cx-app .cx-message-row.user { --dw-chat-row-gap: var(--space-3); }
+body.dm-task-first-enabled .cx-app .cx-message-row.system { margin-top: calc(-1 * var(--space-2)); }
 body.dm-task-first-enabled .cx-app .cx-message.system {
   width: fit-content;
   max-width: 100%;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   font-size: var(--font-size-caption, 12px);
   line-height: 1.5;
 }
