@@ -39,9 +39,15 @@ export async function fetchReadWithTimeout(fetcher, input, init = {}, timeoutErr
     rejectDeadline(timeoutError());
   }, timeoutMs);
   const done = () => clearTimeout(timer);
+  let request;
+  try {
+    request = Promise.resolve(fetcher(input, { ...init, signal: controller.signal }));
+  } catch (error) {
+    request = Promise.reject(error);
+  }
   let response;
   try {
-    response = await Promise.race([Promise.resolve().then(() => fetcher(input, { ...init, signal: controller.signal })), deadline]);
+    response = await Promise.race([request, deadline]);
   } catch (error) {
     done();
     throw error;
