@@ -1,4 +1,5 @@
 import { formatNumber, t, translateServerMessage } from "./i18n";
+import { apiErrorMessage, requestErrorMessage } from "./api-error.mjs";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { normalizeApiProviderCatalog } from "./api-provider-catalog.mjs";
@@ -95,9 +96,13 @@ async function apiJson<T = any>(path: string, init: RequestInit = {}): Promise<T
     ...init,
     cache: method === "GET" ? "no-store" : undefined,
     headers
+  }).catch(error => {
+    // Offline or blocked: say so instead of the browser's "Failed to fetch".
+    if (error instanceof TypeError) throw new Error(requestErrorMessage(error));
+    throw error;
   });
   const payload = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(translateServerMessage(payload?.error || t("common.httpError", { status: res.status })));
+  if (!res.ok) throw new Error(apiErrorMessage(payload, res.status));
   return payload as T;
 }
 
@@ -639,7 +644,7 @@ export function mountApiChat(
       () => new Error(t("apiChat.imageUploadTimeout"))
     );
     const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(translateServerMessage(payload?.error || t("common.httpError", { status: res.status })));
+    if (!res.ok) throw new Error(apiErrorMessage(payload, res.status));
 
     return {
       ...normalizeApiAttachment(payload, file),

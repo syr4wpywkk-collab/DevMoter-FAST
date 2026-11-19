@@ -10,6 +10,7 @@ import * as providerCatalog from "../src/api-provider-catalog.mjs";
 import * as apiAttachment from "../src/api-attachment.mjs";
 import * as apiModelLabel from "../src/api-model-label.mjs";
 import * as chatDraft from "../src/chat-draft.mjs";
+import * as apiError from "../src/api-error.mjs";
 import * as transcriptActions from "../src/chat-transcript-actions.mjs";
 
 const source = await readFile(new URL("../src/api-chat.ts", import.meta.url), "utf8");
@@ -88,6 +89,7 @@ async function harness(t, { rejectOnAbort = false } = {}) {
     "./i18n": i18nCore,
     "./chat-markdown.mjs": { renderChatMarkdown },
     "./chat-draft.mjs": chatDraft,
+    "./api-error.mjs": apiError,
     "./chat-transcript-actions.mjs": transcriptActions,
     "./fetch-with-timeout.mjs": fetchTimeout,
     "./api-provider-catalog.mjs": providerCatalog,

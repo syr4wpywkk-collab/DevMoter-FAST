@@ -3,6 +3,7 @@ import { getAppDefinition } from "./app-registry";
 import { cxIcons } from "./codex/icons";
 import { codexThreadStatusToExecutionState, codexTurnStatusToExecutionState, isExecutionActive, type ExecutionState } from "./execution-state.mjs";
 import { bindLanguageSelectors, formatNumber, localeTag, speechRecognitionLanguage, t, tApp, translateServerMessage } from "./i18n";
+import { apiErrorMessage } from "./api-error.mjs";
 
 function escapeHtml(value: unknown): string {
   return String(value ?? "")
@@ -850,7 +851,7 @@ export function mountCodexRemote(
       throw error;
     }
     const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(payload?.error ? translateServerMessage(String(payload.error)) : t("common.httpError", { status: res.status }));
+    if (!res.ok) throw new Error(apiErrorMessage(payload, res.status));
     return payload as T;
   }
 
@@ -1051,7 +1052,7 @@ export function mountCodexRemote(
       if (code === "not_installed" || code === "not_executable" || code === "failed") {
         throw Object.assign(new Error(payload?.error ? translateServerMessage(String(payload.error)) : t("codex.errors.cannotLaunchCli")), { code });
       }
-      throw new Error(payload?.error ? translateServerMessage(String(payload.error)) : t("common.httpError", { status: res.status }));
+      throw new Error(apiErrorMessage(payload, res.status));
     }
     return payload.result as T;
   }

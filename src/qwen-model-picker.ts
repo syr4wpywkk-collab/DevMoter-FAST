@@ -5,6 +5,7 @@
 // key is kept in the browser.
 import { SYSTEM_ICONS } from "./app-registry";
 import { formatNumber, getLanguage, t, translateServerMessage } from "./i18n";
+import { apiErrorMessage } from "./api-error.mjs";
 import { createSheetHeader } from "./sheet-header.mjs";
 import {
   loadQwenModel,
@@ -130,7 +131,7 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
     try {
       const res = await fetch(`/api/qwen/models?projectId=${encodeURIComponent(projectId)}`, { cache: "no-store", headers: options.headers() });
       const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(String(payload?.error || t("common.httpError", { status: res.status })));
+      if (!res.ok) throw new Error(apiErrorMessage(payload, res.status));
       listing = {
         version: String(payload.version || ""),
         scope: payload.scope === "workspace" || payload.scope === "user" ? payload.scope : "none",
@@ -457,7 +458,7 @@ export function mountQwenModelPicker(options: QwenModelPickerOptions): QwenModel
           })
         });
         const payload = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(String(payload?.error || t("common.httpError", { status: res.status })));
+        if (!res.ok) throw new Error(apiErrorMessage(payload, res.status));
         key.value = "";
         await load(true);
         const first = (payload.added ?? [])[0];

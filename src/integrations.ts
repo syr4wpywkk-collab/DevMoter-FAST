@@ -1,4 +1,5 @@
 import { t, translateServerMessage } from "./i18n";
+import { apiErrorMessage } from "./api-error.mjs";
 import { isVisibleIntegration } from "./feature-flags.mjs";
 
 type IntegrationId = "antigravity" | "claude" | "qwen";
@@ -77,7 +78,7 @@ async function api<T = any>(path: string, init: RequestInit = {}): Promise<T> {
     cache: method === "GET" ? "no-store" : undefined
   });
   const payload = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(translateServerMessage(payload?.error) || t("common.httpError", { status: res.status }));
+  if (!res.ok) throw new Error(apiErrorMessage(payload, res.status));
   return payload as T;
 }
 
