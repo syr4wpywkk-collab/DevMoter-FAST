@@ -9,7 +9,9 @@ export function findCiEnforcementGaps(workflow) {
   for (const event of ["push", "pull_request"]) {
     if (!new RegExp(`^\\s+${event}:`, "m").test(on)) gaps.push(`CI does not run on ${event}`);
   }
-  if (/^\s+(?:paths|paths-ignore|branches-ignore):/m.test(on)) gaps.push("CI triggers are filtered, so some changes skip the checks");
+  if (/^\s+(?:paths|paths-ignore|branches|branches-ignore|types):/m.test(on)) gaps.push("CI triggers are filtered, so some changes skip the checks");
+  const jobHeaders = (text.split(/^jobs:\n/m)[1] ?? "").split(/^\s+steps:/m)[0];
+  if (/^\s+if:/m.test(jobHeaders)) gaps.push("the CI job runs only conditionally");
   if (/^\s*continue-on-error:/m.test(text)) gaps.push("CI uses continue-on-error, so a failing step can still pass");
 
   const steps = text.split(/\n(?=\s+- )/).filter(step => /^\s+- /.test(step));

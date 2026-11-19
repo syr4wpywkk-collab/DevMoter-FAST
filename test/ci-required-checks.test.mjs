@@ -30,6 +30,13 @@ test("steps that can be skipped or ignored are reported", () => {
   const filtered = ci.replace("  pull_request:\n", "  pull_request:\n    paths-ignore:\n      - '**.md'\n");
   assert.deepEqual(findCiEnforcementGaps(filtered), ["CI triggers are filtered, so some changes skip the checks"]);
 
+  const releaseOnly = ci.replace("  pull_request:\n", "  pull_request:\n    branches: [release]\n");
+  assert.deepEqual(findCiEnforcementGaps(releaseOnly), ["CI triggers are filtered, so some changes skip the checks"]);
+
+  const conditionalJob = ci.replace("    runs-on: ubuntu-latest\n", "    if: github.event_name == 'push'\n    runs-on: ubuntu-latest\n");
+  assert.notEqual(conditionalJob, ci);
+  assert.deepEqual(findCiEnforcementGaps(conditionalJob), ["the CI job runs only conditionally"]);
+
   const pushOnly = ci.replace("  pull_request:\n", "");
   assert.deepEqual(findCiEnforcementGaps(pushOnly), ["CI does not run on pull_request"]);
 });
