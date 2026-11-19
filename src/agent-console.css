@@ -134,18 +134,18 @@
 .devmoter-agent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
 .devmoter-orchestration-child { display: grid; grid-template-columns: auto auto 1fr; gap: 8px; align-items: start; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-hairline); }
-.devmoter-orchestration-child span { color: var(--text-secondary); font: 500 11px/1.4 ui-monospace, monospace; }
-.devmoter-orchestration-child strong { font-size: 12px; }
-.devmoter-orchestration-child p { margin: 0; font-size: 12px; }
+.devmoter-orchestration-child span { color: var(--text-secondary); font: 500 12px/1.4 ui-monospace, monospace; }
+.devmoter-orchestration-child strong { font-size: 13px; }
+.devmoter-orchestration-child p { margin: 0; font-size: 13px; }
 
 .devmoter-subagent-runs { margin-top: 16px; }
 .devmoter-subagent-card { margin-top: 8px; }
 .devmoter-subagent-card-head { display: flex; justify-content: space-between; gap: 8px; }
 .devmoter-subagent-card-head > div { display: grid; gap: 2px; min-width: 0; }
 .devmoter-subagent-card-head span,
-.devmoter-subagent-card small { color: var(--text-secondary); font-size: 11px; }
+.devmoter-subagent-card small { color: var(--text-secondary); font-size: 12px; }
 .devmoter-subagent-card-head > div small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 210px; }
-.devmoter-subagent-card p { margin: 6px 0; font-size: 12px; }
+.devmoter-subagent-card p { margin: 6px 0; font-size: 13px; }
 .devmoter-subagent-card small { display: block; overflow-wrap: anywhere; }
 .devmoter-subagent-card[data-state="waiting_for_approval"] { border-style: dashed; }
 .devmoter-subagent-card.second-opinion { border-color: var(--border-subtle); }

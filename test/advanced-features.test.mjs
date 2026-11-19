@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readBoundedResponseBody, resolveLivePreviewTarget, rewriteLivePreviewBody } from "../server/advanced-api.mjs";
+import { createAdvancedApi, readBoundedResponseBody, resolveLivePreviewTarget, rewriteLivePreviewBody } from "../server/advanced-api.mjs";
 import {
+  IMAGE_PREVIEW_LIMIT,
+  TEXT_PREVIEW_LIMIT,
   assertExternalBackendExecutionAllowed,
   buildBubblewrapCommand,
   chooseModel,
@@ -305,6 +307,8 @@ test("read-only file browser hides sensitive dotfiles and blocks symlink escapes
   const src = await listProjectDirectory(root, "src");
   assert.equal(src.entries[0].path, "src/main.js");
   assert.equal(src.entries[0].kind, "text");
+  await symlink(join(root, "src"), join(root, "src-link"));
+  await assert.rejects(() => listProjectDirectory(root, "src-link"), /not a regular project directory/i);
   await assert.rejects(() => listProjectDirectory(root, "../outside"), /stay inside|escapes/i);
 });
 
@@ -391,4 +395,141 @@ test("failover order follows configured chain rather than discovery order", asyn
   });
   assert.deepEqual(seen, ["first", "third", "second"]);
   assert.equal(result.model, "second");
+});
+
+test("safe preview and file browser enforce consistent size/type limits and reject unreadable oversized/binary files", async t => {
+  const root = await mkdtemp(join(tmpdir(), "devmoter-file-tap-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  await mkdir(join(root, "subdir"));
+  await writeFile(join(root, "subdir", "nested.js"), "export const nested = true;\n");
+  await writeFile(join(root, "notes.txt"), "hello world\n");
+  await writeFile(join(root, "medium.ts"), "export const x = 1;\n".repeat(1200)); // > 8KB sample size, <= 1MB limit
+  await writeFile(join(root, "large"), Buffer.alloc(2_400_000, 0x61)); // ~2.4 MB > TEXT_PREVIEW_LIMIT
+  await writeFile(join(root, "data.bin"), Buffer.from([0x00, 0x01, 0x02, 0x03]));
+  await writeFile(join(root, "nul.txt"), Buffer.from([0x61, 0x00, 0x62]));
+  const mediumPng = Buffer.alloc(2_000_000, 0x41);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47]).copy(mediumPng, 0);
+  await writeFile(join(root, "photo.png"), mediumPng); // > 1MB, <= IMAGE_PREVIEW_LIMIT
+  const hugePng = Buffer.alloc(IMAGE_PREVIEW_LIMIT + 10, 0x41);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47]).copy(hugePng, 0);
+  await writeFile(join(root, "huge.png"), hugePng);
+
+  const listing = await listProjectDirectory(root);
+  assert.equal(listing.parent, null);
+  assert.deepEqual(listing.limits, { textBytes: TEXT_PREVIEW_LIMIT, imageBytes: IMAGE_PREVIEW_LIMIT });
+
+  const byName = new Map(listing.entries.map(item => [item.name, item]));
+  assert.equal(byName.get("subdir")?.kind, "directory");
+  assert.equal(byName.get("notes.txt")?.kind, "text");
+  assert.equal(byName.get("notes.txt")?.previewable, true);
+  assert.equal(byName.get("medium.ts")?.kind, "text");
+  assert.equal(byName.get("medium.ts")?.previewable, true);
+  assert.equal(byName.get("large")?.kind, "large");
+  assert.equal(byName.get("large")?.previewable, false);
+  assert.equal(byName.get("large")?.limit, TEXT_PREVIEW_LIMIT);
+  assert.equal(byName.get("data.bin")?.kind, "binary");
+  assert.equal(byName.get("data.bin")?.previewable, false);
+  assert.equal(byName.get("nul.txt")?.kind, "binary");
+  assert.equal(byName.get("nul.txt")?.previewable, false);
+  assert.equal(byName.get("photo.png")?.kind, "image");
+  assert.equal(byName.get("photo.png")?.previewable, true);
+  assert.equal(byName.get("huge.png")?.kind, "large");
+  assert.equal(byName.get("huge.png")?.previewable, false);
+  assert.equal(byName.get("huge.png")?.limit, IMAGE_PREVIEW_LIMIT);
+
+  const subListing = await listProjectDirectory(root, "subdir");
+  assert.equal(subListing.path, "subdir");
+  assert.equal(subListing.parent, "");
+  assert.equal(subListing.entries[0]?.path, "subdir/nested.js");
+
+  const largePreview = await previewFile(root, "large");
+  assert.equal(largePreview.kind, "binary");
+  assert.equal(largePreview.reason, "file-too-large");
+  assert.equal(largePreview.limit, TEXT_PREVIEW_LIMIT);
+  assert.equal(largePreview.size, 2_400_000);
+  assert.equal("content" in largePreview, false);
+
+  const hugeImgPreview = await previewFile(root, "huge.png");
+  assert.equal(hugeImgPreview.kind, "binary");
+  assert.equal(hugeImgPreview.reason, "image-too-large");
+  assert.equal(hugeImgPreview.limit, IMAGE_PREVIEW_LIMIT);
+  assert.equal("data" in hugeImgPreview, false);
+
+  const binPreview = await previewFile(root, "data.bin");
+  assert.equal(binPreview.kind, "binary");
+  assert.equal(binPreview.reason, "binary-or-unsupported");
+
+  const nulPreview = await previewFile(root, "nul.txt");
+  assert.equal(nulPreview.kind, "binary");
+  assert.equal(nulPreview.reason, "binary-or-unsupported");
+
+  assert.equal((await previewFile(root, "medium.ts")).kind, "text");
+  assert.equal((await previewFile(root, "photo.png")).kind, "image");
+});
+
+test("/api/projects/:id/files and /api/projects/:id/preview apply strict containment and limit validation", async t => {
+  const parent = await mkdtemp(join(tmpdir(), "devmoter-api-preview-"));
+  t.after(() => rm(parent, { recursive: true, force: true }));
+  const root = join(parent, "project");
+  const configDir = join(parent, "config");
+  await mkdir(root);
+  await mkdir(configDir);
+  await mkdir(join(root, "src"));
+  await mkdir(join(root, ".git"));
+  await writeFile(join(root, "src", "app.js"), "console.log('ok');");
+  await writeFile(join(root, "large"), Buffer.alloc(TEXT_PREVIEW_LIMIT + 100, 0x62));
+  await writeFile(join(root, ".env"), "SECRET=1");
+  await writeFile(join(root, ".git", "HEAD"), "ref: refs/heads/main");
+  await writeFile(join(parent, "outside.txt"), "outside secret");
+
+  const api = createAdvancedApi({
+    homeDir: parent,
+    configDir,
+    getProjectById: async id => {
+      if (id !== "p1") throw Object.assign(new Error("Project not found"), { statusCode: 404 });
+      return { id: "p1", name: "Proj", path: root };
+    }
+  });
+
+  async function requestApi(rawUrl) {
+    const req = { method: "GET", headers: {}, url: rawUrl };
+    let statusCode = 0;
+    let body = "";
+    const res = {
+      writeHead(code) { statusCode = code; },
+      end(chunk = "") { body += Buffer.isBuffer(chunk) ? chunk.toString("utf8") : String(chunk); }
+    };
+    const handled = await api.handle(req, res, new URL("http://127.0.0.1" + rawUrl));
+    assert.equal(handled, true);
+    return { statusCode, json: JSON.parse(body) };
+  }
+
+  const subRes = await requestApi("/api/projects/p1/files?path=src");
+  assert.equal(subRes.statusCode, 200);
+  assert.equal(subRes.json.browser.parent, "");
+  assert.equal(subRes.json.browser.entries[0].path, "src/app.js");
+
+  const tapText = await requestApi("/api/projects/p1/preview?path=" + encodeURIComponent(subRes.json.browser.entries[0].path));
+  assert.equal(tapText.statusCode, 200);
+  assert.equal(tapText.json.preview.kind, "text");
+  assert.equal(tapText.json.preview.content, "console.log('ok');");
+
+  const tapLarge = await requestApi("/api/projects/p1/preview?path=large");
+  assert.equal(tapLarge.statusCode, 200);
+  assert.equal(tapLarge.json.preview.kind, "binary");
+  assert.equal(tapLarge.json.preview.reason, "file-too-large");
+  assert.equal(tapLarge.json.preview.limit, TEXT_PREVIEW_LIMIT);
+
+  const traversalPreview = await requestApi("/api/projects/p1/preview?path=" + encodeURIComponent("../outside.txt"));
+  assert.equal(traversalPreview.statusCode, 400);
+
+  const secretPreview = await requestApi("/api/projects/p1/preview?path=.env");
+  assert.equal(secretPreview.statusCode, 403);
+
+  const traversalFiles = await requestApi("/api/projects/p1/files?path=" + encodeURIComponent("../"));
+  assert.equal(traversalFiles.statusCode, 400);
+
+  const secretDir = await requestApi("/api/projects/p1/files?path=.git");
+  assert.equal(secretDir.statusCode, 403);
 });

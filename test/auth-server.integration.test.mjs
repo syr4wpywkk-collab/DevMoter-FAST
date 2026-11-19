@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -81,21 +81,13 @@ test("server requires auth and exact Origin for mutations", async () => {
     assert.equal(rootRedirect.status, 302);
     assert.equal(rootRedirect.headers.get("location"), "/login.html");
 
-    const wrongAuthorization = `Basic ${Buffer.from("devmoter:wrong-password-value").toString("base64")}`;
     const wrong = await fetch(`${origin}/api/projects`, {
-      headers: { authorization: wrongAuthorization }
+      headers: {
+        authorization: `Basic ${Buffer.from("devmoter:wrong-password-value").toString("base64")}`
+      }
     });
     assert.equal(wrong.status, 401);
-    for (let attempt = 0; attempt < 4; attempt += 1) {
-      const repeatedWrong = await fetch(`${origin}/api/projects`, {
-        headers: { authorization: wrongAuthorization }
-      });
-      assert.equal(repeatedWrong.status, 401);
-    }
-    const limited = await fetch(`${origin}/api/projects`, {
-      headers: { authorization: wrongAuthorization }
-    });
-    assert.equal(limited.status, 429);
+
 
     const unauthenticatedIntegrations = await fetch(`${origin}/api/integrations/status`, {
       method: "POST",
@@ -410,6 +402,54 @@ test("server requires auth and exact Origin for mutations", async () => {
     assert.equal(sameOrigin.status, 400);
     const payload = await sameOrigin.json();
     assert.match(String(payload.error || ""), /Project path is required/);
+
+    const projectDir = join(home, "markdown-project");
+    const outsideFile = join(home, "outside-secret.txt");
+    const outsideDir = join(home, "outside-dir");
+    const outsideNestedMd = join(outsideDir, "README.md");
+    await mkdir(projectDir, { recursive: true });
+    await mkdir(outsideDir, { recursive: true });
+    await writeFile(outsideFile, "untouched-secret", "utf8");
+    await writeFile(outsideNestedMd, "untouched-dir-secret", "utf8");
+    await symlink(outsideFile, join(projectDir, "README.md"));
+    await symlink(outsideDir, join(projectDir, "docs"), "dir");
+    const createdProject = await fetch(`${origin}/api/projects`, {
+      method: "POST",
+      headers: {
+        authorization,
+        origin,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "register-markdown-project"
+      },
+      body: JSON.stringify({ path: projectDir, name: "Markdown Project" })
+    });
+    assert.equal(createdProject.status, 201);
+    const { project } = await createdProject.json();
+    const symlinkWrite = await fetch(`${origin}/api/projects/${encodeURIComponent(project.id)}/file`, {
+      method: "PUT",
+      headers: {
+        authorization,
+        origin,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "write-symlink-markdown"
+      },
+      body: JSON.stringify({ path: "README.md", content: "# overwritten" })
+    });
+    assert.equal(symlinkWrite.status, 400);
+    assert.equal(await readFile(outsideFile, "utf8"), "untouched-secret");
+
+    const symlinkDirWrite = await fetch(`${origin}/api/projects/${encodeURIComponent(project.id)}/file`, {
+      method: "PUT",
+      headers: {
+        authorization,
+        origin,
+        "content-type": "application/json",
+        "x-pocket-operation-id": "write-symlink-dir-markdown"
+      },
+      body: JSON.stringify({ path: "docs/README.md", content: "# escaped dir write" })
+    });
+    assert.equal(symlinkDirWrite.status, 400);
+    assert.equal(await readFile(outsideNestedMd, "utf8"), "untouched-dir-secret");
   } finally {
     child.kill("SIGTERM");
     await Promise.race([

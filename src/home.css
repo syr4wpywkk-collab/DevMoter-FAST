@@ -168,7 +168,6 @@ body.devmoter-home-mode {
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-small);
-  outline: none;
   color: var(--text-primary);
   background: var(--canvas-base);
   font-size: var(--font-size-body);

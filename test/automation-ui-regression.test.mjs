@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { DICTIONARIES } from "../src/i18n-core.mjs";
 
 test("project deep link is consumed before backend mount and removed from the URL", async () => {
   const source = await readFile(new URL("../src/main.ts", import.meta.url), "utf8");
@@ -41,17 +42,20 @@ test("context resolution failure preserves the composer draft and runtime picker
 
   const codexResolve = codex.indexOf("contextText = await resolvedContextText(text)");
   const codexClear = codex.indexOf('promptInput.value = ""', codexResolve);
-  const codexFailure = codex.indexOf("Project context could not be resolved", codexResolve);
+  const codexFailure = codex.indexOf('t("codex.send.contextResolveFailed"', codexResolve);
   assert.ok(codexResolve >= 0 && codexFailure > codexResolve && codexClear > codexFailure);
 
   const openResolve = opencode.indexOf("contextText = await resolveProjectContext(text)");
   const openClear = opencode.indexOf('promptInput.value = ""', openResolve);
-  const openFailure = opencode.indexOf("Project context could not be resolved", openResolve);
+  const openFailure = opencode.indexOf('t("opencode.send.contextResolveFailed"', openResolve);
   assert.ok(openResolve >= 0 && openFailure > openResolve && openClear > openFailure);
 
-  assert.match(codex, /Provider · Model · Agent/);
+  assert.match(codex, /t\("codex\.models\.modalTitle"\)/);
+  assert.equal(DICTIONARIES.en["codex.models.modalTitle"], "Provider · Model · Agent");
   // OpenCode's picker is model-only (PR #500 item N); the default build agent stays internal.
-  assert.match(opencode, /"Provider · Model"/);
+  assert.match(opencode, /t\("opencode\.models\.modalTitle"\)/);
+  assert.equal(DICTIONARIES.en["opencode.models.modalTitle"], "Provider · Model");
   assert.doesNotMatch(opencode, /このエージェントで応答します|このセッションに適用し/);
-  assert.match(opencode, /provider unavailable/);
+  assert.match(opencode, /t\("opencode\.models\.providerUnavailable"\)/);
+  assert.equal(DICTIONARIES.en["opencode.models.providerUnavailable"], "provider unavailable");
 });

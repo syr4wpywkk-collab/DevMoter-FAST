@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as i18nCore from '../src/i18n-core.mjs';
 import {readFile} from 'node:fs/promises';
 import {JSDOM} from 'jsdom';
 import ts from 'typescript';
@@ -7,7 +8,7 @@ const compiled=ts.transpileModule(await readFile(new URL('../src/workspace-tools
 const settle=()=>new Promise(r=>setImmediate(r));
 test('Unified and split diffs expose addition/deletion text while Copy keeps the original API diff',async t=>{
  const dom=new JSDOM('<body></body>',{url:'http://localhost',runScripts:'outside-only'});t.after(()=>dom.window.close());const w=dom.window;
- w.exports={};w.matchMedia=()=>({matches:false});let copied='';Object.defineProperty(w.navigator,'clipboard',{value:{writeText:async s=>{copied=s}}});
+ w.exports={};w.require=name=>name==='./i18n'?i18nCore:{};w.matchMedia=()=>({matches:false});let copied='';Object.defineProperty(w.navigator,'clipboard',{value:{writeText:async s=>{copied=s}}});
  const diff='diff --git a/file.md b/file.md\n--- a/file.md\n+++ b/file.md\n@@ -1 +1 @@\n-old\n+new\n';
  w.fetch=async url=>new Response(JSON.stringify(url==='/api/projects'?{projects:[{id:'p1',name:'A',path:'/a'}]}:url.includes('/git/status')?{isGit:true,branch:'main',modified:1}:url.includes('/git/files')?{files:[{path:'file.md',status:['modified']}],total:1,hasMore:false}:{isGit:true,path:'file.md',diff,scope:'working'}));
  w.eval(compiled);w.exports.mountWorkspaceTools();w.document.querySelector('.pocket-git-trigger').click();await settle();await settle();
@@ -22,7 +23,7 @@ test('Unified and split diffs expose addition/deletion text while Copy keeps the
 
 test('Git failures offer an actual read-only retry and closing restores focus and scroll',async t=>{
  const dom=new JSDOM('<body><button id="entry">Git</button></body>',{url:'http://localhost',runScripts:'outside-only'});t.after(()=>dom.window.close());const w=dom.window;
- w.exports={};w.matchMedia=()=>({matches:false});let attempts=0;
+ w.exports={};w.require=name=>name==='./i18n'?i18nCore:{};w.matchMedia=()=>({matches:false});let attempts=0;
  w.fetch=async()=>{attempts++;return new Response(JSON.stringify({error:'Temporary failure'}),{status:503})};
  w.eval(compiled);w.exports.mountWorkspaceTools();w.document.querySelector('#entry').focus();w.document.querySelector('.pocket-git-trigger').click();await settle();
  assert.equal(w.document.body.style.overflow,'hidden');

@@ -38,11 +38,11 @@ test("gate shows one short line and a button into Settings → Trusted devices",
   window.document.body.append(gate);
   assert.ok(gate.classList.contains("dm-device-gate") && gate.classList.contains("dm-tools-card"));
   assert.equal(gate.getAttribute("role"), "status");
-  assert.equal(gate.querySelector("strong").textContent, "この端末は未登録です");
+  assert.equal(gate.querySelector("strong").textContent, "This device is not registered");
   assert.doesNotMatch(gate.textContent, /token|401|revoked|!/i);
   const button = gate.querySelector("[data-device-gate-register]");
   assert.equal(button.type, "button");
-  assert.equal(button.textContent, "端末を登録");
+  assert.equal(button.textContent, "Register device");
   button.click();
   assert.equal(closed, 1);
   assert.deepEqual(events, [{ page: "devices" }]);
@@ -52,10 +52,11 @@ test("gate shows one short line and a button into Settings → Trusted devices",
 test("checkpoints and extensions panels route device-auth failures to the gate", async () => {
   const ui = await readFile(new URL("../src/workspace-control.ts", import.meta.url), "utf8");
   assert.ok(ui.includes('from "./device-gate.mjs"'));
-  assert.ok(ui.includes('throw responseError(res.status, payload?.error || "Could not load task plan")'));
-  assert.ok(ui.includes('throw responseError(res.status, data?.error || "Could not load extensions")'));
-  assert.ok(ui.includes('showFailure("チェックポイント", error)'));
-  assert.ok(ui.includes('showFailure("拡張機能", error)'));
+  assert.ok(ui.includes('throw responseError(res.status, payload?.error ? translateServerMessage(String(payload.error)) : t("workspaceControl.checkpoints.loadError"))'));
+  assert.ok(ui.includes('throw responseError(res.status, data?.error ? translateServerMessage(String(data.error)) : t("workspaceControl.extensions.loadError"))'));
+  assert.ok(ui.includes('t("workspaceControl.checkpoints.title")'));
+  assert.ok(ui.includes('t("workspaceControl.extensions.title")'));
+  assert.ok(ui.includes('showFailure(title, error)'));
   assert.ok(ui.includes("createDeviceGate(document, { onRegister: closePanel })"));
   // Errors no longer get appended under the stale "Loading…" line.
   assert.ok(!ui.includes("panel.append(error instanceof Error ? error.message : String(error))"));

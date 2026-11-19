@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeCodexThreadList } from "../src/codex-thread-list.mjs";
+import { DICTIONARIES } from "../src/i18n-core.mjs";
 import { readFile } from "node:fs/promises";
 
 test("Codex thread list accepts valid summaries and drops malformed rows", () => {
@@ -33,6 +34,7 @@ test("Codex history refresh reports failures and retains the last valid snapshot
   const loader = source.slice(start, end);
   assert.match(loader, /catch \(error\)[\s\S]*?showToast\([\s\S]*?\)[\s\S]*?return false;/);
   assert.match(loader, /allThreads = normalizeCodexThreadList\(result\)/);
-  assert.match(loader, /catch \{[\s\S]*?showToast\("Codexから有効な会話一覧/);
+  assert.match(loader, /catch \{[\s\S]*?showToast\(t\("codex\.threads\.listInvalid"\)\)/);
+  assert.match(DICTIONARIES.ja["codex.threads.listInvalid"], /^Codex から有効な会話一覧/);
   assert.match(loader, /return true;/);
 });

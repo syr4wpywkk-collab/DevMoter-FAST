@@ -249,10 +249,14 @@ test("server keeps the Qwen chat behind the operation claim and adds a cancel ro
   assert.doesNotMatch(server.slice(chat, cancel), /multiApiStore|\/api\/llm/, "the Qwen picker does not use the API Chat store");
 });
 
-test("Qwen Code is in the AI selector and the Home Qwen Code Mobile app is gone", async () => {
+test("Qwen Code selector entry is gated by QWEN_UI_ENABLED and the Home Qwen Code Mobile app is gone", async () => {
   const read = path => readFile(new URL(`../${path}`, import.meta.url), "utf8");
-  const nav = await read("src/unified-workspace-nav.ts");
-  assert.match(nav, /<option value="qwen">Qwen Code<\/option>/);
+  const [{ QWEN_UI_ENABLED }, nav] = await Promise.all([
+    import("../src/feature-flags.mjs"),
+    read("src/unified-workspace-nav.ts")
+  ]);
+  assert.equal(QWEN_UI_ENABLED, false);
+  assert.match(nav, /QWEN_UI_ENABLED \? '<option value="qwen">Qwen Code<\/option>' : ""/);
   for (const path of ["src/app-registry.ts", "src/home.ts", "src/app-shell.ts", "server.mjs"]) {
     assert.doesNotMatch(await read(path), /qwen-mobile|Qwen Code Mobile/i, path);
   }

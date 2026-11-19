@@ -78,8 +78,8 @@ test("Repo map button labels a failed load as failed, never as loaded", async ()
   const start = source.indexOf('showMap.addEventListener("click"');
   const end = source.indexOf("showMap.disabled = false;", start);
   const handler = source.slice(start, end);
-  const loaded = handler.indexOf('"Repository map loaded."');
-  const failed = handler.indexOf("Repository map failed:");
+  const loaded = handler.indexOf('t("index.mapLoadedStatus")');
+  const failed = handler.indexOf('t("index.mapFailedStatus"');
   const catchAt = handler.indexOf("} catch (error) {");
   assert.ok(loaded > 0 && catchAt > loaded, "success text only on the success path");
   assert.ok(failed > catchAt, "the catch path says the map failed");

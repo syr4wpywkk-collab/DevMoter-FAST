@@ -1,12 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { DICTIONARIES } from "../src/i18n-core.mjs";
 
 test("dangerous Codex session approvals are downgraded to one-time", async () => {
   const source = await readFile(new URL("../src/codex.ts", import.meta.url), "utf8");
   assert.match(source, /commandRisk\.dangerous && decision === "acceptForSession"/);
   assert.match(source, /effectiveDecision = "accept"/);
-  assert.match(source, /High-risk commands can only be approved once/);
+  assert.match(source, /t\("codex\.approval\.highRiskDowngraded"\)/);
+  assert.match(DICTIONARIES.en["codex.approval.highRiskDowngraded"], /High-risk commands can only be approved once/);
 });
 
 test("dangerous OpenCode always approvals are downgraded to once", async () => {

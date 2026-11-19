@@ -62,13 +62,17 @@ test("Codex thread creation resolves project ids server-side", async () => {
 });
 
 test("generated OpenCode operation ids take precedence over caller headers", async () => {
-  const source = await readFile(new URL("../src/opencode.ts", import.meta.url), "utf8");
+  const [{ DICTIONARIES }, source] = await Promise.all([
+    import("../src/i18n-core.mjs"),
+    readFile(new URL("../src/opencode.ts", import.meta.url), "utf8")
+  ]);
   const start = source.indexOf("headers: {", source.indexOf("async function api"));
   const end = source.indexOf("},", start);
   const block = source.slice(start, end);
   assert.ok(block.indexOf("...(init.headers || {})") >= 0);
   assert.ok(block.indexOf("x-pocket-operation-id") > block.indexOf("...(init.headers || {})"));
-  assert.match(source, /earlier outcome is unknown/);
+  assert.match(source, /t\("opencode\.errors\.duplicate"/);
+  assert.match(DICTIONARIES.en["opencode.errors.duplicate"], /earlier outcome is unknown/);
 });
 
 test("Markdown paths fail closed on absolute, traversal, Windows, and NUL input", () => {

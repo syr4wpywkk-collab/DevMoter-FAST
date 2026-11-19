@@ -1,8 +1,23 @@
 import "./app-shell.css";
 import type { MainSurface } from "./surface-navigation.mjs";
 import { shouldUseUnifiedWorkspace } from "./unified-ui-mode.mjs";
+import {
+  QWEN_UI_ENABLED,
+  isVisibleChatBackend,
+  normalizeVisibleBackend,
+  normalizeVisibleSurface
+} from "./feature-flags.mjs";
 import { getAppDefinition, isAppId, SYSTEM_ICONS } from "./app-registry";
 import { mountToolsAi } from "./tools-ai";
+import { bindLanguageSelectors, t, tApp } from "./i18n";
+
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 type Backend = "opencode" | "codex" | "api" | "qwen" | "integrations";
 
@@ -19,7 +34,7 @@ function bySelector<T extends HTMLElement>(selector: string) {
 
 function clickExisting(selector: string) {
   const target = bySelector<HTMLElement>(selector);
-  if (!target) throw new Error("This feature is not available on the current build.");
+  if (!target) throw new Error(t("shell.featureUnavailable"));
   target.click();
 }
 
@@ -47,18 +62,18 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   root.id = "devmoterUnifiedShell";
   root.className = "dm-shell";
   root.innerHTML = `
-    <button class="dm-shell-menu-trigger" type="button" aria-label="Open DevMoter sidebar" aria-expanded="false">
-      <span aria-hidden="true">☰</span><small>Tools</small>
+    <button class="dm-shell-menu-trigger" type="button" aria-label="${escapeHtml(t("shell.openSidebar"))}" aria-expanded="false">
+      <span aria-hidden="true">☰</span><small>${escapeHtml(t("shell.toolsShort"))}</small>
     </button>
 
     <div class="dm-shell-scrim hidden" data-shell-scrim></div>
 
-    <aside class="dm-shell-sidebar" aria-hidden="true" aria-label="DevMoter feature sidebar" inert>
+    <aside class="dm-shell-sidebar" aria-hidden="true" aria-label="${escapeHtml(t("shell.sidebarAria"))}" inert>
       <header class="dm-shell-sidebar-head">
         <div>
-          <strong>開発ツール</strong>
+          <strong>${escapeHtml(t("shell.devToolsTitle"))}</strong>
         </div>
-        <button type="button" data-shell-close aria-label="Close sidebar">×</button>
+        <button type="button" data-shell-close aria-label="${escapeHtml(t("shell.closeSidebar"))}">×</button>
       </header>
 
       <div class="dm-shell-sidebar-scroll">
@@ -75,8 +90,8 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   const sidebar = root.querySelector<HTMLElement>(".dm-shell-sidebar")!;
   const scrim = root.querySelector<HTMLElement>("[data-shell-scrim]")!;
   const toast = root.querySelector<HTMLElement>(".dm-shell-toast")!;
-  let backend: Backend = options.initialBackend || "opencode";
-  let surface: MainSurface = options.initialSurface || "home";
+  let backend: Backend = options.initialBackend === "integrations" ? "integrations" : normalizeVisibleBackend(options.initialBackend);
+  let surface: MainSurface = normalizeVisibleSurface(options.initialSurface);
   let toastTimer = 0;
   let sidebarReturnFocus: HTMLElement | null = null;
   const toolsAi = mountToolsAi(root.querySelector<HTMLElement>("[data-tools-ai-root]")!, {
@@ -139,7 +154,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   }
 
   function updateBackend(next: Backend) {
-    backend = next;
+    backend = next === "integrations" ? "integrations" : normalizeVisibleBackend(next);
     trigger.dataset.backend = backend;
   }
 
@@ -158,22 +173,22 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
   });
 
   const launchApp = (id: unknown) => {
-    if (!isAppId(id)) throw new Error("This app is not registered.");
+    if (!isAppId(id)) throw new Error(t("shell.appUnregistered"));
     const app = getAppDefinition(id);
     if (app.availability !== "available") {
       if (id === "browser") clickExisting(".adv-fab");
-      else notify(app.previewMessage || `${app.title} is not available yet.`);
+      else notify(tApp(id, "previewMessage") || t("apps.unavailable", { title: tApp(id, "title") || app.title }));
       return;
     }
     switch (id) {
       case "chat": {
         const lastBackend = localStorage.getItem("opencode-pocket-backend");
-        options.switchBackend(lastBackend === "codex" || lastBackend === "api" ? lastBackend : "opencode");
+        options.switchBackend(normalizeVisibleBackend(lastBackend));
         break;
       }
       case "projects": options.switchBackend("codex"); updateBackend("codex"); window.setTimeout(() => clickExisting("#cxProjectsNav"), 0); break;
       case "mission-control": window.dispatchEvent(new CustomEvent("devmoter:open-mission-control")); break;
-      case "office": void import("./office").then(module => module.openOffice({ configureAi: () => { options.switchBackend("api"); updateBackend("api"); window.setTimeout(() => clickExisting("#apiSettingsTop"), 0); } })).catch(() => notify("Officeを開けませんでした。再読み込みしてください。")); break;
+      case "office": void import("./office").then(module => module.openOffice({ configureAi: () => { options.switchBackend("api"); updateBackend("api"); window.setTimeout(() => clickExisting("#apiSettingsTop"), 0); } })).catch(() => notify(t("shell.officeOpenFailed"))); break;
       case "terminal": openToolsTab("terminal"); break;
       case "git": clickExisting(".pocket-git-trigger"); break;
       case "review": clickExisting("#wfLaunch"); break;
@@ -183,7 +198,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
       case "developer-workflows": options.switchBackend("codex"); updateBackend("codex"); window.setTimeout(() => clickExisting("#cxDevWorkflowsNav"), 0); break;
       case "knowledge":
       case "browser":
-        notify(app.previewMessage || `${app.title} is not available yet.`);
+        notify(tApp(id, "previewMessage") || t("apps.unavailable", { title: tApp(id, "title") || app.title }));
         break;
     }
   };
@@ -224,13 +239,13 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
       run(() => launchApp(detail.id));
       return;
     }
-    notify(typeof detail.message === "string" ? detail.message : app.previewMessage || `${app.title} is not available yet.`);
+    notify(typeof detail.message === "string" && detail.message ? detail.message : (tApp(detail.id, "previewMessage") || t("apps.unavailable", { title: tApp(detail.id, "title") || app.title })));
   });
 
   window.addEventListener("devmoter:surface-changed", event => {
     const next = (event as CustomEvent<{ surface?: MainSurface }>).detail?.surface;
     closeSidebar();
-    if (next) surface = next;
+    if (next) surface = normalizeVisibleSurface(next);
   });
   // History owns its header area. Offer an in-flow Tools entry while the
   // floating launcher is hidden, without adding another overlay layer.
@@ -240,8 +255,8 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     toolsLink.type = "button";
     toolsLink.dataset.openTools = "";
     toolsLink.className = "ocx-global-tools-entry";
-    toolsLink.textContent = "Tools";
-    toolsLink.setAttribute("aria-label", "Open DevMoter Tools and AI");
+    toolsLink.textContent = t("shell.toolsShort");
+    toolsLink.setAttribute("aria-label", t("shell.openToolsAiAria"));
     toolsLink.addEventListener("click", openSidebar);
     const close = openCodeNavigation.querySelector("#ocxSidebarClose");
     openCodeNavigation.insertBefore(toolsLink, close);
@@ -262,7 +277,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     settings.type = "button";
     settings.className = "dm-shell-settings-entry";
     settings.dataset.shellSettings = "";
-    settings.innerHTML = `<span aria-hidden="true">${SYSTEM_ICONS.settings}</span><strong>設定</strong>`;
+    settings.innerHTML = `<span aria-hidden="true">${SYSTEM_ICONS.settings}</span><strong>${escapeHtml(t("shell.settings"))}</strong>`;
     settings.addEventListener("click", () => {
       closeSidebar();
       window.dispatchEvent(new CustomEvent("devmoter:open-settings", { detail: { page: "root" } }));
@@ -272,23 +287,24 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     const row = document.createElement("div");
     row.className = "dm-shell-fallback-row";
     row.innerHTML = `
-      <label><span>AI</span><select data-fallback-backend aria-label="AIバックエンド切り替え">
-        <option value="codex">Codex</option><option value="opencode">OpenCode</option><option value="api">API Chat</option><option value="qwen">Qwen Code</option>
+      <label><span>AI</span><select data-fallback-backend aria-label="${escapeHtml(t("shell.aiSwitchAria"))}">
+        <option value="codex">Codex</option><option value="opencode">OpenCode</option><option value="api">API Chat</option>${QWEN_UI_ENABLED ? '<option value="qwen">Qwen Code</option>' : ""}
       </select></label>
-      <label><span>言語</span><select data-language-select aria-label="Language">
-        <option value="en">English</option><option value="ja">日本語</option><option value="zh-CN">简体中文</option>
+      <label><span>${escapeHtml(t("nav.language"))}</span><select data-language-select aria-label="${escapeHtml(t("language.ariaLabel"))}">
+        <option value="ja">日本語</option><option value="en">English</option><option value="zh-Hans">简体中文</option><option value="zh-Hant">繁體中文</option>
       </select></label>`;
+    bindLanguageSelectors(row, { reload: true });
     const backendSelect = row.querySelector<HTMLSelectElement>("[data-fallback-backend]")!;
     const syncBackendSelect = () => {
-      const current = surface === "codex" || surface === "opencode" || surface === "api" || surface === "qwen" ? surface : backend;
-      backendSelect.value = current === "integrations" ? "opencode" : current;
+      const current = isVisibleChatBackend(surface) ? surface : backend;
+      backendSelect.value = normalizeVisibleBackend(current);
     };
     syncBackendSelect();
     window.addEventListener("devmoter:surface-changed", syncBackendSelect);
     backendSelect.addEventListener("change", () => {
-      const next = backendSelect.value as "codex" | "opencode" | "api" | "qwen";
+      if (!isVisibleChatBackend(backendSelect.value)) return;
       closeSidebar();
-      options.switchBackend(next);
+      options.switchBackend(backendSelect.value);
     });
     scroll.prepend(settings);
     settings.after(row);
@@ -302,7 +318,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     void import("./unified-workspace-nav")
       .then(({ mountTaskFirstWorkspace }) => mountTaskFirstWorkspace({
         initialSurface: surface,
-        initialBackend: backend === "integrations" ? "opencode" : backend,
+        initialBackend: normalizeVisibleBackend(backend),
         switchBackend: next => options.switchBackend(next),
         openHome: options.openHome,
         openTasks: () => run(() => launchApp("sessions")),
@@ -319,7 +335,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
         document.querySelectorAll<HTMLElement>("[data-unified-agent-label]").forEach(label => {
           label.hidden = true;
         });
-        notify("新UIの読み込みに失敗しました。従来UIで表示しています。");
+        notify(t("shell.unifiedUiLoadFailed"));
         addFallbackSettingsEntry();
       });
   } else {

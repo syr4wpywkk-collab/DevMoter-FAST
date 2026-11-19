@@ -64,27 +64,42 @@ export function languageForPath(path) {
   })[ext] || "text";
 }
 
+async function readBoundedPreview(handle, limit) {
+  try {
+    return await readHandle(handle, limit);
+  } catch (error) {
+    if (error?.code === "EFBIG") return null;
+    throw error;
+  }
+}
+
 export async function previewFile(root, relativePath) {
   assertPublicProjectPath(relativePath);
   const resolved = await resolveInsideRoot(root, relativePath);
   assertPublicProjectPath(relative(resolved.root, resolved.target));
-  return withOpenFile(resolved.target, {}, async (handle, info) => {
+  return withOpenFile(resolved.target, { noFollow: true }, async (handle, info) => {
     if (!info.isFile()) throw new Error("Preview target is not a file");
     const ext = extname(resolved.target).toLowerCase();
     const imageMime = SAFE_IMAGE_MIME.get(ext);
 
     if (imageMime) {
       if (info.size > IMAGE_PREVIEW_LIMIT) {
-        return { kind: "binary", name: basename(resolved.target), path: resolved.relativePath, size: info.size, reason: "image-too-large" };
+        return { kind: "binary", name: basename(resolved.target), path: resolved.relativePath, size: info.size, reason: "image-too-large", limit: IMAGE_PREVIEW_LIMIT };
       }
-      const data = await readHandle(handle, IMAGE_PREVIEW_LIMIT);
+      const data = await readBoundedPreview(handle, IMAGE_PREVIEW_LIMIT);
+      if (!data) {
+        return { kind: "binary", name: basename(resolved.target), path: resolved.relativePath, size: info.size, reason: "image-too-large", limit: IMAGE_PREVIEW_LIMIT };
+      }
       return { kind: "image", name: basename(resolved.target), path: resolved.relativePath, size: info.size, mime: imageMime, data: data.toString("base64") };
     }
 
     if (info.size > TEXT_PREVIEW_LIMIT) {
-      return { kind: "binary", name: basename(resolved.target), path: resolved.relativePath, size: info.size, reason: "file-too-large" };
+      return { kind: "binary", name: basename(resolved.target), path: resolved.relativePath, size: info.size, reason: "file-too-large", limit: TEXT_PREVIEW_LIMIT };
     }
-    const data = await readHandle(handle, TEXT_PREVIEW_LIMIT);
+    const data = await readBoundedPreview(handle, TEXT_PREVIEW_LIMIT);
+    if (!data) {
+      return { kind: "binary", name: basename(resolved.target), path: resolved.relativePath, size: info.size, reason: "file-too-large", limit: TEXT_PREVIEW_LIMIT };
+    }
     if (looksBinary(data) || (!TEXT_EXTENSIONS.has(ext) && ext !== "")) {
       return { kind: "binary", name: basename(resolved.target), path: resolved.relativePath, size: info.size, reason: "binary-or-unsupported" };
     }
@@ -96,7 +111,6 @@ export async function previewFile(root, relativePath) {
 }
 
 const FILE_BROWSER_LIMIT = 250;
-const FILE_BROWSER_LARGE = 1024 * 1024;
 const SENSITIVE_BROWSER_NAME = /^(?:\.env(?:\.|$)|\.(?:git|ssh|aws|config|npmrc|netrc|pypirc|kube|docker)$|id_[a-z0-9_-]+(?:\.pub)?$|.*(?:secret|credential|credentials|private[_-]?key).*|.*\.(?:pem|key|p12|pfx))$/i;
 
 // Directory listings and direct preview/download paths must have the same deny policy.
@@ -124,6 +138,8 @@ export async function listProjectDirectory(rootInput, relativePath = "", options
   const safeRelative = normalizeBrowserRelative(relativePath);
   assertPublicProjectPath(safeRelative);
   const candidate = safeRelative ? resolve(root, safeRelative) : root;
+  const candidateInfo = await lstat(candidate);
+  if (candidateInfo.isSymbolicLink() || !candidateInfo.isDirectory()) throw new Error("Browser path is not a regular project directory");
   const target = await realpath(candidate);
   if (!inside(root, target)) throw new Error("Browser path escapes the registered project");
   assertPublicProjectPath(relative(root, target));
@@ -155,16 +171,33 @@ export async function listProjectDirectory(rootInput, relativePath = "", options
 
     const ext = extname(entry.name).toLowerCase();
     let kind = "binary";
-    if (info.size > FILE_BROWSER_LARGE) kind = "large";
-    else if (TEXT_EXTENSIONS.has(ext) || ext === "") {
+    let limit = null;
+    if (SAFE_IMAGE_MIME.has(ext)) {
+      if (info.size > IMAGE_PREVIEW_LIMIT) {
+        kind = "large";
+        limit = IMAGE_PREVIEW_LIMIT;
+      } else {
+        kind = "image";
+      }
+    } else if (info.size > TEXT_PREVIEW_LIMIT) {
+      kind = "large";
+      limit = TEXT_PREVIEW_LIMIT;
+    } else if (TEXT_EXTENSIONS.has(ext) || ext === "") {
       try {
-        const sample = await readFile(actual);
-        kind = looksBinary(sample.subarray(0, Math.min(sample.length, 8192))) ? "binary" : "text";
+        const inspected = await withOpenFile(full, { noFollow: true }, async (handle, fileInfo) => {
+          if (!fileInfo.isFile()) return { kind: "binary", limit: null };
+          if (fileInfo.size > TEXT_PREVIEW_LIMIT) return { kind: "large", limit: TEXT_PREVIEW_LIMIT };
+          const length = Math.min(8192, fileInfo.size);
+          if (length === 0) return { kind: "text", limit: null };
+          const buffer = Buffer.allocUnsafe(length);
+          const { bytesRead } = await handle.read(buffer, 0, length, 0);
+          return { kind: looksBinary(buffer.subarray(0, bytesRead)) ? "binary" : "text", limit: null };
+        });
+        kind = inspected.kind;
+        limit = inspected.limit;
       } catch {
         kind = "binary";
       }
-    } else if (SAFE_IMAGE_MIME.has(ext)) {
-      kind = "image";
     }
     output.push({
       name: entry.name,
@@ -173,14 +206,16 @@ export async function listProjectDirectory(rootInput, relativePath = "", options
       hidden,
       size: info.size,
       language: kind === "text" ? languageForPath(entry.name) : null,
-      previewable: kind === "text" || kind === "image"
+      previewable: kind === "text" || kind === "image",
+      limit
     });
   }
   return {
     path: safeRelative,
     parent: safeRelative.includes("/") ? safeRelative.slice(0, safeRelative.lastIndexOf("/")) : (safeRelative ? "" : null),
     entries: output,
-    truncated: entries.length > FILE_BROWSER_LIMIT
+    truncated: entries.length > FILE_BROWSER_LIMIT,
+    limits: { textBytes: TEXT_PREVIEW_LIMIT, imageBytes: IMAGE_PREVIEW_LIMIT }
   };
 }
 

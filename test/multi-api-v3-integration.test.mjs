@@ -5,7 +5,8 @@ import { readFile } from "node:fs/promises";
 const serverSource = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
 const apiChatSource = await readFile(new URL("../src/api-chat.ts", import.meta.url), "utf8");
 const mainSource = await readFile(new URL("../src/main.ts", import.meta.url), "utf8");
-const i18nSource = await readFile(new URL("../src/i18n.ts", import.meta.url), "utf8");
+const i18nCoreSource = await readFile(new URL("../src/i18n-core.mjs", import.meta.url), "utf8");
+import { DICTIONARIES } from "../src/i18n-core.mjs";
 
 test("multi-API routes remain behind the v3 owner authentication gates", () => {
   const auth = serverSource.indexOf("if (!basicAuthenticated && !ownerSession)");
@@ -31,6 +32,15 @@ test("API chat bounds history and invalidates stale completions on New Chat", ()
 test("API chat is mounted as a first-class v3 surface and chat content is excluded from i18n mutation", () => {
   assert.match(mainSource, /mountApiChat/);
   assert.match(mainSource, /"opencode" \| "codex" \| "api" \| "qwen" \| "integrations"/);
-  assert.match(i18nSource, /\.api-message/);
-  assert.match(i18nSource, /"どのAPIで考える？"/);
+  assert.doesNotMatch(i18nCoreSource, /MutationObserver/);
+  assert.match(apiChatSource, /row\.className = `api-message \$\{message\.role\}`;/);
+  assert.match(apiChatSource, /bubble\.textContent = message\.content;/);
+  assert.match(apiChatSource, /renderChatMarkdown\(bubble, message\.content, copyMessage\);/);
+  assert.match(apiChatSource, /t\("apiChat\.welcomePrompt"\)/);
+  assert.ok(
+    DICTIONARIES.ja["apiChat.welcomePrompt"] &&
+      DICTIONARIES.en["apiChat.welcomePrompt"] &&
+      DICTIONARIES["zh-Hans"]["apiChat.welcomePrompt"] &&
+      DICTIONARIES["zh-Hant"]["apiChat.welcomePrompt"]
+  );
 });

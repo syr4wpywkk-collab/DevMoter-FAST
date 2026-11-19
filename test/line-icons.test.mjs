@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { DICTIONARIES } from "../src/i18n-core.mjs";
 
 const source = path => readFile(new URL(`../src/${path}`, import.meta.url), "utf8");
 const LEGACY_GLYPHS = /[✦⌁◇◒◎◈▤⌘⚑ⓘ↪♢◐✓＋⚙☀●▱▰◫◌◆▣▥≡◷⑂]|📄|📁|💬/u;
@@ -52,10 +53,10 @@ test("Settings rows, ☰ menu and file list use line icons instead of symbol gly
     source("settings.ts"), source("unified-workspace-nav.ts"), source("advanced.ts"), source("app-shell.ts")
   ]);
   const settingsIcons = inlineIcons(settings);
-  const rows = [...settings.matchAll(/row\("([^"]+)", "([^"]+)"/g)];
+  const rows = [...settings.matchAll(/row\("([^"]+)",\s*t\("([^"]+)"\)/g)];
   assert.ok(rows.length > 30);
-  for (const [, icon, label] of rows) {
-    assert.ok(/^\d+$/.test(icon) || settingsIcons.has(icon), `${label} uses a known icon (${icon})`);
+  for (const [, icon, key] of rows) {
+    assert.ok(/^\d+$/.test(icon) || settingsIcons.has(icon), `${key} uses a known icon (${icon})`);
   }
   // No orphaned copies: every inlined icon is drawn by a row or referenced as ICONS.<id>.
   const usedIcons = new Set(rows.map(([, icon]) => icon));
@@ -66,15 +67,20 @@ test("Settings rows, ☰ menu and file list use line icons instead of symbol gly
   assert.ok(!/<svg viewBox="0 0 16 16"/.test(settings), "no one-off 16px SVG outside the line-icon set");
   // Rows for different destinations never share one icon (same concept → same icon is fine).
   const conceptByIcon = new Map();
-  for (const [, icon, label] of rows) {
+  for (const [, icon, key] of rows) {
     if (/^\d+$/.test(icon)) continue;
-    const concept = label.replace(/設定|の状態|を見る/g, "").replace(/s$/, "").replace("Terminal", "ターミナル").replace("Safety", "セーフティスキャン").replace("セーフティスキャン", "safety");
-    if (conceptByIcon.has(icon)) assert.equal(conceptByIcon.get(icon), concept, `${icon} reused for ${label}`);
+    const label = DICTIONARIES.ja[key] || key;
+    const concept = key.startsWith("language.")
+      ? "言語"
+      : key === "settings.notifications.statusLabel"
+        ? "通知"
+        : label.replace(/設定|の状態|を見る/g, "").replace(/s$/, "").replace("Terminal", "ターミナル").replace("Safety", "セーフティスキャン").replace("セーフティスキャン", "safety");
+    if (conceptByIcon.has(icon)) assert.equal(conceptByIcon.get(icon), concept, `${icon} reused for ${key} (${label})`);
     else conceptByIcon.set(icon, concept);
   }
   const markup = code => code.replace(/const ICONS[\s\S]*?\n};/, "");
   for (const [name, code] of [["settings", settings], ["nav", nav]]) {
-    const rendered = markup(code).match(/row\([^)]*\)|<span aria-hidden="true">[^<]*<\/span>|aria-label="設定を開く">[^<]*</g) || [];
+    const rendered = markup(code).match(/row\([^)]*\)|<span aria-hidden="true">[^<]*<\/span>|aria-label="\$\{escapeHtml\(t\("settings\.openAria"\)\)\}">[^<]*</g) || [];
     for (const part of rendered) assert.ok(!LEGACY_GLYPHS.test(part), `${name}: ${part}`);
   }
   for (const command of ["tasks", "chat", "review", "tools"]) {

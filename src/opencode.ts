@@ -1,10 +1,9 @@
 import { openCodeStateLabel as stateLabel, openCodeStateGlyph as stateGlyph } from "./opencode/status";
-import { openCodeToolStateSummary as toolStateSummary } from "./opencode/tools";
 import { isExecutionActive, openCodeIdleOutcomeToExecutionState, type ExecutionState } from "./execution-state.mjs";
-import { speechRecognitionLanguage } from "./i18n";
+import { formatDateTime, formatNumber, getLanguage, speechRecognitionLanguage, t, translateServerMessage } from "./i18n";
 import { mergeOpenCodeStreamText, normalizeOpenCodeEvent } from "./opencode-event-compat.mjs";
 import { countTranscriptMessages, normalizeExternalThread, sessionContextToMarkdown, sortSessions, type ImportedThread, type SessionSortMode } from "./session-tools.mjs";
-import { describeModelPricing, normalizeModelPricing } from "./model-pricing.mjs";
+import { normalizeModelPricing } from "./model-pricing.mjs";
 import { setWakeLockEnabled, setWakeLockExecutionActive, wakeLockEnabled, wakeLockSupported } from "./wake-lock";
 import { reconnectDelay, shouldOpenEventSource, shouldScheduleReconnect } from "./reconnect-policy.mjs";
 import { createLatestRequestGuard } from "./latest-request.mjs";
@@ -35,6 +34,87 @@ import {
 
 const FOLLOW_BOTTOM_THRESHOLD = 48;
 const REMOTE_REQUEST_TIMEOUT_MS = 120_000;
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function localizedStateLabel(state: ExecutionState): string {
+  const key = stateLabel(state);
+  return t(`opencode.state.${key}`);
+}
+
+function localizedToolStatus(status: string): string {
+  switch (status) {
+    case "completed": return t("opencode.tool.statusCompleted");
+    case "error": return t("opencode.tool.statusError");
+    case "running": return t("opencode.tool.statusRunning");
+    case "pending": return t("opencode.tool.statusPending");
+    default: return translateServerMessage(status);
+  }
+}
+
+function localizedToolStateSummary(part: Record<string, any>): string {
+  const state = part?.state ?? {};
+  const status = String(state?.status || "tool");
+  const name = String(part?.tool || part?.name || "tool");
+  const input = state?.input;
+  const target = input?.command ?? input?.filePath ?? input?.path;
+  const hint = typeof target === "string" ? target.replace(/\s+/g, " ").slice(0, 100) : "";
+  const glyph = status === "completed" ? "✓" : status === "error" ? "!" : status === "running" ? "●" : "·";
+  return `${glyph} ${name} · ${localizedToolStatus(status)}${hint ? ` — ${hint}` : ""}`;
+}
+
+function localizedModelPricingDetail(value: unknown): string {
+  const cost = normalizeModelPricing(value) as Record<string, number> | null;
+  const hasPaidRate = Boolean(cost && Object.values(cost).some(rate => rate > 0));
+  const zeroBase = cost?.input === 0 && cost?.output === 0;
+  const label = hasPaidRate
+    ? t("opencode.pricing.paidLabel")
+    : zeroBase
+      ? t("opencode.pricing.zeroBaseLabel")
+      : t("opencode.pricing.unknownLabel");
+  const rates = cost
+    ? Object.entries(cost).map(([key, rate]) => `${key}: ${formatNumber(rate)}`).join(" / ")
+    : t("opencode.pricing.noUpstreamRates");
+  return t("opencode.pricing.detail", { label, rates });
+}
+
+function localizedPickerGroupName(name: string): string {
+  if (name === "使える") return t("opencode.models.groupReady");
+  if (name === "キーが必要") return t("opencode.models.groupNeedsKey");
+  if (name === "非推奨") return t("opencode.models.groupDeprecated");
+  return name;
+}
+
+function localizedModelReason(row: {
+  needsKey?: boolean;
+  requiresKey?: string[];
+  available?: boolean;
+  enabled?: boolean;
+  deprecated?: boolean;
+}): string {
+  if (row.needsKey) {
+    return t("opencode.models.reasonNeedsKey", { keys: (row.requiresKey ?? []).join(", ") });
+  }
+  if (!row.available) return t("opencode.models.reasonProviderUnavailable");
+  if (!row.enabled) {
+    return row.deprecated ? t("opencode.models.reasonDeprecated") : t("opencode.models.reasonUnavailable");
+  }
+  return "";
+}
+
+function localizedRole(role: string): string {
+  if (role === "user" || role === "assistant" || role === "system" || role === "tool") {
+    return t(`opencode.role.${role}`);
+  }
+  return role;
+}
 
 type Json = Record<string, any>;
 
@@ -165,51 +245,51 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     <div class="ocx-app">
       <div id="ocxScrim" class="ocx-scrim hidden"></div>
 
-      <aside id="ocxSidebar" class="ocx-sidebar" aria-hidden="true" aria-label="OpenCode conversation history" inert>
+      <aside id="ocxSidebar" class="ocx-sidebar" aria-hidden="true" aria-label="${escapeHtml(t("opencode.sidebar.aria"))}" inert>
         <div class="ocx-sidebar-head">
           <div class="ocx-history-identity">
             <span class="ocx-history-icon" aria-hidden="true">◈</span>
             <span class="ocx-history-copy">
               <span class="ocx-history-title">
                 <strong>OpenCode</strong>
-                <span id="ocxSideStatus" class="ocx-side-status" data-state="offline" role="status" aria-label="Offline"><i aria-hidden="true"></i><span>Offline</span></span>
+                <span id="ocxSideStatus" class="ocx-side-status" data-state="offline" role="status" aria-label="${escapeHtml(t("opencode.sideStatus.offline"))}"><i aria-hidden="true"></i><span>${escapeHtml(t("opencode.sideStatus.offline"))}</span></span>
               </span>
-              <small id="ocxSidebarDirectory">workspace</small>
+              <small id="ocxSidebarDirectory">${escapeHtml(t("opencode.sidebar.directoryFallback"))}</small>
             </span>
           </div>
-          <button id="ocxSidebarClose" class="ocx-icon" type="button" aria-label="閉じる">×</button>
+          <button id="ocxSidebarClose" class="ocx-icon" type="button" aria-label="${escapeHtml(t("common.close"))}">×</button>
         </div>
 
         <button id="ocxNewSessionSide" class="ocx-new-session" type="button">
-          <span>新しいチャット</span>
+          <span>${escapeHtml(t("opencode.sidebar.newChat"))}</span>
         </button>
 
         <div class="ocx-sidebar-scroll">
 
         <label class="ocx-search">
           <span>⌕</span>
-          <input id="ocxSessionSearch" type="search" placeholder="Search conversation history" />
+          <input id="ocxSessionSearch" type="search" placeholder="${escapeHtml(t("opencode.sidebar.searchPlaceholder"))}" />
         </label>
 
         <div class="ocx-session-toolbar">
           <label>
-            <select id="ocxSessionSort" aria-label="Sort conversation history">
-              <option value="recent">Recent activity</option>
-              <option value="created">Created time</option>
-              <option value="messages">Message count</option>
+            <select id="ocxSessionSort" aria-label="${escapeHtml(t("opencode.sidebar.sortAria"))}">
+              <option value="recent">${escapeHtml(t("opencode.sidebar.sortRecent"))}</option>
+              <option value="created">${escapeHtml(t("opencode.sidebar.sortCreated"))}</option>
+              <option value="messages">${escapeHtml(t("opencode.sidebar.sortMessages"))}</option>
             </select>
           </label>
         </div>
 
-        <div id="ocxAttention" class="ocx-attention hidden" aria-label="Session attention overview"></div>
+        <div id="ocxAttention" class="ocx-attention hidden" aria-label="${escapeHtml(t("opencode.sidebar.attentionAria"))}"></div>
 
         <div class="ocx-side-section">
           <div class="ocx-side-label">
-            <span>CONVERSATION HISTORY</span>
-            <button id="ocxRefresh" class="ocx-icon ocx-refresh" type="button" aria-label="Refresh" title="Refresh">↻</button>
+            <span>${escapeHtml(t("opencode.sidebar.historyHeading"))}</span>
+            <button id="ocxRefresh" class="ocx-icon ocx-refresh" type="button" aria-label="${escapeHtml(t("common.refresh"))}" title="${escapeHtml(t("common.refresh"))}">↻</button>
           </div>
           <div id="ocxSessions" class="ocx-sessions">
-            <div class="ocx-empty">Connecting…</div>
+            <div class="ocx-empty">${escapeHtml(t("opencode.sidebar.connecting"))}</div>
           </div>
         </div>
 
@@ -218,27 +298,27 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       </aside>
 
       <header class="ocx-topbar">
-        <button id="ocxMenu" class="ocx-icon" type="button" aria-label="セッション履歴を開く" title="セッション履歴">☰</button>
+        <button id="ocxMenu" class="ocx-icon" type="button" aria-label="${escapeHtml(t("opencode.sidebar.openHistoryAria"))}" title="${escapeHtml(t("opencode.sidebar.openHistoryTitle"))}">☰</button>
 
         <button id="ocxSessionTitleButton" class="ocx-session-title" type="button">
           <strong id="ocxSessionTitle">OpenCode</strong>
-          <small id="ocxSessionMeta">No session</small>
+          <small id="ocxSessionMeta">${escapeHtml(t("opencode.topbar.noSession"))}</small>
         </button>
 
-        <button id="ocxModelButton" type="button" class="ocx-context-button">model</button>
-        <button id="ocxNewSessionTop" class="ocx-icon" type="button" aria-label="新規セッション">＋</button>
+        <button id="ocxModelButton" type="button" class="ocx-context-button">${escapeHtml(t("opencode.topbar.modelFallback"))}</button>
+        <button id="ocxNewSessionTop" class="ocx-icon" type="button" aria-label="${escapeHtml(t("opencode.sidebar.newSessionAria"))}">＋</button>
       </header>
 
       <main class="ocx-main">
         <div id="ocxTranscript" class="ocx-transcript">
           <div class="ocx-welcome">
             <div class="ocx-mark">></div>
-            <h2>What do you want to build?</h2>
-            <p>Plan, ask, and build in your workspace.</p>
+            <h2>${escapeHtml(t("opencode.welcome.title"))}</h2>
+            <p>${escapeHtml(t("opencode.welcome.subtitle"))}</p>
             <div class="ocx-welcome-hints">
-              <button type="button" data-hint="plan">Plan first</button>
-              <button type="button" data-hint="build">Start building</button>
-              <button type="button" data-hint="command">/ commands</button>
+              <button type="button" data-hint="plan">${escapeHtml(t("opencode.welcome.hintPlan"))}</button>
+              <button type="button" data-hint="build">${escapeHtml(t("opencode.welcome.hintBuild"))}</button>
+              <button type="button" data-hint="command">${escapeHtml(t("opencode.welcome.hintCommand"))}</button>
             </div>
           </div>
         </div>
@@ -246,60 +326,60 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
       <section id="ocxPermission" class="ocx-dock ocx-permission hidden">
         <div class="ocx-dock-copy">
-          <span class="ocx-eyebrow">PERMISSION REQUIRED</span>
-          <strong id="ocxPermissionTitle">OpenCode wants permission</strong>
+          <span class="ocx-eyebrow">${escapeHtml(t("opencode.permission.eyebrow"))}</span>
+          <strong id="ocxPermissionTitle">${escapeHtml(t("opencode.permission.defaultTitle"))}</strong>
           <pre id="ocxPermissionDetail"></pre>
         </div>
         <div class="ocx-dock-actions three">
-          <button id="ocxPermissionReject" type="button">Reject</button>
-          <button id="ocxPermissionOnce" type="button">Allow once</button>
-          <button id="ocxPermissionAlways" class="primary" type="button">Always allow</button>
+          <button id="ocxPermissionReject" type="button">${escapeHtml(t("opencode.permission.reject"))}</button>
+          <button id="ocxPermissionOnce" type="button">${escapeHtml(t("opencode.permission.allowOnce"))}</button>
+          <button id="ocxPermissionAlways" class="primary" type="button">${escapeHtml(t("opencode.permission.alwaysAllow"))}</button>
         </div>
       </section>
 
       <section id="ocxQuestion" class="ocx-dock ocx-question hidden">
         <div class="ocx-dock-copy">
-          <span class="ocx-eyebrow">OPENCode QUESTION</span>
-          <strong id="ocxQuestionHeader">Question</strong>
+          <span class="ocx-eyebrow">${escapeHtml(t("opencode.question.eyebrow"))}</span>
+          <strong id="ocxQuestionHeader">${escapeHtml(t("opencode.question.defaultHeader"))}</strong>
           <p id="ocxQuestionText"></p>
           <div id="ocxQuestionOptions" class="ocx-question-options"></div>
-          <input id="ocxQuestionCustom" class="ocx-question-custom hidden" type="text" placeholder="Type another answer…" />
+          <input id="ocxQuestionCustom" class="ocx-question-custom hidden" type="text" placeholder="${escapeHtml(t("opencode.question.customPlaceholder"))}" />
         </div>
         <div class="ocx-dock-actions">
-          <button id="ocxQuestionReject" type="button">Skip</button>
-          <button id="ocxQuestionSubmit" class="primary" type="button">Submit</button>
+          <button id="ocxQuestionReject" type="button">${escapeHtml(t("opencode.question.skip"))}</button>
+          <button id="ocxQuestionSubmit" class="primary" type="button">${escapeHtml(t("opencode.question.submit"))}</button>
         </div>
       </section>
 
       <section class="ocx-composer-wrap">
         <div id="ocxSlashPalette" class="ocx-slash-palette hidden"></div>
-        <div id="ocxContextPalette" class="ocx-slash-palette hidden" role="listbox" aria-label="Project context suggestions"></div>
+        <div id="ocxContextPalette" class="ocx-slash-palette hidden" role="listbox" aria-label="${escapeHtml(t("opencode.composer.contextPaletteAria"))}"></div>
 
         <form id="ocxPromptForm" class="ocx-composer">
           <div id="ocxAttachmentStrip" class="ocx-attachment-strip hidden"></div>
           <textarea
             id="ocxPromptInput"
             rows="1"
-            placeholder="Message OpenCode…"
-            aria-label="OpenCodeへの指示"
+            placeholder="${escapeHtml(t("opencode.composer.promptPlaceholder"))}"
+            aria-label="${escapeHtml(t("opencode.composer.promptAria"))}"
             disabled
           ></textarea>
 
           <div class="ocx-composer-foot">
             <div class="ocx-composer-left">
-              <button id="ocxPlus" type="button" class="ocx-mini-button" aria-label="添付">＋</button>
+              <button id="ocxPlus" type="button" class="ocx-mini-button" aria-label="${escapeHtml(t("opencode.composer.attachAria"))}">＋</button>
               <button id="ocxSlashButton" type="button" class="ocx-mini-button">/</button>
-              <span id="ocxActivity" class="ocx-activity">offline</span>
+              <span id="ocxActivity" class="ocx-activity">${escapeHtml(t("opencode.activity.offline"))}</span>
             </div>
             <div class="ocx-composer-actions">
-              <button id="ocxVoice" type="button" class="ocx-mini-button" aria-label="音声入力">♩</button>
-              <button id="ocxSend" class="ocx-send" type="submit" disabled aria-label="Send">↑</button>
+              <button id="ocxVoice" type="button" class="ocx-mini-button" aria-label="${escapeHtml(t("opencode.composer.voiceAria"))}">♩</button>
+              <button id="ocxSend" class="ocx-send" type="submit" disabled aria-label="${escapeHtml(t("common.send"))}">↑</button>
             </div>
           </div>
         </form>
         <div id="ocxAttachmentMenu" class="ocx-attachment-menu hidden">
-          <button id="ocxImageButton" type="button">▧ 画像</button>
-          <button id="ocxFileButton" type="button">⌑ ファイル</button>
+          <button id="ocxImageButton" type="button">▧ ${escapeHtml(t("opencode.composer.imageButton"))}</button>
+          <button id="ocxFileButton" type="button">⌑ ${escapeHtml(t("opencode.composer.fileButton"))}</button>
         </div>
         <input id="ocxImageInput" type="file" accept="image/*" multiple hidden />
         <input id="ocxFileInput" type="file" multiple hidden />
@@ -314,7 +394,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
               <strong id="ocxModalTitle">OpenCode</strong>
               <p id="ocxModalSubtitle"></p>
             </div>
-            <button id="ocxModalClose" class="ocx-icon" type="button" aria-label="閉じる">×</button>
+            <button id="ocxModalClose" class="ocx-icon" type="button" aria-label="${escapeHtml(t("common.close"))}">×</button>
           </div>
           <div id="ocxModalBody" class="ocx-modal-body"></div>
         </div>
@@ -472,7 +552,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   // First user prompt per session, used only for display labels (stored titles stay untouched).
   const sessionFirstPrompts = new Map<string, string>();
   const sessionLabel = (session: Json | null | undefined) =>
-    openCodeSessionLabel(session, { firstPrompt: session?.id ? sessionFirstPrompts.get(session.id) : undefined, language: document.documentElement.lang });
+    openCodeSessionLabel(session, { firstPrompt: session?.id ? sessionFirstPrompts.get(session.id) : undefined, language: getLanguage() });
   function noteFirstPrompt(text: string) {
     if (!activeSession?.id || !text.trim() || sessionFirstPrompts.has(activeSession.id)) return false;
     sessionFirstPrompts.set(activeSession.id, text);
@@ -506,7 +586,11 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   type ModelPickerFilter = "all" | "free" | "available" | "needsKey" | "deprecated";
   const MODEL_FILTERS: ModelPickerFilter[] = ["all", "free", "available", "needsKey", "deprecated"];
   const MODEL_FILTER_LABELS: Record<ModelPickerFilter, string> = {
-    all: "すべて", free: "無料", available: "使える", needsKey: "キーが必要", deprecated: "非推奨も表示"
+    all: t("opencode.models.filterAll"),
+    free: t("opencode.models.filterFree"),
+    available: t("opencode.models.filterAvailable"),
+    needsKey: t("opencode.models.filterNeedsKey"),
+    deprecated: t("opencode.models.filterDeprecated")
   };
   const currentModelFilter = (): ModelPickerFilter =>
     modelPickerFree ? "free" : modelPickerAvailable ? "available" : modelPickerNeedsKey ? "needsKey" : modelPickerDeprecatedOpen ? "deprecated" : "all";
@@ -651,15 +735,15 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
   function executionLabel(state: ExecutionState) {
     switch (state) {
-      case "offline": return "offline";
-      case "reconnecting": return "reconnecting";
-      case "idle": return "ready";
-      case "running": return "working";
-      case "waiting_for_approval": return "permission";
-      case "waiting_for_input": return "input";
-      case "completed": return "completed";
-      case "failed": return "failed";
-      case "interrupted": return "interrupted";
+      case "offline": return t("opencode.activity.offline");
+      case "reconnecting": return t("opencode.activity.reconnecting");
+      case "idle": return t("opencode.activity.ready");
+      case "running": return t("opencode.activity.working");
+      case "waiting_for_approval": return t("opencode.activity.permission");
+      case "waiting_for_input": return t("opencode.activity.input");
+      case "completed": return t("opencode.activity.completed");
+      case "failed": return t("opencode.activity.failed");
+      case "interrupted": return t("opencode.activity.interrupted");
     }
   }
 
@@ -673,7 +757,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
     send.textContent = active ? "■" : "↑";
     send.classList.toggle("stop", active);
-    send.setAttribute("aria-label", active ? "Stop" : "Send");
+    send.setAttribute("aria-label", active ? t("common.stop") : t("common.send"));
     send.disabled = !online || next === "reconnecting";
     setActivity(executionLabel(next), next);
 
@@ -726,12 +810,12 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
           cache: method === "GET" ? "no-store" : undefined
         },
         REMOTE_REQUEST_TIMEOUT_MS,
-        () => new Error("OpenCode request timed out")
+        () => new Error(t("opencode.errors.timeout"))
       );
     } catch (error) {
       if (mutating) {
         throw new Error(
-          `Mutation outcome is unknown (operation ${opId}). DevMoter did not retry it automatically.`,
+          t("opencode.errors.mutationUnknown", { operationId: opId }),
           { cause: error }
         );
       }
@@ -750,7 +834,11 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       } catch {
         const preview = text.slice(0, 180).replace(/\s+/g, " ");
         throw new Error(
-          `OpenCode API returned non-JSON (HTTP ${res.status}, ${contentType || "unknown"}): ${preview}`
+          t("opencode.errors.nonJson", {
+            status: res.status,
+            contentType: contentType || t("common.unknown"),
+            preview
+          })
         );
       }
     }
@@ -758,7 +846,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     if (!res.ok) {
       if (payload?.duplicate) {
         throw new Error(
-          `Operation ${payload?.operationId || opId} was already seen; the duplicate send was suppressed and the earlier outcome is unknown.`
+          t("opencode.errors.duplicate", { operationId: String(payload?.operationId || opId) })
         );
       }
       const message =
@@ -766,8 +854,8 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         payload?.error?.message ||
         (typeof payload?.error === "string" ? payload.error : "") ||
         payload?.message ||
-        `OpenCode HTTP ${res.status}`;
-      throw new Error(message);
+        t("opencode.errors.httpError", { status: res.status });
+      throw new Error(translateServerMessage(String(message)));
     }
 
     if (
@@ -794,10 +882,16 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       path,
       { ...init, headers, cache: method === "GET" ? "no-store" : undefined },
       REMOTE_REQUEST_TIMEOUT_MS,
-      () => new Error("DevMoter request timed out")
+      () => new Error(t("opencode.errors.devmoterTimeout"))
     );
     const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(payload?.error || ("DevMoter HTTP " + res.status));
+    if (!res.ok) {
+      throw new Error(
+        payload?.error
+          ? translateServerMessage(String(payload.error))
+          : t("opencode.errors.devmoterHttpError", { status: res.status })
+      );
+    }
     return payload as T;
   }
 
@@ -833,7 +927,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   }
 
   function currentModelName() {
-    if (!selectedModel) return "default";
+    if (!selectedModel) return t("common.default");
     const provider = providers.find(item => item.id === selectedModel?.providerID);
     const model = provider
       ? normalizeModels(provider).find(item => item.id === selectedModel?.modelID)
@@ -849,19 +943,19 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
   function updateContextUI() {
     modelButton.textContent = currentModelName();
-    modelButton.title = selectedModel
+    const modelTitle = selectedModel
       ? `${selectedModel.providerID} / ${selectedModel.modelID}`
-      : "Default provider / model";
-    modelButton.setAttribute("aria-label", `Model: ${modelButton.title}`);
+      : t("opencode.topbar.defaultProviderModel");
     const pricingProvider = providers.find(item => item.id === selectedModel?.providerID);
     const pricingModel = pricingProvider ? normalizeModels(pricingProvider).find(item => item.id === selectedModel?.modelID) : null;
-    modelButton.title += " · " + describeModelPricing(pricingModel?.cost).detail;
+    modelButton.title = `${modelTitle} · ${localizedModelPricingDetail(pricingModel?.cost)}`;
+    modelButton.setAttribute("aria-label", t("opencode.topbar.modelAria", { detail: modelTitle }));
 
     const meta = [
       activeSession?.agent || selectedAgent || "build",
-      activeSession?.model?.modelID || activeSession?.model?.id || selectedModel?.modelID || "default"
+      activeSession?.model?.modelID || activeSession?.model?.id || selectedModel?.modelID || t("common.default")
     ].filter(Boolean);
-    sessionMeta.textContent = activeSession ? meta.join(" · ") : "No session";
+    sessionMeta.textContent = activeSession ? meta.join(" · ") : t("opencode.topbar.noSession");
     const workspace = sessionDirectory(activeSession) || directory;
     if (workspace) sessionMeta.textContent = `${workspace} · ${sessionMeta.textContent}`;
     sessionMeta.title = sessionMeta.textContent;
@@ -908,7 +1002,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     attention.classList.remove("hidden");
     const heading = document.createElement("div");
     heading.className = "ocx-attention-label";
-    heading.textContent = "ATTENTION";
+    heading.textContent = t("opencode.attention.heading");
     attention.appendChild(heading);
 
     for (const session of items) {
@@ -923,7 +1017,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       const title = document.createElement("strong");
       title.textContent = sessionLabel(session);
       const meta = document.createElement("small");
-      meta.textContent = stateLabel(state);
+      meta.textContent = localizedStateLabel(state);
       copy.append(title, meta);
       button.append(glyph, copy);
       button.addEventListener("click", () => void selectSession(session));
@@ -947,11 +1041,11 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     if (!sorted.length) {
       const empty = document.createElement("div");
       empty.className = "ocx-empty";
-      empty.textContent = q ? "No matching sessions"
-        : sessionListStatus === "offline" ? "OpenCode is offline. Conversation history will load when it reconnects."
-        : sessionListStatus === "loading" ? "Connecting…"
-        : sessionListStatus === "error" ? "Could not load conversation history. Use Refresh to try again."
-        : "No sessions yet";
+      empty.textContent = q ? t("opencode.sessions.noMatches")
+        : sessionListStatus === "offline" ? t("opencode.sessions.offlineEmpty")
+        : sessionListStatus === "loading" ? t("opencode.sidebar.connecting")
+        : sessionListStatus === "error" ? t("opencode.sessions.errorEmpty")
+        : t("opencode.sessions.noneEmpty");
       sessionsEl.appendChild(empty);
       return;
     }
@@ -978,16 +1072,16 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         0;
       const historyTime = Number(session.time?.updated ?? session.time?.created ?? 0);
       const historyLabel = historyTime
-        ? new Intl.DateTimeFormat(undefined, {
+        ? formatDateTime(historyTime, {
             month: "short",
             day: "numeric",
             hour: "2-digit",
             minute: "2-digit"
-          }).format(new Date(historyTime))
+          })
         : "";
       meta.textContent = [
-        state === "idle" ? "" : stateLabel(state),
-        count ? String(count) + " msgs" : "",
+        state === "idle" ? "" : localizedStateLabel(state),
+        count ? t("opencode.sessions.messageCount", { count: formatNumber(count) }) : "",
         historyLabel
       ].filter(Boolean).join(" · ");
 
@@ -1045,17 +1139,17 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       try {
         helper.select();
         if (!document.execCommand("copy")) {
-          showToast("Could not copy code");
+          showToast(t("opencode.code.copyFailed"));
           return;
         }
       } catch {
-        showToast("Could not copy code");
+        showToast(t("opencode.code.copyFailed"));
         return;
       } finally {
         helper.remove();
       }
     }
-    showToast("Code copied");
+    showToast(t("opencode.code.copied"));
   }
 
   function setAssistantText(body: HTMLElement, text: string) {
@@ -1090,7 +1184,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     details.className = `ocx-tool-card ${String(part?.state?.status || "pending")}`;
 
     const summary = document.createElement("summary");
-    summary.textContent = toolStateSummary(part);
+    summary.textContent = localizedToolStateSummary(part);
 
     const content = document.createElement("div");
     content.className = "ocx-tool-content";
@@ -1121,26 +1215,26 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
       const wrap = document.createElement("button");
       wrap.type = "button";
-      wrap.textContent = "No wrap";
+      wrap.textContent = t("opencode.tool.noWrap");
       wrap.setAttribute("aria-pressed", "false");
 
       const copy = document.createElement("button");
       copy.type = "button";
-      copy.textContent = "Copy";
+      copy.textContent = t("common.copy");
 
       const pre = document.createElement("pre");
       pre.textContent = text;
 
       wrap.addEventListener("click", () => {
         const nowrap = pre.classList.toggle("nowrap");
-        wrap.textContent = nowrap ? "Wrap" : "No wrap";
+        wrap.textContent = nowrap ? t("opencode.tool.wrap") : t("opencode.tool.noWrap");
         wrap.setAttribute("aria-pressed", String(nowrap));
       });
 
       copy.addEventListener("click", async () => {
         try {
           await navigator.clipboard.writeText(text);
-          copy.textContent = "Copied";
+          copy.textContent = t("common.copied");
         } catch {
           const helper = document.createElement("textarea");
           helper.value = text;
@@ -1150,10 +1244,10 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
           helper.select();
           document.execCommand("copy");
           helper.remove();
-          copy.textContent = "Copied";
+          copy.textContent = t("common.copied");
         }
         window.setTimeout(() => {
-          copy.textContent = "Copy";
+          copy.textContent = t("common.copy");
         }, 1200);
       });
 
@@ -1163,8 +1257,8 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       content.appendChild(block);
     }
 
-    if (input !== undefined) appendPayload("input", input);
-    if (result !== null && result !== undefined) appendPayload("output", result);
+    if (input !== undefined) appendPayload(t("opencode.tool.inputLabel"), input);
+    if (result !== null && result !== undefined) appendPayload(t("opencode.tool.outputLabel"), result);
 
     details.append(summary, content);
     transcript.appendChild(details);
@@ -1177,7 +1271,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     details.className = "ocx-reasoning";
 
     const summary = document.createElement("summary");
-    summary.textContent = "Thinking";
+    summary.textContent = t("opencode.reasoning.thinking");
 
     const body = document.createElement("div");
     body.textContent = text;
@@ -1259,7 +1353,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     details.open = true;
 
     const summary = document.createElement("summary");
-    summary.textContent = "Thinking";
+    summary.textContent = t("opencode.reasoning.thinking");
 
     const body = document.createElement("div");
     body.textContent = "";
@@ -1295,7 +1389,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       }
 
       if (message.error?.message) {
-        addMetaLine(`error: ${message.error.message}`);
+        addMetaLine(t("opencode.transcript.errorLine", { message: translateServerMessage(String(message.error.message)) }));
       }
 
       const footerBits: string[] = [];
@@ -1322,19 +1416,21 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     }
 
     if (message.type === "agent-switched") {
-      addMetaLine(`agent → ${message.agent}`);
+      addMetaLine(t("opencode.transcript.agentSwitched", { agent: message.agent }));
       return;
     }
 
     if (message.type === "model-switched") {
       addMetaLine(
-        `model → ${message.model?.modelID || message.model?.id || "unknown"}`
+        t("opencode.transcript.modelSwitched", {
+          model: message.model?.modelID || message.model?.id || t("common.unknown")
+        })
       );
       return;
     }
 
     if (message.type === "compaction") {
-      addMetaLine("context compacted");
+      addMetaLine(t("opencode.transcript.compacted"));
       return;
     }
   }
@@ -1379,7 +1475,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         <div class="ocx-welcome compact">
           <div class="ocx-mark">></div>
           <h2></h2>
-          <p>Send a prompt to start working.</p>
+          <p>${escapeHtml(t("opencode.welcome.sessionSubtitle"))}</p>
         </div>
       `;
       transcript.querySelector("h2")!.textContent = sessionLabel(activeSession);
@@ -1392,7 +1488,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     try {
       const value = await api<Json>("/location");
       directory = String(value?.directory || value?.location?.directory || "");
-      sidebarDirectory.textContent = directory || "workspace";
+      sidebarDirectory.textContent = directory || t("opencode.sidebar.directoryFallback");
     } catch {
       // The UI remains usable even if location metadata is unavailable.
     }
@@ -1475,7 +1571,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         .filter(command => command.kind === "prompt" && !nativeNames.has(String(command.name || "").toLowerCase()))
         .map(command => ({
           name: String(command.name),
-          description: command.description || "DevMoter custom command",
+          description: command.description || t("opencode.commands.customDesc"),
           template: command.template || "",
           devmoterCustom: true
         }));
@@ -1498,14 +1594,14 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     try {
       const raw = await api<Json>("/session/" + encodeURIComponent(sessionId));
       const session = (raw?.data && typeof raw.data === "object" ? raw.data : raw) as OpenCodeSession;
-      if (!session?.id) throw new Error("Saved session is not available");
+      if (!session?.id) throw new Error(t("opencode.sessions.savedUnavailable"));
       if (!sessions.some(item => item.id === session.id)) sessions.unshift(session);
       await selectSession(session);
       return true;
     } catch (error) {
-      sessionTitle.textContent = "Session recovery needed";
-      setActivity("reconnecting", "reconnecting");
-      showToast(error instanceof Error ? error.message : "Saved session could not be restored");
+      sessionTitle.textContent = t("opencode.sessions.recoveryTitle");
+      setActivity(t("opencode.activity.reconnecting"), "reconnecting");
+      showToast(error instanceof Error ? translateServerMessage(error.message) : t("opencode.sessions.restoreFailed"));
       return false;
     }
   }
@@ -1520,7 +1616,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       if (sessionListRequests.isCurrent(requestGeneration)) {
         sessionListStatus = online ? "error" : "offline";
         renderSessions();
-        showToast(error instanceof Error ? error.message : "Could not load session history");
+        showToast(error instanceof Error ? translateServerMessage(error.message) : t("opencode.sessions.historyLoadFailed"));
       }
       return false;
     }
@@ -1530,7 +1626,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     } catch {
       sessionListStatus = "error";
       renderSessions();
-      showToast("OpenCode returned an invalid session history");
+      showToast(t("opencode.sessions.historyInvalid"));
       return false;
     }
 
@@ -1696,11 +1792,11 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     }
 
     sessionTitle.textContent = sessionLabel(session);
-    sidebarDirectory.textContent = sessionDirectory(session) || directory || "workspace";
+    sidebarDirectory.textContent = sessionDirectory(session) || directory || t("opencode.sidebar.directoryFallback");
     updateContextUI();
     renderSessions();
     closeSidebar();
-    setActivity("loading");
+    setActivity(t("opencode.activity.loading"), "loading");
 
     try {
       followsBottom = true;
@@ -1711,13 +1807,13 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       ]);
       await recoverExecutionState();
     } catch (error) {
-      setActivity("error", "failed");
-      showToast(error instanceof Error ? error.message : String(error));
+      setActivity(t("opencode.activity.error"), "failed");
+      showToast(error instanceof Error ? translateServerMessage(error.message) : translateServerMessage(String(error)));
     }
   }
 
   async function createSession() {
-    setActivity("creating");
+    setActivity(t("opencode.activity.creating"), "creating");
 
     try {
       const body: Json = {};
@@ -1738,7 +1834,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         body: JSON.stringify(body)
       });
 
-      if (!session?.id) throw new Error("OpenCode did not return a session id");
+      if (!session?.id) throw new Error(t("opencode.sessions.missingId"));
 
       sessions.unshift(session);
       activeSession = session;
@@ -1751,12 +1847,12 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       transcript.innerHTML = `
         <div class="ocx-welcome compact">
           <div class="ocx-mark">></div>
-          <h2>New session</h2>
-          <p>${
+          <h2>${escapeHtml(t("opencode.sessions.newTitle"))}</h2>
+          <p>${escapeHtml(
             agentModeFor(selectedAgent) === "plan"
-              ? "Plan mode is active · read-only tools only."
-              : "Build mode is active."
-          }</p>
+              ? t("opencode.sessions.planActive")
+              : t("opencode.sessions.buildActive")
+          )}</p>
         </div>
       `;
 
@@ -1764,15 +1860,15 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       closeSidebar();
       return session.id;
     } catch (error) {
-      setActivity("error");
-      showToast(error instanceof Error ? error.message : "Could not create session");
+      setActivity(t("opencode.activity.error"), "error");
+      showToast(error instanceof Error ? translateServerMessage(error.message) : t("opencode.sessions.createFailed"));
       return null;
     }
   }
 
   async function switchAgent(agentID: string) {
     if (isExecutionActive(executionState)) {
-      showToast("Wait for the current run to finish");
+      showToast(t("opencode.run.waitFinish"));
       return;
     }
 
@@ -1795,18 +1891,18 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         );
         activeSession.agent = agentID;
       }
-      showToast(`Agent: ${agentID}`);
+      showToast(t("opencode.agent.switched", { agent: agentID }));
     } catch (error) {
       selectedAgent = previous;
       updateContextUI();
-      showToast(error instanceof Error ? error.message : "Agent switch failed");
+      showToast(error instanceof Error ? translateServerMessage(error.message) : t("opencode.agent.switchFailed"));
       throw error;
     }
   }
 
   async function switchModel(model: { providerID: string; modelID: string }) {
     if (isExecutionActive(executionState)) {
-      showToast("Wait for the current run to finish");
+      showToast(t("opencode.run.waitFinish"));
       return;
     }
 
@@ -1834,11 +1930,11 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
           modelID: model.modelID
         };
       }
-      showToast(`Model: ${currentModelName()}`);
+      showToast(t("opencode.model.switched", { model: currentModelName() }));
     } catch (error) {
       selectedModel = previous;
       updateContextUI();
-      showToast(error instanceof Error ? error.message : "Model switch failed");
+      showToast(error instanceof Error ? translateServerMessage(error.message) : t("opencode.model.switchFailed"));
       throw error;
     }
   }
@@ -1851,7 +1947,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         : undefined);
 
     if (!target) {
-      showToast(`${mode} mode is not available`);
+      showToast(t("opencode.agent.modeUnavailable", { mode }));
       return;
     }
 
@@ -1884,7 +1980,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       name.textContent = `/${command.name}`;
 
       const description = document.createElement("span");
-      description.textContent = command.description || "OpenCode command";
+      description.textContent = command.description || t("opencode.commands.opencodeDesc");
 
       button.append(name, description);
       button.addEventListener("click", () => void applyCommand(command));
@@ -1920,7 +2016,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         });
         promptInput.value = resolved.prompt || command.template || `/${command.name}`;
       } catch (error) {
-        showToast(error instanceof Error ? error.message : "Custom command failed");
+        showToast(error instanceof Error ? translateServerMessage(error.message) : t("opencode.commands.customFailed"));
         return;
       }
     } else {
@@ -1974,7 +2070,13 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       }
     );
     const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(payload?.error || "Context HTTP " + res.status);
+    if (!res.ok) {
+      throw new Error(
+        payload?.error
+          ? translateServerMessage(String(payload.error))
+          : t("opencode.errors.contextHttpError", { status: formatNumber(res.status) })
+      );
+    }
     return payload as T;
   }
 
@@ -2013,8 +2115,10 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         const detail = document.createElement("span");
         name.textContent = "@" + entry.path;
         detail.textContent = entry.kind === "folder"
-          ? "folder · bounded expansion"
-          : String(entry.size ?? "?") + " bytes";
+          ? t("opencode.context.folderSummary")
+          : t("opencode.context.fileBytes", {
+              bytes: entry.size == null ? "?" : formatNumber(Number(entry.size))
+            });
         option.append(name, detail);
         option.addEventListener("click", () => {
           const current = projectContextToken();
@@ -2087,15 +2191,15 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       try {
         const guard = await runPreExecutionGuard(text);
         if (guard.decision === "block") {
-          showToast(`Safety guard blocked this request: ${guardMessage(guard)}`);
+          showToast(t("opencode.send.guardBlocked", { message: translateServerMessage(guardMessage(guard)) }));
           return;
         }
         if (
           guard.decision === "warn" &&
-          !window.confirm(`Safety check before execution:\n\n${guardMessage(guard)}\n\nContinue?`)
+          !window.confirm(t("opencode.send.guardConfirm", { message: translateServerMessage(guardMessage(guard)) }))
         ) return;
       } catch {
-        showToast("Safety guard unavailable; request was not sent.");
+        showToast(t("opencode.send.guardUnavailable"));
         return;
       }
     }
@@ -2105,8 +2209,9 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       contextText = await resolveProjectContext(text);
     } catch (error) {
       showToast(
-        "Project context could not be resolved: " +
-          (error instanceof Error ? error.message : String(error))
+        t("opencode.send.contextResolveFailed", {
+          error: error instanceof Error ? translateServerMessage(error.message) : translateServerMessage(String(error))
+        })
       );
       return;
     }
@@ -2127,8 +2232,15 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       : "";
     const promptText = (text + contextBlock + attachmentText).trim();
     const displayAttachmentText = pendingAttachments.length
-      ? "\n\nAttachments:\n" + pendingAttachments
-          .map(item => "- " + item.name + " (" + item.kind + ")")
+      ? `\n\n${t("opencode.send.attachmentsLabel")}\n` + pendingAttachments
+          .map(item => {
+            const kindLabel = item.kind === "image"
+              ? t("codex.threads.imageLabel")
+              : item.kind === "file"
+                ? t("codex.threads.fileLabel")
+                : item.kind;
+            return `- ${item.name} (${kindLabel})`;
+          })
           .join("\n")
       : "";
     followsBottom = true;
@@ -2166,7 +2278,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     } catch (error) {
       awaitingReply = null;
       setExecutionState("failed");
-      showToast(error instanceof Error ? error.message : "Send failed");
+      showToast(error instanceof Error ? translateServerMessage(error.message) : t("opencode.send.failed"));
     }
   }
 
@@ -2174,14 +2286,17 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(reader.error || new Error("ファイルを読み込めませんでした"));
+      reader.onerror = () => reject(reader.error || new Error(t("opencode.upload.readFailed")));
       reader.readAsDataURL(file);
     });
   }
 
   async function uploadAttachment(file: File, kind: "image" | "file") {
-    const limit = kind === "image" ? 10 * 1024 * 1024 : 15 * 1024 * 1024;
-    if (file.size > limit) throw new Error(`${file.name} は${kind === "image" ? "10" : "15"}MBを超えています`);
+    const limitMb = kind === "image" ? 10 : 15;
+    const limit = limitMb * 1024 * 1024;
+    if (file.size > limit) {
+      throw new Error(t("opencode.upload.sizeExceeded", { name: file.name, limit: formatNumber(limitMb) }));
+    }
     const data = await fileToDataUrl(file);
     const response = await fetchWithTimeout(
       (input, init) => fetch(input, init),
@@ -2192,10 +2307,16 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         body: JSON.stringify({ name: file.name, type: file.type || "application/octet-stream", data })
       },
       120_000,
-      () => new Error("Upload timed out. Please try again.")
+      () => new Error(t("opencode.upload.timeout"))
     );
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload?.error || `Upload failed (${response.status})`);
+    if (!response.ok) {
+      throw new Error(
+        payload?.error
+          ? translateServerMessage(String(payload.error))
+          : t("opencode.upload.httpFailed", { status: formatNumber(response.status) })
+      );
+    }
     return {
       id: operationId(),
       name: file.name,
@@ -2245,7 +2366,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       }
       renderAttachments();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Upload failed");
+      showToast(error instanceof Error ? translateServerMessage(error.message) : t("opencode.upload.failed"));
     }
   }
 
@@ -2264,10 +2385,10 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         }
       );
       setExecutionState("interrupted");
-      showToast("Interrupted");
+      showToast(t("opencode.interrupt.done"));
       scheduleRefresh();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Interrupt failed");
+      showToast(error instanceof Error ? translateServerMessage(error.message) : t("opencode.interrupt.failed"));
     }
   }
 
@@ -2328,7 +2449,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         pendingPermission = null;
         pendingPermissionSafety = "";
         renderPermission();
-        showToast("Applied a remembered, narrowly scoped permission.");
+        showToast(t("opencode.permission.rememberedApplied"));
         setExecutionState("running");
         return;
       }
@@ -2347,27 +2468,37 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     if (!pendingPermission) return;
 
     permissionTitle.textContent =
-      pendingPermission.action || "OpenCode wants permission";
+      pendingPermission.action || t("opencode.permission.defaultTitle");
 
     const projectContext =
-      activeSession ? sessionDirectory(activeSession) : directory || "workspace";
+      activeSession ? sessionDirectory(activeSession) : directory || t("opencode.sidebar.directoryFallback");
     permissionDetail.textContent = [
-      "Backend: OpenCode",
-      `Session: ${pendingPermission.sessionID || activeSession?.id || "unknown"}`,
-      `Workspace: ${projectContext}`,
-      `Action: ${pendingPermission.action || "permission"}`,
+      t("opencode.permission.metaBackend"),
+      t("opencode.permission.metaSession", {
+        id: pendingPermission.sessionID || activeSession?.id || t("common.unknown")
+      }),
+      t("opencode.permission.metaWorkspace", { path: projectContext }),
+      t("opencode.permission.metaAction", {
+        action: pendingPermission.action || t("opencode.permission.actionFallback")
+      }),
       pendingPermission.resources?.length
-        ? `Resources:\n${pendingPermission.resources.map(value => `- ${String(value)}`).join("\n")}`
+        ? t("opencode.permission.resourcesHeading", {
+            items: pendingPermission.resources.map(value => `- ${String(value)}`).join("\n")
+          })
         : "",
       pendingPermission.save?.length
-        ? `Persistent rules:\n${pendingPermission.save.map(value => `- ${String(value)}`).join("\n")}`
+        ? t("opencode.permission.rulesHeading", {
+            items: pendingPermission.save.map(value => `- ${String(value)}`).join("\n")
+          })
         : "",
       pendingPermission.metadata
-        ? `Metadata:\n${JSON.stringify(pendingPermission.metadata, null, 2)}`
+        ? t("opencode.permission.metadataHeading", {
+            json: JSON.stringify(pendingPermission.metadata, null, 2)
+          })
         : ""
     ].filter(Boolean).join("\n\n");
     if (pendingPermissionSafety) {
-      permissionDetail.textContent += `\n\nSafety pause:\n${pendingPermissionSafety}`;
+      permissionDetail.textContent += `\n\n${t("opencode.permission.safetyPauseHeading", { message: translateServerMessage(pendingPermissionSafety) })}`;
     }
   }
 
@@ -2390,23 +2521,26 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         if (
           commandRisk.dangerous &&
           !window.confirm(
-            `High-risk permission:\n\n${commandRisk.command}\n\nReasons:\n${commandRisk.reasons.map(reason => `• ${reason}`).join("\n")}\n\nApprove this one execution?`
+            t("opencode.permission.highRiskConfirm", {
+              command: commandRisk.command,
+              reasons: commandRisk.reasons.map(reason => `• ${translateServerMessage(reason)}`).join("\n")
+            })
           )
         ) return;
         if (commandRisk.dangerous && reply === "always") {
           effectiveReply = "once";
-          showToast("High-risk permissions are never remembered; approving once.");
+          showToast(t("opencode.permission.highRiskOnceOnly"));
         }
       }
 
       if (reply !== "reject" && pendingPermissionSafety) {
-        if (!window.confirm(`Repeated-action safety pause:\n\n${pendingPermissionSafety}\n\nContinue this run?`)) return;
+        if (!window.confirm(t("opencode.permission.loopConfirm", { message: translateServerMessage(pendingPermissionSafety) }))) return;
         await continueAgentRun(openCodeLoopRunId(request)).catch(() => {});
       }
 
       if (effectiveReply === "always" && !commandRisk?.dangerous) {
         await rememberPermission(scope, {
-          note: "Remembered from OpenCode permission",
+          note: t("opencode.permission.rememberedNote"),
           ttlMs: 24 * 60 * 60 * 1000
         }).catch(() => {});
       }
@@ -2417,7 +2551,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       renderPermission();
       setExecutionState("running");
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Permission reply failed");
+      showToast(error instanceof Error ? translateServerMessage(error.message) : t("opencode.permission.replyFailed"));
     } finally {
       permissionReject.disabled = false;
       permissionOnce.disabled = false;
@@ -2439,13 +2573,13 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
     questionHeader.textContent =
       questions.length === 1
-        ? questions[0].header || "OpenCode needs input"
-        : `OpenCode has ${questions.length} questions`;
+        ? questions[0].header || t("opencode.question.needsInput")
+        : t("opencode.question.multipleHeader", { count: formatNumber(questions.length) });
 
     questionText.textContent =
       questions.length === 1
         ? questions[0].question
-        : "Answer each question below.";
+        : t("opencode.question.multipleSubtitle");
 
     questions.forEach((question, index) => {
       const selected = new Set<string>();
@@ -2458,7 +2592,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         const head = document.createElement("div");
         head.className = "ocx-question-card-head";
         const label = document.createElement("strong");
-        label.textContent = question.header || `Question ${index + 1}`;
+        label.textContent = question.header || t("opencode.question.itemHeader", { index: formatNumber(index + 1) });
         const text = document.createElement("span");
         text.textContent = question.question;
         head.append(label, text);
@@ -2506,12 +2640,12 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         const customButton = document.createElement("button");
         customButton.type = "button";
         customButton.className = "ocx-question-option custom";
-        customButton.innerHTML = "<strong>Other</strong><span>Type a custom answer</span>";
+        customButton.innerHTML = `<strong>${escapeHtml(t("opencode.question.otherLabel"))}</strong><span>${escapeHtml(t("opencode.question.otherDesc"))}</span>`;
 
         const customInput = document.createElement("input");
         customInput.type = "text";
         customInput.className = "ocx-question-custom hidden";
-        customInput.placeholder = "Type another answer…";
+        customInput.placeholder = t("opencode.question.customPlaceholder");
 
         customButton.addEventListener("click", () => {
           customInput.classList.toggle("hidden");
@@ -2547,7 +2681,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       answers.length !== questions.length ||
       answers.some(answer => answer.length === 0)
     ) {
-      showToast("Answer every question");
+      showToast(t("opencode.question.answerEvery"));
       return;
     }
 
@@ -2568,7 +2702,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       renderQuestion();
       setExecutionState("running");
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Question reply failed");
+      showToast(error instanceof Error ? translateServerMessage(error.message) : t("opencode.question.replyFailed"));
     } finally {
       questionSubmit.disabled = false;
       questionReject.disabled = false;
@@ -2594,7 +2728,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       renderQuestion();
       setExecutionState("running");
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Could not dismiss question");
+      showToast(error instanceof Error ? translateServerMessage(error.message) : t("opencode.question.dismissFailed"));
     } finally {
       questionSubmit.disabled = false;
       questionReject.disabled = false;
@@ -2766,8 +2900,17 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       // OpenCode 1.x retries a failing upstream call (quota, credentials)
       // instead of failing the turn: say why the run is still working.
       if (normalized.retry && (!activeSession || normalized.sessionID === activeSession.id)) {
-        const attempt = normalized.retry.attempt ? ` (attempt ${normalized.retry.attempt})` : "";
-        showToast(`Retrying${attempt}: ${normalized.retry.message || "upstream request failed"}`);
+        const retryMessage = normalized.retry.message
+          ? translateServerMessage(String(normalized.retry.message))
+          : t("opencode.retry.upstreamFailed");
+        showToast(
+          normalized.retry.attempt
+            ? t("opencode.retry.toastWithAttempt", {
+                attempt: formatNumber(Number(normalized.retry.attempt)),
+                message: retryMessage
+              })
+            : t("opencode.retry.toast", { message: retryMessage })
+        );
       }
       if (normalized.executionState) {
         setExecutionState(normalized.executionState);
@@ -2985,14 +3128,14 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
           "&limit=500",
         { cache: "no-store" },
         REMOTE_REQUEST_TIMEOUT_MS,
-        () => new Error("Background event replay timed out")
+        () => new Error(t("opencode.reconnect.replayTimeout"))
       );
-      if (!response.ok) throw new Error("Background event replay unavailable");
+      if (!response.ok) throw new Error(t("opencode.reconnect.replayUnavailable"));
       const payload = await response.json().catch(() => ({}));
       if (payload?.gap) {
         cursor = String(payload?.latestCursor || payload?.cursor || cursor);
         localStorage.setItem(storageKey, cursor);
-        throw new Error("Background replay gap detected");
+        throw new Error(t("opencode.reconnect.replayGap"));
       }
       const items = Array.isArray(payload?.events) ? payload.events : [];
       for (const item of items) applyReplayState(item);
@@ -3027,12 +3170,12 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
       if (sync.error) {
         setExecutionState(online ? "idle" : "offline");
-        showToast("Could not synchronize session history. Reconnecting.");
+        showToast(t("opencode.reconnect.syncFailedToast"));
         return;
       }
 
       if (sessionId && activeSession?.id === sessionId) {
-        showToast(replayFallback ? "Session history refreshed" : "Background work synchronized");
+        showToast(replayFallback ? t("opencode.reconnect.resyncedFallback") : t("opencode.reconnect.resyncedBackground"));
       }
     } finally {
       resumeSyncInFlight = false;
@@ -3067,13 +3210,13 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
       if (executionState === "reconnecting") {
         void recoverAfterEventOpen(async () => {
-          if (!(await refresh())) throw new Error("Could not refresh OpenCode state");
+          if (!(await refresh())) throw new Error(t("opencode.reconnect.refreshFailed"));
         }, error => {
           if (executionState === "reconnecting") {
             setExecutionState("idle");
             showToast(error
-              ? "Connection restored, but session sync failed. Refresh history to retry."
-              : "Connection recovered");
+              ? t("opencode.reconnect.syncAfterOpenFailed")
+              : t("opencode.reconnect.recovered"));
           }
         });
       }
@@ -3133,7 +3276,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     if (item.kind === "group") {
       const heading = document.createElement("div");
       heading.className = "ocx-picker-provider";
-      heading.textContent = `${item.name} ${item.count}`;
+      heading.textContent = `${localizedPickerGroupName(item.name)} ${formatNumber(item.count)}`;
       return heading;
     }
     if (item.kind === "provider") {
@@ -3142,7 +3285,9 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       const strong = document.createElement("strong");
       const small = document.createElement("small");
       strong.textContent = item.name;
-      small.textContent = connectedProviders.has(item.id) ? "available" : "provider unavailable";
+      small.textContent = connectedProviders.has(item.id)
+        ? t("opencode.models.providerAvailable")
+        : t("opencode.models.providerUnavailable");
       heading.append(strong, small);
       return heading;
     }
@@ -3152,7 +3297,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       toggle.className = "ocx-deprecated-toggle ocx-key-provider-toggle";
       toggle.dataset.keyProvider = item.id;
       toggle.setAttribute("aria-expanded", String(item.expanded));
-      toggle.textContent = `${item.expanded ? "▾" : "▸"} ${item.name} ${item.count}`;
+      toggle.textContent = `${item.expanded ? "▾" : "▸"} ${item.name} ${formatNumber(item.count)}`;
       toggle.addEventListener("click", () => {
         if (modelPickerExpandedKeyProviders.has(item.id)) modelPickerExpandedKeyProviders.delete(item.id);
         else modelPickerExpandedKeyProviders.add(item.id);
@@ -3177,8 +3322,8 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     // pricing stay available on long-press / hover without crowding the row.
     detail.textContent = row.selectable
       ? (providers.find(provider => provider.id === row.providerID)?.name || row.providerID)
-      : row.reason;
-    option.title = `${row.providerID}/${model.id} · ${describeModelPricing(model.cost).detail}`;
+      : localizedModelReason(row);
+    option.title = `${row.providerID}/${model.id} · ${localizedModelPricingDetail(model.cost)}`;
     copy.append(title, detail);
     option.append(copy);
     if (row.selectable) {
@@ -3203,7 +3348,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       windowEl.replaceChildren();
       const empty = document.createElement("div");
       empty.className = "ocx-modal-empty";
-      empty.textContent = "No models match";
+      empty.textContent = t("opencode.models.noMatch");
       windowEl.appendChild(empty);
       modelPickerWindowKey = "empty";
       return;
@@ -3242,7 +3387,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       };
       for (const option of filterSelect.options) {
         const filter = option.value as ModelPickerFilter;
-        option.textContent = `${MODEL_FILTER_LABELS[filter]} ${counts[filter]}`;
+        option.textContent = `${MODEL_FILTER_LABELS[filter]} ${formatNumber(counts[filter])}`;
       }
       filterSelect.value = currentModelFilter();
     }
@@ -3257,15 +3402,15 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     const search = document.createElement("input");
     search.id = "ocxModelSearch";
     search.type = "search";
-    search.placeholder = "Search models";
+    search.placeholder = t("opencode.models.searchPlaceholder");
     search.value = modelPickerQuery;
-    search.setAttribute("aria-label", "Search models");
+    search.setAttribute("aria-label", t("opencode.models.searchAria"));
     toolbar.appendChild(search);
     // One compact filter control replaces the four toggle chips (free / ready / needs key / deprecated).
     const filter = document.createElement("select");
     filter.id = "ocxModelFilter";
     filter.className = "ocx-model-filter";
-    filter.setAttribute("aria-label", "Filter models");
+    filter.setAttribute("aria-label", t("opencode.models.filterAria"));
     for (const value of MODEL_FILTERS) {
       const option = document.createElement("option");
       option.value = value;
@@ -3282,10 +3427,10 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     refresh.type = "button";
     refresh.className = "ocx-model-refresh";
     refresh.textContent = "↻";
-    refresh.title = "Refresh";
-    refresh.setAttribute("aria-label", "Refresh models");
+    refresh.title = t("common.refresh");
+    refresh.setAttribute("aria-label", t("opencode.models.refreshAria"));
     refresh.addEventListener("click", () => {
-      void loadProviders(true).catch(error => showToast(error instanceof Error ? error.message : String(error)));
+      void loadProviders(true).catch(error => showToast(error instanceof Error ? translateServerMessage(error.message) : translateServerMessage(String(error))));
     });
     toolbar.appendChild(refresh);
     search.addEventListener("input", () => {
@@ -3328,12 +3473,14 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       }
       closeComposerMenus();
       modal.classList.add("ocx-runtime-modal");
-      modalTitle.textContent = "Provider · Model";
+      modalTitle.textContent = t("opencode.models.modalTitle");
       modalSubtitle.textContent = "";
       modal.classList.remove("hidden");
       syncOverlayState();
       mountRuntimePicker();
-      void loadProviders(true).catch(error => showToast(error instanceof Error ? error.message : String(error)));
+      void loadProviders(true).catch(error =>
+        showToast(error instanceof Error ? translateServerMessage(error.message) : translateServerMessage(String(error)))
+      );
     } else {
       modal.classList.add("ocx-runtime-modal");
       syncOverlayState();
@@ -3363,7 +3510,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
   async function exportActiveSession() {
     if (!activeSession) {
-      showToast("Open a session first");
+      showToast(t("opencode.tools.openSessionFirst"));
       return;
     }
     const context = await api<Json[]>(
@@ -3378,24 +3525,27 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       .slice(0, 80) || "session";
     downloadText(fileName + ".md", markdown);
     renderSessions();
-    showToast("Markdown exported");
+    showToast(t("opencode.tools.markdownExported"));
   }
 
   function showImportedThread(thread: ImportedThread) {
-    openModal(thread.title || "Imported thread", "Imported from " + thread.origin);
+    openModal(
+      thread.title || t("opencode.tools.importedThreadFallback"),
+      t("opencode.tools.importedFrom", { origin: thread.origin })
+    );
     modalBody.replaceChildren();
 
     const notice = document.createElement("div");
     notice.className = "ocx-import-notice";
-    notice.textContent =
-      "Read-only archive. Historical tool calls are inert and will never be executed.";
+    notice.textContent = t("opencode.tools.readOnlyArchiveNotice");
     modalBody.appendChild(notice);
 
     if (thread.unsupported.length) {
       const unsupported = document.createElement("div");
       unsupported.className = "ocx-import-warning";
-      unsupported.textContent =
-        "Unsupported event types: " + [...new Set(thread.unsupported)].join(", ");
+      unsupported.textContent = t("opencode.tools.unsupportedEvents", {
+        types: [...new Set(thread.unsupported)].join(", ")
+      });
       modalBody.appendChild(unsupported);
     }
 
@@ -3405,7 +3555,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       const row = document.createElement("section");
       row.className = "ocx-import-message " + message.role;
       const role = document.createElement("strong");
-      role.textContent = message.role;
+      role.textContent = localizedRole(message.role);
       const body = document.createElement("pre");
       body.textContent = message.text || "";
       row.append(role, body);
@@ -3416,14 +3566,14 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     const back = document.createElement("button");
     back.type = "button";
     back.className = "ocx-modal-button";
-    back.textContent = "← Session tools";
+    back.textContent = t("opencode.tools.backToTools");
     back.addEventListener("click", showSessionTools);
     modalBody.appendChild(back);
   }
 
   function showSessionTools() {
     closeSidebar();
-    openModal("Session tools", "Export, import and screen wake lock");
+    openModal(t("opencode.tools.modalTitle"), t("opencode.tools.modalSubtitle"));
     modalBody.replaceChildren();
 
     const actions = document.createElement("section");
@@ -3432,12 +3582,12 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     const exportButton = document.createElement("button");
     exportButton.type = "button";
     exportButton.className = "ocx-modal-button primary";
-    exportButton.textContent = "Export current session as Markdown";
+    exportButton.textContent = t("opencode.tools.exportMarkdownButton");
     exportButton.disabled = !activeSession;
     exportButton.addEventListener("click", () => {
       exportButton.disabled = true;
       void exportActiveSession()
-        .catch(error => showToast(error instanceof Error ? error.message : String(error)))
+        .catch(error => showToast(error instanceof Error ? translateServerMessage(error.message) : translateServerMessage(String(error))))
         .finally(() => {
           exportButton.disabled = !activeSession;
         });
@@ -3446,7 +3596,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     const importButton = document.createElement("button");
     importButton.type = "button";
     importButton.className = "ocx-modal-button";
-    importButton.textContent = "Import external thread JSON";
+    importButton.textContent = t("opencode.tools.importJsonButton");
 
     const input = document.createElement("input");
     input.type = "file";
@@ -3457,7 +3607,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       const file = input.files?.[0];
       if (!file) return;
       if (file.size > 4 * 1024 * 1024) {
-        showToast("Import file is too large");
+        showToast(t("opencode.tools.importTooLarge"));
         input.value = "";
         return;
       }
@@ -3472,11 +3622,11 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         showSessionTools();
         showToast(
           imported.unsupported.length
-            ? "Imported with unsupported events surfaced"
-            : "Thread imported as read-only archive"
+            ? t("opencode.tools.importedWithUnsupported")
+            : t("opencode.tools.importedArchive")
         );
       }).catch(error => {
-        showToast(error instanceof Error ? error.message : String(error));
+        showToast(error instanceof Error ? translateServerMessage(error.message) : translateServerMessage(String(error)));
       }).finally(() => {
         input.value = "";
       });
@@ -3490,17 +3640,17 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     checkbox.disabled = !wakeLockSupported();
     const wakeCopy = document.createElement("span");
     const wakeTitle = document.createElement("strong");
-    wakeTitle.textContent = "Keep screen awake while a turn is running";
+    wakeTitle.textContent = t("opencode.tools.wakeTitle");
     const wakeMeta = document.createElement("small");
     wakeMeta.textContent = wakeLockSupported()
-      ? "Explicit opt-in. Releases when execution ends or the page is hidden."
-      : "Wake Lock API is not supported in this browser.";
+      ? t("opencode.tools.wakeSupportedDesc")
+      : t("opencode.tools.wakeUnsupportedDesc");
     wakeCopy.append(wakeTitle, wakeMeta);
     wake.append(checkbox, wakeCopy);
     checkbox.addEventListener("change", () => {
       setWakeLockEnabled(checkbox.checked);
       setWakeLockExecutionActive("opencode", isExecutionActive(executionState));
-      showToast(checkbox.checked ? "Screen wake lock enabled" : "Screen wake lock disabled");
+      showToast(checkbox.checked ? t("opencode.tools.wakeEnabledToast") : t("opencode.tools.wakeDisabledToast"));
     });
 
     actions.append(exportButton, importButton, input, wake);
@@ -3508,7 +3658,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
     const importedTitle = document.createElement("div");
     importedTitle.className = "ocx-modal-section-title";
-    importedTitle.textContent = "Imported read-only threads";
+    importedTitle.textContent = t("opencode.tools.importedListTitle");
     modalBody.appendChild(importedTitle);
 
     const list = document.createElement("div");
@@ -3516,7 +3666,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     if (!importedThreads.length) {
       const empty = document.createElement("div");
       empty.className = "ocx-empty";
-      empty.textContent = "No imported threads";
+      empty.textContent = t("opencode.tools.noImportedThreads");
       list.appendChild(empty);
     }
 
@@ -3528,9 +3678,16 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       const title = document.createElement("strong");
       title.textContent = thread.title;
       const meta = document.createElement("small");
-      meta.textContent =
-        thread.origin + " · " + thread.messages.length + " events" +
-        (thread.unsupported.length ? " · " + thread.unsupported.length + " unsupported" : "");
+      meta.textContent = thread.unsupported.length
+        ? t("opencode.tools.importedMetaUnsupported", {
+            origin: thread.origin,
+            count: formatNumber(thread.messages.length),
+            unsupported: formatNumber(thread.unsupported.length)
+          })
+        : t("opencode.tools.importedMeta", {
+            origin: thread.origin,
+            count: formatNumber(thread.messages.length)
+          });
       copy.append(title, meta);
       const chevron = document.createElement("span");
       chevron.textContent = "›";
@@ -3551,18 +3708,18 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     modalBody.innerHTML = `
       <div class="ocx-detail-grid"></div>
       <div class="ocx-detail-actions">
-        <button id="ocxExportSession" type="button" class="ocx-modal-button primary">Export Markdown</button>
-        <button id="ocxOpenSessionTools" type="button" class="ocx-modal-button">Session tools</button>
+        <button id="ocxExportSession" type="button" class="ocx-modal-button primary">${escapeHtml(t("opencode.tools.exportShortButton"))}</button>
+        <button id="ocxOpenSessionTools" type="button" class="ocx-modal-button">${escapeHtml(t("opencode.tools.modalTitle"))}</button>
       </div>
     `;
     const detailGrid = modalBody.querySelector(".ocx-detail-grid")!;
     for (const [label, value] of [
-      ["Agent", activeSession.agent || selectedAgent],
-      ["Model", activeSession.model?.modelID || activeSession.model?.id || selectedModel?.modelID || "default"],
-      ["Directory", sessionDirectory(activeSession) || "workspace"],
-      ["Input tokens", activeSession.tokens?.input ?? 0],
-      ["Output tokens", activeSession.tokens?.output ?? 0],
-      ["Cost", Number(activeSession.cost || 0).toFixed(4)]
+      [t("opencode.details.agent"), activeSession.agent || selectedAgent],
+      [t("opencode.details.model"), activeSession.model?.modelID || activeSession.model?.id || selectedModel?.modelID || t("common.default")],
+      [t("opencode.details.directory"), sessionDirectory(activeSession) || t("opencode.sidebar.directoryFallback")],
+      [t("opencode.details.inputTokens"), formatNumber(Number(activeSession.tokens?.input ?? 0))],
+      [t("opencode.details.outputTokens"), formatNumber(Number(activeSession.tokens?.output ?? 0))],
+      [t("opencode.details.cost"), Number(activeSession.cost || 0).toFixed(4)]
     ]) {
       const cell = document.createElement("div");
       const name = document.createElement("span");
@@ -3573,7 +3730,9 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       detailGrid.appendChild(cell);
     }
     root.querySelector<HTMLButtonElement>("#ocxExportSession")?.addEventListener("click", () => {
-      void exportActiveSession().catch(error => showToast(error instanceof Error ? error.message : String(error)));
+      void exportActiveSession().catch(error =>
+        showToast(error instanceof Error ? translateServerMessage(error.message) : translateServerMessage(String(error)))
+      );
     });
     root.querySelector<HTMLButtonElement>("#ocxOpenSessionTools")?.addEventListener("click", showSessionTools);
   }
@@ -3595,7 +3754,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       renderSessions();
     }
     try {
-      setActivity("syncing");
+      setActivity(t("opencode.activity.syncing"), "syncing");
       await Promise.all([
         loadLocation(),
         loadProviders(),
@@ -3608,7 +3767,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       historyRequestGeneration = latestSessionListRequest;
       const sessionsLoaded = await sessionLoad;
       if (!refreshRequests.isCurrent(refreshGeneration)) return false;
-      if (!sessionsLoaded) throw new Error("Could not refresh session history");
+      if (!sessionsLoaded) throw new Error(t("opencode.sessions.refreshHistoryFailed"));
 
       if (activeSession) {
         await Promise.all([
@@ -3630,8 +3789,8 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         sessionListStatus = online ? "error" : "offline";
         renderSessions();
       }
-      setActivity("error");
-      showToast(error instanceof Error ? error.message : String(error));
+      setActivity(t("opencode.activity.error"), "error");
+      showToast(error instanceof Error ? translateServerMessage(error.message) : translateServerMessage(String(error)));
       return false;
     } finally {
       if (refreshRequests.isCurrent(refreshGeneration)) setSideStatus(online ? "idle" : "offline");
@@ -3641,8 +3800,12 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   // Quiet drawer status: a muted dot when idle, short text only while syncing or offline.
   function setSideStatus(state: "idle" | "syncing" | "offline") {
     sideStatus.dataset.state = state;
-    const text = state === "syncing" ? "Syncing" : state === "offline" ? "Offline" : "";
-    sideStatus.setAttribute("aria-label", text || "Ready");
+    const text = state === "syncing"
+      ? t("opencode.sideStatus.syncing")
+      : state === "offline"
+        ? t("opencode.sideStatus.offline")
+        : "";
+    sideStatus.setAttribute("aria-label", text || t("common.ready"));
     sideStatus.querySelector("span")!.textContent = text;
   }
 
@@ -3752,7 +3915,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     const Recognition = (window as Window & { SpeechRecognition?: new () => any; webkitSpeechRecognition?: new () => any }).SpeechRecognition ||
       (window as Window & { webkitSpeechRecognition?: new () => any }).webkitSpeechRecognition;
     if (!Recognition) {
-      showToast("このブラウザは音声入力に未対応です");
+      showToast(t("opencode.voice.unsupported"));
       return;
     }
     const recognition = new Recognition();
@@ -3764,7 +3927,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         .map(result => result[0]?.transcript || "").join("");
       resizeComposer();
     };
-    recognition.onerror = () => showToast("音声入力に失敗しました");
+    recognition.onerror = () => showToast(t("opencode.voice.failed"));
     recognition.onend = () => voice.classList.remove("listening");
     recognition.start();
   });

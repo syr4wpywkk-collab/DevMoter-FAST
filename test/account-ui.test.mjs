@@ -1,5 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as i18nCore from "../src/i18n-core.mjs";
+
+const jaI18n = {
+  ...i18nCore,
+  getLanguage: () => "ja",
+  t: (k, p) => i18nCore.translate("ja", k, p),
+  translateServerMessage: m => i18nCore.translateServerMessage(m, "ja"),
+  formatDateTime: (v, o) => i18nCore.formatDateTime(v, o, "ja"),
+  formatTime: (v, o) => i18nCore.formatTime(v, o, "ja"),
+  formatNumber: (v, o) => i18nCore.formatNumber(v, o, "ja"),
+  formatRelativeTime: (ts, now) => i18nCore.formatRelativeTime(ts, now, "ja"),
+  tApp: (id, f) => i18nCore.tApp(id, f, "ja")
+};
 import vm from "node:vm";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
@@ -48,7 +61,7 @@ function harness({ githubLinked = true } = {}) {
   const exports = {};
   vm.runInNewContext(compiled, {
     exports,
-    require: () => ({}),
+    require: name => (name === "./i18n" ? jaI18n : {}),
     window,
     document: window.document,
     navigator: window.navigator,
@@ -87,7 +100,7 @@ test("account page shows configured sign-in methods, recovery, passkey and safe 
     assert.match(scroll.textContent, /パスキー/);
     assert.match(scroll.textContent, /ローカル復旧/);
     assert.match(scroll.textContent, /old.example/);
-    assert.ok(scroll.textContent.includes(new Date("2026-01-01T00:00:00Z").toLocaleString()));
+    assert.ok(scroll.textContent.includes(jaI18n.formatDateTime("2026-01-01T00:00:00Z")));
     assert.equal(scroll.querySelector('[data-action="account:connect"][data-provider="google"]').disabled, false);
     // A provider this host cannot use offers its setup guide as a button, not a disabled connect button.
     assert.equal(scroll.querySelector('[data-action="account:connect"][data-provider="microsoft"]'), null);
@@ -96,7 +109,7 @@ test("account page shows configured sign-in methods, recovery, passkey and safe 
     assert.equal(guides[0].className, "devmoter-settings-link-button");
     assert.equal(guides[0].getAttribute("rel"), "noopener noreferrer");
     assert.equal(guides[0].textContent, "セットアップ案内");
-    assert.equal(scroll.querySelector('[data-action="account:revoke-session"][data-session-id="old-session"]').textContent, "解除");
+    assert.equal(scroll.querySelector('[data-action="account:revoke-session"][data-session-id="old-session"]').textContent, jaI18n.t("common.revoke"));
     assert.equal(scroll.querySelector('[data-action="account:revoke-session"][data-session-id="current-session"]'), null);
     assert.doesNotMatch(scroll.textContent, /Coming soon|Apple|DEVMOTER_/);
   } finally {

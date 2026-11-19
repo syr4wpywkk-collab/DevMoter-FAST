@@ -47,7 +47,10 @@ try {
           console.error("Initialization request classifications:", requests.map(request => ({ path: request.path, type: request.resourceType, static: isStaticRequest(request) })), violations);
           throw error;
         });
-        if (unified === "1") await page.locator("#dmTaskFirstWorkspace").waitFor().catch(error => {
+        if (unified === "1") await Promise.all([
+          page.locator("#dmTaskFirstWorkspace").waitFor({ state: "attached" }),
+          page.locator("[data-workspace-menu-button]").waitFor(),
+        ]).catch(error => {
           console.error("Unified initialization non-static paths:", [...new Set(requests.filter(request => !isStaticRequest(request)).map(request => request.path))], violations);
           throw error;
         });
@@ -68,8 +71,8 @@ try {
         const expectedHmr = `ws://127.0.0.1:${server.config.server.port}/?token=${server.config.webSocketToken}`;
         assert.ok(initialWebSockets.length <= 1 && initialWebSockets.every(url => url === expectedHmr), "only Vite's exact local startup socket may be attempted before navigation");
         assert.deepEqual(wsGuard.records.frames, [], "startup must not attempt WebSocket frames");
-        // PR #500 item M: the drawer's Codex / API Chat buttons are gone. The header AI
-        // dropdown switches mode; ?unifiedUI=0 keeps the switch in the Tools sidebar.
+        // PR #500 item M: the history sidebar's Codex / API Chat buttons are gone. The unified
+        // drawer's AI dropdown switches mode; ?unifiedUI=0 keeps the switch in the Tools sidebar.
         for (const surface of ["codex", "api"]) {
           await page.locator("#ocxMenu").click();
           await page.locator("#ocxSidebar.open").waitFor();
@@ -77,7 +80,11 @@ try {
           await page.keyboard.press("Escape");
           await page.waitForFunction(() => document.querySelector("#ocxSidebar")?.getAttribute("aria-hidden") === "true");
           if (unified === "1") {
+            const drawer = page.locator("#dmTaskFirstDrawer");
+            await page.locator("[data-workspace-menu-button]").click();
+            await drawer.waitFor({ state: "visible" });
             await page.locator("[data-workspace-backend]").selectOption(surface);
+            await drawer.waitFor({ state: "hidden" });
           } else {
             await page.locator(".dm-shell-menu-trigger").click();
             await page.locator(".dm-shell-sidebar.open").waitFor();

@@ -3,7 +3,7 @@
  * dark/cyan system. No generated Tailwind, fonts, sample sessions or fake states.
  */
 body.dm-task-first-enabled {
-  /* One header row at every width; the screen switcher lives behind ☰. */
+  /* Overlay sheets still leave top-left clearance for the floating menu button. */
   --dw-top-height: calc(56px + env(safe-area-inset-top));
 }
 .dm-task-first-nav {
@@ -15,17 +15,13 @@ body.dm-task-first-enabled {
   --dw-accent: var(--text-primary);
   position: fixed;
   z-index: 2147481999;
-  /* Follows the iOS visual viewport while the keyboard pans it (no animation). */
-  top: var(--dm-viewport-offset-top, 0px);
+  top: 0;
   left: 0;
-  right: 0;
-  height: var(--dw-top-height);
-  padding: env(safe-area-inset-top) max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left));
-  box-sizing: border-box;
-  border-bottom: 1px solid var(--dw-border);
-  background: var(--dw-bg);
+  width: 0;
+  height: 0;
+  pointer-events: none;
   color: var(--dw-text);
-  font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", sans-serif;
+  font-family: var(--font-ui);
 }
 .dm-task-first-nav * { box-sizing: border-box; }
 .dm-task-first-nav button,
@@ -38,23 +34,84 @@ body.dm-task-first-enabled {
 .dm-task-first-nav button { user-select: none; }
 .dm-task-first-nav button:focus-visible,
 .dm-task-first-nav select:focus-visible {
-  outline: 2px solid var(--dw-accent);
+  outline: 2px solid var(--border-focus);
   outline-offset: 2px;
 }
-.dm-task-first-header {
-  height: 56px;
+.dm-task-first-menu-button {
+  position: fixed;
+  /* Follows the iOS visual viewport while the keyboard pans it (no animation). */
+  top: calc(var(--dm-viewport-offset-top, 0px) + max(8px, env(safe-area-inset-top)));
+  left: max(8px, env(safe-area-inset-left));
+  z-index: 2147481999;
+  pointer-events: auto;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--dw-border);
+  border-radius: 10px;
+  background: var(--dw-bg);
+  color: var(--dw-text);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, .18);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1), opacity 140ms ease;
+}
+.dm-task-first-menu-button:active { transform: scale(0.97); }
+.dm-task-first-menu-button[aria-expanded="true"] { border-color: var(--dw-text); }
+.dm-task-first-scrim {
+  position: fixed;
+  top: var(--dm-viewport-offset-top, 0px);
+  left: 0;
+  right: 0;
+  height: var(--dm-viewport-height, 100dvh);
+  z-index: 2147482001;
+  pointer-events: auto;
+  background: rgba(4, 7, 12, .48);
+  backdrop-filter: blur(2px);
+}
+.dm-task-first-scrim[hidden] { display: none; }
+.dm-task-first-drawer {
+  position: fixed;
+  top: var(--dm-viewport-offset-top, 0px);
+  left: 0;
+  width: min(320px, calc(100% - 44px));
+  height: var(--dm-viewport-height, 100dvh);
+  max-height: var(--dm-viewport-height, 100dvh);
+  z-index: 2147482002;
+  pointer-events: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  border-right: 1px solid var(--dw-border);
+  background: var(--dw-bg);
+  box-shadow: 18px 0 48px rgba(0, 0, 0, .4);
+  transition: opacity 160ms cubic-bezier(0.23, 1, 0.32, 1), transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.dm-task-first-drawer[hidden] { display: none; }
+.dm-task-first-drawer-head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 .dm-task-first-brand {
-  flex: none;
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
   min-height: 44px;
-  padding: 0;
+  padding: 2px 4px;
   border: 0;
+  border-radius: 10px;
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -65,82 +122,104 @@ body.dm-task-first-enabled {
   place-items: center;
   width: 32px;
   height: 32px;
-  border: 1px solid #28617a;
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  background: #123040;
-  color: var(--dw-accent);
+  background: var(--surface-hover);
+  color: var(--accent);
   font-size: 20px;
 }
-.dm-task-first-brand strong { display:block; font-size: 12px; white-space:nowrap; }
-.dm-task-first-brand em { font-style:normal; color:var(--dw-accent); }
+.dm-task-first-brand strong { display:block; font-size: 13px; white-space:nowrap; }
+.dm-task-first-brand em { font-style:normal; color:var(--accent); }
 .dm-task-first-brand small {
   display: block;
-  margin-top: 4px;
-  color:var(--dw-muted);
-  font-size: 8px;
-}
-.dm-task-first-project {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin: 0;
-  overflow:hidden;
-  white-space:nowrap;
-  text-overflow:ellipsis;
+  margin-top: 2px;
   color: var(--dw-muted);
-  font-size:12px;
+  font-size: 11px;
+  line-height: 1.2;
 }
-.dm-task-first-backend { display:block; min-width:0; width:min(39vw,160px); margin-left:auto; }
-.dm-task-first-backend > span { position:absolute; clip-path:inset(50%); height:1px; width:1px; overflow:hidden; }
-.dm-task-first-backend select {
-  width: 100%;
-  min-height: 44px;
-  padding: 8px;
-  background: var(--dw-panel);
-  border:1px solid var(--dw-border);
-  border-radius:10px;
-  font-size: 16px;
-}
-.dm-task-first-menu-button {
+.dm-task-first-menu-close {
   flex: 0 0 44px;
   width: 44px;
   height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   display: grid;
   place-items: center;
   padding: 0;
   border: 1px solid var(--dw-border);
+  border-radius: 999px;
+  background: var(--dw-panel);
+  color: var(--dw-text);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.dm-task-first-drawer-meta {
+  display: grid;
+  gap: 8px;
+}
+.dm-task-first-project-row {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--dw-border);
   border-radius: 10px;
   background: var(--dw-panel);
-  font-size: 18px;
-  cursor: pointer;
-  transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
 }
-.dm-task-first-menu-button:active { transform: scale(0.97); }
-.dm-task-first-menu-button[aria-expanded="true"] { border-color: var(--dw-text); }
+.dm-task-first-meta-label {
+  color: var(--dw-muted);
+  font-size: 11px;
+  line-height: 1.3;
+}
+.dm-task-first-project {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--dw-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+.dm-task-first-backend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 4px 4px 4px 10px;
+  border: 1px solid var(--dw-border);
+  border-radius: 10px;
+  background: var(--dw-panel);
+}
+.dm-task-first-backend > span {
+  min-width: 0;
+  color: var(--dw-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+.dm-task-first-backend select {
+  min-width: 44px;
+  max-width: 150px;
+  min-height: 44px;
+  padding: 0 8px;
+  background: var(--dw-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  color: var(--dw-text);
+  font-size: 16px;
+}
+.dm-task-first-drawer > hr { width: 100%; height: 1px; margin: 0; border: 0; background: var(--dw-border); }
 .dm-task-first-menu {
-  position: absolute;
-  top: calc(var(--dw-top-height) - 4px);
-  right: max(8px, env(safe-area-inset-right));
-  width: min(240px, calc(100vw - 16px));
-  /* Short phones (320×568): the menu scrolls instead of running off-screen. */
-  max-height: calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height) - 8px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
   display: grid;
   gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--dw-border);
-  border-radius: 14px;
-  background: var(--dw-bg);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, .4);
-  transform-origin: top right;
-  transition: opacity 160ms cubic-bezier(0.23, 1, 0.32, 1), transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .dm-task-first-menu[hidden] { display: none; }
-/* The open ☰ menu drops over the Tools sidebar (.dm-shell, z 2147482000), so the
- * nav is lifted above it only while the menu is open. */
+/* The open ☰ drawer covers the Tools sidebar (.dm-shell, z 2147482000), so the
+ * nav is lifted above it only while the drawer is open. */
 .dm-task-first-nav.menu-open { z-index: 2147482001; }
 @starting-style {
-  .dm-task-first-menu { opacity: 0; transform: scale(0.95); }
+  .dm-task-first-drawer { opacity: 0; transform: translateX(-12px); }
 }
 .dm-task-first-menu button {
   width:100%;
@@ -157,9 +236,9 @@ body.dm-task-first-enabled {
   cursor:pointer;
 }
 .dm-task-first-menu button[aria-current="page"] {
-  border-color:#265c6e;
-  background:#123040;
-  color:var(--dw-accent);
+  border-color: var(--border-subtle);
+  background: var(--surface-hover);
+  color: var(--accent);
 }
 @media (hover: hover) and (pointer: fine) {
   .dm-task-first-menu button:not([aria-current="page"]):hover { color: var(--dw-text); background: var(--dw-panel); }
@@ -183,59 +262,84 @@ body.dm-task-first-enabled {
 .dm-task-first-menu button { user-select: none; transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1); }
 .dm-task-first-menu button:active { transform: scale(0.97); }
 .dm-task-first-menu-row > strong { min-width: 0; font-size: 14px; font-weight: 500; }
-.dm-task-first-menu-row > select { min-width: 44px; max-width: 112px; min-height: 44px; margin-left: auto; padding: 0 8px; border: 1px solid var(--dw-border); border-radius: 8px; background: var(--dw-panel); color: var(--dw-text); font: inherit; font-size: 16px; }
-.dm-task-first-menu-row > select:focus-visible { outline: 2px solid var(--dw-accent); outline-offset: 2px; }
+.dm-task-first-menu-row > select { min-width: 44px; max-width: 112px; min-height: 44px; margin-left: auto; padding: 0 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-control); background: var(--dw-panel); color: var(--dw-text); font: inherit; font-size: 16px; color-scheme: inherit; }
+.dm-task-first-menu-row > select:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
 .dm-task-first-menu hr { width: 100%; height: 1px; margin: 0; border: 0; background: var(--dw-border); }
 .dm-task-first-feedback {
-  position: absolute;
-  top: var(--dw-top-height);
-  left: 8px;
-  right: 8px;
-  margin: 4px 0 0;
+  position: fixed;
+  top: calc(var(--dm-viewport-offset-top, 0px) + max(8px, env(safe-area-inset-top)) + 50px);
+  left: max(8px, env(safe-area-inset-left));
+  max-width: min(320px, calc(100% - 16px));
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--dw-border);
+  border-radius: 8px;
+  background: var(--dw-bg);
   color: var(--dw-muted);
   font-size: 12px;
   pointer-events: none;
 }
 .dm-task-first-feedback:empty { display: none; }
-@media (max-width: 680px) {
-  .dm-task-first-project { display:none; }
+@media (hover: hover) and (pointer: fine) {
+  .dm-task-first-menu-button:hover,
+  .dm-task-first-menu-close:hover,
+  .dm-task-first-brand:hover {
+    background: var(--dw-panel);
+  }
 }
-/* Provider roots are fixed to the viewport, so shifting #app alone does
- * NOT reserve space for navigation. Offset the actual fixed surfaces.
- * Provider-owned drawers remain positioned relative to their own roots. */
+/* Provider roots fill the visual viewport from top: 0 without a top header bar.
+ * Topbars reserve a left slot for the floating ☰ button instead of wasting a full header row. */
 body.dm-task-first-enabled #app {
-  width:100%;
-  min-width:0;
-  margin-left:0;
-  margin-top:var(--dw-top-height);
-  height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height));
+  width: 100%;
+  min-width: 0;
+  margin-left: 0;
+  margin-top: 0;
+  height: var(--dm-viewport-height, 100dvh);
 }
-/* All four surfaces use position:fixed and must be bounded independently,
- * sized to the visual viewport so the iOS keyboard never covers them. */
+/* All chat surfaces are fixed to the viewport and track the iOS visual viewport. */
 body.dm-task-first-enabled :is(.cx-app, .ocx-app, .api-app, .ix-app, .qx-app) {
-  top:calc(var(--dw-top-height) + var(--dm-viewport-offset-top, 0px));
-  left:0;
-  right:0;
-  width:100%;
-  height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height));
-  max-height:calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height));
+  top: var(--dm-viewport-offset-top, 0px);
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: var(--dm-viewport-height, 100dvh);
+  max-height: var(--dm-viewport-height, 100dvh);
+}
+body.dm-task-first-enabled :is(.ocx-app .ocx-topbar, .api-app .api-topbar, .ix-app .ix-topbar, .qx-app .qx-topbar) {
+  padding-left: calc(max(12px, env(safe-area-inset-left)) + 50px);
+}
+@media (max-width: 1099px) {
+  body.dm-task-first-enabled .cx-app .cx-topbar {
+    padding-left: calc(max(12px, env(safe-area-inset-left)) + 50px);
+  }
+}
+/* Home renders in flow inside #app from top: 0, so clear the notch/safe area and floating ☰. */
+body.dm-task-first-enabled .dm-home-shell {
+  padding-top: calc(var(--dw-top-height) + var(--space-2, 8px));
 }
 /* History drawers with explicit viewport heights must stay inside the
  * bounded provider surface. */
 body.dm-task-first-enabled .ocx-app .ocx-sidebar,
 body.dm-task-first-enabled .api-app .api-sidebar { height:100%; }
 body.dm-task-first-enabled .dm-shell-menu-trigger { display: none; }
-body.devmoter-shell-menu-open .dm-task-first-nav { pointer-events:none; }
-body.dm-task-first-enabled.devmoter-shell-menu-open .dm-task-first-nav { pointer-events:auto; }
-/* Workspace panels and scrims sit below the header and above the keyboard.
- * Settings and the Tools/Terminal panel are workspace panels too: they size to
- * this box instead of their own viewport/safe-area math. */
-body.dm-task-first-enabled :is(.sc-shell, .wf-modal, .pocket-git-overlay, .dm-shell-sidebar, .dm-shell-scrim, .devmoter-settings-modal, .dm-tools-scrim) {
+body.dm-task-first-enabled:has(
+  dialog.dm-office[open],
+  .cx-sidebar.open,
+  .ocx-sidebar.open,
+  .api-sidebar.open
+) .dm-task-first-nav:not(.menu-open) .dm-task-first-menu-button {
+  opacity: 0;
+  pointer-events: none;
+}
+/* Workspace panels, drawers and scrims sit below the floating ☰ button so ☰ never
+ * overlaps top-right close (×) buttons or panel headers on narrow screens. */
+body.dm-task-first-enabled :is(.sc-shell, .wf-modal, .pocket-git-overlay, .dm-shell-sidebar, .dm-shell-scrim, .devmoter-settings-modal, .dm-tools-scrim, .adv-drawer, .devmoter-system-modal, .devmoter-agent-panel, .dm-control-modal) {
   top: calc(var(--dw-top-height) + var(--dm-viewport-offset-top, 0px));
   bottom: auto;
   height: calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height));
   max-height: calc(var(--dm-viewport-height, 100dvh) - var(--dw-top-height));
 }
+body.dm-task-first-enabled .adv-head { padding-top: 12px; }
 body.dm-task-first-enabled .devmoter-settings-modal { padding-top: 8px; }
 body.dm-task-first-enabled .dm-tools-panel {
   top: calc(var(--dw-top-height) + var(--dm-viewport-offset-top, 0px) + 8px);
@@ -249,7 +353,7 @@ body.dm-task-first-enabled .dm-tools-panel {
   }
 }
 @media (max-width: 620px) {
-  /* The header already clears the notch; the sheet starts right under it. */
+  /* Overlay already clears the safe area via --dw-top-height. */
   body.dm-task-first-enabled .devmoter-settings-modal { padding-top: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -274,8 +378,8 @@ body.dm-task-first-enabled :is(.cx-app, .api-app) .dm-unified-agent-identity {
   display: flex;
   align-items: center;
   gap: 9px;
-  color: var(--dw-chat-text, #eaf4fc);
-  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--dw-chat-text, var(--text-primary));
+  font-family: var(--font-ui);
 }
 body.dm-task-first-enabled .dm-unified-agent-icon {
   flex: 0 0 36px;
@@ -283,10 +387,10 @@ body.dm-task-first-enabled .dm-unified-agent-icon {
   height: 36px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--dw-chat-line, #2c3f50);
+  border: 1px solid var(--dw-chat-line, var(--border-hairline));
   border-radius: 10px;
-  color: var(--dw-chat-accent, #4fd3f2);
-  background: var(--dw-chat-raised, #192838);
+  color: var(--dw-chat-accent, var(--accent));
+  background: var(--dw-chat-raised, var(--surface-card));
 }
 body.dm-task-first-enabled .dm-unified-agent-copy {
   min-width: 0;
@@ -294,13 +398,13 @@ body.dm-task-first-enabled .dm-unified-agent-copy {
   gap: 3px;
 }
 body.dm-task-first-enabled .dm-unified-agent-copy strong {
-  color: var(--dw-chat-text, #eaf4fc);
+  color: var(--dw-chat-text, var(--text-primary));
   font-size: 14px;
   line-height: 1.3;
 }
 body.dm-task-first-enabled .dm-unified-agent-copy small {
-  color: var(--dw-chat-muted, #a7bdcd);
-  font-size: 11px;
+  color: var(--dw-chat-muted, var(--text-secondary));
+  font-size: 12px;
 }
 
 /* #411/#402: Review must share the active Unified Workspace canvas. */

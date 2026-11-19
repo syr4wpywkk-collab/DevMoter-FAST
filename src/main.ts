@@ -22,12 +22,21 @@ import { startViewportSync } from "./visual-viewport.mjs";
 import { mountHomeSurface } from "./home";
 import { mountMissionControl } from "./mission-control";
 import { createSurfaceNavigation, type MainSurface } from "./surface-navigation.mjs";
+import {
+  DEFAULT_VISIBLE_BACKEND,
+  QWEN_UI_ENABLED,
+  isHiddenQwenTarget,
+  isVisibleChatBackend,
+  normalizeVisibleBackend,
+  normalizeVisibleSurface
+} from "./feature-flags.mjs";
 import "./zcode-theme.css";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 // One visualViewport listener publishes --dm-viewport-height / --dm-keyboard-inset
 // and keeps focused fields above the iOS keyboard for every surface.
 startViewportSync(window);
+startI18n();
 const startupParams = new URLSearchParams(window.location.search);
 
 const requestedProject = startupParams.get("project");
@@ -76,7 +85,7 @@ type Backend = "opencode" | "codex" | "api" | "qwen" | "integrations";
 
 const deepLinkBackend = startupParams.get("backend");
 const deepLinkSession = startupParams.get("session");
-if (deepLinkBackend === "codex" || deepLinkBackend === "opencode" || deepLinkBackend === "api" || deepLinkBackend === "qwen") {
+if (isVisibleChatBackend(deepLinkBackend)) {
   localStorage.setItem("opencode-pocket-backend", deepLinkBackend);
   if (deepLinkSession && deepLinkBackend !== "api" && deepLinkBackend !== "qwen") {
     localStorage.setItem(
@@ -88,35 +97,41 @@ if (deepLinkBackend === "codex" || deepLinkBackend === "opencode" || deepLinkBac
 
 const savedBackend = localStorage.getItem("opencode-pocket-backend");
 let activeBackend: Backend =
-  savedBackend === "codex" || savedBackend === "api" || savedBackend === "qwen" || savedBackend === "integrations"
+  savedBackend === "integrations" || isVisibleChatBackend(savedBackend)
     ? savedBackend
-    : "opencode";
+    : DEFAULT_VISIBLE_BACKEND;
 
 let surfaceNavigation: ReturnType<typeof createSurfaceNavigation> | null = null;
 let initialSurfaceApplied = false;
 
 function applyBackend(next: Backend) {
-  activeBackend = next;
-  localStorage.setItem("opencode-pocket-backend", next);
+  const requestedHiddenQwen = isHiddenQwenTarget(next);
+  const preserveHiddenQwen = !QWEN_UI_ENABLED && localStorage.getItem("opencode-pocket-backend") === "qwen";
+  const resolved: Backend = requestedHiddenQwen ? DEFAULT_VISIBLE_BACKEND : next;
+  activeBackend = resolved;
+  if (!requestedHiddenQwen && !(preserveHiddenQwen && resolved === DEFAULT_VISIBLE_BACKEND)) {
+    localStorage.setItem("opencode-pocket-backend", resolved);
+  }
   homeView.classList.add("hidden");
   document.body.classList.remove("devmoter-home-mode");
-  openCodeView.classList.toggle("hidden", next !== "opencode");
-  codexView.classList.toggle("hidden", next !== "codex");
-  apiView.classList.toggle("hidden", next !== "api");
-  qwenView.classList.toggle("hidden", next !== "qwen");
-  integrationsView.classList.toggle("hidden", next !== "integrations");
-  document.body.classList.toggle("codex-mode", next === "codex");
-  document.body.classList.toggle("opencode-mode", next === "opencode");
-  document.body.classList.toggle("api-mode", next === "api");
-  document.body.classList.toggle("qwen-mode", next === "qwen");
-  document.body.classList.toggle("integrations-mode", next === "integrations");
-  if (next === "api") void apiRemote.refresh();
-  if (next === "qwen") void qwenRemote.refresh();
-  if (next === "integrations") void integrationsRemote.refresh();
-  window.dispatchEvent(new CustomEvent("devmoter:backend-changed", { detail: { backend: next } }));
+  openCodeView.classList.toggle("hidden", resolved !== "opencode");
+  codexView.classList.toggle("hidden", resolved !== "codex");
+  apiView.classList.toggle("hidden", resolved !== "api");
+  qwenView.classList.toggle("hidden", !QWEN_UI_ENABLED || resolved !== "qwen");
+  integrationsView.classList.toggle("hidden", resolved !== "integrations");
+  document.body.classList.toggle("codex-mode", resolved === "codex");
+  document.body.classList.toggle("opencode-mode", resolved === "opencode");
+  document.body.classList.toggle("api-mode", resolved === "api");
+  document.body.classList.toggle("qwen-mode", QWEN_UI_ENABLED && resolved === "qwen");
+  document.body.classList.toggle("integrations-mode", resolved === "integrations");
+  if (resolved === "api") void apiRemote.refresh();
+  if (QWEN_UI_ENABLED && resolved === "qwen") void qwenRemote?.refresh();
+  if (resolved === "integrations") void integrationsRemote.refresh();
+  window.dispatchEvent(new CustomEvent("devmoter:backend-changed", { detail: { backend: resolved } }));
 }
 
 function setBackend(next: Backend) {
+  next = next === "integrations" ? "integrations" : normalizeVisibleBackend(next);
   if (surfaceNavigation && surfaceNavigation.current() !== next) {
     surfaceNavigation.navigate(next);
     return;
@@ -125,10 +140,11 @@ function setBackend(next: Backend) {
 }
 
 function applySurface(surface: MainSurface) {
-  const restoreHomeFocus = initialSurfaceApplied && surface === "home";
+  const resolvedSurface = normalizeVisibleSurface(surface);
+  const restoreHomeFocus = initialSurfaceApplied && resolvedSurface === "home";
   initialSurfaceApplied = true;
-  window.dispatchEvent(new CustomEvent("devmoter:surface-changed", { detail: { surface } }));
-  if (surface === "home") {
+  window.dispatchEvent(new CustomEvent("devmoter:surface-changed", { detail: { surface: resolvedSurface } }));
+  if (resolvedSurface === "home") {
     homeView.classList.remove("hidden");
     openCodeView.classList.add("hidden");
     codexView.classList.add("hidden");
@@ -140,7 +156,7 @@ function applySurface(surface: MainSurface) {
     if (restoreHomeFocus) window.requestAnimationFrame(() => homeView.querySelector<HTMLElement>("#devmoterHomeTitle")?.focus({ preventScroll: true }));
     return;
   }
-  applyBackend(surface);
+  applyBackend(resolvedSurface);
 }
 
 mountHomeSurface(homeView, {
@@ -174,9 +190,11 @@ const apiRemote = mountApiChat(apiMount, {
   onOpenCode: () => setBackend("opencode")
 });
 
-const qwenRemote = mountQwenChat(document.querySelector<HTMLDivElement>("#qwenMount")!, {
-  onIntegrations: () => setBackend("integrations")
-});
+const qwenRemote = QWEN_UI_ENABLED
+  ? mountQwenChat(document.querySelector<HTMLDivElement>("#qwenMount")!, {
+      onIntegrations: () => setBackend("integrations")
+    })
+  : null;
 
 const integrationsRemote = mountIntegrations(integrationsMount, {
   onOpenCode: () => setBackend("opencode"),

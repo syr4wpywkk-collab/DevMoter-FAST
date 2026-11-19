@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { DICTIONARIES } from "../src/i18n-core.mjs";
 
 async function source(path) {
   return readFile(new URL("../" + path, import.meta.url), "utf8");
@@ -17,14 +18,15 @@ test("OpenCode hamburger is conversation-history first", async () => {
   const opencode = await source("src/opencode.ts");
   const sidebar = sidebarMarkup(opencode);
 
-  assert.ok(sidebar.includes("CONVERSATION HISTORY"));
+  assert.ok(sidebar.includes('t("opencode.sidebar.historyHeading")'));
+  assert.equal(DICTIONARIES.en["opencode.sidebar.historyHeading"], "CONVERSATION HISTORY");
   assert.ok(sidebar.includes('id="ocxSessions"'));
-  assert.ok(sidebar.includes('placeholder="Search conversation history"'));
-  assert.ok(sidebar.includes('aria-label="Sort conversation history"'));
+  assert.ok(sidebar.includes('t("opencode.sidebar.searchPlaceholder")'));
+  assert.ok(sidebar.includes('t("opencode.sidebar.sortAria")'));
   assert.ok(sidebar.includes('id="ocxNewSessionSide"'));
   assert.ok(sidebar.includes('id="ocxRefresh"'), "refresh stays in the drawer, next to the history label");
   assert.ok(sidebar.includes('id="ocxSideStatus"'), "a quiet sync status stays in the drawer header");
-  assert.ok(sidebar.indexOf('id="ocxRefresh"') > sidebar.indexOf("CONVERSATION HISTORY"));
+  assert.ok(sidebar.indexOf('id="ocxRefresh"') > sidebar.indexOf('t("opencode.sidebar.historyHeading")'));
 });
 
 test("OpenCode history stays history-first with only direct workspace exits", async () => {
@@ -68,7 +70,7 @@ test("OpenCode history stays history-first with only direct workspace exits", as
 test("OpenCode history rows emphasize conversation metadata instead of agent identity", async () => {
   const opencode = await source("src/opencode.ts");
   assert.ok(opencode.includes("const historyTime = Number(session.time?.updated ?? session.time?.created ?? 0)"));
-  assert.ok(opencode.includes('count ? String(count) + " msgs" : ""'));
+  assert.ok(opencode.includes('count ? t("opencode.sessions.messageCount", { count: formatNumber(count) }) : ""'));
   assert.ok(!opencode.includes('session.agent || "session"'));
 });
 

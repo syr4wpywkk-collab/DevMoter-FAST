@@ -1,5 +1,6 @@
 import "./office.css";
 import { apiModelLabel } from "./api-model-label.mjs";
+import { formatDateTime, localeTag, t, translateServerMessage } from "./i18n";
 import { createOfficeEditor, type EditorBlockData, type SaveInput } from "./office-editor";
 
 type Doc = {
@@ -24,8 +25,8 @@ type Provider = { id: string; name: string; models: string[]; ready: boolean; pr
 type Pane = "list" | "editor" | "ai";
 
 // Inline line icons (18px, 1.5 stroke) so the module also loads standalone in tests.
-const svg = (paths: string) =>
-  `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+const svg = (paths: string, size = 18, box = 18) =>
+  `<svg viewBox="0 0 ${box} ${box}" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
 const H = '<path d="M2.5 4v10M8.5 4v10M2.5 9h6"/>';
 const ICONS = {
   undo: svg('<path d="M6.5 4 3 7.5 6.5 11"/><path d="M3 7.5h7.5a3.75 3.75 0 0 1 0 7.5H8"/>'),
@@ -47,31 +48,51 @@ const ICONS = {
   download: svg('<path d="M9 3v8.5M5.5 8 9 11.5 12.5 8M3.5 14.5h11"/>'),
   rename: svg('<path d="M11.5 3.5l3 3L6 15H3v-3z"/>'),
   remove: svg('<path d="M3.5 5h11M7.5 5V3.5h3V5M5 5l.7 9.5h6.6L13 5"/>'),
+  doc: svg('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>', 28, 24),
 };
 const TOOLS: [string, keyof typeof ICONS, string][] = [
-  ["undo", "undo", "元に戻す"],
-  ["redo", "redo", "やり直す"],
+  ["undo", "undo", "office.tool.undo"],
+  ["redo", "redo", "office.tool.redo"],
   ["|", "undo", ""],
-  ["bold", "bold", "太字"],
-  ["italic", "italic", "斜体"],
-  ["underline", "underline", "下線"],
+  ["bold", "bold", "office.tool.bold"],
+  ["italic", "italic", "office.tool.italic"],
+  ["underline", "underline", "office.tool.underline"],
   ["|", "undo", ""],
-  ["h1", "h1", "見出し1"],
-  ["h2", "h2", "見出し2"],
-  ["h3", "h3", "見出し3"],
+  ["h1", "h1", "office.tool.h1"],
+  ["h2", "h2", "office.tool.h2"],
+  ["h3", "h3", "office.tool.h3"],
   ["|", "undo", ""],
-  ["bullet", "bullet", "箇条書き"],
-  ["ordered", "ordered", "番号付きリスト"],
+  ["bullet", "bullet", "office.tool.bullet"],
+  ["ordered", "ordered", "office.tool.ordered"],
   ["|", "undo", ""],
-  ["left", "left", "左揃え"],
-  ["center", "center", "中央揃え"],
-  ["right", "right", "右揃え"],
-  ["justify", "justify", "両端揃え"],
+  ["left", "left", "office.tool.left"],
+  ["center", "center", "office.tool.center"],
+  ["right", "right", "office.tool.right"],
+  ["justify", "justify", "office.tool.justify"],
   ["|", "undo", ""],
-  ["link", "link", "リンク"],
+  ["link", "link", "office.tool.link"],
 ];
 const AUTOSAVE_MS = 1200;
+const OFFICE_AI_PROVIDER_KEY = "devmoter-office-ai-provider";
+const OFFICE_AI_PROJECT_KEY = "devmoter-office-ai-project";
+const officeAiModelKey = (providerId: string) => `devmoter-office-ai-model:${providerId}`;
+const readStorage = (key: string) => {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+const writeStorage = (key: string, value: string) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* storage unavailable */
+  }
+};
 const draftKey = (id: string) => `devmoter-office-draft:${id}`;
+const esc = (value: string) =>
+  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 let mounted = false;
 export function openOffice(options: { configureAi?: () => void } = {}) {
@@ -85,30 +106,31 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   root.dataset.pane = "list";
   root.setAttribute("aria-labelledby", "office-title");
   root.setAttribute("data-i18n-skip", "");
-  const tools = TOOLS.map(([id, icon, label]) =>
-    id === "|"
-      ? '<span class="office-tool-gap" aria-hidden="true"></span>'
-      : `<button type="button" class="office-tool" data-tool="${id}" aria-label="${label}" title="${label}">${ICONS[icon]}</button>`,
-  ).join("");
+  const tools = TOOLS.map(([id, icon, key]) => {
+    if (id === "|") return '<span class="office-tool-gap" aria-hidden="true"></span>';
+    const label = esc(t(key));
+    return `<button type="button" class="office-tool" data-tool="${id}" aria-label="${label}" title="${label}">${ICONS[icon]}</button>`;
+  }).join("");
   // Header = title + primary + close, the same slots as the shared sheet header.
-  root.innerHTML = `<header class="office-header" data-sheet-header><h1 id="office-title" class="office-title">Docs</h1><div class="office-header-actions"><button type="button" class="office-primary" data-new>新規</button><button type="button" class="office-icon-button" data-close aria-label="閉じる" title="閉じる">${ICONS.close}</button></div></header>
-    <nav class="office-tabs" aria-label="表示の切り替え"><button type="button" data-pane-tab="list">文書</button><button type="button" data-pane-tab="editor">編集</button><button type="button" data-pane-tab="ai">AIに依頼</button></nav>
+  root.innerHTML = `<header class="office-header" data-sheet-header><h1 id="office-title" class="office-title">${esc(t("office.title"))}</h1><div class="office-header-actions"><button type="button" class="office-primary" data-new>${esc(t("office.new"))}</button><button type="button" class="office-icon-button" data-close aria-label="${esc(t("office.closeAria"))}" title="${esc(t("office.closeAria"))}">${ICONS.close}</button></div></header>
+    <nav class="office-tabs" aria-label="${esc(t("office.tabsAria"))}"><button type="button" data-pane-tab="list">${esc(t("office.tab.list"))}</button><button type="button" data-pane-tab="editor">${esc(t("office.tab.editor"))}</button><button type="button" data-pane-tab="ai">${esc(t("office.tab.ai"))}</button></nav>
     <p class="office-error" data-error role="alert" hidden></p>
     <div class="office-layout">
-      <aside class="office-side" aria-label="文書">
-        <section class="office-section"><div class="office-section-head"><h2>文書</h2><button type="button" data-upload-open>DOCXを開く</button><input data-upload type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden></div><ul class="office-library" data-library></ul></section>
-        <details class="office-section office-history"><summary>履歴と原本</summary><ul data-history></ul></details>
+      <aside class="office-side" aria-label="${esc(t("office.sideAria"))}">
+        <section class="office-section"><div class="office-section-head"><h2>${esc(t("office.tab.list"))}</h2><button type="button" data-upload-open>${esc(t("office.openDocx"))}</button><input data-upload type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden></div><ul class="office-library" data-library></ul></section>
+        <details class="office-section office-history" data-history-section hidden><summary>${esc(t("office.historySummary"))}</summary><ul data-history></ul></details>
       </aside>
-      <main class="office-main" aria-label="編集">
-        <div class="office-doc-bar"><h2 data-name>文書が開かれていません</h2><span class="office-save-state" data-save-state role="status" aria-live="polite"></span><button type="button" class="office-retry" data-retry hidden>再試行</button><button type="button" class="office-icon-button" data-download aria-label="DOCXをダウンロード" title="DOCXをダウンロード" disabled>${ICONS.download}</button></div>
-        <div class="office-toolbar" role="toolbar" aria-label="書式" data-toolbar>${tools}</div>
-        <form class="office-link-form" data-link-form hidden><input type="url" inputmode="url" data-link-input placeholder="https://" aria-label="リンク先URL" autocomplete="off"><button type="submit">適用</button><button type="button" data-link-remove>解除</button><button type="button" data-link-cancel>キャンセル</button></form>
-        <div class="office-scroll"><p class="office-note" data-note hidden></p><article class="office-page" data-page aria-label="文書本文" role="textbox" aria-multiline="true" spellcheck="true" hidden></article><div class="office-empty" data-empty><p>文書を選ぶか、新規作成してください。</p></div></div>
+      <main class="office-main" aria-label="${esc(t("office.tab.editor"))}">
+        <div class="office-doc-bar"><h2 data-name>${esc(t("office.noDocOpen"))}</h2><span class="office-save-state" data-save-state role="status" aria-live="polite"></span><button type="button" class="office-retry" data-retry hidden>${esc(t("common.retry"))}</button><button type="button" class="office-icon-button" data-download aria-label="${esc(t("office.downloadAria"))}" title="${esc(t("office.downloadAria"))}" disabled>${ICONS.download}</button></div>
+        <div class="office-toolbar" role="toolbar" aria-label="${esc(t("office.toolbarAria"))}" data-toolbar>${tools}</div>
+        <form class="office-link-form" data-link-form hidden><input type="url" inputmode="url" data-link-input placeholder="https://" aria-label="${esc(t("office.linkUrlAria"))}" autocomplete="off"><button type="submit">${esc(t("office.linkApply"))}</button><button type="button" data-link-remove>${esc(t("office.linkRemove"))}</button><button type="button" data-link-cancel>${esc(t("common.cancel"))}</button></form>
+        <div class="office-scroll"><p class="office-note" data-note hidden></p><article class="office-page" data-page aria-label="${esc(t("office.bodyAria"))}" role="textbox" aria-multiline="true" spellcheck="true" hidden></article><div class="office-empty" data-empty data-empty-state="pick"><div class="office-empty-card"><div class="office-empty-icon" data-empty-icon aria-hidden="true" hidden>${ICONS.doc}</div><p class="office-empty-message" data-empty-message>${esc(t("office.emptyDocPrompt"))}</p><div class="office-empty-actions" data-empty-actions hidden><button type="button" class="office-primary" data-empty-new>${esc(t("office.createNew"))}</button><button type="button" data-empty-open>${esc(t("office.openDocx"))}</button></div></div></div></div>
       </main>
-      <aside class="office-ai" aria-label="AIに依頼">
-        <h2>AIに依頼</h2>
-        <div class="office-ai-setup" data-ai-unconfigured hidden><p>AIは未設定です。</p><button type="button" data-configure>AI設定を開く</button></div>
-        <form data-ai-form hidden><label>依頼内容<textarea data-goal rows="3" placeholder="読みやすく簡潔な文章に整えて"></textarea></label><details><summary>使用するAIと共有対象</summary><label>Provider<select data-provider></select></label><label>Model<select data-model></select></label><label>Vault用Project<select data-project></select></label></details><p class="office-quiet" data-provider-notice></p><label class="office-consent"><input type="checkbox" data-share>必要な本文（最大24KB）を選択したAIへ共有する</label><div class="office-ai-actions"><button data-ai-send>変更案を作る</button><button type="button" data-stop hidden>停止</button></div></form>
+      <aside class="office-ai" aria-label="${esc(t("office.tab.ai"))}">
+        <h2>${esc(t("office.tab.ai"))}</h2>
+        <div class="office-ai-empty" data-ai-empty hidden><p>${esc(t("office.aiRequiresDoc"))}</p></div>
+        <div class="office-ai-setup" data-ai-unconfigured hidden><p>${esc(t("office.aiUnconfigured"))}</p><button type="button" data-configure>${esc(t("office.aiOpenSettings"))}</button></div>
+        <form data-ai-form hidden><label>${esc(t("office.aiGoalLabel"))}<textarea data-goal rows="3" placeholder="${esc(t("office.aiGoalPlaceholder"))}"></textarea></label><div class="office-ai-selectors" role="group" aria-label="${esc(t("office.aiSelectorGroupAria"))}"><label>${esc(t("office.aiProviderLabel"))}<select data-provider></select></label><label>${esc(t("office.aiModelLabel"))}<select data-model></select></label></div><details data-project-details hidden><summary>${esc(t("office.aiProjectLabel"))}</summary><label>${esc(t("office.aiProjectLabel"))}<select data-project></select></label></details><p class="office-quiet" data-provider-notice></p><p class="office-quiet office-ai-single-hint" data-ai-single-hint hidden>${esc(t("office.aiSingleOptionHint"))}</p><label class="office-consent"><input type="checkbox" data-share>${esc(t("office.aiConsent"))}</label><div class="office-ai-actions"><button data-ai-send>${esc(t("office.aiGenerate"))}</button><button type="button" data-stop hidden>${esc(t("common.stop"))}</button></div></form>
         <p class="office-quiet" data-ai-status role="status" aria-live="polite"></p><div data-proposal></div>
       </aside>
     </div>`;
@@ -119,6 +141,9 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   const model = get<HTMLSelectElement>("[data-model]");
   const project = get<HTMLSelectElement>("[data-project]");
   let doc: Doc | null = null;
+  let docsCount = 0;
+  let libraryLoaded = false;
+  let aiLoaded = false;
   let providers: Provider[] = [];
   let run: AiRun | null = null;
   let busy = false;
@@ -143,7 +168,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
     });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || `操作に失敗しました (${response.status})`);
+    if (!response.ok) throw new Error(translateServerMessage(result.error) || t("office.requestFailed", { status: response.status }));
     return result;
   };
   const node = (tag: string, text = "", cls = "") => {
@@ -175,7 +200,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     try {
       await action();
     } catch (e) {
-      error((e as Error).message);
+      error(translateServerMessage((e as Error).message));
     } finally {
       busy = false;
       controls();
@@ -201,7 +226,8 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       scheduleSave();
       controls();
     },
-    onLockedDelete: (label) => confirm(`この${label}を文書から削除しますか？（元に戻すで戻せます）`),
+    onLockedDelete: (label) => confirm(t("office.confirmLockedDelete", { label })),
+    translate: t,
   });
   const scheduleSave = () => {
     if (saveTimer) window.clearTimeout(saveTimer);
@@ -244,7 +270,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   const settle = async () => {
     await save();
     if (saveError) {
-      if (!confirm(`保存できていない変更があります（${saveError}）。破棄して続けますか？`)) return false;
+      if (!confirm(t("office.confirmDiscardUnsaved", { error: saveError }))) return false;
       if (doc) sessionStorage.removeItem(draftKey(doc.id));
       dirty = false;
       saveError = "";
@@ -271,17 +297,35 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       else tool.setAttribute("aria-pressed", String(pressed));
     }
   };
+  const renderEmptyState = () => {
+    const empty = get("[data-empty]");
+    const zero = libraryLoaded && docsCount === 0;
+    empty.dataset.emptyState = zero ? "zero" : "pick";
+    empty.hidden = !!doc;
+    get("[data-empty-icon]").hidden = !zero;
+    get("[data-empty-actions]").hidden = !zero;
+    get("[data-empty-message]").textContent = t(zero ? "office.emptyLibrary" : "office.emptyDocPrompt");
+    get("[data-history-section]").hidden = !libraryLoaded || docsCount === 0;
+  };
+  const availableProviders = () => providers.filter((p) => p.ready && p.models.length > 0);
+  const selectedProvider = () => availableProviders().find((p) => p.id === provider.value);
+  const aiReady = () => availableProviders().length > 0;
   const controls = () => {
     get<HTMLButtonElement>("[data-new]").disabled = busy;
     get<HTMLButtonElement>("[data-upload-open]").disabled = busy;
+    get<HTMLButtonElement>("[data-empty-new]").disabled = busy;
+    get<HTMLButtonElement>("[data-empty-open]").disabled = busy;
     get<HTMLButtonElement>("[data-download]").disabled = busy || !doc;
-    get<HTMLButtonElement>("[data-ai-send]").disabled = busy || !doc || ["planning", "stop_requested"].includes(run?.status || "");
+    get<HTMLButtonElement>("[data-ai-send]").disabled =
+      busy || !doc || !aiReady() || !selectedProvider() || !model.value || ["planning", "stop_requested"].includes(run?.status || "");
     const state = get("[data-save-state]");
-    const label = !doc ? "" : saveError ? "保存できませんでした" : saving ? "保存中" : dirty ? "未保存" : "保存済み";
+    const label = !doc ? "" : saveError ? t("office.saveState.error") : saving ? t("office.saveState.saving") : dirty ? t("office.saveState.dirty") : t("office.saveState.saved");
     state.textContent = label;
     state.dataset.state = !doc ? "" : saveError ? "error" : saving ? "saving" : dirty ? "dirty" : "saved";
     state.title = saveError;
     get("[data-retry]").hidden = !saveError;
+    renderEmptyState();
+    renderAiSetup();
     updateToolbar();
   };
   root.querySelector("[data-toolbar]")!.addEventListener("pointerdown", (e) => {
@@ -341,6 +385,8 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   // ----------------------------------------------------------- library ---
   const library = async () => {
     const docs = await api<DocMeta[]>("/api/office/documents");
+    docsCount = docs.length;
+    libraryLoaded = true;
     const list = get("[data-library]");
     list.replaceChildren();
     for (const item of docs) {
@@ -350,31 +396,32 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       open.append(node("span", item.name, "office-doc-name"), node("span", when(item.openedAt || item.updatedAt), "office-doc-meta"));
       row.append(
         open,
-        iconButton(ICONS.rename, `「${item.name}」の名前を変更`, () => startRename(row, item)),
-        iconButton(ICONS.remove, `「${item.name}」を削除`, () => void removeDocument(item)),
+        iconButton(ICONS.rename, t("office.renameAria", { name: item.name }), () => startRename(row, item)),
+        iconButton(ICONS.remove, t("office.deleteAria", { name: item.name }), () => void removeDocument(item)),
       );
       list.append(row);
     }
-    if (!docs.length) list.append(node("li", "まだ文書はありません。", "office-quiet"));
+    if (!docs.length) list.append(node("li", t("office.emptyLibrary"), "office-quiet"));
+    renderEmptyState();
   };
   const when = (iso: string) => {
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) return "";
     const diff = Date.now() - date.getTime();
     if (diff < 7 * 864e5)
-      return new Intl.DateTimeFormat("ja-JP", { weekday: "short", hour: "2-digit", minute: "2-digit" }).format(date);
-    return new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+      return new Intl.DateTimeFormat(localeTag(), { weekday: "short", hour: "2-digit", minute: "2-digit" }).format(date);
+    return new Intl.DateTimeFormat(localeTag(), { year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
   };
   const startRename = (row: HTMLElement, item: DocMeta) => {
     const form = document.createElement("form");
     form.className = "office-rename";
     const input = document.createElement("input");
     input.value = item.name.replace(/\.docx$/i, "");
-    input.setAttribute("aria-label", "新しい文書名");
+    input.setAttribute("aria-label", t("office.newNameAria"));
     input.maxLength = 150;
     const submit = document.createElement("button");
-    submit.textContent = "保存";
-    form.append(input, submit, button("キャンセル", () => void library()));
+    submit.textContent = t("common.save");
+    form.append(input, submit, button(t("common.cancel"), () => void library()));
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       void task(async () => {
@@ -391,7 +438,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     input.select();
   };
   const removeDocument = async (item: DocMeta) => {
-    if (!confirm(`「${item.name}」を削除しますか？原本と履歴も削除され、元に戻せません。`)) return;
+    if (!confirm(t("office.confirmDeleteDoc", { name: item.name }))) return;
     await task(async () => {
       await api(`/api/office/documents/${item.id}`, "DELETE");
       sessionStorage.removeItem(draftKey(item.id));
@@ -407,7 +454,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     editor.clear();
     page.hidden = true;
     get("[data-empty]").hidden = false;
-    get("[data-name]").textContent = "文書が開かれていません";
+    get("[data-name]").textContent = t("office.noDocOpen");
     get("[data-note]").hidden = true;
     get("[data-history]").replaceChildren();
     controls();
@@ -427,13 +474,14 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     const current = doc;
     for (const item of [...current.history].reverse()) {
       const row = node("li", "", "office-history-row");
-      const label = `${item.source === "original" ? "原本" : item.source === "restore" ? "復元" : "保存"} · ${new Date(item.createdAt).toLocaleString("ja-JP")}`;
+      const sourceLabel = item.source === "original" ? t("office.history.original") : item.source === "restore" ? t("office.history.restore") : t("office.history.saved");
+      const label = `${sourceLabel} · ${formatDateTime(item.createdAt)}`;
       row.append(button(label, () => download(item.revision), "office-history-open"));
       if (item.revision !== current.revision)
         row.append(
-          button("この版に戻す", () =>
+          button(t("office.history.restoreBtn"), () =>
             void task(async () => {
-              if (!confirm("この版を新しい履歴として復元しますか？未保存の変更は破棄されます。")) return;
+              if (!confirm(t("office.history.restoreConfirm"))) return;
               if (saveTimer) window.clearTimeout(saveTimer);
               if (saving) await saving;
               sessionStorage.removeItem(draftKey(current.id));
@@ -448,6 +496,8 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   };
   const showDoc = (data: Doc) => {
     doc = data;
+    docsCount = Math.max(docsCount, 1);
+    libraryLoaded = true;
     dirty = false;
     saveError = "";
     localStorage.setItem("devmoter-office-document", data.id);
@@ -468,10 +518,10 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
         }
       } else if (saved?.blocks?.length) {
         sessionStorage.removeItem(draftKey(data.id));
-        error("以前の下書きがありますが、保存版が変わったため適用していません。");
+        error(t("office.draftSkipped"));
       }
     } catch {
-      error("下書きを復元できませんでした。");
+      error(t("office.draftError"));
     }
     controls();
     if (run) renderRun();
@@ -483,56 +533,121 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   };
 
   // ---------------------------------------------------------------- AI ---
-  const aiReady = () => providers.some((p) => p.ready);
+  const syncProviderNotice = () => {
+    const available = availableProviders();
+    const selected = selectedProvider();
+    const singleProvider = available.length <= 1;
+    const singleModel = model.options.length <= 1;
+    provider.disabled = busy || singleProvider;
+    model.disabled = busy || singleModel;
+    project.disabled = busy;
+    provider.title = singleProvider ? t("office.aiSingleOptionTitle") : (selected?.name || "");
+    model.title = singleModel ? t("office.aiSingleOptionTitle") : (model.value ? apiModelLabel(model.value) : "");
+    get("[data-provider-notice]").textContent = selected?.ready && model.value
+      ? t("office.usingAi", { provider: selected.name, model: apiModelLabel(model.value) })
+      : t("office.providerUnconfigured");
+    get("[data-ai-single-hint]").hidden = !(available.length === 1 && model.options.length === 1);
+  };
   const renderAiSetup = () => {
+    if (!aiLoaded) {
+      provider.disabled = true;
+      model.disabled = true;
+      project.disabled = true;
+      return;
+    }
     const ready = aiReady();
     get("[data-ai-unconfigured]").hidden = ready;
-    get("[data-ai-form]").hidden = !ready;
+    get("[data-ai-empty]").hidden = !ready || !!doc;
+    get("[data-ai-form]").hidden = !ready || !doc;
+    syncProviderNotice();
   };
-  const fillModels = () => {
+  const syncProjectForProvider = () => {
+    const selected = selectedProvider();
+    if (selected?.projectId && [...project.options].some((o) => o.value === selected.projectId)) {
+      project.value = selected.projectId;
+      return;
+    }
+    const savedProject = readStorage(OFFICE_AI_PROJECT_KEY);
+    if (savedProject && [...project.options].some((o) => o.value === savedProject)) project.value = savedProject;
+    else project.value = "";
+  };
+  const fillModels = (preferredModel = "") => {
     model.replaceChildren();
-    const selected = providers.find((p) => p.id === provider.value);
+    const selected = selectedProvider();
     for (const value of selected?.models || []) model.append(new Option(apiModelLabel(value), value));
-    const saved = localStorage.getItem(`devmoter-api-model:${provider.value}`);
+    const saved =
+      (preferredModel && [...model.options].some((o) => o.value === preferredModel) ? preferredModel : null) ||
+      (selected ? readStorage(officeAiModelKey(selected.id)) || readStorage(`devmoter-api-model:${selected.id}`) : null);
     if (saved && [...model.options].some((o) => o.value === saved)) model.value = saved;
-    get("[data-provider-notice]").textContent = selected?.ready
-      ? `使用するAI: ${selected.name} / ${apiModelLabel(model.value)}`
-      : "このProviderは未設定です。別のProviderを選んでください。";
+    syncProjectForProvider();
+    controls();
   };
-  provider.addEventListener("change", fillModels);
-  model.addEventListener("change", fillModels);
+  provider.addEventListener("change", () => {
+    if (provider.value) writeStorage(OFFICE_AI_PROVIDER_KEY, provider.value);
+    fillModels();
+  });
+  model.addEventListener("change", () => {
+    if (provider.value) {
+      writeStorage(OFFICE_AI_PROVIDER_KEY, provider.value);
+      if (model.value) writeStorage(officeAiModelKey(provider.value), model.value);
+    }
+    controls();
+  });
+  project.addEventListener("change", () => {
+    writeStorage(OFFICE_AI_PROJECT_KEY, project.value);
+  });
+  let aiContextGeneration = 0;
+  const loadAiContext = async () => {
+    const generation = ++aiContextGeneration;
+    const previousProvider = provider.value;
+    const previousModel = model.value;
+    const context = await api<{ providers: Provider[]; projects: { id: string; name: string }[] }>("/api/tools-ai/context");
+    if (generation !== aiContextGeneration) return;
+    providers = context.providers;
+    const available = availableProviders();
+    provider.replaceChildren();
+    for (const p of available) provider.append(new Option(p.name, p.id));
+    const savedProvider =
+      (previousProvider && available.some((p) => p.id === previousProvider) ? previousProvider : null) ||
+      readStorage(OFFICE_AI_PROVIDER_KEY) ||
+      readStorage("devmoter-api-provider");
+    if (savedProvider && available.some((p) => p.id === savedProvider)) provider.value = savedProvider;
+    else if (available.length) provider.value = available[0].id;
+    project.replaceChildren(new Option(t("office.noProjectOption"), ""));
+    for (const p of context.projects) project.append(new Option(p.name, p.id));
+    get<HTMLDetailsElement>("[data-project-details]").hidden = context.projects.length === 0;
+    aiLoaded = true;
+    const keepModel = Boolean(previousProvider && previousProvider === provider.value && previousModel);
+    fillModels(keepModel ? previousModel : "");
+  };
   const renderRun = () => {
-    const status = {
-      planning: "AIが変更案を作っています…",
-      proposed: "変更案ができました。確認して本文へ反映してください。",
-      stop_requested: "停止を要求しました。",
-      stopped: "停止しました。本文は変更していません。",
-      failed: "変更案を作成できませんでした。",
-      unknown: "実行状態を照合できません。",
-    };
+    const aiStatusKeys = new Set(["planning", "proposed", "stop_requested", "stopped", "failed", "unknown"]);
+    const statusText = run
+      ? (aiStatusKeys.has(run.status) ? t(`office.aiStatus.${run.status}`) : run.status)
+      : "";
     get("[data-ai-status]").textContent = run
-      ? (status[run.status as keyof typeof status] || run.status) + (run.error ? ` ${run.error}` : "")
+      ? statusText + (run.error ? ` ${translateServerMessage(run.error)}` : "")
       : "";
     get("[data-stop]").hidden = !["planning", "stop_requested"].includes(run?.status || "");
     const proposal = get("[data-proposal]");
     proposal.replaceChildren();
     if (run?.sharing && (run.sharing.excluded || run.sharing.truncated))
-      proposal.append(node("p", "安全上、一部本文をAIへの共有対象から除外しました。", "office-sharing-notice"));
+      proposal.append(node("p", t("office.aiSharingExcluded"), "office-sharing-notice"));
     if (run?.status === "proposed" && run.documentId === doc?.id) {
       for (const edit of run.edits || []) {
         const details = document.createElement("details");
         details.open = true;
         details.append(
-          node("summary", "段落の変更案"),
+          node("summary", t("office.paragraphProposal")),
           node("del", doc?.blocks.find((b) => b.id === edit.blockId)?.text || ""),
           node("ins", edit.text),
         );
         proposal.append(details);
       }
       proposal.append(
-        button("本文へ反映", () => {
+        button(t("office.applyToDoc"), () => {
           if (!doc || run?.documentId !== doc.id || run.revision !== doc.revision || dirty || saving) {
-            error("未保存の変更があるか、文書が更新されています。保存が終わってからもう一度反映してください。");
+            error(t("office.applyBlocked"));
             return;
           }
           for (const edit of run.edits || []) {
@@ -547,7 +662,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       );
     } else if (run?.status === "proposed" && run.documentId) {
       const target = run.documentId;
-      proposal.append(button("変更案の対象文書を開く", () => void openDocument(target).then(renderRun)));
+      proposal.append(button(t("office.openProposalDoc"), () => void openDocument(target).then(renderRun)));
     }
     controls();
   };
@@ -564,26 +679,27 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       if (["planning", "stop_requested"].includes(run.status)) poll = window.setTimeout(() => void pollRun(), 700);
     } catch (e) {
       if (!root.open || generation !== pollGeneration || run?.id !== id) return;
-      error((e as Error).message);
+      error(translateServerMessage((e as Error).message));
       poll = window.setTimeout(() => void pollRun(), 3000);
     }
   };
   get("[data-ai-form]").addEventListener("submit", (e) => {
     e.preventDefault();
     void task(async () => {
-      if (!doc) return;
+      const selected = selectedProvider();
+      if (!doc || !selected || !model.value) return;
       await save();
-      if (dirty) throw new Error("AIへ依頼する前に本文の変更を保存してください。");
+      if (dirty) throw new Error(t("office.saveBeforeAi"));
       run = await api<AiRun>("/api/office/ai/runs", "POST", {
         documentId: doc.id,
         revision: doc.revision,
         goal: get<HTMLTextAreaElement>("[data-goal]").value,
-        providerId: provider.value,
+        providerId: selected.id,
         model: model.value,
         projectId: project.value || null,
         share: get<HTMLInputElement>("[data-share]").checked,
       });
-      localStorage.setItem("devmoter-office-ai-run", run.id);
+      writeStorage("devmoter-office-ai-run", run.id);
       renderRun();
       void pollRun();
     });
@@ -595,7 +711,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
           run = value;
           renderRun();
         })
-        .catch((e) => error(e.message));
+        .catch((e) => error(translateServerMessage(e.message)));
   });
   get("[data-configure]").addEventListener("click", () => {
     if (options.configureAi) {
@@ -603,28 +719,31 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
         root.close();
         options.configureAi!();
       });
-    } else error("API Chatの設定からProviderとModelを登録してください。");
+    } else error(t("office.configureInApiChat"));
   });
 
   // ------------------------------------------------------------- shell ---
-  for (const tab of root.querySelectorAll<HTMLElement>("[data-pane-tab]"))
-    tab.addEventListener("click", () => setPane(tab.dataset.paneTab as Pane));
-  get("[data-upload-open]").addEventListener("click", () => get<HTMLInputElement>("[data-upload]").click());
-  get("[data-new]").addEventListener("click", () =>
+  const createNewDocument = () =>
     void task(async () => {
       if (!(await settle())) return;
-      showDoc(await api<Doc>("/api/office/documents", "POST", { blank: true, name: "無題の文書.docx" }));
+      showDoc(await api<Doc>("/api/office/documents", "POST", { blank: true, name: t("office.untitledDocx") }));
       setPane("editor");
       await library();
       editor.focus();
-    }),
-  );
+    });
+  const openDocxPicker = () => get<HTMLInputElement>("[data-upload]").click();
+  for (const tab of root.querySelectorAll<HTMLElement>("[data-pane-tab]"))
+    tab.addEventListener("click", () => setPane(tab.dataset.paneTab as Pane));
+  get("[data-upload-open]").addEventListener("click", openDocxPicker);
+  get("[data-empty-open]").addEventListener("click", openDocxPicker);
+  get("[data-new]").addEventListener("click", createNewDocument);
+  get("[data-empty-new]").addEventListener("click", createNewDocument);
   get<HTMLInputElement>("[data-upload]").addEventListener("change", (e) =>
     void task(async () => {
       const input = e.target as HTMLInputElement;
       const file = input.files?.[0];
       if (!file) return;
-      if (file.size > 12 * 1024 * 1024) throw new Error("12MB以下のDOCXを選択してください。");
+      if (file.size > 12 * 1024 * 1024) throw new Error(t("office.maxFileSize"));
       if (!(await settle())) return;
       const bytes = new Uint8Array(await file.arrayBuffer());
       let binary = "";
@@ -661,6 +780,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   syncViewport();
   window.addEventListener("devmoter:show-office", () => {
     if (!root.open) root.showModal();
+    void loadAiContext().catch((e) => error(translateServerMessage((e as Error).message)));
     if (run) void pollRun();
   });
   window.addEventListener("pagehide", () => void save());
@@ -669,17 +789,8 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   controls();
   void task(async () => {
     await library();
-    const context = await api<{ providers: Provider[]; projects: { id: string; name: string }[] }>("/api/tools-ai/context");
-    providers = context.providers;
-    for (const p of providers) provider.append(new Option(p.name, p.id));
-    const saved = localStorage.getItem("devmoter-api-provider");
-    if (saved && providers.some((p) => p.id === saved)) provider.value = saved;
-    else if (providers.some((p) => p.ready)) provider.value = providers.find((p) => p.ready)!.id;
-    fillModels();
-    renderAiSetup();
-    project.append(new Option("指定なし", ""));
-    for (const p of context.projects) project.append(new Option(p.name, p.id));
-    const last = localStorage.getItem("devmoter-office-document");
+    await loadAiContext();
+    const last = readStorage("devmoter-office-document");
     if (last) {
       try {
         showDoc(await api<Doc>(`/api/office/documents/${last}`));
@@ -689,7 +800,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
         localStorage.removeItem("devmoter-office-document");
       }
     }
-    const lastRun = localStorage.getItem("devmoter-office-ai-run");
+    const lastRun = readStorage("devmoter-office-ai-run");
     if (lastRun) {
       run = { id: lastRun, status: "planning" };
       void pollRun();

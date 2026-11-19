@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as i18nCore from "../src/i18n-core.mjs";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
@@ -82,7 +83,7 @@ async function harness(t, { rejectOnAbort = false } = {}) {
   };
   const exports = {};
   const modules = {
-    "./i18n": { getLanguage: () => "en" },
+    "./i18n": i18nCore,
     "./chat-markdown.mjs": { renderChatMarkdown },
     "./fetch-with-timeout.mjs": fetchTimeout,
     "./api-provider-catalog.mjs": providerCatalog,

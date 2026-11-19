@@ -3,25 +3,22 @@ import assert from "node:assert/strict";
 import vm from "node:vm";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
+import * as i18n from "../src/i18n-core.mjs";
 import * as deviceGate from "../src/device-gate.mjs";
 import * as sheetHeader from "../src/sheet-header.mjs";
 import { readFile } from "node:fs/promises";
 
+const { DICTIONARIES } = i18n;
 const source = path => readFile(new URL("../" + path, import.meta.url), "utf8");
 const settings = await source("src/settings.ts");
-const i18n = await source("src/i18n.ts");
 
-// The i18n dictionary maps a source string to every locale: { en, ja, "zh-CN" }.
-const dictionary = new Map(
-  [...i18n.matchAll(/^ {2}("(?:[^"\\]|\\.)*"): \{ en: ("(?:[^"\\]|\\.)*"), ja: ("(?:[^"\\]|\\.)*"), "zh-CN": ("(?:[^"\\]|\\.)*") \}/gm)]
-    .map(([, key, en, ja, zh]) => [JSON.parse(key), { en: JSON.parse(en), ja: JSON.parse(ja), zh: JSON.parse(zh) }])
-);
-const ja = text => dictionary.get(text)?.ja ?? text;
-const en = text => dictionary.get(text)?.en ?? text;
+function rootRowKeys() {
+  const body = settings.slice(settings.indexOf("function renderRoot()"), settings.indexOf("function renderAppearance()"));
+  return [...body.matchAll(/row\("[^"]*",\s*t\("([^"]+)"\)/g)].map(match => match[1]);
+}
 
 function rootRowLabels() {
-  const body = settings.slice(settings.indexOf("function renderRoot()"), settings.indexOf("function renderAppearance()"));
-  return [...body.matchAll(/row\("[^"]*", "([^"]+)"/g)].map(match => match[1]);
+  return rootRowKeys().map(key => DICTIONARIES.ja[key] ?? key);
 }
 
 test("Settings row labels are Japanese; only product names stay in English", () => {
@@ -38,10 +35,23 @@ test("Settings row labels are Japanese; only product names stay in English", () 
 });
 
 test("the English locale keeps English for the rows that changed", () => {
-  const expected = { "アクティビティ": "Activity", "信頼済み端末": "Trusted devices", "パスキー": "Passkeys", "ホスト一覧": "Hosts", "自動化": "Automation", "チェックポイント": "Checkpoints", "拡張機能": "Extensions", "ファイルとプレビュー": "Files & preview", "レビューとタスク": "Review & tasks", "表示履歴": "Context" };
-  for (const [label, english] of Object.entries(expected)) {
-    assert.ok(rootRowLabels().includes(label), label);
-    assert.equal(en(label), english, label);
+  const expected = {
+    "settings.root.sessions": ["アクティビティ", "Activity"],
+    "settings.root.devices": ["信頼済み端末", "Trusted Devices"],
+    "settings.root.passkey": ["パスキー", "Passkeys"],
+    "settings.root.hosts": ["ホスト一覧", "Hosts"],
+    "settings.root.automation": ["自動化", "Automation"],
+    "settings.root.checkpoints": ["チェックポイント", "Checkpoints"],
+    "settings.root.extensions": ["拡張機能", "Extensions"],
+    "settings.root.files": ["ファイルとプレビュー", "Files & Preview"],
+    "settings.root.review": ["レビューとタスク", "Review & Tasks"],
+    "settings.root.context": ["表示履歴", "Display History"]
+  };
+  const keys = rootRowKeys();
+  for (const [key, [japanese, english]] of Object.entries(expected)) {
+    assert.ok(keys.includes(key), key);
+    assert.equal(DICTIONARIES.ja[key], japanese, key);
+    assert.equal(DICTIONARIES.en[key], english, key);
   }
 });
 
@@ -50,38 +60,42 @@ test("every sheet opened from a Settings row is titled with that row's label", a
     ["src/session-control.ts", "src/workflow.ts", "src/agent-console.ts", "src/workspace-control.ts", "src/remote-control.ts", "src/control-center.ts", "src/advanced.ts"]
       .map(async file => [file, await source(file)])
   ));
-  // [row label in Settings, title source string, where the sheet sets it]
+  // [row key in Settings, title key in sheet, file, marker]
   const sheets = [
-    ["アクティビティ", "Activity", "src/session-control.ts", 'createSheetHeader(document,{title:"Activity"'],
-    ["レビューとタスク", "Review & Tasks", "src/workflow.ts", 'createSheetHeader(document, { title: "Review & Tasks"'],
-    ["エージェントモード", "Agent mode", "src/agent-console.ts", 'title: "Agent mode"'],
-    ["表示履歴", "表示履歴", "src/workspace-control.ts", 'panelHead("表示履歴")'],
-    ["チェックポイント", "チェックポイント", "src/workspace-control.ts", 'panelHead("チェックポイント")'],
-    ["拡張機能", "拡張機能", "src/workspace-control.ts", 'panelHead("拡張機能")'],
-    ["ホスト一覧", "Hosts", "src/remote-control.ts", 'data-tab="hosts" data-title="Hosts"'],
-    ["自動化", "Automation", "src/remote-control.ts", 'data-tab="automation" data-title="Automation"'],
-    ["パスキー", "Passkeys", "src/remote-control.ts", 'data-tab="passkeys" data-title="Passkeys"'],
-    ["ターミナル", "Terminal", "src/control-center.ts", 'terminal: "Terminal"'],
-    ["セーフティスキャン", "Safety scan", "src/control-center.ts", 'safety: "Safety scan"'],
-    ["プロジェクトインデックス", "Project index", "src/control-center.ts", 'index: "Project index"'],
-    ["ファイルとプレビュー", "Files & preview", "src/advanced.ts", "<strong>Files & preview</strong>"]
+    ["settings.root.sessions", "sessionControl.title", "src/session-control.ts", 'createSheetHeader(document,{title:t("sessionControl.title")'],
+    ["settings.root.review", "workflow.sheetTitle", "src/workflow.ts", 'createSheetHeader(document, { title: t("workflow.sheetTitle")'],
+    ["settings.root.agents", "agentConsole.sheetTitle", "src/agent-console.ts", 'title: t("agentConsole.sheetTitle")'],
+    ["settings.root.context", "workspaceControl.context.title", "src/workspace-control.ts", 'panelHead(t("workspaceControl.context.title"))'],
+    ["settings.root.checkpoints", "workspaceControl.checkpoints.title", "src/workspace-control.ts", 'const title = t("workspaceControl.checkpoints.title")'],
+    ["settings.root.extensions", "workspaceControl.extensions.title", "src/workspace-control.ts", 'const title = t("workspaceControl.extensions.title")'],
+    ["settings.root.hosts", "remote.tabs.hosts", "src/remote-control.ts", 'const hostsTitle = esc(t("remote.tabs.hosts"))'],
+    ["settings.root.automation", "remote.tabs.automation", "src/remote-control.ts", 'const automationTitle = esc(t("remote.tabs.automation"))'],
+    ["settings.root.passkey", "remote.tabs.passkeys", "src/remote-control.ts", 'const passkeysTitle = esc(t("remote.tabs.passkeys"))'],
+    ["settings.root.terminal", "controlCenter.tab.terminal", "src/control-center.ts", 'terminal: t("controlCenter.tab.terminal")'],
+    ["settings.root.safety", "controlCenter.tab.safetyTitle", "src/control-center.ts", 'safety: t("controlCenter.tab.safetyTitle")'],
+    ["settings.root.index", "controlCenter.tab.indexTitle", "src/control-center.ts", 'index: t("controlCenter.tab.indexTitle")'],
+    ["settings.root.files", "advanced.drawerTitle", "src/advanced.ts", '<strong>${escapeHtml(t("advanced.drawerTitle"))}</strong>']
   ];
-  const labels = rootRowLabels();
-  for (const [row, title, file, marker] of sheets) {
-    assert.ok(labels.includes(row), `Settings row ${row}`);
+  const keys = rootRowKeys();
+  for (const [rowKey, titleKey, file, marker] of sheets) {
+    assert.ok(keys.includes(rowKey), `Settings row ${rowKey}`);
     assert.ok(files[file].includes(marker), `${file}: ${marker}`);
-    assert.equal(ja(title), row, `${title} → ${row}`);
+    assert.equal(DICTIONARIES.ja[titleKey], DICTIONARIES.ja[rowKey], `${titleKey} → ${rowKey}`);
   }
   assert.ok(!files["src/control-center.ts"].includes('"DevMoter Tools"'));
   assert.ok(!files["src/advanced.ts"].includes("<strong>DevMoter Tools</strong>"));
-  assert.ok(settings.includes('setHeader("信頼済み端末"'));
+  assert.ok(settings.includes('setHeader(t("settings.root.devices")'));
 });
 
 test("Settings copy is polite Japanese without casual endings", () => {
-  for (const casual of ["してね", "したよ", "選んでね", "入力してね", "置き換える？", "しない。", "保存する。"]) {
-    assert.ok(!settings.includes(casual), casual);
+  const jaSettingsEntries = Object.entries(DICTIONARIES.ja).filter(([key]) => key.startsWith("settings."));
+  assert.ok(jaSettingsEntries.length > 80);
+  for (const [key, value] of jaSettingsEntries) {
+    for (const casual of ["してね", "したよ", "選んでね", "入力してね", "置き換える？", "しない。", "保存する。"]) {
+      assert.ok(!value.includes(casual), `${key}: ${casual}`);
+    }
   }
-  assert.ok(settings.includes("このブラウザを信頼済み端末として登録してください。"));
+  assert.ok(DICTIONARIES.ja["settings.devices.guidanceLocal"].includes("信頼済み端末として登録"));
 });
 
 test("Remote & automation renders each section once even when opened and switched back to back", async () => {
@@ -99,7 +113,15 @@ test("Remote & automation renders each section once even when opened and switche
   };
   const exports = {};
   vm.runInNewContext(compiled, {
-    exports, require: name => name === "./device-gate.mjs" ? deviceGate : name === "./sheet-header.mjs" ? sheetHeader : {}, window, document: window.document, location: window.location, navigator: window.navigator,
+    exports,
+    require: name => name === "./i18n"
+      ? i18n
+      : name === "./device-gate.mjs"
+        ? deviceGate
+        : name === "./sheet-header.mjs"
+          ? sheetHeader
+          : {},
+    window, document: window.document, location: window.location, navigator: window.navigator,
     Headers, fetch, setTimeout, clearTimeout, crypto: { randomUUID: () => "op" }, CustomEvent: window.CustomEvent,
     PublicKeyCredential: undefined, Intl, atob, btoa
   });
@@ -123,7 +145,7 @@ test("Remote & automation renders each section once even when opened and switche
     // Static words are separate text nodes so the dictionary can translate them.
     assert.equal(state.childNodes[0].textContent, "Registered passkeys");
     assert.equal(state.querySelector("strong").textContent, "2");
-    assert.equal(ja("Registered passkeys"), "登録済みパスキー");
+    assert.equal(DICTIONARIES.ja["remote.passkeys.registeredLabel"], "登録済みパスキー");
   } finally {
     window.close();
   }
@@ -131,34 +153,33 @@ test("Remote & automation renders each section once even when opened and switche
 
 test("rows merged or removed in #504 keep #504's set; their copy is unified and translated", async () => {
   const labels = rootRowLabels();
-  // Removed / merged rows stay gone, with no orphaned dictionary entries for the old gate.
+  // Removed / merged rows stay gone, with no orphaned entries for old gates.
   for (const removed of ["使用状況と制限", "データコントロール", "詳細", "ストレージ", "データ管理", "サインイン", "サインイン方法", "テーマ", "表示とレイアウト", "通知設定", "ペアリングコード"]) {
     assert.ok(!labels.includes(removed), removed);
   }
-  for (const orphan of ["This browser is not a Trusted device", "Open Trusted devices"]) {
-    assert.ok(!dictionary.has(orphan), orphan);
-  }
+  assert.equal(Object.values(DICTIONARIES.en).includes("This browser is not a Trusted device"), false);
   // Each row label appears once.
   assert.equal(new Set(labels).size, labels.length, labels.join(","));
-  // Merged rows use the polite Japanese label, and the sheet they open carries the same title.
-  assert.ok(labels.includes("テーマと表示") && settings.includes('setHeader("テーマと表示"'));
-  assert.ok(settings.includes('row("device", "信頼済み端末", { action: "page:devices", value: "端末の登録とペアリングコード" })'));
-  assert.ok(settings.includes('setHeader("信頼済み端末"'));
-  assert.ok(settings.includes('value: "GitHub の Issue を開く", external: "GitHub"'));
-  for (const text of ["テーマと表示", "端末の登録とペアリングコード", "不具合を報告", "GitHub の Issue を開く"]) {
-    assert.ok(dictionary.has(text), text);
-    assert.doesNotMatch(en(text), /[ぁ-んァ-ン一-龯]/, text);
+  // Merged rows use consistent localized labels, and the sheet they open carries the same title.
+  assert.ok(labels.includes("テーマと表示") && settings.includes('setHeader(t("settings.root.appearance")'));
+  assert.ok(settings.includes('row("device", t("settings.root.devices"), { action: "page:devices", value: t("settings.root.devicesSub") })'));
+  assert.ok(settings.includes('setHeader(t("settings.root.devices")'));
+  assert.ok(settings.includes('value: t("settings.root.reportSub"), external: "GitHub"'));
+  for (const key of ["settings.root.appearance", "settings.root.devicesSub", "settings.root.report", "settings.root.reportSub"]) {
+    assert.ok(DICTIONARIES.ja[key] && DICTIONARIES.en[key] && DICTIONARIES["zh-Hans"][key] && DICTIONARIES["zh-Hant"][key], key);
+    assert.doesNotMatch(DICTIONARIES.en[key], /[ぁ-んァ-ン一-龯]/, key);
   }
   // The device gate speaks the same words as the row it opens.
   const gate = await source("src/device-gate.mjs");
-  for (const text of ["この端末は未登録です", "端末を登録すると使えます", "端末を登録"]) {
-    assert.ok(gate.includes(`"${text}"`), text);
-    assert.equal(ja(text), text);
-    assert.doesNotMatch(en(text), /[ぁ-んァ-ン一-龯]/, text);
+  for (const key of ["deviceGate.unregisteredTitle", "deviceGate.unregisteredCopy", "deviceGate.registerButton"]) {
+    assert.ok(gate.includes(`t("${key}")`), key);
+    assert.ok(DICTIONARIES.ja[key] && DICTIONARIES.en[key] && DICTIONARIES["zh-Hans"][key] && DICTIONARIES["zh-Hant"][key], key);
+    assert.doesNotMatch(DICTIONARIES.en[key], /[ぁ-んァ-ン一-龯]/, key);
   }
   // Device-bound sheets title their gate with the Settings row label, not the old English title.
   const workspace = await source("src/workspace-control.ts");
-  assert.ok(workspace.includes('showFailure("チェックポイント", error)'));
-  assert.ok(workspace.includes('showFailure("拡張機能", error)'));
+  assert.ok(workspace.includes('const title = t("workspaceControl.checkpoints.title")'));
+  assert.ok(workspace.includes('const title = t("workspaceControl.extensions.title")'));
+  assert.ok(workspace.includes("showFailure(title, error)"));
   assert.ok(!workspace.includes('"Task checkpoints"'));
 });

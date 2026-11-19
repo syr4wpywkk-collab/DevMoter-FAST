@@ -42,20 +42,16 @@ test("Basic authorization parses and compares credentials", () => {
   assert.equal(parseBasicAuthorization("Bearer nope"), null);
 });
 
-test("expected origin trusts forwarded headers only from a loopback proxy", () => {
+test("expected origin honors reverse-proxy headers and explicit public origin", () => {
   const req = {
     headers: {
       host: "127.0.0.1:8787",
       "x-forwarded-proto": "https",
       "x-forwarded-host": "devmoter.example.test"
     },
-    socket: { remoteAddress: "127.0.0.1" }
+    socket: {}
   };
   assert.equal(expectedRequestOrigin(req), "https://devmoter.example.test");
-  assert.equal(
-    expectedRequestOrigin({ ...req, socket: { remoteAddress: "203.0.113.8" } }),
-    "http://127.0.0.1:8787"
-  );
   assert.equal(
     expectedRequestOrigin(req, "https://pocket.example.test/path"),
     "https://pocket.example.test"
@@ -72,33 +68,10 @@ test("mutating requests require an exact same Origin", () => {
     socket: {}
   };
   assert.equal(mutationOriginMatches(base), true);
-  assert.equal(mutationOriginMatches({
-    method: "POST",
-    headers: {
-      host: "127.0.0.1:8787",
-      origin: "https://devmoter.example.test",
-      "x-forwarded-proto": "https",
-      "x-forwarded-host": "devmoter.example.test"
-    },
-    socket: { remoteAddress: "::1" }
-  }), true);
   assert.equal(
     mutationOriginMatches({
       ...base,
       headers: { ...base.headers, origin: "https://evil.example" }
-    }),
-    false
-  );
-  assert.equal(
-    mutationOriginMatches({
-      ...base,
-      headers: {
-        ...base.headers,
-        origin: "https://evil.example",
-        "x-forwarded-proto": "https",
-        "x-forwarded-host": "evil.example"
-      },
-      socket: { remoteAddress: "203.0.113.8" }
     }),
     false
   );

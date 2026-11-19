@@ -42,16 +42,18 @@ The goal:
 | --- | --- | --- |
 | Agent workspace | OpenCode and Codex sessions, streaming, model/agent selection, approvals and interruption | Shipped; upstream-dependent |
 | Projects | Registered project identities, project switching, bounded file and Markdown access | Shipped |
-| GitHub workspace | Host-authenticated repository discovery and managed repository operations | Shipped; scope-limited |
+| GitHub workspace | Host-authenticated repository discovery and managed repository operations | Experimental; scope-limited |
 | Tools AI | Natural-language requests routed to bounded project and host observations | Experimental |
 | Reviewed Changes | Diff proposals, file/hunk review, drift checks, explicit apply and commit flows | Experimental |
 | Session control | Follow-ups, handoff, checkpoints, forks, transcript search and background-run controls | Experimental |
 | Terminal | Authenticated, project-scoped persistent terminal with bounded replay and reconnect | Experimental |
 | API Chat and routing | Configurable providers/models, reasoning controls, attachments and routing/failover | Experimental |
+| Qwen Code | Local Qwen Code CLI chat in the AI selector (streaming, stop, per-device chat history, model selection, "Add API"), plus a Local Integrations launch card | Experimental; requires a locally installed Qwen Code CLI; UI hidden by default (feature flag) |
 | Developer workflows | Skills, rules, MCP management, optional ACP, extensions and configured verification/review workflows | Mixed; see docs |
 | Host protocol | Versioned capability discovery across host adapters | v1 discovery contract; adapters vary |
 | Automation and integrations | Host registry, bounded triggers/schedules and selected integration handoffs | Experimental |
 | Web/PWA | Responsive mobile-first control surface and installable web shell | Shipped |
+| External sign-in | GitHub / Google / Microsoft (OIDC + PKCE) and passkey sign-in for the owner account | Experimental; requires OAuth app configuration — not enabled by default |
 | iOS client | Native wrapper for connecting to an existing DevMoter server over HTTPS | Experimental; device validation required |
 
 **Maturity labels matter.** Shipped means a real backend path exists; Experimental means implementation exists but still needs hardening or broader validation; Planned means it is not available as a shipped feature. A UI entry or design document is not proof that a capability works.
@@ -108,6 +110,19 @@ DevMoter connects to a local OpenCode runtime and keeps its backend authenticati
 ### Codex
 
 DevMoter communicates with the local Codex app-server over stdio/JSONL. Supported integration areas include threads, history, resume/fork, streamed turns, interruption, approvals, attachments, dynamic model discovery, reasoning effort, and plugin/MCP inventory. RPC access is restricted by a server-side allowlist. Authentication remains with the local Codex CLI.
+
+### Qwen Code
+
+The experimental Qwen Code integration uses a locally installed [Qwen Code](https://github.com/QwenLM/qwen-code) CLI (`qwen`; the binary can be overridden with `QWEN_BIN`). It does not use the API Chat provider store.
+
+> **Current default:** the Qwen Code UI is hidden by default behind the `QWEN_UI_ENABLED` feature flag (`src/feature-flags.mjs`, currently `false`). The integration described below is implemented, but it does not appear in the AI selector, navigation, or Local Integrations until the flag is enabled.
+
+- **AI selector chat:** choose *Qwen Code* in the AI selector. The server runs `qwen` headlessly (`--output-format stream-json`) in the selected registered project and streams the reply. A run can be stopped from the UI, is limited to 30 minutes, and each chat keeps its Qwen session so it resumes with `--resume`. Chat history is stored on the device. If `qwen` is not installed or not signed in, the screen shows a short message and a button that opens Local Integrations.
+- **Model selection:** the model chip in the Qwen chat view lists "Qwen Code default" plus the models defined in Qwen Code's own `settings.json` (`modelProviders`). Models that cannot be used are shown disabled with a reason. The client sends only an auth type and model ID; the server re-validates it and passes only `--auth-type` and `--model` to `qwen`.
+- **Add API:** offers the same provider presets as Qwen Code's `/auth` flow and writes the provider entry and key into Qwen Code's own settings, as `/auth` does. API key values are not passed on the command line and are not returned to the browser.
+- **Local Integrations:** a Qwen Code card launches the local `qwen` CLI in a terminal on the host ("Open on PC"). The child process receives only an allowlisted set of environment variables.
+
+Behavior with every Qwen Code version and provider has not been validated; treat this surface as experimental.
 
 ### API Chat and model routing
 
@@ -177,7 +192,7 @@ These controls reduce exposure; they do not make an internet-facing deployment s
 - OpenCode CLI
 - OpenAI Codex CLI
 
-Optional integrations include GitHub CLI (`gh`) and Tailscale. Authenticate upstream CLIs using their own supported flows before starting DevMoter.
+Optional integrations include GitHub CLI (`gh`), Tailscale, and Qwen Code CLI (`qwen`). Authenticate upstream CLIs using their own supported flows before starting DevMoter.
 
 ### Quick start
 
@@ -236,6 +251,7 @@ CI covers automated checks. Chromebook/Crostini and iPhone behavior still requir
 | --- | --- |
 | [Architecture](./ARCHITECTURE.md) | Server, browser, agent, and filesystem boundaries |
 | [Security](./SECURITY.md) | Deployment assumptions and vulnerability reporting |
+| [Auth v2](./docs/auth-v2.md) | Owner sign-in: GitHub / Google / Microsoft, passkeys, local recovery |
 | [Threat model](./THREAT_MODEL.md) | Trust boundaries and attacker model |
 | [Fast Install](./fastinstall.MD) | Quick setup |
 | [Operations](./docs/operations.md) | Installer, updates, systemd user service, health checks |

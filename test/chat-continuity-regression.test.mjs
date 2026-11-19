@@ -17,8 +17,8 @@ test("global Tools navigation leaves provider-local history controls reachable",
   assert.ok(shell.includes('new CustomEvent("devmoter:close-chat-history")'));
   assert.ok(shell.includes('window.addEventListener("devmoter:close-global-nav", closeSidebar)'));
   assert.ok(shell.includes('window.addEventListener("devmoter:open-global-nav", openSidebar)'));
-  assert.ok(codex.includes('aria-label="会話履歴を開く"'));
-  assert.ok(opencode.includes('aria-label="セッション履歴を開く"'));
+  assert.ok(codex.includes('t("codex.topbar.openHistoryAria")'));
+  assert.ok(opencode.includes('t("opencode.sidebar.openHistoryAria")'));
   assert.ok(codex.includes('new CustomEvent("devmoter:close-global-nav")'));
   assert.ok(opencode.includes('new CustomEvent("devmoter:close-global-nav")'));
   assert.ok(opencode.includes('window.addEventListener("devmoter:close-chat-history", () => closeSidebar())'));
@@ -73,7 +73,7 @@ test("mobile lifecycle resume reconnects to canonical chat state with bounded cu
     assert.ok(sourceText.includes('window.addEventListener("online"'));
     assert.ok(sourceText.includes("/api/workspace-control/events?sessionId="));
     assert.ok(sourceText.includes("&limit=500"));
-    assert.ok(sourceText.includes("Background replay gap detected"));
+    assert.ok(sourceText.includes('t("codex.reconnect.replayGap")') || sourceText.includes('t("opencode.reconnect.replayGap")'));
     assert.ok(sourceText.includes("reconnectAfterSync("));
     assert.ok(sourceText.includes("connectEvents())"));
   }

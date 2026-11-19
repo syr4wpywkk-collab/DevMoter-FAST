@@ -1,11 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { DICTIONARIES } from "../src/i18n-core.mjs";
 
 test("audit-facing placeholders and Usage labels stay honest", async () => {
   const codex = await readFile(new URL("../src/codex.ts", import.meta.url), "utf8");
   assert.doesNotMatch(codex, /cxUsageLabel">0 tok/);
-  assert.match(codex, /cxUsageLabel">Usage/);
+  assert.match(codex, /cxUsageLabel">[^<]*t\("codex\.topbar\.usage"\)/);
+  assert.equal(DICTIONARIES.en["codex.topbar.usage"], "Usage");
   // The Library placeholder and the Settings / DevMoter tools rows (duplicated by ☰) left the Codex drawer.
   assert.doesNotMatch(codex, /ライブラリ · 準備中|id="cxLibraryNav"|id="cxSettingsNav"|id="cxToolsNav"/);
 
@@ -50,7 +52,8 @@ test("theme overrides keep history and workspace controls readable", async () =>
 test("API Chat welcome and composer use a restrained workspace treatment", async () => {
   const api = await readFile(new URL("../src/api-chat.ts", import.meta.url), "utf8");
   assert.match(api, /<h1>API Chat<\/h1>/);
-  assert.match(api, /接続先を選んでメッセージを入力/);
+  assert.match(api, /t\("apiChat\.welcomePrompt"\)/);
+  assert.match(DICTIONARIES.ja["apiChat.welcomePrompt"], /接続先を選んでメッセージを入力/);
   assert.doesNotMatch(api, /api-spark|どのAPIで考える/);
 
   const css = await readFile(new URL("../src/api-chat-surface.css", import.meta.url), "utf8");
@@ -64,7 +67,8 @@ test("API Chat welcome and composer use a restrained workspace treatment", async
 
 test("global workspace navigation uses neutral state cues instead of backend brand colors", async () => {
   const shell = await readFile(new URL("../src/app-shell.ts", import.meta.url), "utf8");
-  assert.match(shell, /<strong>開発ツール<\/strong>/);
+  assert.match(shell, /<strong>[^<]*t\("shell\.devToolsTitle"\)/);
+  assert.equal(DICTIONARIES.ja["shell.devToolsTitle"], "開発ツール");
   assert.doesNotMatch(shell, /作業環境と機能|Chat workspaces/, "Tools header is name-only and has no duplicate backend grid");
 
   const css = await readFile(new URL("../src/app-shell.css", import.meta.url), "utf8");
@@ -75,8 +79,10 @@ test("global workspace navigation uses neutral state cues instead of backend bra
 
 test("Tools assistant reads like a project inspection utility instead of a chat prompt", async () => {
   const tools = await readFile(new URL("../src/tools-ai.ts", import.meta.url), "utf8");
-  assert.match(tools, /調査を開始/);
-  assert.match(tools, /例：現在の変更点を整理/);
+  assert.match(tools, /t\("toolsAi\.submit"\)/);
+  assert.match(tools, /t\("toolsAi\.goalPlaceholder"\)/);
+  assert.equal(DICTIONARIES.ja["toolsAi.submit"], "調査を開始");
+  assert.equal(DICTIONARIES.ja["toolsAi.goalPlaceholder"], "例：現在の変更点を整理");
   assert.doesNotMatch(tools, /読み取り専用で調べます|読み取り専用の調査|依頼と必要なProject内容|ツールを直接開く|data-ai-suggestion/);
   assert.doesNotMatch(tools, /tools-ai-spark|何をしたいですか|AIに頼めます/);
 

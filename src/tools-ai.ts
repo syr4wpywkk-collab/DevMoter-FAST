@@ -1,5 +1,6 @@
 import { apiModelLabel } from "./api-model-label.mjs";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
+import { formatDateTime, t, translateServerMessage } from "./i18n";
 
 type Provider = { id: string; name: string; ready: boolean; models: string[]; projectId?: string; secretRef?: string };
 type Project = { id: string; name: string; path: string };
@@ -10,18 +11,20 @@ type Run = { runId: string; rawGoal: string; status: string; updatedAt: number; 
 const RUN_KEY = "devmoter-tools-ai-run";
 const PENDING_KEY = "devmoter-tools-ai-pending-request";
 const terminal = (run: Run) => ["completed", "failed", "stopped", "unknown"].includes(run.status);
-const statuses: Record<string, string> = { planning: "調査内容を整理しています…", running: "確認した内容をまとめています…", completed: "完了", failed: "失敗", stop_requested: "停止要求済み・終了待ち", stopped: "作業の継続を停止", unknown: "結果不明・自動再開なし" };
+const STATUS_KEYS = new Set(["planning", "running", "completed", "failed", "stop_requested", "stopped", "unknown"]);
+const statusLabel = (status: string) => (STATUS_KEYS.has(status) ? t(`toolsAi.status.${status}`) : status);
+const esc = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const string = (value: unknown) => typeof value === "string" ? value : JSON.stringify(value) ?? "";
 const objects = (value: unknown): Data[] => Array.isArray(value) ? value as Data[] : [];
 
 export function mountToolsAi(root: HTMLElement, options: { openSettings: () => void }) {
   root.className = "tools-ai";
   root.innerHTML = `
-    <div class="tools-ai-toolbar"><button type="button" data-ai-stop disabled>Stop</button></div>
-    <form data-ai-form aria-label="プロジェクトを調べる">
-      <div class="tools-ai-composer"><textarea id="toolsAiGoal" data-ai-goal rows="1" maxlength="8000" placeholder="例：現在の変更点を整理" aria-label="調査内容"></textarea><button type="submit" data-ai-submit disabled>調査を開始</button></div>
-      <div class="tools-ai-models"><select data-ai-provider aria-label="Planner provider"></select><select data-ai-model aria-label="Planner model"></select></div>
-      <div data-ai-setup-notice role="status"><p data-ai-setup-message>AIの設定を読み込んでいます…</p><button type="button" data-ai-configure hidden>API ChatのAI設定を開く</button><button type="button" data-ai-retry hidden>設定を再読み込み</button></div>
+    <div class="tools-ai-toolbar"><button type="button" data-ai-stop disabled>${esc(t("common.stop"))}</button></div>
+    <form data-ai-form aria-label="${esc(t("toolsAi.formAria"))}">
+      <div class="tools-ai-composer"><textarea id="toolsAiGoal" data-ai-goal rows="1" maxlength="8000" placeholder="${esc(t("toolsAi.goalPlaceholder"))}" aria-label="${esc(t("toolsAi.goalAria"))}"></textarea><button type="submit" data-ai-submit disabled>${esc(t("toolsAi.submit"))}</button></div>
+      <div class="tools-ai-models"><select data-ai-provider aria-label="${esc(t("toolsAi.providerAria"))}"></select><select data-ai-model aria-label="${esc(t("toolsAi.modelAria"))}"></select></div>
+      <div data-ai-setup-notice role="status"><p data-ai-setup-message>${esc(t("toolsAi.problemLoading"))}</p><button type="button" data-ai-configure hidden>${esc(t("toolsAi.configureButton"))}</button><button type="button" data-ai-retry hidden>${esc(t("toolsAi.retryButton"))}</button></div>
     </form>
     <p data-ai-error role="alert" hidden></p>
     <div data-ai-progress data-i18n-skip role="status" aria-live="polite"></div>
@@ -60,7 +63,7 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
     if (body !== undefined) headers.set("content-type", "application/json");
     const response = await fetch(path, { method: body === undefined ? "GET" : "POST", headers, cache: "no-store", signal, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
     const data = await response.json();
-    if (!response.ok) throw Object.assign(new Error(data.error || `HTTP ${response.status}`), { status: response.status, runId: data.runId });
+    if (!response.ok) throw Object.assign(new Error(translateServerMessage(data.error) || t("common.httpError", { status: response.status })), { status: response.status, runId: data.runId });
     return data as T;
   };
   const showError = (message: string) => { error.textContent = message; error.hidden = !message; };
@@ -68,16 +71,16 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
   const option = (label: string, value: string) => { const node = root.ownerDocument.createElement("option"); node.textContent = label; node.value = value; return node; };
   const paragraph = (parent: HTMLElement, text: string) => parent.append(element("p", text));
   const pre = (parent: HTMLElement, text: string) => parent.append(element("pre", text));
-  const copy = (text: string) => { void navigator.clipboard?.writeText(text).catch(() => showError("コピーできませんでした。")); };
+  const copy = (text: string) => { void navigator.clipboard?.writeText(text).catch(() => showError(t("toolsAi.copyFailed"))); };
 
   function plannerProblem() {
-    if (contextState === "loading") return "AIの設定を読み込んでいます…";
-    if (contextState === "error") return "AIの設定を取得できません。設定を再読み込みしてください。";
+    if (contextState === "loading") return t("toolsAi.problemLoading");
+    if (contextState === "error") return t("toolsAi.problemError");
     const provider = providers.find(p => p.id === providerSelect.value);
-    if (!provider) return "Tools AIにはAPI Chatのproviderとmodelの設定が必要です。Codex / OpenCodeへのログインだけでは利用できません。";
-    if (!provider.ready) return "選択したAIのcredentialが未設定です。API ChatのAI設定で確認してください。";
-    if (provider.projectId && provider.projectId !== projectId()) return "このVault providerに紐付いたProjectがありません。";
-    if (!modelSelect.value || !provider.models.includes(modelSelect.value)) return "選択したAIのmodelが未設定です。API ChatのAI設定でmodelを登録してください。";
+    if (!provider) return t("toolsAi.problemNoProvider");
+    if (!provider.ready) return t("toolsAi.problemNotReady");
+    if (provider.projectId && provider.projectId !== projectId()) return t("toolsAi.problemProjectMismatch");
+    if (!modelSelect.value || !provider.models.includes(modelSelect.value)) return t("toolsAi.problemNoModel");
     return "";
   }
   function updateAvailability() {
@@ -106,38 +109,44 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
   }
   function renderCard(result: Result) {
     const card = element("section", "", "tools-ai-card");
-    const titles: Record<string, string> = { git: "Git状態・変更・差分", search: "検索結果", map: "Project構造", document: "Markdown文書", diagnostics: "Diagnostics · 固定host観測" };
-    card.append(element("h3", result.unavailable ? "取得不可" : titles[result.type] || "結果"));
-    const details = element("details", "", "tools-ai-result-details"); details.append(element("summary", "詳細を見る"));
-    paragraph(details, `Source: ${result.source}`);
-    if (result.builtAt !== null) { paragraph(card, "保存済みindexに基づく結果です。現在のファイル状態は未確認です。"); paragraph(details, `保存済みindex · builtAt: ${result.builtAt} (${new Date(result.builtAt).toLocaleString()})。現在のファイル状態は未確認です。`); }
-    if (result.sharing.excluded) paragraph(card, "安全上、一部内容をAIへの共有対象から除外した");
-    if (result.sharing.truncated) paragraph(card, "件数・byte上限により内容の一部を省略しました。");
+    const cardTypes = new Set(["git", "search", "map", "document", "diagnostics"]);
+    const heading = result.unavailable
+      ? t("toolsAi.card.unavailable")
+      : (cardTypes.has(result.type) ? t(`toolsAi.card.${result.type}`) : t("toolsAi.card.result"));
+    card.append(element("h3", heading));
+    const details = element("details", "", "tools-ai-result-details"); details.append(element("summary", t("toolsAi.card.viewDetails")));
+    paragraph(details, t("toolsAi.card.source", { source: result.source }));
+    if (result.builtAt !== null) {
+      paragraph(card, t("toolsAi.card.indexNotice"));
+      paragraph(details, t("toolsAi.card.indexDetails", { builtAt: String(result.builtAt), formatted: formatDateTime(result.builtAt) }));
+    }
+    if (result.sharing.excluded) paragraph(card, t("toolsAi.card.excluded"));
+    if (result.sharing.truncated) paragraph(card, t("toolsAi.card.truncated"));
     const data = result.data;
-    if (result.unavailable) paragraph(card, string(data.message));
+    if (result.unavailable) paragraph(card, translateServerMessage(string(data.message)));
     else if (result.type === "git") {
       const status = data.status as Data; const files = data.files as Data;
-      paragraph(card, `Branch: ${string(status.branch)} · changed files: ${string(files.total)}`);
+      paragraph(card, t("toolsAi.card.gitSummary", { branch: string(status.branch), total: string(files.total) }));
       pre(details, JSON.stringify(status, null, 2));
       const list = element("ul");
       for (const file of objects(files.files)) list.append(element("li", `${string(file.path)} · ${string(file.status)}`));
       card.append(list);
       for (const diff of objects(data.diffs)) {
         const diffDetails = element("details"); diffDetails.append(element("summary", string(diff.path))); pre(diffDetails, string(diff.diff));
-        if (diff.truncated) paragraph(diffDetails, "元のGit helperで差分が切り詰められています。");
+        if (diff.truncated) paragraph(diffDetails, t("toolsAi.card.diffTruncated"));
         details.append(diffDetails);
       }
     } else if (result.type === "search") {
-      paragraph(card, `Query: ${string(data.query)}`);
-      if (!objects(data.results).length) paragraph(card, "保存済みindexの返却結果は0件です。");
+      paragraph(card, t("toolsAi.card.query", { query: string(data.query) }));
+      if (!objects(data.results).length) paragraph(card, t("toolsAi.card.searchEmpty"));
       for (const hit of objects(data.results)) { paragraph(card, `${string(hit.path)}:${string(hit.line)}`); pre(card, string(hit.snippet)); }
     } else if (result.type === "map") {
-      paragraph(card, `Index内のファイル総数: ${string(data.totalFiles)}`);
+      paragraph(card, t("toolsAi.card.totalFiles", { count: string(data.totalFiles) }));
       pre(details, JSON.stringify({ directories: data.directories, files: data.files, symbols: data.symbols }, null, 2));
     } else if (result.type === "document") {
-      paragraph(card, `${string(data.path)} · 元のbyte数: ${string(data.size)}`);
+      paragraph(card, t("toolsAi.card.docMeta", { path: string(data.path), size: string(data.size) }));
       const document = element("div"); renderChatMarkdown(document, string(data.content), copy); details.append(document);
-    } else if (result.type === "diagnostics") { paragraph(card, "接続・実行環境の診断結果を取得しました。詳細から確認できます。"); pre(details, JSON.stringify(data, null, 2)); }
+    } else if (result.type === "diagnostics") { paragraph(card, t("toolsAi.card.diagnosticsDone")); pre(details, JSON.stringify(data, null, 2)); }
     card.append(details); results.append(card);
   }
   function renderRun() {
@@ -148,20 +157,20 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
     if (signature === nextSignature) return;
     signature = nextSignature;
     progress.replaceChildren(); results.replaceChildren();
-    progress.append(element("h3", statuses[run.status] || run.status));
-    const runDetails = element("details", "", "tools-ai-run-details"); runDetails.append(element("summary", "実行の詳細"));
-    paragraph(runDetails, `今回の対象: ${run.context.project?.name || "Projectなし"} / ${run.context.hostId} / ${run.context.backend}`);
-    paragraph(runDetails, `今回のPlanner: ${run.planner.providerName} / ${run.planner.model}`);
-    paragraph(progress, `調査内容: ${run.rawGoal}`);
-    if (run.cancellation.requested) paragraph(progress, "新しい操作は開始しません。開始済みの読み取りやprovider内部処理が即時停止したことは保証しません。");
+    progress.append(element("h3", statusLabel(run.status)));
+    const runDetails = element("details", "", "tools-ai-run-details"); runDetails.append(element("summary", t("toolsAi.run.details")));
+    paragraph(runDetails, t("toolsAi.run.target", { project: run.context.project?.name || t("toolsAi.run.noProject"), hostId: run.context.hostId, backend: run.context.backend }));
+    paragraph(runDetails, t("toolsAi.run.planner", { provider: run.planner.providerName, model: run.planner.model }));
+    paragraph(progress, t("toolsAi.run.goal", { goal: run.rawGoal }));
+    if (run.cancellation.requested) paragraph(progress, t("toolsAi.run.cancelNotice"));
     for (const step of run.steps) {
       paragraph(runDetails, `${step.operationId}: ${step.status}`);
       if (step.result) renderCard(step.result);
-      if (step.failure) paragraph(results, step.failure);
+      if (step.failure) paragraph(results, translateServerMessage(step.failure));
     }
     progress.append(runDetails);
-    if (run.failure) { const card = element("section", "", "tools-ai-card"); card.append(element("h3", "Error / unavailable")); paragraph(card, run.failure); results.append(card); }
-    if (run.explanation) { const explanation = element("section", "", "tools-ai-card tools-ai-explanation"); explanation.append(element("h3", "わかったこと")); const body = element("div"); renderChatMarkdown(body, run.explanation.rawText, copy); explanation.append(body); results.prepend(explanation); }
+    if (run.failure) { const card = element("section", "", "tools-ai-card"); card.append(element("h3", t("toolsAi.run.errorHeading"))); paragraph(card, translateServerMessage(run.failure)); results.append(card); }
+    if (run.explanation) { const explanation = element("section", "", "tools-ai-card tools-ai-explanation"); explanation.append(element("h3", t("toolsAi.run.explanationHeading"))); const body = element("div"); renderChatMarkdown(body, run.explanation.rawText, copy); explanation.append(body); results.prepend(explanation); }
   }
   async function refreshRun() {
     const id = run?.runId || localStorage.getItem(RUN_KEY);
@@ -172,7 +181,7 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
       if (run && run.runId !== id) return;
       if (!run || observed.updatedAt >= run.updatedAt) { run = observed; renderRun(); }
     }
-    catch (failure) { showError(`再接続できません: ${failure instanceof Error ? failure.message : failure}。手動Toolsは引き続き利用できます。`); }
+    catch (failure) { showError(t("toolsAi.reconnectError", { message: translateServerMessage(failure instanceof Error ? failure.message : String(failure)) })); }
     finally { polling = false; }
   }
   async function refresh() {
@@ -192,8 +201,8 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
       preferredProjectId = projects.some(p => p.id === selectedProject) ? selectedProject : projects[0]?.id || "";
       providers = context.providers;
       const selectedProvider = providerSelect.value || localStorage.getItem("devmoter-tools-ai-provider") || localStorage.getItem("devmoter-api-provider") || "";
-      providerSelect.replaceChildren(option("Plannerを選択", ""));
-      for (const provider of providers) providerSelect.append(option(provider.name + (provider.ready ? "" : "（未設定）"), provider.id));
+      providerSelect.replaceChildren(option(t("toolsAi.selectPlanner"), ""));
+      for (const provider of providers) providerSelect.append(option(provider.name + (provider.ready ? "" : t("toolsAi.notConfiguredSuffix")), provider.id));
       providerSelect.value = providers.some(p => p.id === selectedProvider) ? selectedProvider : providers.find(p => p.ready && p.models.length)?.id || providers.find(p => p.ready)?.id || providers[0]?.id || "";
       fillModels(); showError("");
       const pending = localStorage.getItem(PENDING_KEY);
@@ -204,13 +213,13 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
           const observed = await request<Run>(`/api/tools-ai/requests/${encodeURIComponent(original.requestId)}`);
           if (currentGeneration !== generation) return;
           run = observed; localStorage.setItem(RUN_KEY, observed.runId); localStorage.removeItem(PENDING_KEY); renderRun();
-        } catch { showError("前回の送信結果を照合できません。同じ依頼の再送信には元のrequest IDを使います。成功とは扱いません。"); }
+        } catch { showError(t("toolsAi.pendingUnverified")); }
       }
       await refreshRun();
     } catch (failure) {
       if (currentGeneration !== generation) return;
       contextState = "error";
-      showError(controller.signal.aborted ? "AIの設定の読み込みがタイムアウトしました。再読み込みしてください。" : failure instanceof Error ? failure.message : String(failure));
+      showError(controller.signal.aborted ? t("toolsAi.loadTimeout") : translateServerMessage(failure instanceof Error ? failure.message : String(failure)));
       updateAvailability();
     } finally {
       window.clearTimeout(timeout);
@@ -234,7 +243,7 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
       if (observed.updatedAt >= run.updatedAt) run = observed;
       showError(""); renderRun();
     }
-    catch (failure) { showError(`停止要求を確認できません: ${failure instanceof Error ? failure.message : failure}`); stop.disabled = false; }
+    catch (failure) { showError(t("toolsAi.stopError", { message: translateServerMessage(failure instanceof Error ? failure.message : String(failure)) })); stop.disabled = false; }
   });
   form.addEventListener("submit", async event => {
     event.preventDefault(); if (submit.disabled) return;
@@ -252,7 +261,7 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
       recoveryTarget.focus();
       return;
     }
-    if (!goal.value.trim()) { showError("何をしたいか入力してください。"); goal.focus(); return; }
+    if (!goal.value.trim()) { showError(t("toolsAi.emptyGoal")); goal.focus(); return; }
     pendingSubmit = true; updateAvailability(); showError("");
     // Capture the chosen target/model before any network await; later UI switches affect only the next goal.
     const selection = { goal: goal.value, projectId: projectId(), providerId: providerSelect.value, model: modelSelect.value };
@@ -268,11 +277,11 @@ export function mountToolsAi(root: HTMLElement, options: { openSettings: () => v
     } catch (failure) {
       const duplicate = failure as { status?: number; runId?: string };
       if (duplicate.status === 409 && duplicate.runId) {
-        try { run = await request<Run>(`/api/tools-ai/runs/${encodeURIComponent(duplicate.runId)}`); localStorage.setItem(RUN_KEY, run.runId); localStorage.removeItem(PENDING_KEY); renderRun(); showError("重複送信を検出し、元のrunの実状態を再取得しました。"); }
-        catch { showError("元のrunを照合できません。結果不明です。"); }
+        try { run = await request<Run>(`/api/tools-ai/runs/${encodeURIComponent(duplicate.runId)}`); localStorage.setItem(RUN_KEY, run.runId); localStorage.removeItem(PENDING_KEY); renderRun(); showError(t("toolsAi.duplicateRecovered")); }
+        catch { showError(t("toolsAi.duplicateUnknown")); }
       } else {
         if (duplicate.status && duplicate.status < 500) localStorage.removeItem(PENDING_KEY);
-        showError(failure instanceof Error ? failure.message : String(failure));
+        showError(translateServerMessage(failure instanceof Error ? failure.message : String(failure)));
       }
     }
     finally { pendingSubmit = false; updateAvailability(); }

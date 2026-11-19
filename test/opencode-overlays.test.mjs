@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as i18nCore from "../src/i18n-core.mjs";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
@@ -15,6 +16,7 @@ const modules = new Map(await Promise.all(ts.preProcessFile(source).importedFile
   .map(async ({ fileName }) => [fileName, await import(new URL("../src/" + fileName.slice(2), import.meta.url))])));
 // These overlay tests intentionally exercise the legacy ?unifiedUI=0 view.
 modules.set("./unified-ui-mode.mjs", await import("../src/unified-ui-mode.mjs"));
+modules.set("./feature-flags.mjs", await import("../src/feature-flags.mjs"));
 modules.set("./opencode/status", await loadPureTypeScript("opencode/status.ts"));
 modules.set("./opencode/tools", await loadPureTypeScript("opencode/tools.ts"));
 // tools-ai.ts (Global Tools) labels API model ids through the shared helper.
@@ -56,7 +58,7 @@ function mount(t) {
     if (modules.has(name)) return modules.get(name);
     if (name === "./device-gate.mjs") return deviceGate;
     if (name.endsWith(".css")) return {};
-    if (name === "./i18n") return { speechRecognitionLanguage: () => "en-US" };
+    if (name === "./i18n") return { speechRecognitionLanguage: () => "en-US", ...i18nCore };
     if (name === "./wake-lock") return {
       setWakeLockEnabled: noop, setWakeLockExecutionActive: noop,
       wakeLockEnabled: () => false, wakeLockSupported: () => false

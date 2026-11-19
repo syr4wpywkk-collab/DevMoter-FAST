@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as i18nCore from "../src/i18n-core.mjs";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
@@ -47,7 +48,7 @@ function mount(t, desktop = false) {
     if (modules.has(name)) return modules.get(name);
     if (name === "./device-gate.mjs") return deviceGate;
     if (name.endsWith(".css")) return {};
-    if (name === "./i18n") return { speechRecognitionLanguage: () => "en-US" };
+    if (name === "./i18n") return { speechRecognitionLanguage: () => "en-US", ...i18nCore };
     if (name === "./dev-workflows-ui") return { createDevWorkflowPanel: () => ({ show: async () => {} }) };
     if (name === "./mcp-result") return { isMcpToolItem: () => false, mcpToolSummary: () => ({}), normalizeStructuredMcpResult: value => ({ value, rawText: "", truncated: false }) };
     if (name === "./bounded-transcript") return { enforceTranscriptLimit: noop };
@@ -125,7 +126,7 @@ test("mobile history closes on global navigation and surface changes", t => {
 test("Codex details drawer holds no workspace shortcuts; workspace commands open a body-level panel", t => {
   const { window, document, query } = mount(t);
   window.exports = {};
-  window.Function("require", "exports", compiledWorkspace)(name => name === "./device-gate.mjs" ? deviceGate : undefined, window.exports);
+  window.Function("require", "exports", compiledWorkspace)(name => (name === "./device-gate.mjs" ? deviceGate : name === "./i18n" ? i18nCore : undefined), window.exports);
   const stop = window.exports.startWorkspaceControl();
   t.after(stop);
   const panel = query("#cxDetailsPanel");
