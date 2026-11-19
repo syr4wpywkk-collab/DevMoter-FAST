@@ -13,6 +13,13 @@ POCKET_PIDFILE="$STATE_DIR/pocket.pid"
 OC_LOG="$STATE_DIR/opencode.log"
 POCKET_LOG="$STATE_DIR/pocket.log"
 
+# The secret files below are created by shell redirection, which uses the
+# caller's umask (typically 022 -> mode 644) until the chmod after creation
+# runs. Restrict the umask first so the credentials are owner-only from the
+# moment they exist; restore it once both secrets are in place.
+PREV_UMASK="$(umask)"
+umask 077
+
 mkdir -p "$STATE_DIR"
 chmod 700 "$STATE_DIR"
 
@@ -39,6 +46,8 @@ PY
   fi
   AUTH_PASS="$(cat "$AUTH_SECRET_FILE")"
 fi
+
+umask "$PREV_UMASK"
 
 stop_pidfile() {
   local pidfile="$1"
