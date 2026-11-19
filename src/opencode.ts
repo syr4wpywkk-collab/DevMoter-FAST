@@ -1674,12 +1674,12 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
   // A draft in the composer while no conversation is open belongs to a new
   // chat: a later list load (retry, periodic refresh) must not open the saved
-  // conversation under it. A draft restored from storage at load is the saved
-  // conversation's own draft, so it keeps that conversation.
-  const draftRestoredAtLoad = Boolean(promptInput.value);
+  // conversation under it. A draft restored from storage at load, left as it
+  // was, is the saved conversation's own draft, so it keeps that conversation.
+  const draftAtLoad = promptInput.value;
   function draftStartedWithoutConversation() {
-    if (draftRestoredAtLoad) return false;
-    return Boolean(promptInput.value.trim()) || pendingAttachments.length > 0 || selectedContextRefs.length > 0;
+    const text = promptInput.value;
+    return (Boolean(text.trim()) && text !== draftAtLoad) || pendingAttachments.length > 0 || selectedContextRefs.length > 0;
   }
 
   async function loadSessions() {

@@ -284,3 +284,14 @@ test("Codex list retry still reopens the saved thread for a draft restored at lo
   await settle();
   assert.ok(methods.slice(before).includes("thread/resume"), "the restored draft keeps its saved thread");
 });
+
+test("Codex list retry does not reopen the saved thread once a restored draft is rewritten", async t => {
+  const { document, methods } = await mountWithFailedThreadList(t, { savedThread: "thread-1", storedDraft: "draft kept across reload" });
+  document.querySelector("#cxPromptInput").value = "a different question";
+  const before = methods.length;
+  document.querySelector("#cxSidebarThreads [data-history-retry] button").click();
+  await settle();
+  await settle();
+  assert.deepEqual(methods.slice(before), ["thread/list"]);
+  assert.equal(document.querySelector("#cxPromptInput").value, "a different question");
+});

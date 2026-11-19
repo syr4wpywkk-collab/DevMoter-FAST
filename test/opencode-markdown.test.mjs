@@ -272,3 +272,13 @@ test("OpenCode list retry still opens the saved session for a draft restored at 
   assert.ok(ui.requests.slice(before).some(request => request.path.startsWith("/api/opencode/session/session-1")), "the restored draft keeps its saved session");
   assert.equal(ui.root.querySelector("#ocxPromptInput").value, "draft kept across reload");
 });
+
+test("OpenCode list retry does not open the saved session once a restored draft is rewritten", async t => {
+  const ui = await harness(t, [], { listFailures: 1, storedDraft: "draft kept across reload" });
+  ui.root.querySelector("#ocxPromptInput").value = "a different question";
+  const before = ui.requests.length;
+  ui.root.querySelector("#ocxSessions [data-history-retry] button").click();
+  await settle();
+  assert.deepEqual(ui.requests.slice(before).filter(request => request.path.startsWith("/api/opencode/session/session-1")), []);
+  assert.equal(ui.root.querySelector("#ocxPromptInput").value, "a different question");
+});
