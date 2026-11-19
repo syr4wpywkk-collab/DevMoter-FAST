@@ -151,6 +151,26 @@ test("required sandbox fails closed when bwrap is unavailable", () => {
     }),
     /required.*unavailable/i
   );
+  assert.throws(
+    () => buildBubblewrapCommand({
+      projectPath: "/tmp/project", command: "echo", args: ["ok"],
+      env: { DEVMOTER_SANDBOX: "preferred" }, failClosed: true, spawn
+    }),
+    /required.*unavailable/i
+  );
+  assert.throws(
+    () => buildBubblewrapCommand({
+      projectPath: "/tmp/project", command: "echo", args: ["ok"],
+      env: { DEVMOTER_SANDBOX: "off" }, failClosed: true, spawn: () => ({ status: 0, stdout: "bubblewrap 0.10.0" })
+    }),
+    /disabled.*fail-closed/i
+  );
+  const preferredNonFailClosed = buildBubblewrapCommand({
+    projectPath: "/tmp/project", command: "echo", args: ["ok"],
+    env: { DEVMOTER_SANDBOX: "preferred" }, spawn
+  });
+  assert.equal(preferredNonFailClosed.sandboxed, false);
+  assert.equal(preferredNonFailClosed.warning, "bubblewrap unavailable");
 });
 
 test("available sandbox binds project and explicit grants", () => {
