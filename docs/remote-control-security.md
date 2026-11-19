@@ -4,7 +4,7 @@
 
 Passkeys are optional. Credentials are scoped to the exact DevMoter RP ID (host name) and are never reused as backend credentials.
 
-Auth v2 requires authenticated owner sign-in before passkey registration. Use local recovery or another linked sign-in method, then register from Account > Passkey. Remote origins must use HTTPS and should set the canonical `DEVMOTER_PUBLIC_ORIGIN`. A reverse proxy connecting over 127.0.0.1 does not make the browser origin local.
+Auth v2 requires authenticated owner sign-in before passkey registration. Use local recovery or another linked sign-in method, then register from Account > Passkey. Remote origins must use HTTPS and should set the canonical `DEVMOTER_PUBLIC_ORIGIN`. A reverse proxy connecting over 127.0.0.1 does not make the browser origin local. When `DEVMOTER_PUBLIC_ORIGIN` is not set, requests whose `Host` is not loopback, an IP literal, this machine's own name or a `*.ts.net` name are refused with 421 unless the name is listed in `DEVMOTER_ALLOWED_HOSTS`; this blocks DNS rebinding. The unauthenticated GitHub webhook endpoint accepts at most 120 requests per client and 600 in total per minute.
 
 The legacy `DEVMOTER_PASSKEY_BOOTSTRAP=1` setting is retained for the standalone passkey module. It never bypasses owner authentication on the server's registration routes. Keep it disabled in normal service use.
 
