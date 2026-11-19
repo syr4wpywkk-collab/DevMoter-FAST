@@ -1927,6 +1927,7 @@ export const ja = {
   "apiChat.agentOpenCodeSummary": "エージェント実行",
   "apiChat.agentApiSummary": "マルチプロバイダー",
   "apiChat.newChatButton": "＋ 新しいチャット",
+  "apiChat.newChatAria": "新しいチャット",
   "apiChat.chatsAria": "会話",
   "apiChat.menuAria": "メニュー",
   "apiChat.topModelUnset": "プロバイダー / モデル未設定",

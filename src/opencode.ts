@@ -308,7 +308,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         </button>
 
         <button id="ocxModelButton" type="button" class="ocx-context-button">${escapeHtml(t("opencode.topbar.modelFallback"))}</button>
-        <button id="ocxNewSessionTop" class="ocx-icon" type="button" aria-label="${escapeHtml(t("opencode.sidebar.newSessionAria"))}">＋</button>
+        <button id="ocxNewSessionTop" class="ocx-icon" type="button" aria-label="${escapeHtml(t("opencode.sidebar.newSessionAria"))}" title="${escapeHtml(t("opencode.sidebar.newSessionAria"))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
       </header>
 
       <main class="ocx-main">
