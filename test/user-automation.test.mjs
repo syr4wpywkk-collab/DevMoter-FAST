@@ -241,18 +241,24 @@ test("user automation state is private config data and round-trips normalized co
   assert.equal(raw.slashCommands[0].source, "user");
 });
 
-test("approved hook subprocess env strips inherited tokens and injection hooks", () => {
+test("approved hook subprocess env inherits only allowlisted variables, strips secrets/unlisted vars, and blocks injection hooks", () => {
   const schema = { schemaVersion: 1, event: "after-run", payload: {} };
   const env = hookChildEnvironment("after-run", schema, {
     PATH: "/usr/bin",
+    LANG: "C.UTF-8",
     DEVMOTER_PRIVATE_TOKEN: "hidden",
     OPENAI_API_KEY: "hidden",
+    DATABASE_URL: "postgres://hidden",
+    SUPABASE_SERVICE_ROLE_KEY: "hidden-role-key",
     NODE_OPTIONS: "--require=attacker.js",
     LD_PRELOAD: "/tmp/injected.so",
-    NORMAL_LABEL: "safe"
+    UNLISTED_VAR: "not-allowlisted"
   });
   assert.equal(env.PATH, "/usr/bin");
-  assert.equal(env.NORMAL_LABEL, "safe");
+  assert.equal(env.LANG, "C.UTF-8");
+  assert.equal(env.UNLISTED_VAR, undefined);
+  assert.equal(env.DATABASE_URL, undefined);
+  assert.equal(env.SUPABASE_SERVICE_ROLE_KEY, undefined);
   assert.equal(env.DEVMOTER_PRIVATE_TOKEN, undefined);
   assert.equal(env.OPENAI_API_KEY, undefined);
   assert.equal(env.NODE_OPTIONS, undefined);
