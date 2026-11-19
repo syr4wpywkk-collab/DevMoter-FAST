@@ -4,12 +4,107 @@ import readline from "node:readline";
 import { assertCliReady, cliDefinition } from "./cli-launch.mjs";
 import { errorMessage } from "./error-message.mjs";
 
+const ACP_ALLOWED_ENV_KEYS = new Set([
+  "PATH",
+  "HOME",
+  "USER",
+  "LOGNAME",
+  "SHELL",
+  "TERM",
+  "COLORTERM",
+  "NO_COLOR",
+  "LANG",
+  "LANGUAGE",
+  "TZ",
+  "TMPDIR",
+  "TMP",
+  "TEMP",
+  "HTTP_PROXY",
+  "HTTPS_PROXY",
+  "NO_PROXY",
+  "ALL_PROXY",
+  "http_proxy",
+  "https_proxy",
+  "no_proxy",
+  "all_proxy",
+  "NODE_EXTRA_CA_CERTS",
+  "SSL_CERT_FILE",
+  "SSL_CERT_DIR",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "XDG_STATE_HOME",
+  "XDG_CACHE_HOME",
+  "XDG_RUNTIME_DIR",
+  "XDG_CONFIG_DIRS",
+  "XDG_DATA_DIRS"
+]);
+
+const ACP_ALLOWED_LC_KEY =
+  /^LC_(?:ALL|COLLATE|CTYPE|MESSAGES|MONETARY|NUMERIC|TIME|ADDRESS|IDENTIFICATION|MEASUREMENT|NAME|PAPER|TELEPHONE)$/;
+
+const VALID_ENV_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const PROCESS_INJECTION_ENV_KEYS = new Set([
+  "BASH_ENV", "ENV", "NODE_OPTIONS", "NODE_PATH", "PYTHONPATH", "PYTHONSTARTUP",
+  "RUBYOPT", "PERL5OPT", "LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES", "DYLD_LIBRARY_PATH"
+]);
+
+export function normalizeAcpEnvPassthrough(value) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter(key =>
+    typeof key === "string" && VALID_ENV_KEY.test(key) &&
+    key !== "__proto__" && key !== "constructor" && key !== "prototype" &&
+    !PROCESS_INJECTION_ENV_KEYS.has(key.toUpperCase())
+  ))].slice(0, 32);
+}
+
+function isAllowedInheritedEnvKey(key) {
+  return ACP_ALLOWED_ENV_KEYS.has(key) || ACP_ALLOWED_LC_KEY.test(key);
+}
+
+/**
+ * Build a minimal environment for an ACP agent child process from an explicit
+ * allowlist of operational parent variables plus any agent-configured entries.
+ */
+export function acpChildEnv(baseEnv = process.env, explicitEnv = null, inheritEnvKeys = []) {
+  const source = baseEnv && typeof baseEnv === "object" ? baseEnv : {};
+  const inherited = new Set(normalizeAcpEnvPassthrough(inheritEnvKeys));
+  const env = {};
+
+  for (const [key, value] of Object.entries(source)) {
+    if (!isAllowedInheritedEnvKey(key) && !inherited.has(key)) continue;
+    if (typeof value !== "string" || value.includes("\0")) continue;
+    env[key] = value;
+  }
+
+  if (explicitEnv && typeof explicitEnv === "object" && !Array.isArray(explicitEnv)) {
+    for (const [key, value] of Object.entries(explicitEnv)) {
+      if (!VALID_ENV_KEY.test(key) || key === "__proto__" || key === "constructor" || key === "prototype") {
+        throw new Error("Invalid ACP environment variable name");
+      }
+      if (value === undefined || value === null) {
+        delete env[key];
+        continue;
+      }
+      const stringValue = String(value);
+      if (stringValue.includes("\0")) {
+        throw new Error("Invalid ACP environment variable value");
+      }
+      env[key] = stringValue;
+    }
+  }
+
+  return env;
+}
+
 export class AcpAdapter extends EventEmitter {
-  constructor({ command, args = [], cwd = process.cwd(), spawnImpl = spawn } = {}) {
+  constructor({ command, args = [], cwd = process.cwd(), env = null, baseEnv = process.env, inheritEnvKeys = [], spawnImpl = spawn } = {}) {
     super();
     this.command = String(command || "").trim();
     this.args = Array.isArray(args) ? args.map(value => String(value)) : [];
     this.cwd = cwd;
+    this.env = env && typeof env === "object" && !Array.isArray(env) ? { ...env } : null;
+    this.baseEnv = baseEnv && typeof baseEnv === "object" && !Array.isArray(baseEnv) ? baseEnv : process.env;
+    this.inheritEnvKeys = normalizeAcpEnvPassthrough(inheritEnvKeys);
     this.spawnImpl = spawnImpl;
     this.child = null;
     this.lines = null;
@@ -44,15 +139,16 @@ export class AcpAdapter extends EventEmitter {
   }
 
   async #initialize(timeoutMs) {
+    const env = acpChildEnv(this.baseEnv, this.env, this.inheritEnvKeys);
     let command = this.command;
     if (cliDefinition(command)) {
-      const ready = await assertCliReady(command);
+      const ready = await assertCliReady(command, { env });
       command = ready.resolvedPath;
       this.command = command;
     }
     const child = this.spawnImpl(command, this.args, {
       cwd: this.cwd,
-      env: process.env,
+      env,
       stdio: ["pipe", "pipe", "pipe"]
     });
     this.child = child;
