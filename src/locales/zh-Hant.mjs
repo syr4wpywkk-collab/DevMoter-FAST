@@ -535,7 +535,7 @@ export const zhHant = {
   "settings.diagnostics.buildMismatch": "此裝置執行的組建與主機不同。重新載入頁面即可載入主機的組建。",
   "settings.diagnostics.connectionsHeading": "後端連線",
   "settings.diagnostics.copyButton": "複製診斷資訊",
-  "settings.diagnostics.copyHint": "僅複製版本、組建與連線狀態，不包含權杖、密碼、路徑或檔案內容。",
+  "settings.diagnostics.copyHint": "複製版本、組建、連線狀態、CLI 與前置指令是否可用、專案數量、網路模式和取得時間，不包含權杖、密碼、路徑或檔案內容。",
   "settings.diagnostics.copied": "已複製診斷資訊",
   "settings.guide.subtitle": "新手入門",
   "settings.guide.heroTitle": "5 大核心功能",

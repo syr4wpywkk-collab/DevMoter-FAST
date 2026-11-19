@@ -230,3 +230,16 @@ test("#471 copied report is built from an allowlist and carries no secrets or pe
   assert.match(empty, /Host build: unknown/);
   assert.match(empty, /Projects: unknown/);
 });
+
+test("build mismatch compares full identifiers, not the shortened display form", async () => {
+  const { buildsDiffer, formatBuildId } = await import("../src/diagnostics-format.mjs");
+  const host = "4db61e793d440000000000000000000000000000";
+  const device = "4db61e793d440e1c99d6d72508969099bcb4af7a";
+  assert.equal(formatBuildId(host), formatBuildId(device));
+  assert.equal(buildsDiffer(host, device), true);
+  assert.equal(buildsDiffer(host, host), false);
+  assert.equal(buildsDiffer("other-build-1", device), true);
+  assert.equal(buildsDiffer("", device), false);
+  assert.equal(buildsDiffer(host, "bad id/../x"), false);
+  assert.equal(buildsDiffer(null, undefined), false);
+});

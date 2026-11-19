@@ -535,7 +535,7 @@ export const en = {
   "settings.diagnostics.buildMismatch": "This device runs a different build than the host. Reload the page to load the host's build.",
   "settings.diagnostics.connectionsHeading": "Backend connections",
   "settings.diagnostics.copyButton": "Copy diagnostics",
-  "settings.diagnostics.copyHint": "Copies versions, builds and connection states only. Tokens, passwords, paths and file contents are not included.",
+  "settings.diagnostics.copyHint": "Copies versions, builds, connection states, CLI and prerequisite availability, project count, network mode and fetch times. Tokens, passwords, paths and file contents are not included.",
   "settings.diagnostics.copied": "Diagnostics copied",
   "settings.guide.subtitle": "Getting Started",
   "settings.guide.heroTitle": "5 Core Features",

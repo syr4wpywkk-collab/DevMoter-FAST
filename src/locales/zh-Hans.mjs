@@ -535,7 +535,7 @@ export const zhHans = {
   "settings.diagnostics.buildMismatch": "此设备运行的构建与主机不同。重新加载页面即可载入主机的构建。",
   "settings.diagnostics.connectionsHeading": "后端连接",
   "settings.diagnostics.copyButton": "复制诊断信息",
-  "settings.diagnostics.copyHint": "仅复制版本、构建和连接状态，不包含令牌、密码、路径或文件内容。",
+  "settings.diagnostics.copyHint": "复制版本、构建、连接状态、CLI 与前置命令是否可用、项目数量、网络模式和获取时间，不包含令牌、密码、路径或文件内容。",
   "settings.diagnostics.copied": "已复制诊断信息",
   "settings.guide.subtitle": "基础使用说明",
   "settings.guide.heroTitle": "5 大核心功能",

@@ -535,7 +535,7 @@ export const ja = {
   "settings.diagnostics.buildMismatch": "この端末はホストと異なるビルドで動いています。ページを再読み込みするとホストのビルドが読み込まれます。",
   "settings.diagnostics.connectionsHeading": "バックエンド接続",
   "settings.diagnostics.copyButton": "診断情報をコピー",
-  "settings.diagnostics.copyHint": "バージョン・ビルド・接続状態だけをコピーします。トークン、パスワード、パス、ファイル内容は含みません。",
+  "settings.diagnostics.copyHint": "バージョン、ビルド、接続状態、CLI と前提コマンドの有無、プロジェクト数、ネットワーク種別、取得時刻をコピーします。トークン、パスワード、パス、ファイル内容は含みません。",
   "settings.diagnostics.copied": "診断情報をコピーしました",
   "settings.guide.subtitle": "基本の使い方",
   "settings.guide.heroTitle": "よく使う5つの機能",

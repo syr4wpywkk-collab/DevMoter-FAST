@@ -807,6 +807,16 @@ html[data-devmoter-theme="light"] .devmoter-guide-hero {
   white-space: nowrap;
 }
 
+/* Connection rows carry a state and a check time; wrap instead of clipping the time. */
+.devmoter-settings-health-row[data-connection] {
+  padding-block: 8px;
+}
+
+.devmoter-settings-health-row[data-connection] small {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 html[data-devmoter-density="compact"] .devmoter-settings-row {
   min-height: 44px;
   padding-top: 6px;

@@ -27,6 +27,14 @@ export function formatBuildId(value, language) {
   return FULL_SHA_PATTERN.test(text) ? text.slice(0, 12) : text;
 }
 
+// Compares the full validated identifiers; display shortening must not hide a difference.
+export function buildsDiffer(hostBuild, deviceBuild) {
+  const host = typeof hostBuild === "string" ? hostBuild.trim() : "";
+  const device = typeof deviceBuild === "string" ? deviceBuild.trim() : "";
+  if (!BUILD_ID_PATTERN.test(host) || !BUILD_ID_PATTERN.test(device)) return false;
+  return host !== device;
+}
+
 function formatTime(timestamp, locale) {
   const formatted = formatDateTime(timestamp, {
     year: "numeric", month: "2-digit", day: "2-digit",

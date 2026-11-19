@@ -1,7 +1,7 @@
 import "./settings.css";
 import {
   buildDiagnosticsReport, classifyFetchFailure, describeConnection, describeFetchFailure, describeHealthFetch,
-  formatBuildId, formatCheckedAt, formatNodeVersion, listConnections, type FailureKind
+  buildsDiffer, formatBuildId, formatCheckedAt, formatNodeVersion, listConnections, type FailureKind
 } from "./diagnostics-format.mjs";
 
 declare const __DEVMOTER_BUILD__: string | undefined;
@@ -870,10 +870,13 @@ export function mountSettingsPanel() {
   function renderDiagnostics() {
     setHeader(t("settings.root.diagnostics"), t("settings.diagnostics.subtitle"));
     const fetchState = describeHealthFetch(diagnosticsFetch);
-    const hostBuild = formatBuildId(diagnostics?.app?.build);
-    const deviceBuild = formatBuildId(CLIENT_BUILD);
-    const unknownBuild = formatBuildId("");
-    const buildMismatch = hostBuild !== unknownBuild && deviceBuild !== unknownBuild && hostBuild !== deviceBuild;
+    const buildMismatch = buildsDiffer(diagnostics?.app?.build, CLIENT_BUILD);
+    let hostBuild = formatBuildId(diagnostics?.app?.build);
+    let deviceBuild = formatBuildId(CLIENT_BUILD);
+    if (buildMismatch && hostBuild === deviceBuild) {
+      hostBuild = String(diagnostics.app.build).trim();
+      deviceBuild = CLIENT_BUILD.trim();
+    }
     scroll.innerHTML = `
       <section class="devmoter-settings-section">
         <h2>${escapeHtml(t("settings.diagnostics.statusHeading"))}</h2>
