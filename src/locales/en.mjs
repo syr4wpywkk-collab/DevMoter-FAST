@@ -1912,6 +1912,7 @@ export const en = {
   "qwen.chat.emptyHistory": "No chats yet.",
   "qwen.chat.deleteChatAria": "Delete \"{title}\"",
   "qwen.chat.deleteChatConfirm": "Delete \"{title}\"?",
+  "qwen.chat.restoreChat": "Undo: restore \"{title}\"",
   "qwen.chat.stoppedMessage": "Stopped",
   "qwen.chat.chatProjectNotFound": "This chat's project was not found.",
   "qwen.chat.chooseProjectFirst": "Choose a project first.",

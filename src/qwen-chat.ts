@@ -156,6 +156,8 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   let sheetReturnFocus: HTMLElement | null = null;
   // One quiet line for problems that are not part of a chat (no project, storage full).
   let notice = "";
+  // The last deleted chat can be restored until another chat is deleted (#344).
+  let lastDeleted: QwenChat | null = null;
 
   if (typeof ResizeObserver !== "undefined") {
     new ResizeObserver(() => {
@@ -309,6 +311,15 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   function renderHistory() {
     const sorted = sortQwenChats(chats);
     historyList.replaceChildren();
+    if (lastDeleted) {
+      const restore = document.createElement("button");
+      restore.type = "button";
+      restore.className = "qx-history-restore";
+      restore.dataset.restoreChat = lastDeleted.id;
+      restore.textContent = t("qwen.chat.restoreChat", { title: lastDeleted.title });
+      restore.addEventListener("click", restoreDeletedChat);
+      historyList.append(restore);
+    }
     if (!sorted.length) {
       const empty = document.createElement("p");
       empty.className = "qx-history-empty";
@@ -397,12 +408,24 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     if (!chat) return;
     if (!window.confirm(t("qwen.chat.deleteChatConfirm", { title: chat.title }))) return;
     if (live?.chatId === id) stopRun();
+    lastDeleted = chat;
     chats = chats.filter(item => item.id !== id);
     if (activeId === id) activeId = null;
     persist();
     render();
     renderHistory();
     (historyList.querySelector<HTMLElement>("button") ?? head.closeButton).focus({ preventScroll: true });
+  }
+
+  function restoreDeletedChat() {
+    const chat = lastDeleted;
+    lastDeleted = null;
+    if (!chat) return;
+    if (!chats.some(item => item.id === chat.id)) chats = sortQwenChats([chat, ...chats]);
+    persist();
+    render();
+    renderHistory();
+    historyList.querySelector<HTMLElement>(`[data-chat-id="${CSS.escape(chat.id)}"]`)?.focus({ preventScroll: true });
   }
 
   function resizeInput() {

@@ -1912,6 +1912,7 @@ export const zhHans = {
   "qwen.chat.emptyHistory": "还没有对话。",
   "qwen.chat.deleteChatAria": "删除“{title}”",
   "qwen.chat.deleteChatConfirm": "确定要删除“{title}”吗？",
+  "qwen.chat.restoreChat": "撤销：恢复“{title}”",
   "qwen.chat.stoppedMessage": "已停止",
   "qwen.chat.chatProjectNotFound": "找不到此对话所属的项目。",
   "qwen.chat.chooseProjectFirst": "请先选择项目。",
