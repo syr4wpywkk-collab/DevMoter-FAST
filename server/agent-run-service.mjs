@@ -290,7 +290,12 @@ export function createAgentRunService({
         });
       }
     }
-    await atomicWriteJson(filePath, runtime.exportState());
+    // Marking runs failed above already queued writes. Write through the same
+    // queue so startup never has two writes in flight and `ready()` resolves
+    // only after all of them, while a failed startup write still rejects.
+    const startupWrite = persistChain.then(() => atomicWriteJson(filePath, runtime.exportState()));
+    persistChain = startupWrite.catch(() => {});
+    await startupWrite;
   })();
 
   function runIdForParams(params) {
