@@ -1546,3 +1546,4 @@ body.codex-mode #app {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.dm-code-head > .dm-code-language { margin-right: auto; }
