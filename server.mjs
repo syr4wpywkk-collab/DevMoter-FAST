@@ -9,7 +9,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { CodexBridge } from "./server/codex-bridge.mjs";
 import { inspectKnownClis, launchCode } from "./server/cli-launch.mjs";
 import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/opencode-provider-catalog.mjs";
-import { canonicalOpenCodeEvent, createSseReader, lastAssistantText, parseDevMoterPrompt, parsePermissionDecision, parseQuestionAnswers } from "./server/opencode-adapter.mjs";
+import { canonicalOpenCodeEvent, createSseReader, lastAssistantText, lastTurnFailure, parseDevMoterPrompt, parsePermissionDecision, parseQuestionAnswers } from "./server/opencode-adapter.mjs";
 import { createOpenCodeClient } from "./server/opencode-api.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, fullyDecodePath, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
@@ -1312,7 +1312,14 @@ async function executeControlTaskCore(definition, context = {}) {
     const signal = AbortSignal.timeout(taskTimeoutMs(context));
     await openCode.prompt(sessionId, { text: task }, { headers, signal });
     await openCode.waitForIdle(sessionId, { headers, signal });
-    const answer = lastAssistantText(await openCode.context(sessionId, { headers }));
+    const turnContext = await openCode.context(sessionId, { headers });
+    const failure = lastTurnFailure(turnContext);
+    if (failure) {
+      throw new Error(failure.outcome === "interrupted"
+        ? "OpenCode turn was interrupted before it finished"
+        : failure.reason ? "OpenCode turn failed: " + failure.reason : "OpenCode turn failed");
+    }
+    const answer = lastAssistantText(turnContext);
     const promptSummary = answer.slice(-4000);
     return {
       complete: promptSummary.includes("[DEVMOTER_AUTOPILOT_DONE]"),
