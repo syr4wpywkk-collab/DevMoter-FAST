@@ -7,7 +7,7 @@ import { JSDOM } from "jsdom";
 import { createSystemFeatures } from "../server/system-features.mjs";
 import { CLIENT_ORIGIN_HEADER, diagnosePublicOrigin } from "../server/origin-diagnostics.mjs";
 import { DICTIONARIES } from "../src/i18n-core.mjs";
-import { createDeviceGate, deviceAuthReason, isDeviceAuthError } from "../src/device-gate.mjs";
+import { createDeviceGate, deviceAuthReason, isDeviceAuthError, noteDeviceTrustChange } from "../src/device-gate.mjs";
 import { SECRET_KINDS, detectSecretKinds, startPasteSecretGuard } from "../src/paste-secret-guard.mjs";
 
 function request({ token = "", host = "127.0.0.1:8787", headers = {} } = {}) {
@@ -210,5 +210,43 @@ test("gate explains a revoked registration, recognises localized refusals, and n
   dom.window.close();
 
   const source = await readFile(new URL("../src/device-gate.mjs", import.meta.url), "utf8");
-  assert.doesNotMatch(source, /localStorage|devmoter-device-token|x-devmoter-device-token/);
+  assert.doesNotMatch(source, /devmoter-device-token|x-devmoter-device-token/);
+});
+
+test("after this browser revokes itself the gate still says revoked, until it is registered again", async () => {
+  const stored = new Map();
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: key => (stored.has(key) ? stored.get(key) : null),
+      setItem: (key, value) => stored.set(key, String(value)),
+      removeItem: key => stored.delete(key)
+    }
+  });
+  try {
+    const tokenless = new Error("Trusted device token required");
+    assert.equal(deviceAuthReason(tokenless), "unregistered");
+    noteDeviceTrustChange({ revokedCurrent: false });
+    assert.equal(deviceAuthReason(tokenless), "unregistered", "revoking another device changes nothing here");
+    noteDeviceTrustChange({ revokedCurrent: true });
+    assert.equal(deviceAuthReason(tokenless), "revoked");
+    assert.deepEqual([...stored.values()], ["1"], "only a flag is stored");
+    noteDeviceTrustChange({ trusted: true });
+    assert.equal(deviceAuthReason(tokenless), "unregistered");
+    assert.equal(stored.size, 0);
+  } finally {
+    if (previous) Object.defineProperty(globalThis, "localStorage", previous);
+    else delete globalThis.localStorage;
+  }
+
+  for (const file of ["../src/settings.ts", "../src/system-panel.ts"]) {
+    const source = await readFile(new URL(file, import.meta.url), "utf8");
+    assert.ok(source.includes('detail: { action: "revoke", revokedCurrent }'), file);
+    assert.match(source, /if \(!window\.confirm\([\s\S]*?\)\)\) return;\s+try \{\s+const result = await request\(`\/api\/devices\//, file);
+  }
+  const gateSource = await readFile(new URL("../src/device-gate.mjs", import.meta.url), "utf8");
+  assert.ok(gateSource.includes('addEventListener?.("devmoter:device-trust-changed"'));
+  const control = await readFile(new URL("../src/control-center.ts", import.meta.url), "utf8");
+  assert.ok(control.includes('deviceAuthReason(error) === "revoked" ? undefined : t("deviceGate.toolsLockedCopy"'));
 });

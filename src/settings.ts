@@ -1271,9 +1271,10 @@ export function mountSettingsPanel() {
             lastUsed: button.dataset.deviceLastUsed || t("common.unknown")
           }))) return;
           try {
-            await request(`/api/devices/${encodeURIComponent(button.dataset.deviceId || "")}`, { method: "DELETE" }, true);
+            const result = await request(`/api/devices/${encodeURIComponent(button.dataset.deviceId || "")}`, { method: "DELETE" }, true);
             issuedPairing = null;
-            window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { action: "revoke" } }));
+            const revokedCurrent = result.revokedCurrentDevice === true;
+            window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { action: "revoke", revokedCurrent } }));
             toast(t("settings.devices.revokedToast"));
             await renderDevices();
           } catch (error) {
