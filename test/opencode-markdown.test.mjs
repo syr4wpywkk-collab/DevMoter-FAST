@@ -234,7 +234,7 @@ test("failed OpenCode session list offers an in-place retry that keeps the draft
   assert.equal(notice.querySelector("p").textContent, i18nCore.translate("en", "chat.history.listLoadFailed"));
 
   ui.root.querySelector("#ocxPromptInput").value = "unsent draft";
-  ui.root.querySelector("#ocxPromptInput").dispatchEvent(new ui.window.Event("input", { bubbles: true }));
+  // Set without an input event, as voice input does.
   const before = ui.requests.length;
   notice.querySelector("button").click();
   await settle();

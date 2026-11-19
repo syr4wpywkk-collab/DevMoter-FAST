@@ -258,7 +258,7 @@ test("Codex list retry survives a search and does not swap a draft for the saved
   assert.ok(notice, "clearing the search brings the retry back while the list is still missing");
 
   document.querySelector("#cxPromptInput").value = "draft for a new chat";
-  document.querySelector("#cxPromptInput").dispatchEvent(new window.Event("input", { bubbles: true }));
+  // Set without an input event, as voice input and command expansion do.
   const before = methods.length;
   notice.querySelector("button").click();
   await settle();

@@ -1672,16 +1672,14 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     }
   }
 
-  // Text the user types (or files they attach) while no conversation is open
-  // belong to a new chat: a later list load (retry, periodic refresh) must not
-  // open the saved conversation under them. A draft restored from storage at
-  // load fires no input event, so the saved conversation still comes back.
-  let typedWithoutConversation = false;
-  promptInput.addEventListener("input", () => {
-    if (!activeSession) typedWithoutConversation = true;
-  });
+  // A draft in the composer while no conversation is open belongs to a new
+  // chat: a later list load (retry, periodic refresh) must not open the saved
+  // conversation under it. A draft restored from storage at load is the saved
+  // conversation's own draft, so it keeps that conversation.
+  const draftRestoredAtLoad = Boolean(promptInput.value);
   function draftStartedWithoutConversation() {
-    return (typedWithoutConversation && Boolean(promptInput.value.trim())) || pendingAttachments.length > 0 || selectedContextRefs.length > 0;
+    if (draftRestoredAtLoad) return false;
+    return Boolean(promptInput.value.trim()) || pendingAttachments.length > 0 || selectedContextRefs.length > 0;
   }
 
   async function loadSessions() {
