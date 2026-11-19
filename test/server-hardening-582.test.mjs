@@ -584,18 +584,20 @@ test("OpenCode session modes are removed on session DELETE and SSE session.delet
     return { status: response.status, payload: await response.json().catch(() => ({})) };
   };
 
-  // 1. Set plan mode for ses_del via prompt, verify shell mutation is blocked without re-sending header.
-  assert.equal((await api("POST", "/session/ses_del/prompt", { text: "hi" }, { "x-pocket-agent-mode": "plan" })).status, 200);
+  // 1. Set plan mode for ses_del via prompt, verify shell mutation is blocked.
+  assert.equal((await api("POST", "/session/ses_del/prompt", { text: "hi", agent: "plan" })).status, 200);
   assert.equal((await api("POST", "/session/ses_del/shell", { command: "echo hi" })).status, 403);
 
-  // 2. Delete ses_del -> mode entry is cleared, so subsequent call reverts to build mode (reaches upstream).
+  // 2. Delete ses_del -> mode entry is cleared; unresolved sessions fail closed.
   assert.equal((await api("DELETE", "/session/ses_del")).status, 200);
+  const beforeDeleteLookup = upstreamRequests.filter(r => r.method === "GET" && r.path === "/api/session/ses_del").length;
   const afterDelete = await api("POST", "/session/ses_del/shell", { command: "echo hi" });
-  assert.equal(afterDelete.status, 200);
-  assert.ok(upstreamRequests.some(r => r.method === "POST" && r.path === "/api/session/ses_del/shell"));
+  assert.equal(afterDelete.status, 403);
+  assert.equal(upstreamRequests.filter(r => r.method === "GET" && r.path === "/api/session/ses_del").length, beforeDeleteLookup + 1);
+  assert.ok(!upstreamRequests.some(r => r.method === "POST" && r.path === "/api/session/ses_del/shell"));
 
   // 3. Set plan mode for ses_sse, receive SSE session.deleted event, verify mode entry is cleared.
-  assert.equal((await api("POST", "/session/ses_sse/prompt", { text: "hi" }, { "x-pocket-agent-mode": "plan" })).status, 200);
+  assert.equal((await api("POST", "/session/ses_sse/prompt", { text: "hi", agent: "plan" })).status, 200);
   assert.equal((await api("POST", "/session/ses_sse/shell", { command: "echo hi" })).status, 403);
 
   const eventStream = await fetch(`${origin}/api/opencode/event`, {
@@ -615,8 +617,11 @@ test("OpenCode session modes are removed on session DELETE and SSE session.delet
   assert.match(seenDeleted, /session\.deleted/);
   await reader.cancel();
 
+  const beforeSseLookup = upstreamRequests.filter(r => r.method === "GET" && r.path === "/api/session/ses_sse").length;
   const afterSseDelete = await api("POST", "/session/ses_sse/shell", { command: "echo hi" });
-  assert.equal(afterSseDelete.status, 200);
+  assert.equal(afterSseDelete.status, 403);
+  assert.equal(upstreamRequests.filter(r => r.method === "GET" && r.path === "/api/session/ses_sse").length, beforeSseLookup + 1);
+  assert.ok(!upstreamRequests.some(r => r.method === "POST" && r.path === "/api/session/ses_sse/shell"));
 });
 
 // ---------------------------------------------------------------------------

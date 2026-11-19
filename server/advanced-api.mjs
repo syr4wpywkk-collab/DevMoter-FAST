@@ -322,6 +322,10 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
         // Ignore invalid non-3xx Location headers rather than forwarding them.
       }
     }
+    // The preview is rendered in a sandboxed (opaque-origin) iframe of the app,
+    // so the baseline frame and resource policies must not apply to it.
+    res.removeHeader?.("x-frame-options");
+    res.removeHeader?.("cross-origin-resource-policy");
     if (req.method === "HEAD") {
       res.writeHead(upstream.status, headers);
       res.end();
