@@ -309,7 +309,7 @@ export function mountCodexRemote(
 
         <form id="cxPromptForm" class="cx-composer">
           <textarea
-            id="cxPromptInput"
+            id="cxPromptInput" enterkeyhint="send"
             rows="1"
             placeholder="${escapeHtml(t("codex.composer.promptPlaceholder"))}"
             aria-label="${escapeHtml(t("codex.composer.promptAria"))}"
