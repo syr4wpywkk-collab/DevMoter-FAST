@@ -1,6 +1,6 @@
 import { openCodeStateLabel as stateLabel, openCodeStateGlyph as stateGlyph } from "./opencode/status";
 import { isExecutionActive, openCodeIdleOutcomeToExecutionState, type ExecutionState } from "./execution-state.mjs";
-import { formatDateTime, formatNumber, getLanguage, speechRecognitionLanguage, t, translateServerMessage } from "./i18n";
+import { formatDateTime, formatNumber, formatRelativeTime, getLanguage, speechRecognitionLanguage, t, translateServerMessage } from "./i18n";
 import { mergeOpenCodeStreamText, normalizeOpenCodeEvent } from "./opencode-event-compat.mjs";
 import { countTranscriptMessages, normalizeExternalThread, sessionContextToMarkdown, sortSessions, type ImportedThread, type SessionSortMode } from "./session-tools.mjs";
 import { normalizeModelPricing } from "./model-pricing.mjs";
@@ -1093,19 +1093,14 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         session.message_count ??
         0;
       const historyTime = Number(session.time?.updated ?? session.time?.created ?? 0);
-      const historyLabel = historyTime
-        ? formatDateTime(historyTime, {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit"
-          })
-        : "";
+      // Same relative format as Codex and Qwen history; exact time on hover.
+      const historyLabel = historyTime ? formatRelativeTime(historyTime) : "";
       meta.textContent = [
         state === "idle" ? "" : localizedStateLabel(state),
         count ? t("opencode.sessions.messageCount", { count: formatNumber(count) }) : "",
         historyLabel
       ].filter(Boolean).join(" · ");
+      if (historyTime) meta.title = formatDateTime(historyTime);
 
       copy.append(title, meta);
 

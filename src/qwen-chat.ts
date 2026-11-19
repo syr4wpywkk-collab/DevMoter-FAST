@@ -1,5 +1,5 @@
 import "./qwen-chat.css";
-import { formatNumber, getLanguage, t, translateServerMessage } from "./i18n";
+import { formatDateTime, formatNumber, getLanguage, t, translateServerMessage } from "./i18n";
 import { SYSTEM_ICONS } from "./app-registry";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import { createSheetHeader } from "./sheet-header.mjs";
@@ -332,6 +332,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       const running = live?.chatId === chat.id ? ` · ${t("qwen.chat.replying")}` : "";
       meta.textContent = `${project?.name ? `${project.name} · ` : ""}${qwenChatTime(chat.updatedAt, Date.now(), language)}${running}`;
       open.title = chat.title;
+      meta.title = formatDateTime(chat.updatedAt);
       open.append(title, meta);
       open.addEventListener("click", () => selectChat(chat.id));
       const remove = document.createElement("button");
