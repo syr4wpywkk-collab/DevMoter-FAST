@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { execFileSync } from "node:child_process";
 import { createPromptTemplateStore, validatePromptTemplateBackup, MAX_BACKUP_BYTES, MAX_TEMPLATES, MAX_TEMPLATE_BODY_BYTES } from "../server/prompt-template-store.mjs";
 
 async function fixture(t) {
@@ -113,6 +114,10 @@ test("a corrupted or symlinked store fails closed", async t => {
   await writeFile(join(rootDir, "templates.json"), "{not json");
   await assert.rejects(createPromptTemplateStore(options).list(), { status: 500 });
   assert.equal(await readFile(join(rootDir, "templates.json"), "utf8"), "{not json");
+
+  await rm(join(rootDir, "templates.json"));
+  execFileSync("mkfifo", [join(rootDir, "templates.json")]);
+  await assert.rejects(createPromptTemplateStore(options).list(), { status: 500 }, "a FIFO must not hang the store");
 
   const link = join(base, "link");
   await symlink(rootDir, link);

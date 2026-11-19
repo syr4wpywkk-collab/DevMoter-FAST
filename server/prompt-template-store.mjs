@@ -92,8 +92,9 @@ export function createPromptTemplateStore({ rootDir, getProjectById = async () =
     let text;
     let handle;
     try {
-      // Check and read through one descriptor, refusing symlinks, so the file cannot be swapped in between.
-      handle = await open(filePath, constants.O_RDONLY | constants.O_NOFOLLOW);
+      // Check and read through one descriptor, refusing symlinks, so the file cannot be swapped in
+      // between; O_NONBLOCK keeps a FIFO placed here from hanging the open.
+      handle = await open(filePath, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
       if (!(await handle.stat()).isFile()) fail("Prompt template store is not a regular file", 500);
       text = await handle.readFile("utf8");
     } catch (error) {
