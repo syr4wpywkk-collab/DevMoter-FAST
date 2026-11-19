@@ -24,52 +24,124 @@ class IntegrationError extends Error {
   }
 }
 
+// Build integration and hook child environments from an explicit allowlist rather than
+// a pattern denylist, so unknown/unlisted parent variables (for example DATABASE_URL,
+// *_SERVICE_ROLE_KEY, or arbitrary future secret names) are never inherited by external CLIs.
+//
+// Policy consistency & per-purpose differences vs sibling child-env helpers:
+// - server/terminal.mjs `terminalChildEnv()` serves interactive browser PTY shells
+//   (node-pty + tmux + user SHELL), so it keeps operational shell variables, XDG_*,
+//   SSH_AUTH_SOCK, and all agent CLI directory/binary vars (including CODEX_* and
+//   OPENCODE_*) while stripping all provider keys/tokens.
+// - server/setup/detector.mjs `filteredEnvironment()` runs headless `--version` and
+//   status probes with a minimal POSIX/XDG subset, NO_COLOR="1", and no GUI session vars.
+// - Here, `sanitizeChildEnv()` uses a strict allowlist consistent with `terminalChildEnv()`'s
+//   safe operational shell variables, adds Linux desktop GUI session variables needed when
+//   spawning graphical terminal emulators (`launchInTerminal` / `launchCheckedInTerminal`),
+//   scopes CLI config/binary variables to the integrations managed by this module (leaving
+//   CODEX_* / OPENCODE_* to PTY shells), and strips all secrets by default while letting
+//   `integrationChildEnv(id)` opt in only the matching integration's configured provider keys.
+const CHILD_ENV_ALLOWLIST = new Set([
+  // Core operational shell, locale, and runtime paths (consistent with terminalChildEnv)
+  "PATH",
+  "HOME",
+  "USER",
+  "LOGNAME",
+  "SHELL",
+  "TERM",
+  "COLORTERM",
+  "NO_COLOR",
+  "LANG",
+  "LANGUAGE",
+  "LC_ALL",
+  "LC_CTYPE",
+  "LC_COLLATE",
+  "LC_MESSAGES",
+  "LC_MONETARY",
+  "LC_NUMERIC",
+  "LC_TIME",
+  "LC_PAPER",
+  "LC_NAME",
+  "LC_ADDRESS",
+  "LC_TELEPHONE",
+  "LC_MEASUREMENT",
+  "LC_IDENTIFICATION",
+  "TZ",
+  "TMPDIR",
+  "TMP",
+  "TEMP",
+  "SSH_AUTH_SOCK",
+
+  // Desktop / GUI session and explicit XDG directories needed by terminal emulators and agy
+  "DISPLAY",
+  "WAYLAND_DISPLAY",
+  "XAUTHORITY",
+  "DBUS_SESSION_BUS_ADDRESS",
+  "XDG_RUNTIME_DIR",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "XDG_STATE_HOME",
+  "XDG_CACHE_HOME",
+  "XDG_CONFIG_DIRS",
+  "XDG_DATA_DIRS",
+  "XDG_CURRENT_DESKTOP",
+  "XDG_SESSION_TYPE",
+  "XDG_SESSION_DESKTOP",
+  "DESKTOP_SESSION",
+
+  // Non-secret directory/binary configuration for integrations managed in this module
+  "ANTIGRAVITY_BIN",
+  "AGY_BIN",
+  "CLAUDE_CONFIG_DIR",
+  "CLAUDE_BIN",
+  "QWEN_HOME",
+  "QWEN_BIN"
+]);
+
+// Never allow process-injection hooks into third-party developer tools,
+// even if requested via allowedSecretKeys.
+const PROCESS_INJECTION_ENV_KEYS = new Set([
+  "BASH_ENV",
+  "ENV",
+  "NODE_OPTIONS",
+  "NODE_PATH",
+  "PYTHONPATH",
+  "PYTHONSTARTUP",
+  "RUBYOPT",
+  "PERL5OPT",
+  "LD_PRELOAD",
+  "LD_LIBRARY_PATH",
+  "DYLD_INSERT_LIBRARIES",
+  "DYLD_LIBRARY_PATH"
+]);
+
+const INTEGRATION_ALLOWED_ENV_KEYS = new Map([
+  ["claude", Object.freeze(["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"])],
+  ["antigravity", Object.freeze(["GEMINI_API_KEY", "GOOGLE_API_KEY"])],
+  ["qwen", Object.freeze(["DASHSCOPE_API_KEY", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL"])]
+]);
+
 export function sanitizeChildEnv(source = process.env, allowedSecretKeys = []) {
-  const env = { ...source };
-  const allowed = new Set(allowedSecretKeys.map(key => String(key).toUpperCase()));
+  const input = source && typeof source === "object" ? source : {};
+  const allowedSecrets = new Set(
+    (Array.isArray(allowedSecretKeys) ? allowedSecretKeys : []).map(key => String(key).toUpperCase())
+  );
+  const env = {};
 
-  for (const key of Object.keys(env)) {
-    const sensitive =
-      /(PASSWORD|PASSWD|TOKEN|SECRET|API_KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIAL)/i.test(key) ||
-      /^AWS_(SESSION_TOKEN|SECRET_ACCESS_KEY)$/i.test(key) ||
-      /^GITHUB_TOKEN$/i.test(key) ||
-      /^GH_TOKEN$/i.test(key);
-    if (sensitive && !allowed.has(key.toUpperCase())) {
-      delete env[key];
+  for (const [key, value] of Object.entries(input)) {
+    if (typeof value !== "string") continue;
+    const upper = key.toUpperCase();
+    if (PROCESS_INJECTION_ENV_KEYS.has(upper)) continue;
+    if (CHILD_ENV_ALLOWLIST.has(key) || allowedSecrets.has(upper)) {
+      env[key] = value;
     }
-  }
-
-  // Never allow process-injection hooks into third-party developer tools.
-  for (const key of [
-    "BASH_ENV",
-    "ENV",
-    "NODE_OPTIONS",
-    "NODE_PATH",
-    "PYTHONPATH",
-    "PYTHONSTARTUP",
-    "RUBYOPT",
-    "PERL5OPT",
-    "LD_PRELOAD",
-    "LD_LIBRARY_PATH",
-    "DYLD_INSERT_LIBRARIES",
-    "DYLD_LIBRARY_PATH"
-  ]) {
-    delete env[key];
   }
 
   return env;
 }
 
-export function integrationChildEnv(id) {
-  const allowed =
-    id === "claude"
-      ? ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"]
-      : id === "antigravity"
-        ? ["GEMINI_API_KEY", "GOOGLE_API_KEY"]
-        : id === "qwen"
-          ? ["DASHSCOPE_API_KEY", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL"]
-          : [];
-  return sanitizeChildEnv(process.env, allowed);
+export function integrationChildEnv(id, source = process.env) {
+  return sanitizeChildEnv(source, INTEGRATION_ALLOWED_ENV_KEYS.get(id) || []);
 }
 
 function assertActionCooldown(key) {
