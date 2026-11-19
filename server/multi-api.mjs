@@ -331,6 +331,16 @@ function redactProviderSecrets(value, provider) {
   return redactSecretsInText(value, providerSecrets(provider));
 }
 
+function normalizeUsage(usage, fields) {
+  if (!usage || typeof usage !== "object" || Array.isArray(usage)) return null;
+  const counters = {};
+  for (const field of fields) {
+    const value = usage[field];
+    if (Number.isSafeInteger(value) && value >= 0) counters[field] = value;
+  }
+  return counters;
+}
+
 async function readBoundedResponseText(response, limit) {
   const declared = Number(response?.headers?.get?.("content-length"));
   if (Number.isFinite(declared) && declared > limit) {
@@ -365,7 +375,7 @@ async function readBoundedResponseText(response, limit) {
   } finally {
     reader.releaseLock?.();
   }
-  return Buffer.concat(chunks, total).toString("utf8");
+  return new TextDecoder().decode(Buffer.concat(chunks, total));
 }
 
 // Single bounded, redacting read path for every upstream Multi-API response,
@@ -737,7 +747,7 @@ async function runOpenAiCompatible(provider, model, messages, reasoningMode, fet
 
   return {
     content,
-    usage: data?.usage ?? null
+    usage: normalizeUsage(data?.usage, ["prompt_tokens", "completion_tokens", "total_tokens"])
   };
 }
 
@@ -781,7 +791,7 @@ async function runAnthropic(provider, model, messages, reasoningMode, fetchImpl,
 
   return {
     content,
-    usage: data?.usage ?? null
+    usage: normalizeUsage(data?.usage, ["input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"])
   };
 }
 

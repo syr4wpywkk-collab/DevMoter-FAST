@@ -57,6 +57,16 @@ test("upstream response byte limit defaults to 10 MiB", () => {
 });
 
 test("provider test rejects an oversized /models body announced via Content-Length", async () => {
+  let pulled = false;
+  let cancelled = false;
+  const body = new ReadableStream({
+    pull(controller) {
+      pulled = true;
+      controller.close();
+    },
+    cancel() { cancelled = true; }
+  }, { highWaterMark: 0 });
+
   await assert.rejects(
     testMultiApiProvider({
       name: "Demo",
@@ -64,13 +74,17 @@ test("provider test rejects an oversized /models body announced via Content-Leng
       baseUrl: "https://example.test/v1",
       apiKey: "connection-secret",
       models: []
-    }, async () => jsonResponse({ data: [{ id: "model-a" }], padding: PADDING })),
+    }, async () => new Response(body, {
+      headers: { "content-length": String(LIMIT + 1) }
+    })),
     error => {
       assert.equal(error.code, "UPSTREAM_RESPONSE_TOO_LARGE");
       assert.match(error.message, new RegExp(`exceeded the ${LIMIT}-byte limit`));
       return true;
     }
   );
+  assert.equal(pulled, false);
+  assert.equal(cancelled, true);
 });
 
 test("chat rejects an oversized /chat/completions body", async () => {
@@ -305,4 +319,42 @@ test("normal-sized valid responses on all three paths still work under the cap",
   }));
   assert.equal(anthropic.message.content, "hello back");
   assert.deepEqual(anthropic.usage, { input_tokens: 2, output_tokens: 2 });
+});
+
+test("chat returns only recognized numeric usage counters for each protocol", async () => {
+  const cases = [
+    {
+      provider: openAiProvider("chat-secret"),
+      model: "demo-fast",
+      response: { choices: [{ message: { content: "Hello" } }] },
+      usage: { prompt_tokens: 0, completion_tokens: "chat-secret", total_tokens: 4, input_tokens: 99 },
+      expected: { prompt_tokens: 0, total_tokens: 4 }
+    },
+    {
+      provider: anthropicProvider("chat-secret"),
+      model: "claude-test",
+      response: { content: [{ type: "text", text: "Hello" }] },
+      usage: { input_tokens: 3, output_tokens: { note: "chat-secret" }, cache_read_input_tokens: 2, cache_creation_input_tokens: -1, total_tokens: 99 },
+      expected: { input_tokens: 3, cache_read_input_tokens: 2 }
+    }
+  ];
+  for (const { provider, model, response, usage, expected } of cases) {
+    const result = await runMultiApiChat([provider], {
+      providerId: provider.id,
+      model,
+      messages: [{ role: "user", content: "hello" }]
+    }, async () => jsonResponse({ ...response, usage: { ...usage, metadata: "chat-secret" } }));
+    assert.deepEqual(result.usage, expected, provider.protocol);
+  }
+});
+
+test("provider test accepts UTF-8 JSON with a leading BOM", async () => {
+  const result = await testMultiApiProvider({
+    name: "Demo",
+    protocol: "openai-compatible",
+    baseUrl: "https://example.test/v1",
+    apiKey: "connection-secret"
+  }, async () => new Response('\uFEFF{"data":[{"id":"model-a"}]}'));
+
+  assert.deepEqual(result, { ok: true, models: ["model-a"] });
 });
