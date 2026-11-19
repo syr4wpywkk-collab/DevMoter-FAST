@@ -74,7 +74,7 @@ const CHECKED = "2026-11-19T16:00:00.000Z";
 test("#468 server lists each backend as connected / failed / unknown with its check time", async t => {
   const stateDir = await mkdtemp(join(tmpdir(), "devmoter-diag-"));
   t.after(() => rm(stateDir, { recursive: true, force: true }));
-  const make = getBackendHealth => createSystemFeatures({ stateDir, appRoot: stateDir, version: "test", getProjects: async () => [], getBackendHealth });
+  const make = getBackendHealth => createSystemFeatures({ stateDir, appRoot: stateDir, distDir: join(stateDir, "dist"), version: "test", getProjects: async () => [], getBackendHealth });
 
   const mixed = await make(async () => ({
     opencode: { online: true, directory: "/home/me/secret-project" },
@@ -104,7 +104,7 @@ test("#470 host build falls back to the served bundle's build.json and is null w
     if (saved.build !== undefined) process.env.DEVMOTER_BUILD = saved.build;
     if (saved.sha !== undefined) process.env.GITHUB_SHA = saved.sha;
   });
-  const features = createSystemFeatures({ stateDir: appRoot, appRoot, version: "test", getProjects: async () => [], getBackendHealth: async () => ({}) });
+  const features = createSystemFeatures({ stateDir: appRoot, appRoot, distDir: join(appRoot, "dist"), version: "test", getProjects: async () => [], getBackendHealth: async () => ({}) });
   assert.equal((await features.diagnostics()).app.build, null);
   await mkdir(join(appRoot, "dist"));
   await writeFile(join(appRoot, "dist", "build.json"), JSON.stringify({ build: "abc123def456-dirty" }));
@@ -211,7 +211,7 @@ test("#471 copied report is built from an allowlist and carries no secrets or pe
     "CLI:",
     "- codex: ready 1.2.3",
     "- opencode: missing",
-    "- gh: ready unknown",
+    "- gh: ready 2.0",
     "Prerequisites: node=ok, git=missing",
     "Projects: 3",
     "Bind: localhost",
@@ -242,4 +242,22 @@ test("build mismatch compares full identifiers, not the shortened display form",
   assert.equal(buildsDiffer("", device), false);
   assert.equal(buildsDiffer(host, "bad id/../x"), false);
   assert.equal(buildsDiffer(null, undefined), false);
+});
+
+test("copied report keeps the version token from CLI output lines only", async () => {
+  const { buildDiagnosticsReport } = await import("../src/diagnostics-format.mjs");
+  const report = buildDiagnosticsReport({
+    diagnostics: null, fetchState: { fetchedAt: null, failedAt: null }, fetchFailure: null, clientBuild: "",
+    cliStatus: [
+      { command: "codex", presence: "ready", version: "codex-cli 1.2.3" },
+      { command: "opencode", presence: "ready", version: "0.9.1" },
+      { command: "claude", presence: "ready", version: "2.0.14 (Claude Code)" },
+      { command: "qwen", presence: "ready", version: "token sk-live-SECRET123 /home/alice" }
+    ]
+  });
+  assert.match(report, /- codex: ready 1\.2\.3\n/);
+  assert.match(report, /- opencode: ready 0\.9\.1\n/);
+  assert.match(report, /- claude: ready 2\.0\.14\n/);
+  assert.match(report, /- qwen: ready unknown\n/);
+  assert.doesNotMatch(report, /SECRET|alice|codex-cli|Claude Code/);
 });

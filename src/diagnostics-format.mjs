@@ -143,9 +143,12 @@ export function describeFetchFailure(kind, locale) {
   return { label: translate(lang, `diagnostics.failure.${safe}`), guide: translate(lang, `diagnostics.hostGuide.${safe}`) };
 }
 
+// CLIs print lines such as "codex-cli 1.2.3"; keep only the version token, never the surrounding text.
 function plainVersion(value) {
-  const text = typeof value === "string" ? value.trim() : "";
-  return /^v?\d{1,4}(?:\.\d{1,4}){0,3}(?:[-+][0-9A-Za-z.]{1,32})?$/.test(text) ? text : "unknown";
+  const text = typeof value === "string" ? value.slice(0, 200) : "";
+  const match = /(?:^|[\s(])(v?\d{1,4}(?:\.\d{1,4}){1,3}(?:[-+][0-9A-Za-z.]{1,32})?)(?=$|[\s),])/.exec(text)
+    || /^\s*(v?\d{1,4})\s*$/.exec(text);
+  return match ? match[1] : "unknown";
 }
 
 function plainName(value) {
