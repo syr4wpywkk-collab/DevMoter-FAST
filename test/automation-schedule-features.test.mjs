@@ -241,3 +241,48 @@ test("new automation routes stay inside the authenticated control router", async
   const preview = body.slice(body.indexOf("/api/control/schedules/preview"), body.indexOf("/api/control/schedules/preview") + 250);
   assert.doesNotMatch(preview, /createSchedule|tick\(|retryRun/);
 });
+
+test("next run stays in step with tick() across DST changes", () => {
+  // Chatham Islands: 02:45 -> 03:45 on 2026-09-27 (UTC+12:45 -> +13:45).
+  assert.equal(
+    nextCronRun("45 3 * * *", "Pacific/Chatham", new Date("2026-09-26T12:00:00Z")),
+    Date.parse("2026-09-26T14:00:00Z")
+  );
+  // New York: 01:30 happens twice on 2026-11-01; the second one never runs.
+  const first = Date.parse("2026-11-01T05:30:00Z");
+  assert.equal(nextCronRun("30 1 * * *", "America/New_York", new Date("2026-11-01T04:00:00Z")), first);
+  assert.equal(
+    scheduleNextRun({ cron: "30 1 * * *", timeZone: "America/New_York", enabled: true, lastRunKey: "2026-11-01T01:30" }, new Date(first)).nextRunAt,
+    Date.parse("2026-11-02T06:30:00Z")
+  );
+});
+
+test("retrying a trigger run respects the trigger's concurrency limit", async () => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  let calls = 0;
+  const { plane, cleanup } = await tempPlane({
+    executeTask: async () => {
+      calls += 1;
+      if (calls === 1) throw new Error("first failed");
+      await gate;
+      return {};
+    }
+  });
+  try {
+    await plane.createTrigger({ source: "devmoter.lifecycle", event: "server.started", task: "Do it", maxConcurrency: 1, minIntervalMs: 1000 });
+    await plane.dispatchEvent("devmoter.lifecycle", "server.started", {});
+    const [failed] = await settle(plane, runs => runs.length === 1 && runs[0].status === "failed");
+    await new Promise(resolve => setTimeout(resolve, 1100));
+    await plane.dispatchEvent("devmoter.lifecycle", "server.started", {});
+    await settle(plane, runs => runs.length === 2);
+    await assert.rejects(plane.retryRun(failed.id, { confirm: true }), /concurrency limit/);
+    assert.equal((await plane.listRuns()).length, 2);
+    release();
+    await settle(plane, runs => runs.every(run => run.endedAt));
+    const retry = await plane.retryRun(failed.id, { confirm: true });
+    await settle(plane, runs => runs.find(run => run.id === retry.runId)?.status === "completed");
+  } finally {
+    await cleanup();
+  }
+});

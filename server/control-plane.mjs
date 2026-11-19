@@ -146,7 +146,9 @@ const NEXT_RUN_HORIZON_MS = 366 * 24 * 60 * 60_000;
 
 // Next minute (epoch ms, strictly after `from`) at which the rule fires, or
 // null when it does not fire within a year. Read-only: used for display.
-export function nextCronRun(expression, timeZone = "UTC", from = new Date()) {
+// `skipKey` is a local minute that already ran: tick() never fires the same
+// local minute twice, so the repeated hour of a DST fall-back is skipped.
+export function nextCronRun(expression, timeZone = "UTC", from = new Date(), skipKey = null) {
   const rule = parseCron(expression);
   let at = Math.floor(from.getTime() / 60_000) * 60_000 + 60_000;
   const limit = at + NEXT_RUN_HORIZON_MS;
@@ -154,11 +156,14 @@ export function nextCronRun(expression, timeZone = "UTC", from = new Date()) {
     const p = zonedParts(new Date(at), timeZone);
     const dayOk = rule.day.has(p.day) && rule.month.has(p.month) && rule.weekday.has(p.weekday);
     if (dayOk && rule.hour.has(p.hour)) {
-      if (rule.minute.has(p.minute)) return at;
+      if (rule.minute.has(p.minute) && minuteKey(new Date(at), timeZone) !== skipKey) return at;
       at += 60_000;
     } else {
-      // Skip to the start of the next local hour.
-      at += (60 - p.minute) * 60_000;
+      // Skip to the start of the next local hour, unless a UTC-offset change
+      // falls inside it: then walk minute by minute so no local time is missed.
+      const jump = at + (60 - p.minute) * 60_000;
+      const q = zonedParts(new Date(jump), timeZone);
+      at = q.minute === 0 && q.hour === (p.hour + 1) % 24 ? jump : at + 60_000;
     }
   }
   return null;
@@ -169,7 +174,7 @@ export function nextCronRun(expression, timeZone = "UTC", from = new Date()) {
 export function scheduleNextRun(schedule, now = new Date()) {
   let nextRunAt = null;
   try {
-    nextRunAt = nextCronRun(schedule?.cron, schedule?.timeZone || "UTC", now);
+    nextRunAt = nextCronRun(schedule?.cron, schedule?.timeZone || "UTC", now, schedule?.lastRunKey || null);
   } catch {
     return { nextRunState: "invalid", nextRunAt: null };
   }
@@ -453,11 +458,13 @@ export class ControlPlane {
     }
     const upcoming = [];
     let cursor = now;
+    let ranKey = null;
     for (let index = 0; index < 3; index += 1) {
-      const next = nextCronRun(definition.cron, definition.timeZone, cursor);
+      const next = nextCronRun(definition.cron, definition.timeZone, cursor, ranKey);
       if (next === null) break;
       upcoming.push(next);
       cursor = new Date(next);
+      ranKey = minuteKey(cursor, definition.timeZone);
     }
     return {
       ...definition,
@@ -631,6 +638,14 @@ export class ControlPlane {
       error.confirmationRequired = true;
       throw error;
     }
+    const trigger = original.kind === "trigger"
+      ? state.triggers.find(item => item.id === original.sourceId)
+      : null;
+    if (trigger) {
+      const active = this.activeTriggers.get(trigger.id) || 0;
+      if (active >= trigger.maxConcurrency) throw new Error("This trigger is already running at its concurrency limit");
+      this.activeTriggers.set(trigger.id, active + 1);
+    }
     this.activeRetries.add(original.id);
     const runId = randomUUID();
     const started = this.#runOnce({
@@ -647,7 +662,10 @@ export class ControlPlane {
         approvalPolicy: "normal"
       }
     });
-    void started.catch(() => {}).finally(() => this.activeRetries.delete(original.id));
+    void started.catch(() => {}).finally(() => {
+      this.activeRetries.delete(original.id);
+      if (trigger) this.activeTriggers.set(trigger.id, Math.max(0, (this.activeTriggers.get(trigger.id) || 1) - 1));
+    });
     return { runId, retryOf: original.id };
   }
 
