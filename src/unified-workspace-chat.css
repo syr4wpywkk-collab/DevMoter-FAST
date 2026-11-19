@@ -337,7 +337,7 @@ body.dm-task-first-enabled :is(.cx-app .cx-approval, .ocx-app .ocx-dock) {
     padding-top: 18px;
   }
   body.dm-task-first-enabled :is(.cx-app .cx-message-row, .ocx-app .ocx-message-row, .api-app .api-message) {
-    margin-bottom: 16px;
+    --dw-chat-row-gap: var(--space-4);
   }
   body.dm-task-first-enabled :is(.cx-app .cx-message.user, .api-app .api-message.user .api-message-bubble, .ocx-app .ocx-user-prompt) {
     max-width: 92%;
