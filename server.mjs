@@ -14,7 +14,7 @@ import { createOpenCodeClient } from "./server/opencode-api.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, fullyDecodePath, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { staticSecurityHeaders } from "./server/security-headers.mjs";
-import { readHandle, withOpenFile } from "./server/safe-file.mjs";
+import { readHandle, withOpenFile, writeFileNoFollow } from "./server/safe-file.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
 import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
 import { createSessionControl } from "./server/session-control.mjs";
@@ -854,20 +854,7 @@ async function projectWriteFile(id, req, res) {
       throw new Error("Markdown file is larger than 1MB");
     }
 
-    const handle = await open(
-      resolved.target,
-      fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_TRUNC | (fsConstants.O_NOFOLLOW || 0),
-      0o600
-    );
-    let info;
-    try {
-      info = await handle.stat();
-      if (!info.isFile()) throw new Error("Markdown write requires a regular file");
-      await handle.writeFile(content, "utf8");
-      info = await handle.stat();
-    } finally {
-      await handle.close();
-    }
+    const info = await writeFileNoFollow(resolved.target, content);
     json(res, 200, {
       ok: true,
       path: resolved.relativePath,
@@ -875,7 +862,7 @@ async function projectWriteFile(id, req, res) {
       updatedAt: info.mtimeMs
     });
   } catch (error) {
-    json(res, 400, { error: errorMessage(error) });
+    json(res, error?.code === "ENOTSUP" ? 501 : 400, { error: errorMessage(error) });
   }
 }
 
