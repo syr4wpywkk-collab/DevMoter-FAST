@@ -198,6 +198,8 @@ test("session mode authority is server-side; the agent-mode header is ignored", 
     const slashEscalate = await call("POST", `${base}/session/ses_c1/agent/`, { agent: "build" });
     assert.equal(slashEscalate.status, 403);
     assert.equal(upstreamCalls("POST", "/api/session/ses_c1/agent/").length, 0);
+    const encodedEscalate = await call("POST", `${base}/session/ses_c1/%61gent/`, { agent: "build" });
+    assert.equal(encodedEscalate.status, 403, encodedEscalate.text);
     assert.equal(upstreamCalls("POST", "/api/session/ses_c1/agent").length, 1, "only the earlier plan -> ask update reached upstream");
     const slashStillBlocked = await call("POST", `${base}/session/ses_c1/shell`, { command: "id" });
     assert.equal(slashStillBlocked.status, 403);
