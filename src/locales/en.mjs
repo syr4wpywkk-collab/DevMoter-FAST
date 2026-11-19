@@ -1941,6 +1941,7 @@ export const en = {
   "apiChat.modelSelectAria": "Model",
   "apiChat.reasoningAria": "Reasoning mode",
   "apiChat.defaultTitle": "Chat",
+  "apiChat.stopped": "Stopped",
   "apiChat.waitingResponse": "Waiting for response",
   "apiChat.reasoning.auto": "Auto",
   "apiChat.reasoning.off": "Off",
