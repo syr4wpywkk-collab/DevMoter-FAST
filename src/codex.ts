@@ -1487,8 +1487,10 @@ export function mountCodexRemote(
         // Same relative format as OpenCode and Qwen history; exact time on hover.
         const stamp = document.createElement("small");
         stamp.className = "cx-thread-age";
-        stamp.textContent = formatRelativeTime(thread.updatedAt);
-        stamp.title = formatDateTime(thread.updatedAt);
+        // Codex app-server reports Unix seconds; accept milliseconds too.
+        const updatedMs = thread.updatedAt < 1e12 ? thread.updatedAt * 1000 : thread.updatedAt;
+        stamp.textContent = formatRelativeTime(updatedMs);
+        stamp.title = formatDateTime(updatedMs);
         button.appendChild(stamp);
       }
       button.addEventListener("click", () => {
