@@ -8,6 +8,7 @@ import { createServer as createNetServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import { classifyProxyRoute, listWriteRoutePatterns, PROXY_ROUTE_TABLE } from "../server/proxy-route-policy.mjs";
 import { isAdapterOwnedRoute } from "../server/agent-mode-policy.mjs";
 
@@ -147,95 +148,61 @@ test("classifyProxyRoute matches only allowlisted method + route pairs", () => {
 // --- Drift guard: every route the browser client sends through the generic
 // proxy must be in the allowlist (or served by the DevMoter adapter). ---
 
-function callSpan(source, openParenIndex) {
-  let depth = 0;
-  let quote = null;
-  for (let i = openParenIndex; i < source.length; i++) {
-    const ch = source[i];
-    if (quote) {
-      if (ch === "\\") i++;
-      else if (ch === quote) quote = null;
-      continue;
-    }
-    if (ch === '"' || ch === "'" || ch === "`") {
-      quote = ch;
-      continue;
-    }
-    if (ch === "(") depth++;
-    else if (ch === ")") {
-      depth--;
-      if (depth === 0) return source.slice(openParenIndex, i + 1);
-    }
+function pathVariants(node) {
+  if (!node) throw new Error("Missing path");
+  if (ts.isStringLiteralLike(node)) return [node.text];
+  if (ts.isParenthesizedExpression(node)) return pathVariants(node.expression);
+  if (ts.isConditionalExpression(node)) return [...pathVariants(node.whenTrue), ...pathVariants(node.whenFalse)];
+  if (ts.isTemplateExpression(node)) {
+    return node.templateSpans.reduce((prefixes, span) => {
+      const values = pathVariants(span.expression);
+      return prefixes.flatMap(prefix => values.map(value => prefix + value + span.literal.text));
+    }, [node.head.text]);
   }
-  return source.slice(openParenIndex);
+  if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+    const right = pathVariants(node.right);
+    return pathVariants(node.left).flatMap(left => right.map(suffix => left + suffix));
+  }
+  if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "encodeURIComponent") {
+    return ["{id}"];
+  }
+  throw new Error("Unsupported path expression: " + node.getText());
 }
 
-function parsePathExpression(span) {
-  let i = 1; // span starts at "("
-  let path = "";
-  let consumed = false;
-  const skipWs = () => {
-    while (i < span.length && /\s/.test(span[i])) i++;
-  };
-  while (true) {
-    skipWs();
-    const ch = span[i];
-    if (ch === '"' || ch === "'") {
-      const end = span.indexOf(ch, i + 1);
-      if (end === -1) return null;
-      path += span.slice(i + 1, end);
-      i = end + 1;
-    } else if (ch === "`") {
-      let j = i + 1;
-      let out = "";
-      while (j < span.length && span[j] !== "`") {
-        if (span[j] === "$" && span[j + 1] === "{") {
-          const close = span.indexOf("}", j + 2);
-          if (close === -1) return null;
-          out += "{id}";
-          j = close + 1;
-        } else {
-          out += span[j];
-          j++;
-        }
-      }
-      if (j >= span.length) return null;
-      path += out;
-      i = j + 1;
-    } else if (span.startsWith("encodeURIComponent", i)) {
-      const open = span.indexOf("(", i);
-      const close = span.indexOf(")", open);
-      if (close === -1) return null;
-      path += "{id}";
-      i = close + 1;
-    } else {
-      break;
+function clientMethod(init) {
+  if (!init) return "GET";
+  assert.ok(ts.isObjectLiteralExpression(init), "request options must be statically inspectable");
+  let method = "GET";
+  for (const property of init.properties) {
+    assert.ok(ts.isPropertyAssignment(property) && !ts.isComputedPropertyName(property.name),
+      "request options must use static properties");
+    if (property.name.text === "method") {
+      assert.ok(ts.isStringLiteralLike(property.initializer), "request method must be a string literal");
+      method = property.initializer.text;
     }
-    consumed = true;
-    skipWs();
-    if (span[i] === "+") {
-      i++;
-      continue;
-    }
-    break;
   }
-  return consumed && path.startsWith("/") ? path : null;
+  return method;
 }
 
-function extractClientCalls(source, callee) {
+function extractClientCalls(file, source, callee) {
   const calls = [];
-  const pattern = new RegExp(`\\b${callee}(?:<[^>]*>)?\\(`, "g");
-  let match;
-  while ((match = pattern.exec(source))) {
-    if (/[A-Za-z]/.test(source[match.index - 1] || "")) continue;
-    if (/function\s*$/.test(source.slice(Math.max(0, match.index - 12), match.index))) continue;
-    const openParen = match.index + match[0].length - 1;
-    const span = callSpan(source, openParen);
-    const path = parsePathExpression(span);
-    if (!path) continue;
-    const methodMatch = span.match(/method:\s*"(GET|POST|PUT|PATCH|DELETE)"/);
-    calls.push({ path: path.split("?")[0], method: methodMatch ? methodMatch[1] : "GET" });
+  const script = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+  function visit(node) {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === callee) {
+      const { line } = script.getLineAndCharacterOfPosition(node.getStart());
+      try {
+        const method = clientMethod(node.arguments[1]);
+        for (const path of pathVariants(node.arguments[0])) {
+          assert.ok(path.startsWith("/"), "expected an absolute proxy path");
+          calls.push({ path: path.split("?")[0], method });
+        }
+      } catch (error) {
+        assert.fail(`${file}:${line + 1}: ${error.message}`);
+      }
+    }
+    ts.forEachChild(node, visit);
   }
+  visit(script);
   return calls;
 }
 
@@ -246,7 +213,7 @@ test("client drift guard: every browser proxy call is allowlisted or adapter-ser
   ];
   for (const [file, callee, minCalls] of sources) {
     const source = await readFile(join(repoRoot, file), "utf8");
-    const calls = extractClientCalls(source, callee);
+    const calls = extractClientCalls(file, source, callee);
     assert.ok(calls.length >= minCalls, `${file}: expected at least ${minCalls} ${callee}() calls, parsed ${calls.length}`);
     for (const { method, path } of calls) {
       const policyPath = `/api${path}`;
