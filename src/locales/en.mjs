@@ -1909,6 +1909,8 @@ export const en = {
   "qwen.chat.runningTool": "Running tool: {tool}",
   "qwen.chat.replying": "Replying",
   "qwen.chat.statusWithSeconds": "{what} · {seconds}s",
+  "qwen.chat.searchHistory": "Search chats",
+  "qwen.chat.noHistoryMatches": "No chats match \"{query}\".",
   "qwen.chat.emptyHistory": "No chats yet.",
   "qwen.chat.deleteChatAria": "Delete \"{title}\"",
   "qwen.chat.deleteChatConfirm": "Delete \"{title}\"?",

@@ -1909,6 +1909,8 @@ export const ja = {
   "qwen.chat.runningTool": "ツールを実行中: {tool}",
   "qwen.chat.replying": "応答中",
   "qwen.chat.statusWithSeconds": "{what} · {seconds}秒",
+  "qwen.chat.searchHistory": "チャットを検索",
+  "qwen.chat.noHistoryMatches": "「{query}」に一致するチャットはありません。",
   "qwen.chat.emptyHistory": "まだチャットはありません",
   "qwen.chat.deleteChatAria": "「{title}」を削除",
   "qwen.chat.deleteChatConfirm": "「{title}」を削除しますか？",

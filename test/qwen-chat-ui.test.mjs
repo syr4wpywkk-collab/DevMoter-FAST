@@ -236,6 +236,18 @@ test("history sheet lists chats newest first and switches, starts and deletes th
     assert.deepEqual([...sheet.querySelectorAll(".qx-history-open strong")].map(node => node.textContent), ["新しいほう", "古いチャット"]);
     assert.match(sheet.querySelector('[data-chat-id="a"] small').textContent, /^Other · /);
 
+    // #342: the history list filters by title and message text.
+    const search = sheet.querySelector("[data-qwen-history-search]");
+    search.value = "新しい";
+    search.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+    assert.deepEqual([...sheet.querySelectorAll(".qx-history-open strong")].map(node => node.textContent), ["新しいほう"]);
+    search.value = "no such chat";
+    search.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+    assert.match(sheet.querySelector(".qx-history-empty").textContent, /no such chat/);
+    search.value = "";
+    search.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+    assert.equal(sheet.querySelectorAll(".qx-history-row").length, 2);
+
     sheet.querySelector('[data-chat-id="a"]').click();
     assert.equal(sheet.hidden, true);
     assert.equal($("[data-qwen-project]").textContent, "Other", "a chat runs in its own project");
