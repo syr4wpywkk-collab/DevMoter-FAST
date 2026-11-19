@@ -1,6 +1,7 @@
 import { createDeviceGate, isDeviceAuthError, responseError } from "./device-gate.mjs";
 import { RUN_RESULT_FILTERS, filterRunsByResult, formatLocalRunTime, scheduleNextRunView, type RunResultFilter } from "./automation-view.mjs";
 import { formatNumber, getLanguage, localeTag, t, translateServerMessage } from "./i18n";
+import { fetchReadWithTimeout } from "./fetch-with-timeout.mjs";
 import { createSheetHeader } from "./sheet-header.mjs";
 
 const esc = (value: string) =>
@@ -71,7 +72,7 @@ async function api<T = Json>(path: string, init: RequestInit = {}): Promise<T> {
   if (init.method && !["GET", "HEAD"].includes(init.method.toUpperCase())) {
     headers.set("x-pocket-operation-id", uid());
   }
-  const response = await fetch(path, { ...init, headers, cache: "no-store" });
+  const response = await fetchReadWithTimeout((input, request) => fetch(input, request), path, { ...init, headers, cache: "no-store" }, () => new Error(t("common.requestTimeout")));
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw responseError(response.status, payload?.error ? translateServerMessage(String(payload.error)) : undefined);
   return payload as T;

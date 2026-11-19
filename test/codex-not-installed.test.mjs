@@ -143,6 +143,7 @@ test("Codex UI labels a missing CLI as 未インストール and recovers when i
   const requests = [];
   let eventSource;
   let threadReadCount = 0;
+  let modelListFails = false;
   window.matchMedia = () => ({ matches: false, addEventListener() {} });
   window.setInterval = () => 1;
   window.setTimeout = () => 1;
@@ -165,7 +166,10 @@ test("Codex UI labels a missing CLI as 未インストール and recovers when i
     if (path === "/api/projects") return ok({ projects: [] });
     if (path !== "/api/codex/rpc") throw new Error(`Unexpected request: ${path}`);
     const { method, params } = JSON.parse(String(init.body));
-    if (method === "model/list") return okRpc({ models: [] });
+    if (method === "model/list") {
+      if (modelListFails) throw new Error("catalog down");
+      return okRpc({ models: [] });
+    }
     if (method === "thread/list") return okRpc({ data: [{ id: "thread-1", name: "Test thread" }] });
     if (method === "thread/resume") return okRpc({});
     if (method === "thread/read") {
@@ -224,6 +228,22 @@ test("Codex UI labels a missing CLI as 未インストール and recovers when i
   await settle();
   assert.match(status.textContent, /Online/);
   assert.equal(status.dataset.codexState, "online");
+
+  // #347: an empty catalog says so, and a failed load offers Retry.
+  const modalBody = document.querySelector("#cxModalBody");
+  document.querySelector("#cxModelTop").click();
+  await settle();
+  assert.equal(modalBody.querySelector("[data-models-empty]")?.textContent, i18nCore.translate("en", "codex.models.empty"));
+  modelListFails = true;
+  document.querySelector("#cxModelTop").click();
+  await settle();
+  assert.match(modalBody.textContent, /catalog down/);
+  assert.match(modalBody.querySelector("[role='alert']")?.textContent ?? "", /catalog down/);
+  modelListFails = false;
+  modalBody.querySelector("[data-models-retry]").click();
+  await settle();
+  assert.ok(modalBody.querySelector("[data-models-empty]"), "Retry reloads the catalog");
+  assert.equal(document.activeElement, modalBody, "focus stays in the picker after Retry");
   void requests;
   void eventSource;
   void threadReadCount;
