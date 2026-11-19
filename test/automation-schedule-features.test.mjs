@@ -15,7 +15,13 @@ import { filterRunsByResult, formatLocalRunTime, scheduleNextRunView } from "../
 async function tempPlane(options = {}) {
   const dir = await mkdtemp(join(tmpdir(), "devmoter-automation-"));
   const plane = new ControlPlane({ configDir: dir, executeTask: async () => ({ summary: "ok" }), ...options });
-  return { dir, plane, cleanup: () => rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }) };
+  // Runs are started in the background and save their state when they end, so
+  // wait for them before removing the directory they write to.
+  const cleanup = async () => {
+    await plane.whenIdle();
+    await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
+  };
+  return { dir, plane, cleanup };
 }
 
 async function settle(plane, predicate) {
@@ -126,7 +132,10 @@ test("#465 run history filters by result without changing stored history", async
     await plane.createSchedule({ ...definition, task: "fail" });
     await plane.tick(new Date("2026-11-20T12:00:00Z"));
     await settle(plane, runs => runs.length === 2 && runs.every(run => run.endedAt));
+    // A run shows as ended before its final state reaches the disk.
+    await plane.whenIdle();
     const before = await readFile(join(dir, "control-plane.json"), "utf8");
+    assert.equal(JSON.parse(before).runs.filter(run => run.endedAt).length, 2);
 
     assert.deepEqual((await plane.listRuns({ result: "success" })).map(run => run.status), ["completed"]);
     assert.deepEqual((await plane.listRuns({ result: "failed" })).map(run => run.status), ["failed"]);

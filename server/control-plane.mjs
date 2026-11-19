@@ -298,6 +298,7 @@ export class ControlPlane {
     this.activeTriggers = new Map();
     this.activeAutopilots = new Map();
     this.saveQueue = Promise.resolve();
+    this.inFlightRuns = new Set();
     this.timer = null;
   }
 
@@ -582,7 +583,7 @@ export class ControlPlane {
       const runId = randomUUID();
       launched.push(runId);
       const { secret: _secret, ...safeTrigger } = trigger;
-      void this.#runOnce({
+      this.#runOnce({
         id: runId,
         kind: "trigger",
         sourceId: trigger.id,
@@ -590,10 +591,11 @@ export class ControlPlane {
           ...safeTrigger,
           approvalPolicy: "normal",
           task: triggerTask(trigger, payloadText)
+        },
+        onSettled: () => {
+          this.activeTriggers.set(trigger.id, Math.max(0, (this.activeTriggers.get(trigger.id) || 1) - 1));
         }
-      }).finally(() => {
-        this.activeTriggers.set(trigger.id, Math.max(0, (this.activeTriggers.get(trigger.id) || 1) - 1));
-      });
+      }).catch(error => this.#reportRunPersistenceFailure(error));
     }
 
     if (source === "github.webhook" && matching.length > 0 && !githubSignatureMatched) {
@@ -657,7 +659,7 @@ export class ControlPlane {
     }
     this.activeRetries.add(original.id);
     const runId = randomUUID();
-    const started = this.#runOnce({
+    this.#runOnce({
       id: runId,
       kind: original.kind,
       sourceId: original.sourceId,
@@ -669,12 +671,12 @@ export class ControlPlane {
         model: original.model,
         task: original.task,
         approvalPolicy: "normal"
+      },
+      onSettled: () => {
+        this.activeRetries.delete(original.id);
+        if (trigger) this.activeTriggers.set(trigger.id, Math.max(0, (this.activeTriggers.get(trigger.id) || 1) - 1));
       }
-    });
-    void started.catch(() => {}).finally(() => {
-      this.activeRetries.delete(original.id);
-      if (trigger) this.activeTriggers.set(trigger.id, Math.max(0, (this.activeTriggers.get(trigger.id) || 1) - 1));
-    });
+    }).catch(error => this.#reportRunPersistenceFailure(error));
     return { runId, retryOf: original.id };
   }
 
@@ -754,7 +756,46 @@ export class ControlPlane {
     await this.save();
   }
 
-  async #runOnce({ id, kind, sourceId, definition, retryOf = null }) {
+  // A run only rejects when its state could not be written. The task itself
+  // is already recorded in memory, so report it instead of crashing the host.
+  #reportRunPersistenceFailure(error) {
+    console.error("Automation run state could not be saved:", errorMessage(error));
+  }
+
+  /** Resolves once no schedule or trigger run is in flight and state is on disk. */
+  async whenIdle() {
+    do {
+      await Promise.allSettled([...this.inFlightRuns]);
+      await this.saveQueue.catch(() => {});
+    } while (this.inFlightRuns.size > 0);
+  }
+
+  #runOnce(options) {
+    const pending = this.#executeRun(options);
+    this.inFlightRuns.add(pending);
+    const forget = () => this.inFlightRuns.delete(pending);
+    pending.then(forget, forget);
+    return pending;
+  }
+
+  // `onSettled` frees whatever slot the caller holds for this run. It is called
+  // before the run is shown as ended, so a run that reads as finished never
+  // still counts against a concurrency limit.
+  async #executeRun({ id, kind, sourceId, definition, retryOf = null, onSettled = null }) {
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      onSettled?.();
+    };
+    try {
+      return await this.#recordAndExecuteRun({ id, kind, sourceId, definition, retryOf, settle });
+    } finally {
+      settle();
+    }
+  }
+
+  async #recordAndExecuteRun({ id, kind, sourceId, definition, retryOf, settle }) {
     const normalizedDefinition = {
       ...definition,
       approvalPolicy: "normal"
@@ -783,6 +824,7 @@ export class ControlPlane {
       run.status = "failed";
       run.summary = errorMessage(error);
     } finally {
+      settle();
       run.endedAt = Date.now();
       await this.#recordRun(run);
       this.onLifecycle({ event: `${kind}.completed`, run });
@@ -882,7 +924,8 @@ export class ControlPlane {
       schedule.lastRunKey = key;
       schedule.lastRunAt = Date.now();
       const runId = randomUUID();
-      void this.#runOnce({ id: runId, kind: "schedule", sourceId: schedule.id, definition: schedule });
+      this.#runOnce({ id: runId, kind: "schedule", sourceId: schedule.id, definition: schedule })
+        .catch(error => this.#reportRunPersistenceFailure(error));
     }
     await this.save();
   }
