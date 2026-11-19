@@ -24,6 +24,29 @@ export function isReadOnlyMode(mode) {
   return mode === "plan" || mode === "ask";
 }
 
+/** Map an agent identifier (e.g. "plan", "ask", "build", "coder") to its mode, or null if blank. */
+export function modeFromAgent(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) return null;
+  return parseAgentMode(trimmed) || "build";
+}
+
+/**
+ * Resolve the effective mode given the server-side session mode and an optional
+ * client-supplied mode hint. The client hint may preserve or lower privileges
+ * (e.g. build -> plan/ask) for a request, never escalate read-only -> build.
+ */
+export function resolveEffectiveAgentMode(sessionMode, requestedMode) {
+  const serverMode = parseAgentMode(sessionMode) || "build";
+  const clientMode = parseAgentMode(requestedMode);
+  if (!clientMode) return serverMode;
+  if (isReadOnlyMode(serverMode)) {
+    return isReadOnlyMode(clientMode) ? clientMode : serverMode;
+  }
+  return clientMode;
+}
+
 export function sessionIdFromOpenCodePath(value) {
   const match = pathnameOnly(value).match(/^\/api\/session\/([^/]+)(?:\/|$)/);
   return match ? decodeURIComponent(match[1]) : null;

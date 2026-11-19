@@ -4,9 +4,11 @@ import { readFile } from "node:fs/promises";
 import {
   isAdapterOwnedRoute,
   isDirectMutationRoute,
+  modeFromAgent,
   parseAgentMode,
   READ_ONLY_TOOLS,
   readOnlyToolsFor,
+  resolveEffectiveAgentMode,
   sessionIdFromOpenCodePath
 } from "../server/agent-mode-policy.mjs";
 
@@ -53,4 +55,22 @@ test("OpenCode sends the read-only mode derived from the agent, without a prompt
   assert.match(source, /return agentID === "plan" \? "plan" : "build";/);
   assert.doesNotMatch(source, /ocxPlanMode|ocxAskMode|ocxBuildMode|ocxAgentButton|ocxModelPricing|opencode-pocket-opencode-mode/);
   assert.match(source, /text: promptText/);
+});
+
+test("modeFromAgent and resolveEffectiveAgentMode prevent client privilege escalation", () => {
+  assert.equal(modeFromAgent("plan"), "plan");
+  assert.equal(modeFromAgent("ASK"), "ask");
+  assert.equal(modeFromAgent("build"), "build");
+  assert.equal(modeFromAgent("coder"), "build");
+  assert.equal(modeFromAgent(""), null);
+  assert.equal(modeFromAgent(null), null);
+
+  assert.equal(resolveEffectiveAgentMode("plan", "build"), "plan");
+  assert.equal(resolveEffectiveAgentMode("ask", "build"), "ask");
+  assert.equal(resolveEffectiveAgentMode("plan", null), "plan");
+  assert.equal(resolveEffectiveAgentMode("plan", "ask"), "ask");
+  assert.equal(resolveEffectiveAgentMode("build", "plan"), "plan");
+  assert.equal(resolveEffectiveAgentMode("build", "ask"), "ask");
+  assert.equal(resolveEffectiveAgentMode("build", "build"), "build");
+  assert.equal(resolveEffectiveAgentMode("build", null), "build");
 });

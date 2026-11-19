@@ -13,7 +13,7 @@ import { canonicalOpenCodeEvent, createSseReader, lastAssistantText, parseDevMot
 import { createOpenCodeClient } from "./server/opencode-api.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, fullyDecodePath, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
-import { staticSecurityHeaders } from "./server/security-headers.mjs";
+import { buildProxyResponseHeaders, isTextualProxyMediaType, PROXY_SECURITY_HEADERS, staticSecurityHeaders } from "./server/security-headers.mjs";
 import { readHandle, withOpenFile } from "./server/safe-file.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
 import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
@@ -34,12 +34,12 @@ import { createUploadRegistry } from "./server/upload-registry.mjs";
 import { ControlPlane } from "./server/control-plane.mjs";
 import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/workspace-control.mjs";
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
-import { isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, parseAgentMode, readOnlyToolsFor, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
+import { isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, modeFromAgent, parseAgentMode, readOnlyToolsFor, resolveEffectiveAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
 import { assertAuthPassword, parseBasicAuthorization, requireSameOriginMutation } from "./server/auth.mjs";
 import { createBasicAuthGuard, parseTrustedProxies } from "./server/auth-guard.mjs";
 import { OidcAuth } from "./server/oidc-auth.mjs";
 import { ExternalAuth } from "./server/external-auth.mjs";
-import { redactSecretsInText } from "./server/secret-redaction.mjs";
+import { createStreamingBufferRedactor, createStreamingTextRedactor, redactSecretsInText } from "./server/secret-redaction.mjs";
 import { QwenChatError, createQwenRunRegistry, handleQwenChatRequest, isQwenId, publicQwenChatError } from "./server/qwen-chat.mjs";
 import { installQwenProvider, listQwenModels, publicQwenModelError, publicQwenModelList, publicQwenPresets, resolveQwenModelSelection } from "./server/qwen-models.mjs";
 import { antigravityRemoteAction, integrationChildEnv, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
@@ -64,8 +64,17 @@ import { errorMessage } from "./server/error-message.mjs";
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
 const OPENCODE_PASSWORD = process.env.OPENCODE_SERVER_PASSWORD || "";
-// Hoisted openCodeHeaders() is only invoked per request, after module init.
-const openCode = createOpenCodeClient({ baseUrl: OPENCODE_URL, headers: openCodeHeaders });
+// Hoisted openCodeHeaders() and setOpenCodeSessionMode() are only invoked per request, after module init.
+const openCode = createOpenCodeClient({
+  baseUrl: OPENCODE_URL,
+  headers: openCodeHeaders,
+  onSessionCreated: (session, body) => {
+    const id = typeof session?.id === "string" ? session.id : "";
+    if (!id) return;
+    const mode = modeFromAgent(session?.agent) || parseAgentMode(session?.mode) || modeFromAgent(body?.agent) || "build";
+    setOpenCodeSessionMode(id, mode);
+  }
+});
 const fetchOpenCodeJson = openCode.fetchJson;
 const DEVMOTER_AUTH_USERNAME = process.env.DEVMOTER_AUTH_USERNAME || "devmoter";
 const DEVMOTER_AUTH_PASSWORD = assertAuthPassword(process.env.DEVMOTER_AUTH_PASSWORD || "");
@@ -430,6 +439,12 @@ function redactText(value) {
   return redactSecretsInText(value, REDACTED_SECRETS);
 }
 
+function stringifyRedactedJson(body) {
+  return JSON.stringify(body, (_key, value) =>
+    typeof value === "string" ? redactText(value) : value
+  );
+}
+
 function endIfResponseStarted(res) {
   if (!res.headersSent && !res.writableEnded && !res.destroyed) return false;
   if (!res.writableEnded && !res.destroyed) res.end();
@@ -439,24 +454,22 @@ function endIfResponseStarted(res) {
 function json(res, status, body) {
   if (endIfResponseStarted(res)) return;
   res.writeHead(status, {
+    ...PROXY_SECURITY_HEADERS,
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store"
   });
-  res.end(JSON.stringify(body, (_key, value) =>
-    typeof value === "string" ? redactText(value) : value
-  ));
+  res.end(stringifyRedactedJson(body));
 }
 
 function jsonWithCookie(res, status, body, cookie) {
   if (endIfResponseStarted(res)) return;
   res.writeHead(status, {
+    ...PROXY_SECURITY_HEADERS,
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
     "set-cookie": cookie
   });
-  res.end(JSON.stringify(body, (_key, value) =>
-    typeof value === "string" ? redactText(value) : value
-  ));
+  res.end(stringifyRedactedJson(body));
 }
 
 async function featureJson(res, task, successStatus = 200) {
@@ -1820,6 +1833,51 @@ async function readOpenCodeBody(req, limit) {
   }
 }
 
+const OPENCODE_SESSION_MODES_MAX = 1000;
+
+function setOpenCodeSessionMode(sessionId, mode) {
+  if (!sessionId) return;
+  const normalized = parseAgentMode(mode);
+  if (!normalized) return;
+  if (openCodeSessionModes.has(sessionId)) {
+    openCodeSessionModes.delete(sessionId);
+  } else if (openCodeSessionModes.size >= OPENCODE_SESSION_MODES_MAX) {
+    const oldest = openCodeSessionModes.keys().next().value;
+    if (oldest !== undefined) openCodeSessionModes.delete(oldest);
+  }
+  openCodeSessionModes.set(sessionId, normalized);
+}
+
+async function resolveOpenCodeSessionMode(sessionId) {
+  if (!sessionId) return null;
+  if (openCodeSessionModes.has(sessionId)) {
+    return openCodeSessionModes.get(sessionId);
+  }
+  try {
+    const session = await openCode.session(sessionId, { signal: AbortSignal.timeout(2500) });
+    const resolved = modeFromAgent(session?.agent) || parseAgentMode(session?.mode) || "build";
+    setOpenCodeSessionMode(sessionId, resolved);
+    return resolved;
+  } catch {
+    return null;
+  }
+}
+
+function tryParseJsonObject(buffer) {
+  if (!buffer || !buffer.length) return null;
+  try {
+    const parsed = JSON.parse(buffer.toString("utf8"));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeProxyChunk(res, textOrBuffer) {
+  if (!textOrBuffer || !textOrBuffer.length || res.writableEnded || res.destroyed) return;
+  res.write(typeof textOrBuffer === "string" ? Buffer.from(textOrBuffer, "utf8") : textOrBuffer);
+}
+
 async function opencodeSessionRoute(req, res, url) {
   if (url.pathname === "/api/opencode/event") {
     if (req.method !== "GET") return false;
@@ -1865,8 +1923,6 @@ async function opencodeSessionRoute(req, res, url) {
   }
 
   const requestedMode = parseAgentMode(req.headers["x-pocket-agent-mode"]);
-  if (requestedMode) openCodeSessionModes.set(sessionId, requestedMode);
-  const mode = requestedMode || openCodeSessionModes.get(sessionId) || "build";
   const sandboxPolicy = externalBackendSandboxPolicy("opencode");
 
   try {
@@ -1882,8 +1938,18 @@ async function opencodeSessionRoute(req, res, url) {
       } catch (error) {
         throw badOpenCodeRequest(errorMessage(error));
       }
+      const sessionMode = (await resolveOpenCodeSessionMode(sessionId)) || "build";
+      const promptAgentMode = modeFromAgent(prompt.agent);
+      if (isReadOnlyMode(sessionMode) && promptAgentMode && !isReadOnlyMode(promptAgentMode)) {
+        json(res, 403, { error: `${sessionMode} mode blocks switching to non-read-only agent "${prompt.agent}"`, mode: sessionMode });
+        return true;
+      }
+      const effectiveMode = resolveEffectiveAgentMode(
+        sessionMode,
+        promptAgentMode && isReadOnlyMode(promptAgentMode) ? promptAgentMode : requestedMode
+      );
       prompt.text = materializeOpenCodeUploadText(prompt.text);
-      await openCode.prompt(sessionId, prompt, { readOnlyTools: readOnlyToolsFor(mode) });
+      await openCode.prompt(sessionId, prompt, { readOnlyTools: readOnlyToolsFor(effectiveMode) });
       json(res, 200, { ok: true });
     } else if (subroute === "context") {
       json(res, 200, await openCode.context(sessionId));
@@ -1952,6 +2018,7 @@ async function opencodeEvents(req, res) {
     }
     if (endIfResponseStarted(res)) return;
     res.writeHead(200, {
+      ...PROXY_SECURITY_HEADERS,
       "content-type": "text/event-stream; charset=utf-8",
       "cache-control": "no-cache, no-transform",
       connection: "keep-alive"
@@ -1959,14 +2026,23 @@ async function opencodeEvents(req, res) {
     const read = createSseReader();
     const decoder = new TextDecoder();
     const reader = upstream.body.getReader();
+    const emitFrames = chunk => {
+      for (const frame of read(chunk)) {
+        const event = canonicalOpenCodeEvent(generation, frame);
+        if (event && !res.writableEnded && !res.destroyed) {
+          res.write("data: " + stringifyRedactedJson(event) + "\n\n");
+        }
+      }
+    };
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done || res.writableEnded || res.destroyed) break;
-        for (const frame of read(decoder.decode(value, { stream: true }))) {
-          const event = canonicalOpenCodeEvent(generation, frame);
-          if (event) res.write("data: " + JSON.stringify(event) + "\n\n");
-        }
+        emitFrames(decoder.decode(value, { stream: true }));
+      }
+      const tail = decoder.decode();
+      if (tail && !res.writableEnded && !res.destroyed) {
+        emitFrames(tail);
       }
     } finally {
       reader.releaseLock();
@@ -1994,12 +2070,16 @@ async function proxy(req, res) {
   const { upstreamUrl, policyPath } = target;
   const sessionId = sessionIdFromOpenCodePath(policyPath);
   const requestedMode = parseAgentMode(req.headers["x-pocket-agent-mode"]);
-  if (sessionId && requestedMode) openCodeSessionModes.set(sessionId, requestedMode);
-  const mode = requestedMode || (sessionId ? openCodeSessionModes.get(sessionId) : null) || "build";
+  const isSessionCreate = req.method === "POST" && policyPath === "/api/session";
+  const isSessionAgentUpdate = req.method === "POST" && Boolean(sessionId) && /^\/api\/session\/[^/]+\/agent$/.test(policyPath);
 
-  if (isReadOnlyMode(mode) && isDirectMutationRoute(policyPath)) {
-    json(res, 403, { error: `${mode} mode blocks direct shell and command mutations`, mode });
-    return;
+  if (isDirectMutationRoute(policyPath)) {
+    const sessionMode = (await resolveOpenCodeSessionMode(sessionId)) || "build";
+    const effectiveMode = resolveEffectiveAgentMode(sessionMode, requestedMode);
+    if (isReadOnlyMode(effectiveMode)) {
+      json(res, 403, { error: `${effectiveMode} mode blocks direct shell and command mutations`, mode: effectiveMode });
+      return;
+    }
   }
 
   if (isAdapterOwnedRoute(policyPath)) {
@@ -2026,6 +2106,12 @@ async function proxy(req, res) {
     }
   }
 
+  const reqJson = (isSessionCreate || isSessionAgentUpdate) ? tryParseJsonObject(body) : null;
+  const bodyAgentMode = reqJson ? (modeFromAgent(reqJson.agent) || parseAgentMode(reqJson.mode)) : null;
+  const initialCreateMode = isSessionCreate
+    ? resolveEffectiveAgentMode(bodyAgentMode || "build", requestedMode)
+    : null;
+
   const upstreamAbort = new AbortController();
   const abortUpstream = () => {
     upstreamAbort.abort();
@@ -2048,32 +2134,90 @@ async function proxy(req, res) {
       signal: upstreamAbort.signal
     });
 
-    const headers = {};
-    for (const [key, value] of upstream.headers.entries()) {
-      if (![ "content-encoding", "content-length", "transfer-encoding", "connection" ].includes(key)) {
-        headers[key] = value;
-      }
+    if (isSessionAgentUpdate && upstream.ok && bodyAgentMode) {
+      setOpenCodeSessionMode(sessionId, resolveEffectiveAgentMode(bodyAgentMode, requestedMode));
     }
-    const upstreamContentType = upstream.headers.get("content-type") || "";
-    headers["cache-control"] = upstreamContentType.includes("text/event-stream")
-      ? "no-cache, no-transform"
-      : "no-store";
+
+    const { headers, rawContentType, mediaType } = buildProxyResponseHeaders(
+      upstream.headers,
+      upstream.status,
+      redactText
+    );
 
     if (endIfResponseStarted(res)) return;
 
-    res.writeHead(upstream.status, headers);
-
     if (!upstream.body) {
+      res.writeHead(upstream.status, headers);
       res.end();
       return;
     }
 
+    const captureCreatedSession =
+      isSessionCreate &&
+      upstream.ok &&
+      (mediaType === "application/json" || mediaType.endsWith("+json"));
+
+    if (!captureCreatedSession) {
+      res.writeHead(upstream.status, headers);
+    }
+
     const reader = upstream.body.getReader();
+    const textual = isTextualProxyMediaType(rawContentType);
+    const decoder = textual ? new TextDecoder("utf-8", { fatal: false }) : null;
+    const redactor = textual
+      ? createStreamingTextRedactor(REDACTED_SECRETS)
+      : createStreamingBufferRedactor(REDACTED_SECRETS);
+    const captureLimit = 1024 * 1024;
+    let capturing = captureCreatedSession;
+    const capturedParts = [];
+    let capturedBytes = 0;
+
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done || res.writableEnded || res.destroyed) break;
-        res.write(Buffer.from(value));
+        const out = textual
+          ? redactor.push(decoder.decode(value, { stream: true }))
+          : redactor.push(value);
+        if (!out || !out.length) continue;
+        if (capturing) {
+          const buf = Buffer.from(out, "utf8");
+          capturedBytes += buf.length;
+          if (capturedBytes <= captureLimit) {
+            capturedParts.push(buf);
+          } else {
+            capturing = false;
+            res.writeHead(upstream.status, headers);
+            for (const part of capturedParts) writeProxyChunk(res, part);
+            capturedParts.length = 0;
+            writeProxyChunk(res, buf);
+          }
+        } else {
+          writeProxyChunk(res, out);
+        }
+      }
+
+      if (!res.writableEnded && !res.destroyed) {
+        const tail = textual
+          ? redactor.push(decoder.decode()) + redactor.flush()
+          : redactor.flush();
+        if (capturing) {
+          if (tail && tail.length) capturedParts.push(Buffer.from(tail, "utf8"));
+          const fullBuffer = capturedParts.length ? Buffer.concat(capturedParts) : Buffer.alloc(0);
+          const createdPayload = tryParseJsonObject(fullBuffer);
+          const createdSession = createdPayload?.data && typeof createdPayload.data === "object"
+            ? createdPayload.data
+            : createdPayload;
+          const createdId = typeof createdSession?.id === "string" ? createdSession.id : "";
+          if (createdId) {
+            const upstreamMode = modeFromAgent(createdSession?.agent) || parseAgentMode(createdSession?.mode);
+            setOpenCodeSessionMode(createdId, resolveEffectiveAgentMode(upstreamMode || initialCreateMode, initialCreateMode));
+          }
+          res.writeHead(upstream.status, headers);
+          writeProxyChunk(res, fullBuffer);
+        } else {
+          writeProxyChunk(res, tail);
+        }
       }
     } finally {
       reader.releaseLock();
@@ -2224,7 +2368,9 @@ async function codexEvents(req, res) {
     return;
   }
 
+  if (endIfResponseStarted(res)) return;
   res.writeHead(200, {
+    ...PROXY_SECURITY_HEADERS,
     "content-type": "text/event-stream; charset=utf-8",
     "cache-control": "no-cache, no-transform",
     "connection": "keep-alive",
@@ -2232,8 +2378,9 @@ async function codexEvents(req, res) {
   });
 
   const send = (event, data) => {
-    res.write(`event: ${event}\n`);
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (res.writableEnded || res.destroyed) return;
+    res.write(`event: ${redactText(event)}\n`);
+    res.write(`data: ${stringifyRedactedJson(data)}\n\n`);
   };
 
   const onNotification = event => send("notification", event);
@@ -2249,16 +2396,20 @@ async function codexEvents(req, res) {
   send("ready", { online: true });
 
   const heartbeat = setInterval(() => {
-    res.write(": heartbeat\n\n");
+    if (!res.writableEnded && !res.destroyed) {
+      res.write(": heartbeat\n\n");
+    }
   }, 20000);
 
-  req.on("close", () => {
+  const cleanup = () => {
     clearInterval(heartbeat);
     codex.off("notification", onNotification);
     codex.off("server-request", onServerRequest);
     codex.off("offline", onOffline);
     codex.off("online", onOnline);
-  });
+  };
+  req.on("close", cleanup);
+  res.on("close", cleanup);
 }
 
 
