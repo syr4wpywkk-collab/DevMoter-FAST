@@ -247,6 +247,22 @@ test("API Chat timeout aborts the request, retains the prompt, and restores send
   assert.equal(ui.root.querySelector("#apiSend").disabled, false);
 });
 
+test("#349: while a reply is pending the send button is Stop and cancels only that request", async t => {
+  const ui = await harness(t, { rejectOnAbort: true });
+  const send = ui.root.querySelector("#apiSend");
+  const request = ui.submit("Stop me");
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(send.disabled, false, "Stop stays clickable while the reply is pending");
+  assert.equal(send.getAttribute("aria-label"), "Stop");
+  ui.root.querySelector("#apiForm").dispatchEvent(new ui.window.Event("submit", { bubbles: true, cancelable: true }));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(request.init.signal.aborted, true);
+  assert.equal(ui.root.querySelector("#apiStatus").textContent, "Stopped");
+  assert.equal(ui.root.querySelector(".api-message.user")?.textContent, "Stop me", "the prompt stays in the conversation");
+  assert.equal(ui.root.querySelector(".api-message.assistant"), null, "no error bubble for a user stop");
+  assert.equal(send.getAttribute("aria-label"), "Send");
+});
+
 test("API conversations restore raw messages and provider choices with safe Markdown and exact copy", async t => {
   const ui = await harness(t);
   const form = ui.root.querySelector("#apiForm");
@@ -314,7 +330,7 @@ test("new chat and history switching abort active responses and reject late repl
   old.resolve({ message: { content: "STALE AFTER NEW CHAT" } });
   await settle();
   assert.ok(!ui.root.querySelector("#apiTranscript").textContent.includes("STALE"));
-  assert.equal(ui.root.querySelector("#apiSend").disabled, true, "old finally does not clear current sending state");
+  assert.equal(ui.root.querySelector("#apiSend").getAttribute("aria-label"), "Stop", "old finally does not clear current sending state");
   current.resolve({ message: { content: "Current answer" } });
   await settle();
   const pending = ui.submit("Pending before switching history");
