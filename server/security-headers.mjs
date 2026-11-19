@@ -1,4 +1,13 @@
+// style-src keeps 'unsafe-inline' for the login page's <style> block and
+// element style attributes; data:/blob: cover attachment and file previews.
 const CSP = [
+  "default-src 'self'",
+  "connect-src 'self'",
+  "font-src 'self' data:",
+  "frame-src 'self'",
+  "img-src 'self' data: blob:",
+  "media-src 'self' data: blob:",
+  "style-src 'self' 'unsafe-inline'",
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",

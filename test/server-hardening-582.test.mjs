@@ -698,12 +698,13 @@ test("setup API honors IPv6 loopback Host headers and rejects non-loopback hosts
     assert.equal(res.status, 200, `Host ${hostHeader} should be accepted as loopback`);
   }
 
-  for (const hostHeader of ["192.168.0.1", "[2001:db8::1]", "user@localhost", "evil.com#@localhost"]) {
+  // Malformed Host values are refused for every route before the setup check.
+  for (const [hostHeader, status] of [["192.168.0.1", 403], ["[2001:db8::1]", 403], ["user@localhost", 400], ["evil.com#@localhost", 400]]) {
     const res = await rawHttpRequest({
       port,
       path: "/api/setup/status",
       headers: { authorization, host: hostHeader }
     });
-    assert.equal(res.status, 403, `Host ${hostHeader} must be rejected`);
+    assert.equal(res.status, status, `Host ${hostHeader} must be rejected`);
   }
 });

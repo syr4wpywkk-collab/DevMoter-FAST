@@ -16,6 +16,8 @@ import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, ope
 import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, codexRpcAuthorityOverride, normalizeNewProjectPath, readDistStaticFile } from "./server/security-helpers.mjs";
 import { buildProxyResponseHeaders, isTextualProxyMediaType, PROXY_SECURITY_HEADERS, staticSecurityHeaders } from "./server/security-headers.mjs";
 import { applyBaselineSecurityHeaders } from "./server/response-security.mjs";
+import { createHostValidator, parseAllowedHosts } from "./server/host-validation.mjs";
+import { createFixedWindowLimiter } from "./server/rate-limit.mjs";
 import { writeFileNoFollow } from "./server/safe-file.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
 import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
@@ -48,7 +50,7 @@ import {
   requireSameOriginMutation,
   resolveLocalAddress
 } from "./server/auth.mjs";
-import { createBasicAuthGuard, parseTrustedProxies } from "./server/auth-guard.mjs";
+import { createBasicAuthGuard, createClientIpResolver, parseTrustedProxies } from "./server/auth-guard.mjs";
 import { OidcAuth } from "./server/oidc-auth.mjs";
 import { ExternalAuth } from "./server/external-auth.mjs";
 import { createStreamingBufferRedactor, createStreamingTextRedactor, redactLogText, redactSecretsInText } from "./server/secret-redaction.mjs";
@@ -108,6 +110,14 @@ const basicAuthGuard = createBasicAuthGuard({
   expectedPassword: AUTH_CONFIG.password,
   trustedProxies: DEVMOTER_TRUSTED_PROXIES
 });
+const validateRequestHost = createHostValidator({
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+  allowedHosts: parseAllowedHosts(process.env.DEVMOTER_ALLOWED_HOSTS)
+});
+// The GitHub webhook is reachable without login, so bound how often it can
+// make the server read and verify a body.
+const webhookClientIp = createClientIpResolver({ trustedProxies: DEVMOTER_TRUSTED_PROXIES });
+const takeWebhookSlot = createFixedWindowLimiter({ windowMs: 60_000, perKey: 120, global: 600 });
 const REDACTED_SECRETS = [
   OPENCODE_PASSWORD,
   OPENCODE_PASSWORD ? Buffer.from(`${OPENCODE_USERNAME}:${OPENCODE_PASSWORD}`).toString("base64") : "",
@@ -1743,6 +1753,12 @@ async function controlRoute(req, res, url) {
 }
 
 async function githubWebhookRoute(req, res) {
+  const slot = takeWebhookSlot(webhookClientIp(req));
+  if (!slot.ok) {
+    res.setHeader("retry-after", String(slot.retryAfterSeconds));
+    json(res, 429, { error: "Too many webhook requests" });
+    return;
+  }
   try {
     const raw = await readRaw(req, 64 * 1024);
     const event = String(req.headers["x-github-event"] || "").trim();
@@ -2923,6 +2939,11 @@ const PUBLIC_STATIC_PATHS = new Set([
 const server = http.createServer(async (req, res) => {
   applyBaselineSecurityHeaders(req, res, { publicOrigin: DEVMOTER_PUBLIC_ORIGIN });
   try {
+    const hostCheck = validateRequestHost(req);
+    if (!hostCheck.ok) {
+      json(res, hostCheck.status, { error: hostCheck.error });
+      return;
+    }
     const url = new URL(req.url, "http://localhost");
     // URL parsing can erase dot segments. Validate the original request target
     // before dispatching to either an OpenCode adapter or any other route.
