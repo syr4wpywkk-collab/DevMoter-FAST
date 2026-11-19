@@ -1,4 +1,4 @@
-export const REQUIRED_CI_COMMANDS = ["npm ci", "npm run typecheck", "npm run lint", "npm run build", "npm test"];
+export const REQUIRED_CI_COMMANDS = ["npm ci", "npm run typecheck", "npm run lint", "npm run build", "npm test", "npm test --prefix deepseek-harness-mobile"];
 
 // Returns why the CI workflow would let a change merge without passing
 // install, typecheck, lint, build and the full test suite. Empty = enforced.
