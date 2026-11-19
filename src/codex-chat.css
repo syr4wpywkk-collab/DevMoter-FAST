@@ -591,3 +591,16 @@ html[data-devmoter-theme="light"] .cx-app .cx-approval pre { background: var(--s
 }
 
 @media (prefers-reduced-motion: reduce) { .cx-app .cx-details-panel { transition: none; } }
+
+.cx-app .cx-history-retry {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+  width: min(100%, var(--cx-content-width)); margin: 16px auto; padding: 12px 16px;
+  border: 1px solid var(--cx-border); border-radius: 8px; color: var(--cx-text); font-size: .9rem; line-height: 1.5;
+}
+.cx-app .cx-history-retry p { flex: 1 1 16em; margin: 0; color: var(--cx-text); }
+.cx-app .cx-history-retry button {
+  min-height: 44px; padding: 0 16px; border: 1px solid var(--cx-border); border-radius: 8px;
+  background: var(--cx-raised); color: var(--cx-text); font: inherit;
+}
+.cx-app .cx-history-retry button:disabled { opacity: .6; }
+.cx-app .cx-history-retry button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
