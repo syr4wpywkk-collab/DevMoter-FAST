@@ -159,6 +159,21 @@ test("untrusted non-matching DEVMOTER_TRUST_PROXY still ignores forwarded header
   assert.equal(JSON.stringify(hostsPayload).includes("evil.example"), false);
 });
 
+test("forwarded origin uses the trusted proxy's last values only", () => {
+  const req = {
+    headers: {
+      host: "internal.local",
+      "x-forwarded-host": "evil.example, real.example",
+      "x-forwarded-proto": "http, https"
+    },
+    socket: { remoteAddress: "127.0.0.1" }
+  };
+  const options = { trustedProxies: ["127.0.0.1"] };
+  assert.equal(expectedRequestOrigin(req, "", options), "https://real.example");
+  req.socket.remoteAddress = "203.0.113.5";
+  assert.equal(expectedRequestOrigin(req, "", options), "http://internal.local");
+});
+
 test("trusted proxy honors valid forwarded headers, rejects anomalies, and keeps DEVMOTER_PUBLIC_ORIGIN precedence", async t => {
   const home = await mkdtemp(join(tmpdir(), "devmoter-forwarded-trusted-"));
   const port = await freePort();
@@ -185,8 +200,8 @@ test("trusted proxy honors valid forwarded headers, rejects anomalies, and keeps
   const statusRes = await fetch(`${origin}/api/control/hosts/status`, {
     headers: {
       authorization: AUTHORIZATION,
-      "x-forwarded-host": "proxy.example.test:8443, internal.local",
-      "x-forwarded-proto": "https, http"
+      "x-forwarded-host": "evil.example, proxy.example.test:8443",
+      "x-forwarded-proto": "http, https"
     }
   });
   assert.equal(statusRes.status, 200);

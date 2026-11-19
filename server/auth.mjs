@@ -23,6 +23,11 @@ function firstHeaderValue(value) {
   return typeof raw === "string" ? raw.split(",", 1)[0].trim() : "";
 }
 
+function lastHeaderValue(value) {
+  const raw = Array.isArray(value) ? value.at(-1) : value;
+  return typeof raw === "string" ? raw.split(",").at(-1).trim() : "";
+}
+
 export function expandIpv6(ip) {
   const [head, tail] = ip.split("::");
   const h = head ? head.split(":") : [];
@@ -168,8 +173,8 @@ export function expectedRequestOrigin(req, publicOrigin = "", options = {}) {
   const requestHost = firstHeaderValue(req?.headers?.host);
 
   if (isTrustedProxyRequest(req, trustedProxies)) {
-    const forwardedProto = firstHeaderValue(req?.headers?.["x-forwarded-proto"]).toLowerCase();
-    const forwardedHost = firstHeaderValue(req?.headers?.["x-forwarded-host"]);
+    const forwardedProto = lastHeaderValue(req?.headers?.["x-forwarded-proto"]).toLowerCase();
+    const forwardedHost = lastHeaderValue(req?.headers?.["x-forwarded-host"]);
     if (forwardedProto || forwardedHost) {
       const forwardedOrigin = parseAuthorityOrigin(
         forwardedProto || fallbackProto,
