@@ -3,7 +3,7 @@ import { createOfficeAi } from "./server/office/ai.mjs";
 import http from "node:http";
 import { accessSync, constants as fsConstants } from "node:fs";
 import { lstat, mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
-import { basename, delimiter, dirname, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
+import { basename, delimiter, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
 import { MIMEType } from "node:util";
@@ -13,10 +13,10 @@ import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/ope
 import { canonicalOpenCodeEvent, createSseReader, lastAssistantText, OPENCODE_API_V2, parseDevMoterPrompt, parsePermissionDecision, parseQuestionAnswers } from "./server/opencode-adapter.mjs";
 import { createOpenCodeClient } from "./server/opencode-api.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
-import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, codexRpcAuthorityOverride, normalizeNewProjectPath } from "./server/security-helpers.mjs";
+import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, codexRpcAuthorityOverride, normalizeNewProjectPath, readDistStaticFile } from "./server/security-helpers.mjs";
 import { buildProxyResponseHeaders, isTextualProxyMediaType, PROXY_SECURITY_HEADERS, staticSecurityHeaders } from "./server/security-headers.mjs";
 import { applyBaselineSecurityHeaders } from "./server/response-security.mjs";
-import { readHandle, withOpenFile, writeFileNoFollow } from "./server/safe-file.mjs";
+import { writeFileNoFollow } from "./server/safe-file.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
 import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
 import { createSessionControl } from "./server/session-control.mjs";
@@ -37,13 +37,13 @@ import { ControlPlane } from "./server/control-plane.mjs";
 import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/workspace-control.mjs";
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
 import { normalizeProxyRoutePath } from "./server/opencode-proxy-path.mjs";
-import { isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, isSessionAgentRoute, isSessionCreateRoute, modeFromAgent, parseAgentMode, readOnlyToolsFor, resolveEffectiveAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
+import { createSessionModeMap, isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, isSessionAgentRoute, isSessionCreateRoute, modeFromAgent, parseAgentMode, readOnlyToolsFor, resolveEffectiveAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
 import { classifyProxyRoute } from "./server/proxy-route-policy.mjs";
 import {
   assertAuthPassword,
   assertSafeHttpBind,
   isLoopbackAddress,
-  isLoopbackBindHost,
+  isLoopbackHost,
   parseBasicAuthorization,
   requireSameOriginMutation,
   resolveLocalAddress
@@ -51,7 +51,7 @@ import {
 import { createBasicAuthGuard, parseTrustedProxies } from "./server/auth-guard.mjs";
 import { OidcAuth } from "./server/oidc-auth.mjs";
 import { ExternalAuth } from "./server/external-auth.mjs";
-import { createStreamingBufferRedactor, createStreamingTextRedactor, redactSecretsInText } from "./server/secret-redaction.mjs";
+import { createStreamingBufferRedactor, createStreamingTextRedactor, redactLogText, redactSecretsInText } from "./server/secret-redaction.mjs";
 import { QwenChatError, createQwenRunRegistry, handleQwenChatRequest, isQwenId, publicQwenChatError } from "./server/qwen-chat.mjs";
 import { installQwenProvider, listQwenModels, publicQwenModelError, publicQwenModelList, publicQwenPresets, resolveQwenModelSelection } from "./server/qwen-models.mjs";
 import { antigravityRemoteAction, integrationChildEnv, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
@@ -108,7 +108,14 @@ const basicAuthGuard = createBasicAuthGuard({
   expectedPassword: AUTH_CONFIG.password,
   trustedProxies: DEVMOTER_TRUSTED_PROXIES
 });
-const REDACTED_SECRETS = [OPENCODE_PASSWORD, DEVMOTER_AUTH_PASSWORD, process.env.DEVMOTER_GOOGLE_CLIENT_SECRET, process.env.DEVMOTER_MICROSOFT_CLIENT_SECRET].filter(Boolean);
+const REDACTED_SECRETS = [
+  OPENCODE_PASSWORD,
+  OPENCODE_PASSWORD ? Buffer.from(`${OPENCODE_USERNAME}:${OPENCODE_PASSWORD}`).toString("base64") : "",
+  DEVMOTER_AUTH_PASSWORD,
+  DEVMOTER_AUTH_PASSWORD ? Buffer.from(`${DEVMOTER_AUTH_USERNAME}:${DEVMOTER_AUTH_PASSWORD}`).toString("base64") : "",
+  process.env.DEVMOTER_GOOGLE_CLIENT_SECRET,
+  process.env.DEVMOTER_MICROSOFT_CLIENT_SECRET
+].filter(Boolean);
 const OPENCODE_DIRECTORY =
   process.env.OPENCODE_DIRECTORY ||
   process.env.CODEX_CWD ||
@@ -154,7 +161,7 @@ const operationRegistry = createOperationRegistry({
 });
 const multiApiVaultMigrations = new Set();
 const uploadRegistry = createUploadRegistry();
-const openCodeSessionModes = new Map();
+const openCodeSessionModes = createSessionModeMap();
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
@@ -166,14 +173,14 @@ const agentRunService = createAgentRunService({
   assertExecutionAllowed: () => assertExternalBackendExecutionAllowed("codex")
 });
 void agentRunService.ready().catch(error => {
-  console.error("Agent run service initialization failed", redactText(errorMessage(error)));
+  console.error("Agent run service initialization failed", redactLog(errorMessage(error)));
 });
 const multiApiStore = createMultiApiStore({ filePath: MULTI_API_FILE, env: process.env });
 const qwenRuns = createQwenRunRegistry();
 const secretStore = createSecretStore({ filePath: SECRET_VAULT_FILE });
 const multiApiAttachments = createMultiApiAttachmentStore({ directory: MULTI_API_IMAGE_DIR });
 void multiApiAttachments.cleanup().catch(error => {
-  console.warn("multi-api attachment cleanup failed", redactText(errorMessage(error)));
+  console.warn("multi-api attachment cleanup failed", redactLog(errorMessage(error)));
 });
 const passkeys = new PasskeyAuth({
   configDir: PROJECT_CONFIG_DIR, publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
@@ -194,7 +201,7 @@ const controlPlane = new ControlPlane({
       status: run?.status ?? null,
       endedAt: run?.endedAt ?? null
     }).catch(error => {
-      console.error("Control-plane lifecycle dispatch failed", redactText(errorMessage(error)));
+      console.error("Control-plane lifecycle dispatch failed", redactLog(errorMessage(error)));
     });
   }
 });
@@ -287,7 +294,7 @@ const systemFeatures = createSystemFeatures({
   onDeviceRevoked: deviceId => terminal.revokeDeviceSessions(deviceId)
 });
 const toolsAiStore = createRunStore({ filePath: join(PROJECT_CONFIG_DIR, "tools-ai-runs.json") });
-void toolsAiStore.ready().catch(error => console.error("Tools AI store initialization failed", safeText(error.message)));
+void toolsAiStore.ready().catch(error => console.error("Tools AI store initialization failed", redactLog(errorMessage(error))));
 const prepareToolsAiChat = async (payload, identity) => {
     const project = payload.projectId ? await getProjectById(payload.projectId) : null;
     const providers = await multiApiStore.listResolved();
@@ -386,7 +393,7 @@ function codexThreadIdFromEvent(params = {}) {
 
 function notifyAgentState(payload) {
   void systemFeatures.notifyAgentState(payload).catch(error => {
-    console.error("Push notification dispatch failed", error);
+    console.error("Push notification dispatch failed", redactLog(errorMessage(error)));
   });
 }
 
@@ -404,7 +411,7 @@ codex.on("notification", event => {
       backend: "codex",
       payload: { method, params: event?.params ?? null }
     }).catch(error => {
-      console.error("Workspace event append failed", redactText(errorMessage(error)));
+      console.error("Workspace event append failed", redactLog(errorMessage(error)));
     });
   }
 
@@ -424,7 +431,7 @@ codex.on("notification", event => {
       method,
       itemId: event?.params?.item?.id ?? event?.params?.itemId ?? null
     }).catch(error => {
-      console.error("after-tool hook failed", redactText(errorMessage(error)));
+      console.error("after-tool hook failed", redactLog(errorMessage(error)));
     });
   }
 });
@@ -445,7 +452,7 @@ codex.on("server-request", request => {
     backend: "codex",
     payload: { id: request?.id ?? null, method, params: request?.params ?? null }
   }).catch(error => {
-    console.error("Workspace request event append failed", redactText(errorMessage(error)));
+    console.error("Workspace request event append failed", redactLog(errorMessage(error)));
   });
 
   if (method === "item/commandExecution/requestApproval" || method === "item/fileChange/requestApproval") {
@@ -468,6 +475,10 @@ const MIME = {
 
 function redactText(value) {
   return redactSecretsInText(value, REDACTED_SECRETS);
+}
+
+function redactLog(value) {
+  return redactLogText(value, REDACTED_SECRETS);
 }
 
 function redactJsonSecrets(value) {
@@ -1078,7 +1089,7 @@ const sessionControl = createSessionControl({
 const sessionControlTimer = setInterval(() => {
   sessionControl
     .reconcile()
-    .catch(error => console.error("Session control reconcile failed", error));
+    .catch(error => console.error("Session control reconcile failed", redactLog(errorMessage(error))));
 }, 2500);
 sessionControlTimer.unref?.();
 
@@ -1298,7 +1309,7 @@ async function executeControlTask(definition, context = {}) {
     return await executeControlTaskCore(definition, context);
   } finally {
     void userAutomation?.emitHook("after-run", hookPayload).catch(error => {
-      console.error("after-run hook failed", redactText(errorMessage(error)));
+      console.error("after-run hook failed", redactLog(errorMessage(error)));
     });
   }
 }
@@ -2172,6 +2183,15 @@ async function opencodeEvents(req, res) {
       for (const frame of read(chunk)) {
         const event = canonicalOpenCodeEvent(generation, frame);
         if (event && !res.writableEnded && !res.destroyed) {
+          if (event.type === "session.deleted") {
+            const deletedSessionId = String(
+              event.properties?.info?.id ??
+              event.properties?.sessionID ??
+              event.properties?.id ??
+              ""
+            );
+            if (deletedSessionId) openCodeSessionModes.delete(deletedSessionId);
+          }
           res.write("data: " + stringifyRedactedJson(event) + "\n\n");
         }
       }
@@ -2650,8 +2670,10 @@ async function multiApiProviderList(res) {
 }
 
 async function multiApiProviderSave(req, res) {
+  let requestApiKey = "";
   try {
     const payload = await readJson(req, 256 * 1024);
+    requestApiKey = String(payload?.apiKey || "").trim();
     const currentProviders = await multiApiStore.listResolved();
     const existing = currentProviders.find(item => item.id === payload.id);
     if (payload.secretRef || payload.credentialMode === "vault" || existing?.secretRef) {
@@ -2666,7 +2688,10 @@ async function multiApiProviderSave(req, res) {
     const provider = await multiApiStore.upsert(payload);
     json(res, 200, { provider });
   } catch (error) {
-    json(res, multiApiErrorStatus(error), { error: errorMessage(error) });
+    const message = errorMessage(error);
+    json(res, multiApiErrorStatus(error), {
+      error: requestApiKey ? redactSecretsInText(message, [requestApiKey]) : message
+    });
   }
 }
 
@@ -2685,6 +2710,7 @@ async function multiApiProviderDelete(req, providerId, res) {
 async function migrateMultiApiProviderToVault(req, providerId, res) {
   let createdReference = "";
   let migrationClaimed = false;
+  let providerApiKey = "";
   try {
     await requireVaultProviderDevice(req);
     const payload = await readJson(req, 64 * 1024);
@@ -2705,6 +2731,7 @@ async function migrateMultiApiProviderToVault(req, providerId, res) {
     const providers = await multiApiStore.listResolved();
     const provider = providers.find(item => item.id === providerId);
     if (!provider) throw Object.assign(new Error("Provider not found"), { status: 404 });
+    providerApiKey = String(provider.apiKey || "");
     if (provider.source !== "file" || !provider.apiKey || provider.secretRef) {
       throw Object.assign(new Error("Only editable file-backed API key providers can be migrated"), { status: 409 });
     }
@@ -2743,30 +2770,41 @@ async function migrateMultiApiProviderToVault(req, providerId, res) {
     json(res, 200, { provider: migrated, migrated: true });
   } catch (error) {
     if (createdReference) await secretStore.remove(createdReference).catch(() => {});
-    json(res, multiApiErrorStatus(error), { error: errorMessage(error) });
+    const message = errorMessage(error);
+    json(res, multiApiErrorStatus(error), {
+      error: providerApiKey ? redactSecretsInText(message, [providerApiKey]) : message
+    });
   } finally {
     if (migrationClaimed) multiApiVaultMigrations.delete(providerId);
   }
 }
 
 async function multiApiProviderTest(req, res) {
-  let vaultSecretValue = "";
+  const secrets = new Set();
+  const mask = value => secrets.size > 0 ? redactSecretsInText(value, [...secrets]) : value;
   try {
     const payload = await readJson(req, 256 * 1024);
+    if (typeof payload?.apiKey === "string" && payload.apiKey) {
+      secrets.add(payload.apiKey);
+      if (payload.apiKey.trim()) secrets.add(payload.apiKey.trim());
+    }
     if (payload.secretRef) {
       const resolved = await authorizeVaultProviderReference(req, payload, { resolveValue: true });
-      vaultSecretValue = resolved.value;
-      const result = await testMultiApiProvider({ ...payload, apiKey: vaultSecretValue, secretRef: "", projectId: "" });
+      if (resolved.value) secrets.add(resolved.value);
+      const result = await testMultiApiProvider({ ...payload, apiKey: resolved.value, secretRef: "", projectId: "" });
       json(res, 200, {
         ...result,
-        models: result.models.map(model => redactSecretsInText(model, [vaultSecretValue]))
+        models: result.models.map(mask)
       });
       return;
     }
-    json(res, 200, await testMultiApiProvider(payload));
+    const result = await testMultiApiProvider(payload);
+    json(res, 200, {
+      ...result,
+      models: result.models.map(mask)
+    });
   } catch (error) {
-    const message = errorMessage(error);
-    json(res, multiApiErrorStatus(error), { error: redactSecretsInText(message, [vaultSecretValue]) });
+    json(res, multiApiErrorStatus(error), { error: mask(errorMessage(error)) });
   }
 }
 
@@ -2794,10 +2832,14 @@ async function multiApiAttachmentDelete(attachmentId, res) {
 }
 
 async function multiApiChat(req, res) {
-  let vaultSecretValue = "";
+  const secrets = new Set();
+  const mask = value => secrets.size > 0 ? redactSecretsInText(value, [...secrets]) : value;
   try {
     const payload = await readJson(req, 1024 * 1024);
     let providers = await multiApiStore.listResolved();
+    for (const provider of providers) {
+      if (provider?.apiKey) secrets.add(provider.apiKey);
+    }
     const selectedProvider = providers.find(item => item.id === String(payload?.providerId || ""));
     if (selectedProvider?.secretRef) {
       if (!payload.projectId || payload.projectId !== selectedProvider.projectId) {
@@ -2810,18 +2852,17 @@ async function multiApiChat(req, res) {
         baseUrl: selectedProvider.baseUrl,
         protocol: selectedProvider.protocol
       }, { resolveValue: true });
-      vaultSecretValue = resolved.value;
+      if (resolved.value) secrets.add(resolved.value);
       providers = providers.map(provider => provider.id === selectedProvider.id
-        ? { ...provider, apiKey: vaultSecretValue, secretRef: "" }
+        ? { ...provider, apiKey: resolved.value, secretRef: "" }
         : provider);
     }
     const result = await runMultiApiChat(providers, payload, fetch, { attachmentStore: multiApiAttachments });
-    json(res, 200, vaultSecretValue
-      ? { ...result, message: { ...result.message, content: redactSecretsInText(result.message.content, [vaultSecretValue]) } }
+    json(res, 200, secrets.size > 0
+      ? { ...result, message: { ...result.message, content: mask(result.message.content) } }
       : result);
   } catch (error) {
-    const message = errorMessage(error);
-    json(res, multiApiErrorStatus(error), { error: redactSecretsInText(message, [vaultSecretValue]) });
+    json(res, multiApiErrorStatus(error), { error: mask(errorMessage(error)) });
   }
 }
 
@@ -2852,39 +2893,18 @@ async function serveLoginAsset(req, res, pathname) {
   res.end(req.method === "HEAD" ? undefined : data);
 }
 
-async function serveStatic(req, res) {
-  let path = req.url === "/" ? "/index.html" : req.url.split("?")[0];
-  path = normalize(path).replace(/^(\.\.[/\\])+/, "");
-  const full = join(DIST, path);
-
-  try {
-    const data = await withOpenFile(full, {}, async (handle, info) => {
-      if (!info.isFile()) throw new Error("not file");
-      return readHandle(handle);
-    });
-    res.writeHead(200, staticSecurityHeaders(MIME[extname(full)] || "application/octet-stream"));
-    res.end(data);
-  } catch {
-    try {
-      const data = await readFile(join(DIST, "index.html"));
-      res.writeHead(200, staticSecurityHeaders("text/html; charset=utf-8"));
-      res.end(data);
-    } catch {
-      json(res, 404, { error: "Not built yet. Run npm run build." });
-    }
+async function serveStatic(req, res, { allowSpaFallback = true } = {}) {
+  const result = await readDistStaticFile(DIST, req.url, {
+    publicPaths: PUBLIC_STATIC_PATHS,
+    mimeTypes: MIME,
+    allowSpaFallback
+  });
+  if (result.status !== 200) {
+    json(res, result.status, { error: result.error });
+    return;
   }
-}
-
-function isLoopbackHost(hostHeader) {
-  try {
-    const parsed = new URL(`http://${hostHeader || ""}`);
-    if (parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
-      return false;
-    }
-    return isLoopbackBindHost(parsed.hostname);
-  } catch {
-    return false;
-  }
+  res.writeHead(200, staticSecurityHeaders(result.contentType));
+  res.end(req.method === "HEAD" ? undefined : result.data);
 }
 
 // PWA metadata a browser must fetch without a login (the login page itself is
@@ -2903,7 +2923,7 @@ const PUBLIC_STATIC_PATHS = new Set([
 const server = http.createServer(async (req, res) => {
   applyBaselineSecurityHeaders(req, res, { publicOrigin: DEVMOTER_PUBLIC_ORIGIN });
   try {
-    const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+    const url = new URL(req.url, "http://localhost");
     // URL parsing can erase dot segments. Validate the original request target
     // before dispatching to either an OpenCode adapter or any other route.
     const openCodeTarget = req.url.startsWith(OPENCODE_PROXY_PREFIX) || url.pathname.startsWith(OPENCODE_PROXY_PREFIX)
@@ -2926,7 +2946,7 @@ const server = http.createServer(async (req, res) => {
 
     if ((req.method === "GET" || req.method === "HEAD") && PUBLIC_STATIC_PATHS.has(url.pathname)) {
       res.setHeader("cache-control", "no-store");
-      await serveStatic(req, res);
+      await serveStatic(req, res, { allowSpaFallback: false });
       return;
     }
 
@@ -3308,7 +3328,7 @@ const server = http.createServer(async (req, res) => {
           configured: result?.configured !== false,
           timedOut: result?.timedOut === true
         }).catch(error => {
-          console.error("verification-complete hook failed", redactText(errorMessage(error)));
+          console.error("verification-complete hook failed", redactLog(errorMessage(error)));
         });
         return result;
       });
@@ -4006,7 +4026,7 @@ const server = http.createServer(async (req, res) => {
       json(res, 400, { error: "Malformed request path" });
       return;
     }
-    console.error(redactText(error instanceof Error ? error.stack || error.message : String(error)));
+    console.error(redactLog(error instanceof Error ? error.stack || error.message : String(error)));
     json(res, 500, { error: "DevMoter server error" });
   }
 });
@@ -4036,6 +4056,6 @@ server.listen(PORT, HOST, () => {
     host: HOST,
     port: PORT
   }).catch(error => {
-    console.error("Control-plane startup event failed", redactText(errorMessage(error)));
+    console.error("Control-plane startup event failed", redactLog(errorMessage(error)));
   });
 });
