@@ -1545,15 +1545,11 @@ export function mountCodexRemote(
       className: "cx-history-retry",
       message: t("chat.history.listLoadFailed"),
       retryLabel: t("common.retry"),
-      // A draft typed meanwhile belongs to a new chat; do not swap it for the
-      // saved thread's project draft.
-      onRetry: async () => {
-        await loadThreads({ restoreSaved: !(promptInput.value.trim() || pendingAttachments.length || selectedContextRefs.length) });
-      }
+      onRetry: async () => { await loadThreads(); }
     }));
   }
 
-  async function loadThreads({ restoreSaved = true }: { restoreSaved?: boolean } = {}) {
+  async function loadThreads() {
     const requestGeneration = threadListRequests.begin();
     let result: Json;
     try {
@@ -1580,7 +1576,10 @@ export function mountCodexRemote(
 
     // thread/list can briefly lag a just-created or just-resumed thread.
     // Preserve the current identity instead of silently falling back to a new chat.
-    if (!activeThreadId && restoreSaved) {
+    // A draft typed meanwhile belongs to a new chat: any later list load
+    // (retry, periodic refresh) must not swap it for the saved thread.
+    const hasDraft = Boolean(promptInput.value.trim() || pendingAttachments.length || selectedContextRefs.length);
+    if (!activeThreadId && !hasDraft) {
       const saved = localStorage.getItem("opencode-pocket-codex-thread");
       const target = allThreads.find(thread => thread.id === saved);
       if (target) await selectThread(target);

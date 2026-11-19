@@ -223,7 +223,7 @@ async function mountWithFailedThreadList(t, { savedThread = null } = {}) {
   await settle();
   await settle();
 
-  return { window, document, methods };
+  return { window, document, methods, controller };
 }
 
 test("failed Codex thread list shows an in-place retry that keeps the draft", async t => {
@@ -246,7 +246,7 @@ test("failed Codex thread list shows an in-place retry that keeps the draft", as
 });
 
 test("Codex list retry survives a search and does not swap a draft for the saved thread", async t => {
-  const { window, document, methods } = await mountWithFailedThreadList(t, { savedThread: "thread-1" });
+  const { window, document, methods, controller } = await mountWithFailedThreadList(t, { savedThread: "thread-1" });
   const search = document.querySelector("#cxThreadSearch");
   search.value = "abc";
   search.dispatchEvent(new window.Event("input", { bubbles: true }));
@@ -264,5 +264,11 @@ test("Codex list retry survives a search and does not swap a draft for the saved
 
   assert.deepEqual(methods.slice(before), ["thread/list"], "the saved thread is not reopened under the draft");
   assert.ok(document.querySelector("#cxSidebarThreads").textContent.includes("Recovered thread"));
+  assert.equal(document.querySelector("#cxPromptInput").value, "draft for a new chat");
+
+  const beforeRefresh = methods.length;
+  await controller.refresh();
+  await settle();
+  assert.ok(!methods.slice(beforeRefresh).includes("thread/resume"), "a later periodic refresh does not reopen it either");
   assert.equal(document.querySelector("#cxPromptInput").value, "draft for a new chat");
 });
