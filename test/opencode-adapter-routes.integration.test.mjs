@@ -264,7 +264,7 @@ test("OpenCode 2.x: the same DevMoter routes drive /api/session", async () => {
     await exerciseSameSurface({ call });
     assert.deepEqual(upstreamCall(received, "POST", "/api/session/ses_1/model")[0].body, { model: { id: "deepseek-v4.1-flash-free", providerID: "opencode" } });
     assert.deepEqual(upstreamCall(received, "POST", "/api/session/ses_1/agent")[0].body, { agent: "plan" });
-    assert.deepEqual(upstreamCall(received, "POST", "/api/session/ses_1/prompt")[0].body, { text: "hi", tools: { "*": false, read: true, glob: true, grep: true, list: true, webfetch: true, websearch: true, lsp: true } });
+    assert.deepEqual(upstreamCall(received, "POST", "/api/session/ses_1/prompt")[0].body, { text: "hi" });
     assert.deepEqual(upstreamCall(received, "POST", "/api/session/ses_1/permission/per_1/reply")[0].body, { decision: "once" });
     assert.deepEqual(upstreamCall(received, "POST", "/api/session/ses_1/form/que_1/reply")[0].body, { answer: { q0: "blue" } });
     assert.equal(upstreamCall(received, "DELETE", "/api/session/ses_1/form/que_1").length, 1);

@@ -79,7 +79,7 @@ test("2.x prompts use /api/session/{id}/prompt and only re-select what changed",
     [
       { method: "POST", path: "/api/session/ses_2/model", body: { model: { id: "big-pickle", providerID: "opencode" } } },
       { method: "POST", path: "/api/session/ses_2/agent", body: { agent: "plan" } },
-      { method: "POST", path: "/api/session/ses_2/prompt", body: { text: "hi", tools: { "*": false }, delivery: "steer" } }
+      { method: "POST", path: "/api/session/ses_2/prompt", body: { text: "hi", delivery: "steer" } }
     ]
   );
   assert.throws(() => buildOpenCodePromptRequests(null, "ses", { text: "x" }), /generation is unknown/);

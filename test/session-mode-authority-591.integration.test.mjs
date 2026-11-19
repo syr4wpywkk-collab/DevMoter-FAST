@@ -153,6 +153,16 @@ test(`${generation} session mode authority is server-side; the agent-mode header
   };
   const upstreamCalls = (method, path) => received.filter(item => item.method === method && item.path === path);
   const promptsFor = id => upstreamCalls("POST", generation === "1.x" ? `/session/${id}/prompt_async` : `/api/session/${id}/prompt`);
+  const assertReadOnlyPrompt = id => {
+    const body = promptsFor(id).at(-1).body;
+    if (generation === "1.x") {
+      assert.equal(body.tools["*"], false);
+      assert.equal(body.tools.read, true);
+    } else {
+      assert.equal(body.tools, undefined);
+      assert.ok(["plan", "ask"].includes(sessions.get(id).agent));
+    }
+  };
 
   try {
     await waitForReady(child);
@@ -179,8 +189,7 @@ test(`${generation} session mode authority is server-side; the agent-mode header
     const roPrompt = await call("POST", `${base}/session/ses_c1/prompt`, { text: "inspect" }, { "x-pocket-agent-mode": "build" });
     assert.equal(roPrompt.status, 200, roPrompt.text);
     assert.equal(promptsFor("ses_c1").length, 1);
-    assert.equal(promptsFor("ses_c1")[0].body.tools["*"], false);
-    assert.equal(promptsFor("ses_c1")[0].body.tools.read, true);
+    assertReadOnlyPrompt("ses_c1");
 
     // plan -> build through the agent endpoint is rejected before forwarding.
     const escalate = await call("POST", `${base}/session/ses_c1/agent`, { agent: "build" });
@@ -243,15 +252,24 @@ test(`${generation} session mode authority is server-side; the agent-mode header
     assert.equal(escalatePrompt.status, 403);
     assert.equal(promptsFor("ses_c2").length, 1, "escalating prompt must not reach upstream");
 
-    // A prompt body's read-only agent is an allowed downgrade on a build
-    // session, and the downgrade is recorded server-side.
+    // Only 2.x persists the agent selected by a prompt.
     const createBuild2 = await call("POST", `${base}/session`, { agent: "build" });
     assert.equal(createBuild2.payload.data.id, "ses_c3");
     const downgradePrompt = await call("POST", `${base}/session/ses_c3/prompt`, { text: "look", agent: "plan" });
     assert.equal(downgradePrompt.status, 200, downgradePrompt.text);
-    assert.equal(promptsFor("ses_c3")[0].body.tools["*"], false);
+    assertReadOnlyPrompt("ses_c3");
     const downgradedShell = await call("POST", `${base}/session/ses_c3/shell`, { command: "id" });
-    assert.equal(downgradedShell.status, 403, "recorded downgrade must bind later mutations");
+    assert.equal(downgradedShell.status, generation === "2.x" ? 403 : 200, downgradedShell.text);
+    if (generation === "1.x") {
+      const nextBuild = await call("POST", `${base}/session/ses_c3/prompt`, { text: "work", agent: "build" });
+      assert.equal(nextBuild.status, 200, nextBuild.text);
+      assert.equal(promptsFor("ses_c3").at(-1).body.agent, "build");
+      assert.equal(promptsFor("ses_c3").at(-1).body.tools, undefined);
+      const inheritedBuild = await call("POST", `${base}/session/ses_c3/prompt`, { text: "continue" });
+      assert.equal(inheritedBuild.status, 200, inheritedBuild.text);
+      assert.equal(promptsFor("ses_c3").at(-1).body.agent, "build");
+      assert.equal(promptsFor("ses_c3").at(-1).body.tools, undefined);
+    }
 
     // Sessions the upstream cannot resolve fail closed on guarded routes.
     const ghostShell = await call("POST", `${base}/session/ses_ghost/shell`, { command: "id" });
@@ -282,8 +300,7 @@ test(`${generation} session mode authority is server-side; the agent-mode header
     const noModePrompt = await call("POST", `${base}/session/ses_nomode/prompt`, { text: "inspect" });
     assert.equal(noModePrompt.status, 200, noModePrompt.text);
     assert.equal(promptsFor("ses_nomode").length, 1);
-    assert.equal(promptsFor("ses_nomode")[0].body.tools["*"], false);
-    assert.equal(promptsFor("ses_nomode")[0].body.tools.read, true);
+    assertReadOnlyPrompt("ses_nomode");
     if (generation === "2.x") {
       assert.deepEqual(upstreamCalls("POST", "/api/session/ses_nomode/agent")[0].body, { agent: "plan" });
     }
@@ -309,8 +326,8 @@ test(`${generation} session mode authority is server-side; the agent-mode header
         }
         const retry = await call("POST", `${base}/session/${id}/prompt`, { text: "inspect again" });
         assert.equal(retry.status, 200, retry.text);
-        assert.equal(promptsFor(id).at(-1).body.tools["*"], false);
-        assert.equal(promptsFor(id).at(-1).body.tools.read, true);
+        assertReadOnlyPrompt(id);
+        assert.deepEqual(upstreamCalls("POST", `/api/session/${id}/agent`).at(-1).body, { agent: "plan" });
       }
     }
 

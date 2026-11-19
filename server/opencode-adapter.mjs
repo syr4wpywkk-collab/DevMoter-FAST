@@ -133,7 +133,6 @@ export function buildOpenCodePromptRequests(generation, sessionID, prompt, { ses
     requests.push({ method: "POST", path: "/api/session/" + enc(id) + "/agent", body: { agent: prompt.agent } });
   }
   const body = { text: prompt.text };
-  if (readOnlyTools) body.tools = { ...readOnlyTools };
   if (prompt.delivery) body.delivery = prompt.delivery;
   requests.push({ method: "POST", path: "/api/session/" + enc(id) + "/prompt", body });
   return requests;
