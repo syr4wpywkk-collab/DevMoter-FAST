@@ -31,6 +31,18 @@ export function isLoopbackBindHost(host) {
   return isLoopbackAddress(normalized);
 }
 
+export function isLoopbackHost(hostHeader) {
+  try {
+    const parsed = new URL(`http://${hostHeader || ""}`);
+    if (parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
+      return false;
+    }
+    return isLoopbackBindHost(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Validate whether binding plain HTTP to `host` is safe to start without
  * an explicit operator opt-in. `DEVMOTER_PUBLIC_ORIGIN` is never treated as
