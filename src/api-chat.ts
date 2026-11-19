@@ -8,6 +8,8 @@ import { createChatDraftBinding } from "./chat-draft.mjs";
 import { latestAssistantText } from "./chat-transcript-actions.mjs";
 import "./api-chat-surface.css";
 
+const API_SEND_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>';
+
 type ApiProvider = {
   id: string;
   name: string;
@@ -164,13 +166,13 @@ export function mountApiChat(
           <small id="apiStatus" class="api-status" role="status" aria-live="polite">${escapeHtml(t("apiChat.loadingProviders"))}</small>
           <button id="apiCopyLatest" class="api-copy-latest" type="button">${escapeHtml(t("chat.copyLatest.button"))}</button>
           <div class="api-composer-foot">
-            <button id="apiAttachImage" class="api-attach-button" type="button" aria-label="${escapeHtml(t("apiChat.attachImageAria"))}">＋</button>
+            <button id="apiAttachImage" class="api-attach-button" type="button" aria-label="${escapeHtml(t("apiChat.attachImageAria"))}" title="${escapeHtml(t("apiChat.attachImageAria"))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
             <div class="api-picker-row">
               <select id="apiProvider" aria-label="${escapeHtml(t("apiChat.providerSelectAria"))}"></select>
               <select id="apiModel" aria-label="${escapeHtml(t("apiChat.modelSelectAria"))}"></select>
               <select id="apiReasoning" aria-label="${escapeHtml(t("apiChat.reasoningAria"))}"></select>
             </div>
-            <button id="apiSend" type="submit" aria-label="${escapeHtml(t("common.send"))}">↑</button>
+            <button id="apiSend" type="submit" aria-label="${escapeHtml(t("common.send"))}" title="${escapeHtml(t("common.send"))}">${API_SEND_ICON}</button>
           </div>
         </form>
       </section>
@@ -395,7 +397,8 @@ export function mountApiChat(
     for (const select of [providerSelect, modelSelect, reasoningSelect]) {
       select.title = select.selectedOptions[0]?.textContent || select.getAttribute("aria-label") || "";
     }
-    send.textContent = sending ? "…" : "↑";
+    if (sending) send.textContent = "…";
+    else send.innerHTML = API_SEND_ICON;
     send.setAttribute("aria-label", sending ? t("apiChat.waitingResponse") : t("common.send"));
     form.setAttribute("aria-busy", String(sending));
     status.title = status.textContent || "";
