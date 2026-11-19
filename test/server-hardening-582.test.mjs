@@ -504,7 +504,7 @@ test("createSessionModeMap bounds size with oldest-first eviction, enforces TTL,
   assert.equal(store.size, 0);
 });
 
-test("OpenCode session modes are removed on session DELETE and SSE session.deleted", async t => {
+test("OpenCode session DELETE is denied without clearing modes; SSE session.deleted removes modes", async t => {
   const home = await mkdtemp(join(tmpdir(), "devmoter-session-mode-"));
   const projectPath = join(home, "workspace");
   await mkdir(projectPath);
@@ -588,12 +588,13 @@ test("OpenCode session modes are removed on session DELETE and SSE session.delet
   assert.equal((await api("POST", "/session/ses_del/prompt", { text: "hi", agent: "plan" })).status, 200);
   assert.equal((await api("POST", "/session/ses_del/shell", { command: "echo hi" })).status, 403);
 
-  // 2. Delete ses_del -> mode entry is cleared; unresolved sessions fail closed.
-  assert.equal((await api("DELETE", "/session/ses_del")).status, 200);
+  // 2. Denied DELETE leaves the cached plan mode intact without forwarding.
+  assert.equal((await api("DELETE", "/session/ses_del")).status, 404);
+  assert.ok(!upstreamRequests.some(r => r.method === "DELETE" && r.path === "/api/session/ses_del"));
   const beforeDeleteLookup = upstreamRequests.filter(r => r.method === "GET" && r.path === "/api/session/ses_del").length;
   const afterDelete = await api("POST", "/session/ses_del/shell", { command: "echo hi" });
   assert.equal(afterDelete.status, 403);
-  assert.equal(upstreamRequests.filter(r => r.method === "GET" && r.path === "/api/session/ses_del").length, beforeDeleteLookup + 1);
+  assert.equal(upstreamRequests.filter(r => r.method === "GET" && r.path === "/api/session/ses_del").length, beforeDeleteLookup);
   assert.ok(!upstreamRequests.some(r => r.method === "POST" && r.path === "/api/session/ses_del/shell"));
 
   // 3. Set plan mode for ses_sse, receive SSE session.deleted event, verify mode entry is cleared.
