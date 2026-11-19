@@ -54,6 +54,18 @@ function rawGet(port, path, headers) {
   });
 }
 
+function rawPost(port, path, headers) {
+  return new Promise((resolve, reject) => {
+    const req = http.request({ host: "127.0.0.1", port, path, method: "POST", headers }, res => {
+      const chunks = [];
+      res.on("data", chunk => chunks.push(chunk));
+      res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString("utf8") }));
+    });
+    req.on("error", reject);
+    req.end();
+  });
+}
+
 test("OpenCode proxy forwards only allowlisted query parameters (#590)", async () => {
   const home = await mkdtemp(join(tmpdir(), "devmoter-opencode-query-"));
   const projectDir = join(home, "project");
@@ -98,7 +110,9 @@ test("OpenCode proxy forwards only allowlisted query parameters (#590)", async (
     const allowed = [
       ["/api/opencode/session?limit=80&order=desc", "/api/session?limit=80&order=desc"],
       ["/api/opencode/session?order=desc&limit=80", "/api/session?order=desc&limit=80"],
-      ["/api/opencode/session?refresh=1", "/api/session?refresh=1"],
+      // Boundary values of the limit range are accepted.
+      ["/api/opencode/session?limit=1", "/api/session?limit=1"],
+      ["/api/opencode/session?limit=200", "/api/session?limit=200"],
       ["/api/opencode/session", "/api/session"]
     ];
     for (const [path, expectedUpstream] of allowed) {
@@ -109,6 +123,18 @@ test("OpenCode proxy forwards only allowlisted query parameters (#590)", async (
     for (const [, expectedUpstream] of allowed) {
       assert.ok(upstreamHits.includes(expectedUpstream), `${expectedUpstream} should reach OpenCode`);
     }
+
+    // refresh belongs to /pocket/providers only. The GET form of that route
+    // is served by the DevMoter adapter, so the generic-proxy contract is
+    // exercised with a POST, which falls through to proxy().
+    const providersRefresh = await rawPost(port, "/api/opencode/pocket/providers?refresh=1", headers);
+    assert.equal(
+      providersRefresh.status,
+      200,
+      `providers refresh should be proxied, got ${providersRefresh.status}: ${providersRefresh.body}`
+    );
+    assert.equal(JSON.parse(providersRefresh.body).path, "/api/pocket/providers?refresh=1");
+    assert.ok(upstreamHits.includes("/api/pocket/providers?refresh=1"), "providers refresh should reach OpenCode");
 
     const hitsBeforeRejected = upstreamHits.length;
     const rejected = [
@@ -124,14 +150,39 @@ test("OpenCode proxy forwards only allowlisted query parameters (#590)", async (
       "/api/opencode/session?limit=0",
       "/api/opencode/session?limit=99999",
       "/api/opencode/session?limit=abc",
+      "/api/opencode/session?limit=201",
       "/api/opencode/session?order=sideways",
-      "/api/opencode/session?refresh=2"
+      "/api/opencode/session?refresh=2",
+      // The allowlist is scoped per route: refresh is not a session-list
+      // parameter, and limit/order belong to the list route only.
+      "/api/opencode/session?refresh=1",
+      "/api/opencode/session?refresh=0",
+      "/api/opencode/session/ses_detail?limit=10",
+      "/api/opencode/session/ses_detail?order=asc",
+      // Routes absent from the table take no query parameters at all.
+      "/api/opencode/session/ses_detail?refresh=1",
+      "/api/opencode/agent?refresh=1",
+      // A repeated allowlisted parameter is rejected instead of letting
+      // the upstream pick a winner.
+      "/api/opencode/session?limit=1&limit=2",
+      "/api/opencode/session?order=asc&order=desc",
+      // Abuse caps: too many parameters, or an over-long raw query.
+      "/api/opencode/session?a=1&b=2&c=3&d=4&e=5&f=6&g=7&h=8&i=9",
+      `/api/opencode/session?limit=${"1".repeat(1100)}`
     ];
     for (const path of rejected) {
       const response = await rawGet(port, path, headers);
       assert.equal(response.status, 400, `${path} should be rejected, got ${response.status}: ${response.body}`);
       assert.match(JSON.parse(response.body).error, /OpenCode proxy query/);
     }
+    // The refresh validator still applies on its own route.
+    const providersBadRefresh = await rawPost(port, "/api/opencode/pocket/providers?refresh=2", headers);
+    assert.equal(
+      providersBadRefresh.status,
+      400,
+      `providers refresh=2 should be rejected, got ${providersBadRefresh.status}: ${providersBadRefresh.body}`
+    );
+    assert.match(JSON.parse(providersBadRefresh.body).error, /OpenCode proxy query/);
     assert.equal(
       upstreamHits.length,
       hitsBeforeRejected,

@@ -123,7 +123,7 @@ test("OpenCode proxy rejects SSRF/traversal paths before reaching upstream and k
     const allowed = [
       ["/api/opencode/location", "/api/location"],
       ["/api/opencode/api/session", "/api/session"],
-      ["/api/opencode/session/ses_123?limit=20", "/api/session/ses_123?limit=20"],
+      ["/api/opencode/session/ses_123", "/api/session/ses_123"],
       ["/api/opencode", "/api/"]
     ];
     for (const [path, expectedUpstream] of allowed) {
@@ -135,11 +135,13 @@ test("OpenCode proxy rejects SSRF/traversal paths before reaching upstream and k
       assert.ok(upstreamHits.includes(expectedUpstream), `${expectedUpstream} should reach OpenCode`);
     }
 
-    // Query parameters are allowlisted (#590): directory/project selection
-    // and unknown parameters are rejected before reaching OpenCode.
+    // Query parameters are allowlisted per route (#590): directory/project
+    // selection, unknown parameters, and list parameters on a detail route
+    // are rejected before reaching OpenCode.
     const rejectedQueries = [
       "/api/opencode/session?directory=%2Ftmp%2Fproject",
-      "/api/opencode/session?unknown=1"
+      "/api/opencode/session?unknown=1",
+      "/api/opencode/session/ses_123?limit=20"
     ];
     for (const path of rejectedQueries) {
       const response = await rawGet(port, path, headers);
