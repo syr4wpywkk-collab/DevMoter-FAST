@@ -95,6 +95,94 @@ function firstHeaderValue(value) {
   return typeof raw === "string" ? raw.split(",", 1)[0].trim() : "";
 }
 
+function lastHeaderValue(value) {
+  const raw = Array.isArray(value) ? value.at(-1) : value;
+  return typeof raw === "string" ? raw.split(",").at(-1).trim() : "";
+}
+
+export function expandIpv6(ip) {
+  const [head, tail] = ip.split("::");
+  const h = head ? head.split(":") : [];
+  const t = tail ? tail.split(":") : [];
+  const fill = Math.max(0, 8 - h.length - t.length);
+  const groups = [...h, ...Array(fill).fill("0"), ...t];
+  return groups.map((g) => g.padStart(4, "0"));
+}
+
+function normalizeProxyIp(address) {
+  const ip = String(address ?? "").trim().toLowerCase();
+  if (ip.startsWith("::ffff:") && ip.includes(".")) return ip.slice(7);
+  if (ip.includes(":")) {
+    try { return expandIpv6(ip).join(":"); } catch { return ip; }
+  }
+  return ip || "unknown";
+}
+
+export function parseTrustedProxies(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+export function createTrustedProxyMatcher(trustedProxies = []) {
+  // Trust is an exact peer identity check; never reuse the /64 rate-limit bucket.
+  const list = Array.isArray(trustedProxies) ? trustedProxies : parseTrustedProxies(trustedProxies);
+  const trusted = new Set(list.map(normalizeProxyIp).filter((ip) => ip !== "unknown"));
+  return function isTrustedProxy(req) {
+    if (trusted.size === 0) return false;
+    return trusted.has(normalizeProxyIp(req?.socket?.remoteAddress));
+  };
+}
+
+export function isTrustedProxyRequest(req, trustedProxies = []) {
+  const list = Array.isArray(trustedProxies) ? trustedProxies : parseTrustedProxies(trustedProxies);
+  if (list.length === 0) return false;
+  const peer = normalizeProxyIp(req?.socket?.remoteAddress);
+  if (peer === "unknown") return false;
+  return list.some((proxy) => normalizeProxyIp(proxy) === peer);
+}
+
+function parseConfiguredOrigin(publicOrigin) {
+  const raw = String(publicOrigin || "").trim();
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw);
+    if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) {
+      return null;
+    }
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
+function parseAuthorityOrigin(protocol, rawHost) {
+  const proto = String(protocol || "").trim().toLowerCase();
+  if (proto !== "http" && proto !== "https") return null;
+
+  const trimmed = String(rawHost || "").trim();
+  const host = trimmed === "::1" ? "[::1]" : trimmed;
+  if (!host || host.endsWith(":") || /[\u0000-\u001f\u007f\s,/\\@?#%]/.test(host)) return null;
+
+  try {
+    const parsed = new URL(`${proto}://${host}`);
+    if (
+      parsed.protocol !== `${proto}:` ||
+      parsed.username ||
+      parsed.password ||
+      parsed.pathname !== "/" ||
+      parsed.search ||
+      parsed.hash
+    ) {
+      return null;
+    }
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
 export function assertAuthPassword(value) {
   const password = String(value || "");
   if (password.length < 16) {
@@ -147,37 +235,50 @@ export function authorizeBasicRequest(req, res, expected) {
   return false;
 }
 
-export function expectedRequestOrigin(req, publicOrigin = "") {
+export function expectedRequestOrigin(req, publicOrigin = "", options = {}) {
   if (publicOrigin) {
-    try {
-      return new URL(publicOrigin).origin;
-    } catch {
-      return null;
+    return parseConfiguredOrigin(publicOrigin);
+  }
+
+  const trustedProxies = options?.trustedProxies ?? parseTrustedProxies(process.env.DEVMOTER_TRUST_PROXY);
+  const fallbackProto = req?.socket?.encrypted ? "https" : "http";
+  const requestHost = firstHeaderValue(req?.headers?.host);
+
+  if (isTrustedProxyRequest(req, trustedProxies)) {
+    const forwardedProto = lastHeaderValue(req?.headers?.["x-forwarded-proto"]).toLowerCase();
+    const forwardedHost = lastHeaderValue(req?.headers?.["x-forwarded-host"]);
+    if (forwardedProto || forwardedHost) {
+      const forwardedOrigin = parseAuthorityOrigin(
+        forwardedProto || fallbackProto,
+        forwardedHost || requestHost
+      );
+      if (forwardedOrigin) return forwardedOrigin;
     }
   }
 
-  const forwardedProto = firstHeaderValue(req.headers["x-forwarded-proto"]);
-  const forwardedHost = firstHeaderValue(req.headers["x-forwarded-host"]);
-  const protocol = forwardedProto || (req.socket?.encrypted ? "https" : "http");
-  const host = forwardedHost || firstHeaderValue(req.headers.host);
-  if (!host) return null;
+  return parseAuthorityOrigin(fallbackProto, requestHost);
+}
 
-  try {
-    return new URL(`${protocol}://${host}`).origin;
-  } catch {
-    return null;
-  }
+export function resolveLocalAddress(req, { publicOrigin = "", trustedProxies } = {}) {
+  const configured = parseConfiguredOrigin(publicOrigin);
+  if (configured) return configured;
+
+  const resolved = expectedRequestOrigin(req, "", { trustedProxies });
+  if (resolved) return resolved;
+
+  const fallbackProto = req?.socket?.encrypted ? "https" : "http";
+  return `${fallbackProto}://localhost`;
 }
 
 export function isMutationMethod(method) {
   return !["GET", "HEAD", "OPTIONS"].includes(String(method || "").toUpperCase());
 }
 
-export function mutationOriginMatches(req, publicOrigin = "") {
+export function mutationOriginMatches(req, publicOrigin = "", options = {}) {
   if (!isMutationMethod(req.method)) return true;
 
   const origin = firstHeaderValue(req.headers.origin);
-  const expected = expectedRequestOrigin(req, publicOrigin);
+  const expected = expectedRequestOrigin(req, publicOrigin, options);
   if (!origin || origin === "null" || !expected) return false;
 
   try {
@@ -187,8 +288,8 @@ export function mutationOriginMatches(req, publicOrigin = "") {
   }
 }
 
-export function requireSameOriginMutation(req, res, publicOrigin = "") {
-  if (mutationOriginMatches(req, publicOrigin)) return true;
+export function requireSameOriginMutation(req, res, publicOrigin = "", options = {}) {
+  if (mutationOriginMatches(req, publicOrigin, options)) return true;
 
   res.writeHead(403, {
     "content-type": "application/json; charset=utf-8",
