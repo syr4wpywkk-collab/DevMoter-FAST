@@ -59,6 +59,75 @@ test("workflow settings normalize trusted commands and scoped MCP servers", () =
   assert.equal(settings.mcp.servers[0].projectId, "p1");
 });
 
+test("ACP settings normalize parent environment names without storing values or injection hooks", () => {
+  const normalize = envPassthrough => normalizeDevWorkflowSettings({
+    adapters: { acp: { envPassthrough } }
+  }).adapters.acp.envPassthrough;
+  const injection = [
+    "BASH_ENV", "ENV", "NODE_OPTIONS", "NODE_PATH", "PYTHONPATH", "PYTHONSTARTUP",
+    "RUBYOPT", "PERL5OPT", "LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES", "DYLD_LIBRARY_PATH"
+  ];
+  assert.deepEqual(normalize([
+    "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "ANTHROPIC_API_KEY",
+    "BAD=NAME", "1INVALID", "", " BAD_NAME", 123, null, { KEY: "secret" },
+    "__proto__", "constructor", "prototype",
+    ...injection, ...injection.map(key => key.toLowerCase())
+  ]), ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY"]);
+  assert.deepEqual(normalize(undefined), []);
+  assert.deepEqual(normalize({ ANTHROPIC_API_KEY: "secret" }), []);
+  assert.deepEqual(normalize([]), []);
+  const names = Array.from({ length: 40 }, (_, index) => `KEY_${index}`);
+  assert.deepEqual(normalize(names), names.slice(0, 32));
+});
+
+test("ACP probe passes configured parent keys to the real adapter without storing their values", async t => {
+  const home = await mkdtemp(join(tmpdir(), "devmoter-acp-passthrough-"));
+  t.after(() => rm(home, { recursive: true, force: true }));
+  const selected = "DEVMOTER_ACP_TEST_SELECTED_KEY";
+  const unlisted = "DEVMOTER_ACP_TEST_UNLISTED_KEY";
+  for (const [key, value] of [[selected, "selected-secret"], [unlisted, "unlisted-secret"]]) {
+    const previous = process.env[key];
+    process.env[key] = value;
+    t.after(() => {
+      if (previous === undefined) delete process.env[key];
+      else process.env[key] = previous;
+    });
+  }
+  const script = join(home, "agent.mjs");
+  await writeFile(script, `
+    import readline from "node:readline";
+    readline.createInterface({ input: process.stdin }).on("line", line => {
+      const message = JSON.parse(line);
+      console.log(JSON.stringify({ jsonrpc: "2.0", id: message.id, result: {
+        protocolVersion: 1,
+        selected: process.env.${selected},
+        unlisted: process.env.${unlisted}
+      } }));
+    });
+  `);
+  const configDir = join(home, "config");
+  const service = createDevWorkflowService({
+    homeDir: home,
+    configDir,
+    codex: {},
+    projectResolver: async () => ({ id: "p1", path: home })
+  });
+  await service.updateSettings({ adapters: { acp: {
+    enabled: true, command: process.execPath, args: [script], envPassthrough: [selected]
+  } } });
+  const result = await service.probeAcp({ projectId: "p1" });
+  assert.equal(result.ok, true);
+  assert.equal(result.initialized.selected, "selected-secret");
+  assert.equal(result.initialized.unlisted, undefined);
+  const stored = await readFile(join(configDir, "dev-workflows.json"), "utf8");
+  assert.deepEqual(JSON.parse(stored).adapters.acp.envPassthrough, [selected]);
+  assert.doesNotMatch(stored, /selected-secret|unlisted-secret/);
+  await service.updateSettings({ adapters: { acp: { envPassthrough: [] } } });
+  const withoutPassthrough = await service.probeAcp({ projectId: "p1" });
+  assert.equal(withoutPassthrough.ok, true);
+  assert.equal(withoutPassthrough.initialized.selected, undefined);
+});
+
 test("workflow settings reject invalid MCP scope or transport", () => {
   assert.throws(() => normalizeDevWorkflowSettings({
     mcp: { servers: [{ name: "bad", scope: "repo", transport: "stdio", command: "x" }] }
