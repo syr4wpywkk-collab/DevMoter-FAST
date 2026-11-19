@@ -7,8 +7,11 @@ import {
   createNdjsonReader,
   createQwenChat,
   loadQwenChats,
+  mergeStoredQwenChats,
+  QWEN_CHATS_KEY,
   qwenChatTime,
   qwenChatTitle,
+  readQwenHistory,
   saveQwenChats,
   sortQwenChats,
   type QwenChat,
@@ -146,7 +149,8 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     }
   });
 
-  let chats: QwenChat[] = loadQwenChats(localStorage);
+  const savedHistory = readQwenHistory(localStorage);
+  let chats: QwenChat[] = savedHistory.chats;
   let activeId: string | null = chats[0]?.id ?? null;
   let projects: Project[] = [];
   let projectsLoaded = false;
@@ -155,7 +159,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   let paintQueued = false;
   let sheetReturnFocus: HTMLElement | null = null;
   // One quiet line for problems that are not part of a chat (no project, storage full).
-  let notice = "";
+  let notice = savedHistory.damaged ? t("qwen.chat.historyDamaged") : "";
 
   if (typeof ResizeObserver !== "undefined") {
     new ResizeObserver(() => {
@@ -594,6 +598,11 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   });
   window.addEventListener("storage", event => {
     if (event.key === PROJECT_KEY) render();
+    if (event.key === QWEN_CHATS_KEY) {
+      chats = mergeStoredQwenChats(loadQwenChats(localStorage), chats, live?.chatId ?? null);
+      if (activeId && !chats.some(chat => chat.id === activeId)) activeId = null;
+      render();
+    }
   });
 
   render();

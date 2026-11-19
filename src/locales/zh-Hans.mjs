@@ -1896,6 +1896,7 @@ export const zhHans = {
   "qwen.chat.historyTitle": "对话历史",
   "qwen.chat.historyNew": "新建",
   "qwen.chat.saveHistoryFailed": "无法在此设备上保存历史记录。",
+  "qwen.chat.historyDamaged": "无法读取已保存的历史记录，已将其另存。新对话会正常保存。",
   "qwen.chat.projectNotFound": "找不到项目",
   "qwen.chat.noProject": "没有项目",
   "qwen.chat.loadingProject": "正在加载项目…",

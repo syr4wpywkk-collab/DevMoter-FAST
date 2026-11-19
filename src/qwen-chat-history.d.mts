@@ -11,13 +11,16 @@ export type QwenChat = {
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 export const QWEN_CHATS_KEY: string;
 export const LEGACY_QWEN_SESSION_KEY: string;
+export const QWEN_CHATS_DAMAGED_KEY: string;
 export const QWEN_CHAT_LIMIT: number;
 export const QWEN_MESSAGE_LIMIT: number;
 export function isQwenSessionId(value: unknown): value is string;
 export function qwenChatTitle(text: unknown): string;
 export function createQwenChat(projectId?: string, now?: number): QwenChat;
 export function sortQwenChats(chats: QwenChat[]): QwenChat[];
+export function readQwenHistory(storage: StorageLike): { chats: QwenChat[]; damaged: boolean };
 export function loadQwenChats(storage: StorageLike): QwenChat[];
+export function mergeStoredQwenChats(stored: QwenChat[], current: QwenChat[], liveChatId?: string | null): QwenChat[];
 export function saveQwenChats(storage: StorageLike, chats: QwenChat[]): boolean;
 export function qwenChatTime(updatedAt: number, now?: number, locale?: string): string;
 export function createNdjsonReader(): { push(chunk: string): any[]; flush(): any[] };

@@ -7,6 +7,8 @@ import { formatRelativeTime, t } from "./i18n-core.mjs";
 export const QWEN_CHATS_KEY = "devmoter-qwen-chats";
 // The first Qwen Code chat (#530) kept one resume id under this key.
 export const LEGACY_QWEN_SESSION_KEY = "devmoter-qwen-session";
+// Unreadable history is copied here before the next save overwrites it.
+export const QWEN_CHATS_DAMAGED_KEY = "devmoter-qwen-chats:damaged";
 export const QWEN_CHAT_LIMIT = 30;
 export const QWEN_MESSAGE_LIMIT = 100;
 const MESSAGE_TEXT_LIMIT = 200_000;
@@ -60,13 +62,42 @@ export function sortQwenChats(chats) {
   return [...chats].sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-export function loadQwenChats(storage) {
+// One record per id; a duplicate (two tabs, an old bug) keeps the newest copy.
+function uniqueChats(chats) {
+  const byId = new Map();
+  for (const chat of chats) {
+    const seen = byId.get(chat.id);
+    if (!seen || chat.updatedAt > seen.updatedAt) byId.set(chat.id, chat);
+  }
+  return [...byId.values()];
+}
+
+// `damaged` is true when saved history could not be read as a whole; the raw
+// text is kept under QWEN_CHATS_DAMAGED_KEY so it is not silently lost.
+export function readQwenHistory(storage) {
   let chats = [];
+  let damaged = false;
+  let raw = null;
   try {
-    const saved = JSON.parse(storage.getItem(QWEN_CHATS_KEY) || "null");
-    if (Array.isArray(saved?.chats)) chats = saved.chats.map(cleanChat).filter(Boolean);
+    raw = storage.getItem(QWEN_CHATS_KEY);
   } catch {
-    chats = [];
+    raw = null;
+  }
+  if (raw !== null) {
+    try {
+      const saved = JSON.parse(raw);
+      if (Array.isArray(saved?.chats)) chats = uniqueChats(saved.chats.map(cleanChat).filter(Boolean));
+      else damaged = true;
+    } catch {
+      damaged = true;
+    }
+  }
+  if (damaged) {
+    try {
+      if (storage.getItem(QWEN_CHATS_DAMAGED_KEY) === null) storage.setItem(QWEN_CHATS_DAMAGED_KEY, raw);
+    } catch {
+      // Nothing more to keep; the notice still tells the user.
+    }
   }
   try {
     const legacy = storage.getItem(LEGACY_QWEN_SESSION_KEY);
@@ -79,7 +110,21 @@ export function loadQwenChats(storage) {
   } catch {
     // Storage can be unavailable (private mode); history stays in memory.
   }
-  return sortQwenChats(chats).slice(0, QWEN_CHAT_LIMIT);
+  return { chats: sortQwenChats(chats).slice(0, QWEN_CHAT_LIMIT), damaged };
+}
+
+export function loadQwenChats(storage) {
+  return readQwenHistory(storage).chats;
+}
+
+// Another tab saved history: take its copy, but keep what only this tab has —
+// the chat still streaming here and chats with nothing saved yet.
+export function mergeStoredQwenChats(stored, current, liveChatId = null) {
+  const storedIds = new Set(stored.map(chat => chat.id));
+  const localOnly = current.filter(chat =>
+    chat.id === liveChatId || (!storedIds.has(chat.id) && !chat.messages.length && !chat.sessionId));
+  const keep = new Set(localOnly.map(chat => chat.id));
+  return sortQwenChats([...stored.filter(chat => !keep.has(chat.id)), ...localOnly]).slice(0, QWEN_CHAT_LIMIT);
 }
 
 // Returns false when the browser refused to store (quota, private mode).
