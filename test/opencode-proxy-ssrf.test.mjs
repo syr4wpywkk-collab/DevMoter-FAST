@@ -124,7 +124,6 @@ test("OpenCode proxy rejects SSRF/traversal paths before reaching upstream and k
       ["/api/opencode/location", "/api/location"],
       ["/api/opencode/api/session", "/api/session"],
       ["/api/opencode/session/ses_123?limit=20", "/api/session/ses_123?limit=20"],
-      ["/api/opencode/session?directory=%2Ftmp%2Fproject", "/api/session?directory=%2Ftmp%2Fproject"],
       ["/api/opencode", "/api/"]
     ];
     for (const [path, expectedUpstream] of allowed) {
@@ -135,6 +134,23 @@ test("OpenCode proxy rejects SSRF/traversal paths before reaching upstream and k
     for (const [, expectedUpstream] of allowed) {
       assert.ok(upstreamHits.includes(expectedUpstream), `${expectedUpstream} should reach OpenCode`);
     }
+
+    // Query parameters are allowlisted (#590): directory/project selection
+    // and unknown parameters are rejected before reaching OpenCode.
+    const rejectedQueries = [
+      "/api/opencode/session?directory=%2Ftmp%2Fproject",
+      "/api/opencode/session?unknown=1"
+    ];
+    for (const path of rejectedQueries) {
+      const response = await rawGet(port, path, headers);
+      assert.equal(response.status, 400, `${path} should be rejected, got ${response.status}: ${response.body}`);
+      assert.match(JSON.parse(response.body).error, /OpenCode proxy query/);
+    }
+    assert.deepEqual(
+      upstreamHits.filter(hit => hit.includes("directory=") || hit.includes("unknown=")),
+      [],
+      "rejected queries must never reach OpenCode"
+    );
 
     // Session routes that differ by OpenCode generation are served by the
     // DevMoter adapter; the generic proxy must never forward them.
