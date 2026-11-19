@@ -1069,7 +1069,14 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         : sessionListStatus === "loading" ? t("opencode.sidebar.connecting")
         : sessionListStatus === "error" ? t("opencode.sessions.errorEmpty")
         : t("opencode.sessions.noneEmpty");
-      sessionsEl.appendChild(empty);
+      if (!q && sessionListStatus === "error") {
+        sessionsEl.appendChild(createHistoryRetryNotice(document, {
+          className: "ocx-history-retry",
+          message: t("chat.history.listLoadFailed"),
+          retryLabel: t("common.retry"),
+          onRetry: async () => { await loadSessions(); }
+        }));
+      } else sessionsEl.appendChild(empty);
       return;
     }
 
@@ -1661,6 +1668,16 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     }
   }
 
+  // A draft in the composer while no conversation is open belongs to a new
+  // chat: a later list load (retry, periodic refresh) must not open the saved
+  // conversation under it. A draft restored from storage at load, left as it
+  // was, is the saved conversation's own draft, so it keeps that conversation.
+  const draftAtLoad = promptInput.value;
+  function draftStartedWithoutConversation() {
+    const text = promptInput.value;
+    return (Boolean(text.trim()) && text !== draftAtLoad) || pendingAttachments.length > 0 || selectedContextRefs.length > 0;
+  }
+
   async function loadSessions() {
     const requestGeneration = sessionListRequests.begin();
     latestSessionListRequest = requestGeneration;
@@ -1738,7 +1755,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     renderSessions();
     renderAttention();
 
-    if (!activeSession) {
+    if (!activeSession && !draftStartedWithoutConversation()) {
       const saved = localStorage.getItem("opencode-pocket-opencode-session");
       const target = sessions.find(session => session.id === saved);
       if (target) await selectSession(target);

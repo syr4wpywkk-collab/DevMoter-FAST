@@ -18,6 +18,7 @@ export const en = {
   "chat.copyLatest.none": "There is no answer to copy yet.",
   "chat.draft.projectSwitched": "The project changed, so this project's draft is now shown. Check it before sending.",
   "chat.history.loadFailed": "Could not load the conversation history. The conversation is still selected.",
+  "chat.history.listLoadFailed": "Could not load the conversation list.",
   "common.search": "Search",
   "common.copy": "Copy",
   "common.copied": "Copied",

@@ -18,6 +18,7 @@ export const ja = {
   "chat.copyLatest.none": "コピーできる回答はまだありません。",
   "chat.draft.projectSwitched": "プロジェクトが切り替わったため、このプロジェクトの下書きを表示しました。内容を確認してから送信してください。",
   "chat.history.loadFailed": "会話履歴を読み込めませんでした。会話は選択されたままです。",
+  "chat.history.listLoadFailed": "会話一覧を読み込めませんでした。",
   "common.search": "検索",
   "common.copy": "コピー",
   "common.copied": "コピー済み",

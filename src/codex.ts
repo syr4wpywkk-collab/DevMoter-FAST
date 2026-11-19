@@ -529,6 +529,7 @@ export function mountCodexRemote(
   let reconnectTimer: number | null = null;
   let reconnectAttempts = 0;
   let allThreads: ThreadSummary[] = [];
+  let threadListFailed = false;
   const threadListRequests = createLatestRequestGuard();
   const modelCatalogRequests = createLatestRequestGuard();
   let projects: ProjectSummary[] = [];
@@ -1450,6 +1451,11 @@ export function mountCodexRemote(
 
     sidebarThreads.replaceChildren();
 
+    if (!items.length && !q && threadListFailed) {
+      showThreadListFailure();
+      return;
+    }
+
     if (!items.length) {
       const empty = document.createElement("div");
       empty.className = "cx-side-empty";
@@ -1529,6 +1535,27 @@ export function mountCodexRemote(
     }
   }
 
+  // Without a list the sidebar would keep saying "Loading…" or "No threads";
+  // say it failed and offer a re-read that never touches the composer.
+  function showThreadListFailure() {
+    sidebarThreads.replaceChildren(createHistoryRetryNotice(document, {
+      className: "cx-history-retry",
+      message: t("chat.history.listLoadFailed"),
+      retryLabel: t("common.retry"),
+      onRetry: async () => { await loadThreads(); }
+    }));
+  }
+
+  // A draft in the composer while no conversation is open belongs to a new
+  // chat: a later list load (retry, periodic refresh) must not open the saved
+  // conversation under it. A draft restored from storage at load, left as it
+  // was, is the saved conversation's own draft, so it keeps that conversation.
+  const draftAtLoad = promptInput.value;
+  function draftStartedWithoutConversation() {
+    const text = promptInput.value;
+    return (Boolean(text.trim()) && text !== draftAtLoad) || pendingAttachments.length > 0 || selectedContextRefs.length > 0;
+  }
+
   async function loadThreads() {
     const requestGeneration = threadListRequests.begin();
     let result: Json;
@@ -1537,6 +1564,8 @@ export function mountCodexRemote(
     } catch (error) {
       if (threadListRequests.isCurrent(requestGeneration)) {
         showToast(error instanceof Error ? translateServerMessage(error.message) : t("codex.threads.listLoadFailed"));
+        threadListFailed = !allThreads.length;
+        if (threadListFailed) showThreadListFailure();
       }
       return false;
     }
@@ -1545,13 +1574,16 @@ export function mountCodexRemote(
       allThreads = normalizeCodexThreadList(result);
     } catch {
       showToast(t("codex.threads.listInvalid"));
+      threadListFailed = !allThreads.length;
+      if (threadListFailed) showThreadListFailure();
       return false;
     }
+    threadListFailed = false;
     renderThreads();
 
     // thread/list can briefly lag a just-created or just-resumed thread.
     // Preserve the current identity instead of silently falling back to a new chat.
-    if (!activeThreadId) {
+    if (!activeThreadId && !draftStartedWithoutConversation()) {
       const saved = localStorage.getItem("opencode-pocket-codex-thread");
       const target = allThreads.find(thread => thread.id === saved);
       if (target) await selectThread(target);
