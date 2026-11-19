@@ -34,7 +34,8 @@ import { createUploadRegistry } from "./server/upload-registry.mjs";
 import { ControlPlane } from "./server/control-plane.mjs";
 import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/workspace-control.mjs";
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
-import { isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, parseAgentMode, readOnlyToolsFor, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
+import { isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, isSessionAgentRoute, isSessionCreateRoute, modeFromAgent, parseAgentMode, readOnlyToolsFor, resolveEffectiveAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
+import { classifyProxyRoute } from "./server/proxy-route-policy.mjs";
 import { assertAuthPassword, parseBasicAuthorization, requireSameOriginMutation } from "./server/auth.mjs";
 import { createBasicAuthGuard, parseTrustedProxies } from "./server/auth-guard.mjs";
 import { OidcAuth } from "./server/oidc-auth.mjs";
@@ -506,11 +507,10 @@ function openCodeHeaders(extra = {}) {
   return headers;
 }
 
-async function openCodeHeadersForRequest(req, extra = {}) {
+async function openCodeHeadersForRequest(req, extra = {}, policyPath = "") {
   const projectId = String(req.headers["x-pocket-project-id"] || "").trim();
   let directory = OPENCODE_DIRECTORY;
-  const requestPath = String(req.url || "").split("?", 1)[0];
-  const isExistingSession = /^\/api\/opencode\/session\/[^/]+/.test(requestPath) || /^\/api\/session\/[^/]+/.test(requestPath);
+  const isExistingSession = Boolean(sessionIdFromOpenCodePath(policyPath));
   if (projectId && !isExistingSession) directory = (await getProjectById(projectId)).path;
   return openCodeHeaders({ "x-opencode-directory": directory, ...extra });
 }
@@ -1810,9 +1810,42 @@ function buildOpenCodeUpstreamQuery(rawQuery, method, policyPath) {
 }
 
 /**
+ * Decode a client path exactly once and return that canonical value, or null
+ * when the path cannot be canonicalized: an undecodable escape, or DOUBLE
+ * encoding — decoding the result again would change it (e.g. %252f decodes
+ * once to %2f, again to /), which would let DevMoter classify a different
+ * route than a decoding upstream serves. An accepted canonical path never
+ * contains "%": any remaining escape would either decode further or fail to
+ * decode, and both cases are rejected here.
+ *
+ * The decoded path must also be free of separator/dot ambiguity: an empty
+ * segment ("//" anywhere) or a "." / ".." segment is rejected, because a
+ * URL-normalizing upstream could collapse those into a different route than
+ * the one DevMoter classified. Running the check after decoding covers the
+ * percent-encoded forms (%2f, %2e) as well. Both the proxy target builder
+ * and the adapter dispatch share this function, so a variant rejected here
+ * can never fall through unclassified.
+ */
+function canonicalDecodedPath(rawPath) {
+  let decoded;
+  try {
+    decoded = decodeURIComponent(rawPath);
+  } catch {
+    return null;
+  }
+  if (fullyDecodePath(rawPath) !== decoded) return null;
+  if (decoded.includes("//")) return null;
+  if (decoded.split("/").some(segment => segment === "." || segment === "..")) return null;
+  return decoded;
+}
+
+/**
  * Validate the client path once and build the OpenCode request target as a
  * plain string: fixed OpenCode origin + "/api/" + allowlisted path (+ query).
- * Returns { upstreamUrl, policyPath } or { error } (400).
+ * ONE canonical (decoded, normalized) path drives validation, the policy
+ * classification, and the upstream URL, so the route DevMoter checks is the
+ * route OpenCode serves. Returns { upstreamUrl, policyPath, upstreamAlias, query }
+ * or { error }.
  */
 export function buildOpenCodeUpstreamTarget(rawRequestUrl, method) {
   const raw = String(rawRequestUrl || "");
@@ -1827,42 +1860,32 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl, method) {
   if (!OPENCODE_SAFE_PATH.test(rawPath) || !OPENCODE_SAFE_QUERY.test(rawQuery)) {
     return { error: "OpenCode proxy path is not allowed" };
   }
-  const decodedPath = fullyDecodePath(rawPath);
+  const canonicalPath = canonicalDecodedPath(rawPath);
   if (
-    decodedPath === null ||
-    decodedPath.startsWith("//") ||
-    rawPath.startsWith("//") ||
-    decodedPath.includes("..") ||
-    decodedPath.includes("\\") ||
-    OPENCODE_SCHEME_SEGMENT.test(decodedPath) ||
-    CONTROL_CHARS.test(decodedPath)
+    canonicalPath === null ||
+    canonicalPath.includes("..") ||
+    OPENCODE_SCHEME_SEGMENT.test(canonicalPath) ||
+    CONTROL_CHARS.test(canonicalPath) ||
+    !OPENCODE_SAFE_PATH.test(canonicalPath)
   ) {
     return { error: "OpenCode proxy path is not allowed" };
   }
 
   // Strip the optional client-side "/api" prefix; the upstream root is fixed.
-  // Computed before query validation because the query allowlist is scoped
-  // to this route; the startsWith("/") rejection stays below so error
-  // precedence is unchanged.
-  const apiRelative = rawPath.startsWith("/api/") ? rawPath.slice("/api/".length) : rawPath.slice(1);
-
-  const policyPath = `/api/${apiRelative}`;
-
-  // Adapter-owned session routes are answered with 404 by proxy() and never
-  // forwarded upstream, so their query strings sit outside the proxy query
-  // contract and are not validated here.
-  const validatedQuery = isAdapterOwnedRoute(policyPath)
-    ? { query: "" }
-    : buildOpenCodeUpstreamQuery(rawQuery, method, policyPath);
-  if (validatedQuery.error) {
-    return { error: validatedQuery.error };
-  }
-
+  // The upstream-style alias does not grant access to adapter-owned operations.
+  const upstreamAlias = canonicalPath.startsWith("/api/");
+  let apiRelative = upstreamAlias ? canonicalPath.slice("/api/".length) : canonicalPath.slice(1);
   if (apiRelative.startsWith("/")) {
     return { error: "OpenCode proxy path is not allowed" };
   }
+  apiRelative = apiRelative.replace(/\/+$/, "");
+  const policyPath = `/api/${apiRelative}`;
+  const validatedQuery = isAdapterOwnedRoute(policyPath)
+    ? { query: "" }
+    : buildOpenCodeUpstreamQuery(rawQuery, method, policyPath);
+  if (validatedQuery.error) return validatedQuery;
   const upstreamUrl = `${OPENCODE_ORIGIN}/api/${apiRelative}${validatedQuery.query}`;
-  return { upstreamUrl, policyPath, query: validatedQuery.query };
+  return { upstreamUrl, policyPath, upstreamAlias, query: validatedQuery.query };
 }
 
 // DevMoter's OpenCode session surface. The browser (and every other DevMoter
@@ -1879,7 +1902,7 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl, method) {
 //   POST /session/{id}/question/{rid}/reply       { answers: string[][] }
 //   POST /session/{id}/question/{rid}/reject
 //   GET  /event                                   canonical SSE events
-const OPENCODE_SESSION_ROUTE = /^\/api\/opencode\/session\/([^/]+)\/(prompt|context|interrupt|permission|question)(?:\/([^/]+)\/(reply|reject))?$/;
+const OPENCODE_SESSION_ROUTE = /^\/api\/session\/([^/]+)\/(prompt|context|interrupt|permission|question)(?:\/([^/]+)\/(reply|reject))?$/;
 const OPENCODE_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 function openCodeAdapterFailure(res, error) {
@@ -1901,13 +1924,52 @@ async function readOpenCodeBody(req, limit) {
   }
 }
 
-async function opencodeSessionRoute(req, res, url) {
-  if (url.pathname === "/api/opencode/event") {
+function setOpenCodeSessionMode(sessionId, mode) {
+  const normalized = parseAgentMode(mode);
+  if (!normalized) return;
+  openCodeSessionModes.set(sessionId, normalized);
+}
+
+// A session's execution mode is server-side state (#591): it is recorded when
+// the session is created (from the create exchange) or changed through
+// the dedicated agent endpoint, or resolved from the upstream session itself.
+// It never comes from a per-request client header. Returns null when the mode
+// cannot be verified, so guarded callers can fail closed.
+async function resolveOpenCodeSessionMode(sessionId) {
+  if (!sessionId) return null;
+  if (openCodeSessionModes.has(sessionId)) {
+    return openCodeSessionModes.get(sessionId);
+  }
+  try {
+    const session = await openCode.session(sessionId, { signal: AbortSignal.timeout(2500) });
+    // Fail closed: a session record carrying neither an agent nor a mode
+    // cannot be verified, so it must not default to "build" (#591 audit).
+    const resolved = modeFromAgent(session?.agent) || parseAgentMode(session?.mode);
+    if (!resolved) return null;
+    setOpenCodeSessionMode(sessionId, resolved);
+    return resolved;
+  } catch {
+    return null;
+  }
+}
+
+function tryParseJsonObject(buffer) {
+  if (!buffer || !buffer.length) return null;
+  try {
+    const parsed = JSON.parse(buffer.toString("utf8"));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function opencodeSessionRoute(req, res, pathname) {
+  if (pathname === "/api/event") {
     if (req.method !== "GET") return false;
     await opencodeEvents(req, res);
     return true;
   }
-  if (url.pathname === "/api/opencode/session/active") {
+  if (pathname === "/api/session/active") {
     if (req.method !== "GET") return false;
     try {
       json(res, 200, await openCode.active());
@@ -1916,12 +1978,10 @@ async function opencodeSessionRoute(req, res, url) {
     }
     return true;
   }
-  const match = url.pathname.match(OPENCODE_SESSION_ROUTE);
+  const match = pathname.match(OPENCODE_SESSION_ROUTE);
   if (!match) return false;
-  const [, rawSessionId, operation, rawRequestId, action] = match;
-  const sessionId = fullyDecodePath(rawSessionId);
-  const requestId = rawRequestId === undefined ? null : fullyDecodePath(rawRequestId);
-  if (!sessionId || !OPENCODE_ID.test(sessionId) || (requestId !== null && (!requestId || !OPENCODE_ID.test(requestId)))) {
+  const [, sessionId, operation, requestId = null, action] = match;
+  if (!OPENCODE_ID.test(sessionId) || (requestId !== null && !OPENCODE_ID.test(requestId))) {
     json(res, 400, { error: "OpenCode session or request id is invalid" });
     return true;
   }
@@ -1945,9 +2005,9 @@ async function opencodeSessionRoute(req, res, url) {
     return true;
   }
 
-  const requestedMode = parseAgentMode(req.headers["x-pocket-agent-mode"]);
-  if (requestedMode) openCodeSessionModes.set(sessionId, requestedMode);
-  const mode = requestedMode || openCodeSessionModes.get(sessionId) || "build";
+  // #591: the session mode is server-side state; the x-pocket-agent-mode
+  // header is not an authorization input and is ignored.
+  const sessionMode = await resolveOpenCodeSessionMode(sessionId);
   const sandboxPolicy = externalBackendSandboxPolicy("opencode");
 
   try {
@@ -1963,8 +2023,25 @@ async function opencodeSessionRoute(req, res, url) {
       } catch (error) {
         throw badOpenCodeRequest(errorMessage(error));
       }
+      // The prompt body's agent is an explicit operation parameter: a
+      // read-only agent is an allowed per-request downgrade, but it can
+      // never escalate a read-only session. An unverifiable session mode
+      // fails closed to read-only for this request.
+      const promptAgentMode = modeFromAgent(prompt.agent);
+      const verifiedMode = sessionMode || "plan";
+      if (isReadOnlyMode(verifiedMode) && promptAgentMode && !isReadOnlyMode(promptAgentMode)) {
+        json(res, 403, { error: `${verifiedMode} mode blocks switching to non-read-only agent "${prompt.agent}"`, mode: verifiedMode });
+        return true;
+      }
+      const effectiveMode = resolveEffectiveAgentMode(verifiedMode, promptAgentMode);
       prompt.text = materializeOpenCodeUploadText(prompt.text);
-      await openCode.prompt(sessionId, prompt, { readOnlyTools: readOnlyToolsFor(mode) });
+      await openCode.prompt(sessionId, prompt, { readOnlyTools: readOnlyToolsFor(effectiveMode) });
+      if (promptAgentMode && isReadOnlyMode(promptAgentMode)) {
+        // A downgrade the upstream session itself now reflects (2.x applies
+        // the prompt's agent to the session) is recorded server-side too, so
+        // the stored mode can never drift above the session's real mode.
+        setOpenCodeSessionMode(sessionId, promptAgentMode);
+      }
       json(res, 200, { ok: true });
     } else if (subroute === "context") {
       json(res, 200, await openCode.context(sessionId));
@@ -2066,32 +2143,58 @@ async function opencodeEvents(req, res) {
   }
 }
 
-async function proxy(req, res) {
-  const target = buildOpenCodeUpstreamTarget(req.url, req.method);
-  if (target.error) {
-    json(res, 400, { error: target.error });
-    return;
-  }
-  const { upstreamUrl, policyPath } = target;
+async function proxy(req, res, { upstreamUrl, policyPath }) {
   const sessionId = sessionIdFromOpenCodePath(policyPath);
-  const requestedMode = parseAgentMode(req.headers["x-pocket-agent-mode"]);
-  if (sessionId && requestedMode) openCodeSessionModes.set(sessionId, requestedMode);
-  const mode = requestedMode || (sessionId ? openCodeSessionModes.get(sessionId) : null) || "build";
+  // Create/agent matchers run on the trailing-slash-normalized policy path:
+  // "/api/session/{id}/agent/" is the agent route and must not slip past the
+  // mode-transition guard below (#591 audit).
+  const isSessionCreate = req.method === "POST" && isSessionCreateRoute(policyPath);
+  const isSessionAgentUpdate = req.method === "POST" && Boolean(sessionId) && isSessionAgentRoute(policyPath);
 
-  if (isReadOnlyMode(mode) && isDirectMutationRoute(policyPath)) {
-    json(res, 403, { error: `${mode} mode blocks direct shell and command mutations`, mode });
+  // Only POST may change a session's agent. Any other method on the agent
+  // route is rejected here, before anything is forwarded, so a method
+  // variant cannot bypass the transition guard.
+  if (req.method !== "POST" && Boolean(sessionId) && isSessionAgentRoute(policyPath)) {
+    json(res, 405, { error: "Session agent updates require POST" });
     return;
   }
-
   if (isAdapterOwnedRoute(policyPath)) {
     json(res, 404, { error: "This OpenCode session route is served by DevMoter at /api/opencode/session/{id}/…" });
     return;
   }
 
-  const sandboxPolicy = externalBackendSandboxPolicy("opencode");
-  if (!sandboxPolicy.allowed && isDirectMutationRoute(policyPath)) {
-    json(res, 409, { error: sandboxPolicy.reason, sandbox: sandboxPolicy });
+  // Deny-by-default (#588): only allowlisted method + route pairs are
+  // forwarded; anything else is rejected without contacting upstream.
+  const route = classifyProxyRoute(req.method, policyPath);
+  if (!route) {
+    json(res, 404, { error: "OpenCode proxy route is not allowed" });
     return;
+  }
+
+  if (route.kind === "write") {
+    const sandboxPolicy = externalBackendSandboxPolicy("opencode");
+    if (!sandboxPolicy.allowed) {
+      json(res, 409, { error: sandboxPolicy.reason, sandbox: sandboxPolicy });
+      return;
+    }
+    // Agent transitions have a separate guard below so plan/ask can still
+    // switch to another read-only mode without granting write access.
+    if (sessionId && !isSessionAgentUpdate) {
+      const mode = await resolveOpenCodeSessionMode(sessionId);
+      if (!mode) {
+        json(res, 403, { error: "Session mode could not be verified", mode: null });
+        return;
+      }
+      if (isReadOnlyMode(mode)) {
+        json(res, 403, {
+          error: isDirectMutationRoute(policyPath)
+            ? `${mode} mode blocks direct shell and command mutations`
+            : `${mode} mode blocks write operations`,
+          mode
+        });
+        return;
+      }
+    }
   }
 
   let body;
@@ -2104,6 +2207,34 @@ async function proxy(req, res) {
         return;
       }
       throw error;
+    }
+  }
+
+  // Mode bookkeeping comes from the create exchange, never headers (#591):
+  // a session's initial mode is the create body's agent/mode (an explicit
+  // creation-time choice by the authenticated owner), corrected by the mode
+  // the upstream reports for the created session, and the only later
+  // mutation is the dedicated agent endpoint below.
+  const reqJson = (isSessionCreate || isSessionAgentUpdate) ? tryParseJsonObject(body) : null;
+  const bodyAgentMode = reqJson ? (modeFromAgent(reqJson.agent) || parseAgentMode(reqJson.mode)) : null;
+  const initialCreateMode = isSessionCreate ? (bodyAgentMode || "build") : null;
+
+  // Mode transitions are authorized here, before anything is forwarded: a
+  // read-only session cannot be moved to a non-read-only mode, and an
+  // unverifiable current mode fails closed.
+  let agentUpdateCurrentMode = null;
+  if (isSessionAgentUpdate) {
+    agentUpdateCurrentMode = sessionId ? await resolveOpenCodeSessionMode(sessionId) : null;
+    if (!agentUpdateCurrentMode) {
+      json(res, 403, { error: "Session mode could not be verified", mode: null });
+      return;
+    }
+    if (isReadOnlyMode(agentUpdateCurrentMode) && (!bodyAgentMode || !isReadOnlyMode(bodyAgentMode))) {
+      json(res, 403, {
+        error: `${agentUpdateCurrentMode} mode blocks switching to non-read-only agent "${bodyAgentMode || "build"}"`,
+        mode: agentUpdateCurrentMode
+      });
+      return;
     }
   }
 
@@ -2123,11 +2254,15 @@ async function proxy(req, res) {
       headers: await openCodeHeadersForRequest(req, {
         "content-type": req.headers["content-type"] || "application/json",
         "accept": req.headers["accept"] || "*/*"
-      }),
+      }, policyPath),
       body,
       redirect: "error",
       signal: upstreamAbort.signal
     });
+
+    if (isSessionAgentUpdate && upstream.ok && bodyAgentMode) {
+      setOpenCodeSessionMode(sessionId, resolveEffectiveAgentMode(agentUpdateCurrentMode, bodyAgentMode));
+    }
 
     const headers = {};
     for (const [key, value] of upstream.headers.entries()) {
@@ -2141,6 +2276,46 @@ async function proxy(req, res) {
       : "no-store";
 
     if (endIfResponseStarted(res)) return;
+
+    // A created session's initial mode is recorded server-side (#591), so
+    // capture the new session's id from the JSON response before it streams
+    // past.
+    const captureCreatedSession =
+      isSessionCreate &&
+      upstream.ok &&
+      (upstreamContentType.includes("application/json") || upstreamContentType.includes("+json"));
+    if (captureCreatedSession) {
+      const chunks = [];
+      if (upstream.body) {
+        const reader = upstream.body.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(Buffer.from(value));
+          }
+        } finally {
+          reader.releaseLock();
+        }
+      }
+      const payload = Buffer.concat(chunks);
+      try {
+        const parsed = JSON.parse(payload.toString("utf8"));
+        const created = parsed?.data !== undefined ? parsed.data : parsed;
+        if (typeof created?.id === "string" && created.id) {
+          // Prefer the mode the upstream reports for the created session
+          // over the request body: server state must not drift above
+          // upstream reality (#591 audit).
+          const upstreamMode = modeFromAgent(created?.agent) || parseAgentMode(created?.mode);
+          setOpenCodeSessionMode(created.id, upstreamMode || initialCreateMode);
+        }
+      } catch {
+        // A non-JSON create response leaves the mode to upstream resolution.
+      }
+      res.writeHead(upstream.status, headers);
+      res.end(payload);
+      return;
+    }
 
     res.writeHead(upstream.status, headers);
 
@@ -2651,6 +2826,15 @@ const PUBLIC_STATIC_PATHS = new Set([
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+    // URL parsing can erase dot segments. Validate the original request target
+    // before dispatching to either an OpenCode adapter or any other route.
+    const openCodeTarget = req.url.startsWith(OPENCODE_PROXY_PREFIX) || url.pathname.startsWith(OPENCODE_PROXY_PREFIX)
+      ? buildOpenCodeUpstreamTarget(req.url, req.method)
+      : null;
+    if (openCodeTarget?.error) {
+      json(res, 400, { error: openCodeTarget.error });
+      return;
+    }
 
     if (req.method === "POST" && url.pathname === "/api/control/events/github") {
       await githubWebhookRoute(req, res);
@@ -3665,13 +3849,8 @@ const server = http.createServer(async (req, res) => {
     }
 
 
-    if (req.method === "GET" && url.pathname === "/api/opencode/pocket/providers") {
-      const target = buildOpenCodeUpstreamTarget(req.url, req.method);
-      if (target.error) {
-        json(res, 400, { error: target.error });
-        return;
-      }
-      await opencodeProviders(new URLSearchParams(target.query).get("refresh") === "1", res);
+    if (req.method === "GET" && openCodeTarget?.policyPath === "/api/pocket/providers" && !openCodeTarget.upstreamAlias) {
+      await opencodeProviders(new URLSearchParams(openCodeTarget.query).get("refresh") === "1", res);
       return;
     }
 
@@ -3704,14 +3883,15 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (url.pathname.startsWith("/api/opencode") || String(req.url || "").startsWith("/api/opencode")) {
+    if (openCodeTarget) {
+      const { policyPath } = openCodeTarget;
       if (
         req.method !== "GET" &&
         req.method !== "HEAD" &&
-        !claimOperation(req, res, `${req.method}:${url.pathname}`)
+        !claimOperation(req, res, `${req.method}:${policyPath}`)
       ) return;
-      if (await opencodeSessionRoute(req, res, url)) return;
-      await proxy(req, res);
+      if (!openCodeTarget.upstreamAlias && await opencodeSessionRoute(req, res, policyPath)) return;
+      await proxy(req, res, openCodeTarget);
       return;
     }
 

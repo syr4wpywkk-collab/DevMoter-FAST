@@ -24,13 +24,55 @@ export function isReadOnlyMode(mode) {
   return mode === "plan" || mode === "ask";
 }
 
+/** Map an agent identifier (e.g. "plan", "ask", "build", "coder") to its mode, or null if blank. */
+export function modeFromAgent(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) return null;
+  return parseAgentMode(trimmed) || "build";
+}
+
+/**
+ * Resolve the effective mode given the server-side session mode and an
+ * optional mode taken from an explicit operation parameter (a create/agent
+ * request body or a prompt's agent). The parameter may preserve or lower
+ * privileges (e.g. build -> plan/ask), never escalate read-only -> build.
+ */
+export function resolveEffectiveAgentMode(sessionMode, requestedMode) {
+  const serverMode = parseAgentMode(sessionMode) || "build";
+  const clientMode = parseAgentMode(requestedMode);
+  if (!clientMode) return serverMode;
+  if (isReadOnlyMode(serverMode)) {
+    return isReadOnlyMode(clientMode) ? clientMode : serverMode;
+  }
+  return clientMode;
+}
+
 export function sessionIdFromOpenCodePath(value) {
   const match = pathnameOnly(value).match(/^\/api\/session\/([^/]+)(?:\/|$)/);
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+/**
+ * Canonical shape for proxy route matching: query-free, with trailing
+ * slashes stripped (never to empty). "/api/session/{id}/agent/" is the same
+ * route as "/api/session/{id}/agent" and must not slip past the guards that
+ * match on it (#591 audit).
+ */
+export function normalizeProxyRoutePath(value) {
+  return pathnameOnly(value).replace(/\/+$/, "") || "/";
+}
+
+export function isSessionCreateRoute(value) {
+  return normalizeProxyRoutePath(value) === "/api/session";
+}
+
+export function isSessionAgentRoute(value) {
+  return /^\/api\/session\/[^/]+\/agent$/.test(normalizeProxyRoutePath(value));
+}
+
 export function isDirectMutationRoute(value) {
-  return /^\/api\/session\/[^/]+\/(?:shell|command)$/.test(pathnameOnly(value));
+  return /^\/api\/session\/[^/]+\/(?:shell|command)$/.test(normalizeProxyRoutePath(value));
 }
 
 // Session operations whose OpenCode routes differ by generation. DevMoter
@@ -38,7 +80,7 @@ export function isDirectMutationRoute(value) {
 // never forward them, or a client could bypass mode and sandbox policy.
 export function isAdapterOwnedRoute(value) {
   return /^\/api\/session\/[^/]+\/(?:prompt|prompt_async|message|interrupt|abort|context|permission|permissions|question|form)(?:\/|$)/
-    .test(pathnameOnly(value));
+    .test(normalizeProxyRoutePath(value));
 }
 
 /** The tool allowlist a read-only mode imposes on a run, or null. */
