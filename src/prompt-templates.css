@@ -55,6 +55,7 @@
 .pt-body button.pt-danger { border-color: var(--status-error-border); color: var(--status-error); }
 .pt-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border-hairline); }
 .pt-item {
+  color: var(--text-primary);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -74,7 +75,7 @@
   border-radius: var(--radius-control);
   background: var(--status-warning-surface);
 }
-.pt-choice p { flex: 1 1 100%; margin: 0; }
+.pt-choice p { flex: 1 1 100%; margin: 0; color: var(--text-primary); }
 .pt-form, .pt-variables { display: grid; gap: var(--space-3); }
 .pt-empty, .pt-hint { margin: 0; color: var(--text-muted); }
 .pt-missing { margin: 0; color: var(--status-warning); }

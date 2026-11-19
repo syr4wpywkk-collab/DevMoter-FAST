@@ -87,7 +87,6 @@ export function openPromptTemplates() {
   const sheet = el("section", "pt-panel dm-sheet-frame");
   panel = sheet;
   sheet.setAttribute("role", "dialog");
-  sheet.setAttribute("aria-modal", "true");
   sheet.setAttribute("aria-labelledby", "ptTitle");
   const head = createSheetHeader(document, { title: t("promptTemplates.title"), titleId: "ptTitle", onClose: close });
   const status = el("p", "pt-status");
@@ -301,6 +300,7 @@ export function openPromptTemplates() {
       if (result.missing.length) return;
       const composer = findActiveComposer();
       if (!composer) { say(t("promptTemplates.noComposer"), "error"); return; }
+      say("");
       if (!draftNeedsConfirmation(composer.value)) { finishInsert(composer, "replace"); return; }
       choice.replaceChildren(
         el("p", "", t("promptTemplates.draftExists")),
@@ -350,6 +350,8 @@ export function openPromptTemplates() {
       if (existing && window.confirm(t("promptTemplates.restoreOverwriteConfirm", { count: existing }))) {
         const imported = result.imported;
         result = await send("overwrite");
+        // The second pass also rewrites what the first pass just imported.
+        result.overwritten -= imported;
         result.imported += imported;
       }
       await reload();
