@@ -125,8 +125,8 @@ body.opencode-mode { background: var(--canvas-base); }
 .ocx-app .dm-code-block { max-width: 100%; min-width: 0; margin: 1em 0; overflow: hidden; border: 1px solid var(--oc-line); border-radius: 12px; background: var(--oc-panel-2); }
 .ocx-app .dm-code-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 0 8px 0 14px; background: var(--oc-panel); color: var(--oc-muted); font-size: .75rem; }
 .ocx-app .dm-code-language { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.ocx-app .dm-code-copy { flex: 0 0 auto; min-height: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--oc-text); font-size: .75rem; }
-.ocx-app .dm-code-copy:hover { background: var(--oc-accent-soft); }
+.ocx-app :is(.dm-code-copy, .dm-code-wrap) { flex: 0 0 auto; min-height: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--oc-text); font-size: .75rem; }
+.ocx-app :is(.dm-code-copy, .dm-code-wrap):hover { background: var(--oc-accent-soft); }
 .ocx-app .cx-markdown pre { max-width: 100%; margin: 0; padding: 16px; overflow-x: auto; overscroll-behavior-x: contain; white-space: pre; overflow-wrap: normal; line-height: 1.6; }
 .ocx-app .cx-markdown pre code { padding: 0; background: transparent; white-space: pre; }
 .ocx-app .dm-markdown-table { max-width: 100%; margin: 1em 0; overflow-x: auto; overscroll-behavior-x: contain; }

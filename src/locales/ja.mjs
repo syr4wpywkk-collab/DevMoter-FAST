@@ -921,6 +921,7 @@ export const ja = {
 
   "markdown.imageFallback": "画像",
   "markdown.code": "コード",
+  "markdown.wrapCode": "折り返す",
   "markdown.copyCodeAria": "コードをコピー",
 
   "safety.repeatedActionDetected": "同じ操作が繰り返し実行されています。",

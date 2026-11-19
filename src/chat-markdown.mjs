@@ -130,7 +130,18 @@ export function renderChatMarkdown(target, rawText, onCopy) {
     copy.textContent = t("common.copy");
     copy.setAttribute("aria-label", t("markdown.copyCodeAria"));
     copy.addEventListener("click", () => onCopy(block.source));
-    header.append(language, copy);
+    // Long lines scroll sideways by default; wrapping is a per-block choice.
+    const wrap = document.createElement("button");
+    wrap.className = "dm-code-wrap";
+    wrap.type = "button";
+    wrap.textContent = t("markdown.wrapCode");
+    wrap.setAttribute("aria-pressed", "false");
+    wrap.addEventListener("click", () => {
+      const wrapped = wrapper.dataset.wrap !== "true";
+      wrapper.dataset.wrap = String(wrapped);
+      wrap.setAttribute("aria-pressed", String(wrapped));
+    });
+    header.append(language, copy, wrap);
     pre.replaceWith(wrapper);
     wrapper.append(header, pre);
   }

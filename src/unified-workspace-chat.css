@@ -218,7 +218,7 @@ body.dm-task-first-enabled :is(.cx-app, .api-app) .cx-markdown :is(th, td) {
 body.dm-task-first-enabled :is(.cx-app, .api-app) .cx-markdown th {
   background: var(--dw-chat-raised);
 }
-body.dm-task-first-enabled :is(.cx-app, .api-app) .dm-code-copy {
+body.dm-task-first-enabled :is(.cx-app, .api-app) :is(.dm-code-copy, .dm-code-wrap) {
   color: var(--dw-chat-text);
 }
 body.dm-task-first-enabled :is(.cx-app, .api-app) .cx-markdown blockquote {

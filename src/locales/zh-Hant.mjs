@@ -921,6 +921,7 @@ export const zhHant = {
 
   "markdown.imageFallback": "圖片",
   "markdown.code": "程式碼",
+  "markdown.wrapCode": "自動換行",
   "markdown.copyCodeAria": "複製程式碼",
 
   "safety.repeatedActionDetected": "偵測到重複動作。",

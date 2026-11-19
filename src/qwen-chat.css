@@ -154,7 +154,7 @@ html[data-devmoter-theme="light"] .qx-app { color-scheme: light; }
 .qx-app .cx-markdown :not(pre) > code { padding: .1em .35em; border-radius: var(--radius-small); background: var(--surface-hover); font-family: var(--font-mono); font-size: .875em; }
 .qx-app .dm-code-block { margin: 1em 0; overflow: hidden; border: 1px solid var(--border-hairline); border-radius: var(--radius-panel); background: var(--surface-card); }
 .qx-app .dm-code-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: 44px; padding: 0 var(--space-1) 0 var(--space-3); border-bottom: 1px solid var(--border-hairline); color: var(--text-secondary); font-size: var(--font-size-caption); }
-.qx-app .dm-code-copy { min-height: 44px; padding: 0 10px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text-secondary); font-size: var(--font-size-caption); }
+.qx-app :is(.dm-code-copy, .dm-code-wrap) { min-height: 44px; padding: 0 10px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text-secondary); font-size: var(--font-size-caption); }
 .qx-app .cx-markdown pre { margin: 0; padding: var(--space-3); overflow-x: auto; overscroll-behavior-x: contain; font-family: var(--font-mono); font-size: var(--font-size-label); line-height: 1.6; white-space: pre; }
 .qx-app .cx-markdown pre code { background: transparent; font-family: inherit; }
 .qx-app .dm-markdown-table { max-width: 100%; margin: 1em 0; overflow-x: auto; }
@@ -420,7 +420,7 @@ html[data-devmoter-theme="light"] .qx-app { color-scheme: light; }
   .qx-picker .dm-sheet-head-back:hover { background: var(--surface-hover); }
   .qx-history-delete:hover { background: var(--surface-hover); color: var(--status-error); }
   .qx-message-action:hover { background: var(--surface-hover); color: var(--text-primary); }
-  .qx-app .dm-code-copy:hover { background: var(--surface-hover); }
+  .qx-app :is(.dm-code-copy, .dm-code-wrap):hover { background: var(--surface-hover); }
 }
 
 @media (prefers-reduced-motion: reduce) {

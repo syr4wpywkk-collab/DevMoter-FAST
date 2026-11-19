@@ -292,7 +292,7 @@ body.codex-mode {
   font-size: .75rem;
 }
 .cx-app .dm-code-language { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.cx-app .dm-code-copy {
+.cx-app :is(.dm-code-copy, .dm-code-wrap) {
   flex: 0 0 auto;
   min-height: 44px;
   padding: 0 10px;
@@ -302,7 +302,7 @@ body.codex-mode {
   color: var(--cx-text);
   font-size: .75rem;
 }
-.cx-app .dm-code-copy:hover { background: #3b3b3b; }
+.cx-app :is(.dm-code-copy, .dm-code-wrap):hover { background: #3b3b3b; }
 .cx-app .cx-markdown pre {
   max-width: 100%;
   margin: 0;
