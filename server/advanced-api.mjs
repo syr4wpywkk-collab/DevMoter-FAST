@@ -82,9 +82,11 @@ function deniedPreviewPorts(env = {}) {
 }
 
 function parseAllowedPreviewPorts(env = {}) {
+  // Fail closed: with no DEVMOTER_PREVIEW_ALLOWED_PORTS configured, the
+  // allowlist is empty and Live Preview cannot register or serve any port.
   const raw = String(env?.DEVMOTER_PREVIEW_ALLOWED_PORTS ?? "").trim();
-  if (!raw) return null;
   const allowed = new Set();
+  if (!raw) return allowed;
   for (const part of raw.split(",")) {
     const token = part.trim();
     if (!token || !/^\d+$/.test(token)) continue;
@@ -105,7 +107,7 @@ function assertPreviewPortAllowed(port, env = {}) {
     throw Object.assign(new Error("Preview port is not allowed"), { statusCode: 403 });
   }
   const allowed = parseAllowedPreviewPorts(env);
-  if (allowed && !allowed.has(portNumber)) {
+  if (!allowed.has(portNumber)) {
     throw Object.assign(new Error("Preview port is not allowed"), { statusCode: 403 });
   }
 }
@@ -128,7 +130,7 @@ const PREVIEW_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
  * Build the live preview request target as a plain string from a fixed
  * loopback origin, the approved port, and an allowlisted path and query.
  */
-export function resolveLivePreviewTarget(host, port, suffix, search = "", { env = {} } = {}) {
+export function resolveLivePreviewTarget(host, port, suffix, search = "", { env = process.env } = {}) {
   const origin = LOOPBACK_ORIGINS.get(String(host));
   if (!origin) throw Object.assign(new Error("Preview host is not allowed"), { statusCode: 403 });
   const portNumber = Number(port);
@@ -259,11 +261,20 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
     assertPreviewPortAllowed(preview.port, env);
 
     const target = resolveLivePreviewTarget(preview.host, preview.port, suffix || "/", url.search, { env });
-    const upstream = await fetchImpl(target, {
-      method: req.method,
-      headers: { accept: String(req.headers.accept || "*/*"), "user-agent": "DevMoter-LivePreview/1" },
-      redirect: "manual"
-    });
+    let upstream;
+    try {
+      upstream = await fetchImpl(target, {
+        method: req.method,
+        headers: { accept: String(req.headers.accept || "*/*"), "user-agent": "DevMoter-LivePreview/1" },
+        redirect: "manual"
+      });
+    } catch {
+      // The registered target stopped responding: revoke the registration so
+      // a stopped preview cannot be proxied again later.
+      previews.delete(preview.projectId);
+      sendJson(res, 502, { error: "Preview target is not reachable" });
+      return;
+    }
 
     if (upstream.status >= 300 && upstream.status < 400) {
       const location = upstream.headers.get("location");
@@ -543,6 +554,19 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
             throw Object.assign(new Error("Live preview targets must use a loopback host"), { statusCode: 400 });
           }
           assertPreviewPortAllowed(port, env);
+          // Registration is bound to a live, reachable target: probe before
+          // storing so an allowlisted but dead port is never registered.
+          const probeTarget = resolveLivePreviewTarget(host, port, "/", "", { env });
+          try {
+            const probe = await fetchImpl(probeTarget, {
+              method: "GET",
+              redirect: "manual",
+              signal: AbortSignal.timeout(1500)
+            });
+            try { await probe.body?.cancel(); } catch { /* Body cleanup is best-effort. */ }
+          } catch {
+            throw Object.assign(new Error("Preview target is not reachable"), { statusCode: 502 });
+          }
           await browser.stop(projectId);
           const item = {
             projectId, host, port, token: randomBytes(24).toString("hex"), startedAt: Date.now()

@@ -97,29 +97,27 @@ async function createApiFixture(t, env, fetchImpl) {
   return { api, request };
 }
 
-test("live preview rejects default and configured POCKET_PORT, OPENCODE_PORT, and OPENCODE_URL ports on registration", async t => {
+test("live preview registration is fail-closed: self ports and any port without an allowlist are rejected", async t => {
   const defaultFixture = await createApiFixture(t, {}, async () => new Response("ok"));
-  for (const port of [8787, 49374]) {
+  for (const port of [8787, 49374, 3100]) {
     const res = await defaultFixture.request("POST", "/api/projects/p1/web-preview", { host: "127.0.0.1", port });
     assert.ok(res.statusCode === 400 || res.statusCode === 403, `expected 400/403 for port ${port}, got ${res.statusCode}`);
     assert.match(String(res.json?.error || ""), /not allowed/i);
   }
-  const normal = await defaultFixture.request("POST", "/api/projects/p1/web-preview", { host: "127.0.0.1", port: 3100 });
-  assert.equal(normal.statusCode, 200);
-  assert.equal(normal.json?.preview?.port, 3100);
+  const stored = await defaultFixture.request("GET", "/api/projects/p1/web-preview");
+  assert.equal(stored.json?.preview, null);
 
   const customFixture = await createApiFixture(
     t,
     { POCKET_PORT: "9100", OPENCODE_PORT: "41000", OPENCODE_URL: "http://127.0.0.1:42000" },
     async () => new Response("ok")
   );
-  for (const port of [9100, 41000, 42000]) {
+  // Custom self ports are denied, and the former defaults (8787/49374) are
+  // still denied here because no allowlist is configured at all.
+  for (const port of [9100, 41000, 42000, 8787, 49374]) {
     const res = await customFixture.request("POST", "/api/projects/p1/web-preview", { host: "127.0.0.1", port });
     assert.ok(res.statusCode === 400 || res.statusCode === 403, `expected 400/403 for port ${port}, got ${res.statusCode}`);
-  }
-  for (const port of [8787, 49374]) {
-    const res = await customFixture.request("POST", "/api/projects/p1/web-preview", { host: "127.0.0.1", port });
-    assert.equal(res.statusCode, 200, `overridden default port ${port} should be allowed`);
+    assert.match(String(res.json?.error || ""), /not allowed/i);
   }
 });
 
@@ -158,7 +156,7 @@ test("DEVMOTER_PREVIEW_ALLOWED_PORTS restricts registration to listed ports and 
 });
 
 test("live preview re-validates port policy at proxy-serve time when configuration changes or preview is pre-stored", async t => {
-  const env = { POCKET_PORT: "9100", OPENCODE_PORT: "41000" };
+  const env = { POCKET_PORT: "9100", OPENCODE_PORT: "41000", DEVMOTER_PREVIEW_ALLOWED_PORTS: "3100" };
   let upstreamHits = 0;
   const { api, request } = await createApiFixture(t, env, async () => {
     upstreamHits++;
@@ -171,6 +169,8 @@ test("live preview re-validates port policy at proxy-serve time when configurati
   const reg = await request("POST", "/api/projects/p1/web-preview", { host: "127.0.0.1", port: 3100 });
   assert.equal(reg.statusCode, 200);
   const proxyUrl = reg.json.preview.url;
+  // Registration probes the target once; only count proxy-serve fetches below.
+  upstreamHits = 0;
 
   const first = await request("GET", proxyUrl);
   assert.equal(first.statusCode, 200);
@@ -212,6 +212,11 @@ test("live preview re-validates port policy at proxy-serve time when configurati
 test("resolveLivePreviewTarget enforces self-port deny list and allowlist", () => {
   assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 8787, "/"), /not allowed/);
   assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 49374, "/"), /not allowed/);
+  // Fail closed: with no allowlist configured, even a normal port is denied.
+  assert.throws(
+    () => resolveLivePreviewTarget("127.0.0.1", 3000, "/", "", { env: {} }),
+    /not allowed/
+  );
   assert.throws(
     () => resolveLivePreviewTarget("127.0.0.1", 3000, "/", "", { env: { DEVMOTER_PREVIEW_ALLOWED_PORTS: "5173" } }),
     /not allowed/
@@ -220,6 +225,85 @@ test("resolveLivePreviewTarget enforces self-port deny list and allowlist", () =
     resolveLivePreviewTarget("127.0.0.1", 5173, "/", "", { env: { DEVMOTER_PREVIEW_ALLOWED_PORTS: "5173" } }),
     "http://127.0.0.1:5173/"
   );
+});
+
+async function stopServer(server) {
+  await new Promise(resolve => {
+    server.close(() => resolve());
+    server.closeAllConnections?.();
+  });
+}
+
+async function startHttpServer(t, body = "<html><body>live preview</body></html>") {
+  const server = http.createServer((req, res) => {
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    if (req.method === "HEAD") { res.end(); return; }
+    res.end(body);
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  t.after(() => stopServer(server).catch(() => {}));
+  return { server, port: server.address().port };
+}
+
+test("with no allowlist, a live arbitrary loopback port cannot be registered or proxied", async t => {
+  const { port } = await startHttpServer(t);
+  const { request } = await createApiFixture(t, {}, fetch);
+
+  const reg = await request("POST", "/api/projects/p1/web-preview", { host: "127.0.0.1", port });
+  assert.equal(reg.statusCode, 403);
+  assert.match(String(reg.json?.error || ""), /not allowed/i);
+
+  const stored = await request("GET", "/api/projects/p1/web-preview");
+  assert.equal(stored.json?.preview, null);
+
+  const fabricated = await request("GET", `/api/live-preview/proxy/${"b".repeat(48)}/`);
+  assert.equal(fabricated.statusCode, 404);
+});
+
+test("registration probes the target: an allowlisted port with nothing listening is rejected and not stored", async t => {
+  const deadPort = await freePort();
+  const { request } = await createApiFixture(
+    t,
+    { DEVMOTER_PREVIEW_ALLOWED_PORTS: String(deadPort) },
+    fetch
+  );
+
+  const reg = await request("POST", "/api/projects/p1/web-preview", { host: "127.0.0.1", port: deadPort });
+  assert.equal(reg.statusCode, 502);
+  assert.match(String(reg.json?.error || ""), /not reachable/i);
+
+  const stored = await request("GET", "/api/projects/p1/web-preview");
+  assert.equal(stored.json?.preview, null);
+});
+
+test("proxying a stopped preview fails with 502 and removes the registration", async t => {
+  const { server, port } = await startHttpServer(t);
+  const { request } = await createApiFixture(
+    t,
+    { DEVMOTER_PREVIEW_ALLOWED_PORTS: String(port) },
+    fetch
+  );
+
+  const reg = await request("POST", "/api/projects/p1/web-preview", { host: "127.0.0.1", port });
+  assert.equal(reg.statusCode, 200);
+  const proxyUrl = reg.json.preview.url;
+
+  const first = await request("GET", proxyUrl);
+  assert.equal(first.statusCode, 200);
+  assert.match(first.text, /live preview/);
+
+  await stopServer(server);
+
+  const afterStop = await request("GET", proxyUrl);
+  assert.equal(afterStop.statusCode, 502);
+  assert.match(String(afterStop.json?.error || ""), /not reachable/i);
+
+  const stored = await request("GET", "/api/projects/p1/web-preview");
+  assert.equal(stored.json?.preview, null);
+
+  const again = await request("GET", proxyUrl);
+  assert.equal(again.statusCode, 404);
 });
 
 test("server.mjs live preview proxy serves listed preview and rejects self ports and non-listed ports", async t => {
@@ -329,7 +413,8 @@ test("server.mjs live preview proxy serves listed preview and rejects self ports
   const html = await proxyGet.text();
   assert.match(html, /hello preview/);
   assert.ok(html.includes(`src="${preview.url}app.js"`));
-  assert.equal(previewHits, 1);
+  // One hit from the registration liveness probe, one from this proxy GET.
+  assert.equal(previewHits, 2);
 
   const proxyHead = await fetch(`${origin}${preview.url}`, {
     method: "HEAD",
