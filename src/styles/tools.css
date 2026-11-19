@@ -1896,9 +1896,12 @@ textarea:focus-visible,
 
 .dm-detail-list {
   display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
-  gap: 4px 16px;
+  gap: 4px;
   margin: 0;
+}
+
+.dm-detail-list dd + dt {
+  margin-top: 4px;
 }
 
 .dm-detail-list dt {
