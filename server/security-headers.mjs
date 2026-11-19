@@ -91,7 +91,11 @@ export function buildProxyResponseHeaders(upstreamHeaders, status, redact = valu
   const rawContentType = getHeader("content-type") || "";
   const sanitizedContentType = sanitizeProxyContentType(rawContentType);
   if (sanitizedContentType) {
-    headers["content-type"] = sanitizedContentType;
+    const mediaType = sanitizedContentType.split(";", 1)[0];
+    const containsSecret = redact(rawContentType) !== rawContentType || redact(sanitizedContentType) !== sanitizedContentType;
+    headers["content-type"] = containsSecret
+      ? (mediaType.endsWith("+json") ? "application/json" : mediaType)
+      : sanitizedContentType;
   } else if (status !== 204 && status !== 304) {
     headers["content-type"] = "application/octet-stream";
   }

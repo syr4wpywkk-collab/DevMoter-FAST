@@ -89,3 +89,16 @@ test("buildProxyResponseHeaders uses an allowlist and drops upstream cookies and
   const noContent = buildProxyResponseHeaders(new Headers(), 204);
   assert.equal(noContent.headers["content-type"], undefined);
 });
+
+test("proxy Content-Type drops secret-bearing parameters and JSON subtypes", () => {
+  const secret = "sentinel-credential";
+  const redact = value => value.replaceAll(secret, "[REDACTED]");
+  for (const [contentType, expected] of [
+    [`text/plain; charset=${secret}`, "text/plain"],
+    [`application/${secret}+json`, "application/json"]
+  ]) {
+    const result = buildProxyResponseHeaders(new Headers({ "content-type": contentType }), 200, redact);
+    assert.equal(result.headers["content-type"], expected);
+    assert.equal(result.mediaType, expected);
+  }
+});
