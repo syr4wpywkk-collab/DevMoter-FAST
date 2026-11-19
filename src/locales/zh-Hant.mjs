@@ -143,6 +143,9 @@ export const zhHant = {
   "auth.loadFailed": "無法載入登入選項，請重新整理後重試。",
 
   "errors.server.authRequired": "需要進行身分驗證。",
+  "sessionExpiry.message": "登入已過期。請重新登入以繼續；未傳送的草稿會保留。",
+  "sessionExpiry.signIn": "重新登入",
+  "sessionExpiry.dismiss": "關閉",
   "errors.server.rateLimited": "驗證嘗試次數過多，請稍後再試。",
   "errors.server.trustedDeviceRequired": "需要註冊受信任裝置。",
   "errors.server.trustedDeviceRevoked": "此受信任裝置已被撤銷。",

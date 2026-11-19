@@ -143,6 +143,9 @@ export const ja = {
   "auth.loadFailed": "サインイン方法の読み込みに失敗しました。再読み込みしてお試しください。",
 
   "errors.server.authRequired": "認証が必要です。",
+  "sessionExpiry.message": "サインインの有効期限が切れました。続けるには再度サインインしてください。未送信の下書きは保持されます。",
+  "sessionExpiry.signIn": "再度サインイン",
+  "sessionExpiry.dismiss": "閉じる",
   "errors.server.rateLimited": "認証の試行回数が上限に達しました。しばらくしてからもう一度お試しください。",
   "errors.server.trustedDeviceRequired": "信頼済み端末の登録が必要です。",
   "errors.server.trustedDeviceRevoked": "この信頼済み端末は失効しています。",
