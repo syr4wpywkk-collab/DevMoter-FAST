@@ -67,9 +67,12 @@ test("#329: a body that stalls after the headers still times out", async () => {
     signal = init.signal;
     return { ok: true, status: 200, json: () => new Promise(() => {}), text: () => new Promise(() => {}) };
   };
-  const response = await fetchReadWithTimeout(stalledBody, "/api/x", {}, () => new Error("timed out"), 5);
-  await assert.rejects(response.json(), /timed out/);
+  // Rejects from the helper itself, so `response.json().catch(() => ({}))` cannot hide it.
+  await assert.rejects(fetchReadWithTimeout(stalledBody, "/api/x", {}, () => new Error("timed out"), 5), /timed out/);
   assert.equal(signal.aborted, true);
+
+  const invalid = await fetchReadWithTimeout(async () => new Response("not json"), "/api/x", {}, () => new Error("timed out"), 50);
+  await assert.rejects(invalid.json(), SyntaxError, "bad JSON still rejects at json(), as before");
 
   const fast = await fetchReadWithTimeout(async () => new Response('{"ok":1}'), "/api/x", {}, () => new Error("timed out"), 50);
   assert.deepEqual(await fast.json(), { ok: 1 });

@@ -23,10 +23,9 @@ export function fetchWithTimeout(fetcher, input, init, timeoutMs, timeoutError) 
 // are passed through: they may legitimately run long and are not safe to cut.
 export const READ_REQUEST_TIMEOUT_MS = 30_000;
 
-const BODY_READERS = ["json", "text", "arrayBuffer", "blob"];
-
-// The deadline also covers reading the body, so a response whose headers
-// arrive before the body stalls still times out.
+// The deadline also covers the body: it is read before this resolves, so a body
+// that stalls after the headers rejects here, where callers report it, instead
+// of inside a json() call that a caller may treat as "no data".
 export async function fetchReadWithTimeout(fetcher, input, init = {}, timeoutError, timeoutMs = READ_REQUEST_TIMEOUT_MS) {
   const method = String(init.method || "GET").toUpperCase();
   if ((method !== "GET" && method !== "HEAD") || init.signal) return fetcher(input, init);
@@ -45,17 +44,23 @@ export async function fetchReadWithTimeout(fetcher, input, init = {}, timeoutErr
   } catch (error) {
     request = Promise.reject(error);
   }
-  let response;
+  const settle = promise => Promise.resolve(promise).then(value => ({ value }), error => ({ error }));
+  const unwrap = async result => {
+    if ("error" in result) throw result.error;
+    return result.value;
+  };
   try {
-    response = await Promise.race([request, deadline]);
-  } catch (error) {
+    const response = await Promise.race([request, deadline]);
+    if (typeof response?.text === "function") {
+      const text = await Promise.race([settle(response.text()), deadline]);
+      response.text = () => unwrap(text);
+      response.json = async () => JSON.parse(await unwrap(text));
+    } else if (typeof response?.json === "function") {
+      const json = await Promise.race([settle(response.json()), deadline]);
+      response.json = () => unwrap(json);
+    }
+    return response;
+  } finally {
     done();
-    throw error;
   }
-  for (const name of BODY_READERS) {
-    if (typeof response?.[name] !== "function") continue;
-    const read = response[name].bind(response);
-    response[name] = () => Promise.race([read(), deadline]).finally(done);
-  }
-  return response;
 }
