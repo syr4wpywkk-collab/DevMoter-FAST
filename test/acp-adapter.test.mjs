@@ -186,6 +186,59 @@ test("acpChildEnv allowlists operational CLI variables and excludes parent secre
   }
 });
 
+test("ACP inherits only named credentials and exact proxy/CA keys while preserving explicit overrides", async () => {
+  const networkEnv = {
+    HTTP_PROXY: "http://user:password@proxy.example.test",
+    HTTPS_PROXY: "http://secure.example.test",
+    NO_PROXY: "localhost",
+    ALL_PROXY: "socks5://proxy.example.test",
+    http_proxy: "http://lower.example.test",
+    https_proxy: "http://lower-secure.example.test",
+    no_proxy: "127.0.0.1",
+    all_proxy: "socks5://lower.example.test",
+    NODE_EXTRA_CA_CERTS: "/etc/company/node-ca.pem",
+    SSL_CERT_FILE: "/etc/company/ca.pem",
+    SSL_CERT_DIR: "/etc/company/certs"
+  };
+  const baseEnv = {
+    ...networkEnv,
+    ANTHROPIC_API_KEY: "selected-key",
+    OPENAI_API_KEY: "unlisted-key",
+    NODE_OPTIONS: "--require=/tmp/injected.js",
+    ld_preload: "/tmp/injected.so",
+    Http_Proxy: "http://mixed.example.test",
+    ssl_cert_file: "/unlisted/ca.pem",
+    INVALID_VALUE: "bad\0value",
+    NON_STRING: 123
+  };
+  const inheritEnvKeys = ["ANTHROPIC_API_KEY", "NODE_OPTIONS", "ld_preload", "INVALID_VALUE", "NON_STRING", "MISSING"];
+  const expected = { ...networkEnv, ANTHROPIC_API_KEY: "selected-key" };
+  assert.deepEqual(acpChildEnv(baseEnv, null, inheritEnvKeys), expected);
+  assert.deepEqual(acpChildEnv(baseEnv, { ANTHROPIC_API_KEY: "override", HTTP_PROXY: null }, inheritEnvKeys), {
+    ...Object.fromEntries(Object.entries(networkEnv).filter(([key]) => key !== "HTTP_PROXY")),
+    ANTHROPIC_API_KEY: "override"
+  });
+  assert.deepEqual(acpChildEnv({}, null, []), {});
+  assert.deepEqual(acpChildEnv({ HTTP_PROXY: "", SSL_CERT_FILE: "" }), { HTTP_PROXY: "", SSL_CERT_FILE: "" });
+  const child = fakeAcpChild((message, respond) => {
+    respond({ jsonrpc: "2.0", id: message.id, result: { protocolVersion: 1 } });
+  });
+  const adapter = new AcpAdapter({
+    command: "fake-acp",
+    baseEnv,
+    inheritEnvKeys,
+    spawnImpl: (command, args, options) => {
+      assert.deepEqual(options.env, expected);
+      return child;
+    }
+  });
+  try {
+    await adapter.connect();
+  } finally {
+    adapter.close();
+  }
+});
+
 test("acpChildEnv honors explicit per-agent env entries without merging parent env", () => {
   const baseEnv = {
     PATH: "/usr/bin",
