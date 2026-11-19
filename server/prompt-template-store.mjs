@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { chmod, lstat, mkdir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import { chmod, mkdir, open, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 
 export const PROMPT_TEMPLATE_BACKUP_FORMAT = "devmoter-prompt-templates";
@@ -89,13 +90,18 @@ export function createPromptTemplateStore({ rootDir, getProjectById = async () =
     if (cache) return cache;
     await ensureRoot();
     let text;
+    let handle;
     try {
-      const info = await lstat(filePath);
-      if (!info.isFile()) fail("Prompt template store is not a regular file", 500);
-      text = await readFile(filePath, "utf8");
+      // Check and read through one descriptor, refusing symlinks, so the file cannot be swapped in between.
+      handle = await open(filePath, constants.O_RDONLY | constants.O_NOFOLLOW);
+      if (!(await handle.stat()).isFile()) fail("Prompt template store is not a regular file", 500);
+      text = await handle.readFile("utf8");
     } catch (error) {
       if (error?.code === "ENOENT") { cache = []; return cache; }
+      if (error?.code === "ELOOP") fail("Prompt template store is not a regular file", 500);
       throw error;
+    } finally {
+      await handle?.close();
     }
     let parsed;
     try { parsed = JSON.parse(text); } catch { fail("Prompt template store is corrupted", 500); }
