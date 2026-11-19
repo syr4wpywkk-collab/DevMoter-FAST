@@ -1744,9 +1744,30 @@ const OPENCODE_SAFE_QUERY = /^(\?[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*)?$/;
 const OPENCODE_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
 
 /**
+ * Decode a client path exactly once and return that canonical value, or null
+ * when the path cannot be canonicalized: an undecodable escape, or DOUBLE
+ * encoding — decoding the result again would change it (e.g. %252f decodes
+ * once to %2f, again to /), which would let DevMoter classify a different
+ * route than a decoding upstream serves. An accepted canonical path never
+ * contains "%": any remaining escape would either decode further or fail to
+ * decode, and both cases are rejected here.
+ */
+function canonicalDecodedPath(rawPath) {
+  let decoded;
+  try {
+    decoded = decodeURIComponent(rawPath);
+  } catch {
+    return null;
+  }
+  return fullyDecodePath(rawPath) === decoded ? decoded : null;
+}
+
+/**
  * Validate the client path once and build the OpenCode request target as a
  * plain string: fixed OpenCode origin + "/api/" + allowlisted path (+ query).
- * Returns { upstreamUrl, policyPath } or { error } (400).
+ * ONE canonical (decoded, normalized) path drives validation, the policy
+ * classification, and the upstream URL, so the route DevMoter checks is the
+ * route OpenCode serves. Returns { upstreamUrl, policyPath } or { error }.
  */
 export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   const raw = String(rawRequestUrl || "");
@@ -1761,24 +1782,29 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   if (!OPENCODE_SAFE_PATH.test(rawPath) || !OPENCODE_SAFE_QUERY.test(rawQuery)) {
     return { error: "OpenCode proxy path is not allowed" };
   }
-  const decodedPath = fullyDecodePath(rawPath);
+  const canonicalPath = canonicalDecodedPath(rawPath);
   if (
-    decodedPath === null ||
-    decodedPath.startsWith("//") ||
+    canonicalPath === null ||
+    canonicalPath.startsWith("//") ||
     rawPath.startsWith("//") ||
-    decodedPath.includes("..") ||
-    decodedPath.includes("\\") ||
-    OPENCODE_SCHEME_SEGMENT.test(decodedPath) ||
-    CONTROL_CHARS.test(decodedPath)
+    canonicalPath.includes("..") ||
+    canonicalPath.includes("\\") ||
+    canonicalPath.includes("?") ||
+    canonicalPath.includes("#") ||
+    OPENCODE_SCHEME_SEGMENT.test(canonicalPath) ||
+    CONTROL_CHARS.test(canonicalPath)
   ) {
     return { error: "OpenCode proxy path is not allowed" };
   }
 
   // Strip the optional client-side "/api" prefix; the upstream root is fixed.
-  const apiRelative = rawPath.startsWith("/api/") ? rawPath.slice("/api/".length) : rawPath.slice(1);
+  let apiRelative = canonicalPath.startsWith("/api/") ? canonicalPath.slice("/api/".length) : canonicalPath.slice(1);
   if (apiRelative.startsWith("/")) {
     return { error: "OpenCode proxy path is not allowed" };
   }
+  // Canonicalize separators: an action subroute means the same with or
+  // without trailing slashes, for the policy checks and the upstream alike.
+  apiRelative = apiRelative.replace(/\/+$/, "");
   const policyPath = `/api/${apiRelative}`;
   const upstreamUrl = `${OPENCODE_ORIGIN}/api/${apiRelative}${rawQuery}`;
   return { upstreamUrl, policyPath };
@@ -1821,12 +1847,20 @@ async function readOpenCodeBody(req, limit) {
 }
 
 async function opencodeSessionRoute(req, res, url) {
-  if (url.pathname === "/api/opencode/event") {
+  // Dispatch on the canonical decoded path (url.pathname stays
+  // percent-encoded), so an encoded action such as %70rompt is classified
+  // exactly like its decoded form and can never fall through to the raw
+  // proxy as an unclassified route. Paths that cannot be canonicalized
+  // (undecodable or double-encoded) are not dispatched here; proxy()
+  // rejects them with 400.
+  const pathname = canonicalDecodedPath(url.pathname);
+  if (pathname === null) return false;
+  if (pathname === "/api/opencode/event") {
     if (req.method !== "GET") return false;
     await opencodeEvents(req, res);
     return true;
   }
-  if (url.pathname === "/api/opencode/session/active") {
+  if (pathname === "/api/opencode/session/active") {
     if (req.method !== "GET") return false;
     try {
       json(res, 200, await openCode.active());
@@ -1835,7 +1869,7 @@ async function opencodeSessionRoute(req, res, url) {
     }
     return true;
   }
-  const match = url.pathname.match(OPENCODE_SESSION_ROUTE);
+  const match = pathname.match(OPENCODE_SESSION_ROUTE);
   if (!match) return false;
   const [, rawSessionId, operation, rawRequestId, action] = match;
   const sessionId = fullyDecodePath(rawSessionId);

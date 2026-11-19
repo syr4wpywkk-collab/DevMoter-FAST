@@ -20,7 +20,7 @@ test("the control-character regex is defined once and shared by both path checks
   const sources = await Promise.all(files.map(file => readFile(new URL(file, import.meta.url), "utf8")));
   const definitions = sources.join("\n").match(/\/\[\\u0000-\\u001f\\u007f\]\//g) || [];
   assert.equal(definitions.length, 1);
-  assert.match(sources[0], /CONTROL_CHARS\.test\(decodedPath\)/);
+  assert.match(sources[0], /CONTROL_CHARS\.test\(canonicalPath\)/);
   assert.match(sources[1], /CONTROL_CHARS\.test\(decoded\)/);
   assert.doesNotMatch(sources.join("\n"), /OPENCODE_CONTROL_CHARS|PREVIEW_CONTROL_CHARS/);
 });
