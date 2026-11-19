@@ -89,3 +89,27 @@ test("#322: banner strings exist in every locale", async () => {
   const main = await readFile(new URL("../src/main.ts", import.meta.url), "utf8");
   assert.match(main, /startSessionExpiryWatch\(window\)/);
 });
+
+test("#322: the banner stays reachable inside an open modal dialog and returns to the page when it closes", () => {
+  const dom = new JSDOM("<!doctype html><body><dialog id='office' open></dialog></body>", { url: "https://devmoter.test/" });
+  const { document, Event } = dom.window;
+  const dialog = document.querySelector("dialog");
+  // JSDOM has no showModal(); report the open dialog as modal like a browser would.
+  const matches = dialog.matches.bind(dialog);
+  dialog.matches = selector => selector === ":modal" || matches(selector);
+  const banner = showSessionExpiredBanner(document);
+  assert.equal(banner.parentElement, dialog);
+  dialog.removeAttribute("open");
+  dialog.dispatchEvent(new Event("close"));
+  assert.equal(banner.parentElement, document.body);
+});
+
+test("#322: a non-modal open dialog does not capture the banner", () => {
+  const dom = new JSDOM("<!doctype html><body><dialog open></dialog></body>", { url: "https://devmoter.test/" });
+  assert.equal(showSessionExpiredBanner(dom.window.document).parentElement, dom.window.document.body);
+});
+
+test("#322: banner text keeps the theme's primary text color instead of the global paragraph gray", async () => {
+  const css = await readFile(new URL("../src/styles/base.css", import.meta.url), "utf8");
+  assert.match(css, /\.dm-session-expired p \{[^}]*color: var\(--text-primary\);/);
+});

@@ -1559,7 +1559,7 @@ body.codex-mode #app {
   color: var(--text-primary);
   font-size: var(--font-size-label);
 }
-.dm-session-expired p { flex: 1 1 220px; margin: 0; }
+.dm-session-expired p { flex: 1 1 220px; margin: 0; color: var(--text-primary); }
 .dm-session-expired-signin { color: var(--accent); font-weight: 600; }
 .dm-session-expired-dismiss {
   min-height: 44px;
