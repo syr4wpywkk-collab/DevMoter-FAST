@@ -1941,14 +1941,12 @@ async function opencodeSessionRoute(req, res, pathname) {
         return true;
       }
       const effectiveMode = resolveEffectiveAgentMode(verifiedMode, promptAgentMode);
-      prompt.text = materializeOpenCodeUploadText(prompt.text);
-      await openCode.prompt(sessionId, prompt, { readOnlyTools: readOnlyToolsFor(effectiveMode) });
+      if (isReadOnlyMode(effectiveMode) && !prompt.agent) prompt.agent = effectiveMode;
       if (promptAgentMode && isReadOnlyMode(promptAgentMode)) {
-        // A downgrade the upstream session itself now reflects (2.x applies
-        // the prompt's agent to the session) is recorded server-side too, so
-        // the stored mode can never drift above the session's real mode.
         setOpenCodeSessionMode(sessionId, promptAgentMode);
       }
+      prompt.text = materializeOpenCodeUploadText(prompt.text);
+      await openCode.prompt(sessionId, prompt, { readOnlyTools: readOnlyToolsFor(effectiveMode) });
       json(res, 200, { ok: true });
     } else if (subroute === "context") {
       json(res, 200, await openCode.context(sessionId));
@@ -2128,6 +2126,7 @@ async function proxy(req, res, { upstreamUrl, policyPath }) {
       });
       return;
     }
+    if (isReadOnlyMode(bodyAgentMode)) setOpenCodeSessionMode(sessionId, bodyAgentMode);
   }
 
   const upstreamAbort = new AbortController();
