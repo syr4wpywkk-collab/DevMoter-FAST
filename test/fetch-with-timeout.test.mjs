@@ -74,6 +74,12 @@ test("#329: a body that stalls after the headers still times out", async () => {
   const invalid = await fetchReadWithTimeout(async () => new Response("not json"), "/api/x", {}, () => new Error("timed out"), 50);
   await assert.rejects(invalid.json(), SyntaxError, "bad JSON still rejects at json(), as before");
 
+  const binary = await fetchReadWithTimeout(async () => new Response(new Uint8Array([1, 2, 3]), { headers: { "content-type": "application/octet-stream" } }), "/api/x", {}, () => new Error("timed out"), 50);
+  assert.deepEqual([...new Uint8Array(await binary.arrayBuffer())], [1, 2, 3], "arrayBuffer() still works after buffering");
+  const blob = await binary.blob();
+  assert.equal(blob.type, "application/octet-stream");
+  assert.equal(blob.size, 3);
+
   const fast = await fetchReadWithTimeout(async () => new Response('{"ok":1}'), "/api/x", {}, () => new Error("timed out"), 50);
   assert.deepEqual(await fast.json(), { ok: 1 });
 });

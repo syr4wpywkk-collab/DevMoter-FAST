@@ -51,7 +51,14 @@ export async function fetchReadWithTimeout(fetcher, input, init = {}, timeoutErr
   };
   try {
     const response = await Promise.race([request, deadline]);
-    if (typeof response?.text === "function") {
+    if (typeof response?.arrayBuffer === "function") {
+      const bytes = await Promise.race([settle(response.arrayBuffer()), deadline]);
+      const type = response.headers?.get?.("content-type") ?? "";
+      response.arrayBuffer = async () => (await unwrap(bytes)).slice(0);
+      response.blob = async () => new Blob([await unwrap(bytes)], { type });
+      response.text = async () => new TextDecoder().decode(await unwrap(bytes));
+      response.json = async () => JSON.parse(await response.text());
+    } else if (typeof response?.text === "function") {
       const text = await Promise.race([settle(response.text()), deadline]);
       response.text = () => unwrap(text);
       response.json = async () => JSON.parse(await unwrap(text));
