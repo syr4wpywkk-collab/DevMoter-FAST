@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { readFile, readdir } from "node:fs/promises";
 import { basename } from "node:path";
+import { findSecrets, isBinary, isSensitivePath } from "./secret-scan.mjs";
 import { findCiEnforcementGaps } from "./ci-required-checks.mjs";
 
 const failures = [];
@@ -168,43 +169,29 @@ try {
   failures.push("git ls-files could not enumerate tracked files");
 }
 
-const sensitiveName = /(^|\/)(?:\.env|\.npmrc|\.pypirc|id_(?:rsa|dsa|ecdsa|ed25519)|credentials(?:\.[^/]*)?|.*\.(?:pem|key|p12|pfx))$/i;
-const allowedEnvTemplate = /(^|\/)\.env\.(?:example|sample|template)$/i;
-const suspiciousTrackedPaths = tracked.filter(path =>
-  !allowedEnvTemplate.test(path) && sensitiveName.test(path)
-);
+const suspiciousTrackedPaths = tracked.filter(isSensitivePath);
 if (suspiciousTrackedPaths.length === 0) {
   passes.push("no likely secret files are tracked");
 } else {
   for (const path of suspiciousTrackedPaths) failures.push("likely secret file is tracked: " + path);
 }
 
-const secretPatterns = [
-  { name: "private key", regex: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/ },
-  { name: "GitHub token", regex: /\bgh[pousr]_[A-Za-z0-9]{36,255}\b/ },
-  { name: "OpenAI-style key", regex: /\bsk-(?:proj-)?[A-Za-z0-9_-]{32,}\b/ },
-  { name: "AWS access key", regex: /\bAKIA[0-9A-Z]{16}\b/ },
-  { name: "Slack token", regex: /\bxox[baprs]-[A-Za-z0-9-]{20,}\b/ }
-];
-
-const scanExtensions = /\.(?:js|mjs|cjs|ts|tsx|json|md|html|css|yml|yaml|sh|txt)$/i;
+// Scan every tracked text file (binary files are detected by NUL bytes) rather
+// than an extension allowlist, so .swift, .webmanifest, .env.example, etc. are covered.
+let scannedFiles = 0;
 for (const path of tracked) {
-  if (!scanExtensions.test(path)) continue;
   if (basename(path) === "package-lock.json") continue;
-  let body;
+  let buffer;
   try {
-    body = await readFile(path, "utf8");
+    buffer = await readFile(path);
   } catch {
     continue;
   }
-  if (body.length > 2000000) continue;
-  for (const pattern of secretPatterns) {
-    const match = body.match(pattern.regex);
-    if (!match) continue;
-    if (/fake|example|placeholder|dummy/i.test(match[0])) continue;
-    failures.push("possible " + pattern.name + " in " + path);
-  }
+  if (buffer.length > 2000000 || isBinary(buffer)) continue;
+  scannedFiles++;
+  for (const name of findSecrets(buffer.toString("utf8"))) failures.push("possible " + name + " in " + path);
 }
+check(scannedFiles > 0, "secret scan covered " + scannedFiles + " tracked text files");
 
 console.log("Security audit: " + passes.length + " checks passed");
 for (const item of passes) console.log("  ✓ " + item);
