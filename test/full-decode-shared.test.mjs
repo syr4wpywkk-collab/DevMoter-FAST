@@ -20,7 +20,7 @@ test("fullyDecodePath rejects malformed or endlessly nested input", () => {
 });
 
 test("the nested-decode loop is defined once and shared by both path checks", async () => {
-  const files = ["../server.mjs", "../server/advanced-api.mjs", "../server/security-helpers.mjs"];
+  const files = ["../server/opencode-proxy-path.mjs", "../server/advanced-api.mjs", "../server/security-helpers.mjs"];
   const sources = await Promise.all(files.map(file => readFile(new URL(file, import.meta.url), "utf8")));
   const all = sources.join("\n");
   assert.equal((all.match(/decodeURIComponent\(current\)/g) || []).length, 1);
