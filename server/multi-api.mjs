@@ -2,6 +2,8 @@ import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { randomUUID } from "node:crypto";
 
+import { redactSecretsInText } from "./secret-redaction.mjs";
+
 const MAX_MESSAGES = 120;
 const MAX_CONTENT_CHARS = 500_000;
 const MAX_PROVIDERS = 40;
@@ -298,13 +300,106 @@ function reasoningModesForProvider(provider) {
   return ["auto"];
 }
 
-function providerErrorMessage(payload, status) {
+function providerErrorMessage(payload, status, secrets = []) {
   const candidate =
     payload?.error?.message ??
     payload?.message ??
     payload?.error ??
     `Upstream API returned HTTP ${status}`;
-  return String(candidate).slice(0, 600);
+  // Redact before truncating so a secret straddling the cut cannot leak in part.
+  return redactSecretsInText(String(candidate), secrets).slice(0, 600);
+}
+
+// Hard cap on upstream Multi-API response bodies. A malicious or broken
+// upstream must not be able to exhaust memory with an unbounded JSON payload,
+// so every upstream read in this module goes through readUpstreamJson().
+// Operators may tune the cap with DEVMOTER_MULTI_API_MAX_RESPONSE_BYTES
+// (a positive integer number of bytes); anything else falls back to the default.
+export const MAX_UPSTREAM_RESPONSE_BYTES = 10 * 1024 * 1024;
+
+function upstreamResponseByteLimit(env = process.env) {
+  const override = Number(env?.DEVMOTER_MULTI_API_MAX_RESPONSE_BYTES);
+  return Number.isInteger(override) && override > 0 ? override : MAX_UPSTREAM_RESPONSE_BYTES;
+}
+
+function providerSecrets(provider) {
+  const key = typeof provider?.apiKey === "string" ? provider.apiKey : "";
+  return key ? [key] : [];
+}
+
+function redactProviderSecrets(value, provider) {
+  return redactSecretsInText(value, providerSecrets(provider));
+}
+
+async function readBoundedResponseText(response, limit) {
+  const declared = Number(response?.headers?.get?.("content-length"));
+  if (Number.isFinite(declared) && declared > limit) {
+    try {
+      await response.body?.cancel();
+    } catch {}
+    const error = new Error(`Upstream API response exceeded the ${limit}-byte limit`);
+    error.code = "UPSTREAM_RESPONSE_TOO_LARGE";
+    throw error;
+  }
+
+  if (!response?.body) return "";
+
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > limit) {
+        try {
+          await reader.cancel();
+        } catch {}
+        const error = new Error(`Upstream API response exceeded the ${limit}-byte limit`);
+        error.code = "UPSTREAM_RESPONSE_TOO_LARGE";
+        throw error;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock?.();
+  }
+  return Buffer.concat(chunks, total).toString("utf8");
+}
+
+// Single bounded, redacting read path for every upstream Multi-API response,
+// success and error bodies alike. Throws the byte-limit error when the body is
+// oversized, and an error carrying the (API-key-redacted) provider message
+// plus the HTTP status when the upstream response is not ok.
+async function readUpstreamJson(response, provider) {
+  const limit = upstreamResponseByteLimit();
+  let data = {};
+  try {
+    const text = await readBoundedResponseText(response, limit);
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = {};
+      }
+    }
+  } catch (error) {
+    if (error?.code === "UPSTREAM_RESPONSE_TOO_LARGE") {
+      if (Number.isInteger(response?.status)) error.status = response.status;
+      throw error;
+    }
+    // Any other read failure keeps the previous behavior: treat the body as
+    // empty and let the status/shape checks below produce the error.
+    data = {};
+  }
+
+  if (!response.ok) {
+    const error = new Error(providerErrorMessage(data, response.status, providerSecrets(provider)));
+    error.status = response.status;
+    throw error;
+  }
+  return data;
 }
 
 function publicProvider(provider) {
@@ -542,16 +637,11 @@ export async function testMultiApiProvider(input, fetchImpl = fetch) {
     signal: AbortSignal.timeout(20_000)
   });
 
-  const data = await upstream.json().catch(() => ({}));
-  if (!upstream.ok) {
-    const error = new Error(providerErrorMessage(data, upstream.status));
-    error.status = upstream.status;
-    throw error;
-  }
+  const data = await readUpstreamJson(upstream, provider);
 
   return {
     ok: true,
-    models: parseModelList(data)
+    models: parseModelList(data).map(model => redactProviderSecrets(model, provider))
   };
 }
 
@@ -638,12 +728,7 @@ async function runOpenAiCompatible(provider, model, messages, reasoningMode, fet
     signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000)
   });
 
-  const data = await upstream.json().catch(() => ({}));
-  if (!upstream.ok) {
-    const error = new Error(providerErrorMessage(data, upstream.status));
-    error.status = upstream.status;
-    throw error;
-  }
+  const data = await readUpstreamJson(upstream, provider);
 
   const content = data?.choices?.[0]?.message?.content;
   if (typeof content !== "string") {
@@ -681,12 +766,7 @@ async function runAnthropic(provider, model, messages, reasoningMode, fetchImpl,
     signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000)
   });
 
-  const data = await upstream.json().catch(() => ({}));
-  if (!upstream.ok) {
-    const error = new Error(providerErrorMessage(data, upstream.status));
-    error.status = upstream.status;
-    throw error;
-  }
+  const data = await readUpstreamJson(upstream, provider);
 
   const content = Array.isArray(data?.content)
     ? data.content
@@ -737,7 +817,10 @@ export async function runMultiApiChat(
     providerId,
     model,
     reasoning,
-    message: { role: "assistant", content: result.content },
+    // Response-derived text is scrubbed here, at the shared multi-API layer,
+    // so the key actually used for the request cannot echo back to the client
+    // regardless of whether it came from the vault, the provider file, or env.
+    message: { role: "assistant", content: redactProviderSecrets(result.content, provider) },
     usage: result.usage
   };
 }
