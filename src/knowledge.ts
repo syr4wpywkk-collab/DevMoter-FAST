@@ -34,7 +34,8 @@ async function request(path: string, init: { method?: string; body?: unknown } =
     const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
     if (!response.ok) {
       const raw = typeof payload.error === "string" ? payload.error : "";
-      throw responseError(response.status, raw ? translateServerMessage(raw) : t("common.httpError", { status: response.status }));
+      // Keep the server's own wording: the device-auth check matches it, and errorText() translates it for display.
+      throw responseError(response.status, raw || t("common.httpError", { status: response.status }));
     }
     return payload;
   } finally {
