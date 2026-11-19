@@ -10,6 +10,7 @@ const CLIENT_BUILD = typeof __DEVMOTER_BUILD__ === "string" ? __DEVMOTER_BUILD__
 const CONNECTION_NAMES: Record<string, string> = { opencode: "OpenCode", codex: "Codex" };
 import { boundedPushWait, inspectPushReadiness, type PushReadiness } from "./push-readiness.js";
 import { formatDateTime, formatNumber, getLanguage, setLanguage, t, translateServerMessage } from "./i18n";
+import { fetchReadWithTimeout } from "./fetch-with-timeout.mjs";
 
 type Json = Record<string, any>;
 type SettingsPage = "root" | "appearance" | "language" | "account" | "devices" | "vault" | "notifications" | "diagnostics" | "guide";
@@ -81,7 +82,7 @@ async function request(path: string, init: RequestInit = {}, deviceAuth = false)
   if (method !== "GET" && method !== "HEAD" && !headers.has("x-pocket-operation-id")) {
     headers.set("x-pocket-operation-id", crypto.randomUUID());
   }
-  const response = await fetch(path, { ...init, headers, cache: "no-store", credentials: "same-origin" });
+  const response = await fetchReadWithTimeout((input, request) => fetch(input, request), path, { ...init, headers, cache: "no-store", credentials: "same-origin" }, () => new Error(t("common.requestTimeout")));
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw Object.assign(new Error(translateServerMessage(payload?.error) || t("common.httpError", { status: response.status })), { status: response.status });

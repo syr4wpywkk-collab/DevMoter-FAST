@@ -358,3 +358,25 @@ test("provider test accepts UTF-8 JSON with a leading BOM", async () => {
 
   assert.deepEqual(result, { ok: true, models: ["model-a"] });
 });
+
+test("#349: aborting the chat request cancels the provider call", async () => {
+  const controller = new AbortController();
+  let upstreamSignal;
+  const pending = runMultiApiChat([openAiProvider("chat-secret")], {
+    providerId: "demo",
+    model: "demo-fast",
+    messages: [{ role: "user", content: "hello" }]
+  }, (_url, init) => new Promise((_resolve, reject) => {
+    upstreamSignal = init.signal;
+    init.signal.addEventListener("abort", () => reject(init.signal.reason), { once: true });
+  }), { signal: controller.signal });
+  await new Promise(resolve => setImmediate(resolve));
+  controller.abort();
+  await assert.rejects(pending);
+  assert.equal(upstreamSignal.aborted, true);
+
+  const server = await import("node:fs/promises").then(fs => fs.readFile(new URL("../server.mjs", import.meta.url), "utf8"));
+  const handler = server.slice(server.indexOf("async function multiApiChat("), server.indexOf("async function devWorkflowAction("));
+  assert.match(handler, /res\.on\("close", abortUpstream\)/);
+  assert.match(handler, /runMultiApiChat\([^)]*signal: upstreamAbort\.signal/);
+});

@@ -2855,6 +2855,11 @@ async function multiApiAttachmentDelete(attachmentId, res) {
 }
 
 async function multiApiChat(req, res) {
+  // Stop in API Chat aborts the browser request; stop the provider call too.
+  const upstreamAbort = new AbortController();
+  const abortUpstream = () => { if (!res.writableEnded) upstreamAbort.abort(); };
+  req.on("aborted", abortUpstream);
+  res.on("close", abortUpstream);
   const secrets = new Set();
   const mask = value => secrets.size > 0 ? redactSecretsInText(value, [...secrets]) : value;
   try {
@@ -2880,7 +2885,7 @@ async function multiApiChat(req, res) {
         ? { ...provider, apiKey: resolved.value, secretRef: "" }
         : provider);
     }
-    const result = await runMultiApiChat(providers, payload, fetch, { attachmentStore: multiApiAttachments });
+    const result = await runMultiApiChat(providers, payload, fetch, { attachmentStore: multiApiAttachments, signal: upstreamAbort.signal });
     json(res, 200, secrets.size > 0
       ? { ...result, message: { ...result.message, content: mask(result.message.content) } }
       : result);

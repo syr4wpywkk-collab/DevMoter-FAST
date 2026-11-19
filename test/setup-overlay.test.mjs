@@ -1,4 +1,5 @@
 import test from "node:test";
+import * as fetchTimeout from "../src/fetch-with-timeout.mjs";
 import assert from "node:assert/strict";
 import * as i18nCore from "../src/i18n-core.mjs";
 import { readFile } from "node:fs/promises";
@@ -58,7 +59,7 @@ function panelHarness({ dismissed = false } = {}) {
   const exports = {};
   vm.runInNewContext(compiled, {
     exports,
-    require: name => (name === "./push-readiness.js" ? pushReadiness : name === "./i18n" ? i18nCore : {}),
+    require: name => (name === "./fetch-with-timeout.mjs" ? fetchTimeout : name === "./push-readiness.js" ? pushReadiness : name === "./i18n" ? i18nCore : {}),
     window,
     document: {
       createElement: () => root,

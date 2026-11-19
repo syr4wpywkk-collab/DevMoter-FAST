@@ -1,5 +1,6 @@
 import { boundedPushWait, inspectPushReadiness } from "./push-readiness.js";
 import { formatDateTime, t, translateServerMessage } from "./i18n";
+import { fetchReadWithTimeout } from "./fetch-with-timeout.mjs";
 
 const SETUP_DISMISSED_KEY = "devmoter-setup-dismissed-v1";
 function base64urlToBytes(value: string) {
@@ -54,7 +55,7 @@ export function mountSystemPanel() {
     if (method !== "GET" && method !== "HEAD" && !headers.has("x-pocket-operation-id")) {
       headers.set("x-pocket-operation-id", crypto.randomUUID());
     }
-    const response = await fetch(path, { ...init, headers, cache: "no-store" });
+    const response = await fetchReadWithTimeout((input, request) => fetch(input, request), path, { ...init, headers, cache: "no-store" }, () => new Error(t("common.requestTimeout")));
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(translateServerMessage(payload?.error) || t("common.httpError", { status: response.status }));
     return payload;

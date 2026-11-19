@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import * as fetchTimeout from "../src/fetch-with-timeout.mjs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -31,7 +32,7 @@ function transpile(source, allowedImportsRegex) {
 }
 
 const compiledControl = transpile(controlSource, "device-gate|sheet-header|i18n");
-const compiledSettings = transpile(settingsSource, "diagnostics-format|push-readiness|i18n");
+const compiledSettings = transpile(settingsSource, "diagnostics-format|push-readiness|fetch-with-timeout|i18n");
 
 const FakeTerminal = class {
   constructor(options = {}) {
@@ -123,6 +124,7 @@ function mountControlAndSettings({ fetch, language = "en", url = "http://localho
   };
 
   const makeRequire = name => {
+    if (name === "./fetch-with-timeout.mjs") return fetchTimeout;
     if (name === "./device-gate.mjs") return deviceGate;
     if (name === "./sheet-header.mjs") return sheetHeader;
     if (name === "./i18n") return i18nCore;

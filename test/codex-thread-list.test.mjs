@@ -29,7 +29,7 @@ test("Codex thread list rejects duplicate conversation identities", () => {
 
 test("Codex history refresh reports failures and retains the last valid snapshot", async () => {
   const source = await readFile(new URL("../src/codex.ts", import.meta.url), "utf8");
-  const start = source.indexOf("async function loadThreads()");
+  const start = source.indexOf("async function loadThreads(");
   const end = source.indexOf("function parseUserMessage", start);
   const loader = source.slice(start, end);
   assert.match(loader, /catch \(error\)[\s\S]*?showToast\([\s\S]*?\)[\s\S]*?return false;/);
