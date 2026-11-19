@@ -14,6 +14,7 @@ import { createOpenCodeClient } from "./server/opencode-api.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { staticSecurityHeaders } from "./server/security-headers.mjs";
+import { applyBaselineSecurityHeaders } from "./server/response-security.mjs";
 import { readHandle, withOpenFile, writeFileNoFollow } from "./server/safe-file.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
 import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
@@ -2728,6 +2729,7 @@ const PUBLIC_STATIC_PATHS = new Set([
 ]);
 
 const server = http.createServer(async (req, res) => {
+  applyBaselineSecurityHeaders(req, res, { publicOrigin: DEVMOTER_PUBLIC_ORIGIN });
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
     // URL parsing can erase dot segments. Validate the original request target
@@ -3821,6 +3823,10 @@ const server = http.createServer(async (req, res) => {
 
     await serveStatic(req, res);
   } catch (error) {
+    if (error instanceof URIError) {
+      json(res, 400, { error: "Malformed request path" });
+      return;
+    }
     console.error(redactText(error instanceof Error ? error.stack || error.message : String(error)));
     json(res, 500, { error: "DevMoter server error" });
   }
