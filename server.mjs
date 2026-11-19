@@ -41,7 +41,8 @@ import {
   isLoopbackAddress,
   isLoopbackBindHost,
   parseBasicAuthorization,
-  requireSameOriginMutation
+  requireSameOriginMutation,
+  resolveLocalAddress
 } from "./server/auth.mjs";
 import { createBasicAuthGuard, parseTrustedProxies } from "./server/auth-guard.mjs";
 import { OidcAuth } from "./server/oidc-auth.mjs";
@@ -77,6 +78,7 @@ const fetchOpenCodeJson = openCode.fetchJson;
 const DEVMOTER_AUTH_USERNAME = process.env.DEVMOTER_AUTH_USERNAME || "devmoter";
 const DEVMOTER_AUTH_PASSWORD = assertAuthPassword(process.env.DEVMOTER_AUTH_PASSWORD || "");
 const DEVMOTER_PUBLIC_ORIGIN = process.env.DEVMOTER_PUBLIC_ORIGIN || "";
+const DEVMOTER_TRUSTED_PROXIES = parseTrustedProxies(process.env.DEVMOTER_TRUST_PROXY);
 const PASSKEY_REQUIRED = process.env.DEVMOTER_PASSKEY_REQUIRED === "1";
 const AUTH_SESSION_TTL_DAYS = Number(process.env.DEVMOTER_AUTH_SESSION_TTL_DAYS || 30);
 if (!Number.isFinite(AUTH_SESSION_TTL_DAYS) || AUTH_SESSION_TTL_DAYS < 1 || AUTH_SESSION_TTL_DAYS > 90) {
@@ -89,7 +91,7 @@ const AUTH_CONFIG = {
 const basicAuthGuard = createBasicAuthGuard({
   expectedUsername: AUTH_CONFIG.username,
   expectedPassword: AUTH_CONFIG.password,
-  trustedProxies: parseTrustedProxies(process.env.DEVMOTER_TRUST_PROXY)
+  trustedProxies: DEVMOTER_TRUSTED_PROXIES
 });
 const REDACTED_SECRETS = [OPENCODE_PASSWORD, DEVMOTER_AUTH_PASSWORD, process.env.DEVMOTER_GOOGLE_CLIENT_SECRET, process.env.DEVMOTER_MICROSOFT_CLIENT_SECRET].filter(Boolean);
 const OPENCODE_DIRECTORY =
@@ -261,6 +263,7 @@ const systemFeatures = createSystemFeatures({
   },
   host: HOST,
   version: process.env.DEVMOTER_VERSION || "0.2.0",
+  trustedProxies: DEVMOTER_TRUSTED_PROXIES,
   onDeviceRevoked: deviceId => terminal.revokeDeviceSessions(deviceId)
 });
 const toolsAiStore = createRunStore({ filePath: join(PROJECT_CONFIG_DIR, "tools-ai-runs.json") });
@@ -339,7 +342,8 @@ const automationApi = createAutomationApi({
   readJson,
   operationId,
   claimOperation,
-  publicOrigin: DEVMOTER_PUBLIC_ORIGIN
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+  trustedProxies: DEVMOTER_TRUSTED_PROXIES
 });
 
 function codexThreadIdFromEvent(params = {}) {
@@ -1573,10 +1577,10 @@ async function passkeyRoute(req, res, url) {
 async function controlRoute(req, res, url) {
   if (!url.pathname.startsWith("/api/control/")) return false;
   try {
-    const localAddress = DEVMOTER_PUBLIC_ORIGIN ||
-      ((String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim() || url.protocol.replace(":", "")) +
-        "://" +
-        (String(req.headers["x-forwarded-host"] || "").split(",")[0].trim() || req.headers.host || "localhost"));
+    const localAddress = resolveLocalAddress(req, {
+      publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+      trustedProxies: DEVMOTER_TRUSTED_PROXIES
+    });
 
     if (req.method === "GET" && url.pathname === "/api/control/hosts") {
       json(res, 200, { hosts: await controlPlane.listHosts(localAddress) });
@@ -3174,7 +3178,15 @@ const server = http.createServer(async (req, res) => {
         const issued = await systemFeatures.bootstrapDevice(req, payload?.label);
         const { token, device } = issued;
         const { tokenHash: _tokenHash, ...publicDevice } = device;
-        jsonWithCookie(res, 201, { device: publicDevice }, deviceSessionCookie(req, token));
+        jsonWithCookie(
+          res,
+          201,
+          { device: publicDevice },
+          deviceSessionCookie(req, token, undefined, {
+            publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+            trustedProxies: DEVMOTER_TRUSTED_PROXIES
+          })
+        );
       } catch (error) {
         json(res, Number(error?.status || 400), { error: errorMessage(error) });
       }
@@ -3196,7 +3208,15 @@ const server = http.createServer(async (req, res) => {
           { allowOwnerRecovery: allowOwnerDeviceRecovery() }
         );
         if (result.revokedCurrentDevice) {
-          jsonWithCookie(res, 200, result, deviceSessionCookie(req, "", 0));
+          jsonWithCookie(
+            res,
+            200,
+            result,
+            deviceSessionCookie(req, "", 0, {
+              publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+              trustedProxies: DEVMOTER_TRUSTED_PROXIES
+            })
+          );
         } else {
           json(res, 200, result);
         }
@@ -3223,7 +3243,10 @@ const server = http.createServer(async (req, res) => {
           res,
           201,
           { device: publicDevice, approvedByDeviceId },
-          deviceSessionCookie(req, token)
+          deviceSessionCookie(req, token, undefined, {
+            publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+            trustedProxies: DEVMOTER_TRUSTED_PROXIES
+          })
         );
       } catch (error) {
         json(res, Number(error?.status || 400), { error: errorMessage(error) });
@@ -3684,7 +3707,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 const terminalSockets = installTerminalWebSocketEndpoint(server, terminal, {
-  publicOrigin: DEVMOTER_PUBLIC_ORIGIN
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+  trustedProxies: DEVMOTER_TRUSTED_PROXIES
 });
 
 server.on("close", () => {
