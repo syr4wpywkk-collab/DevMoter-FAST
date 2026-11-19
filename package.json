@@ -15,6 +15,7 @@
     "test:coverage": "c8 --reporter=text --reporter=lcov npm test",
     "cli": "node cli/devmoter.mjs",
     "security:audit": "node scripts/security-audit.mjs",
+    "size": "node scripts/bundle-size.mjs",
     "build:office": "node scripts/build-office-engine.mjs",
     "test:workspace-browser": "node --test e2e/*.test.mjs"
   },
