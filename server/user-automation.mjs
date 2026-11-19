@@ -1,5 +1,5 @@
 import { execFile, spawnSync } from "node:child_process";
-import { appendFile, mkdir, open, readFile, rename, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
@@ -345,15 +345,18 @@ export function createUserAutomationService({
     const line = JSON.stringify(entry) + "\n";
     const write = auditQueue.catch(() => {}).then(async () => {
       await mkdir(configDir, { recursive: true, mode: 0o700 });
+      let handle = await open(auditFile, "a", 0o600);
       try {
-        const info = await stat(auditFile);
-        if (info.size > HOOK_AUDIT_MAX_BYTES) {
+        if ((await handle.stat()).size > HOOK_AUDIT_MAX_BYTES) {
+          await handle.close();
+          handle = null;
           await rename(auditFile, auditFile + ".1").catch(() => {});
+          handle = await open(auditFile, "a", 0o600);
         }
-      } catch {
-        // A missing audit file is the normal first-run case.
+        await handle.appendFile(line);
+      } finally {
+        await handle?.close();
       }
-      await appendFile(auditFile, line, { mode: 0o600 });
     });
     auditQueue = write;
     await write;

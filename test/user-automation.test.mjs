@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -77,6 +77,25 @@ test("audit write failures are logged and retain executed and blocked hook resul
   const recovered = await service.emitHook("after-run");
   assert.ok(recovered.results.every(result => !Object.hasOwn(result, "auditError")));
   assert.equal((await service.readHookAudit()).length, 2);
+});
+
+test("hook audit rotates one generation past 5 MiB and keeps the file private", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-hook-audit-rotate-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const service = serviceAt(dir, { env: { DEVMOTER_SANDBOX: "off" } });
+  await service.writeState({ hooks: [
+    { id: "blocked", event: "after-run", kind: "command", command: "test-command", approved: true }
+  ] });
+  const auditFile = join(dir, "hook-audit.jsonl");
+  const oversized = '{"id":"old"}\n'.padEnd(5 * 1024 * 1024 + 1, " ");
+  await writeFile(auditFile, oversized);
+  const emitted = await service.emitHook("after-run");
+  assert.ok(emitted.results.every(result => !Object.hasOwn(result, "auditError")));
+  assert.equal((await readFile(auditFile + ".1", "utf8")).length, oversized.length);
+  const current = (await readFile(auditFile, "utf8")).trim().split("\n");
+  assert.equal(current.length, 1);
+  assert.equal(JSON.parse(current[0]).hookId, "blocked");
+  if (process.platform !== "win32") assert.equal((await stat(auditFile)).mode & 0o777, 0o600);
 });
 
 test("hooks use versioned schema and unapproved mutating hooks fail closed", async t => {
