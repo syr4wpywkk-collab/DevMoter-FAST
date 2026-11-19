@@ -13,7 +13,11 @@ import {
   parseBasicAuthorization,
   resolveLocalAddress
 } from "../server/auth.mjs";
-import { redactSecretsInText } from "../server/secret-redaction.mjs";
+import {
+  createStreamingBufferRedactor,
+  createStreamingTextRedactor,
+  redactSecretsInText
+} from "../server/secret-redaction.mjs";
 
 test("DevMoter auth password fails closed when weak or missing", () => {
   assert.throws(() => assertAuthPassword(""), /at least 16 characters/);
@@ -146,6 +150,38 @@ test("configured secrets are redacted from browser/log text", () => {
   );
   assert.equal(text.includes(secret), false);
   assert.match(text, /\[REDACTED\]/);
+});
+
+test("streaming text and buffer redactors mask split secrets without holding normal SSE frames", () => {
+  const secret = 'sentinel-"secret"-576';
+  const redactor = createStreamingTextRedactor([secret]);
+
+  // Normal SSE frame that does not end in a prefix of the secret flushes immediately.
+  assert.equal(redactor.push("data: hold\n\n"), "data: hold\n\n");
+
+  // Secret split across chunks (and JSON-escaped) is masked cleanly across SSE boundaries.
+  const jsonEscaped = JSON.stringify(secret).slice(1, -1);
+  const splitAt = 10;
+  const part1 = redactor.push(`data: {"token":"${jsonEscaped.slice(0, splitAt)}`);
+  const part2 = redactor.push(`${jsonEscaped.slice(splitAt)}"}\n\n`);
+  const tail = redactor.flush();
+  const full = part1 + part2 + tail;
+  assert.equal(full, 'data: {"token":"[REDACTED]"}\n\n');
+  assert.equal(full.includes(secret), false);
+  assert.equal(full.includes(jsonEscaped), false);
+
+  // Buffer redactor masks split secret bytes without altering arbitrary binary bytes.
+  const binSecret = "binary-secret-token-576";
+  const bufRedactor = createStreamingBufferRedactor([binSecret]);
+  const b1 = bufRedactor.push(Buffer.concat([Buffer.from([0xff, 0x00, 0x80]), Buffer.from(binSecret.slice(0, 7))]));
+  const b2 = bufRedactor.push(Buffer.concat([Buffer.from(binSecret.slice(7)), Buffer.from([0xfe, 0x01])]));
+  const bTail = bufRedactor.flush();
+  const fullBuf = Buffer.concat([b1, b2, bTail]);
+  assert.equal(fullBuf.includes(Buffer.from(binSecret)), false);
+  assert.deepEqual(
+    fullBuf,
+    Buffer.concat([Buffer.from([0xff, 0x00, 0x80]), Buffer.from("[REDACTED]"), Buffer.from([0xfe, 0x01])])
+  );
 });
 
 test("loopback detection covers 127.0.0.0/8, localhost, ::1, and [::1] and rejects lookalikes", () => {
