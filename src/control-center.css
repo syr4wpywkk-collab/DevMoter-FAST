@@ -327,7 +327,7 @@
 
 /* Unregistered device: explain the locked tab and link directly to Trusted devices registration. */
 .dm-tools-section[data-device-gated] > :not([data-device-gate]) { display: none; }
-.dm-device-gate-compact { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px 0; }
+.dm-device-gate-compact { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-6) 0; }
 .dm-device-gate-compact small { color: var(--text-secondary); font-size: var(--font-size-caption); text-align: center; }
 .dm-tools-device-gate {
   display: grid;
