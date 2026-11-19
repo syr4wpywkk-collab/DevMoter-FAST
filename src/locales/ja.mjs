@@ -2033,6 +2033,7 @@ export const ja = {
   "codex.sidebar.searchPlaceholder": "チャットを検索",
   "codex.sidebar.plugins": "プラグイン",
   "codex.sidebar.tasks": "タスク",
+  "codex.sidebar.toolsAria": "ツール",
   "codex.topbar.openHistoryAria": "会話履歴を開く",
   "codex.topbar.openHistoryTitle": "会話履歴",
   "codex.topbar.agentSubtitle": "DevMoter エージェント",

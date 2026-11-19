@@ -212,12 +212,6 @@ export function mountCodexRemote(
           <input id="cxThreadSearch" type="search" placeholder="${escapeHtml(t("codex.sidebar.searchPlaceholder"))}" />
         </label>
 
-        <nav class="cx-side-nav">
-          <button id="cxProjectsNav" class="cx-nav-item" type="button">${getAppDefinition("projects").icon}<span>${escapeHtml(tApp("projects"))}</span></button>
-          <button id="cxPluginsQuick" class="cx-nav-item" type="button">${cxIcons.plugins}<span>${escapeHtml(t("codex.sidebar.plugins"))}</span></button>
-          <button id="cxIntegrationsNav" class="cx-nav-item" type="button">${cxIcons.integrations}<span>${escapeHtml(t("integrations.title"))}</span></button>
-          <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button">${getAppDefinition("developer-workflows").icon}<span>${escapeHtml(t("devWorkflows.panelTitle"))}</span></button>
-        </nav>
 
         <div class="cx-side-section">
           <div class="cx-side-label cx-task-heading"><span>${escapeHtml(t("codex.sidebar.tasks"))}</span><span aria-hidden="true">☷</span></div>
@@ -227,6 +221,13 @@ export function mountCodexRemote(
         </div>
 
         </div>
+
+        <nav class="cx-side-nav" aria-label="${escapeHtml(t("codex.sidebar.toolsAria"))}">
+          <button id="cxProjectsNav" class="cx-nav-item" type="button">${getAppDefinition("projects").icon}<span>${escapeHtml(tApp("projects"))}</span></button>
+          <button id="cxPluginsQuick" class="cx-nav-item" type="button">${cxIcons.plugins}<span>${escapeHtml(t("codex.sidebar.plugins"))}</span></button>
+          <button id="cxIntegrationsNav" class="cx-nav-item" type="button">${cxIcons.integrations}<span>${escapeHtml(t("integrations.title"))}</span></button>
+          <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button">${getAppDefinition("developer-workflows").icon}<span>${escapeHtml(t("devWorkflows.panelTitle"))}</span></button>
+        </nav>
 
         <div class="cx-sidebar-foot">
           <label class="pocket-language-setting" title="${escapeHtml(t("nav.language"))}">

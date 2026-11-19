@@ -2033,6 +2033,7 @@ export const zhHans = {
   "codex.sidebar.searchPlaceholder": "搜索对话",
   "codex.sidebar.plugins": "插件",
   "codex.sidebar.tasks": "任务",
+  "codex.sidebar.toolsAria": "工具",
   "codex.topbar.openHistoryAria": "打开对话历史",
   "codex.topbar.openHistoryTitle": "对话历史",
   "codex.topbar.agentSubtitle": "DevMoter 智能体",

@@ -2033,6 +2033,7 @@ export const en = {
   "codex.sidebar.searchPlaceholder": "Search chats",
   "codex.sidebar.plugins": "Plugins",
   "codex.sidebar.tasks": "Tasks",
+  "codex.sidebar.toolsAria": "Tools",
   "codex.topbar.openHistoryAria": "Open conversation history",
   "codex.topbar.openHistoryTitle": "Conversation history",
   "codex.topbar.agentSubtitle": "DevMoter agent",

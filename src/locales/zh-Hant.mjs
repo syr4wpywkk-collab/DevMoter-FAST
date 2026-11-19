@@ -2033,6 +2033,7 @@ export const zhHant = {
   "codex.sidebar.searchPlaceholder": "搜尋對話",
   "codex.sidebar.plugins": "外掛程式",
   "codex.sidebar.tasks": "任務",
+  "codex.sidebar.toolsAria": "工具",
   "codex.topbar.openHistoryAria": "開啟對話紀錄",
   "codex.topbar.openHistoryTitle": "對話紀錄",
   "codex.topbar.agentSubtitle": "DevMoter 代理程式",
