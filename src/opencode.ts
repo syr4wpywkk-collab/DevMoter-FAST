@@ -17,6 +17,8 @@ import { latestTurnIdle, shouldKeepAwaitingReply } from "./opencode-turn-state.m
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
+import { createChatDraftBinding } from "./chat-draft.mjs";
+import { createHistoryRetryNotice, latestAssistantText } from "./chat-transcript-actions.mjs";
 import "./opencode-chat.css";
 import {
   continueAgentRun,
@@ -380,6 +382,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         <div id="ocxAttachmentMenu" class="ocx-attachment-menu hidden">
           <button id="ocxImageButton" type="button">▧ ${escapeHtml(t("opencode.composer.imageButton"))}</button>
           <button id="ocxFileButton" type="button">⌑ ${escapeHtml(t("opencode.composer.fileButton"))}</button>
+          <button id="ocxCopyLatest" type="button">${escapeHtml(t("chat.copyLatest.button"))}</button>
         </div>
         <input id="ocxImageInput" type="file" accept="image/*" multiple hidden />
         <input id="ocxFileInput" type="file" multiple hidden />
@@ -632,6 +635,23 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   let pendingAttachments: PendingAttachment[] = [];
   let selectedContextRefs: Array<{ path: string; kind: "file" | "folder" }> = [];
   let contextRequestSerial = 0;
+  const drafts = createChatDraftBinding<{
+    attachments: PendingAttachment[];
+    contextRefs: Array<{ path: string; kind: "file" | "folder" }>;
+  }>({
+    provider: "opencode",
+    input: promptInput,
+    storage: window.sessionStorage,
+    getProjectId: () => localStorage.getItem("opencode-pocket-project"),
+    takeExtras: () => ({ attachments: pendingAttachments, contextRefs: selectedContextRefs }),
+    restoreExtras: extras => {
+      pendingAttachments = extras?.attachments ?? [];
+      selectedContextRefs = extras?.contextRefs ?? [];
+      hideProjectContextPalette();
+      renderAttachments();
+    },
+    onRestore: () => resizeComposer()
+  });
 
   try {
     const saved = JSON.parse(localStorage.getItem("opencode-pocket-model") || "null");
@@ -1154,6 +1174,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
   function setAssistantText(body: HTMLElement, text: string) {
     assistantText.set(body, text);
+    body.dataset.assistantText = "true";
     renderChatMarkdown(body, text, source => void copyAssistantCode(source));
   }
 
@@ -1435,6 +1456,25 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     }
   }
 
+  // Keeps the session selected and offers a manual re-read of its history.
+  function showContextLoadFailure(sessionId: string) {
+    transcript.querySelector("[data-history-retry]")?.remove();
+    transcript.appendChild(createHistoryRetryNotice(document, {
+      className: "ocx-history-retry",
+      message: t("chat.history.loadFailed"),
+      retryLabel: t("common.retry"),
+      onRetry: async () => {
+        if (activeSession?.id !== sessionId) return;
+        try {
+          await loadContext();
+        } catch (error) {
+          showToast(error instanceof Error ? translateServerMessage(error.message) : translateServerMessage(String(error)));
+        }
+      }
+    }));
+    followLatest();
+  }
+
   async function loadContext() {
     if (!activeSession) return;
 
@@ -1443,9 +1483,17 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     // older response fetched before the reply was persisted wipes it.
     const request = contextRequests.begin();
     const sessionId = activeSession.id;
-    const messages = await api<Json[]>(
-      `/session/${encodeURIComponent(sessionId)}/context`
-    );
+    let messages: Json[];
+    try {
+      messages = await api<Json[]>(
+        `/session/${encodeURIComponent(sessionId)}/context`
+      );
+    } catch (error) {
+      if (contextRequests.isCurrent(request) && activeSession?.id === sessionId) {
+        showContextLoadFailure(sessionId);
+      }
+      throw error;
+    }
     if (!contextRequests.isCurrent(request) || activeSession?.id !== sessionId) return;
     const list = Array.isArray(messages) ? messages : [];
 
@@ -2184,6 +2232,10 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   }
 
   async function sendMessageUnlocked() {
+    if (drafts.sync()) {
+      showToast(t("chat.draft.projectSwitched"));
+      return;
+    }
     const text = promptInput.value.trim();
     if (!text && !pendingAttachments.length) return;
 
@@ -2250,6 +2302,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     followLatest();
 
     promptInput.value = "";
+    drafts.capture();
     pendingAttachments = [];
     selectedContextRefs = [];
     hideProjectContextPalette();
@@ -3846,6 +3899,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   };
   window.addEventListener("devmoter:global-nav-opened", closeLocalOverlays);
   window.addEventListener("devmoter:surface-changed", closeLocalOverlays);
+  window.addEventListener("devmoter:surface-changed", () => drafts.sync());
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") void resumeFromBackground();
   });
@@ -3872,6 +3926,14 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     plus.setAttribute("aria-expanded", String(!attachmentMenu.classList.contains("hidden")));
   });
   imageButton.addEventListener("click", () => imageInput.click());
+  root.querySelector<HTMLButtonElement>("#ocxCopyLatest")!.addEventListener("click", () => {
+    closeAttachmentMenu();
+    const text = latestAssistantText(
+      Array.from(transcript.querySelectorAll<HTMLElement>("[data-assistant-text]"), body => assistantText.get(body))
+    );
+    if (text) void copyAssistantCode(text);
+    else showToast(t("chat.copyLatest.none"));
+  });
   fileButton.addEventListener("click", () => fileInput.click());
   imageInput.addEventListener("change", () => {
     if (imageInput.files) void addAttachments(imageInput.files, true);

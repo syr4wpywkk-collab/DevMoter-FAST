@@ -9,6 +9,8 @@ import * as fetchTimeout from "../src/fetch-with-timeout.mjs";
 import * as providerCatalog from "../src/api-provider-catalog.mjs";
 import * as apiAttachment from "../src/api-attachment.mjs";
 import * as apiModelLabel from "../src/api-model-label.mjs";
+import * as chatDraft from "../src/chat-draft.mjs";
+import * as transcriptActions from "../src/chat-transcript-actions.mjs";
 
 const source = await readFile(new URL("../src/api-chat.ts", import.meta.url), "utf8");
 const compiled = ts.transpileModule(source, {
@@ -85,6 +87,8 @@ async function harness(t, { rejectOnAbort = false } = {}) {
   const modules = {
     "./i18n": i18nCore,
     "./chat-markdown.mjs": { renderChatMarkdown },
+    "./chat-draft.mjs": chatDraft,
+    "./chat-transcript-actions.mjs": transcriptActions,
     "./fetch-with-timeout.mjs": fetchTimeout,
     "./api-provider-catalog.mjs": providerCatalog,
     "./api-attachment.mjs": apiAttachment,
@@ -394,4 +398,57 @@ test("memory history keeps at most 20 conversations and 100 messages per convers
   assert.ok(!ui.history().some(row => row.textContent.includes("Bounded chat 0")));
   ui.historyChat("Bounded chat 1").click();
   assert.equal(ui.root.querySelector(".api-message.user").textContent, "Bounded chat 1");
+});
+
+test("API Chat drafts stay with their project and are never sent by a project switch", async t => {
+  const ui = await harness(t);
+  const prompt = ui.root.querySelector("#apiPrompt");
+  const surfaceChanged = () => ui.window.dispatchEvent(new ui.window.CustomEvent("devmoter:surface-changed"));
+
+  prompt.value = "draft for project one";
+  prompt.dispatchEvent(new ui.window.Event("input", { bubbles: true }));
+
+  ui.window.localStorage.setItem("opencode-pocket-project", "project-2");
+  // Submitting before the surface noticed the switch must not send project one's draft.
+  ui.root.querySelector("#apiForm").dispatchEvent(new ui.window.Event("submit", { bubbles: true, cancelable: true }));
+  assert.equal(ui.chats.length, 0);
+  assert.equal(prompt.value, "");
+
+  prompt.value = "draft for project two";
+  prompt.dispatchEvent(new ui.window.Event("input", { bubbles: true }));
+  ui.window.localStorage.setItem("opencode-pocket-project", "project-1");
+  surfaceChanged();
+  assert.equal(prompt.value, "draft for project one");
+  assert.equal(ui.chats.length, 0);
+
+  const stored = Object.keys(ui.window.sessionStorage).filter(key => key.startsWith("devmoter-chat-draft:"));
+  assert.deepEqual(stored.sort(), ["devmoter-chat-draft:v1:api-chat:project-1", "devmoter-chat-draft:v1:api-chat:project-2"]);
+
+  await ui.answer("draft for project one", "done");
+  assert.equal(ui.window.sessionStorage.getItem("devmoter-chat-draft:v1:api-chat:project-1"), null);
+  assert.equal(ui.window.sessionStorage.getItem("devmoter-chat-draft:v1:api-chat:project-2"), "draft for project two");
+});
+
+test("API Chat copies the latest answer of the active conversation only", async t => {
+  const ui = await harness(t);
+  const copyLatest = ui.root.querySelector("#apiCopyLatest");
+  const status = ui.root.querySelector("#apiStatus");
+
+  copyLatest.click();
+  await settle();
+  assert.deepEqual(ui.copied, []);
+  assert.notEqual(status.textContent, "");
+  assert.equal(ui.chats.length, 0);
+
+  await ui.answer("First question", "First answer");
+  await ui.answer("Second question", "Second answer");
+  copyLatest.click();
+  await settle();
+  assert.deepEqual(ui.copied, ["Second answer"]);
+
+  ui.root.querySelector("#apiNewChat").click();
+  copyLatest.click();
+  await settle();
+  assert.deepEqual(ui.copied, ["Second answer"], "a new conversation has no answer to copy");
+  assert.equal(ui.chats.length, 2);
 });

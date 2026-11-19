@@ -41,6 +41,8 @@ import { createLatestRequestGuard } from "./latest-request.mjs";
 import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
 import { normalizeCodexThreadList } from "./codex-thread-list.mjs";
 import { normalizeCodexThreadHistory } from "./codex-thread-history.mjs";
+import { createChatDraftBinding } from "./chat-draft.mjs";
+import { createHistoryRetryNotice, latestAssistantText } from "./chat-transcript-actions.mjs";
 import { recoverAfterEventOpen } from "./event-recovery.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { createSheetHeader } from "./sheet-header.mjs";
@@ -329,6 +331,7 @@ export function mountCodexRemote(
         <div id="cxPlusMenu" class="cx-plus-menu hidden">
           <button id="cxPhoto" type="button">${cxIcons.image}<span>${escapeHtml(t("codex.composer.photoButton"))}</span></button>
           <button id="cxFile" type="button">${cxIcons.file}<span>${escapeHtml(t("codex.composer.fileButton"))}</span></button>
+          <button id="cxCopyLatest" type="button">${cxIcons.copy}<span>${escapeHtml(t("chat.copyLatest.button"))}</span></button>
         </div>
 
         <input id="cxPhotoInput" type="file" accept="image/*" multiple hidden />
@@ -532,6 +535,23 @@ export function mountCodexRemote(
   let activeProject: ProjectSummary | null = null;
   let pendingAttachments: PendingAttachment[] = [];
   let selectedContextRefs: Array<{ path: string; kind: "file" | "folder" }> = [];
+  const drafts = createChatDraftBinding<{
+    attachments: PendingAttachment[];
+    contextRefs: Array<{ path: string; kind: "file" | "folder" }>;
+  }>({
+    provider: "codex",
+    input: promptInput,
+    storage: window.sessionStorage,
+    getProjectId: () => activeProject?.id ?? localStorage.getItem("opencode-pocket-project"),
+    takeExtras: () => ({ attachments: pendingAttachments, contextRefs: selectedContextRefs }),
+    restoreExtras: extras => {
+      pendingAttachments = extras?.attachments ?? [];
+      selectedContextRefs = extras?.contextRefs ?? [];
+      hideContextPalette();
+      renderAttachments();
+    },
+    onRestore: () => resizeComposer()
+  });
   let contextRequestSerial = 0;
   let executionState: ExecutionState = "offline";
   let selectedModel = localStorage.getItem("opencode-pocket-codex-model") || "";
@@ -861,6 +881,7 @@ export function mountCodexRemote(
     if (activeProject) {
       localStorage.setItem("opencode-pocket-project", activeProject.id);
     }
+    drafts.sync();
     updateContextLabel();
   }
 
@@ -868,6 +889,7 @@ export function mountCodexRemote(
     activeProject = project;
     if (project) localStorage.setItem("opencode-pocket-project", project.id);
     else localStorage.removeItem("opencode-pocket-project");
+    drafts.sync();
     updateContextLabel();
   }
 
@@ -1558,6 +1580,20 @@ export function mountCodexRemote(
     return { text: texts.join(""), attachments };
   }
 
+  // Keeps the thread selected and offers a manual re-read of its history.
+  function showHistoryLoadFailure(threadId: string) {
+    transcript.querySelector("[data-history-retry]")?.remove();
+    transcript.appendChild(createHistoryRetryNotice(document, {
+      className: "cx-history-retry",
+      message: t("chat.history.loadFailed"),
+      retryLabel: t("common.retry"),
+      onRetry: async () => {
+        if (activeThreadId === threadId) await loadThreadHistory(threadId);
+      }
+    }));
+    followLatest();
+  }
+
   async function loadThreadHistory(threadId: string) {
     let result: unknown;
     try {
@@ -1565,6 +1601,7 @@ export function mountCodexRemote(
     } catch (error) {
       if (activeThreadId === threadId) {
         showToast(error instanceof Error ? translateServerMessage(error.message) : t("codex.threads.historyLoadFailed"));
+        showHistoryLoadFailure(threadId);
       }
       return false;
     }
@@ -1575,6 +1612,7 @@ export function mountCodexRemote(
       thread = normalizeCodexThreadHistory(result);
     } catch {
       showToast(t("codex.threads.historyInvalid"));
+      showHistoryLoadFailure(threadId);
       return false;
     }
     const turns = thread.turns;
@@ -1991,6 +2029,10 @@ export function mountCodexRemote(
   }
 
   async function sendMessageUnlocked() {
+    if (drafts.sync()) {
+      showToast(t("chat.draft.projectSwitched"));
+      return;
+    }
     const text = promptInput.value.trim();
     if (!text && pendingAttachments.length === 0) return;
 
@@ -2069,6 +2111,7 @@ export function mountCodexRemote(
     }
 
     promptInput.value = "";
+    drafts.capture();
     pendingAttachments = [];
     selectedContextRefs = [];
     hideContextPalette();
@@ -3544,6 +3587,7 @@ export function mountCodexRemote(
   detailsToggle.addEventListener("click", toggleDetails);
   window.addEventListener("devmoter:close-chat-history", () => closeSidebar(false));
   window.addEventListener("devmoter:surface-changed", () => closeSidebar(false));
+  window.addEventListener("devmoter:surface-changed", () => drafts.sync());
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") void resumeFromBackground();
   });
@@ -3642,6 +3686,14 @@ export function mountCodexRemote(
     plus.setAttribute("aria-expanded", String(!plusMenu.classList.contains("hidden")));
   });
   photo.addEventListener("click", () => photoInput.click());
+  root.querySelector<HTMLButtonElement>("#cxCopyLatest")!.addEventListener("click", () => {
+    closePlusMenu();
+    const text = latestAssistantText(
+      Array.from(transcript.querySelectorAll<HTMLDivElement>(".cx-message.assistant"), bubble => assistantText.get(bubble))
+    );
+    if (text) void copyText(text);
+    else showToast(t("chat.copyLatest.none"));
+  });
   file.addEventListener("click", () => fileInput.click());
   pluginsQuick.addEventListener("click", () => {
     closePlusMenu();

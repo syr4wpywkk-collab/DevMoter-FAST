@@ -10,6 +10,8 @@ import * as reasoning from "../src/codex-reasoning.mjs";
 import * as reconnect from "../src/reconnect-policy.mjs";
 import * as markdown from "../src/chat-markdown.mjs";
 import * as sendError from "../src/codex-send-error.mjs";
+import * as chatDraft from "../src/chat-draft.mjs";
+import * as transcriptActions from "../src/chat-transcript-actions.mjs";
 import { loadPureTypeScript } from "./helpers/ts-pure-modules.mjs";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
@@ -194,6 +196,8 @@ test("Codex UI labels a missing CLI as 未インストール and recovers when i
     if (name === "./codex-reasoning.mjs") return reasoning;
     if (name === "./reconnect-policy.mjs") return reconnect;
     if (name === "./chat-markdown.mjs") return markdown;
+    if (name === "./chat-draft.mjs") return chatDraft;
+    if (name === "./chat-transcript-actions.mjs") return transcriptActions;
     if (name === "./codex-send-error.mjs") return sendError;
     if (name === "./wake-lock") return { setWakeLockExecutionActive() {} };
     if (name === "./safety-client") return { runPreExecutionGuard: async () => ({ decision: "allow" }), guardMessage: () => "", continueAgentRun: async () => {}, loopMessage: () => "", matchRememberedPermission: async () => ({ matched: false }), recordAgentAction: async () => null, rememberPermission: async () => {}, scanCommand: async () => ({ dangerous: false }) };
