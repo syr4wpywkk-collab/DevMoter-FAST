@@ -2,7 +2,7 @@ import "./control-center.css";
 import type { Terminal as XTerm } from "@xterm/xterm";
 import type { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
-import { createDeviceGate, isDeviceAuthError, responseError } from "./device-gate.mjs";
+import { createDeviceGate, deviceAuthReason, isDeviceAuthError, responseError } from "./device-gate.mjs";
 import { createSheetHeader } from "./sheet-header.mjs";
 import { formatNumber, t, translateServerMessage } from "./i18n";
 
@@ -529,8 +529,8 @@ export function mountControlCenter() {
       const feature = sectionFeatureName(section);
       const gate = createDeviceGate(document, {
         className: "dm-tools-card dm-tools-device-gate",
-        title: t("deviceGate.unregisteredTitle"),
-        copy: t("deviceGate.toolsLockedCopy", { feature }),
+        error,
+        copy: deviceAuthReason(error) === "revoked" ? undefined : t("deviceGate.toolsLockedCopy", { feature }),
         buttonLabel: t("deviceGate.openToRegisterButton"),
         onRegister: unlockSettingsOverlay
       });

@@ -367,7 +367,7 @@ export function mountAgentConsole() {
       return;
     }
     setStatus("");
-    status.before(createDeviceGate(document, { compact: true, onRegister: () => panel.classList.add("hidden") }));
+    status.before(createDeviceGate(document, { compact: true, error, onRegister: () => panel.classList.add("hidden") }));
   }
 
   function currentModes() {

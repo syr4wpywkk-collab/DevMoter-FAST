@@ -272,7 +272,7 @@ export function mountRemoteControlCenter() {
     } catch (error) {
       if (isDeviceAuthError(error)) {
         // One button into 信頼済み端末 instead of "Trusted device token required".
-        view.appendChild(createDeviceGate(document, { compact: true, onRegister: () => closeModal(false) }));
+        view.appendChild(createDeviceGate(document, { compact: true, error, onRegister: () => closeModal(false) }));
       } else {
         const p = document.createElement("p");
         p.className = "dm-error";

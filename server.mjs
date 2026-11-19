@@ -266,6 +266,7 @@ const systemFeatures = createSystemFeatures({
   },
   host: HOST,
   version: process.env.DEVMOTER_VERSION || "0.2.0",
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
   trustedProxies: DEVMOTER_TRUSTED_PROXIES,
   onDeviceRevoked: deviceId => terminal.revokeDeviceSessions(deviceId)
 });
