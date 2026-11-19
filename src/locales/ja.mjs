@@ -2470,5 +2470,18 @@ export const ja = {
   "promptTemplates.backupDone": "{count} 件のテンプレートをバックアップしました。",
   "promptTemplates.restoreInvalid": "このファイルは正しい JSON ではありません。",
   "promptTemplates.restoreOverwriteConfirm": "バックアップ内の {count} 件は既に存在します。バックアップの内容で上書きしますか？",
-  "promptTemplates.restoreDone": "復元 {imported} 件、上書き {overwritten} 件、スキップ {skipped} 件。"
+  "promptTemplates.restoreDone": "復元 {imported} 件、上書き {overwritten} 件、スキップ {skipped} 件。",
+  "promptTemplates.error.nameInvalid": "名前は 1〜120 文字、1 行で入力してください。",
+  "promptTemplates.error.descriptionInvalid": "説明は 500 文字以内にしてください。",
+  "promptTemplates.error.bodyRequired": "指示文を入力してください。",
+  "promptTemplates.error.bodyTooLarge": "指示文が長すぎます（最大 16 KB）。",
+  "promptTemplates.error.projectNotRegistered": "そのプロジェクトは登録されていません。別の対象を選んでください。",
+  "promptTemplates.error.notFound": "このテンプレートはもう存在しません。",
+  "promptTemplates.error.limitReached": "テンプレートの上限（200 件）に達しました。",
+  "promptTemplates.error.backupTooMany": "このバックアップには 200 件を超えるテンプレートが含まれています。",
+  "promptTemplates.error.backupWrongFormat": "このファイルは DevMoter のプロンプトテンプレートのバックアップではありません。",
+  "promptTemplates.error.backupWrongVersion": "このバックアップのバージョンには対応していません。",
+  "promptTemplates.error.backupInvalid": "バックアップに不正なデータが含まれています。何も復元されませんでした。",
+  "promptTemplates.error.failed": "テンプレートの操作に失敗しました。",
+  "promptTemplates.scopeUnregistered": "登録解除されたプロジェクト（{id}）"
 };

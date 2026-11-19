@@ -118,12 +118,15 @@ export function openPromptTemplates() {
   function projectLabel(id: string | null) {
     if (!id) return t("promptTemplates.scopeGlobal");
     const project = projects.find(item => item.id === id);
-    return project?.name || project?.path || id;
+    return project ? project.name || project.path || id : t("promptTemplates.scopeUnregistered", { id });
   }
   function scopeSelect(selected: string, id: string) {
     const select = el("select");
     select.id = id;
-    const options: Array<[string, string]> = [["", t("promptTemplates.scopeGlobal")], ...projects.map(item => [item.id, projectLabel(item.id)] as [string, string])];
+    const ids = projects.map(item => item.id);
+    // Templates of a project that is no longer registered stay reachable for editing and deletion.
+    for (const template of templates) if (template.projectId && !ids.includes(template.projectId)) ids.push(template.projectId);
+    const options: Array<[string, string]> = [["", t("promptTemplates.scopeGlobal")], ...ids.map(id => [id, projectLabel(id)] as [string, string])];
     for (const [value, label] of options) {
       const option = el("option", "", label);
       option.value = value;
@@ -243,7 +246,11 @@ export function openPromptTemplates() {
     form.addEventListener("submit", event => {
       event.preventDefault();
       save.disabled = true;
-      const payload = JSON.stringify({ name: name.value, description: description.value, body: text.value, projectId: scopeControl.value || null });
+      const projectId = scopeControl.value || null;
+      const fields: Record<string, string | null> = { name: name.value, description: description.value, body: text.value };
+      // An unchanged scope is not re-sent, so a template of an unregistered project can still be edited.
+      if (!template || projectId !== (template.projectId || null)) fields.projectId = projectId;
+      const payload = JSON.stringify(fields);
       const request = template
         ? api(`/api/prompt-templates/${encodeURIComponent(template.id)}`, { method: "PATCH", body: payload })
         : api("/api/prompt-templates", { method: "POST", body: payload });
@@ -262,7 +269,7 @@ export function openPromptTemplates() {
   function showUse(template: PromptTemplate) {
     head.setTitle(template.name);
     body.replaceChildren();
-    const values: Record<string, string> = {};
+    const values: Record<string, string> = Object.create(null);
     const variables = extractVariables(template.body);
     const inputs = el("div", "pt-variables");
     const missing = el("p", "pt-missing");

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { createPromptTemplateStore, validatePromptTemplateBackup, MAX_TEMPLATE_BODY_BYTES } from "../server/prompt-template-store.mjs";
+import { createPromptTemplateStore, validatePromptTemplateBackup, MAX_BACKUP_BYTES, MAX_TEMPLATES, MAX_TEMPLATE_BODY_BYTES } from "../server/prompt-template-store.mjs";
 
 async function fixture(t) {
   const base = await realpath(await mkdtemp(join(tmpdir(), "devmoter-prompt-templates-")));
@@ -124,4 +124,12 @@ test("concurrent writes do not lose templates", async t => {
   const { store } = await fixture(t);
   await Promise.all(Array.from({ length: 20 }, (_, index) => store.create({ name: `T${index}`, body: "x" })));
   assert.equal((await store.list()).length, 20);
+});
+
+test("a full store of maximally escaped templates still fits the restore limit", async t => {
+  const { store } = await fixture(t);
+  const body = "\u0001".repeat(MAX_TEMPLATE_BODY_BYTES);
+  const one = await store.create({ name: "n".repeat(120), description: "\u0001".repeat(500), body });
+  const perTemplate = Buffer.byteLength(JSON.stringify(one, null, 2));
+  assert.ok(perTemplate * MAX_TEMPLATES + 1024 < MAX_BACKUP_BYTES);
 });

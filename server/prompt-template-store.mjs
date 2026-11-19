@@ -6,7 +6,8 @@ export const PROMPT_TEMPLATE_BACKUP_FORMAT = "devmoter-prompt-templates";
 export const PROMPT_TEMPLATE_BACKUP_VERSION = 1;
 export const MAX_TEMPLATE_BODY_BYTES = 16 * 1024;
 export const MAX_TEMPLATES = 200;
-export const MAX_BACKUP_BYTES = 4 * 1024 * 1024;
+// Room for every template at its size limit with worst-case JSON escaping (6 bytes per byte).
+export const MAX_BACKUP_BYTES = MAX_TEMPLATES * (MAX_TEMPLATE_BODY_BYTES * 6 + 8 * 1024);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TEMPLATE_KEYS = new Set(["id", "name", "description", "body", "projectId", "createdAt", "updatedAt"]);
@@ -29,7 +30,7 @@ function validDescription(value) {
 }
 function validBody(value) {
   if (typeof value !== "string" || !value.trim() || value.includes("\0")) fail("Template body is required");
-  if (Buffer.byteLength(value, "utf8") > MAX_TEMPLATE_BODY_BYTES) fail(`Template body exceeds ${MAX_TEMPLATE_BODY_BYTES} bytes`, 413);
+  if (Buffer.byteLength(value, "utf8") > MAX_TEMPLATE_BODY_BYTES) fail("Template body is too large", 413);
   return value;
 }
 function validProjectIdShape(value) {
@@ -66,7 +67,7 @@ export function validatePromptTemplateBackup(backup) {
   if (backup.format !== PROMPT_TEMPLATE_BACKUP_FORMAT) fail("Not a DevMoter prompt template backup");
   if (backup.version !== PROMPT_TEMPLATE_BACKUP_VERSION) fail("Unsupported backup version");
   if (!Array.isArray(backup.templates)) fail("Backup templates must be a list");
-  if (backup.templates.length > MAX_TEMPLATES) fail(`Backup holds more than ${MAX_TEMPLATES} templates`, 413);
+  if (backup.templates.length > MAX_TEMPLATES) fail("Backup holds too many templates", 413);
   const templates = backup.templates.map(validStoredTemplate);
   if (new Set(templates.map(item => item.id)).size !== templates.length) fail("Backup contains duplicate template IDs");
   return templates;
@@ -166,7 +167,7 @@ export function createPromptTemplateStore({ rootDir, getProjectById = async () =
       template.updatedAt = template.createdAt;
       return exclusive(async () => {
         const templates = await load();
-        if (templates.length >= MAX_TEMPLATES) fail(`Template limit of ${MAX_TEMPLATES} reached`, 409);
+        if (templates.length >= MAX_TEMPLATES) fail("Template limit reached", 409);
         await persist([...templates, template]);
         return { ...template };
       });
@@ -233,7 +234,7 @@ export function createPromptTemplateStore({ rootDir, getProjectById = async () =
           next.push(item);
           imported.push(item.id);
         }
-        if (next.length > MAX_TEMPLATES) fail(`Template limit of ${MAX_TEMPLATES} reached`, 409);
+        if (next.length > MAX_TEMPLATES) fail("Template limit reached", 409);
         if (imported.length || overwritten.length) await persist(next);
         return { imported: imported.length, overwritten: overwritten.length, skipped };
       });

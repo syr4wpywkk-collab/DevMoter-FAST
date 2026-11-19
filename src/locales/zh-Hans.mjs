@@ -2470,5 +2470,18 @@ export const zhHans = {
   "promptTemplates.backupDone": "已备份 {count} 个模板。",
   "promptTemplates.restoreInvalid": "该文件不是有效的 JSON。",
   "promptTemplates.restoreOverwriteConfirm": "备份中有 {count} 个模板已存在。要用备份内容覆盖它们吗？",
-  "promptTemplates.restoreDone": "已恢复 {imported} 个，覆盖 {overwritten} 个，跳过 {skipped} 个。"
+  "promptTemplates.restoreDone": "已恢复 {imported} 个，覆盖 {overwritten} 个，跳过 {skipped} 个。",
+  "promptTemplates.error.nameInvalid": "请输入 1 至 120 个字符的单行名称。",
+  "promptTemplates.error.descriptionInvalid": "说明不能超过 500 个字符。",
+  "promptTemplates.error.bodyRequired": "请输入提示词内容。",
+  "promptTemplates.error.bodyTooLarge": "提示词内容过长（最多 16 KB）。",
+  "promptTemplates.error.projectNotRegistered": "该项目已不再注册，请选择其他范围。",
+  "promptTemplates.error.notFound": "该模板已不存在。",
+  "promptTemplates.error.limitReached": "已达到 200 个模板的上限。",
+  "promptTemplates.error.backupTooMany": "此备份包含超过 200 个模板。",
+  "promptTemplates.error.backupWrongFormat": "该文件不是 DevMoter 提示词模板备份。",
+  "promptTemplates.error.backupWrongVersion": "不支持此备份版本。",
+  "promptTemplates.error.backupInvalid": "备份包含无效数据，未恢复任何内容。",
+  "promptTemplates.error.failed": "模板操作失败。",
+  "promptTemplates.scopeUnregistered": "已取消注册的项目（{id}）"
 };

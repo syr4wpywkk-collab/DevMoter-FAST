@@ -21,6 +21,9 @@ test("expansion fills given values and reports the rest as missing", () => {
 test("values are inserted literally and never expanded again", () => {
   assert.equal(expandTemplate("{{a}} {{b}}", { a: "{{b}}", b: "$& $1 x" }).text, "{{b}} $& $1 x");
   assert.deepEqual(expandTemplate("{{constructor}}", {}).missing, ["constructor"]);
+  const values = Object.create(null);
+  values.__proto__ = "x";
+  assert.deepEqual(expandTemplate("{{__proto__}}", values), { text: "x", missing: [] });
 });
 
 test("search matches part of the name or description and can come back empty", () => {

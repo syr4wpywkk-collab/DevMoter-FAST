@@ -2470,5 +2470,18 @@ export const en = {
   "promptTemplates.backupDone": "Backed up {count} templates.",
   "promptTemplates.restoreInvalid": "This file is not valid JSON.",
   "promptTemplates.restoreOverwriteConfirm": "{count} templates in this backup already exist here. Overwrite them with the backup versions?",
-  "promptTemplates.restoreDone": "Restored {imported}, overwrote {overwritten}, skipped {skipped}."
+  "promptTemplates.restoreDone": "Restored {imported}, overwrote {overwritten}, skipped {skipped}.",
+  "promptTemplates.error.nameInvalid": "Enter a name of 1 to 120 characters on one line.",
+  "promptTemplates.error.descriptionInvalid": "Keep the description to 500 characters or fewer.",
+  "promptTemplates.error.bodyRequired": "Enter the prompt text.",
+  "promptTemplates.error.bodyTooLarge": "The prompt text is too long (16 KB at most).",
+  "promptTemplates.error.projectNotRegistered": "That project is no longer registered. Choose another scope.",
+  "promptTemplates.error.notFound": "This template no longer exists.",
+  "promptTemplates.error.limitReached": "The limit of 200 templates has been reached.",
+  "promptTemplates.error.backupTooMany": "This backup holds more than 200 templates.",
+  "promptTemplates.error.backupWrongFormat": "This file is not a DevMoter prompt template backup.",
+  "promptTemplates.error.backupWrongVersion": "This backup version is not supported.",
+  "promptTemplates.error.backupInvalid": "This backup contains invalid data. Nothing was restored.",
+  "promptTemplates.error.failed": "The template operation failed.",
+  "promptTemplates.scopeUnregistered": "Unregistered project ({id})"
 };

@@ -2470,5 +2470,18 @@ export const zhHant = {
   "promptTemplates.backupDone": "已備份 {count} 個範本。",
   "promptTemplates.restoreInvalid": "此檔案不是有效的 JSON。",
   "promptTemplates.restoreOverwriteConfirm": "備份中有 {count} 個範本已存在。要用備份內容覆寫嗎？",
-  "promptTemplates.restoreDone": "已還原 {imported} 個，覆寫 {overwritten} 個，略過 {skipped} 個。"
+  "promptTemplates.restoreDone": "已還原 {imported} 個，覆寫 {overwritten} 個，略過 {skipped} 個。",
+  "promptTemplates.error.nameInvalid": "請輸入 1 至 120 個字元的單行名稱。",
+  "promptTemplates.error.descriptionInvalid": "說明不可超過 500 個字元。",
+  "promptTemplates.error.bodyRequired": "請輸入提示詞內容。",
+  "promptTemplates.error.bodyTooLarge": "提示詞內容過長（最多 16 KB）。",
+  "promptTemplates.error.projectNotRegistered": "該專案已不再註冊，請選擇其他範圍。",
+  "promptTemplates.error.notFound": "此範本已不存在。",
+  "promptTemplates.error.limitReached": "已達 200 個範本的上限。",
+  "promptTemplates.error.backupTooMany": "此備份包含超過 200 個範本。",
+  "promptTemplates.error.backupWrongFormat": "此檔案不是 DevMoter 提示詞範本備份。",
+  "promptTemplates.error.backupWrongVersion": "不支援此備份版本。",
+  "promptTemplates.error.backupInvalid": "備份包含無效資料，未還原任何內容。",
+  "promptTemplates.error.failed": "範本操作失敗。",
+  "promptTemplates.scopeUnregistered": "已取消註冊的專案（{id}）"
 };
