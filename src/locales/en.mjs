@@ -2292,6 +2292,7 @@ export const en = {
   "codex.models.nextChat": "Next chat",
   "codex.models.defaultTitle": "Default",
   "codex.models.codexDefaultMeta": "{model} · Codex default",
+  "codex.models.empty": "Codex returned no models. Check that Codex is signed in, then reopen this list.",
   "codex.models.otherGroup": "Other",
   "codex.models.disconnectedMeta": "{model} · Disconnected",
   "codex.remote.title": "Remote",
