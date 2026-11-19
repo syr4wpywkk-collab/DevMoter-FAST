@@ -239,6 +239,13 @@ npm test
 npm run build
 ```
 
+Browser (WebKit) layout tests. Run the setup once per machine; it downloads WebKit and installs its system libraries:
+
+```bash
+npm run test:workspace-browser:setup
+npm run test:workspace-browser
+```
+
 Optional coverage report:
 
 ```bash

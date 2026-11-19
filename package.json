@@ -10,14 +10,16 @@
     "lint": "node scripts/lint.mjs",
     "build": "npm run build:office && tsc --noEmit && vite build",
     "start": "node server.mjs",
-    "test": "node --test test/*.test.mjs test/**/*.test.mjs",
+    "test": "node --test \"test/**/*.test.mjs\"",
     "test:opencode-navigation": "node scripts/test-opencode-navigation.mjs",
     "test:coverage": "c8 --reporter=text --reporter=lcov npm test",
     "cli": "node cli/devmoter.mjs",
     "security:audit": "node scripts/security-audit.mjs",
     "deps:graph": "node scripts/module-graph.mjs",
+    "size": "node scripts/bundle-size.mjs",
     "build:office": "node scripts/build-office-engine.mjs",
-    "test:workspace-browser": "node --test e2e/*.test.mjs"
+    "test:workspace-browser": "node --test e2e/*.test.mjs",
+    "test:workspace-browser:setup": "playwright install --with-deps webkit"
   },
   "devDependencies": {
     "@types/react": "19.2.7",

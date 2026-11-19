@@ -173,3 +173,125 @@ test("native completion reason survives the thread/read transcript replacement",
   assert.equal(document.querySelector("#cxPromptInput").value, "Please do the work");
   assert.equal(document.activeElement, document.querySelector("#cxPromptInput"));
 });
+
+async function mountWithFailedThreadList(t, { savedThread = null, storedDraft = null } = {}) {
+  const dom = new JSDOM('<!doctype html><main id="root"></main>', {
+    url: "https://devmoter.example/?surface=codex",
+    runScripts: "outside-only"
+  });
+  t.after(() => dom.window.close());
+  const { window } = dom;
+  const { document } = window;
+  const methods = [];
+  let listFailures = 1;
+  window.matchMedia = () => ({ matches: false, addEventListener() {} });
+  window.setInterval = () => 1;
+  window.setTimeout = () => 1;
+  window.clearTimeout = () => {};
+  window.requestAnimationFrame = callback => { callback(); return 1; };
+  window.EventSource = class { addEventListener() {} close() {} };
+  if (savedThread) window.localStorage.setItem("opencode-pocket-codex-thread", savedThread);
+  if (storedDraft) window.sessionStorage.setItem(chatDraft.chatDraftKey("codex", null), storedDraft);
+  window.fetch = async (input, init = {}) => {
+    const path = String(input);
+    const ok = (result, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => result });
+    if (path === "/api/projects") return ok({ projects: [] });
+    if (path !== "/api/codex/rpc") throw new Error(`Unexpected request: ${path}`);
+    const { method } = JSON.parse(String(init.body));
+    methods.push(method);
+    if (method === "thread/list") {
+      if (listFailures > 0) { listFailures -= 1; return ok({ error: "list unavailable" }, 503); }
+      return ok({ result: { data: [{ id: "thread-1", name: "Recovered thread", cwd: "/work/other" }] } });
+    }
+    if (method === "model/list") return ok({ result: { models: [] } });
+    return ok({ result: {} });
+  };
+  const require = name => {
+    if (modules.has(name)) return modules.get(name);
+    if (name === "./i18n") return { speechRecognitionLanguage: () => "en-US", ...jaI18n };
+    if (name === "./dev-workflows-ui") return { createDevWorkflowPanel: () => ({ show: async () => {} }) };
+    if (name === "./mcp-result") return { isMcpToolItem: () => false, mcpToolSummary: () => ({}), normalizeStructuredMcpResult: value => ({ value, rawText: "", truncated: false }) };
+    if (name === "./bounded-transcript") return { enforceTranscriptLimit() {} };
+    if (name === "./wake-lock") return { setWakeLockExecutionActive() {} };
+    if (name === "./safety-client") return { runPreExecutionGuard: async () => ({ decision: "allow" }), guardMessage: () => "", continueAgentRun: async () => {}, loopMessage: () => "", matchRememberedPermission: async () => ({ matched: false }), recordAgentAction: async () => null, rememberPermission: async () => {}, scanCommand: async () => ({ dangerous: false }) };
+    if (name.endsWith(".css")) return {};
+    throw new Error(`Unexpected module: ${name}`);
+  };
+  window.exports = {};
+  window.Function("require", "exports", compiled)(require, window.exports);
+  const controller = window.exports.mountCodexRemote(document.querySelector("#root"));
+  controller.setOnline(true);
+  await settle();
+  await settle();
+
+  return { window, document, methods, controller };
+}
+
+test("failed Codex thread list shows an in-place retry that keeps the draft", async t => {
+  const { document, methods } = await mountWithFailedThreadList(t);
+  const notice = document.querySelector("#cxSidebarThreads [data-history-retry]");
+  assert.ok(notice, "list failure replaces the loading placeholder with a retry notice");
+  assert.equal(notice.getAttribute("role"), "alert");
+  assert.equal(notice.querySelector("p").textContent, i18nCore.translate("ja", "chat.history.listLoadFailed"));
+
+  document.querySelector("#cxPromptInput").value = "unsent draft";
+  const before = methods.length;
+  notice.querySelector("button").click();
+  await settle();
+  await settle();
+
+  assert.deepEqual(methods.slice(before).filter(method => method !== "thread/list"), []);
+  assert.equal(document.querySelector("#cxSidebarThreads [data-history-retry]"), null);
+  assert.ok(document.querySelector("#cxSidebarThreads").textContent.includes("Recovered thread"));
+  assert.equal(document.querySelector("#cxPromptInput").value, "unsent draft");
+});
+
+test("Codex list retry survives a search and does not swap a draft for the saved thread", async t => {
+  const { window, document, methods, controller } = await mountWithFailedThreadList(t, { savedThread: "thread-1" });
+  const search = document.querySelector("#cxThreadSearch");
+  search.value = "abc";
+  search.dispatchEvent(new window.Event("input", { bubbles: true }));
+  assert.equal(document.querySelector("#cxSidebarThreads [data-history-retry]"), null);
+  search.value = "";
+  search.dispatchEvent(new window.Event("input", { bubbles: true }));
+  const notice = document.querySelector("#cxSidebarThreads [data-history-retry]");
+  assert.ok(notice, "clearing the search brings the retry back while the list is still missing");
+
+  document.querySelector("#cxPromptInput").value = "draft for a new chat";
+  // Set without an input event, as voice input and command expansion do.
+  const before = methods.length;
+  notice.querySelector("button").click();
+  await settle();
+  await settle();
+
+  assert.deepEqual(methods.slice(before), ["thread/list"], "the saved thread is not reopened under the draft");
+  assert.ok(document.querySelector("#cxSidebarThreads").textContent.includes("Recovered thread"));
+  assert.equal(document.querySelector("#cxPromptInput").value, "draft for a new chat");
+
+  const beforeRefresh = methods.length;
+  await controller.refresh();
+  await settle();
+  assert.ok(!methods.slice(beforeRefresh).includes("thread/resume"), "a later periodic refresh does not reopen it either");
+  assert.equal(document.querySelector("#cxPromptInput").value, "draft for a new chat");
+});
+
+test("Codex list retry still reopens the saved thread for a draft restored at load", async t => {
+  const { document, methods } = await mountWithFailedThreadList(t, { savedThread: "thread-1", storedDraft: "draft kept across reload" });
+  assert.equal(document.querySelector("#cxPromptInput").value, "draft kept across reload");
+  const before = methods.length;
+  document.querySelector("#cxSidebarThreads [data-history-retry] button").click();
+  await settle();
+  await settle();
+  assert.ok(methods.slice(before).includes("thread/resume"), "the restored draft keeps its saved thread");
+});
+
+test("Codex list retry does not reopen the saved thread once a restored draft is rewritten", async t => {
+  const { document, methods } = await mountWithFailedThreadList(t, { savedThread: "thread-1", storedDraft: "draft kept across reload" });
+  document.querySelector("#cxPromptInput").value = "a different question";
+  const before = methods.length;
+  document.querySelector("#cxSidebarThreads [data-history-retry] button").click();
+  await settle();
+  await settle();
+  assert.deepEqual(methods.slice(before), ["thread/list"]);
+  assert.equal(document.querySelector("#cxPromptInput").value, "a different question");
+});

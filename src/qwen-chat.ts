@@ -1,7 +1,8 @@
 import "./qwen-chat.css";
-import { formatNumber, getLanguage, t, translateServerMessage } from "./i18n";
+import { formatDateTime, formatNumber, getLanguage, t, translateServerMessage } from "./i18n";
 import { SYSTEM_ICONS } from "./app-registry";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
+import { createChatDraftBinding } from "./chat-draft.mjs";
 import { createSheetHeader } from "./sheet-header.mjs";
 import {
   createNdjsonReader,
@@ -101,6 +102,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       </section>
       <div class="qx-scrim" data-qwen-scrim hidden></div>
       <section class="qx-sheet" id="qwenHistorySheet" data-qwen-sheet role="dialog" aria-modal="true" aria-labelledby="qwenHistoryTitle" hidden>
+        <input class="qx-history-search" type="search" data-qwen-history-search placeholder="${escapeHtml(t("qwen.chat.searchHistory"))}" aria-label="${escapeHtml(t("qwen.chat.searchHistory"))}" />
         <div class="qx-history" data-qwen-history-list></div>
       </section>
     </div>`;
@@ -120,6 +122,8 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   const scrim = root.querySelector<HTMLElement>("[data-qwen-scrim]")!;
   const sheet = root.querySelector<HTMLElement>("[data-qwen-sheet]")!;
   const historyList = root.querySelector<HTMLElement>("[data-qwen-history-list]")!;
+  const historySearch = root.querySelector<HTMLInputElement>("[data-qwen-history-search]")!;
+  historySearch.addEventListener("input", () => renderHistory());
   const modelButton = root.querySelector<HTMLButtonElement>("[data-qwen-model-button]")!;
   const modelLabel = root.querySelector<HTMLElement>("[data-qwen-model-label]")!;
   const background = [".qx-topbar", ".qx-main", ".qx-composer-wrap"].map(selector => root.querySelector<HTMLElement>(selector)!);
@@ -156,6 +160,8 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   let sheetReturnFocus: HTMLElement | null = null;
   // One quiet line for problems that are not part of a chat (no project, storage full).
   let notice = "";
+  // The last deleted chat can be restored until another chat is deleted (#344).
+  let lastDeleted: QwenChat | null = null;
 
   if (typeof ResizeObserver !== "undefined") {
     new ResizeObserver(() => {
@@ -164,6 +170,15 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   }
 
   const activeChat = () => chats.find(chat => chat.id === activeId) ?? null;
+  // Unsent text belongs to the chat it was typed in (a new chat has no id yet),
+  // so switching chats or leaving the screen never carries or drops it.
+  const drafts = createChatDraftBinding({
+    provider: "qwen",
+    input,
+    storage: window.sessionStorage,
+    getProjectId: () => activeId,
+    onRestore: () => { resizeInput(); renderStatus(); }
+  });
   const persist = () => {
     if (!saveQwenChats(localStorage, chats)) notice = t("qwen.chat.saveHistoryFailed");
   };
@@ -307,12 +322,26 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   }
 
   function renderHistory() {
-    const sorted = sortQwenChats(chats);
+    const query = historySearch.value.trim().toLowerCase();
+    const sorted = sortQwenChats(chats).filter(chat => !query
+      || chat.title.toLowerCase().includes(query)
+      || chat.messages.some(message => message.text.toLowerCase().includes(query)));
     historyList.replaceChildren();
+    if (lastDeleted) {
+      const restore = document.createElement("button");
+      restore.type = "button";
+      restore.className = "qx-history-restore";
+      restore.dataset.restoreChat = lastDeleted.id;
+      restore.textContent = t("qwen.chat.restoreChat", { title: lastDeleted.title });
+      restore.addEventListener("click", restoreDeletedChat);
+      historyList.append(restore);
+    }
     if (!sorted.length) {
       const empty = document.createElement("p");
       empty.className = "qx-history-empty";
-      empty.textContent = t("qwen.chat.emptyHistory");
+      empty.textContent = query && chats.length
+        ? t("qwen.chat.noHistoryMatches", { query: historySearch.value.trim() })
+        : t("qwen.chat.emptyHistory");
       historyList.append(empty);
       return;
     }
@@ -332,6 +361,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       const running = live?.chatId === chat.id ? ` · ${t("qwen.chat.replying")}` : "";
       meta.textContent = `${project?.name ? `${project.name} · ` : ""}${qwenChatTime(chat.updatedAt, Date.now(), language)}${running}`;
       open.title = chat.title;
+      meta.title = formatDateTime(chat.updatedAt);
       open.append(title, meta);
       open.addEventListener("click", () => selectChat(chat.id));
       const remove = document.createElement("button");
@@ -381,6 +411,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
 
   function selectChat(id: string) {
     activeId = id;
+    drafts.sync();
     closeSheet();
     render();
     input.focus({ preventScroll: true });
@@ -388,6 +419,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
 
   function startNewChat() {
     activeId = null;
+    drafts.sync();
     render();
     input.focus({ preventScroll: true });
   }
@@ -397,12 +429,25 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     if (!chat) return;
     if (!window.confirm(t("qwen.chat.deleteChatConfirm", { title: chat.title }))) return;
     if (live?.chatId === id) stopRun();
+    lastDeleted = chat;
     chats = chats.filter(item => item.id !== id);
     if (activeId === id) activeId = null;
+    drafts.sync();
     persist();
     render();
     renderHistory();
     (historyList.querySelector<HTMLElement>("button") ?? head.closeButton).focus({ preventScroll: true });
+  }
+
+  function restoreDeletedChat() {
+    const chat = lastDeleted;
+    lastDeleted = null;
+    if (!chat) return;
+    if (!chats.some(item => item.id === chat.id)) chats = sortQwenChats([chat, ...chats]);
+    persist();
+    render();
+    renderHistory();
+    historyList.querySelector<HTMLElement>(`[data-chat-id="${CSS.escape(chat.id)}"]`)?.focus({ preventScroll: true });
   }
 
   function resizeInput() {
@@ -467,6 +512,8 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     chat.updatedAt = Date.now();
     persist();
     input.value = "";
+    drafts.capture();
+    drafts.sync();
     resizeInput();
 
     const run: LiveRun = { chatId: chat.id, runId: newId(), controller: new AbortController(), text: "", tool: "", startedAt: Date.now(), stopped: false };
@@ -578,7 +625,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       return;
     }
     if (event.key !== "Tab") return;
-    const controls = Array.from(sheet.querySelectorAll<HTMLElement>("button:not([disabled]):not([hidden])"));
+    const controls = Array.from(sheet.querySelectorAll<HTMLElement>(":is(button, input):not([disabled]):not([hidden])"));
     const first = controls[0];
     const last = controls.at(-1);
     if (!first || !last) return;
