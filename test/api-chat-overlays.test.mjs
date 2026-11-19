@@ -247,6 +247,19 @@ test("API header follows the actual selected provider/model", async t => {
   assert.match(query('#apiModelTopLabel').textContent, /another-model/);
 });
 
+test("API Chat identity sits at the top right beside Settings", async t => {
+  const { query } = mount(t); await settle();
+  const topbar = query(".api-topbar");
+  const brand = topbar.querySelector(".api-brand strong");
+  assert.equal(brand.textContent, "API Chat");
+  assert.ok(query("#apiModelTopLabel"));
+  assert.ok(topbar.querySelector(".api-header-actions #apiSettingsTop").getAttribute("aria-label"));
+  const css = await readFile(new URL("../src/api-chat-surface.css", import.meta.url), "utf8");
+  assert.match(css, /\.api-app \.api-brand \{[^}]*grid-column: 2;[^}]*justify-self: end;[^}]*text-align: end;/);
+  assert.match(css, /\.api-app \.api-brand small \{[^}]*text-overflow: ellipsis/);
+  assert.match(css, /\.api-app \.api-header-actions \{ grid-column: 3;/);
+});
+
 test("theme controls follow external Settings changes and Context describes display-only compaction", async t => {
   const { dom, query } = mount(t); await settle();
   dom.window.exports = {}; dom.window.eval(compile(workspaceSource));

@@ -160,7 +160,7 @@ export function mountApiChat(
       <section class="api-composer-wrap">
         <form id="apiForm" class="api-composer">
           <div id="apiAttachments" class="api-attachment-tray hidden"></div>
-          <textarea id="apiPrompt" rows="1" placeholder="${escapeHtml(t("apiChat.promptPlaceholder"))}" aria-label="${escapeHtml(t("apiChat.promptAria"))}"></textarea>
+          <textarea id="apiPrompt" rows="1" enterkeyhint="send" placeholder="${escapeHtml(t("apiChat.promptPlaceholder"))}" aria-label="${escapeHtml(t("apiChat.promptAria"))}"></textarea>
           <input id="apiImageInput" class="hidden" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple />
           <small id="apiStatus" class="api-status" role="status" aria-live="polite">${escapeHtml(t("apiChat.loadingProviders"))}</small>
           <button id="apiCopyLatest" class="api-copy-latest" type="button">${escapeHtml(t("chat.copyLatest.button"))}</button>
@@ -390,15 +390,16 @@ export function mountApiChat(
     providerSelect.disabled = busy;
     modelSelect.disabled = busy || !provider?.models.length;
     reasoningSelect.disabled = busy || reasoningSelect.options.length <= 1;
-    send.disabled = !providerCatalogAvailable || !provider?.ready || !modelSelect.value || busy;
+    // While a reply is pending the send button is Stop, like Codex, OpenCode and Qwen.
+    send.disabled = sending ? false : !providerCatalogAvailable || !provider?.ready || !modelSelect.value || busy;
     attachImage.disabled = busy;
     newChat.disabled = uploadingCount > 0;
     history.querySelectorAll<HTMLButtonElement>("button").forEach(button => { button.disabled = uploadingCount > 0; });
     for (const select of [providerSelect, modelSelect, reasoningSelect]) {
       select.title = select.selectedOptions[0]?.textContent || select.getAttribute("aria-label") || "";
     }
-    send.textContent = sending ? "…" : "↑";
-    send.setAttribute("aria-label", sending ? t("apiChat.waitingResponse") : t("common.send"));
+    send.textContent = sending ? "■" : "↑";
+    send.setAttribute("aria-label", sending ? t("common.stop") : t("common.send"));
     form.setAttribute("aria-busy", String(sending));
     status.title = status.textContent || "";
   }
@@ -1200,6 +1201,10 @@ export function mountApiChat(
   }
 
   async function submit() {
+    if (sending) {
+      activeChatController?.abort();
+      return;
+    }
     if (uploadingCount > 0) return;
     if (drafts.sync()) {
       status.textContent = t("chat.draft.projectSwitched");
@@ -1231,6 +1236,7 @@ export function mountApiChat(
     activeChatController?.abort();
     activeChatController = controller;
     let requestTimedOut = false;
+    let stoppedByUser = false;
     const requestTimeout = window.setTimeout(() => {
       requestTimedOut = true;
       controller.abort();
@@ -1269,7 +1275,11 @@ export function mountApiChat(
       renderMessages();
       status.textContent = "";
     } catch (error) {
-      if (generation !== conversationGeneration || (controller.signal.aborted && !requestTimedOut)) return;
+      if (generation !== conversationGeneration) return;
+      if (controller.signal.aborted && !requestTimedOut) {
+        stoppedByUser = true;
+        return;
+      }
       responseFailed = true;
       messages.push({
         role: "assistant",
@@ -1290,6 +1300,9 @@ export function mountApiChat(
         updateModels();
         if (responseFailed) {
           status.textContent = t("apiChat.errorStatus", { provider: provider.name });
+          status.title = status.textContent;
+        } else if (stoppedByUser) {
+          status.textContent = t("apiChat.stopped");
           status.title = status.textContent;
         }
         prompt.focus();

@@ -1,4 +1,5 @@
 import test from "node:test";
+import * as fetchTimeout from "../src/fetch-with-timeout.mjs";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
@@ -389,6 +390,7 @@ test("Trusted Devices screen completes code issuance -> entry -> trust -> termin
     exports: ccExports,
     module: { exports: ccExports },
     require: name => {
+      if (name === "./fetch-with-timeout.mjs") return fetchTimeout;
       if (name === "./device-gate.mjs") return deviceGate;
       if (name === "./sheet-header.mjs") return sheetHeader;
       if (name === "./i18n") return jaI18n;
@@ -419,6 +421,7 @@ test("Trusted Devices screen completes code issuance -> entry -> trust -> termin
   vm.runInNewContext(settingsCompiled, {
     exports: settingsExports,
     require: name => {
+      if (name === "./fetch-with-timeout.mjs") return fetchTimeout;
       if (name === "./i18n") return jaI18n;
       if (name === "./diagnostics-format.mjs") return { describeHealthFetch, formatBuildId, formatNodeVersion };
       if (name === "./push-readiness.js") return { boundedPushWait: async () => null, inspectPushReadiness: async () => ({ state: "unsupported" }) };
