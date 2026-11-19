@@ -1,0 +1,112 @@
+/* Knowledge notes. Geometry from the shared .dm-sheet-frame, header from
+   .dm-sheet-head (zcode-theme.css); colors are theme tokens only. */
+.dm-know-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1650;
+  background: var(--surface-overlay);
+}
+.dm-know-modal.hidden { display: none; }
+.dm-know-sheet {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-hairline);
+  border-radius: 20px;
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+}
+.dm-know-sheet[aria-busy="true"] .dm-know-scroll { opacity: .6; pointer-events: none; }
+.dm-know-status { margin: 0; padding: 0 16px; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.dm-know-status:not(:empty) { padding-block: 8px; border-bottom: 1px solid var(--border-hairline); }
+.dm-know-status[data-state="error"] { color: var(--status-error); }
+.dm-know-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 12px 16px calc(24px + env(safe-area-inset-bottom));
+}
+.dm-know-loading, .dm-know-muted { margin: 24px 0; color: var(--text-muted); font-size: 14px; }
+
+.dm-know-tools { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-bottom: 12px; }
+@media (min-width: 640px) { .dm-know-tools { grid-template-columns: minmax(0, 1fr) minmax(0, 220px) auto; } }
+.dm-know-search, .dm-know-select, .dm-know-field input, .dm-know-field textarea {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 16px;
+}
+.dm-know-button, .dm-know-back {
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.dm-know-button:active, .dm-know-back:active, .dm-know-row:active { background: var(--surface-hover); }
+@media (hover: hover) {
+  .dm-know-button:hover, .dm-know-back:hover, .dm-know-row:hover { background: var(--surface-hover); }
+}
+.dm-know-primary { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.dm-know-primary:active { background: var(--accent-pressed); }
+@media (hover: hover) { .dm-know-primary:hover { background: var(--accent-pressed); } }
+.dm-know-danger { border-color: var(--status-error); color: var(--status-error); }
+.dm-know-sheet :is(button, input, select, textarea):focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+
+.dm-know-list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--border-hairline); }
+.dm-know-row {
+  display: block;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--border-hairline);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dm-know-row strong { display: block; overflow: hidden; font-size: 15px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.dm-know-row small { display: block; margin-top: 2px; color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+.dm-know-row[data-pinned="true"] strong { font-weight: 600; }
+
+.dm-know-empty { padding: 32px 0; }
+.dm-know-empty strong { display: block; font-size: 16px; font-weight: 500; }
+.dm-know-empty p { margin: 4px 0 16px; color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
+
+.dm-know-back { margin-bottom: 12px; }
+.dm-know-note-title { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.dm-know-note-meta { margin: 4px 0 12px; color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+.dm-know-actions, .dm-know-confirm-actions, .dm-know-form-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.dm-know-actions { margin-bottom: 16px; }
+.dm-know-confirm {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--status-error);
+  border-radius: 12px;
+  background: var(--surface-card);
+}
+.dm-know-confirm p { margin: 4px 0 12px; color: var(--text-secondary); font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.dm-know-content { padding-top: 16px; border-top: 1px solid var(--border-hairline); font-size: 15px; line-height: 1.7; overflow-wrap: anywhere; }
+.dm-know-content pre { overflow-x: auto; }
+
+.dm-know-form { display: grid; gap: 12px; }
+.dm-know-field { display: grid; gap: 4px; }
+.dm-know-field span { color: var(--text-secondary); font-size: 13px; }
+.dm-know-field textarea { min-height: 40vh; resize: vertical; font-family: var(--font-mono, ui-monospace, monospace); font-size: 16px; line-height: 1.6; }
+.dm-know-form-actions { justify-content: flex-end; }

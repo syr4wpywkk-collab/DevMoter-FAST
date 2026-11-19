@@ -74,17 +74,18 @@ test("Home still treats non-shipped applications as previews, never launches the
   const browserCard = root.querySelector('[data-home-app="browser"]');
   assert.equal(browserCard.getAttribute("aria-disabled"), null);
   assert.equal(browserCard.disabled, false);
-  assert.equal(root.querySelector('[data-home-app="knowledge"]').getAttribute("aria-disabled"), "true");
-  root.querySelector('[data-home-app="knowledge"]').click();
-  assert.equal(root.querySelector('[data-home-app="knowledge"]')?.getAttribute("aria-label"), "Knowledge, Preview");
-  assert.equal(root.querySelector('[data-home-app="knowledge"] .dm-home-app-state')?.textContent, "Preview");
+  const knowledgeCard = root.querySelector('[data-home-app="knowledge"]');
+  assert.equal(knowledgeCard.getAttribute("aria-disabled"), null);
+  assert.equal(knowledgeCard.getAttribute("aria-label"), "Knowledge");
+  assert.equal(knowledgeCard.querySelector(".dm-home-app-state"), null);
+  assert.equal(browserCard.getAttribute("aria-label"), "Browser, Preview");
+  assert.equal(browserCard.querySelector(".dm-home-app-state")?.textContent, "Preview");
+  knowledgeCard.click();
   browserCard.click();
-  assert.deepEqual(launches, []);
-  assert.equal(previews.length, 2);
-  assert.equal(previews[0].id, "knowledge");
-  assert.equal(previews[0].message, "Knowledge is not available yet. Its app shell is planned separately.");
-  assert.equal(previews[1].id, "browser");
-  assert.match(previews[1].message, /Files & Preview/);
+  assert.deepEqual(launches, ["knowledge"], "Knowledge opens its real note list");
+  assert.equal(previews.length, 1);
+  assert.equal(previews[0].id, "browser");
+  assert.match(previews[0].message, /Files & Preview/);
   dom.window.close();
 });
 
