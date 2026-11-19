@@ -171,7 +171,7 @@ body.dm-task-first-enabled .cx-app .cx-message.system {
 }
 /* OpenCode reads like Claude: the reply is the content; thinking and tool steps
  * are a quiet trail on a hairline rule above it, expandable on demand. */
-body.dm-task-first-enabled .ocx-app :is(.ocx-tool-card, .ocx-reasoning) {
+body.dm-task-first-enabled :is(.ocx-app .ocx-tool-card, .ocx-app .ocx-reasoning) {
   margin-bottom: var(--space-1);
   padding-left: var(--space-3);
   border: 0;
@@ -180,7 +180,7 @@ body.dm-task-first-enabled .ocx-app :is(.ocx-tool-card, .ocx-reasoning) {
   background: transparent;
   color: var(--dw-chat-muted);
 }
-body.dm-task-first-enabled .ocx-app :is(.ocx-tool-card, .ocx-reasoning)[open] {
+body.dm-task-first-enabled :is(.ocx-app .ocx-tool-card, .ocx-app .ocx-reasoning)[open] {
   padding-bottom: var(--space-2);
 }
 body.dm-task-first-enabled .ocx-app :is(.ocx-tool-card, .ocx-reasoning) > summary {
