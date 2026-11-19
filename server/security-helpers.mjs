@@ -1,5 +1,7 @@
-import { basename, dirname, isAbsolute, join, relative, resolve, normalize } from "node:path";
+import { lstat, realpath } from "node:fs/promises";
+import { basename, dirname, extname, isAbsolute, join, relative, resolve, normalize, sep } from "node:path";
 import { randomUUID } from "node:crypto";
+import { readHandle, withOpenFile } from "./safe-file.mjs";
 
 // ASCII control characters (C0 range and DEL). Shared by every path/target
 // check that must reject them after percent-decoding.
@@ -89,4 +91,159 @@ export const CODEX_RPC_ALLOWLIST = new Set([
 
 export function isAllowedCodexRpc(method) {
   return typeof method === "string" && CODEX_RPC_ALLOWLIST.has(method);
+}
+
+export function isLoopbackAddress(address) {
+  const value = String(address || "").toLowerCase();
+  return value === "127.0.0.1" || value === "::1" || value.startsWith("127.") || value === "::ffff:127.0.0.1";
+}
+
+/**
+ * Returns true only when `hostHeader` is an HTTP Host authority whose
+ * hostname is an explicit loopback host (`localhost`, `127.0.0.1`, `[::1]`,
+ * or bare `::1`, with optional `:port`). Rejects userinfo, paths, queries,
+ * fragments, non-loopback IPv4/IPv6 literals, and malformed inputs.
+ */
+export function isLoopbackHost(hostHeader) {
+  if (typeof hostHeader !== "string") return false;
+  const raw = hostHeader.trim();
+  if (!raw || /[/?#@\\\s]/.test(raw)) return false;
+  const normalized = raw === "::1" ? "[::1]" : raw;
+  try {
+    const parsed = new URL(`http://${normalized}`);
+    if (
+      parsed.username ||
+      parsed.password ||
+      parsed.pathname !== "/" ||
+      parsed.search ||
+      parsed.hash
+    ) {
+      return false;
+    }
+    const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
+const STATIC_NON_FALLBACK_EXTENSIONS = new Set([".ico", ".map", ".txt", ".woff", ".woff2"]);
+
+/**
+ * Static serving and SPA fallback contract:
+ * 1. Request paths are decoded via `fullyDecodePath` and checked to remain
+ *    lexically inside `distDir` (no NUL/control chars, backslashes, or `..`).
+ * 2. Both `distDir` and the target file are canonicalized with `realpath` to
+ *    reject any symlink escaping `distReal`, and opened with `noFollow: true`.
+ * 3. Missing files under `publicPaths`, `/assets/*`, or non-HTML static asset
+ *    extensions return 404 instead of falling back to `dist/index.html`.
+ *    Invalid or escaping paths also return 404 without SPA fallback.
+ * 4. Missing genuine app routes fall back to `dist/index.html` (`200`,
+ *    `text/html; charset=utf-8`), verified to remain inside `distReal`.
+ */
+export async function readDistStaticFile(
+  distDir,
+  rawUrl,
+  { publicPaths = new Set(), mimeTypes = {}, allowSpaFallback = true } = {}
+) {
+  const rawPathname = String(rawUrl || "/").split("?", 1)[0] || "/";
+  const decoded = fullyDecodePath(rawPathname);
+  if (
+    decoded === null ||
+    !decoded.startsWith("/") ||
+    decoded.includes("\\") ||
+    CONTROL_CHARS.test(decoded)
+  ) {
+    return { status: 404, error: "Not found" };
+  }
+
+  const segments = decoded.split("/");
+  if (segments.includes("..")) {
+    return { status: 404, error: "Not found" };
+  }
+  const hasTrailingSlash = decoded !== "/" && decoded.endsWith("/");
+  const cleanSegments = segments.filter(segment => segment && segment !== ".");
+  const pathname = cleanSegments.length === 0 ? "/" : "/" + cleanSegments.join("/");
+  const normalizedPathname = hasTrailingSlash ? pathname + "/" : pathname;
+
+  const distRoot = resolve(distDir);
+  let distReal;
+  try {
+    distReal = await realpath(distRoot);
+  } catch {
+    return { status: 404, error: "Not built yet. Run npm run build." };
+  }
+
+  const distPrefix = distRoot.endsWith(sep) ? distRoot : distRoot + sep;
+  const distRealPrefix = distReal.endsWith(sep) ? distReal : distReal + sep;
+  const relPath = normalizedPathname === "/" ? "index.html" : normalizedPathname.slice(1);
+  const candidate = resolve(distRoot, relPath);
+  if (!candidate.startsWith(distPrefix)) {
+    return { status: 404, error: "Not found" };
+  }
+
+  if (!hasTrailingSlash) {
+    let resolved = null;
+    try {
+      resolved = await realpath(candidate);
+    } catch {
+      try {
+        const info = await lstat(candidate);
+        if (info.isSymbolicLink()) return { status: 404, error: "Not found" };
+      } catch {
+        // File does not exist; proceed to SPA fallback decision below.
+      }
+    }
+
+    if (resolved !== null) {
+      if (!resolved.startsWith(distRealPrefix)) {
+        return { status: 404, error: "Not found" };
+      }
+      try {
+        const data = await withOpenFile(resolved, { noFollow: true }, async (handle, info) => {
+          if (!info.isFile()) throw new Error("not file");
+          return readHandle(handle);
+        });
+        const ext = extname(resolved).toLowerCase();
+        return {
+          status: 200,
+          contentType: mimeTypes[ext] || "application/octet-stream",
+          data
+        };
+      } catch {
+        // Non-file inside dist; fall through to fallback policy.
+      }
+    }
+  }
+
+  const ext = extname(pathname).toLowerCase();
+  const nonFallbackStatic =
+    !allowSpaFallback ||
+    publicPaths.has(pathname) ||
+    pathname === "/assets" ||
+    pathname.startsWith("/assets/") ||
+    (ext !== "" && ext !== ".html" && (Object.hasOwn(mimeTypes, ext) || STATIC_NON_FALLBACK_EXTENSIONS.has(ext)));
+
+  if (nonFallbackStatic) {
+    return { status: 404, error: "Not found" };
+  }
+
+  const indexCandidate = resolve(distRoot, "index.html");
+  try {
+    const realIndex = await realpath(indexCandidate);
+    if (!realIndex.startsWith(distRealPrefix)) {
+      return { status: 404, error: "Not found" };
+    }
+    const data = await withOpenFile(realIndex, { noFollow: true }, async (handle, info) => {
+      if (!info.isFile()) throw new Error("not file");
+      return readHandle(handle);
+    });
+    return {
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      data
+    };
+  } catch {
+    return { status: 404, error: "Not built yet. Run npm run build." };
+  }
 }
