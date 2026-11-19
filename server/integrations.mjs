@@ -34,12 +34,15 @@ class IntegrationError extends Error {
 //   SSH_AUTH_SOCK, and all agent CLI directory/binary vars (including CODEX_* and
 //   OPENCODE_*) while stripping all provider keys/tokens.
 // - server/setup/detector.mjs `filteredEnvironment()` runs headless `--version` and
-//   status probes with a minimal POSIX/XDG subset, NO_COLOR="1", and no GUI session vars.
+//   status probes with a minimal POSIX/XDG subset, NO_COLOR="1", and no GUI session,
+//   proxy, or CA-trust vars.
 // - Here, `sanitizeChildEnv()` uses a strict allowlist consistent with `terminalChildEnv()`'s
 //   safe operational shell variables, adds Linux desktop GUI session variables needed when
 //   spawning graphical terminal emulators (`launchInTerminal` / `launchCheckedInTerminal`),
 //   scopes CLI config/binary variables to the integrations managed by this module (leaving
-//   CODEX_* / OPENCODE_* to PTY shells), and strips all secrets by default while letting
+//   CODEX_* / OPENCODE_* to PTY shells), preserves proxy and CA-trust configuration
+//   like PTY shells (including credentials embedded in proxy URLs), and strips other
+//   secrets by default while letting
 //   `integrationChildEnv(id)` opt in only the matching integration's configured provider keys.
 const CHILD_ENV_ALLOWLIST = new Set([
   // Core operational shell, locale, and runtime paths (consistent with terminalChildEnv)
@@ -71,6 +74,19 @@ const CHILD_ENV_ALLOWLIST = new Set([
   "TMP",
   "TEMP",
   "SSH_AUTH_SOCK",
+
+  // Network routing and custom CA trust for integration CLIs and command hooks
+  "HTTP_PROXY",
+  "HTTPS_PROXY",
+  "NO_PROXY",
+  "ALL_PROXY",
+  "http_proxy",
+  "https_proxy",
+  "no_proxy",
+  "all_proxy",
+  "NODE_EXTRA_CA_CERTS",
+  "SSL_CERT_FILE",
+  "SSL_CERT_DIR",
 
   // Desktop / GUI session and explicit XDG directories needed by terminal emulators and agy
   "DISPLAY",

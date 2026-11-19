@@ -89,6 +89,52 @@ test("integration child environment builds from allowlist and allows only explic
   assert.deepEqual(sanitizeChildEnv(null), {});
 });
 
+test("integration child environment preserves exact proxy and CA-trust keys without unrelated secrets", () => {
+  const networkEnv = {
+    HTTP_PROXY: "http://user:password@proxy.example.test:8080",
+    HTTPS_PROXY: "http://secure-proxy.example.test:8080",
+    NO_PROXY: "localhost,.example.test",
+    ALL_PROXY: "socks5://proxy.example.test:1080",
+    http_proxy: "http://lower-proxy.example.test:8080",
+    https_proxy: "http://user:password@lower-secure-proxy.example.test:8080",
+    no_proxy: "127.0.0.1,::1",
+    all_proxy: "socks5://lower-proxy.example.test:1080",
+    NODE_EXTRA_CA_CERTS: "/etc/company/node-ca.pem",
+    SSL_CERT_FILE: "/etc/company/ca.pem",
+    SSL_CERT_DIR: "/etc/company/certs"
+  };
+  const source = {
+    ...networkEnv,
+    Http_Proxy: "http://mixed-case.example.test",
+    Https_Proxy: "http://mixed-case.example.test",
+    No_Proxy: "mixed-case.example.test",
+    All_Proxy: "socks5://mixed-case.example.test",
+    node_extra_ca_certs: "/unlisted/ca.pem",
+    ssl_cert_file: "/unlisted/ca.pem",
+    ssl_cert_dir: "/unlisted/certs",
+    DATABASE_URL: "postgres://user:password@db.example.test/app",
+    SUPABASE_SERVICE_ROLE_KEY: "private-role-key",
+    DEVMOTER_AUTH_PASSWORD: "private-password",
+    ANTHROPIC_API_KEY: "private-provider-key",
+    GITHUB_TOKEN: "private-token",
+    NODE_OPTIONS: "--require=/tmp/injected.js",
+    LD_PRELOAD: "/tmp/injected.so"
+  };
+
+  assert.deepEqual(sanitizeChildEnv(source), networkEnv);
+  for (const id of ["claude", "qwen", "antigravity"]) {
+    const expected = id === "claude"
+      ? { ...networkEnv, ANTHROPIC_API_KEY: source.ANTHROPIC_API_KEY }
+      : networkEnv;
+    assert.deepEqual(integrationChildEnv(id, source), expected);
+  }
+  assert.deepEqual(sanitizeChildEnv({ HTTP_PROXY: "", SSL_CERT_FILE: "" }), {
+    HTTP_PROXY: "",
+    SSL_CERT_FILE: ""
+  });
+  assert.deepEqual(sanitizeChildEnv({ HTTP_PROXY: null, https_proxy: 123, SSL_CERT_DIR: {} }), {});
+});
+
 test("integrationChildEnv isolates parent env secrets and passes only each integration's keys", () => {
   const injected = {
     PATH: "/usr/local/bin:/usr/bin",
