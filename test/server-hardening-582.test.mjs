@@ -9,7 +9,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { isLoopbackAddress, isLoopbackHost, readDistStaticFile } from "../server/security-helpers.mjs";
+import { readDistStaticFile } from "../server/security-helpers.mjs";
+import { isLoopbackAddress, isLoopbackHost } from "../server/auth.mjs";
 import { createSessionModeMap } from "../server/agent-mode-policy.mjs";
 import { redactLogText } from "../server/secret-redaction.mjs";
 
@@ -266,6 +267,7 @@ test("serveStatic HTTP boundary returns 404 for missing PUBLIC_STATIC_PATHS and 
 
 test("redactLogText masks known secrets, Authorization headers, Cookies, API keys, and tokens", () => {
   const configuredSecret = "configured-password-987654";
+  const openAiKey = "sk-" + "proj-abcdefghijklmnopqrstuvwxyz1234";
   const raw = [
     `Auth failed with ${configuredSecret}`,
     "Authorization: Bearer tok_live_secret_abc",
@@ -275,7 +277,7 @@ test("redactLogText masks known secrets, Authorization headers, Cookies, API key
     "x-api-key: provider-key-abc",
     "x-devmoter-device-token: device-tok-abc",
     "https://alice:s3cr3t@upstream.example.test/api",
-    "token sk-proj-abcdefghijklmnopqrstuvwxyz1234",
+    `token ${openAiKey}`,
     "ghp_abcdefghijklmnopqrstuvwxyz012345"
   ].join("\n");
 
@@ -290,7 +292,7 @@ test("redactLogText masks known secrets, Authorization headers, Cookies, API key
     "provider-key-abc",
     "device-tok-abc",
     "alice:s3cr3t",
-    "sk-proj-abcdefghijklmnopqrstuvwxyz1234",
+    openAiKey,
     "ghp_abcdefghijklmnopqrstuvwxyz012345"
   ]) {
     assert.equal(redacted.includes(sensitive), false, `log output leaked ${sensitive}`);
@@ -620,8 +622,8 @@ test("OpenCode session modes are removed on session DELETE and SSE session.delet
 // ---------------------------------------------------------------------------
 // Sub-item 4: IPv6 loopback detection
 
-test("isLoopbackHost accepts exact loopback forms including bracketed/bare IPv6 and rejects non-loopback/spoofed hosts", () => {
-  for (const host of ["[::1]:8787", "[::1]", "::1", "[0:0:0:0:0:0:0:1]", "127.0.0.1", "127.0.0.1:8787", "localhost", "localhost:8787", "LOCALHOST"]) {
+test("isLoopbackHost accepts loopback authorities and rejects non-loopback/spoofed hosts", () => {
+  for (const host of ["[::1]:8787", "[::1]", "[0:0:0:0:0:0:0:1]", "127.0.0.1", "127.0.0.1:8787", "127.0.0.2", "127.255.255.254:8787", "localhost", "localhost:8787", "LOCALHOST"]) {
     assert.equal(isLoopbackHost(host), true, `expected loopback for ${JSON.stringify(host)}`);
   }
 
@@ -630,7 +632,7 @@ test("isLoopbackHost accepts exact loopback forms including bracketed/bare IPv6 
     "[2001:db8::1]",
     "[2001:db8::1]:8787",
     "2001:db8::1",
-    "127.0.0.2",
+    "::1",
     "localhost.evil.com",
     "user:pass@localhost",
     "localhost/path",
@@ -681,7 +683,7 @@ test("setup API honors IPv6 loopback Host headers and rejects non-loopback hosts
   });
   await waitForReady(child);
 
-  for (const hostHeader of [`[::1]:${port}`, "[::1]", "::1", `127.0.0.1:${port}`, "localhost"]) {
+  for (const hostHeader of [`[::1]:${port}`, "[::1]", `127.0.0.1:${port}`, `127.0.0.2:${port}`, "localhost"]) {
     const res = await rawHttpRequest({
       port,
       path: "/api/setup/status",

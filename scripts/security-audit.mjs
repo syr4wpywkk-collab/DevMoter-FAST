@@ -38,6 +38,7 @@ const server = await text("server.mjs");
 const auth = await text("server/auth.mjs");
 const helpers = await text("server/security-helpers.mjs");
 const launcher = await text("scripts/start-pocket.sh");
+const systemdEntrypoint = await text("scripts/systemd-entrypoint.sh");
 const vite = await text("vite.config.ts");
 const headers = await text("server/security-headers.mjs");
 
@@ -49,6 +50,23 @@ check(helpers.includes("CODEX_RPC_ALLOWLIST"), "Codex RPC allowlist is present")
 check(launcher.includes('chmod 700 "$STATE_DIR"'), "launcher protects the config directory");
 check(launcher.includes('chmod 600 "$SECRET_FILE"'), "launcher protects the OpenCode password file");
 check(launcher.includes('chmod 600 "$AUTH_SECRET_FILE"'), "launcher protects the DevMoter password file");
+for (const [name, script] of [["launcher", launcher], ["systemd entrypoint", systemdEntrypoint]]) {
+  const withoutComments = script
+    .split("\n")
+    .filter(line => !/^\s*#/.test(line))
+    .join("\n")
+    .replace(/\\\n/g, " ");
+  check(/^\s*umask 077\b/m.test(withoutComments), name + " sets restrictive umask 077");
+  check(
+    !/\bcurl\b[^\n|;&]*\s(?:-[A-Za-z]*u|--user(?:=|\s|$))/.test(withoutComments),
+    name + " does not pass curl credentials in argv"
+  );
+  check(withoutComments.includes("curl -fsS -K -"), name + " passes curl credentials via stdin config");
+}
+check(
+  !/^\s*npm install\b/m.test(launcher) && /^\s*npm ci\b/m.test(launcher),
+  "launcher installs dependencies reproducibly with npm ci"
+);
 check(server.includes("staticSecurityHeaders("), "static responses use centralized security headers");
 check(headers.includes('"script-src \'self\'"'), "CSP restricts scripts to self");
 check(headers.includes('"frame-ancestors \'none\'"'), "CSP blocks framing");

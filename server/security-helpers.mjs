@@ -93,39 +93,6 @@ export function isAllowedCodexRpc(method) {
   return typeof method === "string" && CODEX_RPC_ALLOWLIST.has(method);
 }
 
-export function isLoopbackAddress(address) {
-  const value = String(address || "").toLowerCase();
-  return value === "127.0.0.1" || value === "::1" || value.startsWith("127.") || value === "::ffff:127.0.0.1";
-}
-
-/**
- * Returns true only when `hostHeader` is an HTTP Host authority whose
- * hostname is an explicit loopback host (`localhost`, `127.0.0.1`, `[::1]`,
- * or bare `::1`, with optional `:port`). Rejects userinfo, paths, queries,
- * fragments, non-loopback IPv4/IPv6 literals, and malformed inputs.
- */
-export function isLoopbackHost(hostHeader) {
-  if (typeof hostHeader !== "string") return false;
-  const raw = hostHeader.trim();
-  if (!raw || /[/?#@\\\s]/.test(raw)) return false;
-  const normalized = raw === "::1" ? "[::1]" : raw;
-  try {
-    const parsed = new URL(`http://${normalized}`);
-    if (
-      parsed.username ||
-      parsed.password ||
-      parsed.pathname !== "/" ||
-      parsed.search ||
-      parsed.hash
-    ) {
-      return false;
-    }
-    const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-  } catch {
-    return false;
-  }
-}
 
 const STATIC_NON_FALLBACK_EXTENSIONS = new Set([".ico", ".map", ".txt", ".woff", ".woff2"]);
 

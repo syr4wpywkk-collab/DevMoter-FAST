@@ -12,7 +12,7 @@ import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/ope
 import { canonicalOpenCodeEvent, createSseReader, lastAssistantText, parseDevMoterPrompt, parsePermissionDecision, parseQuestionAnswers } from "./server/opencode-adapter.mjs";
 import { createOpenCodeClient } from "./server/opencode-api.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
-import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, fullyDecodePath, isAllowedCodexRpc, isInsideHome, isLoopbackAddress, isLoopbackHost, normalizeNewProjectPath, readDistStaticFile } from "./server/security-helpers.mjs";
+import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, fullyDecodePath, isAllowedCodexRpc, isInsideHome, normalizeNewProjectPath, readDistStaticFile } from "./server/security-helpers.mjs";
 import { staticSecurityHeaders } from "./server/security-headers.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
 import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
@@ -34,7 +34,14 @@ import { ControlPlane } from "./server/control-plane.mjs";
 import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/workspace-control.mjs";
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
 import { createSessionModeMap, isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, parseAgentMode, readOnlyToolsFor, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
-import { assertAuthPassword, parseBasicAuthorization, requireSameOriginMutation } from "./server/auth.mjs";
+import {
+  assertAuthPassword,
+  assertSafeHttpBind,
+  isLoopbackAddress,
+  isLoopbackHost,
+  parseBasicAuthorization,
+  requireSameOriginMutation
+} from "./server/auth.mjs";
 import { createBasicAuthGuard, parseTrustedProxies } from "./server/auth-guard.mjs";
 import { OidcAuth } from "./server/oidc-auth.mjs";
 import { ExternalAuth } from "./server/external-auth.mjs";
@@ -98,6 +105,7 @@ const OPENCODE_DIRECTORY =
   process.cwd();
 const PORT = Number(process.env.POCKET_PORT || 8787);
 const HOST = process.env.POCKET_HOST || "127.0.0.1";
+assertSafeHttpBind(HOST, process.env);
 const DIST = fileURLToPath(new URL("./dist/", import.meta.url));
 // The login page is plain static source (not processed by Vite), so it is served
 // straight from public/: sign-in works before the first build, and in tests.
