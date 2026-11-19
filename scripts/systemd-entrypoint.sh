@@ -48,6 +48,13 @@ if [ -z "$CODEX_BIN_RESOLVED" ]; then
   exit 1
 fi
 
+# The secret files below are created by shell redirection, which uses the
+# caller's umask (typically 022 -> mode 644) until the chmod after creation
+# runs. Restrict the umask first so the credentials are owner-only from the
+# moment they exist; restore it once both secrets are in place.
+PREV_UMASK="$(umask)"
+umask 077
+
 mkdir -p "$STATE_DIR"
 chmod 700 "$STATE_DIR"
 
@@ -58,8 +65,11 @@ ensure_secret() {
 import secrets
 print(secrets.token_urlsafe(32))
 PY
-    chmod 600 "$file"
   fi
+  # Re-apply on every start, not only at creation: a file left over from
+  # before this hardening (e.g. created at 644 by an interrupted bootstrap)
+  # must not keep its weaker mode just because it already exists.
+  chmod 600 "$file"
 }
 
 ensure_secret "$OC_SECRET_FILE"
@@ -72,6 +82,8 @@ else
   ensure_secret "$AUTH_SECRET_FILE"
   AUTH_PASS="$(cat "$AUTH_SECRET_FILE")"
 fi
+
+umask "$PREV_UMASK"
 
 if [ "${#AUTH_PASS}" -lt 16 ]; then
   echo "DEVMOTER_AUTH_PASSWORD must be at least 16 characters" >&2

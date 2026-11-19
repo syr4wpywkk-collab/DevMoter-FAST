@@ -28,8 +28,11 @@ if [ ! -s "$SECRET_FILE" ]; then
 import secrets
 print(secrets.token_urlsafe(32))
 PY
-  chmod 600 "$SECRET_FILE"
 fi
+# Re-apply on every start, not only at creation: a file left over from
+# before this hardening (e.g. created at 644 by an interrupted bootstrap)
+# must not keep its weaker mode just because it already exists.
+chmod 600 "$SECRET_FILE"
 
 PASS="$(cat "$SECRET_FILE")"
 
@@ -42,8 +45,8 @@ else
 import secrets
 print(secrets.token_urlsafe(32))
 PY
-    chmod 600 "$AUTH_SECRET_FILE"
   fi
+  chmod 600 "$AUTH_SECRET_FILE"
   AUTH_PASS="$(cat "$AUTH_SECRET_FILE")"
 fi
 

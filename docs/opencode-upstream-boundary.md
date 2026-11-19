@@ -21,12 +21,12 @@ Two launcher scripts manage the credential; no server code creates it.
 | --- | --- | --- |
 | State dir | `STATE_DIR` = `${XDG_CONFIG_HOME:-$HOME/.config}/opencode-pocket` (line 8) | same (line 8) |
 | Password file | `$STATE_DIR/opencode-server-password` (line 9) | `$STATE_DIR/opencode-server-password` (line 9) |
-| Creation | inline block, lines 26–32 | `ensure_secret()`, lines 54–65 |
+| Creation | inline block, lines 26–35 | `ensure_secret()`, lines 61–74 |
 
 DevMoter's own inbound auth password (`devmoter-auth-password`, same
 directory) follows the identical lifecycle in both scripts
-(`start-pocket.sh` lines 10, 40–48; `systemd-entrypoint.sh` lines 10,
-72–73). Everything below applies to it equally, except where noted.
+(`start-pocket.sh` lines 10, 39–51; `systemd-entrypoint.sh` lines 10,
+78–84). Everything below applies to it equally, except where noted.
 
 ## 2. Credential lifecycle
 
@@ -34,15 +34,18 @@ directory) follows the identical lifecycle in both scripts
 - Created only when the file is missing or empty (`[ ! -s "$file" ]`).
 - Generator: `python3` with `secrets.token_urlsafe(32)` — 32 random
   bytes, a 43-character URL-safe token (`start-pocket.sh` lines 27–30;
-  `systemd-entrypoint.sh` lines 58–60).
+  `systemd-entrypoint.sh` lines 64–67).
 - The value is written by shell redirection (`> "$SECRET_FILE"`).
 
 ### Storage and permissions
 - Directory: `mkdir -p "$STATE_DIR"` followed by an unconditional
   `chmod 700` (`start-pocket.sh` lines 23–24;
-  `systemd-entrypoint.sh` lines 51–52).
-- File: `chmod 600` inside the creation branch
-  (`start-pocket.sh` line 31; `systemd-entrypoint.sh` line 61).
+  `systemd-entrypoint.sh` lines 58–59).
+- File: `chmod 600` at creation, and re-applied on every start
+  outside the creation branch, so a pre-existing file's mode is
+  repaired rather than inherited (see §3) (`start-pocket.sh` lines
+  35 and 49; `systemd-entrypoint.sh` line 72, inside
+  `ensure_secret()`).
 - Nothing else in the repository reads or writes this file: the server
   receives the password only via its environment (below). A grep for
   the file name across `server/`, `src/`, and `scripts/` finds only
@@ -53,19 +56,20 @@ directory) follows the identical lifecycle in both scripts
 
 ### Handoff
 1. The launcher reads the file into a shell variable
-   (`PASS="$(cat "$SECRET_FILE")"`, `start-pocket.sh` line 34;
-   `OC_PASS=...`, `systemd-entrypoint.sh` line 66).
+   (`PASS="$(cat "$SECRET_FILE")"`, `start-pocket.sh` line 37;
+   `OC_PASS=...`, `systemd-entrypoint.sh` line 76).
 2. It starts OpenCode with the credential in the process environment:
    `OPENCODE_SERVER_USERNAME=opencode OPENCODE_SERVER_PASSWORD="$PASS" opencode serve --hostname 127.0.0.1 --port "$OC_PORT"`
-   (`start-pocket.sh` line 90; `systemd-entrypoint.sh` lines 85–88).
+   (`start-pocket.sh` line 93; `systemd-entrypoint.sh` lines 97–100).
    The bind is loopback-only.
 3. It starts DevMoter the same way, adding
    `OPENCODE_URL=http://127.0.0.1:$OC_PORT`
-   (`start-pocket.sh` line 145; `systemd-entrypoint.sh` lines 152–155).
+   (`start-pocket.sh` line 148; `systemd-entrypoint.sh` lines
+   163–174).
 4. The launchers' own readiness probes authenticate with the same
    credential (`oc_get()` uses `curl -u "opencode:$PASS"`,
-   `start-pocket.sh` lines 102–103; `systemd-entrypoint.sh`
-   lines 101–103) — so during startup the password also appears
+   `start-pocket.sh` lines 105–106; `systemd-entrypoint.sh`
+   lines 113–115) — so during startup the password also appears
    transiently in `curl`'s argument list.
 5. In the server, `server.mjs` reads the environment once at startup
    (lines 64–66: `OPENCODE_URL`, `OPENCODE_SERVER_USERNAME` default
@@ -102,18 +106,29 @@ with the secret already written into it — at mode 644 until the chmod
 ran, and if the script was interrupted in between, the weaker mode
 persisted (the chmod is never re-applied to an existing file).
 
-Fix made with this note (`scripts/start-pocket.sh` only): the
-bootstrap now saves the caller's umask and sets `umask 077` before
-creating the directory and secret files, restoring the original umask
-afterwards (lines 16–21 and line 50). The credentials are owner-only
-from the moment they exist; the existing `chmod 700`/`chmod 600` lines
-remain as a second layer.
+Fix made with this note (both launchers): each bootstrap now saves
+the caller's umask and sets `umask 077` before creating the directory
+and secret files, restoring the original umask once both secrets are
+in place (`start-pocket.sh` lines 16–21 and line 53;
+`systemd-entrypoint.sh` lines 51–56 and line 86). The credentials are
+owner-only from the moment they exist; the existing
+`chmod 700`/`chmod 600` lines remain as a second layer.
 
-`scripts/systemd-entrypoint.sh` ends at the same 700/600 permissions
-via `ensure_secret()`, but it still uses the create-then-chmod order
-without a umask guard, so the same transient window exists there.
-That is recorded here rather than silently left: the same one-line
-hardening applies if the entrypoint is touched next.
+The same change also closes the pre-existing-file half of the
+finding: both scripts now re-apply `chmod 600` to the password files
+on **every** start, not only in the creation branch
+(`start-pocket.sh` lines 35 and 49; `systemd-entrypoint.sh` line 72,
+inside `ensure_secret()`). A secret file left at mode 644 by an
+interrupted pre-fix bootstrap is therefore repaired automatically on
+the next start, instead of being reused at the weaker mode forever.
+
+Manual remediation for existing installs is optional — the next
+start already repairs the modes — but anyone who wants to fix them
+immediately can stop DevMoter, run
+`chmod 600 ~/.config/opencode-pocket/opencode-server-password ~/.config/opencode-pocket/devmoter-auth-password`,
+and start again. (Deleting the files instead also works, but then
+both processes must be restarted so they agree on the fresh values;
+see §2.)
 
 ## 4. Is upstream authentication enforced?
 
@@ -188,8 +203,13 @@ dirs, loopback only, deterministic):
    `scripts/start-pocket.sh` against a temp `HOME` under umask 022:
    asserts directory mode 700, both password files mode 600, long
    independent tokens, and identical contents after a second run
-   (create-once, no rotation). Also asserts the static
-   chmod/umask contract in both launcher scripts.
+   (create-once, no rotation). A second case pre-creates both files
+   at mode 644 and asserts the bootstrap repairs them to 600 without
+   changing their contents (self-heal). Also asserts the static
+   chmod/umask contract in both launcher scripts, including the
+   umask-before-creation and restore-after-both-secrets ordering in
+   `scripts/systemd-entrypoint.sh` as well as in
+   `scripts/start-pocket.sh`.
 2. Spawns a separate Node process that reads the credential file and
    calls an auth-checking mock upstream directly: 200 with the real
    credential, 401 with a wrong one, 401 with none (§5).
