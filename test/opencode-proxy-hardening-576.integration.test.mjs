@@ -486,8 +486,7 @@ rl.on("line", line => {
       "blocked shell mutations must never reach upstream"
     );
 
-    // 3c. Build session can be temporarily downgraded via header without losing build mode,
-    //     and explicitly configured to plan via /agent (ignoring empty-agent spoof attempts).
+    // 3c. Headers cannot change a build session. An explicit /agent transition can.
     const createRw = await fetch(`${baseUrl}/api/opencode/session`, {
       method: "POST",
       headers: {
@@ -502,7 +501,7 @@ rl.on("line", line => {
     assert.equal(createRw.status, 200);
     assert.equal((await createRw.json()).id, "ses_rw_created");
 
-    const rwDowngradedPrompt = await fetch(`${baseUrl}/api/opencode/session/ses_rw_created/prompt`, {
+    const rwPrompt = await fetch(`${baseUrl}/api/opencode/session/ses_rw_created/prompt`, {
       method: "POST",
       headers: {
         ...baseHeaders,
@@ -513,9 +512,9 @@ rl.on("line", line => {
       body: JSON.stringify({ text: "read only check" }),
       signal: AbortSignal.timeout(4000)
     });
-    assert.equal(rwDowngradedPrompt.status, 200);
+    assert.equal(rwPrompt.status, 200);
     const rwPromptUpstream = received.filter(r => r.path === "/session/ses_rw_created/prompt_async").at(-1);
-    assert.equal(rwPromptUpstream.body.tools["*"], false);
+    assert.equal(rwPromptUpstream.body.tools, undefined);
 
     // Subsequent shell on the build session still works when not downgraded.
     const rwShell = await fetch(`${baseUrl}/api/opencode/session/ses_rw_created/shell`, {
@@ -634,15 +633,13 @@ rl.on("line", line => {
         "content-type": "application/json",
         "x-pocket-operation-id": "ro-encoded-prompt-576"
       },
-      body: JSON.stringify({ text: "sneak" }),
+      body: JSON.stringify({ text: "hello" }),
       signal: AbortSignal.timeout(4000)
     });
-    assert.equal(encodedPrompt.status, 404, "encoded prompt segment must hit the adapter-owned guard");
-    assert.equal(
-      received.slice(beforeEncodedPrompt).some(r => r.path === "/session/ses_ro_created/prompt_async"),
-      false,
-      "encoded prompt must never be forwarded as a raw prompt"
-    );
+    assert.equal(encodedPrompt.status, 200, "canonical prompt must use the adapter");
+    const promptCalls = received.slice(beforeEncodedPrompt);
+    assert.ok(promptCalls.some(r => r.path === "/session/ses_ro_created/prompt_async"));
+    assert.ok(!promptCalls.some(r => r.path === "/api/session/ses_ro_created/prompt"));
 
     const trailingSlashShell = await fetch(`${baseUrl}/api/opencode/session/ses_ro_created/shell/`, {
       method: "POST",

@@ -33,9 +33,10 @@ export function modeFromAgent(value) {
 }
 
 /**
- * Resolve the effective mode given the server-side session mode and an optional
- * client-supplied mode hint. The client hint may preserve or lower privileges
- * (e.g. build -> plan/ask) for a request, never escalate read-only -> build.
+ * Resolve the effective mode given the server-side session mode and an
+ * optional mode taken from an explicit operation parameter (a create/agent
+ * request body or a prompt's agent). The parameter may preserve or lower
+ * privileges (e.g. build -> plan/ask), never escalate read-only -> build.
  */
 export function resolveEffectiveAgentMode(sessionMode, requestedMode) {
   const serverMode = parseAgentMode(sessionMode) || "build";
@@ -52,8 +53,26 @@ export function sessionIdFromOpenCodePath(value) {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+/**
+ * Canonical shape for proxy route matching: query-free, with trailing
+ * slashes stripped (never to empty). "/api/session/{id}/agent/" is the same
+ * route as "/api/session/{id}/agent" and must not slip past the guards that
+ * match on it (#591 audit).
+ */
+export function normalizeProxyRoutePath(value) {
+  return pathnameOnly(value).replace(/\/+$/, "") || "/";
+}
+
+export function isSessionCreateRoute(value) {
+  return normalizeProxyRoutePath(value) === "/api/session";
+}
+
+export function isSessionAgentRoute(value) {
+  return /^\/api\/session\/[^/]+\/agent$/.test(normalizeProxyRoutePath(value));
+}
+
 export function isDirectMutationRoute(value) {
-  return /^\/api\/session\/[^/]+\/(?:shell|command)$/.test(pathnameOnly(value));
+  return /^\/api\/session\/[^/]+\/(?:shell|command)$/.test(normalizeProxyRoutePath(value));
 }
 
 // Session operations whose OpenCode routes differ by generation. DevMoter
@@ -61,7 +80,7 @@ export function isDirectMutationRoute(value) {
 // never forward them, or a client could bypass mode and sandbox policy.
 export function isAdapterOwnedRoute(value) {
   return /^\/api\/session\/[^/]+\/(?:prompt|prompt_async|message|interrupt|abort|context|permission|permissions|question|form)(?:\/|$)/
-    .test(pathnameOnly(value));
+    .test(normalizeProxyRoutePath(value));
 }
 
 /** The tool allowlist a read-only mode imposes on a run, or null. */
