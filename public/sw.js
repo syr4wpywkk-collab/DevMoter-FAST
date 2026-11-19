@@ -1,4 +1,4 @@
-const CACHE = "devmoter-fast-v21";
+const CACHE = "devmoter-fast-v22";
 const SHELL = ["/", "/manifest.webmanifest"];
 
 function isSameOriginUrl(url) {

@@ -130,6 +130,21 @@ test("activate removes every cache from older builds and claims open clients", a
   assert.equal(worker.state().claimed, true);
 });
 
+test("upgrading from v21 removes old login and cross-origin entries", async () => {
+  const legacyCache = "devmoter-fast-v21";
+  const worker = loadWorker({ cacheNames: [legacyCache] });
+  const urls = [`${ORIGIN}/login.js`, "https://other.test/app.js"];
+  for (const url of urls) worker.stores.get(legacyCache).set(url, { body: "legacy" });
+
+  await dispatch(worker.listeners.get("install"));
+  await dispatch(worker.listeners.get("activate"));
+
+  assert.deepEqual(worker.deleted, [legacyCache]);
+  assert.deepEqual([...worker.stores.keys()], [worker.cacheName]);
+  assert.ok(worker.stores.get(worker.cacheName).has(`${ORIGIN}/`));
+  for (const url of urls) assert.equal(worker.stores.get(worker.cacheName).has(url), false);
+});
+
 test("cache name is versioned so a new build replaces the old shell", () => {
   const worker = loadWorker();
   assert.match(worker.cacheName, /^devmoter-fast-v\d+$/);
@@ -181,9 +196,9 @@ test("API, login, and non-GET requests are never intercepted or cached", async (
 
 test("cross-origin and non-http(s) fetches are never intercepted, fetched, or cached", async () => {
   const worker = loadWorker({
-    cacheNames: ["devmoter-fast-v21"],
     network: async () => ({ ok: true, redirected: false, clone() { return { body: "remote-copy" }; }, body: "remote" })
   });
+  worker.stores.set(worker.cacheName, new Map());
   worker.stores.get(worker.cacheName).set("https://evil.example/seeded.js", { body: "poisoned" });
 
   for (const request of [
