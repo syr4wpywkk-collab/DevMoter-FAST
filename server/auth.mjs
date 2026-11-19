@@ -1,4 +1,76 @@
 import { timingSafeEqual } from "node:crypto";
+import { isIP } from "node:net";
+
+export const ALLOW_INSECURE_HTTP_ENV = "DEVMOTER_ALLOW_INSECURE_HTTP";
+
+export function isLoopbackAddress(address) {
+  if (typeof address !== "string") return false;
+  const raw = address.trim().toLowerCase();
+  if (!raw) return false;
+  const bracketed = raw.startsWith("[") && raw.endsWith("]");
+  const value = bracketed ? raw.slice(1, -1) : raw;
+  if (!bracketed && isIP(value) === 4) {
+    return value.startsWith("127.");
+  }
+  if (isIP(value) === 6) {
+    try {
+      const canonical = new URL(`http://[${value}]`).hostname;
+      return canonical === "[::1]" || /^\[::ffff:7f[0-9a-f]{2}:[0-9a-f]{1,4}\]$/.test(canonical);
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+export function isLoopbackBindHost(host) {
+  if (typeof host !== "string") return false;
+  const normalized = host.trim().toLowerCase();
+  if (!normalized) return false;
+  if (normalized === "localhost") return true;
+  return isLoopbackAddress(normalized);
+}
+
+/**
+ * Validate whether binding plain HTTP to `host` is safe to start without
+ * an explicit operator opt-in. `DEVMOTER_PUBLIC_ORIGIN` is never treated as
+ * proof of TLS termination because DevMoter itself still speaks plain HTTP.
+ */
+export function evaluateHttpBindSafety(host, env = process.env) {
+  const normalizedHost = typeof host === "string" ? host.trim() : "";
+  if (isLoopbackBindHost(normalizedHost)) {
+    return { ok: true, loopback: true, warning: null, error: null };
+  }
+
+  const displayHost = normalizedHost.replace(/[\u0000-\u001f\u007f]/g, "") || "(empty)";
+  const allowInsecureHttp = env?.[ALLOW_INSECURE_HTTP_ENV] === "1";
+  const warning =
+    `[SECURITY WARNING] DevMoter FAST is configured to bind plain HTTP to non-loopback host "${displayHost}"` +
+    `${allowInsecureHttp ? ` (${ALLOW_INSECURE_HTTP_ENV}=1)` : ""}. ` +
+    `HTTP Basic auth credentials will traverse the network unencrypted over plain HTTP unless TLS ` +
+    `or an encrypted tunnel protects every hop (DEVMOTER_PUBLIC_ORIGIN does not enable or verify TLS).`;
+
+  if (!allowInsecureHttp) {
+    const error =
+      `Refusing to start plain HTTP server on non-loopback host "${displayHost}": ` +
+      `HTTP Basic auth credentials will traverse the network unencrypted over plain HTTP without TLS. ` +
+      `Keep POCKET_HOST bound to a loopback address (such as 127.0.0.1) behind Tailscale Serve or a local TLS reverse proxy, ` +
+      `or set ${ALLOW_INSECURE_HTTP_ENV}=1 if an external TLS/encrypted tunnel boundary is verified ` +
+      `(DEVMOTER_PUBLIC_ORIGIN alone does not satisfy this check).`;
+    return { ok: false, loopback: false, warning, error };
+  }
+
+  return { ok: true, loopback: false, warning, error: null };
+}
+
+export function assertSafeHttpBind(host, env = process.env, { warn = console.warn } = {}) {
+  const result = evaluateHttpBindSafety(host, env);
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
+  if (result.warning) warn(result.warning);
+  return result;
+}
 
 // Credentials are compared, never stored, so no hashing is involved: both
 // sides are copied into fixed-size buffers and compared in constant time.
