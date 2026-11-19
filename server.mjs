@@ -1165,9 +1165,9 @@ async function loadOpenCodeProviderCatalog(refresh) {
   }
 }
 
-async function opencodeProviders(url, res) {
+async function opencodeProviders(refresh, res) {
   try {
-    const payload = await loadOpenCodeProviderCatalog(url.searchParams.get("refresh") === "1");
+    const payload = await loadOpenCodeProviderCatalog(refresh);
     json(res, 200, payload);
   } catch (error) {
     json(res, 502, {
@@ -1767,15 +1767,81 @@ const OPENCODE_SAFE_PATH = /^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/;
 const OPENCODE_SAFE_QUERY = /^(\?[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*)?$/;
 const OPENCODE_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
 
+// Query parameters the browser client may send through the OpenCode proxy,
+// scoped to the single route that uses them (per-use allowlist). Derived
+// from the src/opencode.ts api() call sites: the session list uses limit &
+// order, /pocket/providers uses refresh. Routes absent from the table take
+// no query parameters at all. Anything else is rejected (never silently
+// stripped) so contract drift is visible to clients.
+const OPENCODE_QUERY_VALIDATORS = {
+  limit: value => /^[0-9]+$/.test(value) && Number(value) >= 1 && Number(value) <= 200,
+  order: value => value === "asc" || value === "desc",
+  refresh: value => value === "0" || value === "1"
+};
+const OPENCODE_QUERY_ALLOWLIST_BY_ROUTE = new Map([
+  ["GET /api/session", new Map([
+    ["limit", OPENCODE_QUERY_VALIDATORS.limit],
+    ["order", OPENCODE_QUERY_VALIDATORS.order]
+  ])],
+  ["GET /api/pocket/providers", new Map([
+    ["refresh", OPENCODE_QUERY_VALIDATORS.refresh]
+  ])]
+]);
+const OPENCODE_QUERY_NO_PARAMS = new Map();
+// Directory/project selection is decided server-side (OPENCODE_DIRECTORY and
+// the project registry), never from client query input.
+const OPENCODE_QUERY_FORBIDDEN = new Set(["directory", "dir", "path", "workspace", "project", "projectid"]);
+const OPENCODE_QUERY_MAX_PARAMS = 8;
+const OPENCODE_QUERY_MAX_LENGTH = 1024;
+
+/**
+ * Validate the raw query (leading "?" included, or "") against the allowlist
+ * for the HTTP method and policy path being served, and rebuild it
+ * from the validated pairs only. Returns { query } where query is "" or
+ * "?..." in canonical URLSearchParams encoding, or { error } (400).
+ */
+function buildOpenCodeUpstreamQuery(rawQuery, method, policyPath) {
+  if (!rawQuery) return { query: "" };
+  if (rawQuery.length > OPENCODE_QUERY_MAX_LENGTH) {
+    return { error: "OpenCode proxy query is not allowed" };
+  }
+  const pairs = [...new URLSearchParams(rawQuery.slice(1)).entries()];
+  if (pairs.length > OPENCODE_QUERY_MAX_PARAMS) {
+    return { error: "OpenCode proxy query is not allowed" };
+  }
+  const allowlist = OPENCODE_QUERY_ALLOWLIST_BY_ROUTE.get(`${method} ${policyPath}`) || OPENCODE_QUERY_NO_PARAMS;
+  const rebuilt = new URLSearchParams();
+  const seen = new Set();
+  for (const [name, value] of pairs) {
+    if (OPENCODE_QUERY_FORBIDDEN.has(name.toLowerCase())) {
+      return { error: `OpenCode proxy query parameter "${name}" is not allowed` };
+    }
+    const validate = allowlist.get(name);
+    if (!validate) {
+      return { error: `OpenCode proxy query parameter "${name}" is not allowed` };
+    }
+    if (seen.has(name)) {
+      return { error: `OpenCode proxy query parameter "${name}" must not be repeated` };
+    }
+    if (!validate(value)) {
+      return { error: `OpenCode proxy query parameter "${name}" has an invalid value` };
+    }
+    seen.add(name);
+    rebuilt.append(name, value);
+  }
+  const query = rebuilt.toString();
+  return { query: query ? `?${query}` : "" };
+}
+
 /**
  * Validate the client path once and build the OpenCode request target as a
  * plain string: fixed OpenCode origin + "/api/" + allowlisted path (+ query).
  * ONE canonical (decoded, normalized) path drives validation, the policy
  * classification, and the upstream URL, so the route DevMoter checks is the
- * route OpenCode serves. Returns { upstreamUrl, policyPath, upstreamAlias }
+ * route OpenCode serves. Returns { upstreamUrl, policyPath, upstreamAlias, query }
  * or { error }.
  */
-export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
+export function buildOpenCodeUpstreamTarget(rawRequestUrl, method) {
   const raw = String(rawRequestUrl || "");
   if (!raw.startsWith(OPENCODE_PROXY_PREFIX)) {
     return { error: "OpenCode proxy path is invalid" };
@@ -1807,8 +1873,12 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
     return { error: "OpenCode proxy path is not allowed" };
   }
   const policyPath = `/api/${apiRelative}`;
-  const upstreamUrl = `${OPENCODE_ORIGIN}/api/${apiRelative}${rawQuery}`;
-  return { upstreamUrl, policyPath, upstreamAlias };
+  const validatedQuery = isAdapterOwnedRoute(policyPath)
+    ? { query: "" }
+    : buildOpenCodeUpstreamQuery(rawQuery, method, policyPath);
+  if (validatedQuery.error) return validatedQuery;
+  const upstreamUrl = `${OPENCODE_ORIGIN}/api/${apiRelative}${validatedQuery.query}`;
+  return { upstreamUrl, policyPath, upstreamAlias, query: validatedQuery.query };
 }
 
 // DevMoter's OpenCode session surface. The browser (and every other DevMoter
@@ -2748,7 +2818,7 @@ const server = http.createServer(async (req, res) => {
     // URL parsing can erase dot segments. Validate the original request target
     // before dispatching to either an OpenCode adapter or any other route.
     const openCodeTarget = req.url.startsWith(OPENCODE_PROXY_PREFIX) || url.pathname.startsWith(OPENCODE_PROXY_PREFIX)
-      ? buildOpenCodeUpstreamTarget(req.url)
+      ? buildOpenCodeUpstreamTarget(req.url, req.method)
       : null;
     if (openCodeTarget?.error) {
       json(res, 400, { error: openCodeTarget.error });
@@ -3789,7 +3859,7 @@ const server = http.createServer(async (req, res) => {
 
 
     if (req.method === "GET" && openCodeTarget?.policyPath === "/api/pocket/providers" && !openCodeTarget.upstreamAlias) {
-      await opencodeProviders(url, res);
+      await opencodeProviders(new URLSearchParams(openCodeTarget.query).get("refresh") === "1", res);
       return;
     }
 
