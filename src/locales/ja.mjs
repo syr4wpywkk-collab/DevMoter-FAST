@@ -1916,6 +1916,7 @@ export const ja = {
   "qwen.chat.emptyHistory": "まだチャットはありません",
   "qwen.chat.deleteChatAria": "「{title}」を削除",
   "qwen.chat.deleteChatConfirm": "「{title}」を削除しますか？",
+  "qwen.chat.restoreChat": "元に戻す: 「{title}」を復元",
   "qwen.chat.stoppedMessage": "停止しました",
   "qwen.chat.chatProjectNotFound": "このチャットのプロジェクトが見つかりません",
   "qwen.chat.chooseProjectFirst": "先にプロジェクトを選んでください",

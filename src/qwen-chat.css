@@ -259,6 +259,7 @@ html[data-devmoter-theme="light"] .qx-app { color-scheme: light; }
 .qx-history-open small { color: var(--text-secondary); font-size: var(--font-size-caption); font-variant-numeric: tabular-nums; }
 .qx-history-delete { border-color: transparent; background: transparent; color: var(--text-secondary); }
 .qx-history-empty { margin: var(--space-4) var(--space-2); color: var(--text-secondary); font-size: var(--font-size-label); }
+.qx-history-restore { width: 100%; min-height: 44px; margin-bottom: var(--space-2); border: 1px solid var(--border-subtle); border-radius: var(--radius-control); background: transparent; color: var(--text-primary); font: inherit; font-size: var(--font-size-label); text-align: left; }
 
 
 /* Model picker: bottom sheet on phones, a centered panel on wide screens. */
