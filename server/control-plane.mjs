@@ -152,19 +152,28 @@ export function nextCronRun(expression, timeZone = "UTC", from = new Date(), ski
   const rule = parseCron(expression);
   let at = Math.floor(from.getTime() / 60_000) * 60_000 + 60_000;
   const limit = at + NEXT_RUN_HORIZON_MS;
+  let p = zonedParts(new Date(at), timeZone);
+  const step = (to, parts) => { at = to; p = parts || zonedParts(new Date(at), timeZone); };
   while (at <= limit) {
-    const p = zonedParts(new Date(at), timeZone);
     const dayOk = rule.day.has(p.day) && rule.month.has(p.month) && rule.weekday.has(p.weekday);
     if (dayOk && rule.hour.has(p.hour)) {
       if (rule.minute.has(p.minute) && minuteKey(new Date(at), timeZone) !== skipKey) return at;
-      at += 60_000;
-    } else {
-      // Skip to the start of the next local hour, unless a UTC-offset change
-      // falls inside it: then walk minute by minute so no local time is missed.
-      const jump = at + (60 - p.minute) * 60_000;
-      const q = zonedParts(new Date(jump), timeZone);
-      at = q.minute === 0 && q.hour === (p.hour + 1) % 24 ? jump : at + 60_000;
+      step(at + 60_000);
+      continue;
     }
+    // Skip to the next local midnight (wrong day) or the next local hour,
+    // but only when the jump lands exactly there. A UTC-offset change inside
+    // the skipped span makes it miss, and then the search walks in smaller
+    // steps so no local time is passed over.
+    if (!dayOk) {
+      const midnight = at + ((24 - p.hour) * 60 - p.minute) * 60_000;
+      const q = zonedParts(new Date(midnight), timeZone);
+      if (q.hour === 0 && q.minute === 0 && q.day !== p.day) { step(midnight, q); continue; }
+    }
+    const hour = at + (60 - p.minute) * 60_000;
+    const q = zonedParts(new Date(hour), timeZone);
+    if (q.minute === 0 && q.hour === (p.hour + 1) % 24) step(hour, q);
+    else step(at + 60_000);
   }
   return null;
 }
