@@ -1,5 +1,6 @@
 import { createDeviceGate, isDeviceAuthError, responseError } from "./device-gate.mjs";
-import { formatNumber, t, translateServerMessage } from "./i18n";
+import { RUN_RESULT_FILTERS, filterRunsByResult, formatLocalRunTime, scheduleNextRunView, type RunResultFilter } from "./automation-view.mjs";
+import { formatNumber, getLanguage, localeTag, t, translateServerMessage } from "./i18n";
 import { createSheetHeader } from "./sheet-header.mjs";
 
 const esc = (value: string) =>
@@ -108,6 +109,23 @@ function field(labelText: string, input: HTMLElement) {
   span.textContent = labelText;
   label.append(span, input);
   return label;
+}
+
+function localRunTime(value: unknown) {
+  return formatLocalRunTime(value, localeTag(getLanguage()));
+}
+
+function detailList(entries: Array<[string, string]>) {
+  const list = document.createElement("dl");
+  list.className = "dm-detail-list";
+  for (const [term, value] of entries) {
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    list.append(dt, dd);
+  }
+  return list;
 }
 
 function textInput(placeholder = "") {
@@ -236,6 +254,9 @@ export function mountRemoteControlCenter() {
 
   // The sheet title is the label of the section that is showing, so it matches
   // the Settings row (ホスト一覧 / 自動化 / パスキー) that opened it.
+  let runResultFilter: RunResultFilter = "all";
+  let automationRunsOpen = false;
+
   async function render() {
     const generation = ++renderGeneration;
     const tab = tabs.find(item => item.dataset.tab === activeTab);
@@ -251,7 +272,7 @@ export function mountRemoteControlCenter() {
     } catch (error) {
       if (isDeviceAuthError(error)) {
         // One button into 信頼済み端末 instead of "Trusted device token required".
-        view.appendChild(createDeviceGate(document, { compact: true, onRegister: () => closeModal(false) }));
+        view.appendChild(createDeviceGate(document, { compact: true, error, onRegister: () => closeModal(false) }));
       } else {
         const p = document.createElement("p");
         p.className = "dm-error";
@@ -342,9 +363,15 @@ export function mountRemoteControlCenter() {
       row.className = "dm-row";
       const copy = document.createElement("div");
       copy.className = "dm-row-copy";
-      copy.innerHTML = `<strong></strong><small></small>`;
+      copy.innerHTML = `<strong></strong><small></small><small class="dm-next-run"></small>`;
       copy.querySelector("strong")!.textContent = schedule.name;
       copy.querySelector("small")!.textContent = `${schedule.cron} · ${schedule.timeZone} · ${schedule.backend} · ${schedule.enabled ? t("remote.automation.active") : t("remote.automation.paused")}`;
+      const nextRun = scheduleNextRunView(schedule);
+      const nextRunLine = copy.querySelector<HTMLElement>(".dm-next-run")!;
+      nextRunLine.dataset.state = nextRun.state;
+      nextRunLine.textContent = nextRun.state === "scheduled"
+        ? t("remote.automation.nextRun", { time: localRunTime(nextRun.at) })
+        : t(`remote.automation.nextRun.${nextRun.state}`);
       const toggle = button(schedule.enabled ? t("remote.automation.pause") : t("remote.automation.resume"), "dm-mini");
       toggle.addEventListener("click", async () => {
         await api(`/api/control/schedules/${schedule.id}`, { method: "PATCH", body: JSON.stringify({ enabled: !schedule.enabled }) });
@@ -369,8 +396,16 @@ export function mountRemoteControlCenter() {
     const project = selectInput(projectOptions);
     const task = document.createElement("textarea");
     task.placeholder = t("remote.automation.taskPlaceholder");
-    const create = button(t("remote.automation.createSchedule"), "primary");
+    const create = button(t("remote.automation.previewSchedule"), "primary");
     create.type = "submit";
+    const previewPanel = document.createElement("div");
+    previewPanel.className = "dm-preview";
+    previewPanel.hidden = true;
+    previewPanel.setAttribute("aria-live", "polite");
+    const scheduleInput = () => ({ name: scheduleName.value, cron: cron.value, timeZone: timezone.value || timezone.placeholder, backend: backend.value, projectId: project.value, task: task.value });
+    // Any edit discards the preview, so what gets saved is what was shown.
+    const clearPreview = () => { previewPanel.hidden = true; previewPanel.replaceChildren(); };
+    scheduleForm.addEventListener("input", clearPreview);
     scheduleForm.append(
       field(t("remote.automation.nameField"), scheduleName),
       field(t("remote.automation.cronField"), cron),
@@ -378,15 +413,53 @@ export function mountRemoteControlCenter() {
       field(t("remote.automation.backendField"), backend),
       field(t("remote.automation.projectField"), project),
       field(t("remote.automation.taskField"), task),
-      create
+      create,
+      previewPanel
     );
     scheduleForm.addEventListener("submit", async event => {
       event.preventDefault();
-      await api("/api/control/schedules", {
-        method: "POST",
-        body: JSON.stringify({ name: scheduleName.value, cron: cron.value, timeZone: timezone.value, backend: backend.value, projectId: project.value, task: task.value })
+      const input = scheduleInput();
+      const sent = JSON.stringify(input);
+      let preview: Json;
+      try {
+        preview = (await api<{ preview: Json }>("/api/control/schedules/preview", { method: "POST", body: sent })).preview;
+      } catch (error) {
+        clearPreview();
+        showToast(error instanceof Error ? error.message : String(error));
+        return;
+      }
+      const upcoming = ((preview.upcomingRuns || []) as unknown[]).map(localRunTime).filter(Boolean);
+      const heading = document.createElement("strong");
+      heading.textContent = t("remote.automation.previewTitle");
+      const note = document.createElement("small");
+      note.textContent = t("remote.automation.previewNote");
+      const save = button(t("remote.automation.createSchedule"), "primary");
+      save.addEventListener("click", async () => {
+        if (JSON.stringify(scheduleInput()) !== sent) { clearPreview(); return; }
+        save.disabled = true;
+        try {
+          await api("/api/control/schedules", { method: "POST", body: sent });
+        } catch (error) {
+          save.disabled = false;
+          showToast(error instanceof Error ? error.message : String(error));
+          return;
+        }
+        await render();
       });
-      await render();
+      previewPanel.replaceChildren(
+        heading,
+        detailList([
+          [t("remote.automation.nameField"), String(preview.name || "")],
+          [t("remote.automation.previewTarget"), `${preview.backend === "opencode" ? "OpenCode" : "Codex"} · ${preview.projectMissing ? t("remote.automation.previewProjectMissing") : preview.project?.name || t("remote.automation.noProject")}`],
+          [t("remote.automation.taskField"), String(preview.task || "")],
+          [t("remote.automation.previewRule"), `${preview.cron} (${preview.timeZone})`],
+          [t("remote.automation.previewUpcoming"), upcoming.length ? upcoming.join("\n") : t(`remote.automation.nextRun.${preview.nextRunState === "paused" ? "paused" : "none"}`)],
+          [t("remote.automation.previewApproval"), t("remote.automation.previewApprovalNormal")]
+        ]),
+        note,
+        save
+      );
+      previewPanel.hidden = false;
     });
     if (!(schedules.schedules || []).length) scheduleList.appendChild(emptyRow(t("remote.automation.noSchedules")));
     detailsSchedule.appendChild(collapsible(t("remote.automation.newSchedule"), scheduleForm));
@@ -493,11 +566,16 @@ export function mountRemoteControlCenter() {
     });
     detailsAutopilot.appendChild(collapsible(t("remote.automation.newAutopilot"), autopilotForm));
 
+    const runFilterBar = document.createElement("div");
+    runFilterBar.className = "dm-filter";
+    runFilterBar.setAttribute("role", "group");
+    runFilterBar.setAttribute("aria-label", t("remote.automation.runFilter"));
     const runList = document.createElement("div");
     runList.className = "dm-list";
-    for (const run of (runs.runs || []).slice(0, 20)) {
+
+    const runRow = (run: Json) => {
       const row = document.createElement("div");
-      row.className = "dm-row";
+      row.className = "dm-row dm-run-row";
       const copy = document.createElement("div");
       copy.className = "dm-row-copy";
       const strong = document.createElement("strong");
@@ -510,8 +588,16 @@ export function mountRemoteControlCenter() {
             max: run.bounds?.maxTurns ? formatNumber(Number(run.bounds.maxTurns)) : "?",
             summary: String(run.summary || "")
           })
-        : `${run.backend} · ${run.summary || ""}`;
+        : run.status === "failed" ? String(run.backend || "") : `${run.backend} · ${run.summary || ""}`;
       copy.append(strong, small);
+      if (run.status === "failed") {
+        const reason = document.createElement("small");
+        reason.className = "dm-failure-reason";
+        reason.textContent = run.failureReason
+          ? t("remote.automation.failureReason", { reason: String(run.failureReason) })
+          : t("remote.automation.failureReasonUnknown");
+        copy.appendChild(reason);
+      }
       row.appendChild(copy);
       if (run.kind === "autopilot" && ["queued", "running", "paused"].includes(run.status)) {
         const primaryAction = button(run.status === "paused" ? t("remote.automation.resume") : t("remote.automation.pause"), "dm-mini");
@@ -527,8 +613,79 @@ export function mountRemoteControlCenter() {
         });
         row.append(primaryAction, cancel);
       }
-      runList.appendChild(row);
+      if (run.retryable) {
+        const retry = button(t("remote.automation.retry"), "dm-mini");
+        const confirmPanel = document.createElement("div");
+        confirmPanel.className = "dm-preview dm-retry-confirm";
+        confirmPanel.hidden = true;
+        const heading = document.createElement("strong");
+        heading.textContent = t("remote.automation.retryTitle");
+        const warning = document.createElement("small");
+        warning.textContent = t("remote.automation.retryWarning");
+        const projectName = (projects.projects || []).find(item => item.id === run.projectId)?.name;
+        const confirm = button(t("remote.automation.retryConfirm"), "primary");
+        const dismiss = button(t("common.cancel"), "dm-mini");
+        const actions = document.createElement("div");
+        actions.className = "dm-preview-actions";
+        actions.append(dismiss, confirm);
+        confirmPanel.append(
+          heading,
+          detailList([
+            [t("remote.automation.previewTarget"), `${run.backend === "opencode" ? "OpenCode" : "Codex"} · ${projectName || (run.projectId ? t("remote.automation.previewProjectMissing") : t("remote.automation.noProject"))}`],
+            [t("remote.automation.taskField"), String(run.task || "")],
+            [t("remote.automation.retryPrevious"), run.failureReason ? String(run.failureReason) : t("remote.automation.failureReasonUnknown")],
+            [t("remote.automation.previewApproval"), t("remote.automation.previewApprovalNormal")]
+          ]),
+          warning,
+          actions
+        );
+        retry.addEventListener("click", () => {
+          confirmPanel.hidden = !confirmPanel.hidden;
+          retry.setAttribute("aria-expanded", String(!confirmPanel.hidden));
+        });
+        retry.setAttribute("aria-expanded", "false");
+        dismiss.addEventListener("click", () => {
+          confirmPanel.hidden = true;
+          retry.setAttribute("aria-expanded", "false");
+        });
+        confirm.addEventListener("click", async () => {
+          confirm.disabled = true;
+          try {
+            await api(`/api/control/runs/${encodeURIComponent(String(run.id))}/retry`, { method: "POST", body: JSON.stringify({ confirm: true }) });
+          } catch (error) {
+            confirm.disabled = false;
+            showToast(error instanceof Error ? error.message : String(error));
+            return;
+          }
+          automationRunsOpen = true;
+          await render();
+        });
+        row.append(retry, confirmPanel);
+      }
+      return row;
+    };
+
+    const drawRuns = () => {
+      const visible = filterRunsByResult(runs.runs || [], runResultFilter).slice(0, 20);
+      runList.replaceChildren(...visible.map(runRow));
+      if (!visible.length) runList.appendChild(emptyRow(t("remote.automation.noRuns")));
+      for (const item of Array.from(runFilterBar.children)) {
+        item.setAttribute("aria-pressed", String((item as HTMLElement).dataset.filter === runResultFilter));
+      }
+    };
+    for (const filter of RUN_RESULT_FILTERS) {
+      const item = button(t(`remote.automation.runFilter.${filter}`), "dm-mini");
+      item.dataset.filter = filter;
+      item.addEventListener("click", () => {
+        runResultFilter = filter;
+        drawRuns();
+      });
+      runFilterBar.appendChild(item);
     }
+    drawRuns();
+    detailsAutopilot.open = automationRunsOpen;
+    detailsAutopilot.addEventListener("toggle", () => { automationRunsOpen = detailsAutopilot.open; });
+    detailsAutopilot.appendChild(runFilterBar);
     detailsAutopilot.appendChild(runList);
     body.appendChild(detailsAutopilot);
   }

@@ -410,6 +410,8 @@ test("server.mjs live preview proxy serves listed preview and rejects self ports
   });
   assert.equal(proxyGet.status, 200);
   assert.match(proxyGet.headers.get("content-security-policy") || "", /sandbox allow-scripts/);
+  assert.equal(proxyGet.headers.get("x-frame-options"), null);
+  assert.equal(proxyGet.headers.get("cross-origin-resource-policy"), null);
   const html = await proxyGet.text();
   assert.match(html, /hello preview/);
   assert.ok(html.includes(`src="${preview.url}app.js"`));

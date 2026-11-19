@@ -20,6 +20,7 @@ import { mountSetupWizard } from "./setup-wizard";
 import { mountUnifiedFeatureShell } from "./app-shell";
 import { startViewportSync } from "./visual-viewport.mjs";
 import { startSessionExpiryWatch } from "./session-expiry.mjs";
+import { startPasteSecretGuard } from "./paste-secret-guard.mjs";
 import { mountHomeSurface } from "./home";
 import { mountMissionControl } from "./mission-control";
 import { createSurfaceNavigation, type MainSurface } from "./surface-navigation.mjs";
@@ -37,6 +38,7 @@ const app = document.querySelector<HTMLDivElement>("#app")!;
 // One visualViewport listener publishes --dm-viewport-height / --dm-keyboard-inset
 // and keeps focused fields above the iOS keyboard for every surface.
 startViewportSync(window);
+startPasteSecretGuard(document);
 startI18n();
 startSessionExpiryWatch(window);
 const startupParams = new URLSearchParams(window.location.search);
