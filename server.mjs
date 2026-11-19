@@ -158,6 +158,8 @@ let userAutomation = null;
 const controlPlane = new ControlPlane({
   configDir: PROJECT_CONFIG_DIR,
   executeTask: executeControlTask,
+  redact: value => redactText(value),
+  resolveProject: id => getProjectById(id),
   onLifecycle: ({ event, run }) => {
     void controlPlane.dispatchEvent("devmoter.lifecycle", event, {
       runId: run?.id ?? null,
@@ -1604,6 +1606,11 @@ async function controlRoute(req, res, url) {
       return true;
     }
 
+    if (req.method === "POST" && url.pathname === "/api/control/schedules/preview") {
+      json(res, 200, { preview: await controlPlane.previewSchedule(await readJson(req)) });
+      return true;
+    }
+
     const scheduleMatch = url.pathname.match(/^\/api\/control\/schedules\/([^/]+)$/);
     if (scheduleMatch && req.method === "PATCH") {
       if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
@@ -1642,7 +1649,19 @@ async function controlRoute(req, res, url) {
     }
 
     if (req.method === "GET" && url.pathname === "/api/control/runs") {
-      json(res, 200, { runs: await controlPlane.listRuns() });
+      json(res, 200, { runs: await controlPlane.listRuns({ result: url.searchParams.get("result") || "" }) });
+      return true;
+    }
+
+    const runRetryMatch = url.pathname.match(/^\/api\/control\/runs\/([^/]+)\/retry$/);
+    if (runRetryMatch && req.method === "POST") {
+      const payload = await readJson(req);
+      if (payload?.confirm !== true) {
+        json(res, 409, { error: "Retry requires explicit confirmation", confirmationRequired: true });
+        return true;
+      }
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      json(res, 202, await controlPlane.retryRun(decodeURIComponent(runRetryMatch[1]), { confirm: true }));
       return true;
     }
     if (req.method === "POST" && url.pathname === "/api/control/autopilot") {

@@ -265,9 +265,9 @@
 - **根拠となる API ルート**:
   - Control Plane（`server.mjs`, `server/control-plane.mjs`）:
     - `GET /api/control/hosts`, `GET /api/control/hosts/status`, `POST /api/control/hosts`, `DELETE /api/control/hosts/:id`
-    - `GET /api/control/schedules`, `POST /api/control/schedules`, `PATCH /api/control/schedules/:id`, `DELETE /api/control/schedules/:id`
+    - `GET /api/control/schedules`, `POST /api/control/schedules`, `PATCH /api/control/schedules/:id`, `DELETE /api/control/schedules/:id`, `POST /api/control/schedules/preview` (read-only: validates and returns target, upcoming run times and approval policy; saves and runs nothing)
     - `GET /api/control/triggers`, `POST /api/control/triggers`, `DELETE /api/control/triggers/:id`
-    - `GET /api/control/runs`, `POST /api/control/autopilot`, `POST /api/control/autopilot/:id/(pause|resume|cancel)`
+    - `GET /api/control/runs[?result=success|failed|running]` (failed runs carry a server-redacted `failureReason`, `null` when none was recorded), `POST /api/control/runs/:id/retry` (failed schedule/trigger runs only; requires `{ "confirm": true }`, never automatic), `POST /api/control/autopilot`, `POST /api/control/autopilot/:id/(pause|resume|cancel)`
     - `POST /api/control/events/github`（GitHub Webhook HMAC 受信）
   - Automation API v1（`server/automation-api.mjs`, `server/context-references.mjs`）:
     - `GET /api/automation/projects`, `GET /api/automation/open`, `GET /api/automation/sessions`, `POST /api/automation/tasks`, `GET /api/projects/:id/context`, `POST /api/projects/:id/context/resolve`
