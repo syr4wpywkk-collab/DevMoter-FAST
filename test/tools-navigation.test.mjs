@@ -87,7 +87,7 @@ test("Tools sidebar holds only Tools AI; registered apps still launch through th
   dom.window.close();
 });
 
-test("Home Browser preview opens the existing Files & Preview launcher; other previews stay informational", async t => {
+test("Home Browser preview opens the existing Files & Preview launcher; available apps ignore preview events", async t => {
   const dom = makeDom();
   t.after(() => dom.window.close());
   const calls = [];
@@ -101,10 +101,10 @@ test("Home Browser preview opens the existing Files & Preview launcher; other pr
   const toast = dom.window.document.querySelector(".dm-shell-toast");
   assert.equal(toast.classList.contains("hidden"), true);
 
+  // Knowledge is a real app now: a stale preview event must not show a "not available" toast.
   preview("knowledge", "Knowledge is not available yet.");
   assert.deepEqual(calls, ["advanced"]);
-  assert.equal(toast.textContent, "Knowledge is not available yet.");
-  assert.equal(toast.classList.contains("hidden"), false);
+  assert.equal(toast.classList.contains("hidden"), true);
 });
 
 test("OpenCode history keeps a direct Tools escape owned by the global shell", async t => {

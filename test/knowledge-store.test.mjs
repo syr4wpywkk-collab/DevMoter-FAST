@@ -96,3 +96,27 @@ test("Knowledge API requires a trusted device and applies operation deduplicatio
   await api.handle({ method: "POST", device: true, headers: {}, async *[Symbol.asyncIterator]() { yield Buffer.from('{"title":"x"}'); } }, duplicate, new URL("http://localhost/api/knowledge/notes"));
   assert.equal(duplicate.status, 409);
 });
+
+test("Knowledge list returns the same public fields as read, pinned notes first", async t => {
+  const root = await mkdtemp(join(tmpdir(), "devmoter-knowledge-list-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  let tick = 0;
+  const store = createKnowledgeStore({
+    rootDir: root,
+    getProjectById: async id => (id === "p1" ? { id: "p1" } : null),
+    now: () => new Date(Date.UTC(2026, 0, 1, 0, 0, ++tick)).toISOString()
+  });
+  t.after(() => store.close());
+  const older = await store.create({ title: "older", content: "a", projectId: "p1", pinned: true });
+  const newer = await store.create({ title: "newer", content: "b" });
+  const listed = await store.list();
+  assert.deepEqual(listed.map(note => note.id), [older.id, newer.id], "pinned note leads even when it is older");
+  for (const [item, source] of [[listed[0], older], [listed[1], newer]]) {
+    const { content, ...expected } = await store.read(source.id);
+    assert.deepEqual(item, expected);
+  }
+  assert.equal(listed[0].projectId, "p1");
+  assert.equal(listed[0].pinned, true);
+  assert.equal(listed[1].pinned, false);
+  assert.equal(listed[1].projectId, null);
+});
