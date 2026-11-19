@@ -50,7 +50,7 @@ function differingParts(left, right) {
  *   "proxy-mismatch"        not configured, and the proxy's forwarded headers disagree with the browser
  *   "unverified"            the browser origin was not supplied, so nothing could be compared
  */
-export function diagnosePublicOrigin(req, publicOrigin = "") {
+export function diagnosePublicOrigin(req, publicOrigin = "", options = {}) {
   const configured = Boolean(String(publicOrigin || "").trim());
   const headers = req?.headers || {};
   const forwarded = Boolean(firstValue(headers["x-forwarded-host"]) || firstValue(headers["x-forwarded-proto"]));
@@ -59,7 +59,7 @@ export function diagnosePublicOrigin(req, publicOrigin = "") {
   const configuredUrl = configured ? parseOrigin(publicOrigin) : null;
   if (configured && !configuredUrl) return { ...result, status: "invalid", writesBlocked: true };
 
-  const expected = req ? parseOrigin(expectedRequestOrigin(req, publicOrigin) || "") : null;
+  const expected = req ? parseOrigin(expectedRequestOrigin(req, publicOrigin, options) || "") : null;
   const client = parseOrigin(headers[CLIENT_ORIGIN_HEADER]);
   if (!expected || !client) return result;
 

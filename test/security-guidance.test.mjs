@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { JSDOM } from "jsdom";
 import { createSystemFeatures } from "../server/system-features.mjs";
 import { CLIENT_ORIGIN_HEADER, diagnosePublicOrigin } from "../server/origin-diagnostics.mjs";
+import { parseTrustedProxies } from "../server/auth.mjs";
 import { DICTIONARIES } from "../src/i18n-core.mjs";
 import { createDeviceGate, deviceAuthReason, isDeviceAuthError, noteDeviceTrustChange } from "../src/device-gate.mjs";
 import { SECRET_KINDS, detectSecretKinds, startPasteSecretGuard } from "../src/paste-secret-guard.mjs";
@@ -160,7 +161,9 @@ test("public Origin diagnosis names the mismatch without echoing any origin", as
   const cases = [
     [request({ headers: browser("http://127.0.0.1:8787") }), "", { status: "ok", configured: false, differs: [], writesBlocked: false }],
     [request({ headers: browser("https://pocket.example.test") }), "", { status: "proxy-mismatch", differs: ["scheme", "host", "port"], writesBlocked: true }],
-    [request({ headers: { ...browser("https://pocket.example.test"), "x-forwarded-proto": "https", "x-forwarded-host": "pocket.example.test" } }), "", { status: "ok", forwardedHeaders: true }],
+    [request({ headers: { ...browser("https://pocket.example.test"), "x-forwarded-proto": "https", "x-forwarded-host": "pocket.example.test" } }), "", { status: "ok", forwardedHeaders: true }, { trustedProxies: parseTrustedProxies("127.0.0.1") }],
+    // Forwarded headers from a proxy that is not trusted are ignored, as the mutation guard does.
+    [request({ headers: { ...browser("https://pocket.example.test"), "x-forwarded-proto": "https", "x-forwarded-host": "pocket.example.test" } }), "", { status: "proxy-mismatch", writesBlocked: true }, { trustedProxies: parseTrustedProxies("") }],
     [request({ headers: browser("https://pocket.example.test") }), "https://pocket.example.test", { status: "ok", configured: true }],
     [request({ headers: browser("https://pocket.example.test") }), "http://pocket.example.test", { status: "configured-mismatch", differs: ["scheme", "port"], writesBlocked: true }],
     [request({ headers: browser("https://pocket.example.test") }), "https://internal-host.corp.test:9443", { status: "configured-mismatch", differs: ["host", "port"] }],
@@ -168,8 +171,8 @@ test("public Origin diagnosis names the mismatch without echoing any origin", as
     [request(), "https://pocket.example.test", { status: "unverified", writesBlocked: false }],
     [request({ headers: browser("javascript:alert(1)") }), "", { status: "unverified" }]
   ];
-  for (const [req, configured, expected] of cases) {
-    const result = diagnosePublicOrigin(req, configured);
+  for (const [req, configured, expected, options] of cases) {
+    const result = diagnosePublicOrigin(req, configured, options);
     for (const [key, value] of Object.entries(expected)) assert.deepEqual(result[key], value, `${configured} ${key}`);
     assert.deepEqual(Object.keys(result).sort(), ["configured", "differs", "forwardedHeaders", "status", "writesBlocked"]);
     assert.doesNotMatch(JSON.stringify(result), /example\.test|corp\.test|127\.0\.0\.1|not a url/);

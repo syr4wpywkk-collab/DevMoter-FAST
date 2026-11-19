@@ -1,5 +1,20 @@
-const CACHE = "devmoter-fast-v21";
+const CACHE = "devmoter-fast-v22";
 const SHELL = ["/", "/manifest.webmanifest"];
+
+function isSameOriginUrl(url) {
+  return (url.protocol === "http:" || url.protocol === "https:") && url.origin === self.location.origin;
+}
+
+function resolveNotificationTarget(rawUrl) {
+  const fallback = new URL("/", self.location.origin).href;
+  if (typeof rawUrl !== "string" || !rawUrl.trim()) return fallback;
+  try {
+    const parsed = new URL(rawUrl, self.location.origin);
+    return isSameOriginUrl(parsed) ? parsed.href : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));
@@ -20,8 +35,14 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   const request = event.request;
   if (request.method !== "GET") return;
-  const url = new URL(request.url);
-  if (url.pathname.startsWith("/api/") || url.pathname === "/login.html") return;
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch {
+    return;
+  }
+  if (!isSameOriginUrl(url)) return;
+  if (url.pathname.startsWith("/api/") || url.pathname === "/login.html" || url.pathname === "/login.js") return;
 
   event.respondWith(
     fetch(request, { cache: "no-store" })
@@ -73,11 +94,17 @@ self.addEventListener("push", event => {
 
 self.addEventListener("notificationclick", event => {
   event.notification.close();
-  const target = new URL(event.notification?.data?.url || "/", self.location.origin).href;
+  const target = resolveNotificationTarget(event.notification?.data?.url);
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     for (const client of windows) {
-      if (new URL(client.url).origin !== self.location.origin) continue;
+      let clientUrl;
+      try {
+        clientUrl = new URL(client.url);
+      } catch {
+        continue;
+      }
+      if (!isSameOriginUrl(clientUrl)) continue;
       await client.navigate(target);
       return client.focus();
     }

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+umask 077
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OC_PORT="${OPENCODE_PORT:-49374}"
@@ -13,6 +14,13 @@ POCKET_PIDFILE="$STATE_DIR/pocket.pid"
 OC_LOG="$STATE_DIR/opencode.log"
 POCKET_LOG="$STATE_DIR/pocket.log"
 
+# The secret files below are created by shell redirection, which uses the
+# caller's umask (typically 022 -> mode 644) until the chmod after creation
+# runs. Restrict the umask first so the credentials are owner-only from the
+# moment they exist; restore it once both secrets are in place.
+PREV_UMASK="$(umask)"
+umask 077
+
 mkdir -p "$STATE_DIR"
 chmod 700 "$STATE_DIR"
 
@@ -21,8 +29,11 @@ if [ ! -s "$SECRET_FILE" ]; then
 import secrets
 print(secrets.token_urlsafe(32))
 PY
-  chmod 600 "$SECRET_FILE"
 fi
+# Re-apply on every start, not only at creation: a file left over from
+# before this hardening (e.g. created at 644 by an interrupted bootstrap)
+# must not keep its weaker mode just because it already exists.
+chmod 600 "$SECRET_FILE"
 
 PASS="$(cat "$SECRET_FILE")"
 
@@ -35,10 +46,12 @@ else
 import secrets
 print(secrets.token_urlsafe(32))
 PY
-    chmod 600 "$AUTH_SECRET_FILE"
   fi
+  chmod 600 "$AUTH_SECRET_FILE"
   AUTH_PASS="$(cat "$AUTH_SECRET_FILE")"
 fi
+
+umask "$PREV_UMASK"
 
 stop_pidfile() {
   local pidfile="$1"
@@ -70,8 +83,8 @@ sleep .5
 cd "$REPO"
 
 if [ ! -d node_modules ]; then
-  echo "📦 npm install"
-  npm install
+  echo "📦 npm ci"
+  npm ci
 fi
 
 echo "🏗️ build"
@@ -90,8 +103,28 @@ OC_DIR="${OPENCODE_DIRECTORY:-$REPO}"
 # answers /api/location, and lists at least one enabled model on /api/model.
 # (GET /api/provider is not a readiness signal: on 2.x it can be empty while
 # the bundled OpenCode models are already usable.)
+curl_escape_into() {
+  local target="$1"
+  local value="$2"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\t'/\\t}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\v'/\\v}"
+  printf -v "$target" '%s' "$value"
+}
+
+curl_auth_get() {
+  local user pass
+  curl_escape_into user "$1"
+  curl_escape_into pass "$2"
+  shift 2
+  printf 'user = "%s:%s"\n' "$user" "$pass" | curl -fsS -K - "$@"
+}
+
 oc_get() {
-  curl -fsS -u "opencode:$PASS" -H "x-opencode-directory: $OC_DIR" "http://127.0.0.1:$OC_PORT$1" 2>/dev/null || true
+  curl_auth_get "opencode" "$PASS" -H "x-opencode-directory: $OC_DIR" "http://127.0.0.1:$OC_PORT$1" 2>/dev/null || true
 }
 
 echo "⏳ OpenCode runtime warmup"
@@ -139,7 +172,7 @@ POCKET_PID=$!
 echo "$POCKET_PID" > "$POCKET_PIDFILE"
 
 for i in $(seq 1 40); do
-  RESULT="$(curl -fsS -u "$AUTH_USER:$AUTH_PASS" "http://127.0.0.1:$POCKET_PORT/api/health" 2>/dev/null || true)"
+  RESULT="$(curl_auth_get "$AUTH_USER" "$AUTH_PASS" "http://127.0.0.1:$POCKET_PORT/api/health" 2>/dev/null || true)"
   if [ -n "$RESULT" ] && echo "$RESULT" | python3 -c '
 import json, sys
 data = json.load(sys.stdin)
@@ -151,7 +184,7 @@ assert data["backends"]["codex"]["online"] is True
     echo "$RESULT"
     echo
 
-    PROVIDERS="$(curl -fsS -u "$AUTH_USER:$AUTH_PASS" "http://127.0.0.1:$POCKET_PORT/api/opencode/pocket/providers" 2>/dev/null || true)"
+    PROVIDERS="$(curl_auth_get "$AUTH_USER" "$AUTH_PASS" "http://127.0.0.1:$POCKET_PORT/api/opencode/pocket/providers" 2>/dev/null || true)"
     if [ -n "$PROVIDERS" ]; then
       echo "$PROVIDERS" | python3 -c '
 import json, sys

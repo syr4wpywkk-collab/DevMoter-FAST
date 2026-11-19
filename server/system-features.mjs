@@ -87,8 +87,9 @@ function deviceToken(req) {
   return readCookie(req, DEVICE_COOKIE_NAME).trim();
 }
 
-export function deviceSessionCookie(req, token, maxAgeSeconds = DEVICE_COOKIE_MAX_AGE_SECONDS) {
-  const secure = String(expectedRequestOrigin(req) || "").startsWith("https://");
+export function deviceSessionCookie(req, token, maxAgeSeconds = DEVICE_COOKIE_MAX_AGE_SECONDS, options = {}) {
+  const { publicOrigin = "", trustedProxies } = options;
+  const secure = String(expectedRequestOrigin(req, publicOrigin, { trustedProxies }) || "").startsWith("https://");
   return [
     `${DEVICE_COOKIE_NAME}=${encodeURIComponent(String(token || ""))}`,
     "Path=/",
@@ -114,9 +115,11 @@ function isLocalBootstrapRequest(req) {
   const address = String(req.socket?.remoteAddress || "");
   const host = requestHostname(req);
   const forwarded = String(req.headers["x-forwarded-for"] || "").trim();
+  const forwardedHost = String(req.headers["x-forwarded-host"] || "").trim();
+  const forwardedProto = String(req.headers["x-forwarded-proto"] || "").trim();
   const localAddress = address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1";
   const localHost = host === "127.0.0.1" || host === "localhost" || host === "::1";
-  return localAddress && localHost && !forwarded;
+  return localAddress && localHost && !forwarded && !forwardedHost && !forwardedProto;
 }
 
 async function commandStatus(name, args = ["--version"]) {
@@ -648,7 +651,7 @@ export function createSystemFeatures({
           ? "Server is using a localhost-first bind."
           : "Server bind is not localhost; verify your private-network and authentication policy."
       },
-      publicOrigin: diagnosePublicOrigin(req, publicOrigin),
+      publicOrigin: diagnosePublicOrigin(req, publicOrigin, { trustedProxies }),
       notes: [
         "Diagnostics intentionally omit tokens, passwords, prompt contents, and repository file contents.",
         "No repository bootstrap scripts are run by this endpoint."
