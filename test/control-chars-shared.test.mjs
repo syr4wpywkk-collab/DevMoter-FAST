@@ -26,7 +26,9 @@ test("the control-character regex is defined once and shared by both path checks
 });
 
 test("live preview still rejects percent-encoded control characters", () => {
-  assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/a%00b"), /Invalid live preview path/);
-  assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/a%7Fb"), /Invalid live preview path/);
-  assert.doesNotThrow(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/ok/path"));
+  // Live Preview is fail-closed: allowlist the port so path checks are reached.
+  const previewPolicy = { env: { DEVMOTER_PREVIEW_ALLOWED_PORTS: "3000" } };
+  assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/a%00b", "", previewPolicy), /Invalid live preview path/);
+  assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/a%7Fb", "", previewPolicy), /Invalid live preview path/);
+  assert.doesNotThrow(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/ok/path", "", previewPolicy));
 });
