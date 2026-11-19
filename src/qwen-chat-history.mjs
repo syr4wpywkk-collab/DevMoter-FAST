@@ -118,13 +118,18 @@ export function loadQwenChats(storage) {
 }
 
 // Another tab saved history: take its copy, but keep what only this tab has —
-// the chat still streaming here and chats with nothing saved yet.
+// the chat still streaming here, chats with nothing saved yet, and chats this
+// tab changed later than the stored copy (e.g. its own save was refused).
 export function mergeStoredQwenChats(stored, current, liveChatId = null) {
+  const currentById = new Map(current.map(chat => [chat.id, chat]));
   const storedIds = new Set(stored.map(chat => chat.id));
+  const merged = stored.map(chat => {
+    const local = currentById.get(chat.id);
+    return local && (local.id === liveChatId || local.updatedAt > chat.updatedAt) ? local : chat;
+  });
   const localOnly = current.filter(chat =>
-    chat.id === liveChatId || (!storedIds.has(chat.id) && !chat.messages.length && !chat.sessionId));
-  const keep = new Set(localOnly.map(chat => chat.id));
-  return sortQwenChats([...stored.filter(chat => !keep.has(chat.id)), ...localOnly]).slice(0, QWEN_CHAT_LIMIT);
+    !storedIds.has(chat.id) && (chat.id === liveChatId || (!chat.messages.length && !chat.sessionId)));
+  return sortQwenChats([...merged, ...localOnly]).slice(0, QWEN_CHAT_LIMIT);
 }
 
 // Returns false when the browser refused to store (quota, private mode).

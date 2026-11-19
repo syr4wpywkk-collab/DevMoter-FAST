@@ -92,6 +92,10 @@ test("history merge: another tab's save wins except the live chat and unsaved ch
   assert.deepEqual(merged.map(item => item.id), ["live", "fresh", "a"]);
   assert.equal(merged[0].messages[0].text, "streaming", "the running chat is not replaced by the older stored copy");
   assert.ok(!merged.some(item => item.id === "deleted-elsewhere"), "a chat deleted in another tab stays deleted");
+  const unsavedReply = mergeStoredQwenChats([chat("a", 5, [{ role: "user", text: "q" }])], [chat("a", 7, [{ role: "user", text: "q" }, { role: "assistant", text: "reply" }])]);
+  assert.equal(unsavedReply[0].messages.length, 2, "a newer local copy that failed to save is kept");
+  const staleTab = mergeStoredQwenChats([chat("a", 9, [{ role: "user", text: "newer" }])], [chat("a", 3, [{ role: "user", text: "older" }])]);
+  assert.equal(staleTab[0].messages[0].text, "newer", "an older local copy gives way to the stored one");
 });
 
 test("history times are relative for a week, then a date; NDJSON survives split chunks", () => {
