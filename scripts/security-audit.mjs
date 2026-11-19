@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFile, readdir } from "node:fs/promises";
 import { basename } from "node:path";
 import { findSecrets, isBinary, isSensitivePath } from "./secret-scan.mjs";
+import { findCiEnforcementGaps } from "./ci-required-checks.mjs";
 
 const failures = [];
 const passes = [];
@@ -104,6 +105,9 @@ check(!/^tailscale serve reset\s*$/m.test(securityDocs),
   "security documentation does not recommend destructive Tailscale Serve reset");
 check(codeqlWorkflow.includes("javascript-typescript") && codeqlWorkflow.includes("language: [javascript-typescript, actions]"),
   "CodeQL scans JavaScript/TypeScript and GitHub Actions");
+for (const gap of findCiEnforcementGaps(ciWorkflow)) check(false, gap);
+check(pkg.scripts?.test?.includes('"test/**/*.test.mjs"'),
+  "npm test lets Node expand the test glob, so nested test files cannot be skipped");
 for (const [name, workflow] of [["CI", ciWorkflow], ["Security Audit", auditWorkflow]]) {
   check(/permissions:\n\s+contents: read/.test(workflow), name + " has a read-only repository token");
   check(workflow.includes("persist-credentials: false"), name + " does not persist checkout credentials");
