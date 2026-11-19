@@ -2,6 +2,7 @@ import { readCookie } from "./cookies.mjs";
 import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expectedRequestOrigin } from "./auth.mjs";
 import { createClientIpResolver, parseTrustedProxies } from "./auth-guard.mjs";
 import {
@@ -58,9 +59,12 @@ export function safeBuildId(value) {
 }
 
 // Build id of the web bundle this host serves, written by `vite build` (dist/build.json).
-async function readDistBuildId(appRoot) {
+// The bundle the host serves lives next to server.mjs, not in the launch directory.
+const SERVED_DIST_DIR = fileURLToPath(new URL("../dist/", import.meta.url));
+
+async function readDistBuildId(distDir) {
   try {
-    const manifest = JSON.parse(await readFile(join(appRoot, "dist", "build.json"), "utf8"));
+    const manifest = JSON.parse(await readFile(join(distDir, "build.json"), "utf8"));
     return safeBuildId(manifest?.build);
   } catch {
     return null;
@@ -245,6 +249,7 @@ async function sendEmptyPush(subscription, vapid) {
 export function createSystemFeatures({
   stateDir,
   appRoot,
+  distDir = SERVED_DIST_DIR,
   getProjects,
   getBackendHealth,
   host = "127.0.0.1",
@@ -646,7 +651,7 @@ export function createSystemFeatures({
     const activeDevices = activeDeviceList.length;
     const localBootstrap = req ? isLocalBootstrapRequest(req) : false;
     const generatedAt = new Date().toISOString();
-    const build = safeBuildId(process.env.DEVMOTER_BUILD) || safeBuildId(process.env.GITHUB_SHA) || await readDistBuildId(appRoot);
+    const build = safeBuildId(process.env.DEVMOTER_BUILD) || safeBuildId(process.env.GITHUB_SHA) || await readDistBuildId(distDir);
 
     return {
       generatedAt,
