@@ -2,7 +2,7 @@ import { formatCodexResetTime as formatResetTime, codexFeedbackKey as feedbackKe
 import { getAppDefinition } from "./app-registry";
 import { cxIcons } from "./codex/icons";
 import { codexThreadStatusToExecutionState, codexTurnStatusToExecutionState, isExecutionActive, type ExecutionState } from "./execution-state.mjs";
-import { bindLanguageSelectors, formatNumber, localeTag, speechRecognitionLanguage, t, tApp, translateServerMessage } from "./i18n";
+import { bindLanguageSelectors, formatDateTime, formatNumber, formatRelativeTime, localeTag, speechRecognitionLanguage, t, tApp, translateServerMessage } from "./i18n";
 
 function escapeHtml(value: unknown): string {
   return String(value ?? "")
@@ -1484,16 +1484,13 @@ export function mountCodexRemote(
       text.textContent = thread.name || thread.preview || t("codex.sidebar.newChat");
       button.appendChild(text);
       if (thread.updatedAt) {
-        const age = Math.max(0, Date.now() - thread.updatedAt);
+        // Same relative format as OpenCode and Qwen history; exact time on hover.
         const stamp = document.createElement("small");
         stamp.className = "cx-thread-age";
-        stamp.textContent = age < 60_000
-          ? t("codex.threads.ageNow")
-          : age < 3_600_000
-            ? t("codex.threads.ageMinutes", { count: formatNumber(Math.floor(age / 60_000)) })
-            : age < 86_400_000
-              ? t("codex.threads.ageHours", { count: formatNumber(Math.floor(age / 3_600_000)) })
-              : t("codex.threads.ageDays", { count: formatNumber(Math.floor(age / 86_400_000)) });
+        // Codex app-server reports Unix seconds; accept milliseconds too.
+        const updatedMs = thread.updatedAt < 1e12 ? thread.updatedAt * 1000 : thread.updatedAt;
+        stamp.textContent = formatRelativeTime(updatedMs);
+        stamp.title = formatDateTime(updatedMs);
         button.appendChild(stamp);
       }
       button.addEventListener("click", () => {
