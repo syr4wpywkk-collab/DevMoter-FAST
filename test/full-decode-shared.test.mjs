@@ -30,6 +30,8 @@ test("the nested-decode loop is defined once and shared by both path checks", as
 });
 
 test("live preview still rejects double-encoded traversal", () => {
-  assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/%252e%252e/secret"), /Invalid live preview path/);
-  assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/%E0%A4%A"), /Invalid live preview path/);
+  // Live Preview is fail-closed: allowlist the port so path checks are reached.
+  const previewPolicy = { env: { DEVMOTER_PREVIEW_ALLOWED_PORTS: "3000" } };
+  assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/%252e%252e/secret", "", previewPolicy), /Invalid live preview path/);
+  assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/%E0%A4%A", "", previewPolicy), /Invalid live preview path/);
 });

@@ -14,6 +14,7 @@ import { createOpenCodeClient } from "./server/opencode-api.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, fullyDecodePath, isAllowedCodexRpc, isInsideHome, normalizeNewProjectPath, readDistStaticFile } from "./server/security-helpers.mjs";
 import { staticSecurityHeaders } from "./server/security-headers.mjs";
+import { writeFileNoFollow } from "./server/safe-file.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
 import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
 import { createSessionControl } from "./server/session-control.mjs";
@@ -40,7 +41,8 @@ import {
   isLoopbackAddress,
   isLoopbackHost,
   parseBasicAuthorization,
-  requireSameOriginMutation
+  requireSameOriginMutation,
+  resolveLocalAddress
 } from "./server/auth.mjs";
 import { createBasicAuthGuard, parseTrustedProxies } from "./server/auth-guard.mjs";
 import { OidcAuth } from "./server/oidc-auth.mjs";
@@ -76,6 +78,7 @@ const fetchOpenCodeJson = openCode.fetchJson;
 const DEVMOTER_AUTH_USERNAME = process.env.DEVMOTER_AUTH_USERNAME || "devmoter";
 const DEVMOTER_AUTH_PASSWORD = assertAuthPassword(process.env.DEVMOTER_AUTH_PASSWORD || "");
 const DEVMOTER_PUBLIC_ORIGIN = process.env.DEVMOTER_PUBLIC_ORIGIN || "";
+const DEVMOTER_TRUSTED_PROXIES = parseTrustedProxies(process.env.DEVMOTER_TRUST_PROXY);
 const PASSKEY_REQUIRED = process.env.DEVMOTER_PASSKEY_REQUIRED === "1";
 const AUTH_SESSION_TTL_DAYS = Number(process.env.DEVMOTER_AUTH_SESSION_TTL_DAYS || 30);
 if (!Number.isFinite(AUTH_SESSION_TTL_DAYS) || AUTH_SESSION_TTL_DAYS < 1 || AUTH_SESSION_TTL_DAYS > 90) {
@@ -88,7 +91,7 @@ const AUTH_CONFIG = {
 const basicAuthGuard = createBasicAuthGuard({
   expectedUsername: AUTH_CONFIG.username,
   expectedPassword: AUTH_CONFIG.password,
-  trustedProxies: parseTrustedProxies(process.env.DEVMOTER_TRUST_PROXY)
+  trustedProxies: DEVMOTER_TRUSTED_PROXIES
 });
 const REDACTED_SECRETS = [
   OPENCODE_PASSWORD,
@@ -172,6 +175,8 @@ let userAutomation = null;
 const controlPlane = new ControlPlane({
   configDir: PROJECT_CONFIG_DIR,
   executeTask: executeControlTask,
+  redact: value => redactText(value),
+  resolveProject: id => getProjectById(id),
   onLifecycle: ({ event, run }) => {
     void controlPlane.dispatchEvent("devmoter.lifecycle", event, {
       runId: run?.id ?? null,
@@ -267,6 +272,7 @@ const systemFeatures = createSystemFeatures({
   },
   host: HOST,
   version: process.env.DEVMOTER_VERSION || "0.2.0",
+  trustedProxies: DEVMOTER_TRUSTED_PROXIES,
   onDeviceRevoked: deviceId => terminal.revokeDeviceSessions(deviceId)
 });
 const toolsAiStore = createRunStore({ filePath: join(PROJECT_CONFIG_DIR, "tools-ai-runs.json") });
@@ -345,7 +351,8 @@ const automationApi = createAutomationApi({
   readJson,
   operationId,
   claimOperation,
-  publicOrigin: DEVMOTER_PUBLIC_ORIGIN
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+  trustedProxies: DEVMOTER_TRUSTED_PROXIES
 });
 
 function codexThreadIdFromEvent(params = {}) {
@@ -524,11 +531,10 @@ function openCodeHeaders(extra = {}) {
   return headers;
 }
 
-async function openCodeHeadersForRequest(req, extra = {}) {
+async function openCodeHeadersForRequest(req, extra = {}, policyPath = "") {
   const projectId = String(req.headers["x-pocket-project-id"] || "").trim();
   let directory = OPENCODE_DIRECTORY;
-  const requestPath = String(req.url || "").split("?", 1)[0];
-  const isExistingSession = /^\/api\/opencode\/session\/[^/]+/.test(requestPath) || /^\/api\/session\/[^/]+/.test(requestPath);
+  const isExistingSession = Boolean(sessionIdFromOpenCodePath(policyPath));
   if (projectId && !isExistingSession) directory = (await getProjectById(projectId)).path;
   return openCodeHeaders({ "x-opencode-directory": directory, ...extra });
 }
@@ -861,20 +867,7 @@ async function projectWriteFile(id, req, res) {
       throw new Error("Markdown file is larger than 1MB");
     }
 
-    const handle = await open(
-      resolved.target,
-      fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_TRUNC | (fsConstants.O_NOFOLLOW || 0),
-      0o600
-    );
-    let info;
-    try {
-      info = await handle.stat();
-      if (!info.isFile()) throw new Error("Markdown write requires a regular file");
-      await handle.writeFile(content, "utf8");
-      info = await handle.stat();
-    } finally {
-      await handle.close();
-    }
+    const info = await writeFileNoFollow(resolved.target, content);
     json(res, 200, {
       ok: true,
       path: resolved.relativePath,
@@ -882,7 +875,7 @@ async function projectWriteFile(id, req, res) {
       updatedAt: info.mtimeMs
     });
   } catch (error) {
-    json(res, 400, { error: errorMessage(error) });
+    json(res, error?.code === "ENOTSUP" ? 501 : 400, { error: errorMessage(error) });
   }
 }
 
@@ -1283,6 +1276,9 @@ async function executeControlTask(definition, context = {}) {
 }
 
 async function executeControlTaskCore(definition, context = {}) {
+  if (definition?.approvalPolicy !== undefined && definition.approvalPolicy !== "normal") {
+    throw new Error("Unsupported control-plane approval policy");
+  }
   const project = definition?.projectId ? await getProjectById(definition.projectId) : null;
   const task = String(definition?.task || "").trim();
   if (!task) throw new Error("Task is required");
@@ -1581,10 +1577,10 @@ async function passkeyRoute(req, res, url) {
 async function controlRoute(req, res, url) {
   if (!url.pathname.startsWith("/api/control/")) return false;
   try {
-    const localAddress = DEVMOTER_PUBLIC_ORIGIN ||
-      ((String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim() || url.protocol.replace(":", "")) +
-        "://" +
-        (String(req.headers["x-forwarded-host"] || "").split(",")[0].trim() || req.headers.host || "localhost"));
+    const localAddress = resolveLocalAddress(req, {
+      publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+      trustedProxies: DEVMOTER_TRUSTED_PROXIES
+    });
 
     if (req.method === "GET" && url.pathname === "/api/control/hosts") {
       json(res, 200, { hosts: await controlPlane.listHosts(localAddress) });
@@ -1619,6 +1615,11 @@ async function controlRoute(req, res, url) {
     if (req.method === "POST" && url.pathname === "/api/control/schedules") {
       if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
       json(res, 201, { schedule: await controlPlane.createSchedule(await readJson(req)) });
+      return true;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/control/schedules/preview") {
+      json(res, 200, { preview: await controlPlane.previewSchedule(await readJson(req)) });
       return true;
     }
 
@@ -1660,7 +1661,19 @@ async function controlRoute(req, res, url) {
     }
 
     if (req.method === "GET" && url.pathname === "/api/control/runs") {
-      json(res, 200, { runs: await controlPlane.listRuns() });
+      json(res, 200, { runs: await controlPlane.listRuns({ result: url.searchParams.get("result") || "" }) });
+      return true;
+    }
+
+    const runRetryMatch = url.pathname.match(/^\/api\/control\/runs\/([^/]+)\/retry$/);
+    if (runRetryMatch && req.method === "POST") {
+      const payload = await readJson(req);
+      if (payload?.confirm !== true) {
+        json(res, 409, { error: "Retry requires explicit confirmation", confirmationRequired: true });
+        return true;
+      }
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      json(res, 202, await controlPlane.retryRun(decodeURIComponent(runRetryMatch[1]), { confirm: true }));
       return true;
     }
     if (req.method === "POST" && url.pathname === "/api/control/autopilot") {
@@ -1762,9 +1775,42 @@ const OPENCODE_SAFE_QUERY = /^(\?[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*)?$/;
 const OPENCODE_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
 
 /**
+ * Decode a client path exactly once and return that canonical value, or null
+ * when the path cannot be canonicalized: an undecodable escape, or DOUBLE
+ * encoding — decoding the result again would change it (e.g. %252f decodes
+ * once to %2f, again to /), which would let DevMoter classify a different
+ * route than a decoding upstream serves. An accepted canonical path never
+ * contains "%": any remaining escape would either decode further or fail to
+ * decode, and both cases are rejected here.
+ *
+ * The decoded path must also be free of separator/dot ambiguity: an empty
+ * segment ("//" anywhere) or a "." / ".." segment is rejected, because a
+ * URL-normalizing upstream could collapse those into a different route than
+ * the one DevMoter classified. Running the check after decoding covers the
+ * percent-encoded forms (%2f, %2e) as well. Both the proxy target builder
+ * and the adapter dispatch share this function, so a variant rejected here
+ * can never fall through unclassified.
+ */
+function canonicalDecodedPath(rawPath) {
+  let decoded;
+  try {
+    decoded = decodeURIComponent(rawPath);
+  } catch {
+    return null;
+  }
+  if (fullyDecodePath(rawPath) !== decoded) return null;
+  if (decoded.includes("//")) return null;
+  if (decoded.split("/").some(segment => segment === "." || segment === "..")) return null;
+  return decoded;
+}
+
+/**
  * Validate the client path once and build the OpenCode request target as a
  * plain string: fixed OpenCode origin + "/api/" + allowlisted path (+ query).
- * Returns { upstreamUrl, policyPath } or { error } (400).
+ * ONE canonical (decoded, normalized) path drives validation, the policy
+ * classification, and the upstream URL, so the route DevMoter checks is the
+ * route OpenCode serves. Returns { upstreamUrl, policyPath, upstreamAlias }
+ * or { error }.
  */
 export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   const raw = String(rawRequestUrl || "");
@@ -1779,27 +1825,30 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   if (!OPENCODE_SAFE_PATH.test(rawPath) || !OPENCODE_SAFE_QUERY.test(rawQuery)) {
     return { error: "OpenCode proxy path is not allowed" };
   }
-  const decodedPath = fullyDecodePath(rawPath);
+  const canonicalPath = canonicalDecodedPath(rawPath);
   if (
-    decodedPath === null ||
-    decodedPath.startsWith("//") ||
-    rawPath.startsWith("//") ||
-    decodedPath.includes("..") ||
-    decodedPath.includes("\\") ||
-    OPENCODE_SCHEME_SEGMENT.test(decodedPath) ||
-    CONTROL_CHARS.test(decodedPath)
+    canonicalPath === null ||
+    canonicalPath.includes("..") ||
+    OPENCODE_SCHEME_SEGMENT.test(canonicalPath) ||
+    CONTROL_CHARS.test(canonicalPath) ||
+    !OPENCODE_SAFE_PATH.test(canonicalPath)
   ) {
     return { error: "OpenCode proxy path is not allowed" };
   }
 
   // Strip the optional client-side "/api" prefix; the upstream root is fixed.
-  const apiRelative = rawPath.startsWith("/api/") ? rawPath.slice("/api/".length) : rawPath.slice(1);
+  // The upstream-style alias does not grant access to adapter-owned operations.
+  const upstreamAlias = canonicalPath.startsWith("/api/");
+  let apiRelative = upstreamAlias ? canonicalPath.slice("/api/".length) : canonicalPath.slice(1);
   if (apiRelative.startsWith("/")) {
     return { error: "OpenCode proxy path is not allowed" };
   }
+  // Canonicalize separators: an action subroute means the same with or
+  // without trailing slashes, for the policy checks and the upstream alike.
+  apiRelative = apiRelative.replace(/\/+$/, "");
   const policyPath = `/api/${apiRelative}`;
   const upstreamUrl = `${OPENCODE_ORIGIN}/api/${apiRelative}${rawQuery}`;
-  return { upstreamUrl, policyPath };
+  return { upstreamUrl, policyPath, upstreamAlias };
 }
 
 // DevMoter's OpenCode session surface. The browser (and every other DevMoter
@@ -1816,7 +1865,7 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
 //   POST /session/{id}/question/{rid}/reply       { answers: string[][] }
 //   POST /session/{id}/question/{rid}/reject
 //   GET  /event                                   canonical SSE events
-const OPENCODE_SESSION_ROUTE = /^\/api\/opencode\/session\/([^/]+)\/(prompt|context|interrupt|permission|question)(?:\/([^/]+)\/(reply|reject))?$/;
+const OPENCODE_SESSION_ROUTE = /^\/api\/session\/([^/]+)\/(prompt|context|interrupt|permission|question)(?:\/([^/]+)\/(reply|reject))?$/;
 const OPENCODE_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 function openCodeAdapterFailure(res, error) {
@@ -1838,13 +1887,13 @@ async function readOpenCodeBody(req, limit) {
   }
 }
 
-async function opencodeSessionRoute(req, res, url) {
-  if (url.pathname === "/api/opencode/event") {
+async function opencodeSessionRoute(req, res, pathname) {
+  if (pathname === "/api/event") {
     if (req.method !== "GET") return false;
     await opencodeEvents(req, res);
     return true;
   }
-  if (url.pathname === "/api/opencode/session/active") {
+  if (pathname === "/api/session/active") {
     if (req.method !== "GET") return false;
     try {
       json(res, 200, await openCode.active());
@@ -1853,12 +1902,10 @@ async function opencodeSessionRoute(req, res, url) {
     }
     return true;
   }
-  const match = url.pathname.match(OPENCODE_SESSION_ROUTE);
+  const match = pathname.match(OPENCODE_SESSION_ROUTE);
   if (!match) return false;
-  const [, rawSessionId, operation, rawRequestId, action] = match;
-  const sessionId = fullyDecodePath(rawSessionId);
-  const requestId = rawRequestId === undefined ? null : fullyDecodePath(rawRequestId);
-  if (!sessionId || !OPENCODE_ID.test(sessionId) || (requestId !== null && (!requestId || !OPENCODE_ID.test(requestId)))) {
+  const [, sessionId, operation, requestId = null, action] = match;
+  if (!OPENCODE_ID.test(sessionId) || (requestId !== null && !OPENCODE_ID.test(requestId))) {
     json(res, 400, { error: "OpenCode session or request id is invalid" });
     return true;
   }
@@ -2014,13 +2061,7 @@ async function opencodeEvents(req, res) {
   }
 }
 
-async function proxy(req, res) {
-  const target = buildOpenCodeUpstreamTarget(req.url);
-  if (target.error) {
-    json(res, 400, { error: target.error });
-    return;
-  }
-  const { upstreamUrl, policyPath } = target;
+async function proxy(req, res, { upstreamUrl, policyPath }) {
   const sessionId = sessionIdFromOpenCodePath(policyPath);
   const requestedMode = parseAgentMode(req.headers["x-pocket-agent-mode"]);
   if (sessionId && requestedMode) openCodeSessionModes.set(sessionId, requestedMode);
@@ -2071,7 +2112,7 @@ async function proxy(req, res) {
       headers: await openCodeHeadersForRequest(req, {
         "content-type": req.headers["content-type"] || "application/json",
         "accept": req.headers["accept"] || "*/*"
-      }),
+      }, policyPath),
       body,
       redirect: "error",
       signal: upstreamAbort.signal
@@ -2601,6 +2642,15 @@ const PUBLIC_STATIC_PATHS = new Set([
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, "http://localhost");
+    // URL parsing can erase dot segments. Validate the original request target
+    // before dispatching to either an OpenCode adapter or any other route.
+    const openCodeTarget = req.url.startsWith(OPENCODE_PROXY_PREFIX) || url.pathname.startsWith(OPENCODE_PROXY_PREFIX)
+      ? buildOpenCodeUpstreamTarget(req.url)
+      : null;
+    if (openCodeTarget?.error) {
+      json(res, 400, { error: openCodeTarget.error });
+      return;
+    }
 
     if (req.method === "POST" && url.pathname === "/api/control/events/github") {
       await githubWebhookRoute(req, res);
@@ -3042,7 +3092,8 @@ const server = http.createServer(async (req, res) => {
       json(res, 200, {
         state,
         policy: userAutomationPolicy,
-        runs: userAutomation.listRuns()
+        runs: userAutomation.listRuns(),
+        hookAudit: await userAutomation.readHookAudit()
       });
       return;
     }
@@ -3159,7 +3210,15 @@ const server = http.createServer(async (req, res) => {
         const issued = await systemFeatures.bootstrapDevice(req, payload?.label);
         const { token, device } = issued;
         const { tokenHash: _tokenHash, ...publicDevice } = device;
-        jsonWithCookie(res, 201, { device: publicDevice }, deviceSessionCookie(req, token));
+        jsonWithCookie(
+          res,
+          201,
+          { device: publicDevice },
+          deviceSessionCookie(req, token, undefined, {
+            publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+            trustedProxies: DEVMOTER_TRUSTED_PROXIES
+          })
+        );
       } catch (error) {
         json(res, Number(error?.status || 400), { error: errorMessage(error) });
       }
@@ -3181,7 +3240,15 @@ const server = http.createServer(async (req, res) => {
           { allowOwnerRecovery: allowOwnerDeviceRecovery() }
         );
         if (result.revokedCurrentDevice) {
-          jsonWithCookie(res, 200, result, deviceSessionCookie(req, "", 0));
+          jsonWithCookie(
+            res,
+            200,
+            result,
+            deviceSessionCookie(req, "", 0, {
+              publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+              trustedProxies: DEVMOTER_TRUSTED_PROXIES
+            })
+          );
         } else {
           json(res, 200, result);
         }
@@ -3208,7 +3275,10 @@ const server = http.createServer(async (req, res) => {
           res,
           201,
           { device: publicDevice, approvedByDeviceId },
-          deviceSessionCookie(req, token)
+          deviceSessionCookie(req, token, undefined, {
+            publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+            trustedProxies: DEVMOTER_TRUSTED_PROXIES
+          })
         );
       } catch (error) {
         json(res, Number(error?.status || 400), { error: errorMessage(error) });
@@ -3615,7 +3685,7 @@ const server = http.createServer(async (req, res) => {
     }
 
 
-    if (req.method === "GET" && url.pathname === "/api/opencode/pocket/providers") {
+    if (req.method === "GET" && openCodeTarget?.policyPath === "/api/pocket/providers" && !openCodeTarget.upstreamAlias) {
       await opencodeProviders(url, res);
       return;
     }
@@ -3649,14 +3719,15 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (url.pathname.startsWith("/api/opencode") || String(req.url || "").startsWith("/api/opencode")) {
+    if (openCodeTarget) {
+      const { policyPath } = openCodeTarget;
       if (
         req.method !== "GET" &&
         req.method !== "HEAD" &&
-        !claimOperation(req, res, `${req.method}:${url.pathname}`)
+        !claimOperation(req, res, `${req.method}:${policyPath}`)
       ) return;
-      if (await opencodeSessionRoute(req, res, url)) return;
-      await proxy(req, res);
+      if (!openCodeTarget.upstreamAlias && await opencodeSessionRoute(req, res, policyPath)) return;
+      await proxy(req, res, openCodeTarget);
       return;
     }
 
@@ -3668,7 +3739,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 const terminalSockets = installTerminalWebSocketEndpoint(server, terminal, {
-  publicOrigin: DEVMOTER_PUBLIC_ORIGIN
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+  trustedProxies: DEVMOTER_TRUSTED_PROXIES
 });
 
 server.on("close", () => {

@@ -44,7 +44,9 @@ Triggers are explicit records with source, event name, task, project/backend con
 
 GitHub webhooks use a per-trigger HMAC secret. The secret is shown once when the trigger is created and is stored server-side afterward.
 
-Incoming event payloads are size-limited and injected into the task as explicitly untrusted data. Event content cannot disable DevMoter approval/permission policy.
+Incoming event payloads are size-limited, escaped, and marked as untrusted in a delimited JSON block. That block and the trusted task are still sent as one text prompt to either backend. Delimiters prevent payload text from forging the block boundary; they do not prevent the model from following instructions in the payload.
+
+The trigger definition selects the backend and project. Webhook fields cannot change those settings or grant approval. DevMoter does not configure a separate sandbox or permission profile for webhooks, so a triggered run can still perform any action the backend already permits. Use a least-privilege backend configuration for event triggers, and do not enable them for untrusted input if their available actions cannot be adequately restricted.
 
 ## Bounded autopilot
 

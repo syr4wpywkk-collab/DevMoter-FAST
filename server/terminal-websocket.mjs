@@ -1,5 +1,5 @@
 import { WebSocketServer } from "ws";
-import { expectedRequestOrigin } from "./auth.mjs";
+import { expectedRequestOrigin, parseTrustedProxies } from "./auth.mjs";
 
 const TERMINAL_SOCKET_PATH = /^\/api\/terminal\/sessions\/([a-f0-9]{36})\/socket$/;
 const TERMINAL_PROTOCOL = "devmoter-terminal.v1";
@@ -17,7 +17,11 @@ function parseProtocols(req) {
     .filter(Boolean);
 }
 
-export function installTerminalWebSocketEndpoint(server, terminal, { publicOrigin = "" } = {}) {
+export function installTerminalWebSocketEndpoint(
+  server,
+  terminal,
+  { publicOrigin = "", trustedProxies = parseTrustedProxies(process.env.DEVMOTER_TRUST_PROXY) } = {}
+) {
   const webSockets = new WebSocketServer({
     noServer: true,
     maxPayload: 40 * 1024,
@@ -43,7 +47,7 @@ export function installTerminalWebSocketEndpoint(server, terminal, { publicOrigi
     }
 
     const origin = String(req.headers.origin || "");
-    const expectedOrigin = expectedRequestOrigin(req, publicOrigin);
+    const expectedOrigin = expectedRequestOrigin(req, publicOrigin, { trustedProxies });
     let normalizedOrigin = "";
     try { normalizedOrigin = new URL(origin).origin; } catch { /* rejected below */ }
     if (!origin || origin === "null" || !expectedOrigin || normalizedOrigin !== expectedOrigin) {

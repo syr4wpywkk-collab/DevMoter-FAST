@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, rename, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
 import {
   SubagentRuntime,
@@ -37,8 +37,25 @@ async function readJsonFile(filePath) {
 async function atomicWriteJson(filePath, value) {
   await mkdir(dirname(filePath), { recursive: true, mode: 0o700 });
   const temp = `${filePath}.${process.pid}.${randomUUID()}.tmp`;
-  await writeFile(temp, JSON.stringify(value, null, 2) + "\n", { mode: 0o600 });
-  await rename(temp, filePath);
+  const handle = await open(temp, "wx", 0o600);
+  try {
+    try {
+      await handle.writeFile(JSON.stringify(value, null, 2) + "\n", "utf8");
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+    await rename(temp, filePath);
+  } catch (error) {
+    try {
+      await unlink(temp);
+    } catch (cleanupError) {
+      if (cleanupError?.code !== "ENOENT") {
+        throw new AggregateError([error, cleanupError], "Agent run state write and temporary file cleanup failed");
+      }
+    }
+    throw error;
+  }
 }
 
 export function createAgentRunService({
