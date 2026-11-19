@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+umask 077
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OC_PORT="${OPENCODE_PORT:-49374}"
@@ -110,8 +111,28 @@ trap cleanup EXIT INT TERM
 # Same readiness contract on OpenCode 1.x and 2.x: a version on the server's own
 # version endpoint (2.x: /api/info, 1.x: /global/health), /api/location, and at
 # least one enabled model on /api/model. /api/provider may be empty on 2.x.
+curl_escape_into() {
+  local target="$1"
+  local value="$2"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\t'/\\t}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\v'/\\v}"
+  printf -v "$target" '%s' "$value"
+}
+
+curl_auth_get() {
+  local user pass
+  curl_escape_into user "$1"
+  curl_escape_into pass "$2"
+  shift 2
+  printf 'user = "%s:%s"\n' "$user" "$pass" | curl -fsS -K - "$@"
+}
+
 oc_get() {
-  curl -fsS -u "opencode:$OC_PASS" -H "x-opencode-directory: $OC_DIR" \
+  curl_auth_get "opencode" "$OC_PASS" -H "x-opencode-directory: $OC_DIR" \
     "http://127.0.0.1:$OC_PORT$1" 2>/dev/null || true
 }
 
@@ -178,7 +199,7 @@ HEALTH_HOST="$POCKET_HOST"
 if [ "$HEALTH_HOST" = "::1" ]; then HEALTH_HOST="[::1]"; fi
 READY=0
 for _ in $(seq 1 120); do
-  RESULT="$(curl -fsS -u "$AUTH_USER:$AUTH_PASS" \
+  RESULT="$(curl_auth_get "$AUTH_USER" "$AUTH_PASS" \
     "http://$HEALTH_HOST:$POCKET_PORT/api/health" 2>/dev/null || true)"
 
   if [ -n "$RESULT" ] && echo "$RESULT" | python3 -c '

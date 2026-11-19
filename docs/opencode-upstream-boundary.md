@@ -66,11 +66,9 @@ directory) follows the identical lifecycle in both scripts
    `OPENCODE_URL=http://127.0.0.1:$OC_PORT`
    (`start-pocket.sh` line 148; `systemd-entrypoint.sh` lines
    163–174).
-4. The launchers' own readiness probes authenticate with the same
-   credential (`oc_get()` uses `curl -u "opencode:$PASS"`,
-   `start-pocket.sh` lines 105–106; `systemd-entrypoint.sh`
-   lines 113–115) — so during startup the password also appears
-   transiently in `curl`'s argument list.
+4. Both launchers' readiness probes authenticate with the same credential.
+   Since #594, `oc_get()` calls `curl_auth_get()`, which supplies the
+   credential through curl's stdin configuration instead of its argument list.
 5. In the server, `server.mjs` reads the environment once at startup
    (lines 64–66: `OPENCODE_URL`, `OPENCODE_SERVER_USERNAME` default
    `opencode`, `OPENCODE_SERVER_PASSWORD`) and `openCodeHeaders()`
