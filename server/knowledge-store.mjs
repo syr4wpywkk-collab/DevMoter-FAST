@@ -169,7 +169,11 @@ export function createKnowledgeStore({ rootDir, getProjectById = async () => nul
   async function list() {
     await initialize();
     await rebuild();
-    return db.prepare("SELECT * FROM notes ORDER BY updated_at DESC, id").all().map(publicRecord);
+    // Index rows are snake_case and store pinned as 0/1; map them to the public shape.
+    return db.prepare("SELECT * FROM notes ORDER BY pinned DESC, updated_at DESC, id").all().map(item => publicRecord({
+      id: item.id, title: item.title, canonicalPath: item.path, projectId: item.project_id ?? null,
+      createdAt: item.created_at, updatedAt: item.updated_at, pinned: item.pinned === 1 || item.pinned === true,
+      contentHash: item.content_hash, revision: item.revision }));
   }
   async function create(input = {}) {
     await initialize();
