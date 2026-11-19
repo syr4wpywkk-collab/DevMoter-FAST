@@ -46,6 +46,14 @@ export function watchSessionExpiry(win, onExpired) {
   return () => { win.fetch = original; };
 }
 
+function isModalDialog(dialog) {
+  try {
+    return dialog.matches(":modal");
+  } catch {
+    return false;
+  }
+}
+
 /** Shows one dismissible banner with a sign-in link; returns the banner element. */
 export function showSessionExpiredBanner(doc = document) {
   const existing = doc.querySelector(".dm-session-expired");
@@ -65,7 +73,15 @@ export function showSessionExpiredBanner(doc = document) {
   dismiss.textContent = t("sessionExpiry.dismiss");
   dismiss.addEventListener("click", () => banner.remove());
   banner.append(text, signIn, dismiss);
-  doc.body.append(banner);
+  // A modal <dialog> (e.g. Office) makes everything outside it inert, so the
+  // banner goes inside the open dialog and moves back out when it closes.
+  const modal = [...doc.querySelectorAll("dialog[open]")].findLast(isModalDialog);
+  if (modal) {
+    modal.append(banner);
+    modal.addEventListener("close", () => { if (banner.isConnected) doc.body.append(banner); }, { once: true });
+  } else {
+    doc.body.append(banner);
+  }
   return banner;
 }
 
