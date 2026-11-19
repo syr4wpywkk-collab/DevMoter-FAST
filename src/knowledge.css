@@ -67,7 +67,7 @@
 .dm-know-danger { border-color: var(--status-error); color: var(--status-error); }
 .dm-know-sheet :is(button, input, select, textarea):focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
 
-.dm-know-list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--border-hairline); }
+.dm-know-list { margin: 0; padding: 0; list-style: none; color: var(--text-primary); border-top: 1px solid var(--border-hairline); }
 .dm-know-row {
   display: block;
   width: 100%;
@@ -76,7 +76,7 @@
   border: 0;
   border-bottom: 1px solid var(--border-hairline);
   background: none;
-  color: inherit;
+  color: var(--text-primary);
   font: inherit;
   text-align: left;
   cursor: pointer;
