@@ -9,9 +9,18 @@ import { stampBuiltServiceWorker, stampServiceWorkerCache } from "../scripts/ser
 const source = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
 
 function cacheNameOf(workerSource) {
-  const context = vm.createContext({ self: { addEventListener() {}, location: { origin: "https://devmoter.test" } } });
-  vm.runInContext(workerSource, context);
-  return vm.runInContext("CACHE", context);
+  return workerSource.match(/^const CACHE = "([^"]+)";$/m)?.[1];
+}
+
+// Produces the sw.js a build with this id ships, via the same in-place stamp
+// the Vite plugin runs on dist/sw.js.
+async function builtWorker(t, buildId) {
+  const root = await mkdtemp(join(tmpdir(), "devmoter-sw-build-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, "dist"));
+  await writeFile(join(root, "dist", "sw.js"), source);
+  await stampBuiltServiceWorker(root, "dist", buildId);
+  return readFile(join(root, "dist", "sw.js"), "utf8");
 }
 
 async function activate(workerSource, existingCaches) {
@@ -61,20 +70,12 @@ test("stamping fails the build if sw.js no longer declares its cache name", () =
   assert.throws(() => stampServiceWorkerCache("const OTHER = 1;", "abc123"), /must declare/);
 });
 
-test("the next build's worker deletes the previous build's cache on activate", async () => {
-  const previous = stampServiceWorkerCache(source, "aaaaaaaaaaaa");
-  const next = stampServiceWorkerCache(source, "bbbbbbbbbbbb");
+test("the next build's worker deletes the previous build's cache on activate", async t => {
+  const previous = await builtWorker(t, "aaaaaaaaaaaa");
+  const next = await builtWorker(t, "bbbbbbbbbbbb");
+  assert.equal(cacheNameOf(next), `${cacheNameOf(source)}-bbbbbbbbbbbb`);
   const remaining = await activate(next, [cacheNameOf(previous), cacheNameOf(next), "devmoter-fast-v21"]);
   assert.deepEqual(remaining, [cacheNameOf(next)]);
-});
-
-test("the built sw.js in the output directory is stamped in place", async t => {
-  const root = await mkdtemp(join(tmpdir(), "devmoter-sw-build-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
-  await mkdir(join(root, "dist"));
-  await writeFile(join(root, "dist", "sw.js"), source);
-  await stampBuiltServiceWorker(root, "dist", "cafe1234");
-  assert.equal(cacheNameOf(await readFile(join(root, "dist", "sw.js"), "utf8")), `${cacheNameOf(source)}-cafe1234`);
 });
 
 test("vite build registers the service worker cache stamp", async () => {
