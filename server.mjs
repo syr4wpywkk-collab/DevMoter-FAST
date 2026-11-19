@@ -3011,7 +3011,8 @@ const server = http.createServer(async (req, res) => {
       json(res, 200, {
         state,
         policy: userAutomationPolicy,
-        runs: userAutomation.listRuns()
+        runs: userAutomation.listRuns(),
+        hookAudit: await userAutomation.readHookAudit()
       });
       return;
     }

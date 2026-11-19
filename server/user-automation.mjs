@@ -1,5 +1,5 @@
-import { execFile } from "node:child_process";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { execFile, spawnSync } from "node:child_process";
+import { appendFile, mkdir, open, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
@@ -214,10 +214,205 @@ export function hookChildEnvironment(event, schema, sourceEnv = process.env) {
   };
 }
 
-export function createUserAutomationService({ configDir, resolveProject, executeTask, runVerification }) {
+/**
+ * Resolves the sandbox execution plan for an approved command hook, failing closed unless bubblewrap and a registered project boundary are established or `DEVMOTER_ALLOW_UNSANDBOXED_HOOKS=1` is explicitly set.
+ */
+export function resolveCommandHookExecution({
+  hook,
+  project = null,
+  projectId = "",
+  projectError = null,
+  env = process.env,
+  spawn = spawnSync
+}) {
+  const activeEnv = env || process.env;
+  const policy = sandboxStatus({ env: activeEnv, spawn });
+  const allowUnsandboxed = activeEnv.DEVMOTER_ALLOW_UNSANDBOXED_HOOKS === "1";
+
+  if (projectError) {
+    return {
+      allowed: false,
+      status: "failed",
+      sandboxed: false,
+      sandboxReason: "registered project boundary resolution failed: " + errorMessage(projectError),
+      error: errorMessage(projectError),
+      policy,
+      optInUsed: false,
+      projectPath: null
+    };
+  }
+
+  const hasProjectBoundary = Boolean(
+    project &&
+    typeof project.path === "string" &&
+    project.path.startsWith("/") &&
+    !project.path.includes("\0")
+  );
+  const projectPath = hasProjectBoundary ? project.path : null;
+
+  if (policy.mode !== "off" && policy.available && hasProjectBoundary) {
+    const wrapped = buildBubblewrapCommand({
+      projectPath,
+      command: hook.command,
+      args: hook.args,
+      allowNetwork: false,
+      failClosed: true,
+      env: activeEnv,
+      spawn
+    });
+    return {
+      allowed: true,
+      sandboxed: true,
+      sandboxReason: null,
+      command: wrapped.command,
+      args: wrapped.args,
+      cwd: projectPath,
+      policy,
+      optInUsed: false,
+      projectPath
+    };
+  }
+
+  const reasons = [];
+  if (policy.mode === "off") reasons.push("OS sandbox is disabled (DEVMOTER_SANDBOX=off)");
+  else if (!policy.available) reasons.push("bubblewrap (bwrap) is unavailable");
+  if (!hasProjectBoundary) {
+    reasons.push(projectId ? "registered project boundary could not be resolved" : "missing registered project boundary");
+  }
+  const baseReason = reasons.join(" and ") || "sandbox could not be established";
+
+  if (policy.mode === "required") {
+    const sandboxReason = `${baseReason}; blocked by DEVMOTER_SANDBOX=required`;
+    return {
+      allowed: false,
+      status: "blocked",
+      sandboxed: false,
+      sandboxReason,
+      error: `Command hook blocked: ${sandboxReason}`,
+      policy,
+      optInUsed: false,
+      projectPath
+    };
+  }
+
+  if (!allowUnsandboxed) {
+    const sandboxReason = `${baseReason}; unsandboxed command hooks require DEVMOTER_ALLOW_UNSANDBOXED_HOOKS=1`;
+    return {
+      allowed: false,
+      status: "blocked",
+      sandboxed: false,
+      sandboxReason,
+      error: `Command hook blocked: ${sandboxReason}`,
+      policy,
+      optInUsed: false,
+      projectPath
+    };
+  }
+
+  return {
+    allowed: true,
+    sandboxed: false,
+    sandboxReason: `${baseReason}; allowed via DEVMOTER_ALLOW_UNSANDBOXED_HOOKS=1`,
+    command: hook.command,
+    args: hook.args,
+    cwd: projectPath || undefined,
+    policy,
+    optInUsed: true,
+    projectPath
+  };
+}
+
+export function createUserAutomationService({
+  configDir,
+  resolveProject,
+  executeTask,
+  runVerification,
+  env,
+  spawnSync: spawnSyncImpl = spawnSync,
+  execFile: execFileImpl = execFileAsync
+}) {
   const file = join(configDir, "user-automation.json");
+  const auditFile = join(configDir, "hook-audit.jsonl");
   const runs = new Map();
   const cancelHandlers = new Map();
+  let auditQueue = Promise.resolve();
+  const resolveEnv = () => (typeof env === "function" ? env() : env) || process.env;
+
+  const HOOK_AUDIT_MAX_BYTES = 5 * 1024 * 1024;
+  const HOOK_AUDIT_TAIL_BYTES = 1024 * 1024;
+
+  async function recordHookAudit(entry) {
+    const line = JSON.stringify(entry) + "\n";
+    const write = auditQueue.catch(() => {}).then(async () => {
+      await mkdir(configDir, { recursive: true, mode: 0o700 });
+      try {
+        const info = await stat(auditFile);
+        if (info.size > HOOK_AUDIT_MAX_BYTES) {
+          await rename(auditFile, auditFile + ".1").catch(() => {});
+        }
+      } catch {
+        // A missing audit file is the normal first-run case.
+      }
+      await appendFile(auditFile, line, { mode: 0o600 });
+    });
+    auditQueue = write;
+    await write;
+  }
+
+  async function readHookAudit(limit = 100) {
+    const bounded = Math.max(1, Math.min(500, Number(limit) || 100));
+    let handle;
+    try {
+      handle = await open(auditFile, "r");
+      const info = await handle.stat();
+      const start = Math.max(0, info.size - HOOK_AUDIT_TAIL_BYTES);
+      const length = info.size - start;
+      const buffer = Buffer.alloc(length);
+      if (length > 0) await handle.read(buffer, 0, length, start);
+      let text = buffer.toString("utf8");
+      if (start > 0) {
+        const firstNewline = text.indexOf("\n");
+        text = firstNewline === -1 ? "" : text.slice(firstNewline + 1);
+      }
+      const lines = text.split("\n").filter(Boolean);
+      return lines.slice(-bounded).map(line => JSON.parse(line));
+    } catch (error) {
+      if (error?.code === "ENOENT") return [];
+      throw error;
+    } finally {
+      await handle?.close().catch(() => {});
+    }
+  }
+
+  async function auditCommandHook({
+    event,
+    hook,
+    projectId,
+    projectPath = null,
+    status,
+    sandboxed,
+    sandboxReason = null,
+    sandboxMode,
+    optInUsed = false,
+    error = ""
+  }) {
+    await recordHookAudit({
+      at: Date.now(),
+      event,
+      hookId: hook.id,
+      hookName: hook.name,
+      command: hook.command,
+      args: hook.args,
+      projectId: projectId || null,
+      projectPath,
+      status,
+      sandboxed: sandboxed === true,
+      ...(sandboxed ? {} : { sandboxReason }),
+      sandboxMode,
+      optInUsed: optInUsed === true,
+      ...(error ? { error } : {})
+    });
+  }
 
   async function readState() {
     await mkdir(configDir, { recursive: true, mode: 0o700 });
@@ -241,49 +436,123 @@ export function createUserAutomationService({ configDir, resolveProject, execute
   async function emitHook(event, payload = {}) {
     if (!HOOK_EVENTS.includes(event)) throw new Error("Unsupported lifecycle hook event");
     const state = await readState();
+    const safePayload = plain(payload) ? payload : {};
     const schema = {
       schemaVersion: HOOK_SCHEMA_VERSION,
       event,
       emittedAt: Date.now(),
-      payload: plain(payload) ? payload : {}
+      payload: safePayload
     };
+    const activeEnv = resolveEnv();
     const hooks = state.hooks.filter(hook => hook.enabled && hook.event === event);
     const results = await Promise.all(hooks.map(async hook => {
       if (hook.kind === "notify") return { id: hook.id, status: "observed", schema };
+      const projectId = safePayload.projectId ? String(safePayload.projectId).trim() : "";
+
       if (hook.permission !== "mutate" || !hook.approved) {
-        return { id: hook.id, status: "blocked", error: "Mutating hook requires explicit approval" };
+        const policy = sandboxStatus({ env: activeEnv, spawn: spawnSyncImpl });
+        const result = {
+          id: hook.id,
+          status: "blocked",
+          sandboxed: false,
+          sandboxReason: "mutating hook requires explicit approval",
+          error: "Mutating hook requires explicit approval"
+        };
+        await auditCommandHook({
+          event,
+          hook,
+          projectId,
+          status: result.status,
+          sandboxed: false,
+          sandboxReason: result.sandboxReason,
+          sandboxMode: policy.mode,
+          error: result.error
+        });
+        return result;
       }
-      try {
-        const project = payload.projectId ? await resolveProject(String(payload.projectId)) : null;
-        const policy = sandboxStatus();
-        if (!project && policy.mode === "required") {
-          throw new Error("Sandbox-required command hooks need a registered project boundary");
+
+      let project = null;
+      let projectError = null;
+      if (projectId) {
+        try {
+          project = await resolveProject(projectId);
+        } catch (error) {
+          projectError = error;
         }
-        const wrapped = project
-          ? buildBubblewrapCommand({
-              projectPath: project.path,
-              command: hook.command,
-              args: hook.args,
-              allowNetwork: false
-            })
-          : { sandboxed: false, command: hook.command, args: hook.args };
-        const result = await execFileAsync(wrapped.command, wrapped.args, {
-          cwd: project?.path,
+      }
+
+      const plan = resolveCommandHookExecution({
+        hook,
+        project,
+        projectId,
+        projectError,
+        env: activeEnv,
+        spawn: spawnSyncImpl
+      });
+
+      if (!plan.allowed) {
+        const error = errorMessage(plan.error || plan.sandboxReason).slice(0, 2000);
+        const result = {
+          id: hook.id,
+          status: plan.status,
+          sandboxed: false,
+          sandboxReason: plan.sandboxReason,
+          error
+        };
+        await auditCommandHook({
+          event,
+          hook,
+          projectId,
+          projectPath: plan.projectPath,
+          status: result.status,
+          sandboxed: false,
+          sandboxReason: plan.sandboxReason,
+          sandboxMode: plan.policy.mode,
+          error
+        });
+        return result;
+      }
+
+      let result;
+      try {
+        const execResult = await execFileImpl(plan.command, plan.args, {
+          cwd: plan.cwd,
           timeout: hook.timeoutMs,
           maxBuffer: 256 * 1024,
           windowsHide: true,
-          env: hookChildEnvironment(event, schema)
+          env: hookChildEnvironment(event, schema, activeEnv)
         });
-        return {
+        result = {
           id: hook.id,
           status: "completed",
-          sandboxed: wrapped.sandboxed === true,
-          stdout: String(result.stdout || "").slice(0, 12000),
-          stderr: String(result.stderr || "").slice(0, 4000)
+          sandboxed: plan.sandboxed,
+          ...(plan.sandboxed ? {} : { sandboxReason: plan.sandboxReason }),
+          stdout: String(execResult?.stdout || "").slice(0, 12000),
+          stderr: String(execResult?.stderr || "").slice(0, 4000)
         };
       } catch (error) {
-        return { id: hook.id, status: "failed", error: errorMessage(error).slice(0, 2000) };
+        result = {
+          id: hook.id,
+          status: "failed",
+          sandboxed: plan.sandboxed,
+          ...(plan.sandboxed ? {} : { sandboxReason: plan.sandboxReason }),
+          error: errorMessage(error).slice(0, 2000)
+        };
       }
+
+      await auditCommandHook({
+        event,
+        hook,
+        projectId,
+        projectPath: plan.projectPath,
+        status: result.status,
+        sandboxed: result.sandboxed,
+        sandboxReason: result.sandboxReason || null,
+        sandboxMode: plan.policy.mode,
+        optInUsed: plan.optInUsed,
+        error: result.error || ""
+      });
+      return result;
     }));
     return { schema, results };
   }
@@ -401,6 +670,7 @@ export function createUserAutomationService({ configDir, resolveProject, execute
     readState,
     writeState,
     emitHook,
+    readHookAudit,
     async listSlashCommands() {
       const state = await readState();
       return state.slashCommands.filter(item => item.enabled).map(item => ({ ...item }));
@@ -422,5 +692,6 @@ export function createUserAutomationService({ configDir, resolveProject, execute
 export const userAutomationPolicy = {
   slashPrecedence: "DevMoter built-ins are reserved and cannot be shadowed; user commands are unique by name.",
   hookTrust: "Only user-owned DevMoter settings are executable. Repository manifests cannot register executable hooks.",
-  hookMutation: "Command hooks are mutating and require approved=true; observe hooks never execute a command."
+  hookMutation: "Command hooks are mutating and require approved=true; observe hooks never execute a command.",
+  hookSandbox: "Command hooks fail closed unless bubblewrap (bwrap) and a registered project boundary are established. Unsandboxed execution requires DEVMOTER_ALLOW_UNSANDBOXED_HOOKS=1 and DEVMOTER_SANDBOX not set to required."
 };

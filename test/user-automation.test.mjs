@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -11,6 +11,7 @@ import {
   normalizeRecipe,
   normalizeSlashCommand,
   resolveSlashCommand,
+  userAutomationPolicy,
   validateRecipeParameters
 } from "../server/user-automation.mjs";
 
@@ -47,7 +48,13 @@ test("hooks use versioned schema and unapproved mutating hooks fail closed", asy
 test("approved command hook is bounded and does not wedge lifecycle dispatch", async t => {
   const dir = await mkdtemp(join(tmpdir(), "devmoter-hook-timeout-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
-  const service = serviceAt(dir);
+  const service = serviceAt(dir, {
+    env: {
+      ...process.env,
+      DEVMOTER_SANDBOX: "preferred",
+      DEVMOTER_ALLOW_UNSANDBOXED_HOOKS: "1"
+    }
+  });
   await service.writeState({
     hooks: [{
       id: "slow",
@@ -63,6 +70,7 @@ test("approved command hook is bounded and does not wedge lifecycle dispatch", a
   const started = Date.now();
   const emitted = await service.emitHook("after-run", { projectId: "p1" });
   assert.equal(emitted.results[0].status, "failed");
+  assert.equal(typeof emitted.results[0].sandboxed, "boolean");
   assert.ok(Date.now() - started < 3000);
 });
 
@@ -181,4 +189,264 @@ test("approved hook subprocess env strips inherited tokens and injection hooks",
   assert.equal(env.LD_PRELOAD, undefined);
   assert.equal(env.DEVMOTER_HOOK_EVENT, "after-run");
   assert.deepEqual(JSON.parse(env.DEVMOTER_HOOK_EVENT_JSON), schema);
+});
+
+test("command hooks fail closed when bwrap is unavailable without explicit opt-in", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-hook-no-bwrap-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const marker = join(dir, "ran.txt");
+  const service = serviceAt(dir, {
+    env: { DEVMOTER_SANDBOX: "preferred" },
+    spawnSync: () => ({ status: 127, stdout: "" })
+  });
+  await service.writeState({
+    hooks: [{
+      id: "cmd-hook",
+      name: "cmd-hook",
+      event: "before-run",
+      kind: "command",
+      command: process.execPath,
+      args: ["-e", `require("node:fs").writeFileSync(${JSON.stringify(marker)}, "ran")`],
+      approved: true
+    }]
+  });
+
+  const emitted = await service.emitHook("before-run", { projectId: "p1" });
+  const result = emitted.results[0];
+  assert.equal(result.status, "blocked");
+  assert.equal(result.sandboxed, false);
+  assert.match(result.sandboxReason, /bubblewrap \(bwrap\) is unavailable/i);
+  assert.match(result.sandboxReason, /DEVMOTER_ALLOW_UNSANDBOXED_HOOKS=1/);
+  await assert.rejects(() => access(marker), { code: "ENOENT" });
+
+  const audit = await service.readHookAudit();
+  assert.equal(audit.length, 1);
+  assert.equal(audit[0].status, "blocked");
+  assert.equal(audit[0].sandboxed, false);
+  assert.equal(audit[0].optInUsed, false);
+  assert.equal(audit[0].sandboxReason, result.sandboxReason);
+});
+
+test("command hooks do not run implicitly when projectId is missing or boundary is unresolvable", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-hook-no-project-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const marker = join(dir, "ran.txt");
+  const bwrapAvailable = () => ({ status: 0, stdout: "bubblewrap 0.10.0" });
+
+  let executions = 0;
+  const serviceNull = serviceAt(dir, {
+    env: { DEVMOTER_SANDBOX: "preferred" },
+    spawnSync: bwrapAvailable,
+    resolveProject: async id => (id === "relative" ? { id, path: "relative/dir" } : null),
+    execFile: async () => { executions += 1; return { stdout: "", stderr: "" }; }
+  });
+  await serviceNull.writeState({
+    hooks: [{
+      id: "hook-boundary",
+      name: "hook-boundary",
+      event: "after-tool",
+      kind: "command",
+      command: process.execPath,
+      args: ["-e", `require("node:fs").writeFileSync(${JSON.stringify(marker)}, "ran")`],
+      approved: true
+    }]
+  });
+
+  const missingProjectId = await serviceNull.emitHook("after-tool", {});
+  assert.equal(missingProjectId.results[0].status, "blocked");
+  assert.equal(missingProjectId.results[0].sandboxed, false);
+  assert.match(missingProjectId.results[0].sandboxReason, /missing registered project boundary/i);
+
+  const unresolvedProject = await serviceNull.emitHook("after-tool", { projectId: "missing" });
+  assert.equal(unresolvedProject.results[0].status, "blocked");
+  assert.equal(unresolvedProject.results[0].sandboxed, false);
+  assert.match(unresolvedProject.results[0].sandboxReason, /could not be resolved/i);
+
+  const relativeProject = await serviceNull.emitHook("after-tool", { projectId: "relative" });
+  assert.equal(relativeProject.results[0].status, "blocked");
+  assert.equal(relativeProject.results[0].sandboxed, false);
+  assert.match(relativeProject.results[0].sandboxReason, /could not be resolved/i);
+
+  const serviceThrowing = serviceAt(dir, {
+    env: { DEVMOTER_SANDBOX: "preferred" },
+    spawnSync: bwrapAvailable,
+    resolveProject: async () => { throw new Error("Project not found"); },
+    execFile: async () => { executions += 1; return { stdout: "", stderr: "" }; }
+  });
+  const threwProject = await serviceThrowing.emitHook("after-tool", { projectId: "ghost" });
+  assert.equal(threwProject.results[0].status, "failed");
+  assert.equal(threwProject.results[0].sandboxed, false);
+  assert.match(threwProject.results[0].sandboxReason, /Project not found/);
+
+  assert.equal(executions, 0);
+  await assert.rejects(() => access(marker), { code: "ENOENT" });
+  const audit = await serviceNull.readHookAudit();
+  assert.equal(audit.length, 4);
+  assert.ok(audit.every(entry => entry.sandboxed === false && typeof entry.sandboxReason === "string" && entry.sandboxReason.length > 0));
+});
+
+test("command hooks run unsandboxed only with DEVMOTER_ALLOW_UNSANDBOXED_HOOKS=1 and record sandboxed=false and reason", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-hook-opt-in-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const marker = join(dir, "allowed.txt");
+  const env = { ...process.env, DEVMOTER_SANDBOX: "preferred", DEVMOTER_ALLOW_UNSANDBOXED_HOOKS: "1" };
+
+  const serviceNoBwrap = serviceAt(dir, {
+    env,
+    spawnSync: () => ({ status: 127, stdout: "" })
+  });
+  await serviceNoBwrap.writeState({
+    hooks: [{
+      id: "opt-in-ok",
+      name: "opt-in-ok",
+      event: "before-run",
+      kind: "command",
+      command: process.execPath,
+      args: ["-e", `require("node:fs").writeFileSync(${JSON.stringify(marker)}, "ok"); console.log("done");`],
+      approved: true
+    }, {
+      id: "opt-in-fail",
+      name: "opt-in-fail",
+      event: "after-run",
+      kind: "command",
+      command: process.execPath,
+      args: ["-e", "process.exit(2)"],
+      approved: true
+    }]
+  });
+
+  const completed = await serviceNoBwrap.emitHook("before-run", { projectId: "p1" });
+  assert.equal(completed.results[0].status, "completed");
+  assert.equal(completed.results[0].sandboxed, false);
+  assert.match(completed.results[0].sandboxReason, /bubblewrap \(bwrap\) is unavailable; allowed via DEVMOTER_ALLOW_UNSANDBOXED_HOOKS=1/);
+  assert.equal(completed.results[0].stdout.trim(), "done");
+  assert.equal(await readFile(marker, "utf8"), "ok");
+
+  const failed = await serviceNoBwrap.emitHook("after-run", { projectId: "p1" });
+  assert.equal(failed.results[0].status, "failed");
+  assert.equal(failed.results[0].sandboxed, false);
+  assert.match(failed.results[0].sandboxReason, /DEVMOTER_ALLOW_UNSANDBOXED_HOOKS=1/);
+
+  const noProjectMarker = join(dir, "no-project-allowed.txt");
+  const serviceNoProject = serviceAt(dir, {
+    env,
+    spawnSync: () => ({ status: 0, stdout: "bubblewrap 0.10.0" }),
+    resolveProject: async () => null
+  });
+  await serviceNoProject.writeState({
+    hooks: [{
+      id: "no-project-ok",
+      name: "no-project-ok",
+      event: "after-tool",
+      kind: "command",
+      command: process.execPath,
+      args: ["-e", `require("node:fs").writeFileSync(${JSON.stringify(noProjectMarker)}, "ok");`],
+      approved: true
+    }]
+  });
+  const noProjectRes = await serviceNoProject.emitHook("after-tool", {});
+  assert.equal(noProjectRes.results[0].status, "completed");
+  assert.equal(noProjectRes.results[0].sandboxed, false);
+  assert.match(noProjectRes.results[0].sandboxReason, /missing registered project boundary; allowed via DEVMOTER_ALLOW_UNSANDBOXED_HOOKS=1/);
+  assert.equal(await readFile(noProjectMarker, "utf8"), "ok");
+
+  const audit = await serviceNoBwrap.readHookAudit();
+  assert.equal(audit.length, 3);
+  assert.deepEqual(
+    audit.map(entry => [entry.hookId, entry.status, entry.sandboxed, entry.optInUsed]),
+    [
+      ["opt-in-ok", "completed", false, true],
+      ["opt-in-fail", "failed", false, true],
+      ["no-project-ok", "completed", false, true]
+    ]
+  );
+  assert.ok(audit.every(entry => typeof entry.sandboxReason === "string" && entry.sandboxReason.includes("DEVMOTER_ALLOW_UNSANDBOXED_HOOKS=1")));
+});
+
+test("command hooks use bwrap when available and respect required and off sandbox modes", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-hook-sandbox-modes-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const spawned = [];
+
+  const serviceSandboxed = serviceAt(dir, {
+    env: { DEVMOTER_SANDBOX: "preferred", DEVMOTER_ALLOW_UNSANDBOXED_HOOKS: "1" },
+    spawnSync: () => ({ status: 0, stdout: "bubblewrap 0.10.0" }),
+    execFile: async (command, args) => {
+      spawned.push({ command, args });
+      return { stdout: "sandboxed-ok", stderr: "" };
+    }
+  });
+  await serviceSandboxed.writeState({
+    hooks: [{
+      id: "sandboxed-hook",
+      name: "sandboxed-hook",
+      event: "before-run",
+      kind: "command",
+      command: "echo",
+      args: ["hello"],
+      approved: true
+    }]
+  });
+
+  const sandboxedResult = await serviceSandboxed.emitHook("before-run", { projectId: "p1" });
+  assert.equal(sandboxedResult.results[0].status, "completed");
+  assert.equal(sandboxedResult.results[0].sandboxed, true);
+  assert.equal("sandboxReason" in sandboxedResult.results[0], false);
+  assert.equal(spawned[0].command, "bwrap");
+  assert.ok(spawned[0].args.includes("--unshare-net"));
+  assert.ok(spawned[0].args.includes(dir));
+
+  const requiredWithOptIn = serviceAt(dir, {
+    env: { DEVMOTER_SANDBOX: "required", DEVMOTER_ALLOW_UNSANDBOXED_HOOKS: "1" },
+    spawnSync: () => ({ status: 127, stdout: "" }),
+    execFile: async () => { throw new Error("must not execute"); }
+  });
+  const requiredBlocked = await requiredWithOptIn.emitHook("before-run", { projectId: "p1" });
+  assert.equal(requiredBlocked.results[0].status, "blocked");
+  assert.equal(requiredBlocked.results[0].sandboxed, false);
+  assert.match(requiredBlocked.results[0].sandboxReason, /DEVMOTER_SANDBOX=required/);
+
+  const offWithoutOptIn = serviceAt(dir, {
+    env: { DEVMOTER_SANDBOX: "off" },
+    spawnSync: () => ({ status: 0, stdout: "bubblewrap 0.10.0" }),
+    execFile: async () => { throw new Error("must not execute"); }
+  });
+  const offBlocked = await offWithoutOptIn.emitHook("before-run", { projectId: "p1" });
+  assert.equal(offBlocked.results[0].status, "blocked");
+  assert.equal(offBlocked.results[0].sandboxed, false);
+  assert.match(offBlocked.results[0].sandboxReason, /DEVMOTER_SANDBOX=off/);
+
+  const offWithOptIn = serviceAt(dir, {
+    env: { DEVMOTER_SANDBOX: "off", DEVMOTER_ALLOW_UNSANDBOXED_HOOKS: "1" },
+    spawnSync: () => ({ status: 0, stdout: "bubblewrap 0.10.0" }),
+    execFile: async (command, args) => {
+      spawned.push({ command, args });
+      return { stdout: "off-ok", stderr: "" };
+    }
+  });
+  const offAllowed = await offWithOptIn.emitHook("before-run", { projectId: "p1" });
+  assert.equal(offAllowed.results[0].status, "completed");
+  assert.equal(offAllowed.results[0].sandboxed, false);
+  assert.match(offAllowed.results[0].sandboxReason, /DEVMOTER_SANDBOX=off.*DEVMOTER_ALLOW_UNSANDBOXED_HOOKS=1/);
+  assert.equal(spawned[1].command, "echo");
+
+  const sandboxedFailService = serviceAt(dir, {
+    env: { DEVMOTER_SANDBOX: "required" },
+    spawnSync: () => ({ status: 0, stdout: "bubblewrap 0.10.0" }),
+    execFile: async () => { throw new Error("hook command exited 1"); }
+  });
+  const sandboxedFailed = await sandboxedFailService.emitHook("before-run", { projectId: "p1" });
+  assert.equal(sandboxedFailed.results[0].status, "failed");
+  assert.equal(sandboxedFailed.results[0].sandboxed, true);
+  assert.equal("sandboxReason" in sandboxedFailed.results[0], false);
+
+  assert.match(userAutomationPolicy.hookSandbox, /DEVMOTER_ALLOW_UNSANDBOXED_HOOKS=1/);
+  const auditLines = (await readFile(join(dir, "hook-audit.jsonl"), "utf8")).trim().split("\n").map(line => JSON.parse(line));
+  assert.equal(auditLines.length, 5);
+  assert.equal(auditLines[0].sandboxed, true);
+  assert.equal("sandboxReason" in auditLines[0], false);
+  assert.equal(auditLines[0].optInUsed, false);
+  assert.equal(auditLines[4].status, "failed");
+  assert.equal(auditLines[4].sandboxed, true);
+  assert.equal("sandboxReason" in auditLines[4], false);
 });
