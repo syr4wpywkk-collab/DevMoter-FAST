@@ -15,6 +15,7 @@ import { createOpenCodeClient } from "./server/opencode-api.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
 import { buildProxyResponseHeaders, isTextualProxyMediaType, PROXY_SECURITY_HEADERS, staticSecurityHeaders } from "./server/security-headers.mjs";
+import { applyBaselineSecurityHeaders } from "./server/response-security.mjs";
 import { readHandle, withOpenFile, writeFileNoFollow } from "./server/safe-file.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
 import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
@@ -277,6 +278,7 @@ const systemFeatures = createSystemFeatures({
   },
   host: HOST,
   version: process.env.DEVMOTER_VERSION || "0.2.0",
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
   trustedProxies: DEVMOTER_TRUSTED_PROXIES,
   onDeviceRevoked: deviceId => terminal.revokeDeviceSessions(deviceId)
 });
@@ -482,7 +484,6 @@ function endIfResponseStarted(res) {
 function json(res, status, body) {
   if (endIfResponseStarted(res)) return;
   res.writeHead(status, {
-    ...PROXY_SECURITY_HEADERS,
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store"
   });
@@ -492,7 +493,6 @@ function json(res, status, body) {
 function jsonWithCookie(res, status, body, cookie) {
   if (endIfResponseStarted(res)) return;
   res.writeHead(status, {
-    ...PROXY_SECURITY_HEADERS,
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
     "set-cookie": cookie
@@ -2880,6 +2880,7 @@ const PUBLIC_STATIC_PATHS = new Set([
 ]);
 
 const server = http.createServer(async (req, res) => {
+  applyBaselineSecurityHeaders(req, res, { publicOrigin: DEVMOTER_PUBLIC_ORIGIN });
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
     // URL parsing can erase dot segments. Validate the original request target
@@ -3961,6 +3962,9 @@ const server = http.createServer(async (req, res) => {
 
     if (openCodeTarget) {
       const { policyPath } = openCodeTarget;
+      for (const [name, value] of Object.entries(PROXY_SECURITY_HEADERS)) {
+        res.setHeader(name, value);
+      }
       if (
         req.method !== "GET" &&
         req.method !== "HEAD" &&
@@ -3973,6 +3977,10 @@ const server = http.createServer(async (req, res) => {
 
     await serveStatic(req, res);
   } catch (error) {
+    if (error instanceof URIError) {
+      json(res, 400, { error: "Malformed request path" });
+      return;
+    }
     console.error(redactText(error instanceof Error ? error.stack || error.message : String(error)));
     json(res, 500, { error: "DevMoter server error" });
   }

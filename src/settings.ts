@@ -122,6 +122,30 @@ function densityLabel(value: string) {
   return value === "compact" ? t("settings.density.compact") : t("settings.density.comfortable");
 }
 
+const ORIGIN_PARTS = ["scheme", "host", "port"];
+
+// Explains the server's public-Origin diagnosis; no origin or URL is shown.
+export function describePublicOrigin(origin: Json | null | undefined) {
+  const status = typeof origin?.status === "string" ? origin.status : "unverified";
+  const parts = (Array.isArray(origin?.differs) ? origin.differs : [])
+    .filter((part: unknown) => ORIGIN_PARTS.includes(String(part)))
+    .map((part: string) => t(`settings.diagnostics.originPart.${part}`))
+    .join(t("settings.diagnostics.originPartSeparator"));
+  if (status === "ok") {
+    return { status, tone: "ok", label: t("settings.diagnostics.originOk"), detail: origin?.configured || !origin?.forwardedHeaders ? "" : t("settings.diagnostics.originProxyHint") };
+  }
+  if (status === "invalid") return { status, tone: "error", label: t("settings.diagnostics.originMismatch"), detail: t("settings.diagnostics.originInvalidDetail") };
+  if (status === "configured-mismatch") return { status, tone: "error", label: t("settings.diagnostics.originMismatch"), detail: t("settings.diagnostics.originConfiguredMismatchDetail", { parts }) };
+  if (status === "proxy-mismatch") return { status, tone: "error", label: t("settings.diagnostics.originMismatch"), detail: t("settings.diagnostics.originProxyMismatchDetail", { parts }) };
+  return { status: "unverified", tone: "muted", label: t("common.unknown"), detail: "" };
+}
+
+// Only a stored, valid timestamp is shown; anything else reads as unknown.
+function deviceLastUsedLabel(value: unknown) {
+  const stamp = typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+  return (stamp !== null && formatDateTime(stamp)) || t("common.unknown");
+}
+
 function deviceBrowserLabel() {
   return navigator.userAgent.includes("Mobile")
     ? t("settings.devices.labelMobile")
@@ -516,10 +540,10 @@ export function mountSettingsPanel() {
           <div class="devmoter-settings-device">
             <span><strong>${escapeHtml(device.label || t("settings.devices.deviceDefaultLabel"))}</strong><small>${escapeHtml(t("settings.devices.deviceMeta", {
               current: device.current ? t("settings.devices.thisDevicePrefix") : "",
-              lastUsed: formatDateTime(device.lastUsedAt)
+              lastUsed: deviceLastUsedLabel(device.lastUsedAt)
             }))}</small></span>
             ${canRevokeDevices
-              ? `<button type="button" data-action="device:revoke" data-device-id="${escapeHtml(device.id)}">${escapeHtml(t("common.revoke"))}</button>`
+              ? `<button type="button" data-action="device:revoke" data-device-id="${escapeHtml(device.id)}" data-device-label="${escapeHtml(device.label || t("settings.devices.deviceDefaultLabel"))}" data-device-last-used="${escapeHtml(deviceLastUsedLabel(device.lastUsedAt))}" data-device-current="${device.current ? "true" : "false"}">${escapeHtml(t("common.revoke"))}</button>`
               : ""}
           </div>
         `).join("")
@@ -870,6 +894,7 @@ export function mountSettingsPanel() {
   function renderDiagnostics() {
     setHeader(t("settings.root.diagnostics"), t("settings.diagnostics.subtitle"));
     const fetchState = describeHealthFetch(diagnosticsFetch);
+    const originState = describePublicOrigin(diagnostics?.publicOrigin);
     const buildMismatch = buildsDiffer(diagnostics?.app?.build, CLIENT_BUILD);
     let hostBuild = formatBuildId(diagnostics?.app?.build);
     let deviceBuild = formatBuildId(CLIENT_BUILD);
@@ -893,6 +918,7 @@ export function mountSettingsPanel() {
           <div class="devmoter-settings-detail-row"><span>${escapeHtml(t("settings.diagnostics.hostBuildLabel"))}</span><strong data-diagnostics-build>${escapeHtml(hostBuild)}</strong></div>
           <div class="devmoter-settings-detail-row"><span>${escapeHtml(t("settings.diagnostics.deviceBuildLabel"))}</span><strong data-diagnostics-device-build>${escapeHtml(deviceBuild)}</strong></div>
           <div class="devmoter-settings-detail-row"><span>${escapeHtml(t("settings.diagnostics.projectsLabel"))}</span><strong>${escapeHtml(formatNumber(Number(diagnostics?.projects?.count ?? 0)))}</strong></div>
+          <div class="devmoter-settings-detail-row"><span>${escapeHtml(t("settings.diagnostics.originLabel"))}</span><strong data-diagnostics-origin="${escapeHtml(originState.status)}">${escapeHtml(originState.label)}</strong></div>
           <div class="devmoter-settings-detail-row"><span>${escapeHtml(t("settings.diagnostics.networkLabel"))}</span><strong>${escapeHtml(diagnostics?.network?.localhostFirst ? t("settings.diagnostics.networkLocalhost") : t("settings.diagnostics.networkCustom"))}</strong></div>
         </div>
         ${buildMismatch ? `<div class="devmoter-settings-note" data-diagnostics-build-mismatch>${escapeHtml(t("settings.diagnostics.buildMismatch"))}</div>` : ""}
@@ -909,6 +935,7 @@ export function mountSettingsPanel() {
         <h2>${escapeHtml(t("settings.diagnostics.prereqHeading"))}</h2>
         <div class="devmoter-settings-card devmoter-settings-health">${prerequisiteRows()}</div>
       </section>
+      ${originState.detail ? `<div class="devmoter-settings-note" data-diagnostics-origin-detail data-tone="${escapeHtml(originState.tone)}" role="status">${escapeHtml(originState.detail)}</div>` : ""}
       <div class="devmoter-settings-note">${escapeHtml(diagnostics?.network?.message || "")}</div>
     `;
     wireRows();
@@ -1300,10 +1327,18 @@ export function mountSettingsPanel() {
           return;
         }
         if (action === "device:revoke") {
+          const confirmKey = button.dataset.deviceCurrent === "true"
+            ? "settings.devices.confirmRevokeCurrent"
+            : "settings.devices.confirmRevoke";
+          if (!window.confirm(t(confirmKey, {
+            label: button.dataset.deviceLabel || t("settings.devices.deviceDefaultLabel"),
+            lastUsed: button.dataset.deviceLastUsed || t("common.unknown")
+          }))) return;
           try {
-            await request(`/api/devices/${encodeURIComponent(button.dataset.deviceId || "")}`, { method: "DELETE" }, true);
+            const result = await request(`/api/devices/${encodeURIComponent(button.dataset.deviceId || "")}`, { method: "DELETE" }, true);
             issuedPairing = null;
-            window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { action: "revoke" } }));
+            const revokedCurrent = result.revokedCurrentDevice === true;
+            window.dispatchEvent(new CustomEvent("devmoter:device-trust-changed", { detail: { action: "revoke", revokedCurrent } }));
             toast(t("settings.devices.revokedToast"));
             await renderDevices();
           } catch (error) {
@@ -1392,7 +1427,7 @@ export function mountSettingsPanel() {
   async function refreshDiagnostics() {
     diagnosticsFetch.loading = true;
     try {
-      diagnostics = await request("/api/system/diagnostics");
+      diagnostics = await request("/api/system/diagnostics", { headers: { "x-devmoter-client-origin": window.location.origin } });
       diagnosticsFetch.fetchedAt = Date.now();
       diagnosticsFetch.failure = null;
     } catch (error) {

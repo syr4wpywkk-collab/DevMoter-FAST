@@ -255,7 +255,7 @@ function createWorkspacePanel() {
     panel.innerHTML = panelHead(title);
     wireClose();
     if (isDeviceAuthError(error)) {
-      panel.append(createDeviceGate(document, { onRegister: closePanel }));
+      panel.append(createDeviceGate(document, { error, onRegister: closePanel }));
       return;
     }
     const message = document.createElement("p");
