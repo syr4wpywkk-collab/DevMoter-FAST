@@ -2430,6 +2430,7 @@ export const ja = {
   "opencode.transcript.agentSwitched": "エージェント → {agent}",
   "opencode.transcript.modelSwitched": "モデル → {model}",
   "opencode.transcript.compacted": "コンテキストを圧縮しました",
+  "opencode.commands.openPalette": "スラッシュコマンド",
   "opencode.commands.customDesc": "DevMoter カスタムコマンド",
   "opencode.commands.opencodeDesc": "OpenCode コマンド",
   "opencode.commands.customFailed": "カスタムコマンドの実行に失敗しました。",

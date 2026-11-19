@@ -2430,6 +2430,7 @@ export const zhHans = {
   "opencode.transcript.agentSwitched": "代理 → {agent}",
   "opencode.transcript.modelSwitched": "模型 → {model}",
   "opencode.transcript.compacted": "上下文已压缩",
+  "opencode.commands.openPalette": "斜杠命令",
   "opencode.commands.customDesc": "DevMoter 自定义命令",
   "opencode.commands.opencodeDesc": "OpenCode 命令",
   "opencode.commands.customFailed": "自定义命令执行失败。",
