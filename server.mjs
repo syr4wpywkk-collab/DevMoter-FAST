@@ -9,7 +9,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { CodexBridge } from "./server/codex-bridge.mjs";
 import { inspectKnownClis, launchCode } from "./server/cli-launch.mjs";
 import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/opencode-provider-catalog.mjs";
-import { canonicalOpenCodeEvent, createSseReader, lastAssistantText, parseDevMoterPrompt, parsePermissionDecision, parseQuestionAnswers } from "./server/opencode-adapter.mjs";
+import { canonicalOpenCodeEvent, createSseReader, lastAssistantText, OPENCODE_API_V2, parseDevMoterPrompt, parsePermissionDecision, parseQuestionAnswers } from "./server/opencode-adapter.mjs";
 import { createOpenCodeClient } from "./server/opencode-api.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
 import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
@@ -1936,14 +1936,13 @@ async function opencodeSessionRoute(req, res, pathname) {
         return true;
       }
       const effectiveMode = resolveEffectiveAgentMode(verifiedMode, promptAgentMode);
+      if (isReadOnlyMode(effectiveMode) && !prompt.agent) prompt.agent = effectiveMode;
+      if (promptAgentMode && isReadOnlyMode(promptAgentMode)) {
+        const { generation } = await openCode.info();
+        if (generation === OPENCODE_API_V2) setOpenCodeSessionMode(sessionId, promptAgentMode);
+      }
       prompt.text = materializeOpenCodeUploadText(prompt.text);
       await openCode.prompt(sessionId, prompt, { readOnlyTools: readOnlyToolsFor(effectiveMode) });
-      if (promptAgentMode && isReadOnlyMode(promptAgentMode)) {
-        // A downgrade the upstream session itself now reflects (2.x applies
-        // the prompt's agent to the session) is recorded server-side too, so
-        // the stored mode can never drift above the session's real mode.
-        setOpenCodeSessionMode(sessionId, promptAgentMode);
-      }
       json(res, 200, { ok: true });
     } else if (subroute === "context") {
       json(res, 200, await openCode.context(sessionId));
@@ -2135,6 +2134,7 @@ async function proxy(req, res, { upstreamUrl, policyPath }) {
       });
       return;
     }
+    if (isReadOnlyMode(bodyAgentMode)) setOpenCodeSessionMode(sessionId, bodyAgentMode);
   }
 
   const upstreamAbort = new AbortController();

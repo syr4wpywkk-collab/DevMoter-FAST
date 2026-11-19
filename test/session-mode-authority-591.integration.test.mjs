@@ -47,7 +47,8 @@ async function waitForReady(child, timeoutMs = 30000) {
   });
 }
 
-test("session mode authority is server-side; the agent-mode header is ignored", async () => {
+for (const generation of ["1.x", "2.x"]) {
+test(`${generation} session mode authority is server-side; the agent-mode header is ignored`, async () => {
   const home = await mkdtemp(join(tmpdir(), "devmoter-591-"));
   const upstreamPort = await freePort();
   const appPort = await freePort();
@@ -55,6 +56,7 @@ test("session mode authority is server-side; the agent-mode header is ignored", 
   const received = [];
   const sessions = new Map();
   let createCount = 0;
+  const failures = new Set();
   // Sessions that exist only upstream (never created through this DevMoter
   // run, so the server-side mode map starts cold for them): one read-only,
   // and one whose record carries neither an agent nor a mode.
@@ -75,7 +77,10 @@ test("session mode authority is server-side; the agent-mode header is ignored", 
     };
 
     if (req.method === "GET" && path === "/global/health") {
-      return reply(200, { healthy: true, version: "1.19.5" });
+      return generation === "1.x" ? reply(200, { healthy: true, version: "1.19.5" }) : reply(404, {});
+    }
+    if (req.method === "GET" && path === "/api/info") {
+      return generation === "2.x" ? reply(200, { version: "2.0.9" }) : reply(404, {});
     }
     if (req.method === "POST" && path === "/api/session") {
       createCount += 1;
@@ -97,13 +102,16 @@ test("session mode authority is server-side; the agent-mode header is ignored", 
     if (req.method === "POST" && agentMatch) {
       const found = sessions.get(decodeURIComponent(agentMatch[1]));
       if (!found) return reply(404, { error: { message: "session not found" } });
+      if (failures.delete(`agent:${found.id}`)) return reply(500, { error: { message: "agent update failed" } });
       if (typeof body?.agent === "string") found.agent = body.agent;
       return reply(200, { data: null });
     }
     if (req.method === "POST" && /^\/api\/session\/[^/]+\/(?:shell|command)$/.test(path)) {
       return reply(200, { data: true });
     }
-    if (req.method === "POST" && /^\/session\/[^/]+\/prompt_async$/.test(path)) {
+    if (req.method === "POST" && (/^\/session\/[^/]+\/prompt_async$/.test(path) || /^\/api\/session\/[^/]+\/prompt$/.test(path))) {
+      const id = path.split("/").at(-2);
+      if (failures.delete(`prompt:${id}`)) return reply(500, { error: { message: "prompt send failed" } });
       res.writeHead(204);
       return res.end();
     }
@@ -144,7 +152,17 @@ test("session mode authority is server-side; the agent-mode header is ignored", 
     return { status: response.status, payload, text };
   };
   const upstreamCalls = (method, path) => received.filter(item => item.method === method && item.path === path);
-  const promptsFor = id => upstreamCalls("POST", `/session/${id}/prompt_async`);
+  const promptsFor = id => upstreamCalls("POST", generation === "1.x" ? `/session/${id}/prompt_async` : `/api/session/${id}/prompt`);
+  const assertReadOnlyPrompt = id => {
+    const body = promptsFor(id).at(-1).body;
+    if (generation === "1.x") {
+      assert.equal(body.tools["*"], false);
+      assert.equal(body.tools.read, true);
+    } else {
+      assert.equal(body.tools, undefined);
+      assert.ok(["plan", "ask"].includes(sessions.get(id).agent));
+    }
+  };
 
   try {
     await waitForReady(child);
@@ -171,8 +189,7 @@ test("session mode authority is server-side; the agent-mode header is ignored", 
     const roPrompt = await call("POST", `${base}/session/ses_c1/prompt`, { text: "inspect" }, { "x-pocket-agent-mode": "build" });
     assert.equal(roPrompt.status, 200, roPrompt.text);
     assert.equal(promptsFor("ses_c1").length, 1);
-    assert.equal(promptsFor("ses_c1")[0].body.tools["*"], false);
-    assert.equal(promptsFor("ses_c1")[0].body.tools.read, true);
+    assertReadOnlyPrompt("ses_c1");
 
     // plan -> build through the agent endpoint is rejected before forwarding.
     const escalate = await call("POST", `${base}/session/ses_c1/agent`, { agent: "build" });
@@ -235,15 +252,24 @@ test("session mode authority is server-side; the agent-mode header is ignored", 
     assert.equal(escalatePrompt.status, 403);
     assert.equal(promptsFor("ses_c2").length, 1, "escalating prompt must not reach upstream");
 
-    // A prompt body's read-only agent is an allowed downgrade on a build
-    // session, and the downgrade is recorded server-side.
+    // Only 2.x persists the agent selected by a prompt.
     const createBuild2 = await call("POST", `${base}/session`, { agent: "build" });
     assert.equal(createBuild2.payload.data.id, "ses_c3");
     const downgradePrompt = await call("POST", `${base}/session/ses_c3/prompt`, { text: "look", agent: "plan" });
     assert.equal(downgradePrompt.status, 200, downgradePrompt.text);
-    assert.equal(promptsFor("ses_c3")[0].body.tools["*"], false);
+    assertReadOnlyPrompt("ses_c3");
     const downgradedShell = await call("POST", `${base}/session/ses_c3/shell`, { command: "id" });
-    assert.equal(downgradedShell.status, 403, "recorded downgrade must bind later mutations");
+    assert.equal(downgradedShell.status, generation === "2.x" ? 403 : 200, downgradedShell.text);
+    if (generation === "1.x") {
+      const nextBuild = await call("POST", `${base}/session/ses_c3/prompt`, { text: "work", agent: "build" });
+      assert.equal(nextBuild.status, 200, nextBuild.text);
+      assert.equal(promptsFor("ses_c3").at(-1).body.agent, "build");
+      assert.equal(promptsFor("ses_c3").at(-1).body.tools, undefined);
+      const inheritedBuild = await call("POST", `${base}/session/ses_c3/prompt`, { text: "continue" });
+      assert.equal(inheritedBuild.status, 200, inheritedBuild.text);
+      assert.equal(promptsFor("ses_c3").at(-1).body.agent, "build");
+      assert.equal(promptsFor("ses_c3").at(-1).body.tools, undefined);
+    }
 
     // Sessions the upstream cannot resolve fail closed on guarded routes.
     const ghostShell = await call("POST", `${base}/session/ses_ghost/shell`, { command: "id" });
@@ -274,11 +300,36 @@ test("session mode authority is server-side; the agent-mode header is ignored", 
     const noModePrompt = await call("POST", `${base}/session/ses_nomode/prompt`, { text: "inspect" });
     assert.equal(noModePrompt.status, 200, noModePrompt.text);
     assert.equal(promptsFor("ses_nomode").length, 1);
-    assert.equal(promptsFor("ses_nomode")[0].body.tools["*"], false);
-    assert.equal(promptsFor("ses_nomode")[0].body.tools.read, true);
+    assertReadOnlyPrompt("ses_nomode");
+    if (generation === "2.x") {
+      assert.deepEqual(upstreamCalls("POST", "/api/session/ses_nomode/agent")[0].body, { agent: "plan" });
+    }
     const noModeAgent = await call("POST", `${base}/session/ses_nomode/agent`, { agent: "build" });
     assert.equal(noModeAgent.status, 403, noModeAgent.text);
-    assert.equal(upstreamCalls("POST", "/api/session/ses_nomode/agent").length, 0);
+    assert.equal(upstreamCalls("POST", "/api/session/ses_nomode/agent").length, generation === "2.x" ? 1 : 0);
+
+    if (generation === "2.x") {
+      for (const failure of ["agent", "prompt", "direct-agent"]) {
+        const id = `ses_fail_${failure}`;
+        sessions.set(id, { id, agent: "build" });
+        const warm = await call("POST", `${base}/session/${id}/prompt`, { text: "warm" });
+        assert.equal(warm.status, 200, warm.text);
+        assert.equal(promptsFor(id)[0].body.tools, undefined);
+        failures.add(`${failure === "direct-agent" ? "agent" : failure}:${id}`);
+        const failed = await call("POST", `${base}/session/${id}/${failure === "direct-agent" ? "agent" : "prompt"}`,
+          failure === "direct-agent" ? { agent: "plan" } : { text: "inspect", agent: "plan" });
+        assert.equal(failed.status, 500, failed.text);
+        for (const route of ["shell", "command"]) {
+          const blocked = await call("POST", `${base}/session/${id}/${route}`, { command: "id" });
+          assert.equal(blocked.status, 403, blocked.text);
+          assert.equal(upstreamCalls("POST", `/api/session/${id}/${route}`).length, 0);
+        }
+        const retry = await call("POST", `${base}/session/${id}/prompt`, { text: "inspect again" });
+        assert.equal(retry.status, 200, retry.text);
+        assertReadOnlyPrompt(id);
+        assert.deepEqual(upstreamCalls("POST", `/api/session/${id}/agent`).at(-1).body, { agent: "plan" });
+      }
+    }
 
     // Create-response sync: when the upstream reports a stricter mode for
     // the created session than the request body asked for, the recorded
@@ -298,3 +349,4 @@ test("session mode authority is server-side; the agent-mode header is ignored", 
     await rm(home, { recursive: true, force: true });
   }
 });
+}
