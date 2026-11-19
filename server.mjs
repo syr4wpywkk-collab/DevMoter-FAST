@@ -506,11 +506,10 @@ function openCodeHeaders(extra = {}) {
   return headers;
 }
 
-async function openCodeHeadersForRequest(req, extra = {}) {
+async function openCodeHeadersForRequest(req, extra = {}, policyPath = "") {
   const projectId = String(req.headers["x-pocket-project-id"] || "").trim();
   let directory = OPENCODE_DIRECTORY;
-  const requestPath = String(req.url || "").split("?", 1)[0];
-  const isExistingSession = /^\/api\/opencode\/session\/[^/]+/.test(requestPath) || /^\/api\/session\/[^/]+/.test(requestPath);
+  const isExistingSession = Boolean(sessionIdFromOpenCodePath(policyPath));
   if (projectId && !isExistingSession) directory = (await getProjectById(projectId)).path;
   return openCodeHeaders({ "x-opencode-directory": directory, ...extra });
 }
@@ -1767,7 +1766,7 @@ function canonicalDecodedPath(rawPath) {
   } catch {
     return null;
   }
-  if (fullyDecodePath(rawPath) !== decoded) return null;
+  if (decoded.includes("%")) return null;
   if (decoded.includes("//")) return null;
   if (decoded.split("/").some(segment => segment === "." || segment === "..")) return null;
   return decoded;
@@ -1796,14 +1795,10 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   const canonicalPath = canonicalDecodedPath(rawPath);
   if (
     canonicalPath === null ||
-    canonicalPath.startsWith("//") ||
-    rawPath.startsWith("//") ||
     canonicalPath.includes("..") ||
-    canonicalPath.includes("\\") ||
-    canonicalPath.includes("?") ||
-    canonicalPath.includes("#") ||
     OPENCODE_SCHEME_SEGMENT.test(canonicalPath) ||
-    CONTROL_CHARS.test(canonicalPath)
+    CONTROL_CHARS.test(canonicalPath) ||
+    !OPENCODE_SAFE_PATH.test(canonicalPath)
   ) {
     return { error: "OpenCode proxy path is not allowed" };
   }
@@ -1835,7 +1830,7 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
 //   POST /session/{id}/question/{rid}/reply       { answers: string[][] }
 //   POST /session/{id}/question/{rid}/reject
 //   GET  /event                                   canonical SSE events
-const OPENCODE_SESSION_ROUTE = /^\/api\/opencode\/session\/([^/]+)\/(prompt|context|interrupt|permission|question)(?:\/([^/]+)\/(reply|reject))?$/;
+const OPENCODE_SESSION_ROUTE = /^\/api\/session\/([^/]+)\/(prompt|context|interrupt|permission|question)(?:\/([^/]+)\/(reply|reject))?$/;
 const OPENCODE_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 function openCodeAdapterFailure(res, error) {
@@ -1857,26 +1852,13 @@ async function readOpenCodeBody(req, limit) {
   }
 }
 
-async function opencodeSessionRoute(req, res, url) {
-  // Dispatch on the canonical decoded path (url.pathname stays
-  // percent-encoded), so an encoded action such as %70rompt is classified
-  // exactly like its decoded form and can never fall through to the raw
-  // proxy as an unclassified route. Paths that cannot be canonicalized
-  // (undecodable or double-encoded) are not dispatched here; proxy()
-  // rejects them with 400.
-  const canonicalPathname = canonicalDecodedPath(url.pathname);
-  if (canonicalPathname === null) return false;
-  // Match with the same trailing-slash normalization the proxy target
-  // builder applies, so an adapter route written with a trailing slash
-  // (…/prompt/) is dispatched here instead of missing the adapter and
-  // falling through to the raw proxy.
-  const pathname = canonicalPathname.replace(/\/+$/, "") || "/";
-  if (pathname === "/api/opencode/event") {
+async function opencodeSessionRoute(req, res, pathname) {
+  if (pathname === "/api/event") {
     if (req.method !== "GET") return false;
     await opencodeEvents(req, res);
     return true;
   }
-  if (pathname === "/api/opencode/session/active") {
+  if (pathname === "/api/session/active") {
     if (req.method !== "GET") return false;
     try {
       json(res, 200, await openCode.active());
@@ -1887,10 +1869,8 @@ async function opencodeSessionRoute(req, res, url) {
   }
   const match = pathname.match(OPENCODE_SESSION_ROUTE);
   if (!match) return false;
-  const [, rawSessionId, operation, rawRequestId, action] = match;
-  const sessionId = fullyDecodePath(rawSessionId);
-  const requestId = rawRequestId === undefined ? null : fullyDecodePath(rawRequestId);
-  if (!sessionId || !OPENCODE_ID.test(sessionId) || (requestId !== null && (!requestId || !OPENCODE_ID.test(requestId)))) {
+  const [, sessionId, operation, requestId = null, action] = match;
+  if (!OPENCODE_ID.test(sessionId) || (requestId !== null && !OPENCODE_ID.test(requestId))) {
     json(res, 400, { error: "OpenCode session or request id is invalid" });
     return true;
   }
@@ -2035,13 +2015,7 @@ async function opencodeEvents(req, res) {
   }
 }
 
-async function proxy(req, res) {
-  const target = buildOpenCodeUpstreamTarget(req.url);
-  if (target.error) {
-    json(res, 400, { error: target.error });
-    return;
-  }
-  const { upstreamUrl, policyPath } = target;
+async function proxy(req, res, { upstreamUrl, policyPath }) {
   const sessionId = sessionIdFromOpenCodePath(policyPath);
   const requestedMode = parseAgentMode(req.headers["x-pocket-agent-mode"]);
   if (sessionId && requestedMode) openCodeSessionModes.set(sessionId, requestedMode);
@@ -2092,7 +2066,7 @@ async function proxy(req, res) {
       headers: await openCodeHeadersForRequest(req, {
         "content-type": req.headers["content-type"] || "application/json",
         "accept": req.headers["accept"] || "*/*"
-      }),
+      }, policyPath),
       body,
       redirect: "error",
       signal: upstreamAbort.signal
@@ -2620,6 +2594,15 @@ const PUBLIC_STATIC_PATHS = new Set([
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+    // URL parsing can erase dot segments. Validate the original request target
+    // before dispatching to either an OpenCode adapter or any other route.
+    const openCodeTarget = req.url.startsWith(OPENCODE_PROXY_PREFIX) || url.pathname.startsWith(OPENCODE_PROXY_PREFIX)
+      ? buildOpenCodeUpstreamTarget(req.url)
+      : null;
+    if (openCodeTarget?.error) {
+      json(res, 400, { error: openCodeTarget.error });
+      return;
+    }
 
     if (req.method === "POST" && url.pathname === "/api/control/events/github") {
       await githubWebhookRoute(req, res);
@@ -3634,7 +3617,7 @@ const server = http.createServer(async (req, res) => {
     }
 
 
-    if (req.method === "GET" && url.pathname === "/api/opencode/pocket/providers") {
+    if (req.method === "GET" && openCodeTarget?.policyPath === "/api/pocket/providers") {
       await opencodeProviders(url, res);
       return;
     }
@@ -3668,14 +3651,15 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (url.pathname.startsWith("/api/opencode") || String(req.url || "").startsWith("/api/opencode")) {
+    if (openCodeTarget) {
+      const { policyPath } = openCodeTarget;
       if (
         req.method !== "GET" &&
         req.method !== "HEAD" &&
-        !claimOperation(req, res, `${req.method}:${url.pathname}`)
+        !claimOperation(req, res, `${req.method}:${policyPath}`)
       ) return;
-      if (await opencodeSessionRoute(req, res, url)) return;
-      await proxy(req, res);
+      if (await opencodeSessionRoute(req, res, policyPath)) return;
+      await proxy(req, res, openCodeTarget);
       return;
     }
 

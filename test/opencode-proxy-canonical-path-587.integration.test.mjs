@@ -214,6 +214,13 @@ test("OpenCode proxy canonicalizes paths before policy checks and forwarding", a
     assert.equal(encodedContext.status, 200, encodedContext.text);
     assert.equal(upstreamCalls("GET", "/api/session/ses_ro/context").length, contextHitsBefore + 1);
 
+    const beforeInvalidContext = received.length;
+    for (const segment of [".", "%2e", "extra/.."]) {
+      const invalid = await rawRequest("GET", `/api/opencode/session/ses_ro/${segment}/context`);
+      assert.equal(invalid.status, 400, invalid.text);
+    }
+    assert.equal(received.length, beforeInvalidContext, "malformed adapter paths must not contact OpenCode");
+
     // Happy paths on the build session: plain, encoded, and trailing-slash
     // shell all forward in canonical form; the adapter prompt still works.
     for (const route of ["shell", "%73hell", "shell/"]) {
