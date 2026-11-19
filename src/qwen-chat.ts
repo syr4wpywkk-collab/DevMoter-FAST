@@ -586,7 +586,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       return;
     }
     if (event.key !== "Tab") return;
-    const controls = Array.from(sheet.querySelectorAll<HTMLElement>("button:not([disabled]):not([hidden])"));
+    const controls = Array.from(sheet.querySelectorAll<HTMLElement>(":is(button, input):not([disabled]):not([hidden])"));
     const first = controls[0];
     const last = controls.at(-1);
     if (!first || !last) return;

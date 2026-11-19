@@ -244,6 +244,15 @@ test("history sheet lists chats newest first and switches, starts and deletes th
     search.value = "no such chat";
     search.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
     assert.match(sheet.querySelector(".qx-history-empty").textContent, /no such chat/);
+    const headButtons = [...sheet.querySelectorAll("[data-sheet-header] button:not([hidden])")];
+    headButtons.at(-1).focus();
+    const tab = new dom.window.KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    headButtons.at(-1).dispatchEvent(tab);
+    assert.equal(tab.defaultPrevented, false, "Tab from the header still reaches the search field");
+    search.focus();
+    const wrap = new dom.window.KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    search.dispatchEvent(wrap);
+    assert.equal(wrap.defaultPrevented, true, "the search field is the last stop of the focus trap");
     search.value = "";
     search.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
     assert.equal(sheet.querySelectorAll(".qx-history-row").length, 2);
