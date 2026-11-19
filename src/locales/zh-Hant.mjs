@@ -18,6 +18,7 @@ export const zhHant = {
   "chat.copyLatest.none": "還沒有可複製的回答。",
   "chat.draft.projectSwitched": "專案已切換，現在顯示的是此專案的草稿。請確認後再傳送。",
   "chat.history.loadFailed": "無法載入對話紀錄。對話仍保持選取。",
+  "chat.history.listLoadFailed": "無法載入對話列表。",
   "common.search": "搜尋",
   "common.copy": "複製",
   "common.copied": "已複製",

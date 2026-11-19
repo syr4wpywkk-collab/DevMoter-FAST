@@ -30,7 +30,8 @@ const compiled = compile(await readFile(new URL("../src/opencode.ts", import.met
 const compiledBounds = compile(await readFile(new URL("../src/bounded-transcript.ts", import.meta.url), "utf8"));
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
-async function harness(t, initialContext = []) {
+async function harness(t, initialContext = [], { listFailures = 0 } = {}) {
+  const listFailuresAtStart = listFailures;
   const dom = new JSDOM('<!doctype html><main id="root"></main>', {
     url: "https://devmoter.example/chat", runScripts: "outside-only"
   });
@@ -64,6 +65,10 @@ async function harness(t, initialContext = []) {
     const path = url.pathname;
     let payload = [];
     requests.push({ path, method: init.method || "GET" });
+    if (path === "/api/opencode/session" && listFailures > 0) {
+      listFailures -= 1;
+      return new Response(JSON.stringify({ error: "list unavailable" }), { status: 503, headers: { "content-type": "application/json" } });
+    }
     if (path.endsWith("/context") && context === "unavailable") {
       return new Response(JSON.stringify({ error: "context unavailable" }), { status: 503, headers: { "content-type": "application/json" } });
     }
@@ -118,7 +123,7 @@ async function harness(t, initialContext = []) {
   const controller = mountOpenCodeRemote(root);
   controller.setOnline(true);
   await settle();
-  assert.equal(root.querySelector("#ocxSessionTitle").textContent, "Test session");
+  if (!listFailuresAtStart) assert.equal(root.querySelector("#ocxSessionTitle").textContent, "Test session");
   return {
     root, window, copied, controller, requests,
     emit(type, properties) { source.onmessage({ data: JSON.stringify({ type, properties }) }); },
@@ -218,6 +223,26 @@ test("failed OpenCode history load keeps the session and retries without sending
   assert.equal(ui.root.querySelector(".ocx-assistant-text").textContent.trim(), "Recovered answer");
   assert.equal(ui.root.querySelector("#ocxPromptInput").value, "unsent draft");
   assert.equal(ui.window.localStorage.getItem("opencode-pocket-opencode-session"), "session-1");
+});
+
+test("failed OpenCode session list offers an in-place retry that keeps the draft", async t => {
+  const ui = await harness(t, [], { listFailures: 1 });
+  const notice = ui.root.querySelector("#ocxSessions [data-history-retry]");
+  assert.ok(notice, "list failure shows a retry notice in the sidebar");
+  assert.equal(notice.getAttribute("role"), "alert");
+  assert.equal(notice.querySelector("p").textContent, i18nCore.translate("en", "chat.history.listLoadFailed"));
+
+  ui.root.querySelector("#ocxPromptInput").value = "unsent draft";
+  const before = ui.requests.length;
+  notice.querySelector("button").click();
+  await settle();
+
+  const retried = ui.requests.slice(before);
+  assert.ok(retried.some(request => request.path === "/api/opencode/session"));
+  assert.deepEqual(retried.filter(request => request.method !== "GET"), []);
+  assert.equal(ui.root.querySelector("#ocxSessions [data-history-retry]"), null);
+  assert.ok(ui.root.querySelector("#ocxSessions").textContent.includes("Test session"));
+  assert.equal(ui.root.querySelector("#ocxPromptInput").value, "unsent draft");
 });
 
 test("OpenCode copies every text part of the latest answer and reports when there is none", async t => {

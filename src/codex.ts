@@ -1532,6 +1532,17 @@ export function mountCodexRemote(
     }
   }
 
+  // Without a list the sidebar would keep saying "Loading…" or "No threads";
+  // say it failed and offer a re-read that never touches the composer.
+  function showThreadListFailure() {
+    sidebarThreads.replaceChildren(createHistoryRetryNotice(document, {
+      className: "cx-history-retry",
+      message: t("chat.history.listLoadFailed"),
+      retryLabel: t("common.retry"),
+      onRetry: async () => { await loadThreads(); }
+    }));
+  }
+
   async function loadThreads() {
     const requestGeneration = threadListRequests.begin();
     let result: Json;
@@ -1540,6 +1551,7 @@ export function mountCodexRemote(
     } catch (error) {
       if (threadListRequests.isCurrent(requestGeneration)) {
         showToast(error instanceof Error ? translateServerMessage(error.message) : t("codex.threads.listLoadFailed"));
+        if (!allThreads.length) showThreadListFailure();
       }
       return false;
     }
@@ -1548,6 +1560,7 @@ export function mountCodexRemote(
       allThreads = normalizeCodexThreadList(result);
     } catch {
       showToast(t("codex.threads.listInvalid"));
+      if (!allThreads.length) showThreadListFailure();
       return false;
     }
     renderThreads();

@@ -18,6 +18,7 @@ export const zhHans = {
   "chat.copyLatest.none": "还没有可复制的回答。",
   "chat.draft.projectSwitched": "项目已切换，现在显示的是此项目的草稿。请确认后再发送。",
   "chat.history.loadFailed": "无法加载对话历史。对话仍保持选中。",
+  "chat.history.listLoadFailed": "无法加载对话列表。",
   "common.search": "搜索",
   "common.copy": "复制",
   "common.copied": "已复制",

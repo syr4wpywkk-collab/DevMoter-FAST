@@ -1068,7 +1068,14 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         : sessionListStatus === "loading" ? t("opencode.sidebar.connecting")
         : sessionListStatus === "error" ? t("opencode.sessions.errorEmpty")
         : t("opencode.sessions.noneEmpty");
-      sessionsEl.appendChild(empty);
+      if (!q && sessionListStatus === "error") {
+        sessionsEl.appendChild(createHistoryRetryNotice(document, {
+          className: "ocx-history-retry",
+          message: t("chat.history.listLoadFailed"),
+          retryLabel: t("common.retry"),
+          onRetry: async () => { await loadSessions(); }
+        }));
+      } else sessionsEl.appendChild(empty);
       return;
     }
 
