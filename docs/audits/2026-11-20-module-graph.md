@@ -2,11 +2,11 @@
 
 Generated on 2026-11-20 from `main` with `npm run deps:graph -- --top 12`. Regenerate it after large refactors. Only relative imports in `src/`, `server/` and `server.mjs` are counted; locales are excluded.
 
-176 modules, 340 relative imports
+177 modules, 342 relative imports
 
 | Module | Imported by | Imports |
 |---|---|---|
-| `src/i18n.ts` | 32 | 1 |
+| `src/i18n.ts` | 33 | 1 |
 | `server/error-message.mjs` | 17 | 0 |
 | `server/safe-file.mjs` | 12 | 0 |
 | `src/sheet-header.mjs` | 11 | 1 |

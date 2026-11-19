@@ -13,13 +13,13 @@ function sourceFiles(dir) {
   return readdirSync(join(root, dir), { withFileTypes: true }).flatMap(entry => {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) return entry.name === "locales" ? [] : sourceFiles(path);
-    return /\.(ts|mjs)$/.test(entry.name) && !entry.name.endsWith(".d.ts") ? [path] : [];
+    return /\.(tsx?|mjs)$/.test(entry.name) && !entry.name.endsWith(".d.ts") ? [path] : [];
   });
 }
 
 function resolve(from, specifier) {
   const base = normalize(join(dirname(from), specifier));
-  return [base, base.replace(/\.js$/, ".ts"), `${base}.ts`, `${base}.mjs`].find(path => existsSync(join(root, path)));
+  return [base, base.replace(/\.js$/, ".ts"), `${base}.ts`, `${base}.tsx`, `${base}.mjs`].find(path => existsSync(join(root, path)));
 }
 
 export function moduleGraph() {
