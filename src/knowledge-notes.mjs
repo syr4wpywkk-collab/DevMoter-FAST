@@ -41,15 +41,24 @@ export function filterNotes(notes, { query = "", projectId = "" } = {}) {
     (!needle || fold(note.title).includes(needle)) && (!projectId || note.projectId === projectId));
 }
 
+// The server counts UTF-16 units, so cut on that unit without splitting a surrogate pair.
+function clip(value, limit) {
+  let out = "";
+  for (const char of value) {
+    if (out.length + char.length > limit) break;
+    out += char;
+  }
+  return out;
+}
+
 export function cleanTitle(value, fallback = "") {
   const title = text(value).replace(/[\0-\x1f\x7f]+/g, " ").replace(/\s+/g, " ").trim();
-  return Array.from(title).slice(0, MAX_TITLE_LENGTH).join("") || fallback;
+  return clip(title, MAX_TITLE_LENGTH).trimEnd() || fallback;
 }
 
 export function duplicateTitle(title, suffix) {
   const tail = ` ${suffix}`;
-  const head = Array.from(cleanTitle(title)).slice(0, MAX_TITLE_LENGTH - Array.from(tail).length).join("").trimEnd();
-  return head + tail;
+  return clip(cleanTitle(title), MAX_TITLE_LENGTH - tail.length).trimEnd() + tail;
 }
 
 const RESERVED_NAMES = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/i;
@@ -83,7 +92,8 @@ export function decodeMarkdownFile(bytes, fileName = "") {
   catch { return { ok: false, reason: "notUtf8" }; }
   if (decoded.includes("\0")) return { ok: false, reason: "notText" };
   const source = decoded.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
-  const heading = source.match(/^\s*# +([^\n]+)\n*/);
+  // Up to three leading spaces is still a heading; four or more is an indented code block.
+  const heading = source.match(/^(?:[ \t]*\n)* {0,3}# +([^\n]+)\n*/);
   const fromName = text(fileName).replace(/^.*[\\/]/, "").replace(/\.(md|markdown|txt)$/i, "");
   const title = cleanTitle(heading?.[1].replace(/\s+#+\s*$/, ""), "") || cleanTitle(fromName, "");
   return { ok: true, title, content: heading && cleanTitle(heading[1]) ? source.slice(heading[0].length) : source };

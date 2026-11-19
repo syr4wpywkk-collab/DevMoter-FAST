@@ -8,6 +8,8 @@ import {
 
 const vite = await createServer({ server: { middlewareMode: true }, appType: "custom" });
 const { mountKnowledge } = await vite.ssrLoadModule("/src/knowledge.ts");
+// Same module instance the UI uses, so the language switch reaches it.
+const { setLanguage } = await vite.ssrLoadModule("/src/i18n-core.mjs");
 await vite.close();
 
 const note = (id, title, extra = {}) => ({ id, title, projectId: null, createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z", pinned: false, content: "", ...extra });
@@ -40,13 +42,18 @@ test("export keeps UTF-8 text and never produces an unsafe file name", () => {
   assert.equal(text, "# 日本語 😀\n\n本文 — ✓\n```js\n1\n```\n");
   assert.equal(new TextDecoder("utf-8", { fatal: true }).decode(new TextEncoder().encode(text)), text);
   assert.equal(duplicateTitle("原本", "(コピー)"), "原本 (コピー)");
-  assert.equal(Array.from(duplicateTitle("x".repeat(300), "(copy)")).length, 300);
+  assert.equal(duplicateTitle("x".repeat(300), "(copy)").length, 300);
+  // The server limit is 300 UTF-16 units; emoji take two each and must not be cut in half.
+  const emojiCopy = duplicateTitle("😀".repeat(150), "(copy)");
+  assert.ok(emojiCopy.length <= 300 && emojiCopy.endsWith(" (copy)") && emojiCopy.isWellFormed());
 });
 
 test("import validates size and UTF-8 and takes the title from the heading or the file name", () => {
   const bytes = value => new TextEncoder().encode(value);
   assert.deepEqual(decodeMarkdownFile(bytes("\uFEFF# 議事録\r\n\r\n本文\r\n"), "x.md"), { ok: true, title: "議事録", content: "本文\n" });
   assert.deepEqual(decodeMarkdownFile(bytes("no heading"), "C:\\docs\\メモ.markdown"), { ok: true, title: "メモ", content: "no heading" });
+  assert.deepEqual(decodeMarkdownFile(bytes("    # shell comment\n    ls\n"), "snippet.md"), { ok: true, title: "snippet", content: "    # shell comment\n    ls\n" });
+  assert.ok(decodeMarkdownFile(bytes("# " + "😀".repeat(200) + "\n\nbody"), "long.md").title.length <= 300);
   assert.deepEqual(decodeMarkdownFile(new Uint8Array([0xff, 0xfe, 0x41]), "a.md"), { ok: false, reason: "notUtf8" });
   assert.deepEqual(decodeMarkdownFile(new Uint8Array([0x82, 0xa0]), "sjis.md"), { ok: false, reason: "notUtf8" });
   assert.deepEqual(decodeMarkdownFile(bytes("a\0b"), "a.md"), { ok: false, reason: "notText" });
@@ -55,7 +62,7 @@ test("import validates size and UTF-8 and takes the title from the heading or th
 });
 
 // A small in-memory stand-in for the trusted-device Knowledge API.
-function setup({ auth = true, offline = false } = {}) {
+function setup({ auth = true, offline = false, language = "en" } = {}) {
   const dom = new JSDOM("<!doctype html><body><button id='opener'>open</button></body>", { url: "http://localhost/", pretendToBeVisual: true });
   const { window } = dom;
   const state = { notes: new Map(), calls: [], failNext: null, seq: 0, clock: 0, downloads: [], auth, offline };
@@ -97,6 +104,8 @@ function setup({ auth = true, offline = false } = {}) {
   for (const key of ["window", "document", "CustomEvent", "HTMLElement", "DOMException", "Blob", "URL", "fetch"]) {
     Object.defineProperty(globalThis, key, { configurable: true, writable: true, value: key === "window" ? window : window[key] });
   }
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, writable: true, value: window.localStorage });
+  setLanguage(language);
   mountKnowledge();
   const doc = window.document;
   const settle = async () => { for (let i = 0; i < 12; i++) await new Promise(resolve => setTimeout(resolve, 0)); };
@@ -130,7 +139,7 @@ test("#429 the list tells loading, empty, device-auth and connection failure apa
   assert.ok(empty.$("[data-know-empty-new]"), "empty state offers a first note");
   assert.equal(empty.$("[data-know-auth]"), null);
 
-  const locked = setup({ auth: false });
+  const locked = setup({ auth: false, language: "ja" });
   await locked.open();
   assert.ok(locked.$("[data-know-auth]"), "an untrusted device sees the registration gate");
   assert.equal(locked.$("[data-know-empty-new]"), null, "auth failure must not look like an empty list");
