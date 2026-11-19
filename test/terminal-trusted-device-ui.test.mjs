@@ -32,7 +32,8 @@ test("terminal device-auth failures use the shared registration gate", async () 
   const gate = control.slice(gateStart, control.indexOf("function clearSectionGate(", gateStart));
   assert.ok(gate.includes("isDeviceAuthError(error)"));
   assert.ok(gate.includes("createDeviceGate(document,"));
-  assert.ok(gate.includes('t("deviceGate.unregisteredTitle")'));
+  // The gate picks its own title (unregistered or revoked) from the error.
+  assert.match(gate, /createDeviceGate\(document, \{[^}]*\berror,/);
   assert.ok(gate.includes('t("deviceGate.toolsLockedCopy"'));
   assert.ok(gate.includes('t("deviceGate.openToRegisterButton")'));
   assert.ok(body.includes('showTerminalError(t("terminal.loadSessionsFailed"), error)'));

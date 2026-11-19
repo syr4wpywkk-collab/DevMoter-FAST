@@ -426,3 +426,36 @@ html[data-devmoter-theme="light"] .devmoter-system-error { color: var(--status-e
 .dm-shell-fallback-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
 .dm-shell-fallback-row label { min-width: 0; display: grid; gap: 4px; color: var(--dm-shell-muted, #a3a3a3); font-size: var(--font-size-caption, 12px); }
 .dm-shell-fallback-row select { min-width: 0; min-height: 44px; padding: 0 8px; border: 1px solid var(--border-subtle, var(--dm-shell-border)); border-radius: 10px; background: var(--surface-card); color: var(--text-primary); font: inherit; font-size: 16px; color-scheme: inherit; }
+
+/* Paste warning: sits above every surface, never blocks the composer below it. */
+.dm-paste-secret-warning {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  left: 50%;
+  z-index: 2147483000;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: min(520px, calc(100vw - 24px));
+  padding: 12px 14px;
+  transform: translateX(-50%);
+  border: 1px solid var(--status-warning-border);
+  border-radius: 10px;
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  font-size: var(--font-size-body, 14px);
+}
+.dm-paste-secret-warning strong { display: block; color: var(--status-warning); font-weight: 600; }
+.dm-paste-secret-warning p { margin: 4px 0 0; color: var(--text-secondary); line-height: 1.5; }
+.dm-paste-secret-warning > div { flex: 1; min-width: 0; }
+.dm-paste-secret-warning button {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}

@@ -529,7 +529,7 @@ export function mountControlCenter() {
       const feature = sectionFeatureName(section);
       const gate = createDeviceGate(document, {
         className: "dm-tools-card dm-tools-device-gate",
-        title: t("deviceGate.unregisteredTitle"),
+        error,
         copy: t("deviceGate.toolsLockedCopy", { feature }),
         buttonLabel: t("deviceGate.openToRegisterButton"),
         onRegister: unlockSettingsOverlay

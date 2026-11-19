@@ -3,6 +3,7 @@ export class DeviceAuthError extends Error {
   constructor(message: string, status: number);
 }
 export function isDeviceAuthError(error: unknown, status?: number): boolean;
+export function deviceAuthReason(error: unknown): "revoked" | "unregistered";
 export function responseError(status: number, message?: string): Error;
 export function openDeviceRegistration(win?: Window): void;
 export function createDeviceGate(
@@ -14,5 +15,6 @@ export function createDeviceGate(
     title?: string;
     copy?: string;
     buttonLabel?: string;
+    error?: unknown;
   }
 ): HTMLDivElement;

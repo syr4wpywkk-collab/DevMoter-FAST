@@ -1,3 +1,4 @@
+import { diagnosePublicOrigin } from "./origin-diagnostics.mjs";
 import { readCookie } from "./cookies.mjs";
 import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
@@ -200,6 +201,11 @@ async function sendEmptyPush(subscription, vapid) {
   });
 }
 
+// A last-used time is reported only when a real timestamp was recorded.
+function storedTimestamp(value) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
 export function createSystemFeatures({
   stateDir,
   appRoot,
@@ -210,6 +216,7 @@ export function createSystemFeatures({
   pushSender = sendEmptyPush,
   onDeviceRevoked = async () => {},
   trustedProxies = parseTrustedProxies(process.env.DEVMOTER_TRUST_PROXY),
+  publicOrigin = "",
   now = () => Date.now()
 }) {
   const devicesFile = join(stateDir, "devices.json");
@@ -302,7 +309,7 @@ export function createSystemFeatures({
     const { tokenHash: _tokenHash, ...publicDevice } = device;
     return {
       ...publicDevice,
-      lastUsedAt: recentDeviceUse.get(device.id) || device.lastUsedAt,
+      lastUsedAt: storedTimestamp(recentDeviceUse.get(device.id)) ?? storedTimestamp(device.lastUsedAt),
       current: Boolean(currentId && device.id === currentId)
     };
   }
@@ -641,6 +648,7 @@ export function createSystemFeatures({
           ? "Server is using a localhost-first bind."
           : "Server bind is not localhost; verify your private-network and authentication policy."
       },
+      publicOrigin: diagnosePublicOrigin(req, publicOrigin),
       notes: [
         "Diagnostics intentionally omit tokens, passwords, prompt contents, and repository file contents.",
         "No repository bootstrap scripts are run by this endpoint."

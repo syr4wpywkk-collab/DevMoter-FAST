@@ -253,6 +253,7 @@ const systemFeatures = createSystemFeatures({
   },
   host: HOST,
   version: process.env.DEVMOTER_VERSION || "0.2.0",
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
   onDeviceRevoked: deviceId => terminal.revokeDeviceSessions(deviceId)
 });
 const toolsAiStore = createRunStore({ filePath: join(PROJECT_CONFIG_DIR, "tools-ai-runs.json") });
