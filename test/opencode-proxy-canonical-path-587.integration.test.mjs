@@ -173,6 +173,34 @@ test("OpenCode proxy canonicalizes paths before policy checks and forwarding", a
     }
     assert.ok(!received.some(item => item.path.includes("%25")), "double-encoded paths must never reach upstream");
 
+    // Separator and dot-segment variants are rejected 400 before upstream:
+    // an interior "//" or a "." segment could be collapsed by a
+    // URL-normalizing upstream into the real mutation route, so the
+    // canonical path must not contain them at all.
+    for (const route of ["//shell", "./shell", "%2e/shell"]) {
+      const rejected = await rawRequest("POST", `/api/opencode/session/ses_ro/${route}`, { body: { command: "id" } });
+      assert.equal(rejected.status, 400, `${route} must be rejected, got ${rejected.status}: ${rejected.text}`);
+      assert.match(rejected.body.error, /OpenCode proxy path/);
+    }
+    // An encoded separator decodes to the canonical shell route itself and
+    // is blocked by the read-only policy exactly like the plain form.
+    const encodedSeparator = await rawRequest("POST", "/api/opencode/session/ses_ro%2fshell", { body: { command: "id" } });
+    assert.equal(encodedSeparator.status, 403, `encoded separator shell must be blocked, got ${encodedSeparator.status}: ${encodedSeparator.text}`);
+    assert.equal(upstreamCalls("POST", "/api/session/ses_ro/shell").length, 0, "shell must never reach upstream");
+
+    // Malformed percent-encoding is rejected 400 and never forwarded.
+    const malformed = await rawRequest("POST", "/api/opencode/%ZZ", { body: { command: "id" } });
+    assert.equal(malformed.status, 400, `malformed escape must be rejected, got ${malformed.status}: ${malformed.text}`);
+    assert.match(malformed.body.error, /OpenCode proxy path/);
+    assert.ok(!received.some(item => item.path.includes("%ZZ")), "malformed paths must never reach upstream");
+
+    // An adapter route written with a trailing slash is dispatched to the
+    // adapter (same handling as without the slash), never forwarded raw.
+    const slashPrompt = await rawRequest("POST", "/api/opencode/session/ses_ro/prompt/", { body: { text: "hi again" } });
+    assert.equal(slashPrompt.status, 200, slashPrompt.text);
+    assert.equal(upstreamCalls("POST", "/session/ses_ro/prompt_async").length, 3, "adapter must translate the trailing-slash prompt");
+    assert.equal(upstreamCalls("POST", "/api/session/ses_ro/prompt").length, 0, "raw prompt route must not be used");
+
     // An encoded-but-legitimate session id decodes to a valid id and is
     // forwarded (and dispatched) in its canonical decoded form. (DevMoter
     // also fetches sessions on its own, so assert on the delta.)

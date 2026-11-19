@@ -1751,6 +1751,14 @@ const OPENCODE_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
  * route than a decoding upstream serves. An accepted canonical path never
  * contains "%": any remaining escape would either decode further or fail to
  * decode, and both cases are rejected here.
+ *
+ * The decoded path must also be free of separator/dot ambiguity: an empty
+ * segment ("//" anywhere) or a "." / ".." segment is rejected, because a
+ * URL-normalizing upstream could collapse those into a different route than
+ * the one DevMoter classified. Running the check after decoding covers the
+ * percent-encoded forms (%2f, %2e) as well. Both the proxy target builder
+ * and the adapter dispatch share this function, so a variant rejected here
+ * can never fall through unclassified.
  */
 function canonicalDecodedPath(rawPath) {
   let decoded;
@@ -1759,7 +1767,10 @@ function canonicalDecodedPath(rawPath) {
   } catch {
     return null;
   }
-  return fullyDecodePath(rawPath) === decoded ? decoded : null;
+  if (fullyDecodePath(rawPath) !== decoded) return null;
+  if (decoded.includes("//")) return null;
+  if (decoded.split("/").some(segment => segment === "." || segment === "..")) return null;
+  return decoded;
 }
 
 /**
@@ -1853,8 +1864,13 @@ async function opencodeSessionRoute(req, res, url) {
   // proxy as an unclassified route. Paths that cannot be canonicalized
   // (undecodable or double-encoded) are not dispatched here; proxy()
   // rejects them with 400.
-  const pathname = canonicalDecodedPath(url.pathname);
-  if (pathname === null) return false;
+  const canonicalPathname = canonicalDecodedPath(url.pathname);
+  if (canonicalPathname === null) return false;
+  // Match with the same trailing-slash normalization the proxy target
+  // builder applies, so an adapter route written with a trailing slash
+  // (…/prompt/) is dispatched here instead of missing the adapter and
+  // falling through to the raw proxy.
+  const pathname = canonicalPathname.replace(/\/+$/, "") || "/";
   if (pathname === "/api/opencode/event") {
     if (req.method !== "GET") return false;
     await opencodeEvents(req, res);
