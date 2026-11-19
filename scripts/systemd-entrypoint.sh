@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+umask 077
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OC_PORT="${OPENCODE_PORT:-49374}"
@@ -48,6 +49,13 @@ if [ -z "$CODEX_BIN_RESOLVED" ]; then
   exit 1
 fi
 
+# The secret files below are created by shell redirection, which uses the
+# caller's umask (typically 022 -> mode 644) until the chmod after creation
+# runs. Restrict the umask first so the credentials are owner-only from the
+# moment they exist; restore it once both secrets are in place.
+PREV_UMASK="$(umask)"
+umask 077
+
 mkdir -p "$STATE_DIR"
 chmod 700 "$STATE_DIR"
 
@@ -58,8 +66,11 @@ ensure_secret() {
 import secrets
 print(secrets.token_urlsafe(32))
 PY
-    chmod 600 "$file"
   fi
+  # Re-apply on every start, not only at creation: a file left over from
+  # before this hardening (e.g. created at 644 by an interrupted bootstrap)
+  # must not keep its weaker mode just because it already exists.
+  chmod 600 "$file"
 }
 
 ensure_secret "$OC_SECRET_FILE"
@@ -72,6 +83,8 @@ else
   ensure_secret "$AUTH_SECRET_FILE"
   AUTH_PASS="$(cat "$AUTH_SECRET_FILE")"
 fi
+
+umask "$PREV_UMASK"
 
 if [ "${#AUTH_PASS}" -lt 16 ]; then
   echo "DEVMOTER_AUTH_PASSWORD must be at least 16 characters" >&2
@@ -98,8 +111,28 @@ trap cleanup EXIT INT TERM
 # Same readiness contract on OpenCode 1.x and 2.x: a version on the server's own
 # version endpoint (2.x: /api/info, 1.x: /global/health), /api/location, and at
 # least one enabled model on /api/model. /api/provider may be empty on 2.x.
+curl_escape_into() {
+  local target="$1"
+  local value="$2"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\t'/\\t}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\v'/\\v}"
+  printf -v "$target" '%s' "$value"
+}
+
+curl_auth_get() {
+  local user pass
+  curl_escape_into user "$1"
+  curl_escape_into pass "$2"
+  shift 2
+  printf 'user = "%s:%s"\n' "$user" "$pass" | curl -fsS -K - "$@"
+}
+
 oc_get() {
-  curl -fsS -u "opencode:$OC_PASS" -H "x-opencode-directory: $OC_DIR" \
+  curl_auth_get "opencode" "$OC_PASS" -H "x-opencode-directory: $OC_DIR" \
     "http://127.0.0.1:$OC_PORT$1" 2>/dev/null || true
 }
 
@@ -166,7 +199,7 @@ HEALTH_HOST="$POCKET_HOST"
 if [ "$HEALTH_HOST" = "::1" ]; then HEALTH_HOST="[::1]"; fi
 READY=0
 for _ in $(seq 1 120); do
-  RESULT="$(curl -fsS -u "$AUTH_USER:$AUTH_PASS" \
+  RESULT="$(curl_auth_get "$AUTH_USER" "$AUTH_PASS" \
     "http://$HEALTH_HOST:$POCKET_PORT/api/health" 2>/dev/null || true)"
 
   if [ -n "$RESULT" ] && echo "$RESULT" | python3 -c '
