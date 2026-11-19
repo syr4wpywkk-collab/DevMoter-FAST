@@ -129,7 +129,7 @@ test("owner session survives a real server restart and logout revokes the persis
   const home = await mkdtemp(join(tmpdir(), "devmoter-auth-v2-restart-"));
   const port = await freePort();
   const origin = `http://127.0.0.1:${port}`;
-  let child = startServer({ home, port, publicOrigin: "", bindHost: "0.0.0.0" });
+  let child = startServer({ home, port, publicOrigin: "" });
   let ownerCookie;
 
   try {
@@ -146,7 +146,7 @@ test("owner session survives a real server restart and logout revokes the persis
     assert.match(beforeRestart, /"tokenHash"\s*:\s*"[a-f0-9]{64}"/);
 
     await stop(child);
-    child = startServer({ home, port, publicOrigin: "", bindHost: "0.0.0.0" });
+    child = startServer({ home, port, publicOrigin: "" });
     await waitForReady(child);
     const status = await fetch(`${origin}/api/auth/status`, { headers: { cookie: ownerCookie } });
     assert.equal(status.status, 200);
