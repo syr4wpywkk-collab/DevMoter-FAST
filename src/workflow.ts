@@ -19,6 +19,16 @@ function wfDecisionLabel(value: string) {
   return WF_DECISION_KEYS[value] ? t(WF_DECISION_KEYS[value]) : translateServerMessage(value);
 }
 
+const WF_FILTERS = ["all", "pending", "accept", "reject", "partial"] as const;
+type WfFilter = typeof WF_FILTERS[number];
+const WF_FILTER_KEYS: Record<WfFilter, string> = {
+  all: "workflow.filterAll",
+  pending: "workflow.filterPending",
+  accept: "workflow.filterAccept",
+  reject: "workflow.filterReject",
+  partial: "workflow.filterPartial"
+};
+
 const REFRESH_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
 
 type Json = Record<string, any>;
@@ -173,6 +183,23 @@ export function mountTaskWorkflow(root: HTMLElement) {
               <div id="wfFileNotice" class="wf-notice"></div>
               <pre id="wfFile"></pre>
             </div>
+            <div id="wfReviewTools" class="wf-review-tools hidden">
+              <div class="wf-filter" role="group" aria-label="${escapeHtml(t("workflow.filterAria"))}">
+                ${WF_FILTERS.map(filter => `<button type="button" data-wf-filter="${filter}" aria-pressed="${filter === "all"}">${escapeHtml(t(WF_FILTER_KEYS[filter]))} <span data-wf-count="${filter}">0</span></button>`).join("")}
+              </div>
+              <div class="wf-review-search">
+                <label><span>${escapeHtml(t("workflow.pathSearchLabel"))}</span><input id="wfPathSearch" type="search" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(t("workflow.pathSearchPlaceholder"))}" /></label>
+                <label><span>${escapeHtml(t("workflow.diffSearchLabel"))}</span><input id="wfDiffSearch" type="search" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(t("workflow.diffSearchPlaceholder"))}" /></label>
+              </div>
+              <div class="wf-review-row">
+                <span id="wfMatchInfo" class="wf-match-info" role="status" aria-live="polite"></span>
+                <div class="wf-review-toggle">
+                  <button id="wfExpandAll" type="button">${escapeHtml(t("workflow.expandAllBtn"))}</button>
+                  <button id="wfCollapseAll" type="button">${escapeHtml(t("workflow.collapseAllBtn"))}</button>
+                </div>
+              </div>
+            </div>
+            <div id="wfNoMatch" class="wf-no-match hidden">${escapeHtml(t("workflow.noMatchingFiles"))}</div>
             <div id="wfChanges" class="wf-stack"></div>
           </section>
 
@@ -267,6 +294,15 @@ export function mountTaskWorkflow(root: HTMLElement) {
   let activeProjectId = "";
   let diffOffset = 0;
   let fileWindow: { path: string; offset: number; returned: number } | null = null;
+  // View-only review state: none of it is sent to the server or changes a decision.
+  let activeFilter: WfFilter = "all";
+  let dataRequest = 0;
+  const hunkOpenState = new Map<string, boolean>();
+  const reviewTools = root.querySelector<HTMLDivElement>("#wfReviewTools")!;
+  const noMatch = root.querySelector<HTMLDivElement>("#wfNoMatch")!;
+  const matchInfo = root.querySelector<HTMLElement>("#wfMatchInfo")!;
+  const pathSearch = root.querySelector<HTMLInputElement>("#wfPathSearch")!;
+  const diffSearch = root.querySelector<HTMLInputElement>("#wfDiffSearch")!;
 
   const setStatus = (message: string, error = false) => {
     status.textContent = message;
@@ -297,6 +333,8 @@ export function mountTaskWorkflow(root: HTMLElement) {
   }
 
   async function refreshData() {
+    const request = ++dataRequest;
+    const projectId = activeProjectId;
     if (!activeProjectId) {
       changes = []; worktrees = []; tasks = [];
       render();
@@ -308,6 +346,8 @@ export function mountTaskWorkflow(root: HTMLElement) {
       api<{ worktrees: Worktree[] }>(prefix + "/worktrees"),
       api<{ tasks: Task[] }>(prefix + "/github/tasks").catch(() => ({ tasks: [] }))
     ]);
+    // A slower, older response must not replace decisions loaded by a newer request.
+    if (request !== dataRequest || projectId !== activeProjectId) return;
     changes = changePayload.changes;
     worktrees = worktreePayload.worktrees;
     tasks = taskPayload.tasks;
@@ -321,7 +361,105 @@ export function mountTaskWorkflow(root: HTMLElement) {
       await refreshData();
       setStatus(t("workflow.ready"));
     } catch (error) {
-      setStatus(wfError(error), true);
+      setStatus(t("workflow.refreshFailedKept", { error: wfError(error) }), true);
+    }
+  }
+
+  function hunkKey(changeId: string, path: string, hunkId: string) {
+    return [changeId, path, hunkId].join("\n");
+  }
+
+  function highlightDiff(term: string) {
+    let matches = 0;
+    const pattern = term ? new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi") : null;
+    changesBox.querySelectorAll<HTMLPreElement>(".wf-hunk > pre").forEach(pre => {
+      const text = pre.textContent || "";
+      const visible = !pre.closest(".wf-file.hidden");
+      // Built from text nodes only, so the search term is never parsed as HTML.
+      const nodes: Node[] = [];
+      let last = 0;
+      if (pattern) {
+        pattern.lastIndex = 0;
+        for (let found = pattern.exec(text); found; found = pattern.exec(text)) {
+          if (found.index > last) nodes.push(document.createTextNode(text.slice(last, found.index)));
+          const mark = document.createElement("mark");
+          mark.className = "wf-mark";
+          mark.textContent = found[0];
+          nodes.push(mark);
+          last = found.index + found[0].length;
+          if (visible) matches += 1;
+        }
+      }
+      if (last < text.length || !nodes.length) nodes.push(document.createTextNode(text.slice(last)));
+      pre.replaceChildren(...nodes);
+    });
+    return matches;
+  }
+
+  function applyReviewView() {
+    const allFiles = changes.flatMap(change => change.files);
+    const counts: Record<WfFilter, number> = { all: allFiles.length, pending: 0, accept: 0, reject: 0, partial: 0 };
+    for (const file of allFiles) if (file.decision in counts) counts[file.decision] += 1;
+    if (activeFilter === "partial" && !counts.partial) activeFilter = "all";
+    reviewTools.classList.toggle("hidden", !changes.length);
+    reviewTools.querySelectorAll<HTMLButtonElement>("[data-wf-filter]").forEach(button => {
+      const filter = button.dataset.wfFilter as WfFilter;
+      button.setAttribute("aria-pressed", String(filter === activeFilter));
+      button.classList.toggle("hidden", filter === "partial" && !counts.partial);
+      button.querySelector("[data-wf-count]")!.textContent = formatNumber(counts[filter]);
+    });
+
+    const query = pathSearch.value.trim().toLowerCase();
+    const narrowed = activeFilter !== "all" || Boolean(query);
+    const shown: HTMLElement[] = [];
+    changesBox.querySelectorAll<HTMLElement>(".wf-change").forEach(section => {
+      const files = Array.from(section.querySelectorAll<HTMLElement>(".wf-file"));
+      let visible = 0;
+      for (const file of files) {
+        const match = (activeFilter === "all" || file.dataset.decision === activeFilter)
+          && (!query || (file.dataset.path || "").toLowerCase().includes(query));
+        file.classList.toggle("hidden", !match);
+        if (match) { visible += 1; shown.push(file); }
+      }
+      section.classList.toggle("hidden", narrowed && !visible);
+    });
+    shown.forEach((file, index) => {
+      const previous = file.querySelector<HTMLButtonElement>('[data-wf-action="file-prev"]');
+      const next = file.querySelector<HTMLButtonElement>('[data-wf-action="file-next"]');
+      if (previous) previous.disabled = index === 0;
+      if (next) next.disabled = index === shown.length - 1;
+    });
+    noMatch.classList.toggle("hidden", !changes.length || !narrowed || shown.length > 0);
+
+    const term = diffSearch.value;
+    const matches = highlightDiff(term);
+    const info = [t("workflow.filesShown", { shown: formatNumber(shown.length), total: formatNumber(allFiles.length) })];
+    if (term) info.push(t("workflow.diffMatches", { count: formatNumber(matches) }));
+    matchInfo.textContent = changes.length ? info.join(" / ") : "";
+  }
+
+  function setAllHunksOpen(open: boolean) {
+    changesBox.querySelectorAll<HTMLDetailsElement>("details.wf-hunk").forEach(details => {
+      details.open = open;
+      if (details.dataset.wfHunkKey) hunkOpenState.set(details.dataset.wfHunkKey, open);
+    });
+  }
+
+  function moveToFile(from: HTMLElement | null, step: number) {
+    const shown = Array.from(changesBox.querySelectorAll<HTMLElement>(".wf-file:not(.hidden)"));
+    const target = shown[shown.indexOf(from as HTMLElement) + step];
+    if (!from || !target || !shown.includes(from)) return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView?.({ block: "start" });
+  }
+
+  async function copyPath(path: string) {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
+      await navigator.clipboard.writeText(path);
+      setStatus(t("workflow.pathCopied", { path }));
+    } catch {
+      setStatus(t("workflow.pathCopyFailed"), true);
     }
   }
 
@@ -338,13 +476,19 @@ export function mountTaskWorkflow(root: HTMLElement) {
     }
     changesBox.innerHTML = changes.map(change => {
       const files = change.files.map(file => {
-        const controls = change.status === "pending" ? `
+        const controls = `
           <div class="wf-inline-actions">
+            ${change.status === "pending" ? `
             <button type="button" data-wf-action="file-accept" data-change="${escapeHtml(change.id)}" data-path="${escapeHtml(file.path)}">${escapeHtml(t("workflow.acceptFileBtn"))}</button>
-            <button type="button" data-wf-action="file-reject" data-change="${escapeHtml(change.id)}" data-path="${escapeHtml(file.path)}">${escapeHtml(t("workflow.rejectFileBtn"))}</button>
-          </div>` : "";
+            <button type="button" data-wf-action="file-reject" data-change="${escapeHtml(change.id)}" data-path="${escapeHtml(file.path)}">${escapeHtml(t("workflow.rejectFileBtn"))}</button>` : ""}
+            <span class="wf-file-tools">
+              <button type="button" data-wf-action="copy-path" data-path="${escapeHtml(file.path)}">${escapeHtml(t("workflow.copyPathBtn"))}</button>
+              <button type="button" data-wf-action="file-prev">${escapeHtml(t("workflow.prevFileBtn"))}</button>
+              <button type="button" data-wf-action="file-next">${escapeHtml(t("workflow.nextFileBtn"))}</button>
+            </span>
+          </div>`;
         const hunks = file.hunks.map(hunk => `
-          <details class="wf-hunk" ${file.hunks.length === 1 ? "open" : ""}>
+          <details class="wf-hunk" data-wf-hunk-key="${escapeHtml(hunkKey(change.id, file.path, hunk.id))}" ${(hunkOpenState.get(hunkKey(change.id, file.path, hunk.id)) ?? file.hunks.length === 1) ? "open" : ""}>
             <summary>
               <span>${escapeHtml(hunk.id)} · -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines}</span>
               <span class="wf-badge ${escapeHtml(hunk.decision)}">${escapeHtml(wfDecisionLabel(hunk.decision))}</span>
@@ -358,7 +502,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
           </details>
         `).join("");
         return `
-          <article class="wf-file">
+          <article class="wf-file" tabindex="-1" data-path="${escapeHtml(file.path)}" data-decision="${escapeHtml(file.decision)}">
             <div class="wf-file-head">
               <strong>${escapeHtml(file.path)}</strong>
               <span class="wf-badge ${escapeHtml(file.decision)}">${escapeHtml(wfDecisionLabel(file.decision))}</span>
@@ -464,6 +608,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
 
   function render() {
     renderChanges();
+    applyReviewView();
     renderWorktrees();
     renderTasks();
   }
@@ -602,6 +747,12 @@ export function mountTaskWorkflow(root: HTMLElement) {
     const changeId = button.dataset.change || "";
     const path = button.dataset.path || "";
     const hunk = button.dataset.hunk || "";
+    // View-only actions: no request is sent and no decision is touched.
+    if (action === "copy-path") { void copyPath(path); return; }
+    if (action === "file-prev" || action === "file-next") {
+      moveToFile(button.closest<HTMLElement>(".wf-file"), action === "file-prev" ? -1 : 1);
+      return;
+    }
 
     const run = async () => {
       setStatus(t("workflow.working"));
@@ -681,6 +832,22 @@ export function mountTaskWorkflow(root: HTMLElement) {
     };
     void run().catch(error => setStatus(wfError(error), true));
   });
+
+  reviewTools.addEventListener("click", event => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-wf-filter]");
+    if (!button) return;
+    activeFilter = button.dataset.wfFilter as WfFilter;
+    applyReviewView();
+  });
+  pathSearch.addEventListener("input", applyReviewView);
+  diffSearch.addEventListener("input", applyReviewView);
+  root.querySelector<HTMLButtonElement>("#wfExpandAll")!.addEventListener("click", () => setAllHunksOpen(true));
+  root.querySelector<HTMLButtonElement>("#wfCollapseAll")!.addEventListener("click", () => setAllHunksOpen(false));
+  // "toggle" does not bubble; capture it so a refresh keeps what the reviewer opened.
+  changesBox.addEventListener("toggle", event => {
+    const details = event.target as HTMLDetailsElement;
+    if (details.dataset?.wfHunkKey) hunkOpenState.set(details.dataset.wfHunkKey, details.open);
+  }, true);
 
   root.querySelector<HTMLFormElement>("#wfWorktreeForm")!.addEventListener("submit", event => {
     event.preventDefault();

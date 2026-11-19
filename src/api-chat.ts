@@ -4,6 +4,8 @@ import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { normalizeApiProviderCatalog } from "./api-provider-catalog.mjs";
 import { normalizeApiAttachment } from "./api-attachment.mjs";
 import { apiModelLabel } from "./api-model-label.mjs";
+import { createChatDraftBinding } from "./chat-draft.mjs";
+import { latestAssistantText } from "./chat-transcript-actions.mjs";
 import "./api-chat-surface.css";
 
 type ApiProvider = {
@@ -160,6 +162,7 @@ export function mountApiChat(
           <textarea id="apiPrompt" rows="1" placeholder="${escapeHtml(t("apiChat.promptPlaceholder"))}" aria-label="${escapeHtml(t("apiChat.promptAria"))}"></textarea>
           <input id="apiImageInput" class="hidden" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple />
           <small id="apiStatus" class="api-status" role="status" aria-live="polite">${escapeHtml(t("apiChat.loadingProviders"))}</small>
+          <button id="apiCopyLatest" class="api-copy-latest" type="button">${escapeHtml(t("chat.copyLatest.button"))}</button>
           <div class="api-composer-foot">
             <button id="apiAttachImage" class="api-attach-button" type="button" aria-label="${escapeHtml(t("apiChat.attachImageAria"))}">＋</button>
             <div class="api-picker-row">
@@ -333,6 +336,19 @@ export function mountApiChat(
     pendingAttachments = [];
     renderPendingAttachments();
   }
+
+  const drafts = createChatDraftBinding<ApiAttachment[]>({
+    provider: "api-chat",
+    input: prompt,
+    storage: window.sessionStorage,
+    getProjectId: () => localStorage.getItem(PROJECT_KEY),
+    takeExtras: () => pendingAttachments,
+    restoreExtras: extras => {
+      pendingAttachments = extras ?? [];
+      renderPendingAttachments();
+    },
+    onRestore: () => resizePrompt()
+  });
 
   function selectConversation(id: string) {
     if (uploadingCount > 0) return;
@@ -1182,10 +1198,15 @@ export function mountApiChat(
   }
 
   async function submit() {
+    if (uploadingCount > 0) return;
+    if (drafts.sync()) {
+      status.textContent = t("chat.draft.projectSwitched");
+      return;
+    }
     const rawText = prompt.value.trim();
     const provider = currentProvider();
     const model = modelSelect.value;
-    if ((!rawText && pendingAttachments.length === 0) || !provider?.ready || !model || sending || uploadingCount > 0) return;
+    if ((!rawText && pendingAttachments.length === 0) || !provider?.ready || !model || sending) return;
     if (provider.secretRef && (localStorage.getItem(PROJECT_KEY) || "") !== provider.projectId) {
       status.textContent = t("apiChat.vaultProjectMismatch");
       return;
@@ -1213,6 +1234,7 @@ export function mountApiChat(
       controller.abort();
     }, API_CHAT_REQUEST_TIMEOUT_MS);
     prompt.value = "";
+    drafts.capture();
     resizePrompt();
     renderMessages();
     sending = true;
@@ -1281,6 +1303,19 @@ export function mountApiChat(
   };
   window.addEventListener("devmoter:global-nav-opened", closeLocalOverlays);
   window.addEventListener("devmoter:surface-changed", closeLocalOverlays);
+  window.addEventListener("devmoter:surface-changed", () => {
+    if (uploadingCount === 0) drafts.sync();
+  });
+  root.querySelector<HTMLButtonElement>("#apiCopyLatest")!.addEventListener("click", () => {
+    const text = latestAssistantText(messages.map(message => (message.role === "assistant" ? message.content : "")));
+    if (!text) {
+      status.textContent = t("chat.copyLatest.none");
+      return;
+    }
+    void copyMessage(text)
+      .then(() => { status.textContent = t("common.copied"); })
+      .catch(() => { status.textContent = t("common.copyFailed"); });
+  });
   agentSwitchButton.addEventListener("click", () => {
     const open = agentSwitchMenu.classList.toggle("hidden") === false;
     agentSwitchButton.setAttribute("aria-expanded", String(open));

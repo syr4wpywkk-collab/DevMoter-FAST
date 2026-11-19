@@ -122,6 +122,7 @@ function errorState(source: SourceState, fallback: string) {
   if (source.deviceAuth) {
     return createDeviceGate(document, {
       compact: true,
+      error: source.error ?? "",
       onRegister: () => window.dispatchEvent(new CustomEvent("devmoter:close-mission-control"))
     });
   }

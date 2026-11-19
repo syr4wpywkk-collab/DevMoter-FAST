@@ -3,7 +3,7 @@ import { lstat, mkdir, readFile, readdir, realpath, stat, writeFile } from "node
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { createHash, randomUUID } from "node:crypto";
-import { AcpAdapter, createAgentAdapterRegistry } from "./acp-adapter.mjs";
+import { AcpAdapter, createAgentAdapterRegistry, normalizeAcpEnvPassthrough } from "./acp-adapter.mjs";
 import { errorMessage } from "./error-message.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -36,7 +36,7 @@ const DEFAULTS = {
   skills: { user: [] },
   rules: { user: [] },
   extensions: { approvals: {} },
-  adapters: { acp: { enabled: false, command: "", args: [], capabilities: [] } }
+  adapters: { acp: { enabled: false, command: "", args: [], capabilities: [], envPassthrough: [] } }
 };
 
 function plain(value) {
@@ -163,6 +163,7 @@ export function normalizeDevWorkflowSettings(input) {
         enabled: Boolean(raw.adapters?.acp?.enabled),
         command: String(raw.adapters?.acp?.command || "").trim().slice(0, 240),
         args: strings(raw.adapters?.acp?.args, 64).map(arg => arg.slice(0, 1000)),
+        envPassthrough: normalizeAcpEnvPassthrough(raw.adapters?.acp?.envPassthrough),
         capabilities: strings(raw.adapters?.acp?.capabilities, 64).map(value => value.slice(0, 120))
       }
     }
@@ -1126,6 +1127,7 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     const adapter = new AcpAdapter({
       command: config.command,
       args: config.args,
+      inheritEnvKeys: config.envPassthrough,
       cwd: project.path
     });
     try {

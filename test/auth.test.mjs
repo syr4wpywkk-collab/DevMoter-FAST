@@ -1,11 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  ALLOW_INSECURE_HTTP_ENV,
   assertAuthPassword,
+  assertSafeHttpBind,
   credentialsMatch,
+  evaluateHttpBindSafety,
   expectedRequestOrigin,
+  isLoopbackAddress,
+  isLoopbackBindHost,
   mutationOriginMatches,
-  parseBasicAuthorization
+  parseBasicAuthorization,
+  resolveLocalAddress
 } from "../server/auth.mjs";
 import { redactSecretsInText } from "../server/secret-redaction.mjs";
 
@@ -42,8 +48,8 @@ test("Basic authorization parses and compares credentials", () => {
   assert.equal(parseBasicAuthorization("Bearer nope"), null);
 });
 
-test("expected origin honors reverse-proxy headers and explicit public origin", () => {
-  const req = {
+test("expected origin honors trusted reverse-proxy headers and explicit public origin", () => {
+  const untrustedReq = {
     headers: {
       host: "127.0.0.1:8787",
       "x-forwarded-proto": "https",
@@ -51,10 +57,50 @@ test("expected origin honors reverse-proxy headers and explicit public origin", 
     },
     socket: {}
   };
-  assert.equal(expectedRequestOrigin(req), "https://devmoter.example.test");
+  assert.equal(expectedRequestOrigin(untrustedReq), "http://127.0.0.1:8787");
+  assert.equal(resolveLocalAddress(untrustedReq), "http://127.0.0.1:8787");
+
+  const untrustedPeerReq = {
+    ...untrustedReq,
+    socket: { remoteAddress: "203.0.113.10" }
+  };
   assert.equal(
-    expectedRequestOrigin(req, "https://pocket.example.test/path"),
+    expectedRequestOrigin(untrustedPeerReq, "", { trustedProxies: ["127.0.0.1"] }),
+    "http://127.0.0.1:8787"
+  );
+
+  const trustedReq = {
+    ...untrustedReq,
+    socket: { remoteAddress: "::ffff:127.0.0.1" }
+  };
+  assert.equal(
+    expectedRequestOrigin(trustedReq, "", { trustedProxies: ["127.0.0.1"] }),
+    "https://devmoter.example.test"
+  );
+  assert.equal(
+    resolveLocalAddress(trustedReq, { trustedProxies: ["127.0.0.1"] }),
+    "https://devmoter.example.test"
+  );
+  assert.equal(
+    expectedRequestOrigin(trustedReq, "https://pocket.example.test/path", { trustedProxies: ["127.0.0.1"] }),
     "https://pocket.example.test"
+  );
+
+  const anomalousForwardedReq = {
+    headers: {
+      host: "127.0.0.1:8787",
+      "x-forwarded-proto": "javascript",
+      "x-forwarded-host": "evil.example/steal"
+    },
+    socket: { remoteAddress: "127.0.0.1" }
+  };
+  assert.equal(
+    resolveLocalAddress(anomalousForwardedReq, { trustedProxies: ["127.0.0.1"] }),
+    "http://127.0.0.1:8787"
+  );
+  assert.equal(
+    resolveLocalAddress({ headers: { host: "bad/host" }, socket: {} }),
+    "http://localhost"
   );
 });
 
@@ -100,4 +146,90 @@ test("configured secrets are redacted from browser/log text", () => {
   );
   assert.equal(text.includes(secret), false);
   assert.match(text, /\[REDACTED\]/);
+});
+
+test("loopback detection covers 127.0.0.0/8, localhost, ::1, and [::1] and rejects lookalikes", () => {
+  for (const addr of ["127.0.0.1", "127.0.0.0", "127.0.1.1", "127.255.255.254", "::1", "[::1]", "0:0:0:0:0:0:0:1", "::ffff:127.0.0.1", "::ffff:127.1.2.3"]) {
+    assert.equal(isLoopbackAddress(addr), true, `expected ${addr} to be loopback address`);
+    assert.equal(isLoopbackBindHost(addr), true, `expected ${addr} to be loopback bind host`);
+  }
+  assert.equal(isLoopbackAddress("localhost"), false);
+  assert.equal(isLoopbackBindHost("localhost"), true);
+  assert.equal(isLoopbackBindHost("LOCALHOST"), true);
+
+  for (const nonLoopback of [
+    "0.0.0.0",
+    "::",
+    "[::]",
+    "192.168.1.10",
+    "10.0.0.5",
+    "100.64.0.1",
+    "126.0.0.1",
+    "128.0.0.1",
+    "127.0.0.1.nip.io",
+    "localhost.evil.com",
+    "127.1",
+    "[127.0.0.1]",
+    "::ffff:7f:0",
+    "::ffff:128.0.0.1",
+    "",
+    "   ",
+    null,
+    undefined
+  ]) {
+    assert.equal(isLoopbackAddress(nonLoopback), false, `expected ${String(nonLoopback)} not to be loopback address`);
+    assert.equal(isLoopbackBindHost(nonLoopback), false, `expected ${String(nonLoopback)} not to be loopback bind host`);
+  }
+});
+
+test("non-loopback HTTP binds require DEVMOTER_ALLOW_INSECURE_HTTP=1 and ignore DEVMOTER_PUBLIC_ORIGIN", () => {
+  for (const host of ["127.0.0.1", "127.0.1.1", "localhost", "::1", "[::1]"]) {
+    const warnings = [];
+    const result = assertSafeHttpBind(
+      host,
+      { DEVMOTER_PUBLIC_ORIGIN: "https://device.tailnet.ts.net" },
+      { warn: msg => warnings.push(msg) }
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.loopback, true);
+    assert.equal(result.warning, null);
+    assert.equal(result.error, null);
+    assert.deepEqual(warnings, []);
+  }
+
+  for (const host of ["0.0.0.0", "::", "192.168.1.20", "100.64.0.1", ""]) {
+    for (const env of [
+      {},
+      { DEVMOTER_PUBLIC_ORIGIN: "https://device.tailnet.ts.net" },
+      { [ALLOW_INSECURE_HTTP_ENV]: "true" },
+      { [ALLOW_INSECURE_HTTP_ENV]: "0" }
+    ]) {
+      const evaluated = evaluateHttpBindSafety(host, env);
+      assert.equal(evaluated.ok, false);
+      assert.equal(evaluated.loopback, false);
+      assert.match(evaluated.error, /unencrypted/i);
+      assert.match(evaluated.error, /Basic/i);
+      assert.match(evaluated.error, /DEVMOTER_ALLOW_INSECURE_HTTP=1/);
+
+      const warnings = [];
+      assert.throws(
+        () => assertSafeHttpBind(host, env, { warn: msg => warnings.push(msg) }),
+        /Basic auth credentials will traverse the network unencrypted.*DEVMOTER_ALLOW_INSECURE_HTTP=1/s
+      );
+      assert.deepEqual(warnings, []);
+    }
+  }
+
+  const warnings = [];
+  const allowed = assertSafeHttpBind(
+    "0.0.0.0",
+    { [ALLOW_INSECURE_HTTP_ENV]: "1" },
+    { warn: msg => warnings.push(msg) }
+  );
+  assert.equal(allowed.ok, true);
+  assert.equal(allowed.loopback, false);
+  assert.equal(allowed.error, null);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /Basic auth credentials will traverse the network unencrypted over plain HTTP/);
+  assert.match(warnings[0], /DEVMOTER_ALLOW_INSECURE_HTTP=1/);
 });

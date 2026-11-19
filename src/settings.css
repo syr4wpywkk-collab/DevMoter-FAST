@@ -776,6 +776,7 @@ html[data-devmoter-theme="light"] .devmoter-guide-hero {
   grid-template-columns: 22px minmax(80px, .55fr) minmax(0, 1fr);
   align-items: center;
   gap: 8px;
+  padding-block: 8px;
   border-bottom: 1px solid var(--border-hairline);
 }
 
@@ -800,11 +801,9 @@ html[data-devmoter-theme="light"] .devmoter-guide-hero {
 }
 
 .devmoter-settings-health-row small {
-  overflow: hidden;
   color: var(--text-secondary);
   font-size: var(--font-size-caption);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 html[data-devmoter-density="compact"] .devmoter-settings-row {
