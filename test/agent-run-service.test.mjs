@@ -151,7 +151,13 @@ test("persisted active runs fail closed after host restart instead of silently r
   const saved = JSON.parse(await readFile(filePath, "utf8"));
   assert.equal(saved.runs.find(item => item.id === run.id).state, "failed");
   assert.equal((await stat(filePath)).mode & 0o077, 0);
-  assert.deepEqual(await readdir(dir), ["agent-runs.json"]);
+  // A background persist may still be renaming its temp file; wait for it to settle.
+  let entries = await readdir(dir);
+  for (let i = 0; i < 50 && entries.length !== 1; i += 1) {
+    await new Promise(resolve => setTimeout(resolve, 20));
+    entries = await readdir(dir);
+  }
+  assert.deepEqual(entries, ["agent-runs.json"]);
 });
 
 test("a failed state replacement cleans up its temporary file and later writes can recover", async t => {
