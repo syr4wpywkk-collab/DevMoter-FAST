@@ -77,8 +77,7 @@ function assertValidBaseUrl(baseUrl) {
   return base;
 }
 
-export function validateBrowserUrl(rawUrl, baseUrl) {
-  const base = assertValidBaseUrl(baseUrl);
+function parseOpenUrl(rawUrl, base) {
   if (typeof rawUrl !== "string") {
     throw new DevMoterError("Server returned an invalid browser launch URL", {
       code: "invalid_launch_url"
@@ -135,20 +134,25 @@ export function validateBrowserUrl(rawUrl, baseUrl) {
       code: "invalid_launch_url"
     });
   }
-  if (parsed.origin === "null" || parsed.origin !== base.origin) {
-    throw new DevMoterError(
-      `Invalid browser launch URL: origin ${parsed.origin} does not match ${base.origin}`,
-      { code: "invalid_launch_url" }
-    );
-  }
-
   const normalized = parsed.href;
   if (!/^https?:\/\//i.test(normalized) || normalized.startsWith("-")) {
     throw new DevMoterError("Invalid browser launch URL", {
       code: "invalid_launch_url"
     });
   }
-  return normalized;
+  return parsed;
+}
+
+export function validateBrowserUrl(rawUrl, baseUrl) {
+  const base = assertValidBaseUrl(baseUrl);
+  const parsed = parseOpenUrl(rawUrl, base);
+  if (parsed.origin !== base.origin) {
+    throw new DevMoterError(
+      `Invalid browser launch URL: origin ${parsed.origin} does not match ${base.origin}`,
+      { code: "invalid_launch_url" }
+    );
+  }
+  return parsed.href;
 }
 
 function writeJson(value, stdout = process.stdout) {
@@ -295,11 +299,12 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
       const project = positional[0];
       if (!project) throw new Error("open requires a project id or name");
       const payload = await client.openProject(project);
-      const launchUrl = validateBrowserUrl(payload?.url, client.baseUrl);
+      const launchUrl = parseOpenUrl(payload?.url, client.baseUrl).href;
+      const browserCommand = options.browser ? fixedBrowserCommand(launchUrl, client.baseUrl, platform) : null;
       if (options.json) writeJson({ ...payload, url: launchUrl }, stdout);
       else stdout.write(launchUrl + "\n");
-      if (options.browser) {
-        const [bin, args] = fixedBrowserCommand(launchUrl, client.baseUrl, platform);
+      if (browserCommand) {
+        const [bin, args] = browserCommand;
         const child = spawnImpl(bin, args, { detached: true, stdio: "ignore" });
         child.unref();
       }

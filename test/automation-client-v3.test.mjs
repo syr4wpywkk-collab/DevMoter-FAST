@@ -5,6 +5,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { DevMoterClient, sdkInternals } from "../sdk/index.mjs";
+import { createAutomationApi } from "../server/automation-api.mjs";
 import {
   EXIT,
   fixedBrowserCommand,
@@ -257,14 +258,14 @@ test("CLI open --browser rejects unsafe server URLs without launching or printin
   const nonBrowserIo = createIo();
   const nonBrowserCode = await main(["open", "p1", "--url", "https://devmoter.example"], {
     env: { DEVMOTER_AUTH_PASSWORD: "0123456789abcdef" },
-    fetchImpl: mockOpenFetch({ url: "https://evil.example/" }),
+    fetchImpl: mockOpenFetch({ url: "file:///tmp/project" }),
     spawnImpl: () => { throw new Error("must not spawn"); },
     stdout: nonBrowserIo.stdout,
     stderr: nonBrowserIo.stderr
   });
   assert.equal(nonBrowserCode, EXIT.SERVER);
   assert.equal(nonBrowserIo.readOut(), "");
-  assert.match(nonBrowserIo.readErr(), /does not match/);
+  assert.match(nonBrowserIo.readErr(), /only http and https/);
 });
 
 test("CLI open accepts valid same-origin and relative http(s) URLs for printing and launching", async () => {
@@ -367,4 +368,37 @@ test("CLI entrypoint enforces launch URL validation in a subprocess", async t =>
       err => err.code === EXIT.SERVER && err.stdout === "" && /browser launch URL/i.test(err.stderr)
     );
   }
+});
+
+test("CLI prints the public project URL over a local connection without launching it", async t => {
+  const project = { id: "p1", name: "Demo" };
+  const env = { ...process.env, DEVMOTER_PUBLIC_ORIGIN: "https://devmoter.example", DEVMOTER_AUTH_PASSWORD: "0123456789abcdef" };
+  const api = createAutomationApi({
+    publicOrigin: env.DEVMOTER_PUBLIC_ORIGIN,
+    readProjectRegistry: async () => [project],
+    getProjectById: async () => project,
+    json(res, status, payload) {
+      res.writeHead(status, { "content-type": "application/json" });
+      res.end(JSON.stringify(payload));
+    }
+  });
+  const server = createServer(async (req, res) => {
+    if (!await api.handle(req, res, new URL(req.url, "http://localhost"))) {
+      res.writeHead(404).end();
+    }
+  });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => server.close());
+
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  const args = [cliPath, "open", project.id, "--url", baseUrl];
+  const expected = `${env.DEVMOTER_PUBLIC_ORIGIN}/?project=p1`;
+  const plain = await execFileAsync(process.execPath, args, { env });
+  assert.equal(plain.stdout, expected + "\n");
+  const json = await execFileAsync(process.execPath, [...args, "--json"], { env });
+  assert.equal(JSON.parse(json.stdout).url, expected);
+  await assert.rejects(
+    () => execFileAsync(process.execPath, [...args, "--browser"], { env }),
+    error => error.code === EXIT.SERVER && error.stdout === "" && /does not match/.test(error.stderr)
+  );
 });
