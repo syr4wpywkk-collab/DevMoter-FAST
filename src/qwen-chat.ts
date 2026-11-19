@@ -2,6 +2,7 @@ import "./qwen-chat.css";
 import { formatDateTime, formatNumber, getLanguage, t, translateServerMessage } from "./i18n";
 import { SYSTEM_ICONS } from "./app-registry";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
+import { createChatDraftBinding } from "./chat-draft.mjs";
 import { createSheetHeader } from "./sheet-header.mjs";
 import {
   createNdjsonReader,
@@ -169,6 +170,15 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
   }
 
   const activeChat = () => chats.find(chat => chat.id === activeId) ?? null;
+  // Unsent text belongs to the chat it was typed in (a new chat has no id yet),
+  // so switching chats or leaving the screen never carries or drops it.
+  const drafts = createChatDraftBinding({
+    provider: "qwen",
+    input,
+    storage: window.sessionStorage,
+    getProjectId: () => activeId,
+    onRestore: () => { resizeInput(); renderStatus(); }
+  });
   const persist = () => {
     if (!saveQwenChats(localStorage, chats)) notice = t("qwen.chat.saveHistoryFailed");
   };
@@ -401,6 +411,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
 
   function selectChat(id: string) {
     activeId = id;
+    drafts.sync();
     closeSheet();
     render();
     input.focus({ preventScroll: true });
@@ -408,6 +419,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
 
   function startNewChat() {
     activeId = null;
+    drafts.sync();
     render();
     input.focus({ preventScroll: true });
   }
@@ -420,6 +432,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     lastDeleted = chat;
     chats = chats.filter(item => item.id !== id);
     if (activeId === id) activeId = null;
+    drafts.sync();
     persist();
     render();
     renderHistory();
@@ -499,6 +512,8 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     chat.updatedAt = Date.now();
     persist();
     input.value = "";
+    drafts.capture();
+    drafts.sync();
     resizeInput();
 
     const run: LiveRun = { chatId: chat.id, runId: newId(), controller: new AbortController(), text: "", tool: "", startedAt: Date.now(), stopped: false };
