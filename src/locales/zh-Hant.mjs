@@ -1948,6 +1948,7 @@ export const zhHant = {
   "apiChat.modelSelectAria": "模型",
   "apiChat.reasoningAria": "推理模式",
   "apiChat.defaultTitle": "對話",
+  "apiChat.stopped": "已停止",
   "apiChat.waitingResponse": "等待回應",
   "apiChat.reasoning.auto": "自動",
   "apiChat.reasoning.off": "關閉",

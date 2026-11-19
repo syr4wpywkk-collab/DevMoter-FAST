@@ -1948,6 +1948,7 @@ export const ja = {
   "apiChat.modelSelectAria": "モデル",
   "apiChat.reasoningAria": "推論モード",
   "apiChat.defaultTitle": "チャット",
+  "apiChat.stopped": "停止しました",
   "apiChat.waitingResponse": "応答待ち",
   "apiChat.reasoning.auto": "自動",
   "apiChat.reasoning.off": "オフ",
