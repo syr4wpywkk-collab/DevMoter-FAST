@@ -6,6 +6,7 @@ import { lstat, mkdir, open, readFile, readdir, realpath, stat, writeFile } from
 import { basename, delimiter, dirname, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
+import { MIMEType } from "node:util";
 import { CodexBridge } from "./server/codex-bridge.mjs";
 import { inspectKnownClis, launchCode } from "./server/cli-launch.mjs";
 import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/opencode-provider-catalog.mjs";
@@ -2348,10 +2349,24 @@ async function proxy(req, res, { upstreamUrl, policyPath }) {
       return;
     }
 
+    const textual = isTextualProxyMediaType(rawContentType);
+    let decoder = null;
+    if (textual) {
+      try {
+        const charset = mediaType === "text/event-stream"
+          ? "utf-8"
+          : new MIMEType(rawContentType).params.get("charset") ?? "utf-8";
+        decoder = new TextDecoder(charset);
+      } catch {
+        json(res, 502, { error: "OpenCode returned an unsupported text encoding" });
+        return;
+      }
+      if (mediaType === "text/plain" || mediaType === "text/event-stream") {
+        headers["content-type"] = `${mediaType}; charset=utf-8`;
+      }
+    }
     res.writeHead(upstream.status, headers);
     const reader = upstream.body.getReader();
-    const textual = isTextualProxyMediaType(rawContentType);
-    const decoder = textual ? new TextDecoder("utf-8", { fatal: false }) : null;
     const redactor = textual
       ? createStreamingTextRedactor(REDACTED_SECRETS)
       : createStreamingBufferRedactor(REDACTED_SECRETS);

@@ -133,6 +133,19 @@ test("OpenCode proxy and SSE paths harden headers, redact secrets, and enforce a
       return;
     }
 
+    if (req.method === "GET" && path === "/api/session/sess_latin1") {
+      res.writeHead(200, { "content-type": 'text/plain; charset="iso-8859-1"' });
+      res.write(Buffer.from(`café ${openCodePassword.slice(0, 12)}`, "latin1"));
+      setTimeout(() => res.end(Buffer.from(`${openCodePassword.slice(12)} déjà vu`, "latin1")), 20);
+      return;
+    }
+
+    if (req.method === "GET" && path === "/api/session/sess_unknown_charset") {
+      res.writeHead(200, { "content-type": "text/plain; charset=x-unknown-test-encoding" });
+      res.end(openCodePassword);
+      return;
+    }
+
     if (req.method === "GET" && path === "/api/session/sess_sse") {
       res.writeHead(200, {
         "content-type": "text/event-stream; charset=utf-8",
@@ -325,6 +338,21 @@ rl.on("line", line => {
     assert.equal(plainBody.includes(openCodePassword), false);
     assert.equal(plainBody.includes(authPassword), false);
     assert.equal(plainBody, "plain body with [REDACTED] and [REDACTED]");
+
+    const latin1Res = await fetch(`${baseUrl}/api/opencode/session/sess_latin1`, {
+      headers: baseHeaders,
+      signal: AbortSignal.timeout(4000)
+    });
+    assert.equal(latin1Res.status, 200);
+    assert.equal(await latin1Res.text(), "café [REDACTED] déjà vu");
+    assert.equal(latin1Res.headers.get("content-type"), "text/plain; charset=utf-8");
+
+    const unsupportedRes = await fetch(`${baseUrl}/api/opencode/session/sess_unknown_charset`, {
+      headers: baseHeaders,
+      signal: AbortSignal.timeout(4000)
+    });
+    assert.equal(unsupportedRes.status, 502);
+    assert.deepEqual(await unsupportedRes.json(), { error: "OpenCode returned an unsupported text encoding" });
 
     // 2. Redaction across proxy() SSE, opencodeEvents() SSE, and codexEvents() SSE without breaking framing.
     const proxySseRes = await fetch(`${baseUrl}/api/opencode/session/sess_sse`, {
