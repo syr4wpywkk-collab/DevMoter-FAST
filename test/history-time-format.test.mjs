@@ -14,6 +14,8 @@ test("#343: Codex, OpenCode and Qwen history rows share one relative time format
   assert.doesNotMatch(codex, /codex\.threads\.age/);
   assert.match(opencode, /historyTime \? formatRelativeTime\(historyTime\)/);
   assert.match(opencode, /meta\.title = formatDateTime\(historyTime\)/);
+  const openSidebar = opencode.slice(opencode.indexOf("function openSidebar()"), opencode.indexOf("function closeSidebar("));
+  assert.match(openSidebar, /renderSessions\(\)/, "opening history refreshes relative ages");
   assert.match(qwenHistory, /return formatRelativeTime\(updatedAt, now, locale\)/);
   assert.match(qwen, /meta\.title = formatDateTime\(chat\.updatedAt\)/);
 });

@@ -684,6 +684,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     sidebarReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : menu;
     closeComposerMenus();
     window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
+    renderSessions(); // refresh relative ages that may have gone stale while closed
     sidebar.classList.add("open");
     sidebar.setAttribute("aria-hidden", "false");
     if (dockedSidebar()) {
