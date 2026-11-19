@@ -1272,6 +1272,9 @@ async function executeControlTask(definition, context = {}) {
 }
 
 async function executeControlTaskCore(definition, context = {}) {
+  if (definition?.approvalPolicy !== undefined && definition.approvalPolicy !== "normal") {
+    throw new Error("Unsupported control-plane approval policy");
+  }
   const project = definition?.projectId ? await getProjectById(definition.projectId) : null;
   const task = String(definition?.task || "").trim();
   if (!task) throw new Error("Task is required");
