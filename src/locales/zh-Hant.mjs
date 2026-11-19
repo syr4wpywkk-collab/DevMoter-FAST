@@ -2287,6 +2287,7 @@ export const zhHant = {
   "codex.models.nextChat": "下次對話",
   "codex.models.defaultTitle": "預設",
   "codex.models.codexDefaultMeta": "{model} · Codex 預設",
+  "codex.models.empty": "Codex 沒有傳回任何模型。請確認 Codex 已登入，然後重新開啟此清單。",
   "codex.models.otherGroup": "其他",
   "codex.models.disconnectedMeta": "{model} · 未連線",
   "codex.remote.title": "遠端連線",

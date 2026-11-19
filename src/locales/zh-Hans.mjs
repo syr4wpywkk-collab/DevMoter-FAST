@@ -2287,6 +2287,7 @@ export const zhHans = {
   "codex.models.nextChat": "下次对话",
   "codex.models.defaultTitle": "默认",
   "codex.models.codexDefaultMeta": "{model} · Codex 默认",
+  "codex.models.empty": "Codex 没有返回任何模型。请确认 Codex 已登录，然后重新打开此列表。",
   "codex.models.otherGroup": "其他",
   "codex.models.disconnectedMeta": "{model} · 未连接",
   "codex.remote.title": "远程连接",

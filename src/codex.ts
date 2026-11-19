@@ -3548,14 +3548,29 @@ export function mountCodexRemote(
         list.appendChild(option);
       }
 
+      if (!list.childElementCount) {
+        const empty = document.createElement("p");
+        empty.className = "cx-cli-note";
+        empty.dataset.modelsEmpty = "";
+        empty.textContent = t("codex.models.empty");
+        modalBody.appendChild(empty);
+        return;
+      }
       modalBody.appendChild(list);
     } catch (error) {
       const message = error instanceof Error ? translateServerMessage(error.message) : String(error);
       modalBody.replaceChildren();
       const note = document.createElement("p");
       note.className = "cx-cli-note";
+      note.setAttribute("role", "alert");
       note.textContent = message;
-      modalBody.appendChild(note);
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "cx-model-row";
+      retry.dataset.modelsRetry = "";
+      retry.textContent = t("common.retry");
+      retry.addEventListener("click", () => void showModels());
+      modalBody.append(note, retry);
     }
   }
 

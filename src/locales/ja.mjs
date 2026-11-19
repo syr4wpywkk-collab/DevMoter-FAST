@@ -2287,6 +2287,7 @@ export const ja = {
   "codex.models.nextChat": "次のチャット",
   "codex.models.defaultTitle": "既定",
   "codex.models.codexDefaultMeta": "{model} · Codex 既定",
+  "codex.models.empty": "Codex からモデルが返されませんでした。Codex にサインインしているか確認して、もう一度開いてください。",
   "codex.models.otherGroup": "その他",
   "codex.models.disconnectedMeta": "{model} · 接続されていません",
   "codex.remote.title": "リモート",
