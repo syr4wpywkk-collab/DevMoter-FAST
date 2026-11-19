@@ -30,6 +30,19 @@ test("each supported credential format is detected", () => {
   }
 });
 
+test("keys ending in a hyphen are still detected", () => {
+  const cases = {
+    "Google API key": "AI" + "za" + chars(alnum, 34) + "-",
+    "GitLab token": "gl" + "pat-" + chars(alnum, 19) + "-",
+    "OpenAI-style key": "sk-" + chars(alnum, 32) + "-",
+    "Slack token": "xo" + "xb-" + chars(alnum, 19) + "-",
+    "Slack app token": "xa" + "pp-1-" + chars(alnum, 19) + "-"
+  };
+  for (const [name, value] of Object.entries(cases)) {
+    for (const after of ['"', "\n", ""]) assert.deepEqual(findSecrets(`k = "${value}${after}`), [name], `${name} ${JSON.stringify(after)}`);
+  }
+});
+
 test("a placeholder earlier in a file does not hide a real key later", () => {
   const placeholder = "AK" + "IA" + "EXAMPLE" + chars(upper, 9);
   const real = "AK" + "IA" + chars(upper, 16, 5);
