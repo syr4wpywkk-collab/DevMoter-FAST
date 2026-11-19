@@ -262,6 +262,11 @@
 ### 12. Automation / Integrations
 
 - **成熟度**: 実験的（`Experimental`）
+- **Command hooks**: fail closed without bubblewrap and a registered project boundary,
+  including events without `projectId`. `DEVMOTER_ALLOW_UNSANDBOXED_HOOKS=1` explicitly
+  permits unsandboxed execution unless `DEVMOTER_SANDBOX=required`. Decisions and results
+  are recorded in `~/.config/opencode-pocket/hook-audit.jsonl`; see
+  [command lifecycle hooks](./BROWSER_AUTOMATION_SANDBOX.md#command-lifecycle-hooks).
 - **根拠となる API ルート**:
   - Control Plane（`server.mjs`, `server/control-plane.mjs`）:
     - `GET /api/control/hosts`, `GET /api/control/hosts/status`, `POST /api/control/hosts`, `DELETE /api/control/hosts/:id`
@@ -280,7 +285,7 @@
   - `test/control-plane-v3.test.mjs`, `test/remote-auth-boundary.test.mjs`, `test/remote-automation-security.test.mjs`, `test/automation-api-v3.test.mjs`, `test/automation-client-v3.test.mjs`, `test/automation-routing-v3.test.mjs`, `test/automation-ui-regression.test.mjs`, `test/context-references-v3.test.mjs`, `test/context-attachments-v3.test.mjs`, `test/user-automation.test.mjs`
   - `test/integration-launch-210.test.mjs`, `test/integration-launch-contracts.test.mjs`, `test/integrations-security.test.mjs`, `test/integrations-ui.test.mjs`, `test/cli-launch.test.mjs`, `test/browser-tool.test.mjs`, `test/auth-server.integration.test.mjs`, `test/codex-not-installed.test.mjs`
 - **未検証範囲**:
-  - `POST /api/control/events/github`（GitHub Webhook）を含む `/api/control/*`、`/api/projects/:id/context*`、および `/api/user-automation*` の HTTP サーバー統合テストは存在しません（`test/control-plane-v3.test.mjs` は `ControlPlane.dispatchEvent(...)` 等のインプロセス単体テスト、`test/remote-auth-boundary.test.mjs`・`test/remote-automation-security.test.mjs` は `server.mjs` の静的文字列チェックのみ）。
+  - `POST /api/control/events/github`（GitHub Webhook）を含む `/api/control/*`、`/api/projects/:id/context*` の HTTP サーバー統合テストは存在しません（`test/control-plane-v3.test.mjs` は `ControlPlane.dispatchEvent(...)` 等のインプロセス単体テスト、`test/remote-auth-boundary.test.mjs`・`test/remote-automation-security.test.mjs` は `server.mjs` の静的文字列チェックのみ）。`/api/user-automation*` は、破損した監査行があっても `GET /api/user-automation` が成功するケースのみ HTTP 統合テストで検証しています。
   - 実 Chromebook/Crostini 環境での Antigravity 起動（#210）、実 Claude Code / Antigravity リモート連携、実 GitHub Webhook 配信、複数ホスト間の実Tailscale通信は未検証です。
 
 ### 13. Web / PWA

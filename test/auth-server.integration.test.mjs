@@ -62,6 +62,18 @@ test("server requires auth and exact Origin for mutations", async () => {
   try {
     await waitForReady(child);
 
+    const auditFile = join(home, ".config", "opencode-pocket", "hook-audit.jsonl");
+    await mkdir(dirname(auditFile), { recursive: true });
+    await writeFile(auditFile, '{"hookId":"first","status":"completed"}\ngarbage\nnull\n{"hookId":"second","status":"blocked"}\n{"torn":');
+    const automationState = await fetch(`${origin}/api/user-automation`, {
+      headers: { authorization }
+    });
+    assert.equal(automationState.status, 200);
+    assert.deepEqual((await automationState.json()).hookAudit, [
+      { hookId: "first", status: "completed" },
+      { hookId: "second", status: "blocked" }
+    ]);
+
     const unauthenticated = await fetch(`${origin}/api/projects`);
     assert.equal(unauthenticated.status, 401);
     assert.equal(unauthenticated.headers.get("www-authenticate"), null);
