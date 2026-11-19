@@ -3474,6 +3474,12 @@ export function mountCodexRemote(
       t("codex.models.modalTitle"),
       activeThreadId ? t("codex.models.thisChat") : t("codex.models.nextChat")
     );
+    await renderModelCatalog();
+  }
+
+  // Retry re-renders inside the open modal, so the opener saved by openModal
+  // keeps receiving focus when the picker closes.
+  async function renderModelCatalog(focusAfterRender = false) {
     modalBody.innerHTML = `<div class="cx-modal-loading">${escapeHtml(t("common.loading"))}</div>`;
 
     try {
@@ -3554,9 +3560,9 @@ export function mountCodexRemote(
         empty.dataset.modelsEmpty = "";
         empty.textContent = t("codex.models.empty");
         modalBody.appendChild(empty);
-        return;
+      } else {
+        modalBody.appendChild(list);
       }
-      modalBody.appendChild(list);
     } catch (error) {
       const message = error instanceof Error ? translateServerMessage(error.message) : String(error);
       modalBody.replaceChildren();
@@ -3569,8 +3575,13 @@ export function mountCodexRemote(
       retry.className = "cx-model-row";
       retry.dataset.modelsRetry = "";
       retry.textContent = t("common.retry");
-      retry.addEventListener("click", () => void showModels());
+      retry.addEventListener("click", () => void renderModelCatalog(true));
       modalBody.append(note, retry);
+    }
+    if (focusAfterRender) {
+      const target = modalBody.querySelector<HTMLElement>("button") ?? modalBody;
+      if (target === modalBody) modalBody.tabIndex = -1;
+      target.focus({ preventScroll: true });
     }
   }
 

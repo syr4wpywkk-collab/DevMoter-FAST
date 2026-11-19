@@ -243,6 +243,7 @@ test("Codex UI labels a missing CLI as 未インストール and recovers when i
   modalBody.querySelector("[data-models-retry]").click();
   await settle();
   assert.ok(modalBody.querySelector("[data-models-empty]"), "Retry reloads the catalog");
+  assert.equal(document.activeElement, modalBody, "focus stays in the picker after Retry");
   void requests;
   void eventSource;
   void threadReadCount;
