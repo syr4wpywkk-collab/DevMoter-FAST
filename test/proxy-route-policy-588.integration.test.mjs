@@ -234,10 +234,7 @@ test("proxy enforces the deny-by-default route allowlist and read-only write blo
     const createRw = await call("POST", "/api/opencode/session", { body: { agent: "build" } });
     assert.equal(createRw.status, 200);
     assert.equal((await createRw.json()).id, "ses_rw_588");
-    const createRo = await call("POST", "/api/opencode/session", {
-      body: { agent: "plan" },
-      headers: { "x-pocket-agent-mode": "plan" }
-    });
+    const createRo = await call("POST", "/api/opencode/session", { body: { agent: "plan" } });
     assert.equal(createRo.status, 200);
     assert.equal((await createRo.json()).id, "ses_ro_588");
 
@@ -291,18 +288,18 @@ test("proxy enforces the deny-by-default route allowlist and read-only write blo
     assert.match((await owned.json()).error, /served by DevMoter/);
     assert.equal(received.length, hitsBefore, "adapter-owned routes must not contact upstream via proxy");
 
-    // Read-only mode: EVERY session-scoped write-classified route is rejected.
+    // Every session-scoped write rejects the request in plan mode; /agent
+    // requires an explicit allowed transition, as covered by the mode tests.
     const sessionWrites = PROXY_ROUTE_TABLE.filter(entry => entry.kind === "write" && entry.template.includes("{id}"));
     assert.ok(sessionWrites.length >= 4);
     for (const entry of sessionWrites) {
       const upstreamPath = entry.template.replace("{id}", "ses_ro_588");
       const clientPath = `/api/opencode${entry.template.slice("/api".length).replace("{id}", "ses_ro_588")}`;
-      const response = await call(entry.method, clientPath, {
-        body: {},
-        headers: { "x-pocket-agent-mode": "plan" }
-      });
-      assert.equal(response.status, 403, `${entry.method} ${clientPath} must be blocked in plan mode`);
-      await response.json();
+      for (const headers of [{}, { "x-pocket-agent-mode": "build" }]) {
+        const response = await call(entry.method, clientPath, { body: {}, headers });
+        assert.equal(response.status, 403, `${entry.method} ${clientPath} must be blocked in plan mode`);
+        await response.json();
+      }
       assert.ok(
         !received.some(hit => hit.method === entry.method && hit.path === upstreamPath),
         `${entry.method} ${upstreamPath} must not reach upstream in plan mode`
@@ -310,9 +307,7 @@ test("proxy enforces the deny-by-default route allowlist and read-only write blo
     }
 
     // Read-only mode: listed reads still forward.
-    const roFetch = await call("GET", "/api/opencode/session/ses_ro_588", {
-      headers: { "x-pocket-agent-mode": "plan" }
-    });
+    const roFetch = await call("GET", "/api/opencode/session/ses_ro_588");
     assert.equal(roFetch.status, 200);
     await roFetch.json();
   } finally {
