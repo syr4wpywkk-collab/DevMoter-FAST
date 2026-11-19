@@ -443,7 +443,7 @@ function redactJsonSecrets(value) {
   if (typeof value === "string") return redactText(value);
   if (Array.isArray(value)) return value.map(redactJsonSecrets);
   if (value && typeof value === "object") {
-    const redacted = {};
+    const redacted = Object.create(null);
     for (const [key, entry] of Object.entries(value)) {
       redacted[redactText(key)] = redactJsonSecrets(entry);
     }
@@ -1893,6 +1893,18 @@ function tryParseJsonObject(buffer) {
   }
 }
 
+async function readOpenCodeProxyJson(body) {
+  const limit = 8 * 1024 * 1024;
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of body) {
+    size += chunk.byteLength;
+    if (size > limit) throw new Error("OpenCode JSON response exceeds the size limit");
+    chunks.push(chunk);
+  }
+  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks, size)));
+}
+
 function writeProxyChunk(res, textOrBuffer) {
   if (!textOrBuffer || !textOrBuffer.length || res.writableEnded || res.destroyed) return;
   res.write(typeof textOrBuffer === "string" ? Buffer.from(textOrBuffer, "utf8") : textOrBuffer);
@@ -2213,25 +2225,38 @@ async function proxy(req, res) {
       return;
     }
 
-    const captureCreatedSession =
-      isSessionCreate &&
-      upstream.ok &&
-      (mediaType === "application/json" || mediaType.endsWith("+json"));
-
-    if (!captureCreatedSession) {
+    if (mediaType === "application/json" || mediaType.endsWith("+json")) {
+      let payload;
+      let redacted;
+      try {
+        payload = await readOpenCodeProxyJson(upstream.body);
+        redacted = stringifyRedactedJson(payload);
+      } catch {
+        json(res, 502, { error: "OpenCode returned an invalid or oversized JSON response" });
+        return;
+      }
+      if (endIfResponseStarted(res)) return;
+      if (isSessionCreate && upstream.ok) {
+        const createdSession = payload?.data ?? payload;
+        const createdId = typeof createdSession?.id === "string" ? createdSession.id : "";
+        if (createdId) {
+          const upstreamMode = modeFromAgent(createdSession?.agent) || parseAgentMode(createdSession?.mode);
+          setOpenCodeSessionMode(createdId, resolveEffectiveAgentMode(upstreamMode || initialCreateMode, initialCreateMode));
+        }
+      }
+      headers["content-type"] = `${mediaType}; charset=utf-8`;
       res.writeHead(upstream.status, headers);
+      res.end(redacted);
+      return;
     }
 
+    res.writeHead(upstream.status, headers);
     const reader = upstream.body.getReader();
     const textual = isTextualProxyMediaType(rawContentType);
     const decoder = textual ? new TextDecoder("utf-8", { fatal: false }) : null;
     const redactor = textual
       ? createStreamingTextRedactor(REDACTED_SECRETS)
       : createStreamingBufferRedactor(REDACTED_SECRETS);
-    const captureLimit = 1024 * 1024;
-    let capturing = captureCreatedSession;
-    const capturedParts = [];
-    let capturedBytes = 0;
 
     try {
       while (true) {
@@ -2240,45 +2265,14 @@ async function proxy(req, res) {
         const out = textual
           ? redactor.push(decoder.decode(value, { stream: true }))
           : redactor.push(value);
-        if (!out || !out.length) continue;
-        if (capturing) {
-          const buf = Buffer.from(out, "utf8");
-          capturedBytes += buf.length;
-          if (capturedBytes <= captureLimit) {
-            capturedParts.push(buf);
-          } else {
-            capturing = false;
-            res.writeHead(upstream.status, headers);
-            for (const part of capturedParts) writeProxyChunk(res, part);
-            capturedParts.length = 0;
-            writeProxyChunk(res, buf);
-          }
-        } else {
-          writeProxyChunk(res, out);
-        }
+        writeProxyChunk(res, out);
       }
 
       if (!res.writableEnded && !res.destroyed) {
         const tail = textual
           ? redactor.push(decoder.decode()) + redactor.flush()
           : redactor.flush();
-        if (capturing) {
-          if (tail && tail.length) capturedParts.push(Buffer.from(tail, "utf8"));
-          const fullBuffer = capturedParts.length ? Buffer.concat(capturedParts) : Buffer.alloc(0);
-          const createdPayload = tryParseJsonObject(fullBuffer);
-          const createdSession = createdPayload?.data && typeof createdPayload.data === "object"
-            ? createdPayload.data
-            : createdPayload;
-          const createdId = typeof createdSession?.id === "string" ? createdSession.id : "";
-          if (createdId) {
-            const upstreamMode = modeFromAgent(createdSession?.agent) || parseAgentMode(createdSession?.mode);
-            setOpenCodeSessionMode(createdId, resolveEffectiveAgentMode(upstreamMode || initialCreateMode, initialCreateMode));
-          }
-          res.writeHead(upstream.status, headers);
-          writeProxyChunk(res, fullBuffer);
-        } else {
-          writeProxyChunk(res, tail);
-        }
+        writeProxyChunk(res, tail);
       }
     } finally {
       reader.releaseLock();

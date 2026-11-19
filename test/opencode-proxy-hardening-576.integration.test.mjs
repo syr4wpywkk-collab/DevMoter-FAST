@@ -95,11 +95,24 @@ test("OpenCode proxy and SSE paths harden headers, redact secrets, and enforce a
         "www-authenticate": "Basic realm=\"internal\"",
         "retry-after": "12"
       });
-      res.end(JSON.stringify({ directory: projectDir, secretEcho: openCodePassword }));
+      const body = JSON.stringify({ directory: projectDir, secretEcho: openCodePassword, [`key-${authPassword}`]: [openCodePassword] });
+      res.end(body.replaceAll("sentinel", "\\u0073entinel"));
       return;
     }
 
-    if (req.method === "GET" && path === "/api/html-page") {
+    if (req.method === "GET" && path === "/api/session/sess_invalid_json") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end("{");
+      return;
+    }
+
+    if (req.method === "GET" && path === "/api/session/sess_large_json") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify("a".repeat(8 * 1024 * 1024)));
+      return;
+    }
+
+    if (req.method === "GET" && path === "/api/session/sess_html") {
       res.writeHead(200, {
         "content-type": "text/html; charset=utf-8",
         "set-cookie": "html_cookie=evil"
@@ -108,19 +121,19 @@ test("OpenCode proxy and SSE paths harden headers, redact secrets, and enforce a
       return;
     }
 
-    if (req.method === "GET" && path === "/api/svg-image") {
+    if (req.method === "GET" && path === "/api/session/sess_svg") {
       res.writeHead(200, { "content-type": "image/svg+xml" });
       res.end(`<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`);
       return;
     }
 
-    if (req.method === "GET" && path === "/api/plain-text") {
+    if (req.method === "GET" && path === "/api/session/sess_text") {
       res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
       res.end(`plain body with ${openCodePassword} and ${authPassword}`);
       return;
     }
 
-    if (req.method === "GET" && path === "/api/proxy-sse") {
+    if (req.method === "GET" && path === "/api/session/sess_sse") {
       res.writeHead(200, {
         "content-type": "text/event-stream; charset=utf-8",
         "set-cookie": "sse_cookie=should-not-leak"
@@ -273,41 +286,48 @@ rl.on("line", line => {
     assertProxySecurityHeaders(locationRes.headers, "/api/opencode/location");
     const locationJson = await locationRes.json();
     assert.equal(locationJson.secretEcho, "[REDACTED]");
+    assert.deepEqual(locationJson["key-[REDACTED]"], ["[REDACTED]"]);
 
-    const htmlRes = await fetch(`${baseUrl}/api/opencode/html-page`, {
+    for (const id of ["sess_invalid_json", "sess_large_json"]) {
+      const response = await fetch(`${baseUrl}/api/opencode/session/${id}`, { headers: baseHeaders });
+      assert.equal(response.status, 502);
+      assert.deepEqual(await response.json(), { error: "OpenCode returned an invalid or oversized JSON response" });
+    }
+
+    const htmlRes = await fetch(`${baseUrl}/api/opencode/session/sess_html`, {
       headers: baseHeaders,
       signal: AbortSignal.timeout(4000)
     });
     assert.equal(htmlRes.status, 200);
     assert.equal(htmlRes.headers.get("set-cookie"), null);
     assert.equal(htmlRes.headers.get("content-type"), "application/octet-stream");
-    assertProxySecurityHeaders(htmlRes.headers, "/api/opencode/html-page");
+    assertProxySecurityHeaders(htmlRes.headers, "/api/opencode/session/sess_html");
     const htmlBody = await htmlRes.text();
     assert.equal(htmlBody.includes(authPassword), false);
     assert.match(htmlBody, /\[REDACTED\]/);
 
-    const svgRes = await fetch(`${baseUrl}/api/opencode/svg-image`, {
+    const svgRes = await fetch(`${baseUrl}/api/opencode/session/sess_svg`, {
       headers: baseHeaders,
       signal: AbortSignal.timeout(4000)
     });
     assert.equal(svgRes.status, 200);
     assert.equal(svgRes.headers.get("content-type"), "application/octet-stream");
-    assertProxySecurityHeaders(svgRes.headers, "/api/opencode/svg-image");
+    assertProxySecurityHeaders(svgRes.headers, "/api/opencode/session/sess_svg");
 
-    const plainRes = await fetch(`${baseUrl}/api/opencode/plain-text`, {
+    const plainRes = await fetch(`${baseUrl}/api/opencode/session/sess_text`, {
       headers: baseHeaders,
       signal: AbortSignal.timeout(4000)
     });
     assert.equal(plainRes.status, 200);
     assert.equal(plainRes.headers.get("content-type"), "text/plain; charset=utf-8");
-    assertProxySecurityHeaders(plainRes.headers, "/api/opencode/plain-text");
+    assertProxySecurityHeaders(plainRes.headers, "/api/opencode/session/sess_text");
     const plainBody = await plainRes.text();
     assert.equal(plainBody.includes(openCodePassword), false);
     assert.equal(plainBody.includes(authPassword), false);
     assert.equal(plainBody, "plain body with [REDACTED] and [REDACTED]");
 
     // 2. Redaction across proxy() SSE, opencodeEvents() SSE, and codexEvents() SSE without breaking framing.
-    const proxySseRes = await fetch(`${baseUrl}/api/opencode/proxy-sse`, {
+    const proxySseRes = await fetch(`${baseUrl}/api/opencode/session/sess_sse`, {
       headers: { ...baseHeaders, accept: "text/event-stream" },
       signal: AbortSignal.timeout(4000)
     });
@@ -315,7 +335,7 @@ rl.on("line", line => {
     assert.equal(proxySseRes.headers.get("set-cookie"), null);
     assert.equal(proxySseRes.headers.get("content-type"), "text/event-stream; charset=utf-8");
     assert.equal(proxySseRes.headers.get("cache-control"), "no-cache, no-transform");
-    assertProxySecurityHeaders(proxySseRes.headers, "/api/opencode/proxy-sse");
+    assertProxySecurityHeaders(proxySseRes.headers, "/api/opencode/session/sess_sse");
     const proxySseText = await proxySseRes.text();
     assert.equal(proxySseText.includes(openCodePassword), false);
     assert.equal(proxySseText.includes(authPassword), false);
