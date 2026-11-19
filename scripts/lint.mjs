@@ -2,10 +2,10 @@ import { execFileSync } from "node:child_process";
 import { access, readdir, readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 
-const roots = ["src", "server", "test", "scripts", "public"];
+const roots = ["src", "server", "test", "scripts", "public", "cli", "e2e"];
 const textExtensions = new Set([".ts", ".mts", ".mjs", ".js", ".css", ".html", ".json", ".webmanifest", ".svg"]);
 const syntaxExtensions = new Set([".mjs", ".js"]);
-const files = ["server.mjs"];
+const files = ["server.mjs", "vite.config.ts"];
 
 async function walk(dir) {
   let entries = [];
