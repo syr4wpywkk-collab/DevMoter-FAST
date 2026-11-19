@@ -19,6 +19,12 @@ The supported model is a **single-user private host**. DevMoter binds to `127.0.
 
 DevMoter-native authentication is an application access boundary, but it is not a multi-user role/authorization system. An authenticated client is assumed to represent the host owner.
 
+### インターネットから到達可能な構成の評価
+
+サポート対象は引き続き単一所有者・非公開の構成。インターネットに面した構成を評価するときは、公開された入口に未認証の第三者が到達できるとみなす。既定のループバック待受けだけを理由に指摘の優先度を下げない。一方、すべての API が公開されているとも、プロキシ側に認証がないとも仮定しない。
+
+公開ホスト名と経路、HTTP・SSE・WebSocket の転送範囲、プロキシ側の認証とアクセス制御を確認する。ネットワークへの到達、アプリの所有者認証、端末の信頼、セッションへのアクセス、個別操作の承認は別々の条件として扱う。影響を評価する際は、ホストの実行権限、所有者と端末の資格情報、保管庫・外部サービスの資格情報、非公開のソースや作業データを区別する。
+
 ## Trust boundaries
 
 1. **Browser ↔ DevMoter** — all browser input is untrusted: JSON, IDs, filenames, operation IDs, model/RPC names and UI state.
@@ -29,6 +35,21 @@ DevMoter-native authentication is an application access boundary, but it is not 
 6. **DevMoter ↔ GitHub CLI** — the host `gh` session is privileged; the browser cannot choose arbitrary executables or clone destinations.
 7. **DevMoter ↔ host integrations** — installed CLIs and desktop launch targets are trusted local software but remain privileged.
 8. **Automation/event boundary** — a trigger is data, not blanket authority; schedules/events must not bypass existing boundaries.
+
+### 検出事項の分類
+
+コード上の担当領域を「コンポーネント」、本来権限を確認すべき主体と対象の間を「信頼境界」として記録する。信頼境界の値は、検出箇所のファイル名ではなく、実際に問題が生じる境界（例：ブラウザ → HTTP API）とする。
+
+| コンポーネント | 主なコード | 信頼境界の例 |
+|---|---|---|
+| ブラウザ／PWA | [`src/`](src/)、[`public/`](public/)、[`ios/`](ios/) | 外部コンテンツ → ブラウザ |
+| HTTP API／所有者認証 | [`server.mjs`](server.mjs)、[`server/auth-guard.mjs`](server/auth-guard.mjs) | ブラウザ → HTTP API |
+| エージェント／外部プロバイダー | [`server/opencode-api.mjs`](server/opencode-api.mjs)、[`server/codex-bridge.mjs`](server/codex-bridge.mjs)、[`server/multi-api.mjs`](server/multi-api.mjs) | DevMoter → エージェントまたは外部プロバイダー |
+| プロジェクト／ファイル／Git | [`server/project-index.mjs`](server/project-index.mjs)、[`server/safe-file.mjs`](server/safe-file.mjs)、[`server/github.mjs`](server/github.mjs) | DevMoter → ホストのファイルシステムまたは Git |
+| ターミナル／ホスト制御 | [`server/terminal-websocket.mjs`](server/terminal-websocket.mjs)、[`server/host/`](server/host/) | 端末 → ターミナルセッション |
+| シークレット保管庫 | [`server/secret-vault-api.mjs`](server/secret-vault-api.mjs)、[`server/secret-store.mjs`](server/secret-store.mjs) | ペアリング済み端末 → 保管庫 |
+| デプロイ／自動化 | [`systemd/`](systemd/)、[`scripts/`](scripts/)、[`server/automation-api.mjs`](server/automation-api.mjs) | 外部イベント → 自動化 |
+| DeepSeek モバイル接続シェル | [`deepseek-harness-mobile/`](deepseek-harness-mobile/) | モバイル接続シェル → 公式 DSH Web UI |
 
 ## Attacker models
 
