@@ -1,6 +1,7 @@
 import { formatCodexResetTime as formatResetTime, codexFeedbackKey as feedbackKey } from "./codex/presentation";
 import { getAppDefinition } from "./app-registry";
 import { cxIcons } from "./codex/icons";
+import { chatHistoryTriggerMarkup } from "./chat-history-trigger.mjs";
 import { codexThreadStatusToExecutionState, codexTurnStatusToExecutionState, isExecutionActive, type ExecutionState } from "./execution-state.mjs";
 import { bindLanguageSelectors, formatDateTime, formatNumber, formatRelativeTime, localeTag, speechRecognitionLanguage, t, tApp, translateServerMessage } from "./i18n";
 import { apiErrorMessage } from "./api-error.mjs";
@@ -244,7 +245,7 @@ export function mountCodexRemote(
       </aside>
 
       <header class="cx-topbar">
-        <button id="cxMenu" class="cx-icon-button" type="button" aria-label="${escapeHtml(t("codex.topbar.openHistoryAria"))}" title="${escapeHtml(t("codex.topbar.openHistoryTitle"))}">${cxIcons.menu}</button>
+        ${chatHistoryTriggerMarkup({ id: "cxMenu", className: "cx-icon-button", ariaLabel: t("nav.openChatHistoryAria"), title: t("nav.chatHistoryTitle") })}
         <div class="cx-brand" aria-label="DevMoter"><span class="cx-brand-mark">Z</span><strong>DevMoter</strong></div>
         <button id="cxTitleButton" class="cx-title-button" type="button">
           <span id="cxTitle">Codex</span>

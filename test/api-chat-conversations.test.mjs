@@ -12,6 +12,7 @@ import * as apiModelLabel from "../src/api-model-label.mjs";
 import * as chatDraft from "../src/chat-draft.mjs";
 import * as apiError from "../src/api-error.mjs";
 import * as transcriptActions from "../src/chat-transcript-actions.mjs";
+import * as chatHistoryTrigger from "../src/chat-history-trigger.mjs";
 
 const source = await readFile(new URL("../src/api-chat.ts", import.meta.url), "utf8");
 const compiled = ts.transpileModule(source, {
@@ -91,6 +92,7 @@ async function harness(t, { rejectOnAbort = false } = {}) {
     "./chat-draft.mjs": chatDraft,
     "./api-error.mjs": apiError,
     "./chat-transcript-actions.mjs": transcriptActions,
+    "./chat-history-trigger.mjs": chatHistoryTrigger,
     "./fetch-with-timeout.mjs": fetchTimeout,
     "./api-provider-catalog.mjs": providerCatalog,
     "./api-attachment.mjs": apiAttachment,

@@ -21,6 +21,7 @@ import * as modelLabel from "../src/opencode-model-label.mjs";
 import { renderChatMarkdown } from "../src/chat-markdown.mjs";
 import * as chatDraft from "../src/chat-draft.mjs";
 import * as transcriptActions from "../src/chat-transcript-actions.mjs";
+import * as chatHistoryTrigger from "../src/chat-history-trigger.mjs";
 import { loadPureTypeScript } from "./helpers/ts-pure-modules.mjs";
 
 const compile = source => ts.transpileModule(source, {
@@ -109,6 +110,7 @@ async function harness(t, initialContext = [], { listFailures = 0, storedDraft =
     "./chat-markdown.mjs": { renderChatMarkdown },
     "./chat-draft.mjs": chatDraft,
     "./chat-transcript-actions.mjs": transcriptActions,
+    "./chat-history-trigger.mjs": chatHistoryTrigger,
     "./bounded-transcript": bounds,
     "./opencode-chat.css": {},
     "./i18n": { speechRecognitionLanguage: () => "en-US", ...i18nCore },

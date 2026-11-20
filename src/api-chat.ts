@@ -7,6 +7,7 @@ import { normalizeApiAttachment } from "./api-attachment.mjs";
 import { apiModelLabel } from "./api-model-label.mjs";
 import { createChatDraftBinding } from "./chat-draft.mjs";
 import { latestAssistantText } from "./chat-transcript-actions.mjs";
+import { chatHistoryTriggerMarkup } from "./chat-history-trigger.mjs";
 import "./api-chat-surface.css";
 
 type ApiProvider = {
@@ -142,7 +143,7 @@ export function mountApiChat(
       </aside>
 
       <header class="api-topbar">
-        <button id="apiMenu" class="api-icon-button" type="button" aria-label="${escapeHtml(t("apiChat.menuAria"))}">☰</button>
+        ${chatHistoryTriggerMarkup({ id: "apiMenu", className: "api-icon-button", ariaLabel: t("nav.openChatHistoryAria"), title: t("nav.chatHistoryTitle") })}
         <div class="api-brand">
           <strong>API Chat</strong>
           <small id="apiModelTopLabel">${escapeHtml(t("apiChat.topModelUnset"))}</small>

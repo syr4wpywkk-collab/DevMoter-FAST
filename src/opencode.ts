@@ -17,6 +17,7 @@ import { latestTurnIdle, shouldKeepAwaitingReply } from "./opencode-turn-state.m
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
+import { chatHistoryTriggerMarkup } from "./chat-history-trigger.mjs";
 import { createChatDraftBinding } from "./chat-draft.mjs";
 import { createHistoryRetryNotice, latestAssistantText } from "./chat-transcript-actions.mjs";
 import "./opencode-chat.css";
@@ -300,7 +301,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       </aside>
 
       <header class="ocx-topbar">
-        <button id="ocxMenu" class="ocx-icon" type="button" aria-label="${escapeHtml(t("opencode.sidebar.openHistoryAria"))}" title="${escapeHtml(t("opencode.sidebar.openHistoryTitle"))}">☰</button>
+        ${chatHistoryTriggerMarkup({ id: "ocxMenu", className: "ocx-icon", ariaLabel: t("nav.openChatHistoryAria"), title: t("nav.chatHistoryTitle") })}
 
         <button id="ocxSessionTitleButton" class="ocx-session-title" type="button">
           <strong id="ocxSessionTitle">OpenCode</strong>

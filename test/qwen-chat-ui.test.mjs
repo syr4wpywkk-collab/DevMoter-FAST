@@ -275,6 +275,7 @@ test("history sheet lists chats newest first and switches, starts and deletes th
     assert.ok(restore, "a restore action follows the deletion");
     restore.click();
     assert.equal(sheet.querySelectorAll(".qx-history-row").length, 2, "restore brings the chat back");
+    assert.equal(dom.window.document.activeElement?.dataset.chatId, "a", "focus moves to the restored chat");
     assert.deepEqual(JSON.parse(dom.window.localStorage.getItem(QWEN_CHATS_KEY)).chats.map(chat => chat.id).sort(), ["a", "b"]);
     assert.equal(sheet.querySelector("[data-restore-chat]"), null, "restore is offered once");
     sheet.querySelector('[data-delete-chat="a"]').click();
