@@ -27,8 +27,10 @@ import { mountMissionControl } from "./mission-control";
 import { mountKnowledge } from "./knowledge";
 import { createSurfaceNavigation, type MainSurface } from "./surface-navigation.mjs";
 import {
+  DEEPSEEK_UI_ENABLED,
   DEFAULT_VISIBLE_BACKEND,
   QWEN_UI_ENABLED,
+  isHiddenDeepseekTarget,
   isHiddenQwenTarget,
   isVisibleChatBackend,
   normalizeVisibleBackend,
@@ -117,10 +119,12 @@ let initialSurfaceApplied = false;
 
 function applyBackend(next: Backend) {
   const requestedHiddenQwen = isHiddenQwenTarget(next);
+  const requestedHiddenDeepseek = isHiddenDeepseekTarget(next);
   const preserveHiddenQwen = !QWEN_UI_ENABLED && localStorage.getItem("opencode-pocket-backend") === "qwen";
-  const resolved: Backend = requestedHiddenQwen ? DEFAULT_VISIBLE_BACKEND : next;
+  const preserveHiddenDeepseek = !DEEPSEEK_UI_ENABLED && localStorage.getItem("opencode-pocket-backend") === "deepseek";
+  const resolved: Backend = requestedHiddenQwen || requestedHiddenDeepseek ? DEFAULT_VISIBLE_BACKEND : next;
   activeBackend = resolved;
-  if (!requestedHiddenQwen && !(preserveHiddenQwen && resolved === DEFAULT_VISIBLE_BACKEND)) {
+  if (!requestedHiddenQwen && !requestedHiddenDeepseek && !((preserveHiddenQwen || preserveHiddenDeepseek) && resolved === DEFAULT_VISIBLE_BACKEND)) {
     localStorage.setItem("opencode-pocket-backend", resolved);
   }
   homeView.classList.add("hidden");
@@ -128,19 +132,19 @@ function applyBackend(next: Backend) {
   openCodeView.classList.toggle("hidden", resolved !== "opencode");
   codexView.classList.toggle("hidden", resolved !== "codex");
   apiView.classList.toggle("hidden", resolved !== "api");
-  deepseekView.classList.toggle("hidden", resolved !== "deepseek");
+  deepseekView.classList.toggle("hidden", !DEEPSEEK_UI_ENABLED || resolved !== "deepseek");
   qwenView.classList.toggle("hidden", !QWEN_UI_ENABLED || resolved !== "qwen");
   devinView.classList.toggle("hidden", resolved !== "devin");
   integrationsView.classList.toggle("hidden", resolved !== "integrations");
   document.body.classList.toggle("codex-mode", resolved === "codex");
   document.body.classList.toggle("opencode-mode", resolved === "opencode");
   document.body.classList.toggle("api-mode", resolved === "api");
-  document.body.classList.toggle("deepseek-mode", resolved === "deepseek");
+  document.body.classList.toggle("deepseek-mode", DEEPSEEK_UI_ENABLED && resolved === "deepseek");
   document.body.classList.toggle("qwen-mode", QWEN_UI_ENABLED && resolved === "qwen");
   document.body.classList.toggle("devin-mode", resolved === "devin");
   document.body.classList.toggle("integrations-mode", resolved === "integrations");
   if (resolved === "api") void apiRemote.refresh();
-  if (resolved === "deepseek") void deepseekRemote.refresh();
+  if (DEEPSEEK_UI_ENABLED && resolved === "deepseek") void deepseekRemote.refresh();
   if (QWEN_UI_ENABLED && resolved === "qwen") void qwenRemote?.refresh();
   if (resolved === "devin") void devinRemote.refresh();
   if (resolved === "integrations") void integrationsRemote.refresh();

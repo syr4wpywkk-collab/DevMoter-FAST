@@ -6,6 +6,7 @@ import { JSDOM } from "jsdom";
 import * as i18nCore from "../src/i18n-core.mjs";
 import * as deviceGate from "../src/device-gate.mjs";
 import {
+  DEEPSEEK_UI_ENABLED,
   VISIBLE_CHAT_BACKENDS,
   isVisibleChatBackend,
   normalizeVisibleBackend,
@@ -14,14 +15,18 @@ import {
 import { isMainSurface, initialMainSurface } from "../src/surface-navigation.mjs";
 import { chatDraftKey } from "../src/chat-draft.mjs";
 
-test("deepseek is a visible chat backend and a routable main surface", () => {
-  assert.ok(VISIBLE_CHAT_BACKENDS.includes("deepseek"));
-  assert.equal(isVisibleChatBackend("deepseek"), true);
-  assert.equal(normalizeVisibleBackend("deepseek"), "deepseek");
-  assert.equal(normalizeVisibleSurface("deepseek"), "deepseek");
-  assert.equal(isMainSurface("deepseek"), true);
-  assert.equal(initialMainSurface("?surface=deepseek"), "deepseek");
-  assert.equal(initialMainSurface("?backend=deepseek"), "deepseek");
+test("deepseek is hidden from pickers and falls back while DEEPSEEK_UI_ENABLED is false", () => {
+  // Owner decision 2026-11-20: hide DeepSeek from the backend pickers for
+  // now. The implementation stays mounted behind the gate (see the mount
+  // tests below); flipping DEEPSEEK_UI_ENABLED to true restores routing.
+  assert.equal(DEEPSEEK_UI_ENABLED, false);
+  assert.ok(!VISIBLE_CHAT_BACKENDS.includes("deepseek"));
+  assert.equal(isVisibleChatBackend("deepseek"), false);
+  assert.equal(normalizeVisibleBackend("deepseek"), "opencode");
+  assert.equal(normalizeVisibleSurface("deepseek"), "opencode");
+  assert.equal(isMainSurface("deepseek"), false);
+  assert.equal(initialMainSurface("?surface=deepseek"), "opencode");
+  assert.equal(initialMainSurface("?backend=deepseek"), "opencode");
 });
 
 test("deepseek chat drafts are stored separately from api chat drafts", () => {
