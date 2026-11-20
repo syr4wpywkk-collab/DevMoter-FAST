@@ -10,6 +10,9 @@ import { latestAssistantText } from "./chat-transcript-actions.mjs";
 import { chatHistoryTriggerMarkup } from "./chat-history-trigger.mjs";
 import "./api-chat-surface.css";
 
+const API_SEND_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>';
+const API_STOP_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg>';
+
 type ApiProvider = {
   id: string;
   name: string;
@@ -171,13 +174,13 @@ export function mountApiChat(
           <small id="apiStatus" class="api-status" role="status" aria-live="polite">${escapeHtml(t("apiChat.loadingProviders"))}</small>
           <button id="apiCopyLatest" class="api-copy-latest" type="button">${escapeHtml(t("chat.copyLatest.button"))}</button>
           <div class="api-composer-foot">
-            <button id="apiAttachImage" class="api-attach-button" type="button" aria-label="${escapeHtml(t("apiChat.attachImageAria"))}">＋</button>
+            <button id="apiAttachImage" class="api-attach-button" type="button" aria-label="${escapeHtml(t("apiChat.attachImageAria"))}" title="${escapeHtml(t("apiChat.attachImageAria"))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
             <div class="api-picker-row">
               <select id="apiProvider" aria-label="${escapeHtml(t("apiChat.providerSelectAria"))}"></select>
               <select id="apiModel" aria-label="${escapeHtml(t("apiChat.modelSelectAria"))}"></select>
               <select id="apiReasoning" aria-label="${escapeHtml(t("apiChat.reasoningAria"))}"></select>
             </div>
-            <button id="apiSend" type="submit" aria-label="${escapeHtml(t("common.send"))}">↑</button>
+            <button id="apiSend" type="submit" aria-label="${escapeHtml(t("common.send"))}" title="${escapeHtml(t("common.send"))}">${API_SEND_ICON}</button>
           </div>
         </form>
       </section>
@@ -404,8 +407,10 @@ export function mountApiChat(
     for (const select of [providerSelect, modelSelect, reasoningSelect]) {
       select.title = select.selectedOptions[0]?.textContent || select.getAttribute("aria-label") || "";
     }
-    send.textContent = sending ? "■" : "↑";
-    send.setAttribute("aria-label", sending ? t("common.stop") : t("common.send"));
+    send.innerHTML = sending ? API_STOP_ICON : API_SEND_ICON;
+    const sendLabel = sending ? t("common.stop") : t("common.send");
+    send.setAttribute("aria-label", sendLabel);
+    send.title = sendLabel;
     form.setAttribute("aria-busy", String(sending));
     status.title = status.textContent || "";
   }
