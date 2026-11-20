@@ -57,3 +57,5 @@ curl -fsS http://127.0.0.1:8787/api/health
 ```
 
 If the unit restart-loops, inspect `journalctl --user -u devmoter-fast.service` rather than falling back to or documenting an obsolete service name. The supported user unit is **`devmoter-fast.service`**.
+
+For the full pre-release checklist, see [release-smoke.md](release-smoke.md).

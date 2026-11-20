@@ -5,7 +5,7 @@ import path from "node:path";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import { build } from "esbuild";
-import { webkit } from "playwright";
+import { launchWebKit } from "./launch-webkit.mjs";
 
 const repo = path.resolve(import.meta.dirname, "..");
 
@@ -146,7 +146,7 @@ for (const device of [
     t.after(async () => {
       try { await browser?.close(); } finally { await server.close(); }
     });
-    browser = await webkit.launch({ headless: true });
+    browser = await launchWebKit();
     const context = await browser.newContext({ viewport: device.viewport, isMobile: device.mobile, hasTouch: device.hasTouch });
     const page = await context.newPage();
     const apiRequests = [];
@@ -169,6 +169,9 @@ for (const device of [
     await page.goto(server.url);
     await page.locator("[data-workspace-menu-button]").waitFor();
     await page.waitForFunction(() => Boolean(document.querySelector("#dmTaskFirstWorkspace")));
+    // #330: no screen may be wider than the viewport (iOS Safari would let the page pan sideways).
+    const overflow = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, width: window.innerWidth }));
+    assert.ok(overflow.scroll <= overflow.width, `page is ${overflow.scroll}px wide in a ${overflow.width}px viewport`);
     const tab = name => page.locator(`#dmTaskFirstMenu [data-workspace-action='${name}']`);
     const select = async name => {
       await openMenu(page);

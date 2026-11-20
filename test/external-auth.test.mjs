@@ -201,3 +201,50 @@ test("GitHub polling obeys server interval and slow_down", async t => {
   assert.equal(flow.intervalMs, before + 5_000);
   assert.ok(slowed.retryAfterMs >= before + 5_000);
 });
+
+test("#321: owner sessions and their assurance survive a server restart until logout", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-auth-persist-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const noNetwork = async () => { throw new Error("network should not be used"); };
+  const expected = { username: "devmoter", password: "correct-horse-battery-staple" };
+
+  const before = new ExternalAuth({ configDir: dir, fetchImpl: noNetwork });
+  const local = await before.localLogin(request(), expected, expected);
+  const passkey = await before.passkeyLogin(request());
+  const localCookie = local.cookie.split(";", 1)[0];
+  const passkeyCookie = passkey.cookie.split(";", 1)[0];
+
+  const afterRestart = new ExternalAuth({ configDir: dir, fetchImpl: noNetwork });
+  const restoredLocal = await afterRestart.session(request({ cookie: localCookie }));
+  const restoredPasskey = await afterRestart.session(request({ cookie: passkeyCookie }));
+  assert.equal(restoredLocal?.identity?.login, "devmoter");
+  assert.equal(restoredLocal?.assurance, "password", "a recovery session must not be upgraded by a restart");
+  assert.equal(restoredPasskey?.assurance, "passkey");
+  assert.equal((await afterRestart.status(request({ cookie: passkeyCookie }))).authenticated, true);
+
+  assert.equal(await afterRestart.session(request({ cookie: passkeyCookie, host: "other.test" })), null);
+  assert.equal(await afterRestart.session(request({ cookie: "devmoter_session=forged" })), null);
+
+  await afterRestart.logout(request({ cookie: passkeyCookie }));
+  const afterSecondRestart = new ExternalAuth({ configDir: dir, fetchImpl: noNetwork });
+  assert.equal(await afterSecondRestart.session(request({ cookie: passkeyCookie })), null);
+  assert.equal((await afterSecondRestart.session(request({ cookie: localCookie })))?.assurance, "password");
+});
+
+test("#321: an expired owner session is rejected after a restart", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-auth-expire-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const noNetwork = async () => { throw new Error("network should not be used"); };
+  const expected = { username: "devmoter", password: "correct-horse-battery-staple" };
+  const realNow = Date.now;
+  t.after(() => { Date.now = realNow; });
+
+  const before = new ExternalAuth({ configDir: dir, fetchImpl: noNetwork, sessionTtlMs: 60_000 });
+  const local = await before.localLogin(request(), expected, expected);
+  const cookieHeader = local.cookie.split(";", 1)[0];
+
+  const start = realNow();
+  Date.now = () => start + 61_000;
+  const afterRestart = new ExternalAuth({ configDir: dir, fetchImpl: noNetwork, sessionTtlMs: 60_000 });
+  assert.equal(await afterRestart.session(request({ cookie: cookieHeader })), null);
+});
