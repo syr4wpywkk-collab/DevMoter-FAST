@@ -16,7 +16,7 @@ test("API Chat composer uses line icons, not font glyphs that render as tofu", (
 
 test("send button swaps to a stop icon while streaming and back afterwards", () => {
   assert.match(source, /send\.innerHTML = sending \? API_STOP_ICON : API_SEND_ICON;/);
-  assert.match(source, /send\.setAttribute\("aria-label", sending \? t\("common\.stop"\) : t\("common\.send"\)\);/);
+  assert.match(source, /const sendLabel = sending \? t\("common\.stop"\) : t\("common\.send"\);\n\s*send\.setAttribute\("aria-label", sendLabel\);\n\s*send\.title = sendLabel;/, "label and tooltip follow the state");
   assert.ok(!/send\.textContent = sending/.test(source), "no glyph fallback");
   assert.match(source, /const API_SEND_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"\/><\/svg>';/);
 });

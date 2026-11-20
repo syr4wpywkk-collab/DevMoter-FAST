@@ -401,7 +401,9 @@ export function mountApiChat(
       select.title = select.selectedOptions[0]?.textContent || select.getAttribute("aria-label") || "";
     }
     send.innerHTML = sending ? API_STOP_ICON : API_SEND_ICON;
-    send.setAttribute("aria-label", sending ? t("common.stop") : t("common.send"));
+    const sendLabel = sending ? t("common.stop") : t("common.send");
+    send.setAttribute("aria-label", sendLabel);
+    send.title = sendLabel;
     form.setAttribute("aria-busy", String(sending));
     status.title = status.textContent || "";
   }
