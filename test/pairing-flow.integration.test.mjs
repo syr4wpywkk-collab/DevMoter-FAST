@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
-import ts from "typescript";
+import ts from "typescript-legacy";
 import { JSDOM } from "jsdom";
 import * as i18nCore from "../src/i18n-core.mjs";
 import * as deviceGate from "../src/device-gate.mjs";

@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import ts from "typescript";
+import ts from "typescript-legacy";
 
 /** Load stateless extracted .ts modules in legacy CommonJS-based DOM harnesses. */
 export async function loadPureTypeScript(relativePath) {

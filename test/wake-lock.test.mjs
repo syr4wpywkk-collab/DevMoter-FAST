@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import ts from "typescript";
+import ts from "typescript-legacy";
 
 test("wake lock request is coalesced and released if the turn finishes while acquisition is pending", async t => {
   const saved = new Map();

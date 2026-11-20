@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import * as i18nCore from "../src/i18n-core.mjs";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
-import ts from "typescript";
+import ts from "typescript-legacy";
 import { JSDOM } from "jsdom";
 import * as deviceGate from "../src/device-gate.mjs";
 import * as sheetHeader from "../src/sheet-header.mjs";

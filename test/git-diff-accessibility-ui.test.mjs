@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import * as i18nCore from '../src/i18n-core.mjs';
 import {readFile} from 'node:fs/promises';
 import {JSDOM} from 'jsdom';
-import ts from 'typescript';
+import ts from 'typescript-legacy';
 const compiled=ts.transpileModule(await readFile(new URL('../src/workspace-tools.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
 const settle=()=>new Promise(r=>setImmediate(r));
 test('Unified and split diffs expose addition/deletion text while Copy keeps the original API diff',async t=>{

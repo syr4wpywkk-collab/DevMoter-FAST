@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import * as i18nCore from "../src/i18n-core.mjs";
 import { readFile } from "node:fs/promises";
-import ts from "typescript";
+import ts from "typescript-legacy";
 import { JSDOM } from "jsdom";
 import * as deviceGate from "../src/device-gate.mjs";
 import { loadPureTypeScript } from "./helpers/ts-pure-modules.mjs";
