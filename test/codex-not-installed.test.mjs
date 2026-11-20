@@ -10,6 +10,8 @@ import * as reasoning from "../src/codex-reasoning.mjs";
 import * as reconnect from "../src/reconnect-policy.mjs";
 import * as markdown from "../src/chat-markdown.mjs";
 import * as sendError from "../src/codex-send-error.mjs";
+import * as chatDraft from "../src/chat-draft.mjs";
+import * as transcriptActions from "../src/chat-transcript-actions.mjs";
 import { loadPureTypeScript } from "./helpers/ts-pure-modules.mjs";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
@@ -141,6 +143,7 @@ test("Codex UI labels a missing CLI as 未インストール and recovers when i
   const requests = [];
   let eventSource;
   let threadReadCount = 0;
+  let modelListFails = false;
   window.matchMedia = () => ({ matches: false, addEventListener() {} });
   window.setInterval = () => 1;
   window.setTimeout = () => 1;
@@ -163,7 +166,10 @@ test("Codex UI labels a missing CLI as 未インストール and recovers when i
     if (path === "/api/projects") return ok({ projects: [] });
     if (path !== "/api/codex/rpc") throw new Error(`Unexpected request: ${path}`);
     const { method, params } = JSON.parse(String(init.body));
-    if (method === "model/list") return okRpc({ models: [] });
+    if (method === "model/list") {
+      if (modelListFails) throw new Error("catalog down");
+      return okRpc({ models: [] });
+    }
     if (method === "thread/list") return okRpc({ data: [{ id: "thread-1", name: "Test thread" }] });
     if (method === "thread/resume") return okRpc({});
     if (method === "thread/read") {
@@ -194,6 +200,8 @@ test("Codex UI labels a missing CLI as 未インストール and recovers when i
     if (name === "./codex-reasoning.mjs") return reasoning;
     if (name === "./reconnect-policy.mjs") return reconnect;
     if (name === "./chat-markdown.mjs") return markdown;
+    if (name === "./chat-draft.mjs") return chatDraft;
+    if (name === "./chat-transcript-actions.mjs") return transcriptActions;
     if (name === "./codex-send-error.mjs") return sendError;
     if (name === "./wake-lock") return { setWakeLockExecutionActive() {} };
     if (name === "./safety-client") return { runPreExecutionGuard: async () => ({ decision: "allow" }), guardMessage: () => "", continueAgentRun: async () => {}, loopMessage: () => "", matchRememberedPermission: async () => ({ matched: false }), recordAgentAction: async () => null, rememberPermission: async () => {}, scanCommand: async () => ({ dangerous: false }) };
@@ -220,6 +228,22 @@ test("Codex UI labels a missing CLI as 未インストール and recovers when i
   await settle();
   assert.match(status.textContent, /Online/);
   assert.equal(status.dataset.codexState, "online");
+
+  // #347: an empty catalog says so, and a failed load offers Retry.
+  const modalBody = document.querySelector("#cxModalBody");
+  document.querySelector("#cxModelTop").click();
+  await settle();
+  assert.equal(modalBody.querySelector("[data-models-empty]")?.textContent, i18nCore.translate("en", "codex.models.empty"));
+  modelListFails = true;
+  document.querySelector("#cxModelTop").click();
+  await settle();
+  assert.match(modalBody.textContent, /catalog down/);
+  assert.match(modalBody.querySelector("[role='alert']")?.textContent ?? "", /catalog down/);
+  modelListFails = false;
+  modalBody.querySelector("[data-models-retry]").click();
+  await settle();
+  assert.ok(modalBody.querySelector("[data-models-empty]"), "Retry reloads the catalog");
+  assert.equal(document.activeElement, modalBody, "focus stays in the picker after Retry");
   void requests;
   void eventSource;
   void threadReadCount;

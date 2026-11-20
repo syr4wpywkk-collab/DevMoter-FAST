@@ -1,5 +1,6 @@
 import "./session-control.css";
 import { formatDateTime, formatNumber, getLanguage, t, translateServerMessage } from "./i18n";
+import { apiErrorMessage } from "./api-error.mjs";
 import { matchesSessionFilters, parseSessionQuery, suggestSessionTokens } from "./session-search-query.mjs";
 import { displaySessionTitle } from "./session-title-format.mjs";
 import { createSheetHeader } from "./sheet-header.mjs";
@@ -49,7 +50,7 @@ async function json<T=Json>(url: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(url, { ...init, headers: { ...(init.body ? {"content-type":"application/json"} : {}), ...((method !== "GET" && method !== "HEAD") ? {"x-pocket-operation-id":uid()} : {}), ...(init.headers || {}) }, cache: method === "GET" ? "no-store" : undefined });
   if (res.status === 204) return undefined as T;
   const payload = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(translateServerMessage(payload?.error?.message || payload?.error || payload?.message) || t("common.httpError", { status: res.status }));
+  if (!res.ok) throw new Error(apiErrorMessage(payload, res.status));
   return payload as T;
 }
 async function codex<T=Json>(method: string, params: Json = {}): Promise<T> {

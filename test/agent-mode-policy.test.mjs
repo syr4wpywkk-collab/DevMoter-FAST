@@ -1,12 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { normalizeProxyRoutePath } from "../server/opencode-proxy-path.mjs";
 import {
   isAdapterOwnedRoute,
   isDirectMutationRoute,
+  isSessionAgentRoute,
+  isSessionCreateRoute,
+  modeFromAgent,
   parseAgentMode,
   READ_ONLY_TOOLS,
   readOnlyToolsFor,
+  resolveEffectiveAgentMode,
   sessionIdFromOpenCodePath
 } from "../server/agent-mode-policy.mjs";
 
@@ -36,14 +41,81 @@ test("mode and session route parsing are strict and query-safe", () => {
   assert.equal(parseAgentMode("unknown"), null);
   assert.equal(sessionIdFromOpenCodePath("/api/session/abc%201/prompt?x=1"), "abc 1");
   for (const route of ["prompt?x=1", "prompt_async", "message?foo=bar", "interrupt", "abort", "context", "permission", "permission/per_1/reply", "permissions/per_1", "question/que_1/reject", "form/frm_1/reply"]) {
-    assert.equal(isAdapterOwnedRoute("/api/session/abc/" + route), true, route);
+    assert.equal(isAdapterOwnedRoute(normalizeProxyRoutePath("/api/session/abc/" + route)), true, route);
   }
   for (const route of ["/api/session/abc", "/api/session/abc/agent", "/api/session/abc/model", "/api/session", "/api/agent"]) {
-    assert.equal(isAdapterOwnedRoute(route), false, route);
+    assert.equal(isAdapterOwnedRoute(normalizeProxyRoutePath(route)), false, route);
   }
-  assert.equal(isDirectMutationRoute("/api/session/abc/shell?x=1"), true);
-  assert.equal(isDirectMutationRoute("/api/session/abc/command?x=1"), true);
-  assert.equal(isDirectMutationRoute("/api/session/abc/shell-extra?x=1"), false);
+  assert.equal(isDirectMutationRoute(normalizeProxyRoutePath("/api/session/abc/shell?x=1")), true);
+  assert.equal(isDirectMutationRoute(normalizeProxyRoutePath("/api/session/abc/command?x=1")), true);
+  assert.equal(isDirectMutationRoute(normalizeProxyRoutePath("/api/session/abc/shell-extra?x=1")), false);
+});
+
+test("mutation and adapter routes tolerate trailing slashes and queries", () => {
+  for (const suffix of ["", "/", "/?x=1"]) {
+    for (const route of ["shell", "command"]) {
+      assert.equal(isDirectMutationRoute(normalizeProxyRoutePath(`/api/session/abc/${route}${suffix}`)), true);
+    }
+    assert.equal(isAdapterOwnedRoute(normalizeProxyRoutePath(`/api/session/abc/prompt${suffix}`)), true);
+    assert.equal(isDirectMutationRoute(normalizeProxyRoutePath(`/api/session/abc/shell-extra${suffix}`)), false);
+    assert.equal(isAdapterOwnedRoute(normalizeProxyRoutePath(`/api/session/abc/prompt-extra${suffix}`)), false);
+  }
+  assert.equal(isDirectMutationRoute(normalizeProxyRoutePath("")), false);
+  assert.equal(isAdapterOwnedRoute(normalizeProxyRoutePath("")), false);
+});
+
+test("canonical proxy paths decode once and reject ambiguous routes", () => {
+  assert.equal(isDirectMutationRoute(normalizeProxyRoutePath("/api/session/abc/%73hell/")), true);
+  assert.equal(isSessionAgentRoute(normalizeProxyRoutePath("/api/session/abc/%61gent/")), true);
+  assert.equal(isAdapterOwnedRoute(normalizeProxyRoutePath("/api/session/abc/%70rompt/")), true);
+  for (const path of ["/api/session/abc/%2573hell", "/api/session//abc/shell", "/api/session/abc/./shell", "/api/session/abc/%"]) {
+    assert.equal(normalizeProxyRoutePath(path), null, path);
+  }
+});
+
+test("session create/agent route matchers tolerate trailing slashes and queries", () => {
+  // A trailing slash is the same route: it must not slip past the guards
+  // that match on the canonical shape (#591 audit).
+  assert.equal(normalizeProxyRoutePath("/"), "/");
+  assert.equal(normalizeProxyRoutePath("/api/session///"), null);
+  assert.equal(normalizeProxyRoutePath("/api/session/ses_1/agent/?x=1"), "/api/session/ses_1/agent");
+  assert.equal(isSessionCreateRoute(normalizeProxyRoutePath("/api/session")), true);
+  assert.equal(isSessionCreateRoute(normalizeProxyRoutePath("/api/session/")), true);
+  assert.equal(isSessionCreateRoute(normalizeProxyRoutePath("/api/session?x=1")), true);
+  assert.equal(isSessionCreateRoute(normalizeProxyRoutePath("/api/session/ses_1")), false);
+  assert.equal(isSessionAgentRoute(normalizeProxyRoutePath("/api/session/ses_1/agent")), true);
+  assert.equal(isSessionAgentRoute(normalizeProxyRoutePath("/api/session/ses_1/agent/")), true);
+  assert.equal(isSessionAgentRoute(normalizeProxyRoutePath("/api/session/ses_1/agent//")), false);
+  assert.equal(isSessionAgentRoute(normalizeProxyRoutePath("/api/session/ses_1/agent?x=1")), true);
+  assert.equal(isSessionAgentRoute(normalizeProxyRoutePath("/api/session/ses_1/shell")), false);
+  assert.equal(isSessionAgentRoute(normalizeProxyRoutePath("/api/session/agent")), false);
+  assert.equal(isSessionAgentRoute(normalizeProxyRoutePath("/api/session/ses_1/agent/extra")), false);
+});
+
+test("agent identifiers map to modes; unknown agents are build-class", () => {
+  assert.equal(modeFromAgent("plan"), "plan");
+  assert.equal(modeFromAgent(" ASK "), "ask");
+  assert.equal(modeFromAgent("build"), "build");
+  assert.equal(modeFromAgent("coder"), "build");
+  assert.equal(modeFromAgent(""), null);
+  assert.equal(modeFromAgent("   "), null);
+  assert.equal(modeFromAgent(undefined), null);
+  assert.equal(modeFromAgent(42), null);
+});
+
+test("effective mode resolution never escalates a read-only server mode", () => {
+  // Server-side mode is the base; an explicit operation parameter may keep
+  // or lower privileges, never raise them (#591).
+  assert.equal(resolveEffectiveAgentMode("plan", "build"), "plan");
+  assert.equal(resolveEffectiveAgentMode("ask", "build"), "ask");
+  assert.equal(resolveEffectiveAgentMode("plan", "ask"), "ask");
+  assert.equal(resolveEffectiveAgentMode("ask", "plan"), "plan");
+  assert.equal(resolveEffectiveAgentMode("plan", null), "plan");
+  assert.equal(resolveEffectiveAgentMode("build", "plan"), "plan");
+  assert.equal(resolveEffectiveAgentMode("build", "ask"), "ask");
+  assert.equal(resolveEffectiveAgentMode("build", "build"), "build");
+  assert.equal(resolveEffectiveAgentMode("build", null), "build");
+  assert.equal(resolveEffectiveAgentMode(null, null), "build");
 });
 
 test("OpenCode sends the read-only mode derived from the agent, without a prompt prefix or mode toggle", async () => {
@@ -53,4 +125,22 @@ test("OpenCode sends the read-only mode derived from the agent, without a prompt
   assert.match(source, /return agentID === "plan" \? "plan" : "build";/);
   assert.doesNotMatch(source, /ocxPlanMode|ocxAskMode|ocxBuildMode|ocxAgentButton|ocxModelPricing|opencode-pocket-opencode-mode/);
   assert.match(source, /text: promptText/);
+});
+
+test("modeFromAgent and resolveEffectiveAgentMode prevent client privilege escalation", () => {
+  assert.equal(modeFromAgent("plan"), "plan");
+  assert.equal(modeFromAgent("ASK"), "ask");
+  assert.equal(modeFromAgent("build"), "build");
+  assert.equal(modeFromAgent("coder"), "build");
+  assert.equal(modeFromAgent(""), null);
+  assert.equal(modeFromAgent(null), null);
+
+  assert.equal(resolveEffectiveAgentMode("plan", "build"), "plan");
+  assert.equal(resolveEffectiveAgentMode("ask", "build"), "ask");
+  assert.equal(resolveEffectiveAgentMode("plan", null), "plan");
+  assert.equal(resolveEffectiveAgentMode("plan", "ask"), "ask");
+  assert.equal(resolveEffectiveAgentMode("build", "plan"), "plan");
+  assert.equal(resolveEffectiveAgentMode("build", "ask"), "ask");
+  assert.equal(resolveEffectiveAgentMode("build", "build"), "build");
+  assert.equal(resolveEffectiveAgentMode("build", null), "build");
 });

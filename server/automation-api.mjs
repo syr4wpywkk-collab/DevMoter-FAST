@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { isAbsolute, resolve } from "node:path";
+import { expectedRequestOrigin, parseTrustedProxies } from "./auth.mjs";
 import { listContextEntries, resolveContextReferences } from "./context-references.mjs";
 import { errorMessage } from "./error-message.mjs";
 import { lastAssistantText } from "./opencode-adapter.mjs";
+import { modeFromAgent, readOnlyToolsFor } from "./agent-mode-policy.mjs";
 
 export const AUTOMATION_API_VERSION = 1;
 const TASK_TIMEOUT_MS = 10 * 60 * 1000;
@@ -29,14 +31,10 @@ function parseOpenCodeModel(value) {
   return { providerID: text.slice(0, slash), modelID: text.slice(slash + 1) };
 }
 
-function publicOriginForRequest(req, configuredOrigin = "") {
-  if (configuredOrigin) return new URL(configuredOrigin).origin;
-  const proto = String(req.headers["x-forwarded-proto"] || "")
-    .split(",")[0].trim() || (req.socket?.encrypted ? "https" : "http");
-  const host = String(req.headers["x-forwarded-host"] || "")
-    .split(",")[0].trim() || String(req.headers.host || "");
-  if (!host) throw httpError("Request host is unavailable", 400, "host_unavailable");
-  return new URL(proto + "://" + host).origin;
+function publicOriginForRequest(req, configuredOrigin = "", trustedProxies = []) {
+  const origin = expectedRequestOrigin(req, configuredOrigin, { trustedProxies });
+  if (!origin) throw httpError("Request host is unavailable", 400, "host_unavailable");
+  return origin;
 }
 
 function envelope(operationId, type, data) {
@@ -60,6 +58,7 @@ export function createAutomationApi({
   operationId,
   claimOperation,
   publicOrigin = "",
+  trustedProxies = parseTrustedProxies(process.env.DEVMOTER_TRUST_PROXY),
   taskTimeoutMs = TASK_TIMEOUT_MS
 }) {
   const fetchOpenCodeJson = (path, init) => openCode.fetchJson(path, init);
@@ -115,7 +114,7 @@ export function createAutomationApi({
 
   async function openProject(req, url, res) {
     const project = await resolveRegisteredProject(url.searchParams.get("project"));
-    const origin = publicOriginForRequest(req, publicOrigin);
+    const origin = publicOriginForRequest(req, publicOrigin, trustedProxies);
     const target = new URL("/?project=" + encodeURIComponent(project.id), origin).toString();
     json(res, 200, {
       apiVersion: AUTOMATION_API_VERSION,
@@ -264,7 +263,8 @@ export function createAutomationApi({
     try {
       await openCode.prompt(sessionId, { text: task, agent, ...(selectedModel ? { model: selectedModel } : {}) }, {
         headers,
-        signal: controller.signal
+        signal: controller.signal,
+        readOnlyTools: readOnlyToolsFor(modeFromAgent(agent))
       });
       await openCode.waitForIdle(sessionId, { headers, signal: controller.signal });
 

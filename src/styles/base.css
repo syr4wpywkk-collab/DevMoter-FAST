@@ -1540,3 +1540,40 @@ body.codex-mode #app {
   min-height: 44px;
   padding: 0 16px;
 }
+
+.cx-markdown .dm-code-block[data-wrap="true"] pre,
+.cx-markdown .dm-code-block[data-wrap="true"] pre code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.dm-code-head > .dm-code-language { margin-right: auto; }
+
+.dm-session-expired {
+  position: fixed;
+  top: calc(var(--space-2) + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 970;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  width: min(calc(100vw - 2 * var(--space-4)), 520px);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--status-warning-border);
+  border-radius: var(--radius-panel, 12px);
+  background: var(--status-warning-surface);
+  color: var(--text-primary);
+  font-size: var(--font-size-label);
+}
+.dm-session-expired p { flex: 1 1 220px; margin: 0; color: var(--text-primary); }
+.dm-session-expired-signin { color: var(--accent); font-weight: 600; }
+.dm-session-expired-dismiss {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control, 8px);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+}

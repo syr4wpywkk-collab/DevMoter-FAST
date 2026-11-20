@@ -3,18 +3,22 @@ import { createOfficeAi } from "./server/office/ai.mjs";
 import http from "node:http";
 import { accessSync, constants as fsConstants } from "node:fs";
 import { lstat, mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
-import { basename, delimiter, dirname, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
+import { basename, delimiter, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
+import { MIMEType } from "node:util";
 import { CodexBridge } from "./server/codex-bridge.mjs";
 import { inspectKnownClis, launchCode } from "./server/cli-launch.mjs";
 import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/opencode-provider-catalog.mjs";
-import { canonicalOpenCodeEvent, createSseReader, lastAssistantText, parseDevMoterPrompt, parsePermissionDecision, parseQuestionAnswers } from "./server/opencode-adapter.mjs";
+import { canonicalOpenCodeEvent, createSseReader, lastAssistantText, lastTurnFailure, OPENCODE_API_V2, parseDevMoterPrompt, parsePermissionDecision, parseQuestionAnswers } from "./server/opencode-adapter.mjs";
 import { createOpenCodeClient } from "./server/opencode-api.mjs";
 import { fetchGithubRepo, githubStatus, listGithubBranches, listGithubRepos, openGithubRepo } from "./server/github.mjs";
-import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, fullyDecodePath, isInsideHome, isAllowedCodexRpc, normalizeNewProjectPath } from "./server/security-helpers.mjs";
-import { staticSecurityHeaders } from "./server/security-headers.mjs";
-import { readHandle, withOpenFile } from "./server/safe-file.mjs";
+import { assertSafeMarkdownRelativePath, CONTROL_CHARS, createUploadPath, decodeUploadDataUrl, isInsideHome, isAllowedCodexRpc, codexRpcAuthorityOverride, normalizeNewProjectPath, readDistStaticFile } from "./server/security-helpers.mjs";
+import { buildProxyResponseHeaders, isTextualProxyMediaType, PROXY_SECURITY_HEADERS, staticSecurityHeaders } from "./server/security-headers.mjs";
+import { applyBaselineSecurityHeaders } from "./server/response-security.mjs";
+import { createHostValidator, parseAllowedHosts } from "./server/host-validation.mjs";
+import { createFixedWindowLimiter } from "./server/rate-limit.mjs";
+import { writeFileNoFollow } from "./server/safe-file.mjs";
 import { createOperationRegistry, normalizeOperationId } from "./server/operation-registry.mjs";
 import { getFileDiff, getGitStatus, listChangedFiles } from "./server/git-workspace.mjs";
 import { createSessionControl } from "./server/session-control.mjs";
@@ -34,19 +38,22 @@ import { createUploadRegistry } from "./server/upload-registry.mjs";
 import { ControlPlane } from "./server/control-plane.mjs";
 import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/workspace-control.mjs";
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
-import { isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, parseAgentMode, readOnlyToolsFor, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
+import { normalizeProxyRoutePath } from "./server/opencode-proxy-path.mjs";
+import { createSessionModeMap, isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, isSessionAgentRoute, isSessionCreateRoute, modeFromAgent, parseAgentMode, readOnlyToolsFor, resolveEffectiveAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
+import { classifyProxyRoute } from "./server/proxy-route-policy.mjs";
 import {
   assertAuthPassword,
   assertSafeHttpBind,
   isLoopbackAddress,
-  isLoopbackBindHost,
+  isLoopbackHost,
   parseBasicAuthorization,
-  requireSameOriginMutation
+  requireSameOriginMutation,
+  resolveLocalAddress
 } from "./server/auth.mjs";
-import { createBasicAuthGuard, parseTrustedProxies } from "./server/auth-guard.mjs";
+import { createBasicAuthGuard, createClientIpResolver, parseTrustedProxies } from "./server/auth-guard.mjs";
 import { OidcAuth } from "./server/oidc-auth.mjs";
 import { ExternalAuth } from "./server/external-auth.mjs";
-import { redactSecretsInText } from "./server/secret-redaction.mjs";
+import { createStreamingBufferRedactor, createStreamingTextRedactor, redactLogText, redactSecretsInText } from "./server/secret-redaction.mjs";
 import { QwenChatError, createQwenRunRegistry, handleQwenChatRequest, isQwenId, publicQwenChatError } from "./server/qwen-chat.mjs";
 import { installQwenProvider, listQwenModels, publicQwenModelError, publicQwenModelList, publicQwenPresets, resolveQwenModelSelection } from "./server/qwen-models.mjs";
 import { antigravityRemoteAction, integrationChildEnv, launchIntegration, listIntegrations, publicIntegrationError } from "./server/integrations.mjs";
@@ -56,6 +63,8 @@ import { createSecretStore } from "./server/secret-store.mjs";
 import { createSecretVaultApi } from "./server/secret-vault-api.mjs";
 import { createKnowledgeStore } from "./server/knowledge-store.mjs";
 import { createKnowledgeApi } from "./server/knowledge-api.mjs";
+import { createPromptTemplateStore } from "./server/prompt-template-store.mjs";
+import { createPromptTemplateApi, isPromptTemplatePath } from "./server/prompt-template-api.mjs";
 import { createAgentRunService } from "./server/agent-run-service.mjs";
 import { createAgentRunApi } from "./server/agent-run-api.mjs";
 import { createSetupStatus } from "./server/setup/engine.mjs";
@@ -71,12 +80,22 @@ import { errorMessage } from "./server/error-message.mjs";
 const OPENCODE_URL = process.env.OPENCODE_URL || "http://127.0.0.1:49374";
 const OPENCODE_USERNAME = process.env.OPENCODE_SERVER_USERNAME || "opencode";
 const OPENCODE_PASSWORD = process.env.OPENCODE_SERVER_PASSWORD || "";
-// Hoisted openCodeHeaders() is only invoked per request, after module init.
-const openCode = createOpenCodeClient({ baseUrl: OPENCODE_URL, headers: openCodeHeaders });
+// Hoisted openCodeHeaders() and setOpenCodeSessionMode() are only invoked per request, after module init.
+const openCode = createOpenCodeClient({
+  baseUrl: OPENCODE_URL,
+  headers: openCodeHeaders,
+  onSessionCreated: (session, body) => {
+    const id = typeof session?.id === "string" ? session.id : "";
+    if (!id) return;
+    const mode = modeFromAgent(session?.agent) || parseAgentMode(session?.mode) || modeFromAgent(body?.agent) || "build";
+    setOpenCodeSessionMode(id, mode);
+  }
+});
 const fetchOpenCodeJson = openCode.fetchJson;
 const DEVMOTER_AUTH_USERNAME = process.env.DEVMOTER_AUTH_USERNAME || "devmoter";
 const DEVMOTER_AUTH_PASSWORD = assertAuthPassword(process.env.DEVMOTER_AUTH_PASSWORD || "");
 const DEVMOTER_PUBLIC_ORIGIN = process.env.DEVMOTER_PUBLIC_ORIGIN || "";
+const DEVMOTER_TRUSTED_PROXIES = parseTrustedProxies(process.env.DEVMOTER_TRUST_PROXY);
 const PASSKEY_REQUIRED = process.env.DEVMOTER_PASSKEY_REQUIRED === "1";
 const AUTH_SESSION_TTL_DAYS = Number(process.env.DEVMOTER_AUTH_SESSION_TTL_DAYS || 30);
 if (!Number.isFinite(AUTH_SESSION_TTL_DAYS) || AUTH_SESSION_TTL_DAYS < 1 || AUTH_SESSION_TTL_DAYS > 90) {
@@ -89,9 +108,24 @@ const AUTH_CONFIG = {
 const basicAuthGuard = createBasicAuthGuard({
   expectedUsername: AUTH_CONFIG.username,
   expectedPassword: AUTH_CONFIG.password,
-  trustedProxies: parseTrustedProxies(process.env.DEVMOTER_TRUST_PROXY)
+  trustedProxies: DEVMOTER_TRUSTED_PROXIES
 });
-const REDACTED_SECRETS = [OPENCODE_PASSWORD, DEVMOTER_AUTH_PASSWORD, process.env.DEVMOTER_GOOGLE_CLIENT_SECRET, process.env.DEVMOTER_MICROSOFT_CLIENT_SECRET].filter(Boolean);
+const validateRequestHost = createHostValidator({
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+  allowedHosts: parseAllowedHosts(process.env.DEVMOTER_ALLOWED_HOSTS)
+});
+// The GitHub webhook is reachable without login, so bound how often it can
+// make the server read and verify a body.
+const webhookClientIp = createClientIpResolver({ trustedProxies: DEVMOTER_TRUSTED_PROXIES });
+const takeWebhookSlot = createFixedWindowLimiter({ windowMs: 60_000, perKey: 120, global: 600 });
+const REDACTED_SECRETS = [
+  OPENCODE_PASSWORD,
+  OPENCODE_PASSWORD ? Buffer.from(`${OPENCODE_USERNAME}:${OPENCODE_PASSWORD}`).toString("base64") : "",
+  DEVMOTER_AUTH_PASSWORD,
+  DEVMOTER_AUTH_PASSWORD ? Buffer.from(`${DEVMOTER_AUTH_USERNAME}:${DEVMOTER_AUTH_PASSWORD}`).toString("base64") : "",
+  process.env.DEVMOTER_GOOGLE_CLIENT_SECRET,
+  process.env.DEVMOTER_MICROSOFT_CLIENT_SECRET
+].filter(Boolean);
 const OPENCODE_DIRECTORY =
   process.env.OPENCODE_DIRECTORY ||
   process.env.CODEX_CWD ||
@@ -137,24 +171,26 @@ const operationRegistry = createOperationRegistry({
 });
 const multiApiVaultMigrations = new Set();
 const uploadRegistry = createUploadRegistry();
-const openCodeSessionModes = new Map();
+const openCodeSessionModes = createSessionModeMap();
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
 });
 const agentRunService = createAgentRunService({
   filePath: join(PROJECT_CONFIG_DIR, "agent-runs.json"),
-  codex
+  codex,
+  resolveProject: id => getProjectById(id),
+  assertExecutionAllowed: () => assertExternalBackendExecutionAllowed("codex")
 });
 void agentRunService.ready().catch(error => {
-  console.error("Agent run service initialization failed", redactText(errorMessage(error)));
+  console.error("Agent run service initialization failed", redactLog(errorMessage(error)));
 });
 const multiApiStore = createMultiApiStore({ filePath: MULTI_API_FILE, env: process.env });
 const qwenRuns = createQwenRunRegistry();
 const secretStore = createSecretStore({ filePath: SECRET_VAULT_FILE });
 const multiApiAttachments = createMultiApiAttachmentStore({ directory: MULTI_API_IMAGE_DIR });
 void multiApiAttachments.cleanup().catch(error => {
-  console.warn("multi-api attachment cleanup failed", redactText(errorMessage(error)));
+  console.warn("multi-api attachment cleanup failed", redactLog(errorMessage(error)));
 });
 const passkeys = new PasskeyAuth({
   configDir: PROJECT_CONFIG_DIR, publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
@@ -166,6 +202,8 @@ let userAutomation = null;
 const controlPlane = new ControlPlane({
   configDir: PROJECT_CONFIG_DIR,
   executeTask: executeControlTask,
+  redact: value => redactText(value),
+  resolveProject: id => getProjectById(id),
   onLifecycle: ({ event, run }) => {
     void controlPlane.dispatchEvent("devmoter.lifecycle", event, {
       runId: run?.id ?? null,
@@ -173,7 +211,7 @@ const controlPlane = new ControlPlane({
       status: run?.status ?? null,
       endedAt: run?.endedAt ?? null
     }).catch(error => {
-      console.error("Control-plane lifecycle dispatch failed", redactText(errorMessage(error)));
+      console.error("Control-plane lifecycle dispatch failed", redactLog(errorMessage(error)));
     });
   }
 });
@@ -261,10 +299,12 @@ const systemFeatures = createSystemFeatures({
   },
   host: HOST,
   version: process.env.DEVMOTER_VERSION || "0.2.0",
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+  trustedProxies: DEVMOTER_TRUSTED_PROXIES,
   onDeviceRevoked: deviceId => terminal.revokeDeviceSessions(deviceId)
 });
 const toolsAiStore = createRunStore({ filePath: join(PROJECT_CONFIG_DIR, "tools-ai-runs.json") });
-void toolsAiStore.ready().catch(error => console.error("Tools AI store initialization failed", safeText(error.message)));
+void toolsAiStore.ready().catch(error => console.error("Tools AI store initialization failed", redactLog(errorMessage(error))));
 const prepareToolsAiChat = async (payload, identity) => {
     const project = payload.projectId ? await getProjectById(payload.projectId) : null;
     const providers = await multiApiStore.listResolved();
@@ -324,6 +364,14 @@ const knowledgeApi = createKnowledgeApi({
   authenticateDevice: req => systemFeatures.authenticate(req),
   claimOperation
 });
+const promptTemplateApi = createPromptTemplateApi({
+  store: createPromptTemplateStore({
+    rootDir: join(HOME_DIR, ".local", "share", "devmoter-fast", "prompt-templates"),
+    getProjectById
+  }),
+  authenticateDevice: req => systemFeatures.authenticate(req),
+  claimOperation
+});
 const agentRunApi = createAgentRunApi({
   service: agentRunService,
   authenticateDevice: req => systemFeatures.authenticate(req),
@@ -339,7 +387,8 @@ const automationApi = createAutomationApi({
   readJson,
   operationId,
   claimOperation,
-  publicOrigin: DEVMOTER_PUBLIC_ORIGIN
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+  trustedProxies: DEVMOTER_TRUSTED_PROXIES
 });
 
 function codexThreadIdFromEvent(params = {}) {
@@ -354,7 +403,7 @@ function codexThreadIdFromEvent(params = {}) {
 
 function notifyAgentState(payload) {
   void systemFeatures.notifyAgentState(payload).catch(error => {
-    console.error("Push notification dispatch failed", error);
+    console.error("Push notification dispatch failed", redactLog(errorMessage(error)));
   });
 }
 
@@ -372,7 +421,7 @@ codex.on("notification", event => {
       backend: "codex",
       payload: { method, params: event?.params ?? null }
     }).catch(error => {
-      console.error("Workspace event append failed", redactText(errorMessage(error)));
+      console.error("Workspace event append failed", redactLog(errorMessage(error)));
     });
   }
 
@@ -392,7 +441,7 @@ codex.on("notification", event => {
       method,
       itemId: event?.params?.item?.id ?? event?.params?.itemId ?? null
     }).catch(error => {
-      console.error("after-tool hook failed", redactText(errorMessage(error)));
+      console.error("after-tool hook failed", redactLog(errorMessage(error)));
     });
   }
 });
@@ -413,7 +462,7 @@ codex.on("server-request", request => {
     backend: "codex",
     payload: { id: request?.id ?? null, method, params: request?.params ?? null }
   }).catch(error => {
-    console.error("Workspace request event append failed", redactText(errorMessage(error)));
+    console.error("Workspace request event append failed", redactLog(errorMessage(error)));
   });
 
   if (method === "item/commandExecution/requestApproval" || method === "item/fileChange/requestApproval") {
@@ -438,6 +487,27 @@ function redactText(value) {
   return redactSecretsInText(value, REDACTED_SECRETS);
 }
 
+function redactLog(value) {
+  return redactLogText(value, REDACTED_SECRETS);
+}
+
+function redactJsonSecrets(value) {
+  if (typeof value === "string") return redactText(value);
+  if (Array.isArray(value)) return value.map(redactJsonSecrets);
+  if (value && typeof value === "object") {
+    const redacted = Object.create(null);
+    for (const [key, entry] of Object.entries(value)) {
+      redacted[redactText(key)] = redactJsonSecrets(entry);
+    }
+    return redacted;
+  }
+  return value;
+}
+
+function stringifyRedactedJson(body) {
+  return JSON.stringify(redactJsonSecrets(body));
+}
+
 function endIfResponseStarted(res) {
   if (!res.headersSent && !res.writableEnded && !res.destroyed) return false;
   if (!res.writableEnded && !res.destroyed) res.end();
@@ -450,9 +520,7 @@ function json(res, status, body) {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store"
   });
-  res.end(JSON.stringify(body, (_key, value) =>
-    typeof value === "string" ? redactText(value) : value
-  ));
+  res.end(stringifyRedactedJson(body));
 }
 
 function jsonWithCookie(res, status, body, cookie) {
@@ -462,9 +530,7 @@ function jsonWithCookie(res, status, body, cookie) {
     "cache-control": "no-store",
     "set-cookie": cookie
   });
-  res.end(JSON.stringify(body, (_key, value) =>
-    typeof value === "string" ? redactText(value) : value
-  ));
+  res.end(stringifyRedactedJson(body));
 }
 
 async function featureJson(res, task, successStatus = 200) {
@@ -514,11 +580,10 @@ function openCodeHeaders(extra = {}) {
   return headers;
 }
 
-async function openCodeHeadersForRequest(req, extra = {}) {
+async function openCodeHeadersForRequest(req, extra = {}, policyPath = "") {
   const projectId = String(req.headers["x-pocket-project-id"] || "").trim();
   let directory = OPENCODE_DIRECTORY;
-  const requestPath = String(req.url || "").split("?", 1)[0];
-  const isExistingSession = /^\/api\/opencode\/session\/[^/]+/.test(requestPath) || /^\/api\/session\/[^/]+/.test(requestPath);
+  const isExistingSession = Boolean(sessionIdFromOpenCodePath(policyPath));
   if (projectId && !isExistingSession) directory = (await getProjectById(projectId)).path;
   return openCodeHeaders({ "x-opencode-directory": directory, ...extra });
 }
@@ -851,20 +916,7 @@ async function projectWriteFile(id, req, res) {
       throw new Error("Markdown file is larger than 1MB");
     }
 
-    const handle = await open(
-      resolved.target,
-      fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_TRUNC | (fsConstants.O_NOFOLLOW || 0),
-      0o600
-    );
-    let info;
-    try {
-      info = await handle.stat();
-      if (!info.isFile()) throw new Error("Markdown write requires a regular file");
-      await handle.writeFile(content, "utf8");
-      info = await handle.stat();
-    } finally {
-      await handle.close();
-    }
+    const info = await writeFileNoFollow(resolved.target, content);
     json(res, 200, {
       ok: true,
       path: resolved.relativePath,
@@ -872,7 +924,7 @@ async function projectWriteFile(id, req, res) {
       updatedAt: info.mtimeMs
     });
   } catch (error) {
-    json(res, 400, { error: errorMessage(error) });
+    json(res, error?.code === "ENOTSUP" ? 501 : 400, { error: errorMessage(error) });
   }
 }
 
@@ -1017,7 +1069,7 @@ async function dispatchControlQueued(backend, sessionId, text) {
     return;
   }
 
-  await openCode.prompt(sessionId, { text });
+  await promptOpenCodeInSessionMode(sessionId, text);
 }
 
 async function interruptControlSession(backend, sessionId, snapshot = {}) {
@@ -1047,7 +1099,7 @@ const sessionControl = createSessionControl({
 const sessionControlTimer = setInterval(() => {
   sessionControl
     .reconcile()
-    .catch(error => console.error("Session control reconcile failed", error));
+    .catch(error => console.error("Session control reconcile failed", redactLog(errorMessage(error))));
 }, 2500);
 sessionControlTimer.unref?.();
 
@@ -1169,9 +1221,9 @@ async function loadOpenCodeProviderCatalog(refresh) {
   }
 }
 
-async function opencodeProviders(url, res) {
+async function opencodeProviders(refresh, res) {
   try {
-    const payload = await loadOpenCodeProviderCatalog(url.searchParams.get("refresh") === "1");
+    const payload = await loadOpenCodeProviderCatalog(refresh);
     json(res, 200, payload);
   } catch (error) {
     json(res, 502, {
@@ -1267,12 +1319,15 @@ async function executeControlTask(definition, context = {}) {
     return await executeControlTaskCore(definition, context);
   } finally {
     void userAutomation?.emitHook("after-run", hookPayload).catch(error => {
-      console.error("after-run hook failed", redactText(errorMessage(error)));
+      console.error("after-run hook failed", redactLog(errorMessage(error)));
     });
   }
 }
 
 async function executeControlTaskCore(definition, context = {}) {
+  if (definition?.approvalPolicy !== undefined && definition.approvalPolicy !== "normal") {
+    throw new Error("Unsupported control-plane approval policy");
+  }
   const project = definition?.projectId ? await getProjectById(definition.projectId) : null;
   const task = String(definition?.task || "").trim();
   if (!task) throw new Error("Task is required");
@@ -1317,9 +1372,16 @@ async function executeControlTaskCore(definition, context = {}) {
     context.setCancel?.(cancel);
 
     const signal = AbortSignal.timeout(taskTimeoutMs(context));
-    await openCode.prompt(sessionId, { text: task }, { headers, signal });
+    await promptOpenCodeInSessionMode(sessionId, task, { headers, signal });
     await openCode.waitForIdle(sessionId, { headers, signal });
-    const answer = lastAssistantText(await openCode.context(sessionId, { headers }));
+    const turnContext = await openCode.context(sessionId, { headers });
+    const failure = lastTurnFailure(turnContext);
+    if (failure) {
+      throw new Error(failure.outcome === "interrupted"
+        ? "OpenCode turn was interrupted before it finished"
+        : failure.reason ? "OpenCode turn failed: " + failure.reason : "OpenCode turn failed");
+    }
+    const answer = lastAssistantText(turnContext);
     const promptSummary = answer.slice(-4000);
     return {
       complete: promptSummary.includes("[DEVMOTER_AUTOPILOT_DONE]"),
@@ -1571,10 +1633,10 @@ async function passkeyRoute(req, res, url) {
 async function controlRoute(req, res, url) {
   if (!url.pathname.startsWith("/api/control/")) return false;
   try {
-    const localAddress = DEVMOTER_PUBLIC_ORIGIN ||
-      ((String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim() || url.protocol.replace(":", "")) +
-        "://" +
-        (String(req.headers["x-forwarded-host"] || "").split(",")[0].trim() || req.headers.host || "localhost"));
+    const localAddress = resolveLocalAddress(req, {
+      publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+      trustedProxies: DEVMOTER_TRUSTED_PROXIES
+    });
 
     if (req.method === "GET" && url.pathname === "/api/control/hosts") {
       json(res, 200, { hosts: await controlPlane.listHosts(localAddress) });
@@ -1609,6 +1671,11 @@ async function controlRoute(req, res, url) {
     if (req.method === "POST" && url.pathname === "/api/control/schedules") {
       if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
       json(res, 201, { schedule: await controlPlane.createSchedule(await readJson(req)) });
+      return true;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/control/schedules/preview") {
+      json(res, 200, { preview: await controlPlane.previewSchedule(await readJson(req)) });
       return true;
     }
 
@@ -1650,7 +1717,19 @@ async function controlRoute(req, res, url) {
     }
 
     if (req.method === "GET" && url.pathname === "/api/control/runs") {
-      json(res, 200, { runs: await controlPlane.listRuns() });
+      json(res, 200, { runs: await controlPlane.listRuns({ result: url.searchParams.get("result") || "" }) });
+      return true;
+    }
+
+    const runRetryMatch = url.pathname.match(/^\/api\/control\/runs\/([^/]+)\/retry$/);
+    if (runRetryMatch && req.method === "POST") {
+      const payload = await readJson(req);
+      if (payload?.confirm !== true) {
+        json(res, 409, { error: "Retry requires explicit confirmation", confirmationRequired: true });
+        return true;
+      }
+      if (!claimOperation(req, res, req.method + ":" + url.pathname)) return true;
+      json(res, 202, await controlPlane.retryRun(decodeURIComponent(runRetryMatch[1]), { confirm: true }));
       return true;
     }
     if (req.method === "POST" && url.pathname === "/api/control/autopilot") {
@@ -1681,6 +1760,12 @@ async function controlRoute(req, res, url) {
 }
 
 async function githubWebhookRoute(req, res) {
+  const slot = takeWebhookSlot(webhookClientIp(req));
+  if (!slot.ok) {
+    res.setHeader("retry-after", String(slot.retryAfterSeconds));
+    json(res, 429, { error: "Too many webhook requests" });
+    return;
+  }
   try {
     const raw = await readRaw(req, 64 * 1024);
     const event = String(req.headers["x-github-event"] || "").trim();
@@ -1721,7 +1806,7 @@ function materializeOpenCodeUploadText(text) {
 }
 
 async function materializeCodexUploadInputs(method, params) {
-  if (method !== "turn/start" || !Array.isArray(params?.input)) return params;
+  if ((method !== "turn/start" && method !== "turn/steer") || !Array.isArray(params?.input)) return params;
   const input = params.input.map(item => {
     if (!item || typeof item !== "object") return item;
 
@@ -1751,12 +1836,81 @@ const OPENCODE_SAFE_PATH = /^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/;
 const OPENCODE_SAFE_QUERY = /^(\?[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*)?$/;
 const OPENCODE_SCHEME_SEGMENT = /(^|\/)[a-z][a-z0-9+.-]*:/i;
 
+// Query parameters the browser client may send through the OpenCode proxy,
+// scoped to the single route that uses them (per-use allowlist). Derived
+// from the src/opencode.ts api() call sites: the session list uses limit &
+// order, /pocket/providers uses refresh. Routes absent from the table take
+// no query parameters at all. Anything else is rejected (never silently
+// stripped) so contract drift is visible to clients.
+const OPENCODE_QUERY_VALIDATORS = {
+  limit: value => /^[0-9]+$/.test(value) && Number(value) >= 1 && Number(value) <= 200,
+  order: value => value === "asc" || value === "desc",
+  refresh: value => value === "0" || value === "1"
+};
+const OPENCODE_QUERY_ALLOWLIST_BY_ROUTE = new Map([
+  ["GET /api/session", new Map([
+    ["limit", OPENCODE_QUERY_VALIDATORS.limit],
+    ["order", OPENCODE_QUERY_VALIDATORS.order]
+  ])],
+  ["GET /api/pocket/providers", new Map([
+    ["refresh", OPENCODE_QUERY_VALIDATORS.refresh]
+  ])]
+]);
+const OPENCODE_QUERY_NO_PARAMS = new Map();
+// Directory/project selection is decided server-side (OPENCODE_DIRECTORY and
+// the project registry), never from client query input.
+const OPENCODE_QUERY_FORBIDDEN = new Set(["directory", "dir", "path", "workspace", "project", "projectid"]);
+const OPENCODE_QUERY_MAX_PARAMS = 8;
+const OPENCODE_QUERY_MAX_LENGTH = 1024;
+
+/**
+ * Validate the raw query (leading "?" included, or "") against the allowlist
+ * for the HTTP method and policy path being served, and rebuild it
+ * from the validated pairs only. Returns { query } where query is "" or
+ * "?..." in canonical URLSearchParams encoding, or { error } (400).
+ */
+function buildOpenCodeUpstreamQuery(rawQuery, method, policyPath) {
+  if (!rawQuery) return { query: "" };
+  if (rawQuery.length > OPENCODE_QUERY_MAX_LENGTH) {
+    return { error: "OpenCode proxy query is not allowed" };
+  }
+  const pairs = [...new URLSearchParams(rawQuery.slice(1)).entries()];
+  if (pairs.length > OPENCODE_QUERY_MAX_PARAMS) {
+    return { error: "OpenCode proxy query is not allowed" };
+  }
+  const allowlist = OPENCODE_QUERY_ALLOWLIST_BY_ROUTE.get(`${method} ${policyPath}`) || OPENCODE_QUERY_NO_PARAMS;
+  const rebuilt = new URLSearchParams();
+  const seen = new Set();
+  for (const [name, value] of pairs) {
+    if (OPENCODE_QUERY_FORBIDDEN.has(name.toLowerCase())) {
+      return { error: `OpenCode proxy query parameter "${name}" is not allowed` };
+    }
+    const validate = allowlist.get(name);
+    if (!validate) {
+      return { error: `OpenCode proxy query parameter "${name}" is not allowed` };
+    }
+    if (seen.has(name)) {
+      return { error: `OpenCode proxy query parameter "${name}" must not be repeated` };
+    }
+    if (!validate(value)) {
+      return { error: `OpenCode proxy query parameter "${name}" has an invalid value` };
+    }
+    seen.add(name);
+    rebuilt.append(name, value);
+  }
+  const query = rebuilt.toString();
+  return { query: query ? `?${query}` : "" };
+}
+
 /**
  * Validate the client path once and build the OpenCode request target as a
  * plain string: fixed OpenCode origin + "/api/" + allowlisted path (+ query).
- * Returns { upstreamUrl, policyPath } or { error } (400).
+ * ONE canonical (decoded, normalized) path drives validation, the policy
+ * classification, and the upstream URL, so the route DevMoter checks is the
+ * route OpenCode serves. Returns { upstreamUrl, policyPath, upstreamAlias, query }
+ * or { error }.
  */
-export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
+export function buildOpenCodeUpstreamTarget(rawRequestUrl, method) {
   const raw = String(rawRequestUrl || "");
   if (!raw.startsWith(OPENCODE_PROXY_PREFIX)) {
     return { error: "OpenCode proxy path is invalid" };
@@ -1769,27 +1923,31 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
   if (!OPENCODE_SAFE_PATH.test(rawPath) || !OPENCODE_SAFE_QUERY.test(rawQuery)) {
     return { error: "OpenCode proxy path is not allowed" };
   }
-  const decodedPath = fullyDecodePath(rawPath);
+  const canonicalPath = normalizeProxyRoutePath(rawPath);
   if (
-    decodedPath === null ||
-    decodedPath.startsWith("//") ||
-    rawPath.startsWith("//") ||
-    decodedPath.includes("..") ||
-    decodedPath.includes("\\") ||
-    OPENCODE_SCHEME_SEGMENT.test(decodedPath) ||
-    CONTROL_CHARS.test(decodedPath)
+    canonicalPath === null ||
+    canonicalPath.includes("..") ||
+    OPENCODE_SCHEME_SEGMENT.test(canonicalPath) ||
+    CONTROL_CHARS.test(canonicalPath) ||
+    !OPENCODE_SAFE_PATH.test(canonicalPath)
   ) {
     return { error: "OpenCode proxy path is not allowed" };
   }
 
   // Strip the optional client-side "/api" prefix; the upstream root is fixed.
-  const apiRelative = rawPath.startsWith("/api/") ? rawPath.slice("/api/".length) : rawPath.slice(1);
+  // The upstream-style alias does not grant access to adapter-owned operations.
+  const upstreamAlias = canonicalPath === "/api" || canonicalPath.startsWith("/api/");
+  const apiRelative = canonicalPath.slice(upstreamAlias ? "/api/".length : 1);
   if (apiRelative.startsWith("/")) {
     return { error: "OpenCode proxy path is not allowed" };
   }
   const policyPath = `/api/${apiRelative}`;
-  const upstreamUrl = `${OPENCODE_ORIGIN}/api/${apiRelative}${rawQuery}`;
-  return { upstreamUrl, policyPath };
+  const validatedQuery = isAdapterOwnedRoute(policyPath)
+    ? { query: "" }
+    : buildOpenCodeUpstreamQuery(rawQuery, method, policyPath);
+  if (validatedQuery.error) return validatedQuery;
+  const upstreamUrl = `${OPENCODE_ORIGIN}/api/${apiRelative}${validatedQuery.query}`;
+  return { upstreamUrl, policyPath, upstreamAlias, query: validatedQuery.query };
 }
 
 // DevMoter's OpenCode session surface. The browser (and every other DevMoter
@@ -1806,7 +1964,7 @@ export function buildOpenCodeUpstreamTarget(rawRequestUrl) {
 //   POST /session/{id}/question/{rid}/reply       { answers: string[][] }
 //   POST /session/{id}/question/{rid}/reject
 //   GET  /event                                   canonical SSE events
-const OPENCODE_SESSION_ROUTE = /^\/api\/opencode\/session\/([^/]+)\/(prompt|context|interrupt|permission|question)(?:\/([^/]+)\/(reply|reject))?$/;
+const OPENCODE_SESSION_ROUTE = /^\/api\/session\/([^/]+)\/(prompt|context|interrupt|permission|question)(?:\/([^/]+)\/(reply|reject))?$/;
 const OPENCODE_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 function openCodeAdapterFailure(res, error) {
@@ -1828,13 +1986,75 @@ async function readOpenCodeBody(req, limit) {
   }
 }
 
-async function opencodeSessionRoute(req, res, url) {
-  if (url.pathname === "/api/opencode/event") {
+function setOpenCodeSessionMode(sessionId, mode) {
+  const normalized = parseAgentMode(mode);
+  if (!normalized) return;
+  openCodeSessionModes.set(sessionId, normalized);
+}
+
+// A session's execution mode is server-side state (#591): it is recorded when
+// the session is created (from the create exchange) or changed through
+// the dedicated agent endpoint, or resolved from the upstream session itself.
+// It never comes from a per-request client header. Returns null when the mode
+// cannot be verified, so guarded callers can fail closed.
+async function resolveOpenCodeSessionMode(sessionId) {
+  if (!sessionId) return null;
+  if (openCodeSessionModes.has(sessionId)) {
+    return openCodeSessionModes.get(sessionId);
+  }
+  try {
+    const session = await openCode.session(sessionId, { signal: AbortSignal.timeout(2500) });
+    // Fail closed: a session record carrying neither an agent nor a mode
+    // cannot be verified, so it must not default to "build" (#591 audit).
+    const resolved = modeFromAgent(session?.agent) || parseAgentMode(session?.mode);
+    if (!resolved) return null;
+    setOpenCodeSessionMode(sessionId, resolved);
+    return resolved;
+  } catch {
+    return null;
+  }
+}
+
+async function promptOpenCodeInSessionMode(sessionId, text, options = {}) {
+  const mode = await resolveOpenCodeSessionMode(sessionId) || "plan";
+  const prompt = isReadOnlyMode(mode) ? { text, agent: mode } : { text };
+  return openCode.prompt(sessionId, prompt, { ...options, readOnlyTools: readOnlyToolsFor(mode) });
+}
+
+function tryParseJsonObject(buffer) {
+  if (!buffer || !buffer.length) return null;
+  try {
+    const parsed = JSON.parse(buffer.toString("utf8"));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function readOpenCodeProxyJson(body) {
+  const limit = 8 * 1024 * 1024;
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of body) {
+    size += chunk.byteLength;
+    if (size > limit) throw new Error("OpenCode JSON response exceeds the size limit");
+    chunks.push(chunk);
+  }
+  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks, size)));
+}
+
+function writeProxyChunk(res, textOrBuffer) {
+  if (!textOrBuffer || !textOrBuffer.length || res.writableEnded || res.destroyed) return;
+  res.write(typeof textOrBuffer === "string" ? Buffer.from(textOrBuffer, "utf8") : textOrBuffer);
+}
+
+async function opencodeSessionRoute(req, res, pathname) {
+  if (pathname === "/api/event") {
     if (req.method !== "GET") return false;
     await opencodeEvents(req, res);
     return true;
   }
-  if (url.pathname === "/api/opencode/session/active") {
+  if (pathname === "/api/session/active") {
     if (req.method !== "GET") return false;
     try {
       json(res, 200, await openCode.active());
@@ -1843,12 +2063,10 @@ async function opencodeSessionRoute(req, res, url) {
     }
     return true;
   }
-  const match = url.pathname.match(OPENCODE_SESSION_ROUTE);
+  const match = pathname.match(OPENCODE_SESSION_ROUTE);
   if (!match) return false;
-  const [, rawSessionId, operation, rawRequestId, action] = match;
-  const sessionId = fullyDecodePath(rawSessionId);
-  const requestId = rawRequestId === undefined ? null : fullyDecodePath(rawRequestId);
-  if (!sessionId || !OPENCODE_ID.test(sessionId) || (requestId !== null && (!requestId || !OPENCODE_ID.test(requestId)))) {
+  const [, sessionId, operation, requestId = null, action] = match;
+  if (!OPENCODE_ID.test(sessionId) || (requestId !== null && !OPENCODE_ID.test(requestId))) {
     json(res, 400, { error: "OpenCode session or request id is invalid" });
     return true;
   }
@@ -1872,9 +2090,9 @@ async function opencodeSessionRoute(req, res, url) {
     return true;
   }
 
-  const requestedMode = parseAgentMode(req.headers["x-pocket-agent-mode"]);
-  if (requestedMode) openCodeSessionModes.set(sessionId, requestedMode);
-  const mode = requestedMode || openCodeSessionModes.get(sessionId) || "build";
+  // #591: the session mode is server-side state; the x-pocket-agent-mode
+  // header is not an authorization input and is ignored.
+  const sessionMode = await resolveOpenCodeSessionMode(sessionId);
   const sandboxPolicy = externalBackendSandboxPolicy("opencode");
 
   try {
@@ -1890,8 +2108,24 @@ async function opencodeSessionRoute(req, res, url) {
       } catch (error) {
         throw badOpenCodeRequest(errorMessage(error));
       }
+      // The prompt body's agent is an explicit operation parameter: a
+      // read-only agent is an allowed per-request downgrade, but it can
+      // never escalate a read-only session. An unverifiable session mode
+      // fails closed to read-only for this request.
+      const promptAgentMode = modeFromAgent(prompt.agent);
+      const verifiedMode = sessionMode || "plan";
+      if (isReadOnlyMode(verifiedMode) && promptAgentMode && !isReadOnlyMode(promptAgentMode)) {
+        json(res, 403, { error: `${verifiedMode} mode blocks switching to non-read-only agent "${prompt.agent}"`, mode: verifiedMode });
+        return true;
+      }
+      const effectiveMode = resolveEffectiveAgentMode(verifiedMode, promptAgentMode);
+      if (isReadOnlyMode(effectiveMode)) prompt.agent = effectiveMode;
+      if (promptAgentMode && isReadOnlyMode(promptAgentMode)) {
+        const { generation } = await openCode.info();
+        if (generation === OPENCODE_API_V2) setOpenCodeSessionMode(sessionId, promptAgentMode);
+      }
       prompt.text = materializeOpenCodeUploadText(prompt.text);
-      await openCode.prompt(sessionId, prompt, { readOnlyTools: readOnlyToolsFor(mode) });
+      await openCode.prompt(sessionId, prompt, { readOnlyTools: readOnlyToolsFor(effectiveMode) });
       json(res, 200, { ok: true });
     } else if (subroute === "context") {
       json(res, 200, await openCode.context(sessionId));
@@ -1960,6 +2194,7 @@ async function opencodeEvents(req, res) {
     }
     if (endIfResponseStarted(res)) return;
     res.writeHead(200, {
+      ...PROXY_SECURITY_HEADERS,
       "content-type": "text/event-stream; charset=utf-8",
       "cache-control": "no-cache, no-transform",
       connection: "keep-alive"
@@ -1967,14 +2202,32 @@ async function opencodeEvents(req, res) {
     const read = createSseReader();
     const decoder = new TextDecoder();
     const reader = upstream.body.getReader();
+    const emitFrames = chunk => {
+      for (const frame of read(chunk)) {
+        const event = canonicalOpenCodeEvent(generation, frame);
+        if (event && !res.writableEnded && !res.destroyed) {
+          if (event.type === "session.deleted") {
+            const deletedSessionId = String(
+              event.properties?.info?.id ??
+              event.properties?.sessionID ??
+              event.properties?.id ??
+              ""
+            );
+            if (deletedSessionId) openCodeSessionModes.delete(deletedSessionId);
+          }
+          res.write("data: " + stringifyRedactedJson(event) + "\n\n");
+        }
+      }
+    };
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done || res.writableEnded || res.destroyed) break;
-        for (const frame of read(decoder.decode(value, { stream: true }))) {
-          const event = canonicalOpenCodeEvent(generation, frame);
-          if (event) res.write("data: " + JSON.stringify(event) + "\n\n");
-        }
+        emitFrames(decoder.decode(value, { stream: true }));
+      }
+      const tail = decoder.decode();
+      if (tail && !res.writableEnded && !res.destroyed) {
+        emitFrames(tail);
       }
     } finally {
       reader.releaseLock();
@@ -1993,32 +2246,55 @@ async function opencodeEvents(req, res) {
   }
 }
 
-async function proxy(req, res) {
-  const target = buildOpenCodeUpstreamTarget(req.url);
-  if (target.error) {
-    json(res, 400, { error: target.error });
-    return;
-  }
-  const { upstreamUrl, policyPath } = target;
+async function proxy(req, res, { upstreamUrl, policyPath }) {
   const sessionId = sessionIdFromOpenCodePath(policyPath);
-  const requestedMode = parseAgentMode(req.headers["x-pocket-agent-mode"]);
-  if (sessionId && requestedMode) openCodeSessionModes.set(sessionId, requestedMode);
-  const mode = requestedMode || (sessionId ? openCodeSessionModes.get(sessionId) : null) || "build";
+  const isSessionCreate = req.method === "POST" && isSessionCreateRoute(policyPath);
+  const isSessionAgentUpdate = req.method === "POST" && Boolean(sessionId) && isSessionAgentRoute(policyPath);
 
-  if (isReadOnlyMode(mode) && isDirectMutationRoute(policyPath)) {
-    json(res, 403, { error: `${mode} mode blocks direct shell and command mutations`, mode });
+  // Only POST may change a session's agent. Any other method on the agent
+  // route is rejected here, before anything is forwarded, so a method
+  // variant cannot bypass the transition guard.
+  if (req.method !== "POST" && Boolean(sessionId) && isSessionAgentRoute(policyPath)) {
+    json(res, 405, { error: "Session agent updates require POST" });
     return;
   }
-
   if (isAdapterOwnedRoute(policyPath)) {
     json(res, 404, { error: "This OpenCode session route is served by DevMoter at /api/opencode/session/{id}/…" });
     return;
   }
 
-  const sandboxPolicy = externalBackendSandboxPolicy("opencode");
-  if (!sandboxPolicy.allowed && isDirectMutationRoute(policyPath)) {
-    json(res, 409, { error: sandboxPolicy.reason, sandbox: sandboxPolicy });
+  // Deny-by-default (#588): only allowlisted method + route pairs are
+  // forwarded; anything else is rejected without contacting upstream.
+  const route = classifyProxyRoute(req.method, policyPath);
+  if (!route) {
+    json(res, 404, { error: "OpenCode proxy route is not allowed" });
     return;
+  }
+
+  if (route.kind === "write") {
+    const sandboxPolicy = externalBackendSandboxPolicy("opencode");
+    if (!sandboxPolicy.allowed) {
+      json(res, 409, { error: sandboxPolicy.reason, sandbox: sandboxPolicy });
+      return;
+    }
+    // Agent transitions have a separate guard below so plan/ask can still
+    // switch to another read-only mode without granting write access.
+    if (sessionId && !isSessionAgentUpdate) {
+      const mode = await resolveOpenCodeSessionMode(sessionId);
+      if (!mode) {
+        json(res, 403, { error: "Session mode could not be verified", mode: null });
+        return;
+      }
+      if (isReadOnlyMode(mode)) {
+        json(res, 403, {
+          error: isDirectMutationRoute(policyPath)
+            ? `${mode} mode blocks direct shell and command mutations`
+            : `${mode} mode blocks write operations`,
+          mode
+        });
+        return;
+      }
+    }
   }
 
   let body;
@@ -2034,6 +2310,34 @@ async function proxy(req, res) {
     }
   }
 
+  // Mode bookkeeping comes from the create exchange, never headers (#591):
+  // a session's initial mode is the create body's agent/mode (an explicit
+  // creation-time choice by the authenticated owner), corrected by the mode
+  // the upstream reports for the created session, and the only later
+  // mutation is the dedicated agent endpoint below.
+  const reqJson = (isSessionCreate || isSessionAgentUpdate) ? tryParseJsonObject(body) : null;
+  const bodyAgentMode = reqJson ? (modeFromAgent(reqJson.agent) || parseAgentMode(reqJson.mode)) : null;
+  const initialCreateMode = isSessionCreate ? (bodyAgentMode || "build") : null;
+
+  // Mode transitions are authorized here, before anything is forwarded: a
+  // read-only session cannot be moved to a non-read-only mode, and an
+  // unverifiable current mode fails closed.
+  let agentUpdateCurrentMode = null;
+  if (isSessionAgentUpdate) {
+    agentUpdateCurrentMode = sessionId ? await resolveOpenCodeSessionMode(sessionId) : null;
+    if (!agentUpdateCurrentMode) {
+      json(res, 403, { error: "Session mode could not be verified", mode: null });
+      return;
+    }
+    if (isReadOnlyMode(agentUpdateCurrentMode) && (!bodyAgentMode || !isReadOnlyMode(bodyAgentMode))) {
+      json(res, 403, {
+        error: `${agentUpdateCurrentMode} mode blocks switching to non-read-only agent "${bodyAgentMode || "build"}"`,
+        mode: agentUpdateCurrentMode
+      });
+      return;
+    }
+    if (isReadOnlyMode(bodyAgentMode)) setOpenCodeSessionMode(sessionId, bodyAgentMode);
+  }
   const upstreamAbort = new AbortController();
   const abortUpstream = () => {
     upstreamAbort.abort();
@@ -2050,38 +2354,88 @@ async function proxy(req, res) {
       headers: await openCodeHeadersForRequest(req, {
         "content-type": req.headers["content-type"] || "application/json",
         "accept": req.headers["accept"] || "*/*"
-      }),
+      }, policyPath),
       body,
       redirect: "error",
       signal: upstreamAbort.signal
     });
 
-    const headers = {};
-    for (const [key, value] of upstream.headers.entries()) {
-      if (![ "content-encoding", "content-length", "transfer-encoding", "connection" ].includes(key)) {
-        headers[key] = value;
-      }
-    }
-    const upstreamContentType = upstream.headers.get("content-type") || "";
-    headers["cache-control"] = upstreamContentType.includes("text/event-stream")
-      ? "no-cache, no-transform"
-      : "no-store";
+    const { headers, rawContentType, mediaType } = buildProxyResponseHeaders(
+      upstream.headers,
+      upstream.status,
+      redactText
+    );
 
     if (endIfResponseStarted(res)) return;
 
-    res.writeHead(upstream.status, headers);
-
     if (!upstream.body) {
+      res.writeHead(upstream.status, headers);
       res.end();
       return;
     }
 
+    if (mediaType === "application/json" || mediaType.endsWith("+json")) {
+      let payload;
+      let redacted;
+      try {
+        payload = await readOpenCodeProxyJson(upstream.body);
+        redacted = stringifyRedactedJson(payload);
+      } catch {
+        json(res, 502, { error: "OpenCode returned an invalid or oversized JSON response" });
+        return;
+      }
+      if (endIfResponseStarted(res)) return;
+      if (isSessionCreate && upstream.ok) {
+        const createdSession = payload?.data ?? payload;
+        const createdId = typeof createdSession?.id === "string" ? createdSession.id : "";
+        if (createdId) {
+          const upstreamMode = modeFromAgent(createdSession?.agent) || parseAgentMode(createdSession?.mode);
+          setOpenCodeSessionMode(createdId, upstreamMode || initialCreateMode);
+        }
+      }
+      headers["content-type"] = `${mediaType}; charset=utf-8`;
+      res.writeHead(upstream.status, headers);
+      res.end(redacted);
+      return;
+    }
+
+    const textual = isTextualProxyMediaType(rawContentType);
+    let decoder = null;
+    if (textual) {
+      try {
+        const charset = mediaType === "text/event-stream"
+          ? "utf-8"
+          : new MIMEType(rawContentType).params.get("charset") ?? "utf-8";
+        decoder = new TextDecoder(charset);
+      } catch {
+        json(res, 502, { error: "OpenCode returned an unsupported text encoding" });
+        return;
+      }
+      if (mediaType === "text/plain" || mediaType === "text/event-stream") {
+        headers["content-type"] = `${mediaType}; charset=utf-8`;
+      }
+    }
+    res.writeHead(upstream.status, headers);
     const reader = upstream.body.getReader();
+    const redactor = textual
+      ? createStreamingTextRedactor(REDACTED_SECRETS)
+      : createStreamingBufferRedactor(REDACTED_SECRETS);
+
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done || res.writableEnded || res.destroyed) break;
-        res.write(Buffer.from(value));
+        const out = textual
+          ? redactor.push(decoder.decode(value, { stream: true }))
+          : redactor.push(value);
+        writeProxyChunk(res, out);
+      }
+
+      if (!res.writableEnded && !res.destroyed) {
+        const tail = textual
+          ? redactor.push(decoder.decode()) + redactor.flush()
+          : redactor.flush();
+        writeProxyChunk(res, tail);
       }
     } finally {
       reader.releaseLock();
@@ -2108,6 +2462,24 @@ async function codexRpc(req, res) {
       return;
     }
 
+    if (/^(?:thread|turn)\//.test(String(method)) && (!params || typeof params !== "object" || Array.isArray(params))) {
+      json(res, 400, { error: "Codex thread and turn params must be an object" });
+      return;
+    }
+
+    const authorityOverride = codexRpcAuthorityOverride(method, params);
+    if (authorityOverride === "cwd") {
+      json(res, 400, { error: "Codex cwd must be selected by registered project id" });
+      return;
+    }
+    if (authorityOverride) {
+      json(res, 400, {
+        error: `Codex ${authorityOverride} is controlled by the DevMoter host and cannot be set by clients`,
+        code: "DEVMOTER_CODEX_AUTHORITY_OVERRIDE"
+      });
+      return;
+    }
+
     if (method === "turn/start" || method === "turn/steer") {
       try {
         assertExternalBackendExecutionAllowed("codex");
@@ -2121,15 +2493,6 @@ async function codexRpc(req, res) {
     }
 
     if (method === "thread/start") {
-      if (!params || typeof params !== "object" || Array.isArray(params)) {
-        json(res, 400, { error: "Codex thread/start params must be an object" });
-        return;
-      }
-      if (Object.prototype.hasOwnProperty.call(params, "cwd")) {
-        json(res, 400, { error: "Codex cwd must be selected by registered project id" });
-        return;
-      }
-
       const projectId = String(params.projectId || "").trim();
       const nextParams = { ...params };
       delete nextParams.projectId;
@@ -2232,7 +2595,9 @@ async function codexEvents(req, res) {
     return;
   }
 
+  if (endIfResponseStarted(res)) return;
   res.writeHead(200, {
+    ...PROXY_SECURITY_HEADERS,
     "content-type": "text/event-stream; charset=utf-8",
     "cache-control": "no-cache, no-transform",
     "connection": "keep-alive",
@@ -2240,8 +2605,9 @@ async function codexEvents(req, res) {
   });
 
   const send = (event, data) => {
-    res.write(`event: ${event}\n`);
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (res.writableEnded || res.destroyed) return;
+    res.write(`event: ${redactText(event)}\n`);
+    res.write(`data: ${stringifyRedactedJson(data)}\n\n`);
   };
 
   const onNotification = event => send("notification", event);
@@ -2257,16 +2623,20 @@ async function codexEvents(req, res) {
   send("ready", { online: true });
 
   const heartbeat = setInterval(() => {
-    res.write(": heartbeat\n\n");
+    if (!res.writableEnded && !res.destroyed) {
+      res.write(": heartbeat\n\n");
+    }
   }, 20000);
 
-  req.on("close", () => {
+  const cleanup = () => {
     clearInterval(heartbeat);
     codex.off("notification", onNotification);
     codex.off("server-request", onServerRequest);
     codex.off("offline", onOffline);
     codex.off("online", onOnline);
-  });
+  };
+  req.on("close", cleanup);
+  res.on("close", cleanup);
 }
 
 
@@ -2323,8 +2693,10 @@ async function multiApiProviderList(res) {
 }
 
 async function multiApiProviderSave(req, res) {
+  let requestApiKey = "";
   try {
     const payload = await readJson(req, 256 * 1024);
+    requestApiKey = String(payload?.apiKey || "").trim();
     const currentProviders = await multiApiStore.listResolved();
     const existing = currentProviders.find(item => item.id === payload.id);
     if (payload.secretRef || payload.credentialMode === "vault" || existing?.secretRef) {
@@ -2339,7 +2711,10 @@ async function multiApiProviderSave(req, res) {
     const provider = await multiApiStore.upsert(payload);
     json(res, 200, { provider });
   } catch (error) {
-    json(res, multiApiErrorStatus(error), { error: errorMessage(error) });
+    const message = errorMessage(error);
+    json(res, multiApiErrorStatus(error), {
+      error: requestApiKey ? redactSecretsInText(message, [requestApiKey]) : message
+    });
   }
 }
 
@@ -2358,6 +2733,7 @@ async function multiApiProviderDelete(req, providerId, res) {
 async function migrateMultiApiProviderToVault(req, providerId, res) {
   let createdReference = "";
   let migrationClaimed = false;
+  let providerApiKey = "";
   try {
     await requireVaultProviderDevice(req);
     const payload = await readJson(req, 64 * 1024);
@@ -2378,6 +2754,7 @@ async function migrateMultiApiProviderToVault(req, providerId, res) {
     const providers = await multiApiStore.listResolved();
     const provider = providers.find(item => item.id === providerId);
     if (!provider) throw Object.assign(new Error("Provider not found"), { status: 404 });
+    providerApiKey = String(provider.apiKey || "");
     if (provider.source !== "file" || !provider.apiKey || provider.secretRef) {
       throw Object.assign(new Error("Only editable file-backed API key providers can be migrated"), { status: 409 });
     }
@@ -2416,30 +2793,41 @@ async function migrateMultiApiProviderToVault(req, providerId, res) {
     json(res, 200, { provider: migrated, migrated: true });
   } catch (error) {
     if (createdReference) await secretStore.remove(createdReference).catch(() => {});
-    json(res, multiApiErrorStatus(error), { error: errorMessage(error) });
+    const message = errorMessage(error);
+    json(res, multiApiErrorStatus(error), {
+      error: providerApiKey ? redactSecretsInText(message, [providerApiKey]) : message
+    });
   } finally {
     if (migrationClaimed) multiApiVaultMigrations.delete(providerId);
   }
 }
 
 async function multiApiProviderTest(req, res) {
-  let vaultSecretValue = "";
+  const secrets = new Set();
+  const mask = value => secrets.size > 0 ? redactSecretsInText(value, [...secrets]) : value;
   try {
     const payload = await readJson(req, 256 * 1024);
+    if (typeof payload?.apiKey === "string" && payload.apiKey) {
+      secrets.add(payload.apiKey);
+      if (payload.apiKey.trim()) secrets.add(payload.apiKey.trim());
+    }
     if (payload.secretRef) {
       const resolved = await authorizeVaultProviderReference(req, payload, { resolveValue: true });
-      vaultSecretValue = resolved.value;
-      const result = await testMultiApiProvider({ ...payload, apiKey: vaultSecretValue, secretRef: "", projectId: "" });
+      if (resolved.value) secrets.add(resolved.value);
+      const result = await testMultiApiProvider({ ...payload, apiKey: resolved.value, secretRef: "", projectId: "" });
       json(res, 200, {
         ...result,
-        models: result.models.map(model => redactSecretsInText(model, [vaultSecretValue]))
+        models: result.models.map(mask)
       });
       return;
     }
-    json(res, 200, await testMultiApiProvider(payload));
+    const result = await testMultiApiProvider(payload);
+    json(res, 200, {
+      ...result,
+      models: result.models.map(mask)
+    });
   } catch (error) {
-    const message = errorMessage(error);
-    json(res, multiApiErrorStatus(error), { error: redactSecretsInText(message, [vaultSecretValue]) });
+    json(res, multiApiErrorStatus(error), { error: mask(errorMessage(error)) });
   }
 }
 
@@ -2467,10 +2855,19 @@ async function multiApiAttachmentDelete(attachmentId, res) {
 }
 
 async function multiApiChat(req, res) {
-  let vaultSecretValue = "";
+  // Stop in API Chat aborts the browser request; stop the provider call too.
+  const upstreamAbort = new AbortController();
+  const abortUpstream = () => { if (!res.writableEnded) upstreamAbort.abort(); };
+  req.on("aborted", abortUpstream);
+  res.on("close", abortUpstream);
+  const secrets = new Set();
+  const mask = value => secrets.size > 0 ? redactSecretsInText(value, [...secrets]) : value;
   try {
     const payload = await readJson(req, 1024 * 1024);
     let providers = await multiApiStore.listResolved();
+    for (const provider of providers) {
+      if (provider?.apiKey) secrets.add(provider.apiKey);
+    }
     const selectedProvider = providers.find(item => item.id === String(payload?.providerId || ""));
     if (selectedProvider?.secretRef) {
       if (!payload.projectId || payload.projectId !== selectedProvider.projectId) {
@@ -2483,18 +2880,17 @@ async function multiApiChat(req, res) {
         baseUrl: selectedProvider.baseUrl,
         protocol: selectedProvider.protocol
       }, { resolveValue: true });
-      vaultSecretValue = resolved.value;
+      if (resolved.value) secrets.add(resolved.value);
       providers = providers.map(provider => provider.id === selectedProvider.id
-        ? { ...provider, apiKey: vaultSecretValue, secretRef: "" }
+        ? { ...provider, apiKey: resolved.value, secretRef: "" }
         : provider);
     }
-    const result = await runMultiApiChat(providers, payload, fetch, { attachmentStore: multiApiAttachments });
-    json(res, 200, vaultSecretValue
-      ? { ...result, message: { ...result.message, content: redactSecretsInText(result.message.content, [vaultSecretValue]) } }
+    const result = await runMultiApiChat(providers, payload, fetch, { attachmentStore: multiApiAttachments, signal: upstreamAbort.signal });
+    json(res, 200, secrets.size > 0
+      ? { ...result, message: { ...result.message, content: mask(result.message.content) } }
       : result);
   } catch (error) {
-    const message = errorMessage(error);
-    json(res, multiApiErrorStatus(error), { error: redactSecretsInText(message, [vaultSecretValue]) });
+    json(res, multiApiErrorStatus(error), { error: mask(errorMessage(error)) });
   }
 }
 
@@ -2525,39 +2921,18 @@ async function serveLoginAsset(req, res, pathname) {
   res.end(req.method === "HEAD" ? undefined : data);
 }
 
-async function serveStatic(req, res) {
-  let path = req.url === "/" ? "/index.html" : req.url.split("?")[0];
-  path = normalize(path).replace(/^(\.\.[/\\])+/, "");
-  const full = join(DIST, path);
-
-  try {
-    const data = await withOpenFile(full, {}, async (handle, info) => {
-      if (!info.isFile()) throw new Error("not file");
-      return readHandle(handle);
-    });
-    res.writeHead(200, staticSecurityHeaders(MIME[extname(full)] || "application/octet-stream"));
-    res.end(data);
-  } catch {
-    try {
-      const data = await readFile(join(DIST, "index.html"));
-      res.writeHead(200, staticSecurityHeaders("text/html; charset=utf-8"));
-      res.end(data);
-    } catch {
-      json(res, 404, { error: "Not built yet. Run npm run build." });
-    }
+async function serveStatic(req, res, { allowSpaFallback = true } = {}) {
+  const result = await readDistStaticFile(DIST, req.url, {
+    publicPaths: PUBLIC_STATIC_PATHS,
+    mimeTypes: MIME,
+    allowSpaFallback
+  });
+  if (result.status !== 200) {
+    json(res, result.status, { error: result.error });
+    return;
   }
-}
-
-function isLoopbackHost(hostHeader) {
-  try {
-    const parsed = new URL(`http://${hostHeader || ""}`);
-    if (parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
-      return false;
-    }
-    return isLoopbackBindHost(parsed.hostname);
-  } catch {
-    return false;
-  }
+  res.writeHead(200, staticSecurityHeaders(result.contentType));
+  res.end(req.method === "HEAD" ? undefined : result.data);
 }
 
 // PWA metadata a browser must fetch without a login (the login page itself is
@@ -2574,8 +2949,23 @@ const PUBLIC_STATIC_PATHS = new Set([
 ]);
 
 const server = http.createServer(async (req, res) => {
+  applyBaselineSecurityHeaders(req, res, { publicOrigin: DEVMOTER_PUBLIC_ORIGIN });
   try {
-    const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+    const hostCheck = validateRequestHost(req);
+    if (!hostCheck.ok) {
+      json(res, hostCheck.status, { error: hostCheck.error });
+      return;
+    }
+    const url = new URL(req.url, "http://localhost");
+    // URL parsing can erase dot segments. Validate the original request target
+    // before dispatching to either an OpenCode adapter or any other route.
+    const openCodeTarget = req.url.startsWith(OPENCODE_PROXY_PREFIX) || url.pathname.startsWith(OPENCODE_PROXY_PREFIX)
+      ? buildOpenCodeUpstreamTarget(req.url, req.method)
+      : null;
+    if (openCodeTarget?.error) {
+      json(res, 400, { error: openCodeTarget.error });
+      return;
+    }
 
     if (req.method === "POST" && url.pathname === "/api/control/events/github") {
       await githubWebhookRoute(req, res);
@@ -2589,7 +2979,7 @@ const server = http.createServer(async (req, res) => {
 
     if ((req.method === "GET" || req.method === "HEAD") && PUBLIC_STATIC_PATHS.has(url.pathname)) {
       res.setHeader("cache-control", "no-store");
-      await serveStatic(req, res);
+      await serveStatic(req, res, { allowSpaFallback: false });
       return;
     }
 
@@ -2971,7 +3361,7 @@ const server = http.createServer(async (req, res) => {
           configured: result?.configured !== false,
           timedOut: result?.timedOut === true
         }).catch(error => {
-          console.error("verification-complete hook failed", redactText(errorMessage(error)));
+          console.error("verification-complete hook failed", redactLog(errorMessage(error)));
         });
         return result;
       });
@@ -3017,7 +3407,8 @@ const server = http.createServer(async (req, res) => {
       json(res, 200, {
         state,
         policy: userAutomationPolicy,
-        runs: userAutomation.listRuns()
+        runs: userAutomation.listRuns(),
+        hookAudit: await userAutomation.readHookAudit()
       });
       return;
     }
@@ -3120,6 +3511,10 @@ const server = http.createServer(async (req, res) => {
       if (await knowledgeApi.handle(req, res, url)) return;
     }
 
+    if (isPromptTemplatePath(url.pathname)) {
+      if (await promptTemplateApi.handle(req, res, url)) return;
+    }
+
     if (
       url.pathname.startsWith("/api/agent-runs") ||
       url.pathname.startsWith("/api/agent-fleets")
@@ -3134,7 +3529,15 @@ const server = http.createServer(async (req, res) => {
         const issued = await systemFeatures.bootstrapDevice(req, payload?.label);
         const { token, device } = issued;
         const { tokenHash: _tokenHash, ...publicDevice } = device;
-        jsonWithCookie(res, 201, { device: publicDevice }, deviceSessionCookie(req, token));
+        jsonWithCookie(
+          res,
+          201,
+          { device: publicDevice },
+          deviceSessionCookie(req, token, undefined, {
+            publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+            trustedProxies: DEVMOTER_TRUSTED_PROXIES
+          })
+        );
       } catch (error) {
         json(res, Number(error?.status || 400), { error: errorMessage(error) });
       }
@@ -3156,7 +3559,15 @@ const server = http.createServer(async (req, res) => {
           { allowOwnerRecovery: allowOwnerDeviceRecovery() }
         );
         if (result.revokedCurrentDevice) {
-          jsonWithCookie(res, 200, result, deviceSessionCookie(req, "", 0));
+          jsonWithCookie(
+            res,
+            200,
+            result,
+            deviceSessionCookie(req, "", 0, {
+              publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+              trustedProxies: DEVMOTER_TRUSTED_PROXIES
+            })
+          );
         } else {
           json(res, 200, result);
         }
@@ -3183,7 +3594,10 @@ const server = http.createServer(async (req, res) => {
           res,
           201,
           { device: publicDevice, approvedByDeviceId },
-          deviceSessionCookie(req, token)
+          deviceSessionCookie(req, token, undefined, {
+            publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+            trustedProxies: DEVMOTER_TRUSTED_PROXIES
+          })
         );
       } catch (error) {
         json(res, Number(error?.status || 400), { error: errorMessage(error) });
@@ -3590,8 +4004,8 @@ const server = http.createServer(async (req, res) => {
     }
 
 
-    if (req.method === "GET" && url.pathname === "/api/opencode/pocket/providers") {
-      await opencodeProviders(url, res);
+    if (req.method === "GET" && openCodeTarget?.policyPath === "/api/pocket/providers" && !openCodeTarget.upstreamAlias) {
+      await opencodeProviders(new URLSearchParams(openCodeTarget.query).get("refresh") === "1", res);
       return;
     }
 
@@ -3624,26 +4038,35 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (url.pathname.startsWith("/api/opencode") || String(req.url || "").startsWith("/api/opencode")) {
+    if (openCodeTarget) {
+      const { policyPath } = openCodeTarget;
+      for (const [name, value] of Object.entries(PROXY_SECURITY_HEADERS)) {
+        res.setHeader(name, value);
+      }
       if (
         req.method !== "GET" &&
         req.method !== "HEAD" &&
-        !claimOperation(req, res, `${req.method}:${url.pathname}`)
+        !claimOperation(req, res, `${req.method}:${policyPath}`)
       ) return;
-      if (await opencodeSessionRoute(req, res, url)) return;
-      await proxy(req, res);
+      if (!openCodeTarget.upstreamAlias && await opencodeSessionRoute(req, res, policyPath)) return;
+      await proxy(req, res, openCodeTarget);
       return;
     }
 
     await serveStatic(req, res);
   } catch (error) {
-    console.error(redactText(error instanceof Error ? error.stack || error.message : String(error)));
+    if (error instanceof URIError) {
+      json(res, 400, { error: "Malformed request path" });
+      return;
+    }
+    console.error(redactLog(error instanceof Error ? error.stack || error.message : String(error)));
     json(res, 500, { error: "DevMoter server error" });
   }
 });
 
 const terminalSockets = installTerminalWebSocketEndpoint(server, terminal, {
-  publicOrigin: DEVMOTER_PUBLIC_ORIGIN
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+  trustedProxies: DEVMOTER_TRUSTED_PROXIES
 });
 
 server.on("close", () => {
@@ -3666,6 +4089,6 @@ server.listen(PORT, HOST, () => {
     host: HOST,
     port: PORT
   }).catch(error => {
-    console.error("Control-plane startup event failed", redactText(errorMessage(error)));
+    console.error("Control-plane startup event failed", redactLog(errorMessage(error)));
   });
 });

@@ -262,12 +262,17 @@
 ### 12. Automation / Integrations
 
 - **成熟度**: 実験的（`Experimental`）
+- **Command hooks**: fail closed without bubblewrap and a registered project boundary,
+  including events without `projectId`. `DEVMOTER_ALLOW_UNSANDBOXED_HOOKS=1` explicitly
+  permits unsandboxed execution unless `DEVMOTER_SANDBOX=required`. Decisions and results
+  are recorded in `~/.config/opencode-pocket/hook-audit.jsonl`; see
+  [command lifecycle hooks](./BROWSER_AUTOMATION_SANDBOX.md#command-lifecycle-hooks).
 - **根拠となる API ルート**:
   - Control Plane（`server.mjs`, `server/control-plane.mjs`）:
     - `GET /api/control/hosts`, `GET /api/control/hosts/status`, `POST /api/control/hosts`, `DELETE /api/control/hosts/:id`
-    - `GET /api/control/schedules`, `POST /api/control/schedules`, `PATCH /api/control/schedules/:id`, `DELETE /api/control/schedules/:id`
+    - `GET /api/control/schedules`, `POST /api/control/schedules`, `PATCH /api/control/schedules/:id`, `DELETE /api/control/schedules/:id`, `POST /api/control/schedules/preview` (read-only: validates and returns target, upcoming run times and approval policy; saves and runs nothing)
     - `GET /api/control/triggers`, `POST /api/control/triggers`, `DELETE /api/control/triggers/:id`
-    - `GET /api/control/runs`, `POST /api/control/autopilot`, `POST /api/control/autopilot/:id/(pause|resume|cancel)`
+    - `GET /api/control/runs[?result=success|failed|running]` (failed runs carry a server-redacted `failureReason`, `null` when none was recorded), `POST /api/control/runs/:id/retry` (failed schedule/trigger runs only; requires `{ "confirm": true }`, never automatic), `POST /api/control/autopilot`, `POST /api/control/autopilot/:id/(pause|resume|cancel)`
     - `POST /api/control/events/github`（GitHub Webhook HMAC 受信）
   - Automation API v1（`server/automation-api.mjs`, `server/context-references.mjs`）:
     - `GET /api/automation/projects`, `GET /api/automation/open`, `GET /api/automation/sessions`, `POST /api/automation/tasks`, `GET /api/projects/:id/context`, `POST /api/projects/:id/context/resolve`
@@ -280,7 +285,7 @@
   - `test/control-plane-v3.test.mjs`, `test/remote-auth-boundary.test.mjs`, `test/remote-automation-security.test.mjs`, `test/automation-api-v3.test.mjs`, `test/automation-client-v3.test.mjs`, `test/automation-routing-v3.test.mjs`, `test/automation-ui-regression.test.mjs`, `test/context-references-v3.test.mjs`, `test/context-attachments-v3.test.mjs`, `test/user-automation.test.mjs`
   - `test/integration-launch-210.test.mjs`, `test/integration-launch-contracts.test.mjs`, `test/integrations-security.test.mjs`, `test/integrations-ui.test.mjs`, `test/cli-launch.test.mjs`, `test/browser-tool.test.mjs`, `test/auth-server.integration.test.mjs`, `test/codex-not-installed.test.mjs`
 - **未検証範囲**:
-  - `POST /api/control/events/github`（GitHub Webhook）を含む `/api/control/*`、`/api/projects/:id/context*`、および `/api/user-automation*` の HTTP サーバー統合テストは存在しません（`test/control-plane-v3.test.mjs` は `ControlPlane.dispatchEvent(...)` 等のインプロセス単体テスト、`test/remote-auth-boundary.test.mjs`・`test/remote-automation-security.test.mjs` は `server.mjs` の静的文字列チェックのみ）。
+  - `POST /api/control/events/github`（GitHub Webhook）を含む `/api/control/*`、`/api/projects/:id/context*` の HTTP サーバー統合テストは存在しません（`test/control-plane-v3.test.mjs` は `ControlPlane.dispatchEvent(...)` 等のインプロセス単体テスト、`test/remote-auth-boundary.test.mjs`・`test/remote-automation-security.test.mjs` は `server.mjs` の静的文字列チェックのみ）。`/api/user-automation*` は、破損した監査行があっても `GET /api/user-automation` が成功するケースのみ HTTP 統合テストで検証しています。
   - 実 Chromebook/Crostini 環境での Antigravity 起動（#210）、実 Claude Code / Antigravity リモート連携、実 GitHub Webhook 配信、複数ホスト間の実Tailscale通信は未検証です。
 
 ### 13. Web / PWA
@@ -326,6 +331,8 @@
 | Session control | 🧪 Experimental | `/api/session-control/*`, `/api/agent-runs*`, `/api/agent-fleets*` | `test/session-control-reliability.test.mjs`, `test/session-control-security.test.mjs`, `test/session-search-query.test.mjs` ほか | #6 Session Control 参照 |
 | Reviewed Changes / Tasks | 🧪 Experimental | `/api/workflow/projects/:projectId/*` | `test/task-workflow.test.mjs`, `test/review-overlay-ui.test.mjs` | #5 Reviewed Changes 参照 |
 | Project context / local index | 🧪 Experimental | `/api/projects/:id/index/*`, `/api/projects/:id/map`, `/api/projects/:id/context`, `/api/projects/:id/context/resolve`, `/api/knowledge/notes*` | `test/project-index.test.mjs`, `test/tools-ai-server.integration.test.mjs`, `test/context-references-v3.test.mjs`, `test/context-attachments-v3.test.mjs`, `test/knowledge-store.test.mjs` | 非 Linux や大規模リポジトリでのインデックス性能は実機未検証 |
+| Knowledge notes (Home → ナレッジ) | 🧪 Experimental | `/api/knowledge/notes*`（UI: `src/knowledge.ts`、一覧・作成・編集・削除確認・ピン留め・タイトル検索・プロジェクト絞り込み・複製・Markdown 書き出し/取り込み） | `test/knowledge-ui.test.mjs`, `test/knowledge-store.test.mjs`, `test/auth-server.integration.test.mjs` | 実機ブラウザでのファイル保存・取り込みは未検証（jsdom テストのみ） |
+| Prompt templates | 🧪 Experimental | `/api/prompt-templates*`（保存・編集・削除・プロジェクト別整理・バックアップ/復元）。変数の展開・プレビュー・入力欄への挿入はブラウザ側のみで行い、自動送信はしない | `test/prompt-template-store.test.mjs`, `test/prompt-template-core.test.mjs`, `test/auth-server.integration.test.mjs` | UI は実機ブラウザで未検証 |
 | Persistent terminal | 🧪 Experimental | `/api/terminal/sessions*`, WebSocket `/api/terminal/sessions/:id/socket` | `test/terminal-persistence.test.mjs`, `test/terminal-websocket.integration.test.mjs`, `test/terminal-sessions-security.test.mjs` ほか | #7 Terminal 参照 |
 | API Chat / model routing | 🧪 Experimental | `/api/llm/*`, `/api/advanced/models*`, `/api/advanced/providers` | `test/multi-api*.test.mjs`, `test/model-routing.test.mjs`, `test/advanced-features.test.mjs` ほか | #8 API Chat / Routing 参照 |
 | Automation / control plane | 🧪 Experimental | `/api/control/*`, `/api/automation/*`, `/api/user-automation*` | `test/control-plane-v3.test.mjs`, `test/automation-api-v3.test.mjs`, `test/user-automation.test.mjs` ほか | #12 Automation / Integrations 参照 |

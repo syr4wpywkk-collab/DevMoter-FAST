@@ -4,7 +4,7 @@
 
 Passkeys are optional. Credentials are scoped to the exact DevMoter RP ID (host name) and are never reused as backend credentials.
 
-Auth v2 requires authenticated owner sign-in before passkey registration. Use local recovery or another linked sign-in method, then register from Account > Passkey. Remote origins must use HTTPS and should set the canonical `DEVMOTER_PUBLIC_ORIGIN`. A reverse proxy connecting over 127.0.0.1 does not make the browser origin local.
+Auth v2 requires authenticated owner sign-in before passkey registration. Use local recovery or another linked sign-in method, then register from Account > Passkey. Remote origins must use HTTPS and should set the canonical `DEVMOTER_PUBLIC_ORIGIN`. A reverse proxy connecting over 127.0.0.1 does not make the browser origin local. When `DEVMOTER_PUBLIC_ORIGIN` is not set, requests whose `Host` is not loopback, an IP literal, this machine's own name or a `*.ts.net` name are refused with 421 unless the name is listed in `DEVMOTER_ALLOWED_HOSTS`; this blocks DNS rebinding. The unauthenticated GitHub webhook endpoint accepts at most 120 requests per client and 600 in total per minute.
 
 The legacy `DEVMOTER_PASSKEY_BOOTSTRAP=1` setting is retained for the standalone passkey module. It never bypasses owner authentication on the server's registration routes. Keep it disabled in normal service use.
 
@@ -44,7 +44,9 @@ Triggers are explicit records with source, event name, task, project/backend con
 
 GitHub webhooks use a per-trigger HMAC secret. The secret is shown once when the trigger is created and is stored server-side afterward.
 
-Incoming event payloads are size-limited and injected into the task as explicitly untrusted data. Event content cannot disable DevMoter approval/permission policy.
+Incoming event payloads are size-limited, escaped, and marked as untrusted in a delimited JSON block. That block and the trusted task are still sent as one text prompt to either backend. Delimiters prevent payload text from forging the block boundary; they do not prevent the model from following instructions in the payload.
+
+The trigger definition selects the backend and project. Webhook fields cannot change those settings or grant approval. DevMoter does not configure a separate sandbox or permission profile for webhooks, so a triggered run can still perform any action the backend already permits. Use a least-privilege backend configuration for event triggers, and do not enable them for untrusted input if their available actions cannot be adequately restricted.
 
 ## Bounded autopilot
 

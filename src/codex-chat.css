@@ -99,16 +99,19 @@ body.codex-mode {
 .cx-app .cx-title-button > span,
 .cx-app .cx-title-button > small {
   max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .cx-app .cx-title-button > span {
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .cx-app .cx-title-button > small {
   color: var(--cx-muted);
-  font-size: .7rem;
+  font-size: var(--font-size-caption, 12px);
 }
 
 .cx-app .cx-topbar-controls {
@@ -292,7 +295,7 @@ body.codex-mode {
   font-size: .75rem;
 }
 .cx-app .dm-code-language { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.cx-app .dm-code-copy {
+.cx-app :is(.dm-code-copy, .dm-code-wrap) {
   flex: 0 0 auto;
   min-height: 44px;
   padding: 0 10px;
@@ -302,7 +305,7 @@ body.codex-mode {
   color: var(--cx-text);
   font-size: .75rem;
 }
-.cx-app .dm-code-copy:hover { background: #3b3b3b; }
+.cx-app :is(.dm-code-copy, .dm-code-wrap):hover { background: #3b3b3b; }
 .cx-app .cx-markdown pre {
   max-width: 100%;
   margin: 0;
@@ -591,3 +594,16 @@ html[data-devmoter-theme="light"] .cx-app .cx-approval pre { background: var(--s
 }
 
 @media (prefers-reduced-motion: reduce) { .cx-app .cx-details-panel { transition: none; } }
+
+.cx-app .cx-history-retry {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+  width: min(100%, var(--cx-content-width)); margin: 16px auto; padding: 12px 16px;
+  border: 1px solid var(--cx-border); border-radius: 8px; color: var(--cx-text); font-size: .9rem; line-height: 1.5;
+}
+.cx-app .cx-history-retry p { flex: 1 1 16em; margin: 0; color: var(--cx-text); }
+.cx-app .cx-history-retry button {
+  min-height: 44px; padding: 0 16px; border: 1px solid var(--cx-border); border-radius: 8px;
+  background: var(--cx-raised); color: var(--cx-text); font: inherit;
+}
+.cx-app .cx-history-retry button:disabled { opacity: .6; }
+.cx-app .cx-history-retry button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

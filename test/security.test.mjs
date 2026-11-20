@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, realpath, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { isInsideHome, normalizeNewProjectPath, sanitizeUploadName, createUploadPath, decodeUploadDataUrl, assertSafeMarkdownRelativePath, isAllowedCodexRpc } from "../server/security-helpers.mjs";
+import { isInsideHome, normalizeNewProjectPath, sanitizeUploadName, createUploadPath, decodeUploadDataUrl, assertSafeMarkdownRelativePath, isAllowedCodexRpc, codexRpcAuthorityOverride } from "../server/security-helpers.mjs";
 
 test("project paths stay inside HOME and exclude HOME itself", () => {
   const home = "/home/tester";
@@ -57,7 +57,13 @@ test("Codex thread creation resolves project ids server-side", async () => {
 
   assert.match(client, /params\.projectId = activeProject\.id/);
   assert.doesNotMatch(client, /params\.cwd = activeProject\.path/);
-  assert.match(server, /Object\.prototype\.hasOwnProperty\.call\(params, "cwd"\)/);
+  assert.match(server, /codexRpcAuthorityOverride\(method, params\)/);
+  assert.equal(codexRpcAuthorityOverride("thread/start", { cwd: "/tmp" }), "cwd");
+  assert.equal(codexRpcAuthorityOverride("turn/start", { threadId: "t", sandboxPolicy: {} }), "sandboxPolicy");
+  assert.equal(codexRpcAuthorityOverride("thread/resume", { threadId: "t", approvalPolicy: "never" }), "approvalPolicy");
+  assert.equal(codexRpcAuthorityOverride("thread/fork", { threadId: "t", config: {} }), "config");
+  assert.equal(codexRpcAuthorityOverride("turn/start", { threadId: "t", input: [], model: "m" }), null);
+  assert.equal(codexRpcAuthorityOverride("model/list", { cwd: "/tmp" }), null);
   assert.match(server, /nextParams\.cwd = project\.path/);
 });
 
@@ -92,4 +98,9 @@ test("upload decoder rejects oversized base64 before allocating decoded data", (
   assert.throws(() => decodeUploadDataUrl("data:text/plain;base64,SGk= extra", 64), /base64 data URL/);
   assert.throws(() => decodeUploadDataUrl("data:text/plain;base64,SGk=", -1), /Invalid upload size limit/);
   assert.equal(decodeUploadDataUrl("data:text/plain;base64,SGk=", 2).buffer.toString(), "Hi");
+});
+
+test("read-only dev-workflow agent turns run in the Codex read-only sandbox", async () => {
+  const source = await readFile(new URL("../server/dev-workflows.mjs", import.meta.url), "utf8");
+  assert.match(source, /if \(readOnly\) Object\.assign\(params, \{ sandbox: "read-only", approvalPolicy: "on-request" \}\)/);
 });

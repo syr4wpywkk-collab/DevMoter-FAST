@@ -55,8 +55,8 @@ body.api-mode { padding: 0; overflow: hidden; background: var(--canvas-base, #ff
 }
 .api-app .api-icon-button,
 .api-app .api-sidebar-head > button { width: 44px; height: 44px; min-height: 44px; flex: 0 0 44px; border: 0; background: transparent; color: var(--api-text); }
-.api-app .api-brand { display: grid; min-width: 0; grid-column: 2; grid-row: 1; }
-.api-app .api-brand strong { font-size: 1.05rem; font-weight: 500; }
+.api-app .api-brand { display: grid; min-width: 0; grid-column: 2; grid-row: 1; justify-self: end; text-align: end; }
+.api-app .api-brand strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 1rem; font-weight: 600; }
 .api-app .api-brand small { display: block; color: var(--api-muted); font-size: var(--font-size-caption, 12px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .api-app .api-header-actions { grid-column: 3; grid-row: 1; display: flex; align-items: center; justify-content: flex-end; gap: 4px; min-width: 0; }
 
@@ -111,8 +111,8 @@ body.api-mode { padding: 0; overflow: hidden; background: var(--canvas-base, #ff
 .api-app .dm-code-block { max-width: 100%; min-width: 0; margin: 1em 0; overflow: hidden; border: 1px solid var(--api-border); border-radius: 14px; background: #f6f8fc; }
 .api-app .dm-code-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 0 8px 0 16px; background: #e9eef6; color: var(--api-muted); font-size: .75rem; }
 .api-app .dm-code-language { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.api-app .dm-code-copy { flex: 0 0 auto; min-height: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--api-text); font-size: .75rem; }
-.api-app .dm-code-copy:hover { background: #dbe5f2; }
+.api-app :is(.dm-code-copy, .dm-code-wrap) { flex: 0 0 auto; min-height: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--api-text); font-size: .75rem; }
+.api-app :is(.dm-code-copy, .dm-code-wrap):hover { background: #dbe5f2; }
 .api-app .cx-markdown pre { max-width: 100%; margin: 0; padding: 16px; overflow-x: auto; overscroll-behavior-x: contain; white-space: pre; overflow-wrap: normal; line-height: 1.6; color: #273343; }
 .api-app .cx-markdown pre code { padding: 0; background: transparent; color: #273343; white-space: pre; }
 .api-app .dm-markdown-table { max-width: 100%; margin: 1em 0; overflow-x: auto; overscroll-behavior-x: contain; }
@@ -248,3 +248,7 @@ html[data-devmoter-theme="light"] .api-app select,
 html[data-devmoter-theme="light"] .api-app select option,
 html[data-devmoter-theme="light"] .api-app select optgroup { color-scheme: light; background: #f9fbff; color: var(--api-text); }
 
+
+.api-app .api-copy-latest { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: var(--api-muted); font-size: .8rem; }
+.api-app .api-copy-latest:hover { color: var(--api-text); }
+.api-app .api-copy-latest:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }

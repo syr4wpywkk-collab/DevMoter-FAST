@@ -5,7 +5,7 @@ import path from "node:path";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { build } from "esbuild";
-import { webkit } from "playwright";
+import { launchWebKit } from "./launch-webkit.mjs";
 
 const repo = path.resolve(import.meta.dirname, "..");
 
@@ -45,7 +45,7 @@ async function setup(t, viewport) {
   const server = await fixtureServer();
   let browser;
   t.after(async () => { try { await browser?.close(); } finally { await server.close(); } });
-  browser = await webkit.launch({ headless: true });
+  browser = await launchWebKit();
   const page = await browser.newPage({ viewport });
   await page.route("**/*", route => {
     const url = new URL(route.request().url());
@@ -74,6 +74,9 @@ test("desktop Codex sidebar remains clickable before and after a modal", async t
 
 test("mobile Codex details drawer restores focus and removes hidden controls", async t => {
   const page = await setup(t, { width: 390, height: 844 });
+  // #330: the mobile Codex screen must not be wider than the viewport.
+  const overflow = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, width: window.innerWidth }));
+  assert.ok(overflow.scroll <= overflow.width, `page is ${overflow.scroll}px wide in a ${overflow.width}px viewport`);
   const details = page.locator("#cxDetailsPanel");
   const toggle = page.locator("#cxDetailsTop");
   await toggle.click();

@@ -1,8 +1,10 @@
 import { formatCodexResetTime as formatResetTime, codexFeedbackKey as feedbackKey } from "./codex/presentation";
 import { getAppDefinition } from "./app-registry";
 import { cxIcons } from "./codex/icons";
+import { chatHistoryTriggerMarkup } from "./chat-history-trigger.mjs";
 import { codexThreadStatusToExecutionState, codexTurnStatusToExecutionState, isExecutionActive, type ExecutionState } from "./execution-state.mjs";
-import { bindLanguageSelectors, formatNumber, localeTag, speechRecognitionLanguage, t, tApp, translateServerMessage } from "./i18n";
+import { bindLanguageSelectors, formatDateTime, formatNumber, formatRelativeTime, localeTag, speechRecognitionLanguage, t, tApp, translateServerMessage } from "./i18n";
+import { apiErrorMessage } from "./api-error.mjs";
 
 function escapeHtml(value: unknown): string {
   return String(value ?? "")
@@ -41,6 +43,8 @@ import { createLatestRequestGuard } from "./latest-request.mjs";
 import { reconnectAfterSync } from "./reconnect-after-sync.mjs";
 import { normalizeCodexThreadList } from "./codex-thread-list.mjs";
 import { normalizeCodexThreadHistory } from "./codex-thread-history.mjs";
+import { createChatDraftBinding } from "./chat-draft.mjs";
+import { createHistoryRetryNotice, latestAssistantText } from "./chat-transcript-actions.mjs";
 import { recoverAfterEventOpen } from "./event-recovery.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { createSheetHeader } from "./sheet-header.mjs";
@@ -210,12 +214,6 @@ export function mountCodexRemote(
           <input id="cxThreadSearch" type="search" placeholder="${escapeHtml(t("codex.sidebar.searchPlaceholder"))}" />
         </label>
 
-        <nav class="cx-side-nav">
-          <button id="cxProjectsNav" class="cx-nav-item" type="button">${getAppDefinition("projects").icon}<span>${escapeHtml(tApp("projects"))}</span></button>
-          <button id="cxPluginsQuick" class="cx-nav-item" type="button">${cxIcons.plugins}<span>${escapeHtml(t("codex.sidebar.plugins"))}</span></button>
-          <button id="cxIntegrationsNav" class="cx-nav-item" type="button">${cxIcons.integrations}<span>${escapeHtml(t("integrations.title"))}</span></button>
-          <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button">${getAppDefinition("developer-workflows").icon}<span>${escapeHtml(t("devWorkflows.panelTitle"))}</span></button>
-        </nav>
 
         <div class="cx-side-section">
           <div class="cx-side-label cx-task-heading"><span>${escapeHtml(t("codex.sidebar.tasks"))}</span><span aria-hidden="true">☷</span></div>
@@ -225,6 +223,13 @@ export function mountCodexRemote(
         </div>
 
         </div>
+
+        <nav class="cx-side-nav" aria-label="${escapeHtml(t("codex.sidebar.toolsAria"))}">
+          <button id="cxProjectsNav" class="cx-nav-item" type="button">${getAppDefinition("projects").icon}<span>${escapeHtml(tApp("projects"))}</span></button>
+          <button id="cxPluginsQuick" class="cx-nav-item" type="button">${cxIcons.plugins}<span>${escapeHtml(t("codex.sidebar.plugins"))}</span></button>
+          <button id="cxIntegrationsNav" class="cx-nav-item" type="button">${cxIcons.integrations}<span>${escapeHtml(t("integrations.title"))}</span></button>
+          <button id="cxDevWorkflowsNav" class="cx-nav-item" type="button">${getAppDefinition("developer-workflows").icon}<span>${escapeHtml(t("devWorkflows.panelTitle"))}</span></button>
+        </nav>
 
         <div class="cx-sidebar-foot">
           <label class="pocket-language-setting" title="${escapeHtml(t("nav.language"))}">
@@ -241,7 +246,7 @@ export function mountCodexRemote(
       </aside>
 
       <header class="cx-topbar">
-        <button id="cxMenu" class="cx-icon-button" type="button" aria-label="${escapeHtml(t("codex.topbar.openHistoryAria"))}" title="${escapeHtml(t("codex.topbar.openHistoryTitle"))}">${cxIcons.menu}</button>
+        ${chatHistoryTriggerMarkup({ id: "cxMenu", className: "cx-icon-button", ariaLabel: t("nav.openChatHistoryAria"), title: t("nav.chatHistoryTitle") })}
         <div class="cx-brand" aria-label="DevMoter"><span class="cx-brand-mark">Z</span><strong>DevMoter</strong></div>
         <button id="cxTitleButton" class="cx-title-button" type="button">
           <span id="cxTitle">Codex</span>
@@ -307,7 +312,7 @@ export function mountCodexRemote(
 
         <form id="cxPromptForm" class="cx-composer">
           <textarea
-            id="cxPromptInput"
+            id="cxPromptInput" enterkeyhint="send"
             rows="1"
             placeholder="${escapeHtml(t("codex.composer.promptPlaceholder"))}"
             aria-label="${escapeHtml(t("codex.composer.promptAria"))}"
@@ -329,6 +334,7 @@ export function mountCodexRemote(
         <div id="cxPlusMenu" class="cx-plus-menu hidden">
           <button id="cxPhoto" type="button">${cxIcons.image}<span>${escapeHtml(t("codex.composer.photoButton"))}</span></button>
           <button id="cxFile" type="button">${cxIcons.file}<span>${escapeHtml(t("codex.composer.fileButton"))}</span></button>
+          <button id="cxCopyLatest" type="button">${cxIcons.copy}<span>${escapeHtml(t("chat.copyLatest.button"))}</span></button>
         </div>
 
         <input id="cxPhotoInput" type="file" accept="image/*" multiple hidden />
@@ -526,12 +532,32 @@ export function mountCodexRemote(
   let reconnectTimer: number | null = null;
   let reconnectAttempts = 0;
   let allThreads: ThreadSummary[] = [];
+  let threadListFailed = false;
   const threadListRequests = createLatestRequestGuard();
   const modelCatalogRequests = createLatestRequestGuard();
   let projects: ProjectSummary[] = [];
   let activeProject: ProjectSummary | null = null;
   let pendingAttachments: PendingAttachment[] = [];
   let selectedContextRefs: Array<{ path: string; kind: "file" | "folder" }> = [];
+  // Thread selected by a switch whose history has not been rendered yet.
+  let unloadedSwitchThreadId: string | null = null;
+  const drafts = createChatDraftBinding<{
+    attachments: PendingAttachment[];
+    contextRefs: Array<{ path: string; kind: "file" | "folder" }>;
+  }>({
+    provider: "codex",
+    input: promptInput,
+    storage: window.sessionStorage,
+    getProjectId: () => activeProject?.id ?? localStorage.getItem("opencode-pocket-project"),
+    takeExtras: () => ({ attachments: pendingAttachments, contextRefs: selectedContextRefs }),
+    restoreExtras: extras => {
+      pendingAttachments = extras?.attachments ?? [];
+      selectedContextRefs = extras?.contextRefs ?? [];
+      hideContextPalette();
+      renderAttachments();
+    },
+    onRestore: () => resizeComposer()
+  });
   let contextRequestSerial = 0;
   let executionState: ExecutionState = "offline";
   let selectedModel = localStorage.getItem("opencode-pocket-codex-model") || "";
@@ -828,7 +854,7 @@ export function mountCodexRemote(
       throw error;
     }
     const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(payload?.error ? translateServerMessage(String(payload.error)) : t("common.httpError", { status: res.status }));
+    if (!res.ok) throw new Error(apiErrorMessage(payload, res.status));
     return payload as T;
   }
 
@@ -861,6 +887,7 @@ export function mountCodexRemote(
     if (activeProject) {
       localStorage.setItem("opencode-pocket-project", activeProject.id);
     }
+    drafts.sync();
     updateContextLabel();
   }
 
@@ -868,6 +895,7 @@ export function mountCodexRemote(
     activeProject = project;
     if (project) localStorage.setItem("opencode-pocket-project", project.id);
     else localStorage.removeItem("opencode-pocket-project");
+    drafts.sync();
     updateContextLabel();
   }
 
@@ -1027,7 +1055,7 @@ export function mountCodexRemote(
       if (code === "not_installed" || code === "not_executable" || code === "failed") {
         throw Object.assign(new Error(payload?.error ? translateServerMessage(String(payload.error)) : t("codex.errors.cannotLaunchCli")), { code });
       }
-      throw new Error(payload?.error ? translateServerMessage(String(payload.error)) : t("common.httpError", { status: res.status }));
+      throw new Error(apiErrorMessage(payload, res.status));
     }
     return payload.result as T;
   }
@@ -1426,6 +1454,11 @@ export function mountCodexRemote(
 
     sidebarThreads.replaceChildren();
 
+    if (!items.length && !q && threadListFailed) {
+      showThreadListFailure();
+      return;
+    }
+
     if (!items.length) {
       const empty = document.createElement("div");
       empty.className = "cx-side-empty";
@@ -1460,16 +1493,13 @@ export function mountCodexRemote(
       text.textContent = thread.name || thread.preview || t("codex.sidebar.newChat");
       button.appendChild(text);
       if (thread.updatedAt) {
-        const age = Math.max(0, Date.now() - thread.updatedAt);
+        // Same relative format as OpenCode and Qwen history; exact time on hover.
         const stamp = document.createElement("small");
         stamp.className = "cx-thread-age";
-        stamp.textContent = age < 60_000
-          ? t("codex.threads.ageNow")
-          : age < 3_600_000
-            ? t("codex.threads.ageMinutes", { count: formatNumber(Math.floor(age / 60_000)) })
-            : age < 86_400_000
-              ? t("codex.threads.ageHours", { count: formatNumber(Math.floor(age / 3_600_000)) })
-              : t("codex.threads.ageDays", { count: formatNumber(Math.floor(age / 86_400_000)) });
+        // Codex app-server reports Unix seconds; accept milliseconds too.
+        const updatedMs = thread.updatedAt < 1e12 ? thread.updatedAt * 1000 : thread.updatedAt;
+        stamp.textContent = formatRelativeTime(updatedMs);
+        stamp.title = formatDateTime(updatedMs);
         button.appendChild(stamp);
       }
       button.addEventListener("click", () => {
@@ -1508,6 +1538,27 @@ export function mountCodexRemote(
     }
   }
 
+  // Without a list the sidebar would keep saying "Loading…" or "No threads";
+  // say it failed and offer a re-read that never touches the composer.
+  function showThreadListFailure() {
+    sidebarThreads.replaceChildren(createHistoryRetryNotice(document, {
+      className: "cx-history-retry",
+      message: t("chat.history.listLoadFailed"),
+      retryLabel: t("common.retry"),
+      onRetry: async () => { await loadThreads(); }
+    }));
+  }
+
+  // A draft in the composer while no conversation is open belongs to a new
+  // chat: a later list load (retry, periodic refresh) must not open the saved
+  // conversation under it. A draft restored from storage at load, left as it
+  // was, is the saved conversation's own draft, so it keeps that conversation.
+  const draftAtLoad = promptInput.value;
+  function draftStartedWithoutConversation() {
+    const text = promptInput.value;
+    return (Boolean(text.trim()) && text !== draftAtLoad) || pendingAttachments.length > 0 || selectedContextRefs.length > 0;
+  }
+
   async function loadThreads() {
     const requestGeneration = threadListRequests.begin();
     let result: Json;
@@ -1516,6 +1567,8 @@ export function mountCodexRemote(
     } catch (error) {
       if (threadListRequests.isCurrent(requestGeneration)) {
         showToast(error instanceof Error ? translateServerMessage(error.message) : t("codex.threads.listLoadFailed"));
+        threadListFailed = !allThreads.length;
+        if (threadListFailed) showThreadListFailure();
       }
       return false;
     }
@@ -1524,13 +1577,16 @@ export function mountCodexRemote(
       allThreads = normalizeCodexThreadList(result);
     } catch {
       showToast(t("codex.threads.listInvalid"));
+      threadListFailed = !allThreads.length;
+      if (threadListFailed) showThreadListFailure();
       return false;
     }
+    threadListFailed = false;
     renderThreads();
 
     // thread/list can briefly lag a just-created or just-resumed thread.
     // Preserve the current identity instead of silently falling back to a new chat.
-    if (!activeThreadId) {
+    if (!activeThreadId && !draftStartedWithoutConversation()) {
       const saved = localStorage.getItem("opencode-pocket-codex-thread");
       const target = allThreads.find(thread => thread.id === saved);
       if (target) await selectThread(target);
@@ -1558,6 +1614,23 @@ export function mountCodexRemote(
     return { text: texts.join(""), attachments };
   }
 
+  // Keeps the thread selected and offers a manual re-read of its history.
+  // After a thread switch the previous thread's messages are removed, so they
+  // are neither shown nor copied as if they belonged to the new thread.
+  function showHistoryLoadFailure(threadId: string) {
+    if (unloadedSwitchThreadId === threadId) transcript.replaceChildren();
+    else transcript.querySelector("[data-history-retry]")?.remove();
+    transcript.appendChild(createHistoryRetryNotice(document, {
+      className: "cx-history-retry",
+      message: t("chat.history.loadFailed"),
+      retryLabel: t("common.retry"),
+      onRetry: async () => {
+        if (activeThreadId === threadId) await loadThreadHistory(threadId);
+      }
+    }));
+    followLatest();
+  }
+
   async function loadThreadHistory(threadId: string) {
     let result: unknown;
     try {
@@ -1565,6 +1638,7 @@ export function mountCodexRemote(
     } catch (error) {
       if (activeThreadId === threadId) {
         showToast(error instanceof Error ? translateServerMessage(error.message) : t("codex.threads.historyLoadFailed"));
+        showHistoryLoadFailure(threadId);
       }
       return false;
     }
@@ -1575,6 +1649,7 @@ export function mountCodexRemote(
       thread = normalizeCodexThreadHistory(result);
     } catch {
       showToast(t("codex.threads.historyInvalid"));
+      showHistoryLoadFailure(threadId);
       return false;
     }
     const turns = thread.turns;
@@ -1598,6 +1673,7 @@ export function mountCodexRemote(
       setExecutionState("idle");
     }
 
+    unloadedSwitchThreadId = null;
     transcript.replaceChildren();
 
     const renderedFailedTurnIds = new Set<string>();
@@ -1668,6 +1744,7 @@ export function mountCodexRemote(
         "thread/resume",
         { threadId: thread.id }
       );
+      if (activeThreadId !== thread.id) unloadedSwitchThreadId = thread.id;
       activeThreadId = thread.id;
       activeTurnId = null;
       activeAssistantBubble = null;
@@ -1991,6 +2068,10 @@ export function mountCodexRemote(
   }
 
   async function sendMessageUnlocked() {
+    if (drafts.sync()) {
+      showToast(t("chat.draft.projectSwitched"));
+      return;
+    }
     const text = promptInput.value.trim();
     if (!text && pendingAttachments.length === 0) return;
 
@@ -2069,6 +2150,7 @@ export function mountCodexRemote(
     }
 
     promptInput.value = "";
+    drafts.capture();
     pendingAttachments = [];
     selectedContextRefs = [];
     hideContextPalette();
@@ -3424,6 +3506,12 @@ export function mountCodexRemote(
       t("codex.models.modalTitle"),
       activeThreadId ? t("codex.models.thisChat") : t("codex.models.nextChat")
     );
+    await renderModelCatalog();
+  }
+
+  // Retry re-renders inside the open modal, so the opener saved by openModal
+  // keeps receiving focus when the picker closes.
+  async function renderModelCatalog(focusAfterRender = false) {
     modalBody.innerHTML = `<div class="cx-modal-loading">${escapeHtml(t("common.loading"))}</div>`;
 
     try {
@@ -3498,14 +3586,34 @@ export function mountCodexRemote(
         list.appendChild(option);
       }
 
-      modalBody.appendChild(list);
+      if (!list.childElementCount) {
+        const empty = document.createElement("p");
+        empty.className = "cx-cli-note";
+        empty.dataset.modelsEmpty = "";
+        empty.textContent = t("codex.models.empty");
+        modalBody.appendChild(empty);
+      } else {
+        modalBody.appendChild(list);
+      }
     } catch (error) {
       const message = error instanceof Error ? translateServerMessage(error.message) : String(error);
       modalBody.replaceChildren();
       const note = document.createElement("p");
       note.className = "cx-cli-note";
+      note.setAttribute("role", "alert");
       note.textContent = message;
-      modalBody.appendChild(note);
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "cx-model-row";
+      retry.dataset.modelsRetry = "";
+      retry.textContent = t("common.retry");
+      retry.addEventListener("click", () => void renderModelCatalog(true));
+      modalBody.append(note, retry);
+    }
+    if (focusAfterRender) {
+      const target = modalBody.querySelector<HTMLElement>("button") ?? modalBody;
+      if (target === modalBody) modalBody.tabIndex = -1;
+      target.focus({ preventScroll: true });
     }
   }
 
@@ -3544,6 +3652,7 @@ export function mountCodexRemote(
   detailsToggle.addEventListener("click", toggleDetails);
   window.addEventListener("devmoter:close-chat-history", () => closeSidebar(false));
   window.addEventListener("devmoter:surface-changed", () => closeSidebar(false));
+  window.addEventListener("devmoter:surface-changed", () => drafts.sync());
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") void resumeFromBackground();
   });
@@ -3642,6 +3751,14 @@ export function mountCodexRemote(
     plus.setAttribute("aria-expanded", String(!plusMenu.classList.contains("hidden")));
   });
   photo.addEventListener("click", () => photoInput.click());
+  root.querySelector<HTMLButtonElement>("#cxCopyLatest")!.addEventListener("click", () => {
+    closePlusMenu();
+    const text = latestAssistantText(
+      Array.from(transcript.querySelectorAll<HTMLDivElement>(".cx-message.assistant"), bubble => assistantText.get(bubble))
+    );
+    if (text) void copyText(text);
+    else showToast(t("chat.copyLatest.none"));
+  });
   file.addEventListener("click", () => fileInput.click());
   pluginsQuick.addEventListener("click", () => {
     closePlusMenu();

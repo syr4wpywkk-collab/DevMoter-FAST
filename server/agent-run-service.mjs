@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, rename, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
 import {
   SubagentRuntime,
@@ -37,16 +37,64 @@ async function readJsonFile(filePath) {
 async function atomicWriteJson(filePath, value) {
   await mkdir(dirname(filePath), { recursive: true, mode: 0o700 });
   const temp = `${filePath}.${process.pid}.${randomUUID()}.tmp`;
-  await writeFile(temp, JSON.stringify(value, null, 2) + "\n", { mode: 0o600 });
-  await rename(temp, filePath);
+  const handle = await open(temp, "wx", 0o600);
+  try {
+    try {
+      await handle.writeFile(JSON.stringify(value, null, 2) + "\n", "utf8");
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+    await rename(temp, filePath);
+  } catch (error) {
+    try {
+      await unlink(temp);
+    } catch (cleanupError) {
+      if (cleanupError?.code !== "ENOENT") {
+        throw new AggregateError([error, cleanupError], "Agent run state write and temporary file cleanup failed");
+      }
+    }
+    throw error;
+  }
+}
+
+const DEFAULT_MAX_RUN_MS = 30 * 60 * 1000;
+
+/**
+ * Codex execution settings for a run, derived from its capability policy.
+ * The scoped prompt only asks the model to stay inside the policy; the sandbox
+ * and approval policy are what actually stop a prompt-injected subagent.
+ */
+export function codexExecutionSettingsFor(capabilityPolicy) {
+  const effective = normalizeCapabilityPolicy(capabilityPolicy);
+  const allows = group => effective.allow.includes(group);
+  const readOnly =
+    !allows("files") ||
+    !allows("commands") ||
+    effective.mutationPolicy === "read-only-until-explicit-transition";
+  // Only ever tighten: an unrestricted run inherits the host's Codex configuration, which
+  // may itself be read-only or "untrusted" and must not be widened by a delegated run.
+  const settings = {};
+  if (readOnly) settings.sandbox = "read-only";
+  // "untrusted" asks before anything but known-safe read commands.
+  if (!allows("commands")) settings.approvalPolicy = "untrusted";
+  return settings;
 }
 
 export function createAgentRunService({
   filePath,
   codex,
+  resolveProject,
+  assertExecutionAllowed = () => {},
+  maxRunMs = DEFAULT_MAX_RUN_MS,
   policy = { maxDepth: 3, tokenBudget: 12000, turnBudget: 8 }
 } = {}) {
   if (!filePath || !codex) throw new Error("Agent run service dependencies are required");
+  if (typeof resolveProject !== "function") throw new Error("Agent run service requires a project resolver");
+  const runDeadlineMs = Number.isFinite(Number(maxRunMs)) && Number(maxRunMs) > 0
+    ? Math.min(Number(maxRunMs), 24 * 60 * 60 * 1000)
+    : DEFAULT_MAX_RUN_MS;
+  const deadlines = new Map();
 
   const events = new EventEmitter();
   const threadToRun = new Map();
@@ -59,7 +107,13 @@ export function createAgentRunService({
       const projectId = String(run.context?.projectId || "").trim();
       if (!projectId) throw new Error("A registered DevMoter Project is required for Codex subagents");
 
-      const threadParams = { projectId };
+      assertExecutionAllowed();
+      // Only a registered project selects the working directory; the id itself is never sent to Codex.
+      const project = await resolveProject(projectId);
+      const cwd = typeof project?.path === "string" ? project.path : "";
+      if (!cwd.trim()) throw new Error("Registered project not found or unavailable");
+
+      const threadParams = { cwd, ...codexExecutionSettingsFor(run.capabilityPolicy) };
       if (run.model) threadParams.model = run.model;
       const startedThread = await codex.request("thread/start", threadParams);
       const thread = startedThread?.thread;
@@ -109,6 +163,10 @@ export function createAgentRunService({
       ) {
         throw new Error(`${required} capability is denied by the inherited subagent policy`);
       }
+      if (decision === "acceptForSession") {
+        throw new Error("Subagent approvals are granted one request at a time");
+      }
+      if (decision === "accept") assertExecutionAllowed();
       codex.respondApproval(approval.id, decision);
     }
   };
@@ -158,7 +216,49 @@ export function createAgentRunService({
     persistTimer.unref?.();
   }
 
-  runtime.subscribe(schedulePersistAndBroadcast);
+  function clearDeadline(runId) {
+    const timer = deadlines.get(runId);
+    if (timer) clearTimeout(timer);
+    deadlines.delete(runId);
+  }
+
+  // A run that never reaches a terminal state (looping model, lost event) would hold its
+  // fleet slot and keep consuming the backend forever; bound it by wall-clock time.
+  function trackDeadline(run) {
+    if (!run) return;
+    if (TERMINAL_STATES.has(run.state)) {
+      clearDeadline(run.id);
+      return;
+    }
+    if (deadlines.has(run.id)) return;
+    const timer = setTimeout(() => {
+      deadlines.delete(run.id);
+      const current = runtime.getRun(run.id);
+      if (!current || TERMINAL_STATES.has(current.state)) return;
+      if (current.pendingApproval) {
+        try { codex.respondApproval(current.pendingApproval.id, "cancel"); } catch {}
+      }
+      if (current.sessionId && current.turnId) {
+        void codex.request("turn/interrupt", { threadId: current.sessionId, turnId: current.turnId }).catch(() => {});
+      }
+      try {
+        runtime.update(run.id, {
+          state: "failed",
+          error: "Agent run exceeded its execution time limit",
+          pendingApproval: null
+        });
+      } catch (error) {
+        console.error("Agent run deadline enforcement failed", errorMessage(error));
+      }
+    }, runDeadlineMs);
+    timer.unref?.();
+    deadlines.set(run.id, timer);
+  }
+
+  runtime.subscribe(run => {
+    if (!disposed) trackDeadline(run);
+    schedulePersistAndBroadcast(run);
+  });
 
   function rebuildThreadIndex() {
     threadToRun.clear();
@@ -190,7 +290,12 @@ export function createAgentRunService({
         });
       }
     }
-    await atomicWriteJson(filePath, runtime.exportState());
+    // Marking runs failed above already queued writes. Write through the same
+    // queue so startup never has two writes in flight and `ready()` resolves
+    // only after all of them, while a failed startup write still rejects.
+    const startupWrite = persistChain.then(() => atomicWriteJson(filePath, runtime.exportState()));
+    persistChain = startupWrite.catch(() => {});
+    await startupWrite;
   })();
 
   function runIdForParams(params) {
@@ -203,6 +308,8 @@ export function createAgentRunService({
     if (!runId) return;
     const method = String(event?.method || "");
     const params = event?.params || {};
+    // Late backend events must not revive a run that was cancelled, failed or timed out.
+    if (TERMINAL_STATES.has(runtime.getRun(runId)?.state)) return;
 
     try {
       if (method === "turn/started") {
@@ -255,7 +362,7 @@ export function createAgentRunService({
       const run = runtime.getRun(runId);
       if (!run) return;
       const effective = normalizeCapabilityPolicy(run.capabilityPolicy);
-      if (!effective.allow.includes(required)) {
+      if (TERMINAL_STATES.has(run.state) || !effective.allow.includes(required)) {
         codex.respondApproval(request.id, "decline");
         return;
       }
@@ -350,6 +457,7 @@ export function createAgentRunService({
 
     async dispose() {
       disposed = true;
+      for (const runId of [...deadlines.keys()]) clearDeadline(runId);
       await persistNow();
       await persistChain.catch(() => {});
       codex.off("notification", onNotification);

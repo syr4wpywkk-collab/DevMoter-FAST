@@ -7,6 +7,7 @@ import http from "node:http";
 import { createServer as createNetServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
 // The browser speaks one DevMoter shape to /api/opencode/session/…; the server
@@ -150,8 +151,8 @@ async function withDevMoter(routes, run) {
     stdio: ["ignore", "pipe", "pipe"]
   });
   const authorization = `Basic ${Buffer.from(`devmoter:${authPassword}`).toString("base64")}`;
-  const call = async (method, path, body, headers = {}) => {
-    const response = await fetch(`http://127.0.0.1:${appPort}/api/opencode${path}`, {
+  const request = async (method, path, body, headers = {}) => {
+    const response = await fetch(`http://127.0.0.1:${appPort}${path}`, {
       method,
       headers: { authorization, origin: `http://127.0.0.1:${appPort}`, ...(body !== undefined ? { "content-type": "application/json" } : {}), ...headers },
       ...(body !== undefined ? { body: typeof body === "string" ? body : JSON.stringify(body) } : {}),
@@ -164,7 +165,7 @@ async function withDevMoter(routes, run) {
   };
   try {
     await waitForReady(child);
-    await run({ call, received });
+    await run({ call: (method, path, ...args) => request(method, `/api/opencode${path}`, ...args), request, received });
   } finally {
     child.kill("SIGTERM");
     await Promise.race([once(child, "exit"), new Promise(resolve => setTimeout(resolve, 1500))]);
@@ -274,5 +275,31 @@ test("OpenCode 2.x: the same DevMoter routes drive /api/session", async () => {
     assert.deepEqual(events.map(event => event.type), ["session.text.delta", "permission.asked", "question.asked"]);
     assert.equal(events[1].properties.action, "shell");
     assert.equal(events[2].properties.questions[0].question, "Pick a color");
+  });
+});
+
+test("OpenCode 2.x: queued follow-ups honor the recorded read-only agent", async () => {
+  const routes = {
+    ...v2Routes,
+    "POST /api/session": { data: { ...session, agent: "plan" } },
+    "GET /api/session/active": { data: {} }
+  };
+  await withDevMoter(routes, async ({ call, request, received }) => {
+    const created = await call("POST", "/session", { agent: "plan" });
+    assert.equal(created.status, 200, created.text);
+    const queued = await request("POST", "/api/session-control/queue", {
+      backend: "opencode", sessionId: "ses_1", text: "Summarize the current plan"
+    });
+    assert.equal(queued.status, 201, queued.text);
+
+    const deadline = Date.now() + 8000;
+    const posts = () => received.filter(item => item.method === "POST" && item.path.startsWith("/api/session/ses_1/"));
+    while (!posts().some(item => item.path.endsWith("/prompt")) && Date.now() < deadline) {
+      await delay(50);
+    }
+    assert.deepEqual(posts(), [
+      { method: "POST", path: "/api/session/ses_1/agent", body: { agent: "plan" } },
+      { method: "POST", path: "/api/session/ses_1/prompt", body: { text: "Summarize the current plan" } }
+    ]);
   });
 });

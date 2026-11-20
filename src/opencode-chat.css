@@ -54,6 +54,8 @@ body.opencode-mode { background: var(--canvas-base); }
 }
 .ocx-app .ocx-icon:hover { background: var(--oc-panel-2); }
 .ocx-app .ocx-session-title { justify-self: start; justify-items: start; max-width: 100%; min-height: 44px; padding-inline: 6px; }
+.ocx-app .ocx-session-title strong,
+.ocx-app .ocx-session-title small { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ocx-app .ocx-session-title strong { font-size: 1rem; font-weight: 600; }
 .ocx-app .ocx-session-title small { font-size: var(--font-size-caption, 12px); }
 .ocx-app .ocx-main { top: var(--ocx-header-height); }
@@ -125,8 +127,8 @@ body.opencode-mode { background: var(--canvas-base); }
 .ocx-app .dm-code-block { max-width: 100%; min-width: 0; margin: 1em 0; overflow: hidden; border: 1px solid var(--oc-line); border-radius: 12px; background: var(--oc-panel-2); }
 .ocx-app .dm-code-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 0 8px 0 14px; background: var(--oc-panel); color: var(--oc-muted); font-size: .75rem; }
 .ocx-app .dm-code-language { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.ocx-app .dm-code-copy { flex: 0 0 auto; min-height: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--oc-text); font-size: .75rem; }
-.ocx-app .dm-code-copy:hover { background: var(--oc-accent-soft); }
+.ocx-app :is(.dm-code-copy, .dm-code-wrap) { flex: 0 0 auto; min-height: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--oc-text); font-size: .75rem; }
+.ocx-app :is(.dm-code-copy, .dm-code-wrap):hover { background: var(--oc-accent-soft); }
 .ocx-app .cx-markdown pre { max-width: 100%; margin: 0; padding: 16px; overflow-x: auto; overscroll-behavior-x: contain; white-space: pre; overflow-wrap: normal; line-height: 1.6; }
 .ocx-app .cx-markdown pre code { padding: 0; background: transparent; white-space: pre; }
 .ocx-app .dm-markdown-table { max-width: 100%; margin: 1em 0; overflow-x: auto; overscroll-behavior-x: contain; }
@@ -303,3 +305,16 @@ body.opencode-mode { background: var(--canvas-base); }
 
 html[data-devmoter-theme="dark"] .ocx-app .cx-markdown a,
 html[data-devmoter-theme="dark"] .ocx-app .ocx-eyebrow { color: var(--oc-text); }
+
+.ocx-app .ocx-history-retry {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+  width: min(100%, var(--ocx-content-width)); margin: 16px auto; padding: 12px 16px;
+  border: 1px solid var(--oc-line); border-radius: 8px; color: var(--oc-text); font-size: .9rem; line-height: 1.5;
+}
+.ocx-app .ocx-history-retry p { flex: 1 1 16em; margin: 0; color: var(--oc-text); }
+.ocx-app .ocx-history-retry button {
+  min-height: 44px; padding: 0 16px; border: 1px solid var(--oc-line); border-radius: 8px;
+  background: var(--oc-panel-2); color: var(--oc-text); font: inherit;
+}
+.ocx-app .ocx-history-retry button:disabled { opacity: .6; }
+.ocx-app .ocx-history-retry button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

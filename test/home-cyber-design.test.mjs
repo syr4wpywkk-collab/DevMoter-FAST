@@ -31,17 +31,18 @@ test("Home keeps a real two-column launcher and uses the canonical app registry"
     onPreviewApp: (id, message) => previews.push({ id, message })
   });
   assert.match(root.textContent, /Workspace/);
-  assert.equal(root.querySelectorAll("[data-home-app]").length, 13);
-  assert.equal(root.querySelector("[data-home-app-count]").textContent, "13 apps");
-  assert.equal(root.querySelector("[data-home-app-grid]").children.length, 13);
+  assert.equal(root.querySelectorAll("[data-home-app]").length, 14);
+  assert.equal(root.querySelector("[data-home-app-count]").textContent, "14 apps");
+  assert.equal(root.querySelector("[data-home-app-grid]").children.length, 14);
   assert.equal(root.querySelector('[data-home-app="chat"]').getAttribute("type"), "button");
   assert.equal(root.querySelector("[data-home-health]").dataset.state, "checking", "never assume online");
   assert.doesNotMatch(root.textContent, /98\.4k|Swarm 8\/8|24ms|FastAPI Streamer|CodeGeeX/);
   root.querySelector('[data-home-app="terminal"]').click();
   root.querySelector('[data-home-app="knowledge"]').click();
-  assert.deepEqual(launched, ["terminal"]);
+  root.querySelector('[data-home-app="browser"]').click();
+  assert.deepEqual(launched, ["terminal", "knowledge"]);
   assert.equal(previews.length, 1);
-  assert.equal(previews[0].id, "knowledge");
+  assert.equal(previews[0].id, "browser");
   assert.match(root.querySelector("[data-home-recent]").textContent, /Terminal/);
   dom.window.close();
 });
@@ -67,7 +68,7 @@ test("search, Ctrl+K and Escape filter existing real app launchers", async () =>
   assert.deepEqual(launched, ["terminal"]);
   dom.window.document.dispatchEvent(new dom.window.KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
   assert.equal(toggle.getAttribute("aria-expanded"), "false");
-  assert.equal(root.querySelectorAll("[data-home-app]:not(.hidden)").length, 13);
+  assert.equal(root.querySelectorAll("[data-home-app]:not(.hidden)").length, 14);
   dom.window.close();
 });
 
@@ -92,7 +93,7 @@ test("recent application cards use validated local app IDs and persist safely", 
   // Simulate tampered storage; bogus actions and markup must not be injected.
   dom.window.localStorage.setItem("devmoter-home-recent-apps-v1", JSON.stringify([
     { id: "<img src=x onerror=alert(1)>", openedAt: Date.now() },
-    { id: "knowledge", openedAt: Date.now() },
+    { id: "browser", openedAt: Date.now() },
     { id: "chat", openedAt: Date.now() }
   ]));
   mountHomeSurface(root, options);

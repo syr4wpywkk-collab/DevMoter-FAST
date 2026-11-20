@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { DICTIONARIES } from "../src/i18n-core.mjs";
 
 const EXPECTED_APPS = [
-  "office", "chat", "projects", "mission-control", "knowledge", "terminal", "git", "review", "agents",
+  "office", "chat", "projects", "mission-control", "knowledge", "prompts", "terminal", "git", "review", "agents",
   "sessions", "browser", "automation", "developer-workflows"
 ];
 
@@ -24,9 +24,10 @@ test("App Registry has unique fixed IDs and all initial Apps", async () => {
   }
 });
 
-test("Knowledge and Browser are truthful previews and System entries stay separate", async () => {
+test("Knowledge is a real app, Browser is a truthful preview and System entries stay separate", async () => {
   const [registry, shell] = await Promise.all([source("app-registry.ts"), source("app-shell.ts")]);
-  assert.match(registry, /id: "knowledge"[^\n]+availability: "preview"[^\n]+previewMessage: "Knowledge is not available yet/);
+  assert.match(registry, /id: "knowledge"[^\n]+availability: "available", launchKind: "feature" \}/);
+  assert.ok(shell.includes('case "knowledge": window.dispatchEvent(new CustomEvent("devmoter:open-knowledge")); break;'));
   assert.match(registry, /id: "browser"[^\n]+availability: "preview"[^\n]+previewMessage: "Browser does not have a separate app surface/);
   // System entries (Vault, devices, notifications…) live in Settings, reached from the ☰ menu.
   const nav = await source("unified-workspace-nav.ts");

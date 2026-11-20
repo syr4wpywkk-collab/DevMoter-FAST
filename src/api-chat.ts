@@ -1,10 +1,17 @@
 import { formatNumber, t, translateServerMessage } from "./i18n";
+import { apiErrorMessage, requestErrorMessage } from "./api-error.mjs";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { normalizeApiProviderCatalog } from "./api-provider-catalog.mjs";
 import { normalizeApiAttachment } from "./api-attachment.mjs";
 import { apiModelLabel } from "./api-model-label.mjs";
+import { createChatDraftBinding } from "./chat-draft.mjs";
+import { latestAssistantText } from "./chat-transcript-actions.mjs";
+import { chatHistoryTriggerMarkup } from "./chat-history-trigger.mjs";
 import "./api-chat-surface.css";
+
+const API_SEND_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>';
+const API_STOP_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg>';
 
 type ApiProvider = {
   id: string;
@@ -93,9 +100,13 @@ async function apiJson<T = any>(path: string, init: RequestInit = {}): Promise<T
     ...init,
     cache: method === "GET" ? "no-store" : undefined,
     headers
+  }).catch(error => {
+    // Offline or blocked: say so instead of the browser's "Failed to fetch".
+    if (error instanceof TypeError) throw new Error(requestErrorMessage(error));
+    throw error;
   });
   const payload = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(translateServerMessage(payload?.error || t("common.httpError", { status: res.status })));
+  if (!res.ok) throw new Error(apiErrorMessage(payload, res.status));
   return payload as T;
 }
 
@@ -135,13 +146,14 @@ export function mountApiChat(
       </aside>
 
       <header class="api-topbar">
-        <button id="apiMenu" class="api-icon-button" type="button" aria-label="${escapeHtml(t("apiChat.menuAria"))}">☰</button>
+        ${chatHistoryTriggerMarkup({ id: "apiMenu", className: "api-icon-button", ariaLabel: t("nav.openChatHistoryAria"), title: t("nav.chatHistoryTitle") })}
         <div class="api-brand">
           <strong>API Chat</strong>
           <small id="apiModelTopLabel">${escapeHtml(t("apiChat.topModelUnset"))}</small>
         </div>
         <div class="api-header-actions">
-          <button id="apiSettingsTop" class="api-icon-button api-settings-button" type="button" aria-label="${escapeHtml(t("apiChat.providersTitle"))}">⚙</button>
+          <button id="apiSettingsTop" class="api-icon-button api-settings-button" type="button" aria-label="${escapeHtml(t("apiChat.providersTitle"))}" title="${escapeHtml(t("apiChat.providersTitle"))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
+          <button id="apiNewChatTop" class="api-icon-button" type="button" aria-label="${escapeHtml(t("apiChat.newChatAria"))}" title="${escapeHtml(t("apiChat.newChatAria"))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
         </div>
       </header>
 
@@ -157,17 +169,18 @@ export function mountApiChat(
       <section class="api-composer-wrap">
         <form id="apiForm" class="api-composer">
           <div id="apiAttachments" class="api-attachment-tray hidden"></div>
-          <textarea id="apiPrompt" rows="1" placeholder="${escapeHtml(t("apiChat.promptPlaceholder"))}" aria-label="${escapeHtml(t("apiChat.promptAria"))}"></textarea>
+          <textarea id="apiPrompt" rows="1" enterkeyhint="send" placeholder="${escapeHtml(t("apiChat.promptPlaceholder"))}" aria-label="${escapeHtml(t("apiChat.promptAria"))}"></textarea>
           <input id="apiImageInput" class="hidden" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple />
           <small id="apiStatus" class="api-status" role="status" aria-live="polite">${escapeHtml(t("apiChat.loadingProviders"))}</small>
+          <button id="apiCopyLatest" class="api-copy-latest" type="button">${escapeHtml(t("chat.copyLatest.button"))}</button>
           <div class="api-composer-foot">
-            <button id="apiAttachImage" class="api-attach-button" type="button" aria-label="${escapeHtml(t("apiChat.attachImageAria"))}">＋</button>
+            <button id="apiAttachImage" class="api-attach-button" type="button" aria-label="${escapeHtml(t("apiChat.attachImageAria"))}" title="${escapeHtml(t("apiChat.attachImageAria"))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
             <div class="api-picker-row">
               <select id="apiProvider" aria-label="${escapeHtml(t("apiChat.providerSelectAria"))}"></select>
               <select id="apiModel" aria-label="${escapeHtml(t("apiChat.modelSelectAria"))}"></select>
               <select id="apiReasoning" aria-label="${escapeHtml(t("apiChat.reasoningAria"))}"></select>
             </div>
-            <button id="apiSend" type="submit" aria-label="${escapeHtml(t("common.send"))}">↑</button>
+            <button id="apiSend" type="submit" aria-label="${escapeHtml(t("common.send"))}" title="${escapeHtml(t("common.send"))}">${API_SEND_ICON}</button>
           </div>
         </form>
       </section>
@@ -197,6 +210,7 @@ export function mountApiChat(
   const goOpenCode = root.querySelector<HTMLButtonElement>("#apiGoOpenCode")!;
   const settingsTop = root.querySelector<HTMLButtonElement>("#apiSettingsTop")!;
   const newChat = root.querySelector<HTMLButtonElement>("#apiNewChat")!;
+  const newChatTop = root.querySelector<HTMLButtonElement>("#apiNewChatTop")!;
   const providerSelect = root.querySelector<HTMLSelectElement>("#apiProvider")!;
   const modelSelect = root.querySelector<HTMLSelectElement>("#apiModel")!;
   const reasoningSelect = root.querySelector<HTMLSelectElement>("#apiReasoning")!;
@@ -334,6 +348,19 @@ export function mountApiChat(
     renderPendingAttachments();
   }
 
+  const drafts = createChatDraftBinding<ApiAttachment[]>({
+    provider: "api-chat",
+    input: prompt,
+    storage: window.sessionStorage,
+    getProjectId: () => localStorage.getItem(PROJECT_KEY),
+    takeExtras: () => pendingAttachments,
+    restoreExtras: extras => {
+      pendingAttachments = extras ?? [];
+      renderPendingAttachments();
+    },
+    onRestore: () => resizePrompt()
+  });
+
   function selectConversation(id: string) {
     if (uploadingCount > 0) return;
     if (id === activeConversationId) {
@@ -372,15 +399,18 @@ export function mountApiChat(
     providerSelect.disabled = busy;
     modelSelect.disabled = busy || !provider?.models.length;
     reasoningSelect.disabled = busy || reasoningSelect.options.length <= 1;
-    send.disabled = !providerCatalogAvailable || !provider?.ready || !modelSelect.value || busy;
+    // While a reply is pending the send button is Stop, like Codex, OpenCode and Qwen.
+    send.disabled = sending ? false : !providerCatalogAvailable || !provider?.ready || !modelSelect.value || busy;
     attachImage.disabled = busy;
     newChat.disabled = uploadingCount > 0;
     history.querySelectorAll<HTMLButtonElement>("button").forEach(button => { button.disabled = uploadingCount > 0; });
     for (const select of [providerSelect, modelSelect, reasoningSelect]) {
       select.title = select.selectedOptions[0]?.textContent || select.getAttribute("aria-label") || "";
     }
-    send.textContent = sending ? "…" : "↑";
-    send.setAttribute("aria-label", sending ? t("apiChat.waitingResponse") : t("common.send"));
+    send.innerHTML = sending ? API_STOP_ICON : API_SEND_ICON;
+    const sendLabel = sending ? t("common.stop") : t("common.send");
+    send.setAttribute("aria-label", sendLabel);
+    send.title = sendLabel;
     form.setAttribute("aria-busy", String(sending));
     status.title = status.textContent || "";
   }
@@ -623,7 +653,7 @@ export function mountApiChat(
       () => new Error(t("apiChat.imageUploadTimeout"))
     );
     const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(translateServerMessage(payload?.error || t("common.httpError", { status: res.status })));
+    if (!res.ok) throw new Error(apiErrorMessage(payload, res.status));
 
     return {
       ...normalizeApiAttachment(payload, file),
@@ -1182,10 +1212,19 @@ export function mountApiChat(
   }
 
   async function submit() {
+    if (sending) {
+      activeChatController?.abort();
+      return;
+    }
+    if (uploadingCount > 0) return;
+    if (drafts.sync()) {
+      status.textContent = t("chat.draft.projectSwitched");
+      return;
+    }
     const rawText = prompt.value.trim();
     const provider = currentProvider();
     const model = modelSelect.value;
-    if ((!rawText && pendingAttachments.length === 0) || !provider?.ready || !model || sending || uploadingCount > 0) return;
+    if ((!rawText && pendingAttachments.length === 0) || !provider?.ready || !model || sending) return;
     if (provider.secretRef && (localStorage.getItem(PROJECT_KEY) || "") !== provider.projectId) {
       status.textContent = t("apiChat.vaultProjectMismatch");
       return;
@@ -1208,11 +1247,13 @@ export function mountApiChat(
     activeChatController?.abort();
     activeChatController = controller;
     let requestTimedOut = false;
+    let stoppedByUser = false;
     const requestTimeout = window.setTimeout(() => {
       requestTimedOut = true;
       controller.abort();
     }, API_CHAT_REQUEST_TIMEOUT_MS);
     prompt.value = "";
+    drafts.capture();
     resizePrompt();
     renderMessages();
     sending = true;
@@ -1245,7 +1286,11 @@ export function mountApiChat(
       renderMessages();
       status.textContent = "";
     } catch (error) {
-      if (generation !== conversationGeneration || (controller.signal.aborted && !requestTimedOut)) return;
+      if (generation !== conversationGeneration) return;
+      if (controller.signal.aborted && !requestTimedOut) {
+        stoppedByUser = true;
+        return;
+      }
       responseFailed = true;
       messages.push({
         role: "assistant",
@@ -1267,6 +1312,9 @@ export function mountApiChat(
         if (responseFailed) {
           status.textContent = t("apiChat.errorStatus", { provider: provider.name });
           status.title = status.textContent;
+        } else if (stoppedByUser) {
+          status.textContent = t("apiChat.stopped");
+          status.title = status.textContent;
         }
         prompt.focus();
       }
@@ -1281,6 +1329,19 @@ export function mountApiChat(
   };
   window.addEventListener("devmoter:global-nav-opened", closeLocalOverlays);
   window.addEventListener("devmoter:surface-changed", closeLocalOverlays);
+  window.addEventListener("devmoter:surface-changed", () => {
+    if (uploadingCount === 0) drafts.sync();
+  });
+  root.querySelector<HTMLButtonElement>("#apiCopyLatest")!.addEventListener("click", () => {
+    const text = latestAssistantText(messages.map(message => (message.role === "assistant" ? message.content : "")));
+    if (!text) {
+      status.textContent = t("chat.copyLatest.none");
+      return;
+    }
+    void copyMessage(text)
+      .then(() => { status.textContent = t("common.copied"); })
+      .catch(() => { status.textContent = t("common.copyFailed"); });
+  });
   agentSwitchButton.addEventListener("click", () => {
     const open = agentSwitchMenu.classList.toggle("hidden") === false;
     agentSwitchButton.setAttribute("aria-expanded", String(open));
@@ -1331,6 +1392,7 @@ export function mountApiChat(
       (event.shiftKey ? last : first).focus({ preventScroll: true });
     }
   });
+  newChatTop.addEventListener("click", () => newChat.click());
   newChat.addEventListener("click", () => {
     if (uploadingCount > 0) return;
     archiveConversation();

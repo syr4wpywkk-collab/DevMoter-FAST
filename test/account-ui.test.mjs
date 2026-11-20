@@ -1,4 +1,5 @@
 import test from "node:test";
+import * as fetchTimeout from "../src/fetch-with-timeout.mjs";
 import assert from "node:assert/strict";
 import * as i18nCore from "../src/i18n-core.mjs";
 
@@ -61,7 +62,7 @@ function harness({ githubLinked = true } = {}) {
   const exports = {};
   vm.runInNewContext(compiled, {
     exports,
-    require: name => (name === "./i18n" ? jaI18n : {}),
+    require: name => (name === "./i18n" ? jaI18n : name === "./fetch-with-timeout.mjs" ? fetchTimeout : {}),
     window,
     document: window.document,
     navigator: window.navigator,

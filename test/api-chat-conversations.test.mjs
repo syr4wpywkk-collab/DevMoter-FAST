@@ -9,6 +9,10 @@ import * as fetchTimeout from "../src/fetch-with-timeout.mjs";
 import * as providerCatalog from "../src/api-provider-catalog.mjs";
 import * as apiAttachment from "../src/api-attachment.mjs";
 import * as apiModelLabel from "../src/api-model-label.mjs";
+import * as chatDraft from "../src/chat-draft.mjs";
+import * as apiError from "../src/api-error.mjs";
+import * as transcriptActions from "../src/chat-transcript-actions.mjs";
+import * as chatHistoryTrigger from "../src/chat-history-trigger.mjs";
 
 const source = await readFile(new URL("../src/api-chat.ts", import.meta.url), "utf8");
 const compiled = ts.transpileModule(source, {
@@ -85,6 +89,10 @@ async function harness(t, { rejectOnAbort = false } = {}) {
   const modules = {
     "./i18n": i18nCore,
     "./chat-markdown.mjs": { renderChatMarkdown },
+    "./chat-draft.mjs": chatDraft,
+    "./api-error.mjs": apiError,
+    "./chat-transcript-actions.mjs": transcriptActions,
+    "./chat-history-trigger.mjs": chatHistoryTrigger,
     "./fetch-with-timeout.mjs": fetchTimeout,
     "./api-provider-catalog.mjs": providerCatalog,
     "./api-attachment.mjs": apiAttachment,
@@ -243,6 +251,22 @@ test("API Chat timeout aborts the request, retains the prompt, and restores send
   assert.equal(ui.root.querySelector("#apiSend").disabled, false);
 });
 
+test("#349: while a reply is pending the send button is Stop and cancels only that request", async t => {
+  const ui = await harness(t, { rejectOnAbort: true });
+  const send = ui.root.querySelector("#apiSend");
+  const request = ui.submit("Stop me");
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(send.disabled, false, "Stop stays clickable while the reply is pending");
+  assert.equal(send.getAttribute("aria-label"), "Stop");
+  ui.root.querySelector("#apiForm").dispatchEvent(new ui.window.Event("submit", { bubbles: true, cancelable: true }));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(request.init.signal.aborted, true);
+  assert.equal(ui.root.querySelector("#apiStatus").textContent, "Stopped");
+  assert.equal(ui.root.querySelector(".api-message.user")?.textContent, "Stop me", "the prompt stays in the conversation");
+  assert.equal(ui.root.querySelector(".api-message.assistant"), null, "no error bubble for a user stop");
+  assert.equal(send.getAttribute("aria-label"), "Send");
+});
+
 test("API conversations restore raw messages and provider choices with safe Markdown and exact copy", async t => {
   const ui = await harness(t);
   const form = ui.root.querySelector("#apiForm");
@@ -310,7 +334,7 @@ test("new chat and history switching abort active responses and reject late repl
   old.resolve({ message: { content: "STALE AFTER NEW CHAT" } });
   await settle();
   assert.ok(!ui.root.querySelector("#apiTranscript").textContent.includes("STALE"));
-  assert.equal(ui.root.querySelector("#apiSend").disabled, true, "old finally does not clear current sending state");
+  assert.equal(ui.root.querySelector("#apiSend").getAttribute("aria-label"), "Stop", "old finally does not clear current sending state");
   current.resolve({ message: { content: "Current answer" } });
   await settle();
   const pending = ui.submit("Pending before switching history");
@@ -394,4 +418,57 @@ test("memory history keeps at most 20 conversations and 100 messages per convers
   assert.ok(!ui.history().some(row => row.textContent.includes("Bounded chat 0")));
   ui.historyChat("Bounded chat 1").click();
   assert.equal(ui.root.querySelector(".api-message.user").textContent, "Bounded chat 1");
+});
+
+test("API Chat drafts stay with their project and are never sent by a project switch", async t => {
+  const ui = await harness(t);
+  const prompt = ui.root.querySelector("#apiPrompt");
+  const surfaceChanged = () => ui.window.dispatchEvent(new ui.window.CustomEvent("devmoter:surface-changed"));
+
+  prompt.value = "draft for project one";
+  prompt.dispatchEvent(new ui.window.Event("input", { bubbles: true }));
+
+  ui.window.localStorage.setItem("opencode-pocket-project", "project-2");
+  // Submitting before the surface noticed the switch must not send project one's draft.
+  ui.root.querySelector("#apiForm").dispatchEvent(new ui.window.Event("submit", { bubbles: true, cancelable: true }));
+  assert.equal(ui.chats.length, 0);
+  assert.equal(prompt.value, "");
+
+  prompt.value = "draft for project two";
+  prompt.dispatchEvent(new ui.window.Event("input", { bubbles: true }));
+  ui.window.localStorage.setItem("opencode-pocket-project", "project-1");
+  surfaceChanged();
+  assert.equal(prompt.value, "draft for project one");
+  assert.equal(ui.chats.length, 0);
+
+  const stored = Object.keys(ui.window.sessionStorage).filter(key => key.startsWith("devmoter-chat-draft:"));
+  assert.deepEqual(stored.sort(), ["devmoter-chat-draft:v1:api-chat:project-1", "devmoter-chat-draft:v1:api-chat:project-2"]);
+
+  await ui.answer("draft for project one", "done");
+  assert.equal(ui.window.sessionStorage.getItem("devmoter-chat-draft:v1:api-chat:project-1"), null);
+  assert.equal(ui.window.sessionStorage.getItem("devmoter-chat-draft:v1:api-chat:project-2"), "draft for project two");
+});
+
+test("API Chat copies the latest answer of the active conversation only", async t => {
+  const ui = await harness(t);
+  const copyLatest = ui.root.querySelector("#apiCopyLatest");
+  const status = ui.root.querySelector("#apiStatus");
+
+  copyLatest.click();
+  await settle();
+  assert.deepEqual(ui.copied, []);
+  assert.notEqual(status.textContent, "");
+  assert.equal(ui.chats.length, 0);
+
+  await ui.answer("First question", "First answer");
+  await ui.answer("Second question", "Second answer");
+  copyLatest.click();
+  await settle();
+  assert.deepEqual(ui.copied, ["Second answer"]);
+
+  ui.root.querySelector("#apiNewChat").click();
+  copyLatest.click();
+  await settle();
+  assert.deepEqual(ui.copied, ["Second answer"], "a new conversation has no answer to copy");
+  assert.equal(ui.chats.length, 2);
 });

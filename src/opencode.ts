@@ -1,6 +1,6 @@
 import { openCodeStateLabel as stateLabel, openCodeStateGlyph as stateGlyph } from "./opencode/status";
 import { isExecutionActive, openCodeIdleOutcomeToExecutionState, type ExecutionState } from "./execution-state.mjs";
-import { formatDateTime, formatNumber, getLanguage, speechRecognitionLanguage, t, translateServerMessage } from "./i18n";
+import { formatDateTime, formatNumber, formatRelativeTime, getLanguage, speechRecognitionLanguage, t, translateServerMessage } from "./i18n";
 import { mergeOpenCodeStreamText, normalizeOpenCodeEvent } from "./opencode-event-compat.mjs";
 import { countTranscriptMessages, normalizeExternalThread, sessionContextToMarkdown, sortSessions, type ImportedThread, type SessionSortMode } from "./session-tools.mjs";
 import { normalizeModelPricing } from "./model-pricing.mjs";
@@ -17,6 +17,9 @@ import { latestTurnIdle, shouldKeepAwaitingReply } from "./opencode-turn-state.m
 import { fetchWithTimeout } from "./fetch-with-timeout.mjs";
 import { enforceTranscriptLimit } from "./bounded-transcript";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
+import { chatHistoryTriggerMarkup } from "./chat-history-trigger.mjs";
+import { createChatDraftBinding } from "./chat-draft.mjs";
+import { createHistoryRetryNotice, latestAssistantText } from "./chat-transcript-actions.mjs";
 import "./opencode-chat.css";
 import {
   continueAgentRun,
@@ -298,7 +301,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       </aside>
 
       <header class="ocx-topbar">
-        <button id="ocxMenu" class="ocx-icon" type="button" aria-label="${escapeHtml(t("opencode.sidebar.openHistoryAria"))}" title="${escapeHtml(t("opencode.sidebar.openHistoryTitle"))}">☰</button>
+        ${chatHistoryTriggerMarkup({ id: "ocxMenu", className: "ocx-icon", ariaLabel: t("nav.openChatHistoryAria"), title: t("nav.chatHistoryTitle") })}
 
         <button id="ocxSessionTitleButton" class="ocx-session-title" type="button">
           <strong id="ocxSessionTitle">OpenCode</strong>
@@ -306,7 +309,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         </button>
 
         <button id="ocxModelButton" type="button" class="ocx-context-button">${escapeHtml(t("opencode.topbar.modelFallback"))}</button>
-        <button id="ocxNewSessionTop" class="ocx-icon" type="button" aria-label="${escapeHtml(t("opencode.sidebar.newSessionAria"))}">＋</button>
+        <button id="ocxNewSessionTop" class="ocx-icon" type="button" aria-label="${escapeHtml(t("opencode.sidebar.newSessionAria"))}" title="${escapeHtml(t("opencode.sidebar.newSessionAria"))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
       </header>
 
       <main class="ocx-main">
@@ -358,7 +361,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         <form id="ocxPromptForm" class="ocx-composer">
           <div id="ocxAttachmentStrip" class="ocx-attachment-strip hidden"></div>
           <textarea
-            id="ocxPromptInput"
+            id="ocxPromptInput" enterkeyhint="send"
             rows="1"
             placeholder="${escapeHtml(t("opencode.composer.promptPlaceholder"))}"
             aria-label="${escapeHtml(t("opencode.composer.promptAria"))}"
@@ -368,7 +371,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
           <div class="ocx-composer-foot">
             <div class="ocx-composer-left">
               <button id="ocxPlus" type="button" class="ocx-mini-button" aria-label="${escapeHtml(t("opencode.composer.attachAria"))}">＋</button>
-              <button id="ocxSlashButton" type="button" class="ocx-mini-button">/</button>
+              <button id="ocxSlashButton" type="button" class="ocx-mini-button" aria-label="${escapeHtml(t("opencode.commands.openPalette"))}" title="${escapeHtml(t("opencode.commands.openPalette"))}">/</button>
               <span id="ocxActivity" class="ocx-activity">${escapeHtml(t("opencode.activity.offline"))}</span>
             </div>
             <div class="ocx-composer-actions">
@@ -380,6 +383,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         <div id="ocxAttachmentMenu" class="ocx-attachment-menu hidden">
           <button id="ocxImageButton" type="button">▧ ${escapeHtml(t("opencode.composer.imageButton"))}</button>
           <button id="ocxFileButton" type="button">⌑ ${escapeHtml(t("opencode.composer.fileButton"))}</button>
+          <button id="ocxCopyLatest" type="button">${escapeHtml(t("chat.copyLatest.button"))}</button>
         </div>
         <input id="ocxImageInput" type="file" accept="image/*" multiple hidden />
         <input id="ocxFileInput" type="file" multiple hidden />
@@ -632,6 +636,25 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   let pendingAttachments: PendingAttachment[] = [];
   let selectedContextRefs: Array<{ path: string; kind: "file" | "folder" }> = [];
   let contextRequestSerial = 0;
+  // Session selected by a switch whose history has not been rendered yet.
+  let unloadedSwitchSessionId: string | null = null;
+  const drafts = createChatDraftBinding<{
+    attachments: PendingAttachment[];
+    contextRefs: Array<{ path: string; kind: "file" | "folder" }>;
+  }>({
+    provider: "opencode",
+    input: promptInput,
+    storage: window.sessionStorage,
+    getProjectId: () => localStorage.getItem("opencode-pocket-project"),
+    takeExtras: () => ({ attachments: pendingAttachments, contextRefs: selectedContextRefs }),
+    restoreExtras: extras => {
+      pendingAttachments = extras?.attachments ?? [];
+      selectedContextRefs = extras?.contextRefs ?? [];
+      hideProjectContextPalette();
+      renderAttachments();
+    },
+    onRestore: () => resizeComposer()
+  });
 
   try {
     const saved = JSON.parse(localStorage.getItem("opencode-pocket-model") || "null");
@@ -662,6 +685,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     sidebarReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : menu;
     closeComposerMenus();
     window.dispatchEvent(new CustomEvent("devmoter:close-global-nav"));
+    renderSessions(); // refresh relative ages that may have gone stale while closed
     sidebar.classList.add("open");
     sidebar.setAttribute("aria-hidden", "false");
     if (dockedSidebar()) {
@@ -1046,7 +1070,14 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         : sessionListStatus === "loading" ? t("opencode.sidebar.connecting")
         : sessionListStatus === "error" ? t("opencode.sessions.errorEmpty")
         : t("opencode.sessions.noneEmpty");
-      sessionsEl.appendChild(empty);
+      if (!q && sessionListStatus === "error") {
+        sessionsEl.appendChild(createHistoryRetryNotice(document, {
+          className: "ocx-history-retry",
+          message: t("chat.history.listLoadFailed"),
+          retryLabel: t("common.retry"),
+          onRetry: async () => { await loadSessions(); }
+        }));
+      } else sessionsEl.appendChild(empty);
       return;
     }
 
@@ -1071,19 +1102,14 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
         session.message_count ??
         0;
       const historyTime = Number(session.time?.updated ?? session.time?.created ?? 0);
-      const historyLabel = historyTime
-        ? formatDateTime(historyTime, {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit"
-          })
-        : "";
+      // Same relative format as Codex and Qwen history; exact time on hover.
+      const historyLabel = historyTime ? formatRelativeTime(historyTime) : "";
       meta.textContent = [
         state === "idle" ? "" : localizedStateLabel(state),
         count ? t("opencode.sessions.messageCount", { count: formatNumber(count) }) : "",
         historyLabel
       ].filter(Boolean).join(" · ");
+      if (historyTime) meta.title = formatDateTime(historyTime);
 
       copy.append(title, meta);
 
@@ -1154,6 +1180,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
   function setAssistantText(body: HTMLElement, text: string) {
     assistantText.set(body, text);
+    body.dataset.assistantText = "true";
     renderChatMarkdown(body, text, source => void copyAssistantCode(source));
   }
 
@@ -1435,6 +1462,33 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     }
   }
 
+  // Keeps the session selected and offers a manual re-read of its history.
+  // After a session switch the previous session's messages are removed, so they
+  // are neither shown nor copied as if they belonged to the new session.
+  function showContextLoadFailure(sessionId: string) {
+    if (unloadedSwitchSessionId === sessionId) {
+      transcript.replaceChildren();
+      clearLiveStreams();
+    } else {
+      transcript.querySelector("[data-history-retry]")?.remove();
+    }
+    transcript.appendChild(createHistoryRetryNotice(document, {
+      className: "ocx-history-retry",
+      message: t("chat.history.loadFailed"),
+      retryLabel: t("common.retry"),
+      onRetry: async () => {
+        if (activeSession?.id !== sessionId) return;
+        try {
+          await loadContext();
+          await recoverExecutionState();
+        } catch (error) {
+          showToast(error instanceof Error ? translateServerMessage(error.message) : translateServerMessage(String(error)));
+        }
+      }
+    }));
+    followLatest();
+  }
+
   async function loadContext() {
     if (!activeSession) return;
 
@@ -1443,9 +1497,17 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     // older response fetched before the reply was persisted wipes it.
     const request = contextRequests.begin();
     const sessionId = activeSession.id;
-    const messages = await api<Json[]>(
-      `/session/${encodeURIComponent(sessionId)}/context`
-    );
+    let messages: Json[];
+    try {
+      messages = await api<Json[]>(
+        `/session/${encodeURIComponent(sessionId)}/context`
+      );
+    } catch (error) {
+      if (contextRequests.isCurrent(request) && activeSession?.id === sessionId) {
+        showContextLoadFailure(sessionId);
+      }
+      throw error;
+    }
     if (!contextRequests.isCurrent(request) || activeSession?.id !== sessionId) return;
     const list = Array.isArray(messages) ? messages : [];
 
@@ -1463,6 +1525,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
     transcript.replaceChildren();
     clearLiveStreams();
+    unloadedSwitchSessionId = null;
 
     const knewPrompt = sessionFirstPrompts.has(activeSession.id);
     for (const message of list) {
@@ -1606,6 +1669,16 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     }
   }
 
+  // A draft in the composer while no conversation is open belongs to a new
+  // chat: a later list load (retry, periodic refresh) must not open the saved
+  // conversation under it. A draft restored from storage at load, left as it
+  // was, is the saved conversation's own draft, so it keeps that conversation.
+  const draftAtLoad = promptInput.value;
+  function draftStartedWithoutConversation() {
+    const text = promptInput.value;
+    return (Boolean(text.trim()) && text !== draftAtLoad) || pendingAttachments.length > 0 || selectedContextRefs.length > 0;
+  }
+
   async function loadSessions() {
     const requestGeneration = sessionListRequests.begin();
     latestSessionListRequest = requestGeneration;
@@ -1683,7 +1756,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     renderSessions();
     renderAttention();
 
-    if (!activeSession) {
+    if (!activeSession && !draftStartedWithoutConversation()) {
       const saved = localStorage.getItem("opencode-pocket-opencode-session");
       const target = sessions.find(session => session.id === saved);
       if (target) await selectSession(target);
@@ -1775,6 +1848,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   }
 
   async function selectSession(session: OpenCodeSession) {
+    if (activeSession?.id !== session.id) unloadedSwitchSessionId = session.id;
     activeSession = session;
     localStorage.setItem("opencode-pocket-opencode-session", session.id);
 
@@ -2184,6 +2258,10 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   }
 
   async function sendMessageUnlocked() {
+    if (drafts.sync()) {
+      showToast(t("chat.draft.projectSwitched"));
+      return;
+    }
     const text = promptInput.value.trim();
     if (!text && !pendingAttachments.length) return;
 
@@ -2250,6 +2328,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     followLatest();
 
     promptInput.value = "";
+    drafts.capture();
     pendingAttachments = [];
     selectedContextRefs = [];
     hideProjectContextPalette();
@@ -3846,6 +3925,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   };
   window.addEventListener("devmoter:global-nav-opened", closeLocalOverlays);
   window.addEventListener("devmoter:surface-changed", closeLocalOverlays);
+  window.addEventListener("devmoter:surface-changed", () => drafts.sync());
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") void resumeFromBackground();
   });
@@ -3872,6 +3952,25 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
     plus.setAttribute("aria-expanded", String(!attachmentMenu.classList.contains("hidden")));
   });
   imageButton.addEventListener("click", () => imageInput.click());
+  root.querySelector<HTMLButtonElement>("#ocxCopyLatest")!.addEventListener("click", () => {
+    closeAttachmentMenu();
+    // One answer can be rendered as several text parts: copy every part after the last user message.
+    // While the newest turn has no answer yet, the previous answer stays the latest one.
+    let previous = "";
+    const parts: string[] = [];
+    for (const row of Array.from(transcript.children)) {
+      if (row.classList.contains("user")) {
+        if (parts.length) previous = parts.join("\n\n");
+        parts.length = 0;
+      }
+      const body = row.querySelector<HTMLElement>("[data-assistant-text]");
+      const part = body ? assistantText.get(body) : "";
+      if (part?.trim()) parts.push(part);
+    }
+    const text = latestAssistantText([previous, parts.join("\n\n")]);
+    if (text) void copyAssistantCode(text);
+    else showToast(t("chat.copyLatest.none"));
+  });
   fileButton.addEventListener("click", () => fileInput.click());
   imageInput.addEventListener("change", () => {
     if (imageInput.files) void addAttachments(imageInput.files, true);

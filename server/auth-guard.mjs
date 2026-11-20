@@ -9,7 +9,15 @@
 //  - 資格情報が無いリクエストは失敗として数えない。
 //  - 信頼するプロキシは DEVMOTER_TRUST_PROXY で明示されたものだけ（既定はソケットアドレス）。
 
-import { credentialsMatch } from "./auth.mjs";
+import {
+  createTrustedProxyMatcher,
+  credentialsMatch,
+  expandIpv6,
+  isTrustedProxyRequest,
+  parseTrustedProxies
+} from "./auth.mjs";
+
+export { createTrustedProxyMatcher, isTrustedProxyRequest, parseTrustedProxies };
 
 const MINUTE = 60_000;
 const WINDOW_MS = 15 * MINUTE;
@@ -25,15 +33,6 @@ const USER_DELAY_MAX_MS = 2_000;
 
 // ---------- IP 正規化 ----------
 
-function expandIpv6(ip) {
-  const [head, tail] = ip.split("::");
-  const h = head ? head.split(":") : [];
-  const t = tail ? tail.split(":") : [];
-  const fill = Math.max(0, 8 - h.length - t.length);
-  const groups = [...h, ...Array(fill).fill("0"), ...t];
-  return groups.map((g) => g.padStart(4, "0"));
-}
-
 export function normalizeIp(address) {
   let ip = String(address ?? "").trim().toLowerCase();
   if (!ip) return "unknown";
@@ -48,28 +47,11 @@ export function normalizeIp(address) {
   return ip;
 }
 
-export function parseTrustedProxies(value) {
-  return String(value || "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function normalizeProxyIp(address) {
-  const ip = String(address ?? "").trim().toLowerCase();
-  if (ip.startsWith("::ffff:") && ip.includes(".")) return ip.slice(7);
-  if (ip.includes(":")) {
-    try { return expandIpv6(ip).join(":"); } catch { return ip; }
-  }
-  return ip || "unknown";
-}
-
 export function createClientIpResolver({ trustedProxies = [] } = {}) {
-  // Trust is an exact peer identity check; never reuse the /64 rate-limit bucket.
-  const trusted = new Set(trustedProxies.map(normalizeProxyIp));
+  const isTrustedProxy = createTrustedProxyMatcher(trustedProxies);
   return function clientIp(req) {
     const socketIp = normalizeIp(req?.socket?.remoteAddress);
-    if (!trusted.has(normalizeProxyIp(req?.socket?.remoteAddress))) return socketIp;
+    if (!isTrustedProxy(req)) return socketIp;
     // 信頼プロキシが追記した最後の要素だけを採用する（クライアントが前に付けた値は無視）
     const raw = req.headers?.["x-forwarded-for"];
     const parts = String(Array.isArray(raw) ? raw[0] : raw || "")

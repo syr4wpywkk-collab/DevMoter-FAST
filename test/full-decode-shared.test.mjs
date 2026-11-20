@@ -20,7 +20,7 @@ test("fullyDecodePath rejects malformed or endlessly nested input", () => {
 });
 
 test("the nested-decode loop is defined once and shared by both path checks", async () => {
-  const files = ["../server.mjs", "../server/advanced-api.mjs", "../server/security-helpers.mjs"];
+  const files = ["../server/opencode-proxy-path.mjs", "../server/advanced-api.mjs", "../server/security-helpers.mjs"];
   const sources = await Promise.all(files.map(file => readFile(new URL(file, import.meta.url), "utf8")));
   const all = sources.join("\n");
   assert.equal((all.match(/decodeURIComponent\(current\)/g) || []).length, 1);
@@ -30,6 +30,8 @@ test("the nested-decode loop is defined once and shared by both path checks", as
 });
 
 test("live preview still rejects double-encoded traversal", () => {
-  assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/%252e%252e/secret"), /Invalid live preview path/);
-  assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/%E0%A4%A"), /Invalid live preview path/);
+  // Live Preview is fail-closed: allowlist the port so path checks are reached.
+  const previewPolicy = { env: { DEVMOTER_PREVIEW_ALLOWED_PORTS: "3000" } };
+  assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/%252e%252e/secret", "", previewPolicy), /Invalid live preview path/);
+  assert.throws(() => resolveLivePreviewTarget("127.0.0.1", 3000, "/%E0%A4%A", "", previewPolicy), /Invalid live preview path/);
 });

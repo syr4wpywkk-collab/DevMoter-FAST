@@ -21,11 +21,17 @@ type RecentApp = { id: AppId; openedAt: number };
 
 const HOME_RECENTS_KEY = "devmoter-home-recent-apps-v1";
 const RECENT_LIMIT = 3;
+const HOME_FAVORITES_KEY = "devmoter-home-favorite-apps-v1";
+
+const ICON_PIN = '<svg viewBox="0 0 24 24"><path d="m12 3.6 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"></path></svg>';
+const ICON_UP = '<svg viewBox="0 0 24 24"><path d="m6 14.5 6-6 6 6"></path></svg>';
+const ICON_DOWN = '<svg viewBox="0 0 24 24"><path d="m6 9.5 6 6 6-6"></path></svg>';
+const ICON_REMOVE = '<svg viewBox="0 0 24 24"><path d="m6.5 6.5 11 11m0-11-11 11"></path></svg>';
 
 // The reference HTML provides a visual hierarchy, not runtime capability data.
 // Keep every launcher tied to a shipped/preview entry in the canonical registry.
 const HOME_ORDER: readonly AppId[] = [
-  "chat", "projects", "terminal", "git", "agents", "knowledge",
+  "chat", "projects", "terminal", "git", "agents", "knowledge", "prompts",
   "review", "sessions", "mission-control", "automation",
   "developer-workflows", "office", "browser"
 ];
@@ -77,6 +83,29 @@ function storedRecents(storage: Storage | undefined): RecentApp[] {
   }
 }
 
+// Favorites are a local display preference: only launchers that Home shows and
+// that are currently available survive; anything else in storage is dropped.
+function favoriteApp(id: unknown): AppDefinition | undefined {
+  if (typeof id !== "string") return undefined;
+  return HOME_APPS.find(app => app.id === id && app.availability === "available");
+}
+
+function storedFavorites(storage: Storage | undefined): AppId[] {
+  if (!storage) return [];
+  try {
+    const parsed: unknown = JSON.parse(storage.getItem(HOME_FAVORITES_KEY) || "[]");
+    if (!Array.isArray(parsed)) return [];
+    const valid: AppId[] = [];
+    for (const id of parsed.slice(0, 64)) {
+      const app = favoriteApp(id);
+      if (app && !valid.includes(app.id)) valid.push(app.id);
+    }
+    return valid;
+  } catch {
+    return [];
+  }
+}
+
 function availableStorage(win: Window | null): Storage | undefined {
   try { return win?.localStorage; } catch { return undefined; }
 }
@@ -97,6 +126,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
   const win = document.defaultView;
   const storage = availableStorage(win);
   let recent = storedRecents(storage);
+  let favorites = storedFavorites(storage);
   const disposers: Array<() => void> = [];
 
   target.innerHTML = [
@@ -129,6 +159,13 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
         '<div class="dm-home-quick-actions" data-home-quick-actions></div>',
         '<div data-home-react-pilot></div>',
       '</section>',
+      '<section class="dm-home-section" aria-labelledby="dm-home-favorites-title" data-home-favorites-section hidden>',
+        '<div class="dm-home-section-heading">',
+          `<h2 id="dm-home-favorites-title">${escapeHtml(t("home.favoritesHeading"))}</h2>`,
+        '</div>',
+        '<ol class="dm-home-favorite-list" data-home-favorites></ol>',
+      '</section>',
+      '<p class="dm-home-sr-only" role="status" aria-live="polite" data-home-status></p>',
       '<section class="dm-home-section" aria-labelledby="dm-home-apps-title">',
         '<div class="dm-home-section-heading">',
           `<h2 id="dm-home-apps-title">${escapeHtml(t("home.toolsHeading"))}</h2>`,
@@ -140,7 +177,10 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       '<section class="dm-home-section dm-home-activity" aria-labelledby="dm-home-activity-title" data-home-recent-section hidden>',
         '<div class="dm-home-section-heading">',
           `<h2 id="dm-home-activity-title">${escapeHtml(t("home.recentHeading"))}</h2>`,
-          `<button type="button" class="dm-home-history-link" data-home-sessions>${escapeHtml(t("home.sessionHistoryLink"))} <span aria-hidden="true">↗</span></button>`,
+          '<div class="dm-home-heading-actions">',
+            `<button type="button" class="dm-home-history-link" data-home-clear-recents>${escapeHtml(t("home.clearRecents"))}</button>`,
+            `<button type="button" class="dm-home-history-link" data-home-sessions>${escapeHtml(t("home.sessionHistoryLink"))} <span aria-hidden="true">↗</span></button>`,
+          '</div>',
         '</div>',
         '<div class="dm-home-recent-grid" data-home-recent></div>',
       '</section>',
@@ -153,6 +193,9 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
   const count = target.querySelector<HTMLElement>("[data-home-app-count]")!;
   const recentsHost = target.querySelector<HTMLElement>("[data-home-recent]")!;
   const recentSection = target.querySelector<HTMLElement>("[data-home-recent-section]")!;
+  const favoritesHost = target.querySelector<HTMLElement>("[data-home-favorites]")!;
+  const favoritesSection = target.querySelector<HTMLElement>("[data-home-favorites-section]")!;
+  const status = target.querySelector<HTMLElement>("[data-home-status]")!;
   const searchPanel = target.querySelector<HTMLElement>("#dmHomeSearchPanel")!;
   const searchInput = target.querySelector<HTMLInputElement>("[data-home-search]")!;
   const searchToggle = target.querySelector<HTMLButtonElement>("[data-home-search-toggle]")!;
@@ -196,6 +239,108 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       button.addEventListener("click", () => launch(app));
       recentsHost.appendChild(button);
     }
+  };
+
+  const iconButton = (className: string, svg: string, label: string) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = className;
+    button.innerHTML = svg; // static inline SVG constant
+    button.setAttribute("aria-label", label);
+    button.title = label;
+    return button;
+  };
+
+  const saveFavorites = () => {
+    try { storage?.setItem(HOME_FAVORITES_KEY, JSON.stringify(favorites)); } catch { /* Optional local favorites. */ }
+  };
+
+  const syncFavoriteToggles = () => {
+    for (const toggle of grid.querySelectorAll<HTMLButtonElement>("[data-home-favorite-toggle]")) {
+      const app = favoriteApp(toggle.dataset.homeFavoriteToggle);
+      if (!app) continue;
+      const pinned = favorites.includes(app.id);
+      const label = t(pinned ? "home.favoriteRemoveAria" : "home.favoriteAddAria", { title: homeLabel(app) });
+      toggle.setAttribute("aria-pressed", String(pinned));
+      toggle.setAttribute("aria-label", label);
+      toggle.title = label;
+    }
+  };
+
+  const moveFavorite = (id: AppId, delta: -1 | 1) => {
+    const from = favorites.indexOf(id);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= favorites.length) return;
+    const next = [...favorites];
+    next.splice(to, 0, ...next.splice(from, 1));
+    favorites = next;
+    saveFavorites();
+    renderFavorites();
+    const app = favoriteApp(id);
+    if (app) status.textContent = t("home.favoriteMoved", { title: homeLabel(app), position: to + 1, total: favorites.length });
+    // Keep keyboard focus on the moved row; fall back to its launcher at an edge.
+    const row = favoritesHost.querySelector<HTMLElement>(`[data-home-favorite-item="${id}"]`);
+    const control = row?.querySelector<HTMLButtonElement>(delta < 0 ? "[data-home-favorite-up]" : "[data-home-favorite-down]");
+    (control && !control.disabled ? control : row?.querySelector<HTMLButtonElement>("[data-home-favorite-app]"))?.focus();
+  };
+
+  const toggleFavorite = (id: AppId) => {
+    const app = favoriteApp(id);
+    if (!app) return;
+    const pinned = favorites.includes(app.id);
+    favorites = pinned ? favorites.filter(entry => entry !== app.id) : [...favorites, app.id];
+    saveFavorites();
+    renderFavorites();
+    status.textContent = t(pinned ? "home.favoriteRemoved" : "home.favoriteAdded", { title: homeLabel(app) });
+  };
+
+  const renderFavorites = () => {
+    favoritesHost.replaceChildren();
+    favoritesSection.hidden = favorites.length === 0;
+    favorites.forEach((id, index) => {
+      const app = favoriteApp(id);
+      if (!app) return;
+      const row = document.createElement("li");
+      row.className = "dm-home-favorite-item";
+      row.dataset.homeFavoriteItem = app.id;
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "dm-home-favorite-open";
+      open.dataset.homeFavoriteApp = app.id;
+      open.setAttribute("aria-label", t("home.openAppAria", { title: homeLabel(app) }));
+      open.setAttribute("aria-keyshortcuts", "Alt+ArrowUp Alt+ArrowDown");
+      const icon = document.createElement("span");
+      icon.className = "dm-home-card-icon";
+      icon.innerHTML = app.icon; // static SVG from the App Registry
+      icon.setAttribute("aria-hidden", "true");
+      const heading = document.createElement("strong");
+      heading.textContent = homeLabel(app);
+      open.append(icon, heading);
+      open.addEventListener("click", () => launch(app));
+      const up = iconButton("dm-home-favorite-control", ICON_UP, t("home.favoriteMoveUpAria", { title: homeLabel(app) }));
+      up.dataset.homeFavoriteUp = app.id;
+      up.disabled = index === 0;
+      up.addEventListener("click", () => moveFavorite(app.id, -1));
+      const down = iconButton("dm-home-favorite-control", ICON_DOWN, t("home.favoriteMoveDownAria", { title: homeLabel(app) }));
+      down.dataset.homeFavoriteDown = app.id;
+      down.disabled = index === favorites.length - 1;
+      down.addEventListener("click", () => moveFavorite(app.id, 1));
+      const remove = iconButton("dm-home-favorite-control", ICON_REMOVE, t("home.favoriteRemoveAria", { title: homeLabel(app) }));
+      remove.dataset.homeFavoriteRemove = app.id;
+      remove.addEventListener("click", () => {
+        toggleFavorite(app.id);
+        const rows = favoritesHost.querySelectorAll<HTMLButtonElement>("[data-home-favorite-app]");
+        (rows[Math.min(index, rows.length - 1)] ?? grid.querySelector<HTMLButtonElement>(`[data-home-favorite-toggle="${app.id}"]`))?.focus();
+      });
+      row.addEventListener("keydown", event => {
+        if (!event.altKey || event.ctrlKey || event.metaKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
+        event.preventDefault();
+        moveFavorite(app.id, event.key === "ArrowUp" ? -1 : 1);
+      });
+      row.append(open, up, down, remove);
+      favoritesHost.appendChild(row);
+    });
+    syncFavoriteToggles();
   };
 
   // Launch only allowlisted App Registry entries; Home never executes a shell command.
@@ -258,7 +403,16 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     arrow.setAttribute("aria-hidden", "true");
     button.append(icon, copy, arrow);
     button.addEventListener("click", () => launch(app));
-    grid.appendChild(button);
+    const item = document.createElement("div");
+    item.className = "dm-home-app-item";
+    item.appendChild(button);
+    if (favoriteApp(app.id)) {
+      const toggle = iconButton("dm-home-favorite-toggle", ICON_PIN, "");
+      toggle.dataset.homeFavoriteToggle = app.id;
+      toggle.addEventListener("click", () => toggleFavorite(app.id));
+      item.appendChild(toggle);
+    }
+    grid.appendChild(item);
   }
 
   const filterApps = () => {
@@ -267,6 +421,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
     for (const button of grid.querySelectorAll<HTMLButtonElement>("[data-home-app]")) {
       const matches = !term || (button.dataset.homeSearchable || "").includes(term);
       button.classList.toggle("hidden", !matches);
+      button.parentElement?.classList.toggle("hidden", !matches);
       if (matches) visible++;
     }
     count.textContent = t("home.appCount", { count: visible });
@@ -309,6 +464,16 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
   target.querySelector<HTMLButtonElement>("[data-home-sessions]")?.addEventListener("click", () => {
     const sessions = APP_REGISTRY.find(app => app.id === "sessions")!;
     launch(sessions);
+  });
+
+  // Clears only this browser's "recently opened" list. Sessions, projects,
+  // favorites and every server-side record are left untouched.
+  target.querySelector<HTMLButtonElement>("[data-home-clear-recents]")?.addEventListener("click", () => {
+    recent = [];
+    try { storage?.removeItem(HOME_RECENTS_KEY); } catch { /* Storage may be read-only. */ }
+    renderRecents();
+    status.textContent = t("home.recentsCleared");
+    target.querySelector<HTMLElement>("#devmoterHomeTitle")?.focus();
   });
 
   if (options.onSwitchBackend) {
@@ -364,6 +529,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
   // Rendering is synchronous and self-contained in unit tests; runtime
   // connectivity is queried when the existing surface controller opens Home.
   renderRecents();
+  renderFavorites();
   filterApps();
   homeDisposers.set(target, () => { for (const dispose of disposers) dispose(); });
 }

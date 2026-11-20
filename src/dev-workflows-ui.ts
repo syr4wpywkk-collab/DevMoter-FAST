@@ -1,5 +1,6 @@
 import { getAppDefinition, SYSTEM_ICONS } from "./app-registry";
 import { formatNumber, t, translateServerMessage } from "./i18n";
+import { apiErrorMessage } from "./api-error.mjs";
 
 function devError(error: unknown) {
   return translateServerMessage(error instanceof Error ? error.message : String(error));
@@ -163,7 +164,7 @@ export function createDevWorkflowPanel(options: PanelOptions) {
       cache: method === "GET" ? "no-store" : undefined
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(translateServerMessage(payload?.error || t("common.httpError", { status: response.status })));
+    if (!response.ok) throw new Error(apiErrorMessage(payload, response.status));
     return payload as T;
   }
 

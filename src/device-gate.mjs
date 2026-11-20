@@ -5,9 +5,18 @@
 // "Trusted device required"; none of them is something the user can act on
 // as text, so callers swap the raw error for this short gate.
 
-import { t } from "./i18n-core.mjs";
+import { DICTIONARIES, t } from "./i18n-core.mjs";
 
 const DEVICE_AUTH_MESSAGE = /trusted device|device token/i;
+const REVOKED_MESSAGE = /revoked/i;
+const REQUIRED_KEY = "errors.server.trustedDeviceRequired";
+const REVOKED_KEY = "errors.server.trustedDeviceRevoked";
+
+// Callers translate the server message before it reaches the gate, so the
+// localized texts must be recognised as well as the raw English ones.
+function localizedMessages(key) {
+  return Object.values(DICTIONARIES).map(dictionary => dictionary[key]).filter(Boolean);
+}
 
 /** Error thrown by device-bound fetches so callers can tell auth from other failures. */
 export class DeviceAuthError extends Error {
@@ -24,7 +33,56 @@ export function isDeviceAuthError(error, status) {
   const code = Number(status ?? error?.status ?? 0);
   const message = error instanceof Error ? error.message : String(error ?? "");
   if (code && code !== 401 && code !== 403) return false;
-  return DEVICE_AUTH_MESSAGE.test(message);
+  if (DEVICE_AUTH_MESSAGE.test(message)) return true;
+  const text = message.trim();
+  return localizedMessages(REQUIRED_KEY).includes(text) || localizedMessages(REVOKED_KEY).includes(text);
+}
+
+// After this browser's own registration is revoked its token is gone, so the
+// server can only answer "token required". This marker (a flag, never the
+// token) lets the gate still say the registration was revoked.
+const REVOKED_MARKER_KEY = "devmoter-device-revoked";
+
+function markerStore() {
+  try {
+    return globalThis.localStorage || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Call with the detail of a devmoter:device-trust-changed event. */
+export function noteDeviceTrustChange(detail) {
+  const store = markerStore();
+  try {
+    if (detail?.revokedCurrent === true) store?.setItem(REVOKED_MARKER_KEY, "1");
+    else if (detail?.trusted === true) store?.removeItem(REVOKED_MARKER_KEY);
+  } catch {
+    // Storage unavailable: the gate falls back to the unregistered wording.
+  }
+}
+
+// Settings and the system panel announce every trust change with this event.
+globalThis.window?.addEventListener?.("devmoter:device-trust-changed", event => {
+  noteDeviceTrustChange(event?.detail);
+});
+
+function revokedHere() {
+  try {
+    return markerStore()?.getItem(REVOKED_MARKER_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Why the server refused: "revoked" when this browser's registration was
+ * invalidated, otherwise "unregistered". Derived from the message only.
+ */
+export function deviceAuthReason(error) {
+  const message = (error instanceof Error ? error.message : String(error ?? "")).trim();
+  if (localizedMessages(REVOKED_KEY).includes(message) || revokedHere()) return "revoked";
+  return DEVICE_AUTH_MESSAGE.test(message) && REVOKED_MESSAGE.test(message) ? "revoked" : "unregistered";
 }
 
 /** Error to throw for a non-ok response; DeviceAuthError when it is a device-token refusal. */
@@ -51,9 +109,11 @@ export function createDeviceGate(
     compact = false,
     title: titleText,
     copy: copyText,
-    buttonLabel
+    buttonLabel,
+    error
   } = {}
 ) {
+  const revoked = error !== undefined && deviceAuthReason(error) === "revoked";
   const win = doc.defaultView;
   const gate = doc.createElement("div");
   gate.className = ["dm-device-gate", compact ? "dm-device-gate-compact" : "", className].filter(Boolean).join(" ");
@@ -71,14 +131,21 @@ export function createDeviceGate(
       onRegister?.();
       if (win) openDeviceRegistration(win);
     });
+    if (error !== undefined) {
+      const cause = doc.createElement("small");
+      cause.dataset.deviceGateCause = revoked ? "revoked" : "unregistered";
+      cause.textContent = revoked ? t("deviceGate.revokedTitle") : t("deviceGate.unregisteredTitle");
+      gate.append(cause);
+    }
     gate.append(open);
     return gate;
   }
 
   const title = doc.createElement("strong");
-  title.textContent = titleText || t("deviceGate.unregisteredTitle");
+  title.textContent = titleText || (revoked ? t("deviceGate.revokedTitle") : t("deviceGate.unregisteredTitle"));
+  if (error !== undefined) gate.dataset.deviceGateCause = revoked ? "revoked" : "unregistered";
   const copy = doc.createElement("small");
-  copy.textContent = copyText || t("deviceGate.unregisteredCopy");
+  copy.textContent = copyText || (revoked ? t("deviceGate.revokedCopy") : t("deviceGate.unregisteredCopy"));
   const register = doc.createElement("button");
   register.type = "button";
   register.dataset.deviceGateRegister = "true";

@@ -54,13 +54,13 @@ test("OpenCode proxy survives an upstream stream disconnect and aborts the upstr
   let upstreamClosed = false;
 
   const openCode = http.createServer((req, res) => {
-    if (req.url === "/api/cut") {
+    if (req.url === "/api/session/cut") {
       res.writeHead(200, { "content-type": "text/event-stream; charset=utf-8" });
       res.write("data: partial\n\n");
       setTimeout(() => req.socket.destroy(), 150);
       return;
     }
-    if (req.url === "/api/hold") {
+    if (req.url === "/api/session/hold") {
       res.writeHead(200, { "content-type": "text/event-stream; charset=utf-8" });
       res.write("data: hold\n\n");
       req.on("aborted", () => {
@@ -101,7 +101,7 @@ test("OpenCode proxy survives an upstream stream disconnect and aborts the upstr
       accept: "text/event-stream"
     };
 
-    const cut = await fetch(`${baseUrl}/api/opencode/cut`, {
+    const cut = await fetch(`${baseUrl}/api/opencode/session/cut`, {
       headers,
       signal: AbortSignal.timeout(4000)
     });
@@ -110,7 +110,7 @@ test("OpenCode proxy survives an upstream stream disconnect and aborts the upstr
     assert.equal(child.exitCode, null);
 
     const controller = new AbortController();
-    const held = await fetch(`${baseUrl}/api/opencode/hold`, {
+    const held = await fetch(`${baseUrl}/api/opencode/session/hold`, {
       headers,
       signal: controller.signal
     });

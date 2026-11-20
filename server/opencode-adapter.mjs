@@ -296,6 +296,34 @@ export function lastAssistantText(context) {
   return "";
 }
 
+/**
+ * Why the last turn did not succeed, or null when it did. `reason` is the
+ * backend's own message; it is empty when the backend gave none.
+ */
+export function lastTurnFailure(context) {
+  const list = listOf(context);
+  let outcome = "";
+  for (let index = list.length - 1; index >= 0; index -= 1) {
+    const item = list[index];
+    if (item?.type === "idle" && !outcome) {
+      outcome = String(item.outcome || "");
+      continue;
+    }
+    if (item?.type === "user") break;
+    if (item?.type !== "assistant") continue;
+    if (item.error) {
+      const name = String(item.error.name || "");
+      const message = String(item.error.message || "");
+      return {
+        outcome: name === "MessageAbortedError" ? "interrupted" : "failed",
+        reason: message && message !== name ? message : ""
+      };
+    }
+    break;
+  }
+  return outcome === "failed" || outcome === "interrupted" ? { outcome, reason: "" } : null;
+}
+
 // ---------------------------------------------------------------------------
 // Permissions
 //   v1 classic: GET /permission -> [{ id, sessionID, permission, patterns, metadata, always, tool }]

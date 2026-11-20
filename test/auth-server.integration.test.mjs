@@ -62,6 +62,18 @@ test("server requires auth and exact Origin for mutations", async () => {
   try {
     await waitForReady(child);
 
+    const auditFile = join(home, ".config", "opencode-pocket", "hook-audit.jsonl");
+    await mkdir(dirname(auditFile), { recursive: true });
+    await writeFile(auditFile, '{"hookId":"first","status":"completed"}\ngarbage\nnull\n{"hookId":"second","status":"blocked"}\n{"torn":');
+    const automationState = await fetch(`${origin}/api/user-automation`, {
+      headers: { authorization }
+    });
+    assert.equal(automationState.status, 200);
+    assert.deepEqual((await automationState.json()).hookAudit, [
+      { hookId: "first", status: "completed" },
+      { hookId: "second", status: "blocked" }
+    ]);
+
     const unauthenticated = await fetch(`${origin}/api/projects`);
     assert.equal(unauthenticated.status, 401);
     assert.equal(unauthenticated.headers.get("www-authenticate"), null);
@@ -254,6 +266,45 @@ test("server requires auth and exact Origin for mutations", async () => {
       method: "DELETE", headers: { authorization, cookie: deviceCookie, origin, "x-pocket-operation-id": "knowledge-delete-test" }
     });
     assert.equal(knowledgeDeleted.status, 200);
+
+    const templatesUntrusted = await fetch(`${origin}/api/prompt-templates`, { headers: { authorization } });
+    assert.equal(templatesUntrusted.status, 401);
+    const templateHeaders = id => ({ authorization, cookie: deviceCookie, origin, "content-type": "application/json", "x-pocket-operation-id": id });
+    const templateCreated = await fetch(`${origin}/api/prompt-templates`, {
+      method: "POST", headers: templateHeaders("prompt-template-create-test"),
+      body: JSON.stringify({ name: "Review", description: "Code review", body: "Review {{file}}" })
+    });
+    assert.equal(templateCreated.status, 201);
+    const template = (await templateCreated.json()).template;
+    assert.equal(template.body, "Review {{file}}", "stored text is returned unexpanded");
+    const templateUnknownProject = await fetch(`${origin}/api/prompt-templates`, {
+      method: "POST", headers: templateHeaders("prompt-template-unknown-project-test"),
+      body: JSON.stringify({ name: "X", body: "x", projectId: "not-a-registered-project" })
+    });
+    assert.equal(templateUnknownProject.status, 404);
+    const templateExport = await fetch(`${origin}/api/prompt-templates/export`, { headers: { authorization, cookie: deviceCookie } });
+    assert.equal(templateExport.status, 200);
+    const templateBackup = await templateExport.json();
+    assert.equal(templateBackup.templates.length, 1);
+    const templateImportUntrusted = await fetch(`${origin}/api/prompt-templates/import`, {
+      method: "POST", headers: { authorization, origin, "content-type": "application/json", "x-pocket-operation-id": "prompt-template-import-untrusted" },
+      body: JSON.stringify({ backup: templateBackup })
+    });
+    assert.equal(templateImportUntrusted.status, 401);
+    const templateImportInvalid = await fetch(`${origin}/api/prompt-templates/import`, {
+      method: "POST", headers: templateHeaders("prompt-template-import-invalid"),
+      body: JSON.stringify({ backup: { format: "something-else", templates: [] } })
+    });
+    assert.equal(templateImportInvalid.status, 400);
+    const templateImportSkip = await fetch(`${origin}/api/prompt-templates/import`, {
+      method: "POST", headers: templateHeaders("prompt-template-import-skip"),
+      body: JSON.stringify({ backup: templateBackup })
+    });
+    assert.deepEqual(await templateImportSkip.json(), { imported: 0, overwritten: 0, skipped: [{ id: template.id, name: "Review", reason: "exists" }] });
+    const templateDeleted = await fetch(`${origin}/api/prompt-templates/${encodeURIComponent(template.id)}`, {
+      method: "DELETE", headers: templateHeaders("prompt-template-delete-test")
+    });
+    assert.equal(templateDeleted.status, 200);
 
     const terminalClaimMissingOrigin = await fetch(`${origin}/api/terminal/sessions/${"a".repeat(36)}/claim`, {
       method: "POST",
