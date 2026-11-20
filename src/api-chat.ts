@@ -144,7 +144,8 @@ export function mountApiChat(
           <small id="apiModelTopLabel">${escapeHtml(t("apiChat.topModelUnset"))}</small>
         </div>
         <div class="api-header-actions">
-          <button id="apiSettingsTop" class="api-icon-button api-settings-button" type="button" aria-label="${escapeHtml(t("apiChat.providersTitle"))}">⚙</button>
+          <button id="apiSettingsTop" class="api-icon-button api-settings-button" type="button" aria-label="${escapeHtml(t("apiChat.providersTitle"))}" title="${escapeHtml(t("apiChat.providersTitle"))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
+          <button id="apiNewChatTop" class="api-icon-button" type="button" aria-label="${escapeHtml(t("apiChat.newChatAria"))}" title="${escapeHtml(t("apiChat.newChatAria"))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
         </div>
       </header>
 
@@ -201,6 +202,7 @@ export function mountApiChat(
   const goOpenCode = root.querySelector<HTMLButtonElement>("#apiGoOpenCode")!;
   const settingsTop = root.querySelector<HTMLButtonElement>("#apiSettingsTop")!;
   const newChat = root.querySelector<HTMLButtonElement>("#apiNewChat")!;
+  const newChatTop = root.querySelector<HTMLButtonElement>("#apiNewChatTop")!;
   const providerSelect = root.querySelector<HTMLSelectElement>("#apiProvider")!;
   const modelSelect = root.querySelector<HTMLSelectElement>("#apiModel")!;
   const reasoningSelect = root.querySelector<HTMLSelectElement>("#apiReasoning")!;
@@ -1380,6 +1382,7 @@ export function mountApiChat(
       (event.shiftKey ? last : first).focus({ preventScroll: true });
     }
   });
+  newChatTop.addEventListener("click", () => newChat.click());
   newChat.addEventListener("click", () => {
     if (uploadingCount > 0) return;
     archiveConversation();

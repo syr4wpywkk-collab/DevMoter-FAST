@@ -1937,6 +1937,7 @@ export const zhHans = {
   "apiChat.agentOpenCodeSummary": "Agent 执行",
   "apiChat.agentApiSummary": "多提供商",
   "apiChat.newChatButton": "＋ 新建对话",
+  "apiChat.newChatAria": "新聊天",
   "apiChat.chatsAria": "对话",
   "apiChat.topModelUnset": "未设置提供商 / 模型",
   "apiChat.modelUnset": "未设置模型",

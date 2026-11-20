@@ -99,16 +99,19 @@ body.codex-mode {
 .cx-app .cx-title-button > span,
 .cx-app .cx-title-button > small {
   max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .cx-app .cx-title-button > span {
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .cx-app .cx-title-button > small {
   color: var(--cx-muted);
-  font-size: .7rem;
+  font-size: var(--font-size-caption, 12px);
 }
 
 .cx-app .cx-topbar-controls {

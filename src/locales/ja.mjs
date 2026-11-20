@@ -1937,6 +1937,7 @@ export const ja = {
   "apiChat.agentOpenCodeSummary": "エージェント実行",
   "apiChat.agentApiSummary": "マルチプロバイダー",
   "apiChat.newChatButton": "＋ 新しいチャット",
+  "apiChat.newChatAria": "新しいチャット",
   "apiChat.chatsAria": "会話",
   "apiChat.topModelUnset": "プロバイダー / モデル未設定",
   "apiChat.modelUnset": "モデル未設定",

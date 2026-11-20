@@ -1937,6 +1937,7 @@ export const en = {
   "apiChat.agentOpenCodeSummary": "Agent execution",
   "apiChat.agentApiSummary": "Multi-provider",
   "apiChat.newChatButton": "+ New chat",
+  "apiChat.newChatAria": "New chat",
   "apiChat.chatsAria": "Chats",
   "apiChat.topModelUnset": "Provider / model not set",
   "apiChat.modelUnset": "Model not set",
