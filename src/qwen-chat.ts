@@ -1,5 +1,6 @@
 import "./qwen-chat.css";
 import { formatDateTime, formatNumber, getLanguage, t, translateServerMessage } from "./i18n";
+import { apiErrorMessage } from "./api-error.mjs";
 import { SYSTEM_ICONS } from "./app-registry";
 import { renderChatMarkdown } from "./chat-markdown.mjs";
 import { createChatDraftBinding } from "./chat-draft.mjs";
@@ -535,7 +536,7 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
       if (!res.ok || !res.body) {
         const payload = await res.json().catch(() => ({}));
         if (!run.stopped) {
-          finishRun(run, fail(translateServerMessage(payload?.error || t("common.httpError", { status: res.status })), String(payload?.code || "failed")));
+          finishRun(run, fail(apiErrorMessage(payload, res.status), String(payload?.code || "failed")));
         }
         return;
       }

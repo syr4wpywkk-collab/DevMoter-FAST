@@ -1,6 +1,7 @@
 import { projectOptionLabels } from "./project-labels.mjs";
 import { createSheetHeader } from "./sheet-header.mjs";
 import { formatNumber, t, translateServerMessage } from "./i18n";
+import { apiErrorMessage } from "./api-error.mjs";
 
 function wfError(error: unknown) {
   return translateServerMessage(error instanceof Error ? error.message : String(error));
@@ -126,7 +127,7 @@ async function api<T>(url: string, init: RequestInit = {}): Promise<T> {
     headers
   });
   const payload = await response.json().catch(() => ({})) as Json;
-  if (!response.ok) throw new Error(translateServerMessage(String(payload.error || t("common.httpError", { status: response.status }))));
+  if (!response.ok) throw new Error(apiErrorMessage(payload, response.status));
   return payload as T;
 }
 

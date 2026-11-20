@@ -1,6 +1,7 @@
 import "./prompt-templates.css";
 import { createSheetHeader } from "./sheet-header.mjs";
 import { t, translateServerMessage } from "./i18n";
+import { apiErrorMessage } from "./api-error.mjs";
 import {
   draftNeedsConfirmation,
   expandTemplate,
@@ -32,7 +33,7 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (deviceToken) headers.set("x-devmoter-device-token", deviceToken);
   const res = await fetch(path, { ...init, headers, cache: method === "GET" ? "no-store" : undefined });
   const payload = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(translateServerMessage(payload?.error || t("common.httpError", { status: res.status })));
+  if (!res.ok) throw new Error(apiErrorMessage(payload, res.status));
   return payload as T;
 }
 

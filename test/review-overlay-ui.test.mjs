@@ -6,12 +6,13 @@ import { JSDOM } from "jsdom";
 import * as projectLabels from "../src/project-labels.mjs";
 import * as sheetHeader from "../src/sheet-header.mjs";
 import * as i18nCore from "../src/i18n-core.mjs";
+import * as apiError from "../src/api-error.mjs";
 const source = await readFile(new URL('../src/workflow.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, {compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
 function setup(t) {
  const dom=new JSDOM('<body><button id="homeReview">Review</button><div id="workflowMount"></div></body>', {url:'http://localhost',runScripts:'outside-only'});
  t.after(()=>dom.window.close());
- dom.window.exports={};dom.window.require=name=>{if(name==='./project-labels.mjs')return projectLabels;if(name==='./sheet-header.mjs')return sheetHeader;if(name==='./i18n')return i18nCore;throw new Error('unexpected module '+name);};dom.window.fetch=async()=>new Response(JSON.stringify({projects:[]}));
+ dom.window.exports={};dom.window.require=name=>{if(name==='./project-labels.mjs')return projectLabels;if(name==='./sheet-header.mjs')return sheetHeader;if(name==='./i18n')return i18nCore;if(name==='./api-error.mjs')return apiError;throw new Error('unexpected module '+name);};dom.window.fetch=async()=>new Response(JSON.stringify({projects:[]}));
  dom.window.eval(compiled);
  const doc=dom.window.document;
  dom.window.exports.mountTaskWorkflow(doc.querySelector('#workflowMount'));
@@ -61,7 +62,7 @@ async function setupReview(t, options={}) {
  const dom=new JSDOM('<body><div id="workflowMount"></div></body>',{url:'http://localhost',runScripts:'outside-only'});
  t.after(()=>dom.window.close());
  const state={changes:reviewChanges(),failChanges:false,requests:[],copied:[],pendingChanges:null};
- dom.window.exports={};dom.window.require=name=>{if(name==='./project-labels.mjs')return projectLabels;if(name==='./sheet-header.mjs')return sheetHeader;if(name==='./i18n')return i18nCore;throw new Error('unexpected module '+name);};
+ dom.window.exports={};dom.window.require=name=>{if(name==='./project-labels.mjs')return projectLabels;if(name==='./sheet-header.mjs')return sheetHeader;if(name==='./i18n')return i18nCore;if(name==='./api-error.mjs')return apiError;throw new Error('unexpected module '+name);};
  dom.window.fetch=async(url,init={})=>{
   const method=String(init.method||'GET').toUpperCase();
   state.requests.push(method+' '+url);
