@@ -15,7 +15,8 @@ test("chat headers share one slot order: history, identity, context control, new
   };
   for (const [surface, [file, open, ids]] of Object.entries(surfaces)) {
     const markup = header(await source(file), open);
-    const positions = ids.map(id => markup.indexOf(`id="${id}"`));
+    // The history trigger is rendered by chatHistoryTriggerMarkup({ id: "…" }).
+    const positions = ids.map(id => markup.search(new RegExp(`id(?:=|: )"${id}"`)));
     assert.ok(positions.every(position => position >= 0), `${surface} header has ${ids.join(", ")}`);
     assert.deepEqual([...positions].sort((a, b) => a - b), positions, `${surface} header keeps the shared slot order`);
     for (const match of markup.matchAll(/<button\b[^>]*>([^<]*)/g)) {
