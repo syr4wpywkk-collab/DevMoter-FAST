@@ -11,7 +11,7 @@ test("API Chat header keeps a visible, accessible identity and model label", asy
   const markup = header[1];
   assert.match(markup, /<div class="api-brand">\s*<strong>API Chat<\/strong>\s*<small id="apiModelTopLabel">/);
   assert.doesNotMatch(markup.match(/<div class="api-brand">[\s\S]*?<\/div>/)[0], /aria-hidden|hidden|inert/);
-  assert.match(markup, /id="apiMenu"[^>]*aria-label=/);
+  assert.match(markup, /chatHistoryTriggerMarkup\(\{ id: "apiMenu"[^}]*ariaLabel: t\(/);
   assert.match(markup, /<div class="api-header-actions">[\s\S]*id="apiSettingsTop"[^>]*aria-label=/);
   assert.match(source, /t\("apiChat\.topModelUnset"\)/);
 });

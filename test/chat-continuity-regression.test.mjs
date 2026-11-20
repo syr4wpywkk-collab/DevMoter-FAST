@@ -17,8 +17,8 @@ test("global Tools navigation leaves provider-local history controls reachable",
   assert.ok(shell.includes('new CustomEvent("devmoter:close-chat-history")'));
   assert.ok(shell.includes('window.addEventListener("devmoter:close-global-nav", closeSidebar)'));
   assert.ok(shell.includes('window.addEventListener("devmoter:open-global-nav", openSidebar)'));
-  assert.ok(codex.includes('t("codex.topbar.openHistoryAria")'));
-  assert.ok(opencode.includes('t("opencode.sidebar.openHistoryAria")'));
+  assert.ok(codex.includes('ariaLabel: t("nav.openChatHistoryAria")'));
+  assert.ok(opencode.includes('ariaLabel: t("nav.openChatHistoryAria")'));
   assert.ok(codex.includes('new CustomEvent("devmoter:close-global-nav")'));
   assert.ok(opencode.includes('new CustomEvent("devmoter:close-global-nav")'));
   assert.ok(opencode.includes('window.addEventListener("devmoter:close-chat-history", () => closeSidebar())'));

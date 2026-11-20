@@ -6,6 +6,7 @@ import { normalizeApiAttachment } from "./api-attachment.mjs";
 import { apiModelLabel } from "./api-model-label.mjs";
 import { createChatDraftBinding } from "./chat-draft.mjs";
 import { latestAssistantText } from "./chat-transcript-actions.mjs";
+import { chatHistoryTriggerMarkup } from "./chat-history-trigger.mjs";
 import "./api-chat-surface.css";
 
 const API_SEND_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>';
@@ -140,7 +141,7 @@ export function mountApiChat(
       </aside>
 
       <header class="api-topbar">
-        <button id="apiMenu" class="api-icon-button" type="button" aria-label="${escapeHtml(t("apiChat.menuAria"))}">☰</button>
+        ${chatHistoryTriggerMarkup({ id: "apiMenu", className: "api-icon-button", ariaLabel: t("nav.openChatHistoryAria"), title: t("nav.chatHistoryTitle") })}
         <div class="api-brand">
           <strong>API Chat</strong>
           <small id="apiModelTopLabel">${escapeHtml(t("apiChat.topModelUnset"))}</small>
