@@ -22,30 +22,30 @@
     "test:workspace-browser:setup": "playwright install --with-deps webkit"
   },
   "devDependencies": {
-    "@types/react": "19.2.7",
-    "@types/react-dom": "19.2.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
     "c8": "^12.0.0",
-    "esbuild": "0.25.12",
+    "esbuild": "0.28.2",
     "jsdom": "^26.1.0",
-    "playwright": "1.64.1",
+    "playwright": "1.65.1",
     "typescript": "^5.9.2",
     "vite": "^7.3.7"
   },
   "license": "MIT",
   "dependencies": {
-    "@simplewebauthn/server": "14.0.2",
-    "dompurify": "^3.4.17",
+    "@simplewebauthn/server": "14.1.0",
+    "dompurify": "^3.4.18",
     "fast-xml-parser": "5.12.1",
-    "jszip": "3.10.1",
-    "marked": "^18.0.14",
+    "jszip": "3.10.2",
+    "marked": "^18.2.1",
     "node-pty": "^1.1.0",
     "oauth4webapi": "3.8.8",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "utif2": "4.1.0",
-    "ws": "^8.21.3"
+    "ws": "^8.23.0"
   },
   "bin": {
     "devmoter": "./cli/devmoter.mjs"
