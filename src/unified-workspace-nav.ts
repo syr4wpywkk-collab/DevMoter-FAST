@@ -5,7 +5,9 @@ import "./unified-workspace-nav.css";
 import "./unified-workspace-chat.css";
 import { bindLanguageSelectors, t } from "./i18n";
 import {
+  DEEPSEEK_UI_ENABLED,
   QWEN_UI_ENABLED,
+  isHiddenDeepseekTarget,
   isHiddenQwenTarget,
   isVisibleChatBackend,
   normalizeVisibleBackend,
@@ -38,7 +40,7 @@ const ICONS: Record<string, string> = {
   "tools": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M9 8V5h6v3M3 13h18"/></svg>',
 };
 
-type ChatBackend = "codex" | "opencode" | "api" | "qwen";
+type ChatBackend = "codex" | "opencode" | "api" | "deepseek" | "devin" | "qwen";
 type WorkspaceTab = "tasks" | "chat" | "review" | "tools" | "terminal";
 const isWorkspaceTab = (value: unknown): value is WorkspaceTab =>
   value === "tasks" || value === "chat" || value === "review" || value === "tools" || value === "terminal";
@@ -88,6 +90,8 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
             <option value="codex">Codex</option>
             <option value="opencode">OpenCode</option>
             <option value="api">API Chat</option>
+            ${DEEPSEEK_UI_ENABLED ? '<option value="deepseek">DeepSeek</option>' : ""}
+            <option value="devin">Devin</option>
             ${QWEN_UI_ENABLED ? '<option value="qwen">Qwen Code</option>' : ""}
           </select>
         </label>
@@ -279,7 +283,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
 
   const onBackendChanged = (event: Event) => {
     const next = (event as CustomEvent<{ backend?: ChatBackend }>).detail?.backend;
-    if (isVisibleChatBackend(next) || isHiddenQwenTarget(next)) {
+    if (isVisibleChatBackend(next) || isHiddenQwenTarget(next) || isHiddenDeepseekTarget(next)) {
       currentBackend = normalizeVisibleBackend(next);
       backendSelect.value = currentBackend;
     }
@@ -297,7 +301,13 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   function openNativeHistory() {
     // The provider's own history control is authoritative and knows its session IDs.
     const trigger = document.querySelector<HTMLButtonElement>(
-      currentBackend === "codex" ? "#cxMenu" : currentBackend === "opencode" ? "#ocxMenu" : "#apiMenu"
+      currentBackend === "codex" ? "#cxMenu"
+        : currentBackend === "opencode" ? "#ocxMenu"
+        // The DeepSeek surface reuses the API Chat markup, so its history
+        // trigger shares the #apiMenu id and must be scoped to its own view.
+        : currentBackend === "deepseek" ? "#deepseekView #apiMenu"
+        : currentBackend === "devin" ? "[data-devin-history]"
+        : "#apiMenu"
     );
     if (!trigger) {
       feedback.textContent = t("nav.historyUnavailable");

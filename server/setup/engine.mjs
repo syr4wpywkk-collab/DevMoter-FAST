@@ -8,9 +8,10 @@ import { codexAdapter } from "./adapters/codex.mjs";
 import { githubAdapter } from "./adapters/github.mjs";
 import { opencodeAdapter } from "./adapters/opencode.mjs";
 import { tailscaleAdapter } from "./adapters/tailscale.mjs";
+import { devinAdapter } from "./adapters/devin.mjs";
 
 export const setupAdapters = Object.freeze([
-  codexAdapter, opencodeAdapter, claudeAdapter, antigravityAdapter, githubAdapter, tailscaleAdapter
+  codexAdapter, opencodeAdapter, claudeAdapter, antigravityAdapter, githubAdapter, tailscaleAdapter, devinAdapter
 ]);
 
 async function environmentGit(env) {

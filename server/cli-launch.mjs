@@ -16,6 +16,12 @@ export const cliDefinitions = Object.freeze([
     label: "OpenCode",
     command: "opencode",
     install: "npm install -g @opencode/cli"
+  },
+  {
+    id: "devin",
+    label: "Devin",
+    command: "devin",
+    install: "curl -fsSL https://cli.devin.ai/install.sh | bash"
   }
 ]);
 

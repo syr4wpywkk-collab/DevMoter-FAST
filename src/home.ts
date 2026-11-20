@@ -502,13 +502,15 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
       if (!response.ok) throw new Error("Health HTTP " + response.status);
       const result: unknown = await response.json();
       if (serial !== healthSerial || !target.isConnected) return;
-      const backends = (result as { backends?: { opencode?: { online?: boolean }; codex?: { online?: boolean } } })?.backends;
+      const backends = (result as { backends?: { opencode?: { online?: boolean }; codex?: { online?: boolean }; devin?: { online?: boolean } } })?.backends;
       if (typeof backends?.opencode?.online !== "boolean" || typeof backends?.codex?.online !== "boolean") {
         throw new Error("Incomplete health payload");
       }
-      const count = Number(backends.opencode.online) + Number(backends.codex.online);
-      health.dataset.state = count === 2 ? "online" : count === 1 ? "partial" : "offline";
-      healthLabel.textContent = "OpenCode " + (backends.opencode.online ? "●" : "○") + " / Codex " + (backends.codex.online ? "●" : "○");
+      const devinOnline = typeof backends.devin?.online === "boolean" ? backends.devin.online : null;
+      const total = devinOnline === null ? 2 : 3;
+      const count = Number(backends.opencode.online) + Number(backends.codex.online) + (devinOnline === null ? 0 : Number(devinOnline));
+      health.dataset.state = count === total ? "online" : count > 0 ? "partial" : "offline";
+      healthLabel.textContent = "OpenCode " + (backends.opencode.online ? "●" : "○") + " / Codex " + (backends.codex.online ? "●" : "○") + (devinOnline === null ? "" : " / Devin " + (devinOnline ? "●" : "○"));
       health.title = t("home.healthTitle");
     } catch {
       if (serial !== healthSerial || !target.isConnected) return;

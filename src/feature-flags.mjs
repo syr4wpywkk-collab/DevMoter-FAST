@@ -8,13 +8,25 @@
  */
 export const QWEN_UI_ENABLED = false;
 
+/**
+ * DeepSeek UI was hidden on 2026-11-20 by owner decision ("for now") while
+ * keeping all DeepSeek implementation code (the dedicated API Chat mount in
+ * src/main.ts, i18n dictionary keys, and provider presets) intact behind
+ * this gate.
+ * To re-enable DeepSeek everywhere in the UI, change DEEPSEEK_UI_ENABLED to true.
+ */
+export const DEEPSEEK_UI_ENABLED = false;
+
 export const DEFAULT_VISIBLE_BACKEND = "opencode";
 
-export const VISIBLE_CHAT_BACKENDS = Object.freeze(
-  QWEN_UI_ENABLED
-    ? ["codex", "opencode", "api", "qwen"]
-    : ["codex", "opencode", "api"]
-);
+export const VISIBLE_CHAT_BACKENDS = Object.freeze([
+  "codex",
+  "opencode",
+  "api",
+  ...(DEEPSEEK_UI_ENABLED ? ["deepseek"] : []),
+  "devin",
+  ...(QWEN_UI_ENABLED ? ["qwen"] : [])
+]);
 
 const VISIBLE_CHAT_BACKEND_SET = new Set(VISIBLE_CHAT_BACKENDS);
 
@@ -30,9 +42,13 @@ export function isHiddenQwenTarget(value) {
   return !QWEN_UI_ENABLED && value === "qwen";
 }
 
+export function isHiddenDeepseekTarget(value) {
+  return !DEEPSEEK_UI_ENABLED && value === "deepseek";
+}
+
 export function normalizeVisibleSurface(value, fallback = "home") {
   if (value === "home" || value === "integrations") return value;
-  return normalizeVisibleBackend(value, isHiddenQwenTarget(value) ? DEFAULT_VISIBLE_BACKEND : fallback);
+  return normalizeVisibleBackend(value, isHiddenQwenTarget(value) || isHiddenDeepseekTarget(value) ? DEFAULT_VISIBLE_BACKEND : fallback);
 }
 
 export function isVisibleIntegration(id) {

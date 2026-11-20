@@ -1,0 +1,7 @@
+node_modules/
+dist/
+bin/img-ingest
+bin/img-ingest-arm64
+runs/
+.harness-state/
+*.log

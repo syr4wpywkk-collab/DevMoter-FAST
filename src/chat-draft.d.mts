@@ -1,4 +1,4 @@
-export type ChatDraftProvider = "codex" | "opencode" | "api-chat" | "qwen";
+export type ChatDraftProvider = "codex" | "opencode" | "api-chat" | "deepseek-chat" | "qwen";
 type DraftStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 export const CHAT_DRAFT_PREFIX: string;

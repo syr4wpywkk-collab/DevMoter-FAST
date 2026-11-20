@@ -1,18 +1,49 @@
 # DeepSeek Harness Mobile
 
-A mobile-first PWA companion for a separately running DeepSeek Harness (DSH) instance.
+A mobile-first PWA companion for DeepSeek: check the account balance, pick a
+model, send a small test request to the DeepSeek API, and open a separately
+running DeepSeek Harness (DSH) instance.
 
-> **Current scope:** this first milestone is a secure mobile launch and connection shell. It does not reimplement DSH's agent RPC protocol, execute tools, or proxy credentials. Agent conversations and runtime operations are opened in the official DSH Web UI until a versioned, supported mobile transport adapter is available.
+> **Scope (v0.2.0):** the app now calls the public DeepSeek API directly from
+> the browser in addition to the original DSH connection shell. It still does
+> not reimplement DSH's agent RPC protocol, execute tools, or handle DSH
+> credentials. Agent conversations and runtime operations stay in the official
+> DSH Web UI.
 
 ## Features
 
 - iPhone-first layout with safe-area support and a bottom navigation bar.
 - Installable PWA shell with offline-cached static assets.
-- Stores only the configured DSH base URL in local storage.
-- Opens the configured DSH Web UI in a separate tab.
-- Optional reachability check using an unauthenticated `HEAD /` request.
-- HTTPS required for remote hosts; plain HTTP is accepted only for loopback development hosts.
-- No API keys, cookies, passwords, or DSH session data are collected or stored.
+- **Balance**: shows the DeepSeek account balance (`GET /user/balance`),
+  split into topped-up and granted amounts, with an availability status.
+- **Model selection**: fetches the models available to the API key
+  (`GET /models`), caches the list on the device, and remembers the choice.
+- **API test chat**: sends one message to `POST /chat/completions` and shows
+  the response together with the returned token usage (input / output /
+  total, cache hits, reasoning tokens when present).
+- **On-device usage tally**: requests made from this device are totalled
+  locally. The DeepSeek API exposes no account-wide usage history, so this
+  tally is device-local by design.
+- **DSH connection shell** (unchanged from v0.1): stores the configured DSH
+  base URL, opens the DSH Web UI in a separate tab, and offers an optional
+  reachability check using an unauthenticated `HEAD /` request. HTTPS is
+  required for remote hosts; plain HTTP is accepted only for loopback
+  development hosts.
+
+## API key handling (design change in v0.2.0)
+
+Earlier versions stored no credentials at all. To call the DeepSeek API, the
+user now enters their own DeepSeek API key in the settings screen:
+
+- The key is stored **only in this device's local storage**. It is never sent
+  to the app host, to DSH, or to any third party.
+- The only destination is `https://api.deepseek.com`, as the
+  `Authorization: Bearer` header of the balance / models / chat requests.
+  Browser-direct calls are possible because the API reflects the request
+  origin in `Access-Control-Allow-Origin` (verified against the live API and
+  the official reference at https://api-docs.deepseek.com).
+- On screen the key is identified only by its last four characters.
+- DSH credentials are still never asked for, stored, or proxied.
 
 ## Run locally
 
@@ -31,6 +62,13 @@ npm test
 
 For an iPhone, deploy this folder behind HTTPS and open it in Safari, then use **共有 → ホーム画面に追加**. The DSH host itself must also be reachable from the iPhone (for example, through a private HTTPS Tailscale Serve endpoint).
 
+## Use the DeepSeek API features
+
+1. Create an API key in the DeepSeek platform console.
+2. Open the settings screen in this app and save the key.
+3. The home screen shows the balance; the API screen fetches the model list
+   and can send a test message.
+
 ## Connect to DSH
 
 1. Start DSH on the host using its official instructions: https://github.com/deepseek-ai/deepseek-harness
@@ -40,6 +78,18 @@ For an iPhone, deploy this folder behind HTTPS and open it in Safari, then use *
 
 The reachability check is advisory. A failed browser CORS check does not prove that the DSH host is offline. The app never asks for or forwards DSH credentials.
 
+## Design
+
+The UI follows the repository's Unslop UI Standard
+(`.cursor/rules/unslop-ui.mdc`). Direction: a quiet, glanceable tool — the one
+bold element is the balance figure itself; everything else is flat, bordered
+and neutral. A light theme replaces the previous near-black + purple-gradient
+look. Tokens: background `#F5F6F7`, surface `#FFFFFF`, ink `#171A1F`, muted
+`#59636E`, line `#DEE2E7`, accent `#2F4BD7` (DeepSeek blue, darkened for WCAG
+AA), plus ok / danger status colors. Typography is the native Japanese system
+stack (no webfonts, so the PWA works offline); spacing is on a 4px grid
+(8 / 16 / 24 / 32) and radii are 8px for controls and 12px for panels.
+
 ## Architecture
 
 ```text
@@ -48,6 +98,10 @@ iPhone Safari / installed PWA
           | HTTPS (static assets)
           v
 deepseek-harness-mobile
+          |\
+          | \  fetch with the user's API key (this device only)
+          |  v
+          |  api.deepseek.com  (balance / models / chat completions)
           |
           | user-initiated navigation only
           v

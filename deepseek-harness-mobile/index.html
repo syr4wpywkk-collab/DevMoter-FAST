@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#090d14">
+    <meta name="theme-color" content="#F5F6F7">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="description" content="Mobile-first companion for DeepSeek Harness">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="description" content="DeepSeek の残高確認、モデル選択、API テストと DeepSeek Harness への接続を行うモバイルコンパニオン">
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="icon" href="./icon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="./styles.css">
@@ -17,99 +17,180 @@
       <header class="topbar">
         <a class="brand" href="#home" aria-label="DSH Mobile ホーム">
           <span class="brand-mark" aria-hidden="true">D</span>
-          <span><strong>DSH</strong><small>MOBILE CONTROL</small></span>
+          <span class="brand-text"><strong>DSH Mobile</strong><small>DeepSeek のモバイルコンパニオン</small></span>
         </a>
-        <span class="preview-pill"><i></i> COMPANION</span>
       </header>
 
       <main id="main-content">
         <section class="view is-active" id="view-home" aria-labelledby="home-title">
-          <div class="eyebrow">YOUR AGENT WORKSPACE</div>
-          <h1 id="home-title">どこからでも、<br><span>開発をコントロール。</span></h1>
-          <p class="lede">DeepSeek Harness をスマートフォンから開くためのモバイルコンパニオン。</p>
+          <h1 id="home-title">利用状況</h1>
+          <p class="lede">DeepSeek の残高と使用中のモデルを確認し、ハーネスを開く画面です。</p>
 
-          <article class="hero-card">
-            <div class="hero-top">
-              <div>
-                <span class="eyebrow muted">SAVED WORKSPACE</span>
-                <h2 id="workspace-label">未設定のワークスペース</h2>
-              </div>
-              <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+          <article class="panel" aria-labelledby="balance-title">
+            <div class="panel-heading">
+              <h2 id="balance-title">残高</h2>
+              <button class="small-button" id="refresh-balance" type="button" disabled>更新</button>
             </div>
-            <div class="connection-line">
-              <span class="connection-icon" aria-hidden="true">⌁</span>
-              <span id="connection-label">接続先を設定してください</span>
+            <div id="balance-empty">
+              <p class="empty-text">API キーが未設定のため、残高を表示できません。</p>
+              <button class="secondary-button" data-view="settings" type="button">設定で API キーを登録する</button>
             </div>
-            <button class="primary-button" id="open-dsh" type="button" disabled>
-              DSH を開く <span aria-hidden="true">↗</span>
-            </button>
-            <button class="text-button" data-view="connect" type="button">接続先を設定する</button>
+            <div id="balance-content" hidden>
+              <p class="balance-figure" id="balance-total">–</p>
+              <p class="status-line"><span class="status-dot" id="balance-dot" aria-hidden="true"></span><span id="balance-status">未確認</span></p>
+              <dl class="rows">
+                <div class="row"><dt>チャージ残高</dt><dd id="balance-topped-up">–</dd></div>
+                <div class="row"><dt>付与残高</dt><dd id="balance-granted">–</dd></div>
+              </dl>
+              <div id="balance-others"></div>
+              <p class="updated-line" id="balance-updated"></p>
+            </div>
+            <p class="form-error" id="balance-error" role="alert" hidden></p>
           </article>
 
-          <div class="section-heading">
-            <div><span class="eyebrow muted">QUICK ACCESS</span><h2>ワークスペース</h2></div>
-          </div>
-          <div class="quick-grid">
-            <button class="quick-card" data-action="open" type="button" disabled>
-              <span class="quick-icon purple" aria-hidden="true">⌘</span>
-              <strong>Agent UI</strong><small>会話・実行画面</small>
-            </button>
-            <button class="quick-card" data-view="connect" type="button">
-              <span class="quick-icon blue" aria-hidden="true">⌁</span>
-              <strong>接続設定</strong><small>DSH ホストを登録</small>
-            </button>
-          </div>
+          <article class="panel" aria-labelledby="home-model-title">
+            <h2 id="home-model-title">モデルと使用量</h2>
+            <dl class="rows">
+              <div class="row"><dt>使用中のモデル</dt><dd id="home-model">未選択</dd></div>
+              <div class="row"><dt>この端末の累計</dt><dd id="home-usage">リクエスト 0 回、合計 0 トークン</dd></div>
+            </dl>
+            <button class="secondary-button" data-view="api" type="button">モデルを選んで試す</button>
+          </article>
 
-          <aside class="notice">
-            <span aria-hidden="true">ⓘ</span>
-            <p>この初期版は安全な接続ランチャーです。Agent の実行・停止やターミナル操作は、公式 DSH Web UI 側で行います。</p>
-          </aside>
+          <article class="panel" aria-labelledby="workspace-title">
+            <h2 id="workspace-title">ワークスペース</h2>
+            <dl class="rows">
+              <div class="row"><dt>接続先</dt><dd id="workspace-label">未設定</dd></div>
+              <div class="row"><dt>状態</dt><dd><span class="status-dot" id="status-dot" aria-hidden="true"></span><span id="connection-label">接続先を設定してください</span></dd></div>
+            </dl>
+            <button class="primary-button" id="open-dsh" type="button" disabled>DSH を開く</button>
+            <button class="text-button" data-view="connect" type="button">接続先を設定する</button>
+            <p class="note">エージェントの実行や停止は DSH の画面で行います。このアプリは接続先を開くところまでを担当します。</p>
+          </article>
+        </section>
+
+        <section class="view" id="view-api" aria-labelledby="api-title" hidden>
+          <h1 id="api-title">API テスト</h1>
+          <p class="lede">登録した API キーで DeepSeek API を直接呼び出します。キーの送信先は api.deepseek.com のみです。</p>
+
+          <article class="panel" aria-labelledby="model-title">
+            <h2 id="model-title">モデル</h2>
+            <label for="model-select">使用するモデル</label>
+            <select id="model-select" disabled>
+              <option value="">モデル一覧が未取得です</option>
+            </select>
+            <p class="field-hint" id="model-meta"></p>
+            <button class="secondary-button" id="refresh-models" type="button" disabled>モデル一覧を更新</button>
+            <p class="check-result" id="models-status" role="status" aria-live="polite"></p>
+            <p class="form-error" id="models-error" role="alert" hidden></p>
+          </article>
+
+          <article class="panel" aria-labelledby="chat-title">
+            <h2 id="chat-title">メッセージ</h2>
+            <label for="prompt">プロンプト</label>
+            <textarea id="prompt" rows="4" placeholder="モデルへの質問を入力してください"></textarea>
+            <button class="primary-button" id="send-chat" type="button" disabled>送信</button>
+            <p class="form-error" id="chat-error" role="alert" hidden></p>
+            <div id="chat-result" hidden>
+              <h3>応答</h3>
+              <div class="response-text" id="chat-content"></div>
+              <details id="chat-reasoning" hidden>
+                <summary>思考過程を表示</summary>
+                <div class="response-text reasoning" id="chat-reasoning-text"></div>
+              </details>
+              <p class="usage-line" id="chat-usage"></p>
+            </div>
+          </article>
+
+          <article class="panel" aria-labelledby="ledger-title">
+            <h2 id="ledger-title">この端末の累計</h2>
+            <dl class="rows">
+              <div class="row"><dt>リクエスト</dt><dd id="ledger-requests">0 回</dd></div>
+              <div class="row"><dt>入力トークン</dt><dd id="ledger-prompt">0</dd></div>
+              <div class="row"><dt>出力トークン</dt><dd id="ledger-completion">0</dd></div>
+              <div class="row"><dt>合計トークン</dt><dd id="ledger-total">0</dd></div>
+            </dl>
+            <p class="note">この端末から送信したリクエストだけの集計です。アカウント全体の利用履歴は API で提供されていません。</p>
+          </article>
         </section>
 
         <section class="view" id="view-connect" aria-labelledby="connect-title" hidden>
-          <div class="eyebrow">WORKSPACE CONNECTION</div>
-          <h1 id="connect-title">ホストに<br><span>接続する。</span></h1>
-          <p class="lede">起動中の DeepSeek Harness Web UI のアドレスを登録します。</p>
-          <article class="panel">
-            <label for="host-url">DSH ホスト URL</label>
+          <h1 id="connect-title">接続</h1>
+          <p class="lede">起動中の DeepSeek Harness のアドレスを登録します。</p>
+          <article class="panel" aria-labelledby="host-form-title">
+            <h2 id="host-form-title">DSH ホスト</h2>
+            <label for="host-url">ホスト URL</label>
             <input id="host-url" type="url" inputmode="url" autocomplete="url" placeholder="https://your-dsh-host.example">
             <p class="field-hint">リモート接続は HTTPS が必要です。ローカル開発では localhost の HTTP を利用できます。</p>
             <p class="form-error" id="url-error" role="alert" hidden></p>
-            <button class="primary-button full" id="save-host" type="button">接続先を保存</button>
-            <button class="secondary-button full" id="check-host" type="button" disabled>到達性を確認</button>
+            <button class="primary-button" id="save-host" type="button">接続先を保存</button>
+            <button class="secondary-button" id="check-host" type="button" disabled>到達性を確認</button>
             <p class="check-result" id="check-result" role="status" aria-live="polite"></p>
           </article>
-          <article class="panel subtle-panel">
-            <h2>接続のヒント</h2>
-            <ul>
-              <li>先にホスト側で DSH Web UI を起動します。</li>
-              <li>iPhone から到達できる HTTPS アドレスを使います。</li>
-              <li>API キーやパスワードはこのアプリに入力しないでください。</li>
+          <article class="panel" aria-labelledby="connect-hints-title">
+            <h2 id="connect-hints-title">接続のヒント</h2>
+            <ul class="hint-list">
+              <li>先にホスト側で DSH を起動します。</li>
+              <li>iPhone から届く HTTPS アドレスを使います。</li>
+              <li>DSH のパスワードはここに入力しません。DeepSeek API キーは設定画面で登録します。</li>
             </ul>
-            <a href="https://github.com/deepseek-ai/deepseek-harness" target="_blank" rel="noopener noreferrer">公式 DeepSeek Harness ↗</a>
+            <p class="note"><a href="https://github.com/deepseek-ai/deepseek-harness" target="_blank" rel="noopener noreferrer">公式 DeepSeek Harness（GitHub）</a></p>
           </article>
         </section>
 
         <section class="view" id="view-settings" aria-labelledby="settings-title" hidden>
-          <div class="eyebrow">PREFERENCES</div>
-          <h1 id="settings-title">アプリの<br><span>設定。</span></h1>
-          <article class="panel">
-            <div class="setting-row"><div><strong>登録済みホスト</strong><small id="settings-host">未設定</small></div><span class="setting-value">DSH</span></div>
-            <div class="setting-row"><div><strong>保存データ</strong><small>ホスト URL のみ</small></div><span class="setting-value">LOCAL</span></div>
-            <div class="setting-row"><div><strong>アプリバージョン</strong><small>Mobile Companion</small></div><span class="setting-value">0.1.0</span></div>
-            <button class="danger-button full" id="clear-host" type="button">保存した接続先を削除</button>
+          <h1 id="settings-title">設定</h1>
+
+          <article class="panel" aria-labelledby="apikey-title">
+            <h2 id="apikey-title">DeepSeek API キー</h2>
+            <dl class="rows">
+              <div class="row"><dt>登録状態</dt><dd id="apikey-state">未登録</dd></div>
+            </dl>
+            <label for="api-key">API キー</label>
+            <input id="api-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk-...">
+            <p class="field-hint">キーはこの端末の中だけに保存されます。送信先は api.deepseek.com のみで、このアプリのサーバーや DSH へは送られません。</p>
+            <p class="form-error" id="apikey-error" role="alert" hidden></p>
+            <button class="primary-button" id="save-apikey" type="button">API キーを保存</button>
+            <button class="danger-button" id="clear-apikey" type="button" disabled>API キーを削除</button>
           </article>
-          <article class="panel subtle-panel">
-            <h2>プライバシー</h2>
-            <p>このアプリは認証情報を保存せず、接続先 URL 以外の個人データを収集しません。接続テストは認証情報なしの HEAD リクエストです。</p>
+
+          <article class="panel" aria-labelledby="saved-data-title">
+            <h2 id="saved-data-title">保存データ</h2>
+            <dl class="rows">
+              <div class="row"><dt>登録済みホスト</dt><dd id="settings-host">未設定</dd></div>
+              <div class="row"><dt>API キー</dt><dd id="settings-apikey">未登録</dd></div>
+              <div class="row"><dt>使用中のモデル</dt><dd id="settings-model">未選択</dd></div>
+              <div class="row"><dt>この端末の累計</dt><dd id="settings-usage">リクエスト 0 回、合計 0 トークン</dd></div>
+              <div class="row"><dt>アプリバージョン</dt><dd>0.2.0</dd></div>
+            </dl>
+            <button class="danger-button" id="clear-host" type="button">保存した接続先を削除</button>
+            <button class="danger-button" id="reset-ledger" type="button">使用量の累計をリセット</button>
+          </article>
+
+          <article class="panel" aria-labelledby="privacy-title">
+            <h2 id="privacy-title">プライバシー</h2>
+            <p class="body-text">このアプリが端末に保存するのは、DSH の接続先 URL、DeepSeek API キー、選択したモデル、モデル一覧のキャッシュ、この端末での使用量集計だけです。API キーは残高・モデル・チャットのリクエストと一緒に api.deepseek.com へだけ送信されます。DSH の認証情報を扱うことはありません。接続テストは認証情報なしの HEAD リクエストです。</p>
           </article>
         </section>
       </main>
 
       <nav class="bottom-nav" aria-label="メインナビゲーション">
-        <button class="nav-item is-active" data-view="home" type="button" aria-current="page"><span aria-hidden="true">⌂</span><small>ホーム</small></button>
-        <button class="nav-item" data-view="connect" type="button"><span aria-hidden="true">⌁</span><small>接続</small></button>
-        <button class="nav-item" data-view="settings" type="button"><span aria-hidden="true">⚙</span><small>設定</small></button>
+        <button class="nav-item is-active" data-view="home" type="button" aria-current="page">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11.5 12 4l8 7.5"/><path d="M6.5 10v9.5h11V10"/></svg>
+          <small>ホーム</small>
+        </button>
+        <button class="nav-item" data-view="api" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-5 4z"/></svg>
+          <small>API</small>
+        </button>
+        <button class="nav-item" data-view="connect" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <small>接続</small>
+        </button>
+        <button class="nav-item" data-view="settings" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h2.8M11.2 7H20"/><circle cx="9" cy="7" r="2.2"/><path d="M4 12h8.8M17.2 12H20"/><circle cx="15" cy="12" r="2.2"/><path d="M4 17h.8M9.2 17H20"/><circle cx="7" cy="17" r="2.2"/></svg>
+          <small>設定</small>
+        </button>
       </nav>
     </div>
     <script type="module" src="./src/app.js"></script>

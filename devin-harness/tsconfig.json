@@ -1,0 +1,1 @@
+{"compilerOptions":{"declaration":false,"forceConsistentCasingInFileNames":true,"lib":["ES2022"],"module":"NodeNext","moduleResolution":"NodeNext","outDir":"dist","rootDir":".","skipLibCheck":true,"sourceMap":false,"strict":true,"target":"ES2022"},"include":["src/**/*.ts","test/**/*.ts"]}

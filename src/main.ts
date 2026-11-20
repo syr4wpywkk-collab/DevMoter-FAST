@@ -6,6 +6,7 @@ import { mountApiChat } from "./api-chat";
 import { startI18n } from "./i18n";
 import { mountIntegrations } from "./integrations";
 import { mountQwenChat } from "./qwen-chat";
+import { mountDevinChat } from "./devin-chat";
 import { mountAgentConsole } from "./agent-console";
 import { mountSessionControl } from "./session-control";
 import { mountWorkspaceTools } from "./workspace-tools";
@@ -26,8 +27,10 @@ import { mountMissionControl } from "./mission-control";
 import { mountKnowledge } from "./knowledge";
 import { createSurfaceNavigation, type MainSurface } from "./surface-navigation.mjs";
 import {
+  DEEPSEEK_UI_ENABLED,
   DEFAULT_VISIBLE_BACKEND,
   QWEN_UI_ENABLED,
+  isHiddenDeepseekTarget,
   isHiddenQwenTarget,
   isVisibleChatBackend,
   normalizeVisibleBackend,
@@ -69,7 +72,9 @@ app.innerHTML = `
   <div id="openCodeView" class="pocket-view"><div id="openCodeMount"></div></div>
   <div id="codexView" class="pocket-view hidden"><div id="codexMount"></div></div>
   <div id="apiView" class="pocket-view hidden"><div id="apiMount"></div></div>
+  <div id="deepseekView" class="pocket-view hidden"><div id="deepseekMount"></div></div>
   <div id="qwenView" class="pocket-view hidden"><div id="qwenMount"></div></div>
+  <div id="devinView" class="pocket-view hidden"><div id="devinMount"></div></div>
   <div id="integrationsView" class="pocket-view hidden"><div id="integrationsMount"></div></div>
   <div id="workflowMount"></div>
 `;
@@ -78,21 +83,24 @@ const openCodeView = document.querySelector<HTMLDivElement>("#openCodeView")!;
 const homeView = document.querySelector<HTMLElement>("#devmoterHomeView")!;
 const codexView = document.querySelector<HTMLDivElement>("#codexView")!;
 const apiView = document.querySelector<HTMLDivElement>("#apiView")!;
+const deepseekView = document.querySelector<HTMLDivElement>("#deepseekView")!;
 const qwenView = document.querySelector<HTMLDivElement>("#qwenView")!;
+const devinView = document.querySelector<HTMLDivElement>("#devinView")!;
 const integrationsView = document.querySelector<HTMLDivElement>("#integrationsView")!;
 const openCodeMount = document.querySelector<HTMLDivElement>("#openCodeMount")!;
 const codexMount = document.querySelector<HTMLDivElement>("#codexMount")!;
 const apiMount = document.querySelector<HTMLDivElement>("#apiMount")!;
+const deepseekMount = document.querySelector<HTMLDivElement>("#deepseekMount")!;
 const integrationsMount = document.querySelector<HTMLDivElement>("#integrationsMount")!;
 const workflowMount = document.querySelector<HTMLDivElement>("#workflowMount")!;
 
-type Backend = "opencode" | "codex" | "api" | "qwen" | "integrations";
+type Backend = "opencode" | "codex" | "api" | "deepseek" | "devin" | "qwen" | "integrations";
 
 const deepLinkBackend = startupParams.get("backend");
 const deepLinkSession = startupParams.get("session");
 if (isVisibleChatBackend(deepLinkBackend)) {
   localStorage.setItem("opencode-pocket-backend", deepLinkBackend);
-  if (deepLinkSession && deepLinkBackend !== "api" && deepLinkBackend !== "qwen") {
+  if (deepLinkSession && deepLinkBackend !== "api" && deepLinkBackend !== "deepseek" && deepLinkBackend !== "qwen" && deepLinkBackend !== "devin") {
     localStorage.setItem(
       deepLinkBackend === "codex" ? "opencode-pocket-codex-thread" : "opencode-pocket-opencode-session",
       deepLinkSession
@@ -111,10 +119,12 @@ let initialSurfaceApplied = false;
 
 function applyBackend(next: Backend) {
   const requestedHiddenQwen = isHiddenQwenTarget(next);
+  const requestedHiddenDeepseek = isHiddenDeepseekTarget(next);
   const preserveHiddenQwen = !QWEN_UI_ENABLED && localStorage.getItem("opencode-pocket-backend") === "qwen";
-  const resolved: Backend = requestedHiddenQwen ? DEFAULT_VISIBLE_BACKEND : next;
+  const preserveHiddenDeepseek = !DEEPSEEK_UI_ENABLED && localStorage.getItem("opencode-pocket-backend") === "deepseek";
+  const resolved: Backend = requestedHiddenQwen || requestedHiddenDeepseek ? DEFAULT_VISIBLE_BACKEND : next;
   activeBackend = resolved;
-  if (!requestedHiddenQwen && !(preserveHiddenQwen && resolved === DEFAULT_VISIBLE_BACKEND)) {
+  if (!requestedHiddenQwen && !requestedHiddenDeepseek && !((preserveHiddenQwen || preserveHiddenDeepseek) && resolved === DEFAULT_VISIBLE_BACKEND)) {
     localStorage.setItem("opencode-pocket-backend", resolved);
   }
   homeView.classList.add("hidden");
@@ -122,15 +132,21 @@ function applyBackend(next: Backend) {
   openCodeView.classList.toggle("hidden", resolved !== "opencode");
   codexView.classList.toggle("hidden", resolved !== "codex");
   apiView.classList.toggle("hidden", resolved !== "api");
+  deepseekView.classList.toggle("hidden", !DEEPSEEK_UI_ENABLED || resolved !== "deepseek");
   qwenView.classList.toggle("hidden", !QWEN_UI_ENABLED || resolved !== "qwen");
+  devinView.classList.toggle("hidden", resolved !== "devin");
   integrationsView.classList.toggle("hidden", resolved !== "integrations");
   document.body.classList.toggle("codex-mode", resolved === "codex");
   document.body.classList.toggle("opencode-mode", resolved === "opencode");
   document.body.classList.toggle("api-mode", resolved === "api");
+  document.body.classList.toggle("deepseek-mode", DEEPSEEK_UI_ENABLED && resolved === "deepseek");
   document.body.classList.toggle("qwen-mode", QWEN_UI_ENABLED && resolved === "qwen");
+  document.body.classList.toggle("devin-mode", resolved === "devin");
   document.body.classList.toggle("integrations-mode", resolved === "integrations");
   if (resolved === "api") void apiRemote.refresh();
+  if (DEEPSEEK_UI_ENABLED && resolved === "deepseek") void deepseekRemote.refresh();
   if (QWEN_UI_ENABLED && resolved === "qwen") void qwenRemote?.refresh();
+  if (resolved === "devin") void devinRemote.refresh();
   if (resolved === "integrations") void integrationsRemote.refresh();
   window.dispatchEvent(new CustomEvent("devmoter:backend-changed", { detail: { backend: resolved } }));
 }
@@ -154,9 +170,11 @@ function applySurface(surface: MainSurface) {
     openCodeView.classList.add("hidden");
     codexView.classList.add("hidden");
     apiView.classList.add("hidden");
+    deepseekView.classList.add("hidden");
     qwenView.classList.add("hidden");
+    devinView.classList.add("hidden");
     integrationsView.classList.add("hidden");
-    document.body.classList.remove("codex-mode", "opencode-mode", "api-mode", "qwen-mode", "integrations-mode");
+    document.body.classList.remove("codex-mode", "opencode-mode", "api-mode", "deepseek-mode", "qwen-mode", "devin-mode", "integrations-mode");
     document.body.classList.add("devmoter-home-mode");
     if (restoreHomeFocus) window.requestAnimationFrame(() => homeView.querySelector<HTMLElement>("#devmoterHomeTitle")?.focus({ preventScroll: true }));
     return;
@@ -195,11 +213,34 @@ const apiRemote = mountApiChat(apiMount, {
   onOpenCode: () => setBackend("opencode")
 });
 
+// DeepSeek is a top-level backend that reuses the API Chat surface with the
+// provider catalog pinned to the DeepSeek preset (see server/multi-api.mjs).
+const deepseekRemote = mountApiChat(deepseekMount, {
+  onCodex: () => setBackend("codex"),
+  onOpenCode: () => setBackend("opencode"),
+  onApi: () => setBackend("api"),
+  surfaceId: "deepseek",
+  fixedPresetId: "deepseek",
+  brandName: "DeepSeek",
+  brandIcon: "◆",
+  identityAriaKey: "deepseekChat.unifiedIdentityAria",
+  welcomePromptKey: "deepseekChat.welcomePrompt",
+  addProviderHintKey: "deepseekChat.addApiHint",
+  agentSummaryKey: "apiChat.agentDeepseekSummary",
+  providerStorageKey: "devmoter-deepseek-provider",
+  draftProvider: "deepseek-chat",
+  modeClass: "deepseek-mode"
+});
+
 const qwenRemote = QWEN_UI_ENABLED
   ? mountQwenChat(document.querySelector<HTMLDivElement>("#qwenMount")!, {
       onIntegrations: () => setBackend("integrations")
     })
   : null;
+
+const devinRemote = mountDevinChat(document.querySelector<HTMLDivElement>("#devinMount")!, {
+  onIntegrations: () => setBackend("integrations")
+});
 
 const integrationsRemote = mountIntegrations(integrationsMount, {
   onOpenCode: () => setBackend("opencode"),
