@@ -1,5 +1,6 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
+import { DEEPSEEK_UI_ENABLED } from "../feature-flags.mjs";
 import { t } from "../i18n";
 
 export type ChatBackend = "opencode" | "codex" | "api" | "deepseek";
@@ -8,7 +9,7 @@ const WORKSPACES: ReadonlyArray<{ id: ChatBackend; title: string }> = [
   { id: "opencode", title: "OpenCode" },
   { id: "codex", title: "Codex" },
   { id: "api", title: "API Chat" },
-  { id: "deepseek", title: "DeepSeek" }
+  ...(DEEPSEEK_UI_ENABLED ? [{ id: "deepseek", title: "DeepSeek" }] as Array<{ id: ChatBackend; title: string }> : [])
 ];
 
 type ShortcutsProps = {

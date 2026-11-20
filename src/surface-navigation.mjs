@@ -1,15 +1,22 @@
 import {
+  DEEPSEEK_UI_ENABLED,
   DEFAULT_VISIBLE_BACKEND,
   QWEN_UI_ENABLED,
+  isHiddenDeepseekTarget,
   isHiddenQwenTarget,
   isVisibleChatBackend
 } from "./feature-flags.mjs";
 
-const SURFACES = new Set(
-  QWEN_UI_ENABLED
-    ? ["home", "opencode", "codex", "api", "deepseek", "devin", "qwen", "integrations"]
-    : ["home", "opencode", "codex", "api", "deepseek", "devin", "integrations"]
-);
+const SURFACES = new Set([
+  "home",
+  "opencode",
+  "codex",
+  "api",
+  ...(DEEPSEEK_UI_ENABLED ? ["deepseek"] : []),
+  "devin",
+  ...(QWEN_UI_ENABLED ? ["qwen"] : []),
+  "integrations"
+]);
 
 export function isMainSurface(value) {
   return typeof value === "string" && SURFACES.has(value);
@@ -19,16 +26,17 @@ export function initialMainSurface(search, { hasProjectDeepLink = false, savedBa
   const params = new URLSearchParams(search || "");
   const explicit = params.get("surface");
   if (isMainSurface(explicit)) return explicit;
-  if (isHiddenQwenTarget(explicit)) return DEFAULT_VISIBLE_BACKEND;
+  if (isHiddenQwenTarget(explicit) || isHiddenDeepseekTarget(explicit)) return DEFAULT_VISIBLE_BACKEND;
   const requestedBackend = params.get("backend");
   const hasResumeTarget =
     isVisibleChatBackend(requestedBackend) ||
     isHiddenQwenTarget(requestedBackend) ||
+    isHiddenDeepseekTarget(requestedBackend) ||
     Boolean(params.get("session")) ||
     hasProjectDeepLink;
   if (hasResumeTarget) {
     if (isVisibleChatBackend(requestedBackend)) return requestedBackend;
-    if (isHiddenQwenTarget(requestedBackend)) return DEFAULT_VISIBLE_BACKEND;
+    if (isHiddenQwenTarget(requestedBackend) || isHiddenDeepseekTarget(requestedBackend)) return DEFAULT_VISIBLE_BACKEND;
     return SURFACES.has(savedBackend) && savedBackend !== "home" ? savedBackend : DEFAULT_VISIBLE_BACKEND;
   }
   return "home";

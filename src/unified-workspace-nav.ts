@@ -5,7 +5,9 @@ import "./unified-workspace-nav.css";
 import "./unified-workspace-chat.css";
 import { bindLanguageSelectors, t } from "./i18n";
 import {
+  DEEPSEEK_UI_ENABLED,
   QWEN_UI_ENABLED,
+  isHiddenDeepseekTarget,
   isHiddenQwenTarget,
   isVisibleChatBackend,
   normalizeVisibleBackend,
@@ -88,7 +90,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
             <option value="codex">Codex</option>
             <option value="opencode">OpenCode</option>
             <option value="api">API Chat</option>
-            <option value="deepseek">DeepSeek</option>
+            ${DEEPSEEK_UI_ENABLED ? '<option value="deepseek">DeepSeek</option>' : ""}
             <option value="devin">Devin</option>
             ${QWEN_UI_ENABLED ? '<option value="qwen">Qwen Code</option>' : ""}
           </select>
@@ -281,7 +283,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
 
   const onBackendChanged = (event: Event) => {
     const next = (event as CustomEvent<{ backend?: ChatBackend }>).detail?.backend;
-    if (isVisibleChatBackend(next) || isHiddenQwenTarget(next)) {
+    if (isVisibleChatBackend(next) || isHiddenQwenTarget(next) || isHiddenDeepseekTarget(next)) {
       currentBackend = normalizeVisibleBackend(next);
       backendSelect.value = currentBackend;
     }
