@@ -1,0 +1,1 @@
+{"comment":"Budget guard (SPEC §4). When today's usage crosses a limit, new paid-model runs are either downgraded to the free SWE-2 tier (onExceed: downgrade) or refused (onExceed: stop). Free-tier tokens never count toward the paid limit.","dailyPaidTokenLimit":1000000,"dailyTotalTokenLimit":5000000,"enabled":true,"maxConsecutivePaidRuns":3,"onExceed":"downgrade"}
