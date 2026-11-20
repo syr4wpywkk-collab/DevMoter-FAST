@@ -451,7 +451,8 @@ export function mountQwenChat(root: HTMLElement, options: QwenChatOptions = {}):
     persist();
     render();
     renderHistory();
-    historyList.querySelector<HTMLElement>(`[data-chat-id="${CSS.escape(chat.id)}"]`)?.focus({ preventScroll: true });
+    [...historyList.querySelectorAll<HTMLElement>("[data-chat-id]")]
+      .find(item => item.dataset.chatId === chat.id)?.focus({ preventScroll: true });
   }
 
   function resizeInput() {
