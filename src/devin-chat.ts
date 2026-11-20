@@ -37,6 +37,22 @@ export type DevinChatController = {
 
 const PROJECT_KEY = "opencode-pocket-project";
 const DEVICE_TOKEN_KEY = "devmoter-device-token";
+const SESSION_LIST_RETRY_DELAY_MS = 800;
+
+function rawErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object" && typeof (error as { message?: unknown }).message === "string") {
+    return (error as { message: string }).message;
+  }
+  return "";
+}
+
+export function isMethodNotFoundError(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  if (code === -32601 || String(code ?? "") === "-32601") return true;
+  return /method\s+not\s+found|-32601/i.test(rawErrorMessage(error));
+}
 
 function escapeHtml(value: string) {
   return String(value)
@@ -157,6 +173,9 @@ export function mountDevinChat(root: HTMLElement, _options: DevinChatOptions = {
   let availabilityNotice = "";
   let projects: Project[] = [];
   let sessions: DevinSession[] = [];
+  let sessionsState: "idle" | "loaded" | "failed" | "unsupported" = "idle";
+  let sessionsRefreshing = false;
+  let lastSessionsNotice = "";
   let sessionId: string | null = null;
   let configOptions: ConfigOption[] = [];
   let messages: Message[] = [];
@@ -339,6 +358,7 @@ export function mountDevinChat(root: HTMLElement, _options: DevinChatOptions = {
     } else {
       status.textContent = notice;
     }
+    status.title = status.textContent || "";
     send.classList.toggle("stop", sending);
     send.innerHTML = sending ? SYSTEM_ICONS.stop : SYSTEM_ICONS.send;
     send.type = sending ? "button" : "submit";
@@ -396,6 +416,12 @@ export function mountDevinChat(root: HTMLElement, _options: DevinChatOptions = {
     renderHistory();
     setOverlay(true);
     (historyList.querySelector<HTMLElement>('[aria-current="true"]') ?? head.closeButton).focus({ preventScroll: true });
+    if (online && (sessionsState === "idle" || sessionsState === "failed") && !sessionsRefreshing) {
+      void refreshSessions().then(() => {
+        renderStatus();
+        if (!sheet.hidden) renderHistory();
+      });
+    }
   }
 
   function closeSheet() {
@@ -530,12 +556,46 @@ export function mountDevinChat(root: HTMLElement, _options: DevinChatOptions = {
     render();
   }
 
+  function waitForRetry(ms: number): Promise<void> {
+    return new Promise(resolve => {
+      window.setTimeout(resolve, ms);
+    });
+  }
+
   async function refreshSessions() {
+    sessionsRefreshing = true;
     try {
-      const result = await rpc<{ sessions?: DevinSession[] }>("session/list", {});
-      if (Array.isArray(result?.sessions)) sessions = result.sessions;
-    } catch {
-      notice = t("devin.chat.sessionsLoadFailed");
+      let lastError: unknown = null;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        if (attempt > 0) {
+          await waitForRetry(SESSION_LIST_RETRY_DELAY_MS);
+          if (!online) return;
+        }
+        try {
+          const result = await rpc<{ sessions?: DevinSession[] }>("session/list", {});
+          if (Array.isArray(result?.sessions)) sessions = result.sessions;
+          sessionsState = "loaded";
+          if (lastSessionsNotice && notice === lastSessionsNotice) notice = "";
+          lastSessionsNotice = "";
+          return;
+        } catch (error) {
+          lastError = error;
+          if (isMethodNotFoundError(error)) {
+            sessions = [];
+            sessionsState = "unsupported";
+            if (lastSessionsNotice && notice === lastSessionsNotice) notice = "";
+            lastSessionsNotice = "";
+            return;
+          }
+        }
+      }
+      sessionsState = "failed";
+      const base = t("devin.chat.sessionsLoadFailed");
+      const detail = translateServerMessage(rawErrorMessage(lastError)).trim();
+      notice = detail && detail !== base ? `${base} (${detail})` : base;
+      lastSessionsNotice = notice;
+    } finally {
+      sessionsRefreshing = false;
     }
   }
 
@@ -548,7 +608,10 @@ export function mountDevinChat(root: HTMLElement, _options: DevinChatOptions = {
       );
       sessionId = result.sessionId;
       configOptions = Array.isArray(result.configOptions) ? result.configOptions : [];
-      void refreshSessions().then(() => renderHistory());
+      void refreshSessions().then(() => {
+        renderStatus();
+        renderHistory();
+      });
       return true;
     } catch (error) {
       notice = translateServerMessage(error instanceof Error ? error.message : String(error)) || t("devin.chat.sessionCreateFailed");
