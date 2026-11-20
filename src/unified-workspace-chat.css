@@ -125,7 +125,7 @@ body.dm-task-first-enabled :is(.cx-app .cx-message-row, .ocx-app .ocx-message-ro
   width: min(100%, 800px);
   margin-left: auto;
   margin-right: auto;
-  margin-bottom: 20px;
+  margin-bottom: var(--dw-chat-row-gap, 20px);
 }
 body.dm-task-first-enabled :is(.cx-app .cx-message, .api-app .api-message-bubble, .ocx-app .ocx-assistant-text) {
   color: var(--dw-chat-text);
@@ -163,7 +163,16 @@ body.dm-task-first-enabled .ocx-app .ocx-assistant-text {
   font-size: 1rem;
   font-family: inherit;
 }
+/* Codex turns read as prompt→reply pairs; command/status lines sit below the reply
+ * as compact secondary rows instead of competing with it. */
+body.dm-task-first-enabled .cx-app .cx-message-row.user { --dw-chat-row-gap: var(--space-3); }
+body.dm-task-first-enabled .cx-app .cx-message-row.system { margin-top: calc(-1 * var(--space-2)); }
 body.dm-task-first-enabled .cx-app .cx-message.system {
+  width: fit-content;
+  max-width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-caption, 12px);
+  line-height: 1.5;
   border: 1px solid var(--dw-chat-line);
   border-radius: 13px;
   background: var(--dw-chat-surface);
@@ -232,7 +241,7 @@ body.dm-task-first-enabled :is(.cx-app, .api-app) .cx-markdown :is(th, td) {
 body.dm-task-first-enabled :is(.cx-app, .api-app) .cx-markdown th {
   background: var(--dw-chat-raised);
 }
-body.dm-task-first-enabled :is(.cx-app, .api-app) .dm-code-copy {
+body.dm-task-first-enabled :is(.cx-app, .api-app) :is(.dm-code-copy, .dm-code-wrap) {
   color: var(--dw-chat-text);
 }
 body.dm-task-first-enabled :is(.cx-app, .api-app) .cx-markdown blockquote {
@@ -340,7 +349,7 @@ body.dm-task-first-enabled :is(.cx-app .cx-approval, .ocx-app .ocx-dock) {
     padding-top: 18px;
   }
   body.dm-task-first-enabled :is(.cx-app .cx-message-row, .ocx-app .ocx-message-row, .api-app .api-message) {
-    margin-bottom: 16px;
+    --dw-chat-row-gap: var(--space-4);
   }
   body.dm-task-first-enabled :is(.cx-app .cx-message.user, .api-app .api-message.user .api-message-bubble, .ocx-app .ocx-user-prompt) {
     max-width: 92%;

@@ -1,4 +1,5 @@
 import { formatNumber, t, translateServerMessage } from "./i18n";
+import { fetchReadWithTimeout } from "./fetch-with-timeout.mjs";
 
 type ProjectSummary = {
   id: string;
@@ -62,7 +63,7 @@ const esc = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 async function requestJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await fetchReadWithTimeout((input, request) => fetch(input, request), url, { cache: "no-store" }, () => new Error(t("common.requestTimeout")));
   const text = await res.text();
   let payload: any = {};
   try {

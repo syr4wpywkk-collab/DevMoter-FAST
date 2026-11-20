@@ -236,6 +236,27 @@ test("history sheet lists chats newest first and switches, starts and deletes th
     assert.deepEqual([...sheet.querySelectorAll(".qx-history-open strong")].map(node => node.textContent), ["新しいほう", "古いチャット"]);
     assert.match(sheet.querySelector('[data-chat-id="a"] small').textContent, /^Other · /);
 
+    // #342: the history list filters by title and message text.
+    const search = sheet.querySelector("[data-qwen-history-search]");
+    search.value = "新しい";
+    search.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+    assert.deepEqual([...sheet.querySelectorAll(".qx-history-open strong")].map(node => node.textContent), ["新しいほう"]);
+    search.value = "no such chat";
+    search.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+    assert.match(sheet.querySelector(".qx-history-empty").textContent, /no such chat/);
+    const headButtons = [...sheet.querySelectorAll("[data-sheet-header] button:not([hidden])")];
+    headButtons.at(-1).focus();
+    const tab = new dom.window.KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    headButtons.at(-1).dispatchEvent(tab);
+    assert.equal(tab.defaultPrevented, false, "Tab from the header still reaches the search field");
+    search.focus();
+    const wrap = new dom.window.KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    search.dispatchEvent(wrap);
+    assert.equal(wrap.defaultPrevented, true, "the search field is the last stop of the focus trap");
+    search.value = "";
+    search.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+    assert.equal(sheet.querySelectorAll(".qx-history-row").length, 2);
+
     sheet.querySelector('[data-chat-id="a"]').click();
     assert.equal(sheet.hidden, true);
     assert.equal($("[data-qwen-project]").textContent, "Other", "a chat runs in its own project");
@@ -248,6 +269,16 @@ test("history sheet lists chats newest first and switches, starts and deletes th
     assert.equal(sheet.querySelectorAll(".qx-history-row").length, 1);
     assert.deepEqual(JSON.parse(dom.window.localStorage.getItem(QWEN_CHATS_KEY)).chats.map(chat => chat.id), ["b"]);
     assert.equal($("[data-qwen-welcome]").hidden, false, "deleting the open chat leaves a new empty one");
+
+    // #344: the deleted chat can be restored from the history list.
+    const restore = sheet.querySelector('[data-restore-chat="a"]');
+    assert.ok(restore, "a restore action follows the deletion");
+    restore.click();
+    assert.equal(sheet.querySelectorAll(".qx-history-row").length, 2, "restore brings the chat back");
+    assert.equal(dom.window.document.activeElement?.dataset.chatId, "a", "focus moves to the restored chat");
+    assert.deepEqual(JSON.parse(dom.window.localStorage.getItem(QWEN_CHATS_KEY)).chats.map(chat => chat.id).sort(), ["a", "b"]);
+    assert.equal(sheet.querySelector("[data-restore-chat]"), null, "restore is offered once");
+    sheet.querySelector('[data-delete-chat="a"]').click();
 
     sheet.querySelector(".dm-sheet-head-primary").click();
     assert.equal(sheet.hidden, true);
@@ -430,4 +461,42 @@ test("model helpers: stored choice is validated, recent list is bounded and dedu
   assert.equal(store.qwenModelChipLabel(null, "zh-Hans"), "默认");
   assert.equal(store.qwenModelChipLabel(null, "zh-Hant"), "預設");
   assert.equal(store.qwenModelChipLabel(null, "zh"), "默认");
+});
+
+test("unsent Qwen text stays with its chat across chat switches and is cleared once sent", async () => {
+  const now = Date.now();
+  const seed = { version: 1, chats: [
+    { id: "a", title: "A", sessionId: null, projectId: "p1", updatedAt: now - 60_000, messages: [{ role: "user", text: "first" }] },
+    { id: "b", title: "B", sessionId: null, projectId: "p1", updatedAt: now - 3600_000, messages: [{ role: "user", text: "second" }] }
+  ] };
+  const { dom, $, requests } = await mount({ seed, chat: () => ndjsonResponse([]) });
+  try {
+    const input = $("[data-qwen-input]");
+    const draftKey = id => "devmoter-chat-draft:v1:qwen:" + id;
+    input.value = "unsent for A";
+    input.dispatchEvent(new dom.window.Event("input"));
+    assert.equal(dom.window.sessionStorage.getItem(draftKey("a")), "unsent for A");
+
+    $("[data-qwen-history]").click();
+    $('[data-qwen-sheet] [data-chat-id="b"]').click();
+    assert.equal(input.value, "", "another chat does not inherit the draft");
+    $("[data-qwen-history]").click();
+    $('[data-qwen-sheet] [data-chat-id="a"]').click();
+    assert.equal(input.value, "unsent for A", "returning to the chat restores it");
+    assert.equal(requests.filter(request => request.path === "/api/qwen/chat").length, 0, "restoring never sends");
+
+    $("[data-qwen-history]").click();
+    $("[data-qwen-sheet] .dm-sheet-head-primary").click();
+    input.value = "new chat draft";
+    dom.window.dispatchEvent(new dom.window.Event("pagehide"));
+    assert.equal(dom.window.sessionStorage.getItem(draftKey("_")), "new chat draft", "leaving the page keeps it");
+
+    input.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    await tick(10);
+    assert.equal(requests.filter(request => request.path === "/api/qwen/chat").length, 1);
+    assert.equal(dom.window.sessionStorage.getItem(draftKey("_")), null, "a sent message is not restored as a draft");
+    assert.equal(input.value, "");
+  } finally {
+    dom.window.close();
+  }
 });
