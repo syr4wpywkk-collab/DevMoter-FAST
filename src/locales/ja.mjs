@@ -2055,6 +2055,7 @@ export const ja = {
   "codex.sidebar.searchPlaceholder": "チャットを検索",
   "codex.sidebar.plugins": "プラグイン",
   "codex.sidebar.tasks": "タスク",
+  "codex.sidebar.toolsAria": "ツール",
   "codex.topbar.agentSubtitle": "DevMoter エージェント",
   "codex.topbar.usage": "使用量",
   "codex.topbar.detailsButton": "詳細",

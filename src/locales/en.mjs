@@ -2055,6 +2055,7 @@ export const en = {
   "codex.sidebar.searchPlaceholder": "Search chats",
   "codex.sidebar.plugins": "Plugins",
   "codex.sidebar.tasks": "Tasks",
+  "codex.sidebar.toolsAria": "Tools",
   "codex.topbar.agentSubtitle": "DevMoter agent",
   "codex.topbar.usage": "Usage",
   "codex.topbar.detailsButton": "Details",

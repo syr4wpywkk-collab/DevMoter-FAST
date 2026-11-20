@@ -2055,6 +2055,7 @@ export const zhHans = {
   "codex.sidebar.searchPlaceholder": "搜索对话",
   "codex.sidebar.plugins": "插件",
   "codex.sidebar.tasks": "任务",
+  "codex.sidebar.toolsAria": "工具",
   "codex.topbar.agentSubtitle": "DevMoter 智能体",
   "codex.topbar.usage": "用量",
   "codex.topbar.detailsButton": "详情",

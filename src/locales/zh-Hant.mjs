@@ -2055,6 +2055,7 @@ export const zhHant = {
   "codex.sidebar.searchPlaceholder": "搜尋對話",
   "codex.sidebar.plugins": "外掛程式",
   "codex.sidebar.tasks": "任務",
+  "codex.sidebar.toolsAria": "工具",
   "codex.topbar.agentSubtitle": "DevMoter 代理程式",
   "codex.topbar.usage": "用量",
   "codex.topbar.detailsButton": "詳細資料",
