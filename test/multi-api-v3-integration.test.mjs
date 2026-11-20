@@ -31,12 +31,15 @@ test("API chat bounds history and invalidates stale completions on New Chat", ()
 
 test("API chat is mounted as a first-class v3 surface and chat content is excluded from i18n mutation", () => {
   assert.match(mainSource, /mountApiChat/);
-  assert.match(mainSource, /"opencode" \| "codex" \| "api" \| "qwen" \| "devin" \| "integrations"/);
+  assert.match(mainSource, /"opencode" \| "codex" \| "api" \| "deepseek" \| "devin" \| "qwen" \| "integrations"/);
   assert.doesNotMatch(i18nCoreSource, /MutationObserver/);
   assert.match(apiChatSource, /row\.className = `api-message \$\{message\.role\}`;/);
   assert.match(apiChatSource, /bubble\.textContent = message\.content;/);
   assert.match(apiChatSource, /renderChatMarkdown\(bubble, message\.content, copyMessage\);/);
-  assert.match(apiChatSource, /t\("apiChat\.welcomePrompt"\)/);
+  // The welcome prompt is a mount option (DeepSeek reuses the surface) that
+  // defaults to apiChat.welcomePrompt.
+  assert.match(apiChatSource, /const welcomePromptKey = options\.welcomePromptKey \|\| "apiChat\.welcomePrompt";/);
+  assert.match(apiChatSource, /t\(welcomePromptKey\)/);
   assert.ok(
     DICTIONARIES.ja["apiChat.welcomePrompt"] &&
       DICTIONARIES.en["apiChat.welcomePrompt"] &&

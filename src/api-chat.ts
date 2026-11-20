@@ -68,6 +68,20 @@ const PROJECT_KEY = "opencode-pocket-project";
 type ApiChatOptions = {
   onCodex?: () => void;
   onOpenCode?: () => void;
+  onApi?: () => void;
+  surfaceId?: string;
+  // Dedicated single-preset surface (e.g. the DeepSeek backend): the provider
+  // catalog is filtered to this preset and new providers are created with it.
+  fixedPresetId?: string;
+  brandName?: string;
+  brandIcon?: string;
+  identityAriaKey?: string;
+  welcomePromptKey?: string;
+  addProviderHintKey?: string;
+  agentSummaryKey?: string;
+  providerStorageKey?: string;
+  draftProvider?: "api-chat" | "deepseek-chat";
+  modeClass?: string;
 };
 
 export type ApiChatController = {
@@ -114,25 +128,35 @@ export function mountApiChat(
   root: HTMLElement,
   options: ApiChatOptions = {}
 ): ApiChatController {
+  const fixedPresetId = options.fixedPresetId || "";
+  const brandName = options.brandName || "API Chat";
+  const brandIcon = options.brandIcon || "✦";
+  const identityAriaKey = options.identityAriaKey || "apiChat.unifiedIdentityAria";
+  const welcomePromptKey = options.welcomePromptKey || "apiChat.welcomePrompt";
+  const addProviderHintKey = options.addProviderHintKey || "apiChat.addApiHint";
+  const agentSummaryKey = options.agentSummaryKey || "apiChat.agentApiSummary";
+  const providerStorageKey = options.providerStorageKey || "devmoter-api-provider";
+  const modeClass = options.modeClass || "api-mode";
   root.innerHTML = `
     <div class="api-app">
       <div id="apiScrim" class="api-scrim hidden"></div>
       <aside id="apiSidebar" class="api-sidebar" aria-hidden="true" aria-label="${escapeHtml(t("apiChat.sidebarAria"))}" tabindex="-1" inert>
         <div class="api-sidebar-head dm-agent-head">
-          <div class="dm-unified-agent-identity" data-unified-agent-label hidden aria-label="${escapeHtml(t("apiChat.unifiedIdentityAria"))}">
-            <span class="dm-unified-agent-icon" aria-hidden="true">✦</span>
-            <span class="dm-unified-agent-copy"><strong>API Chat</strong><small>${escapeHtml(t("apiChat.chatHistory"))}</small></span>
+          <div class="dm-unified-agent-identity" data-unified-agent-label hidden aria-label="${escapeHtml(t(identityAriaKey))}">
+            <span class="dm-unified-agent-icon" aria-hidden="true">${brandIcon}</span>
+            <span class="dm-unified-agent-copy"><strong>${escapeHtml(brandName)}</strong><small>${escapeHtml(t("apiChat.chatHistory"))}</small></span>
           </div>
           <div class="dm-agent-switch-shell">
             <button id="apiAgentSwitchButton" class="dm-agent-switch-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
-              <span class="dm-agent-switch-icon">✦</span>
-              <span class="dm-agent-switch-copy"><strong>API Chat</strong><small>${escapeHtml(t("apiChat.currentAgent"))}</small></span>
+              <span class="dm-agent-switch-icon">${brandIcon}</span>
+              <span class="dm-agent-switch-copy"><strong>${escapeHtml(brandName)}</strong><small>${escapeHtml(t("apiChat.currentAgent"))}</small></span>
               <span class="dm-agent-switch-chevron">⌄</span>
             </button>
             <div id="apiAgentSwitchMenu" class="dm-agent-switch-menu hidden" role="listbox" aria-label="${escapeHtml(t("apiChat.selectAgentAria"))}">
               <button id="apiGoCodex" type="button" data-agent="codex"><span>⌘</span><span><strong>Codex</strong><small>${escapeHtml(t("apiChat.agentCodexSummary"))}</small></span><span></span></button>
               <button id="apiGoOpenCode" type="button" data-agent="opencode"><span>◈</span><span><strong>OpenCode</strong><small>${escapeHtml(t("apiChat.agentOpenCodeSummary"))}</small></span><span></span></button>
-              <button id="apiAgentCurrent" class="active" type="button" data-agent="api"><span>✦</span><span><strong>API Chat</strong><small>${escapeHtml(t("apiChat.agentApiSummary"))}</small></span><span>✓</span></button>
+              ${fixedPresetId ? `<button id="apiGoApi" type="button" data-agent="api"><span>✦</span><span><strong>API Chat</strong><small>${escapeHtml(t("apiChat.agentApiSummary"))}</small></span><span></span></button>` : ""}
+              <button id="apiAgentCurrent" class="active" type="button" data-agent="${escapeHtml(options.surfaceId || "api")}"><span>${brandIcon}</span><span><strong>${escapeHtml(brandName)}</strong><small>${escapeHtml(t(agentSummaryKey))}</small></span><span>✓</span></button>
             </div>
           </div>
           <button id="apiSidebarClose" type="button" aria-label="${escapeHtml(t("common.close"))}">×</button>
@@ -148,7 +172,7 @@ export function mountApiChat(
       <header class="api-topbar">
         ${chatHistoryTriggerMarkup({ id: "apiMenu", className: "api-icon-button", ariaLabel: t("nav.openChatHistoryAria"), title: t("nav.chatHistoryTitle") })}
         <div class="api-brand">
-          <strong>API Chat</strong>
+          <strong>${escapeHtml(brandName)}</strong>
           <small id="apiModelTopLabel">${escapeHtml(t("apiChat.topModelUnset"))}</small>
         </div>
         <div class="api-header-actions">
@@ -160,8 +184,8 @@ export function mountApiChat(
       <main class="api-main">
         <div id="apiTranscript" class="api-transcript">
           <section id="apiWelcome" class="api-welcome">
-            <h1>API Chat</h1>
-            <p>${escapeHtml(t("apiChat.welcomePrompt"))}</p>
+            <h1>${escapeHtml(brandName)}</h1>
+            <p>${escapeHtml(t(welcomePromptKey))}</p>
           </section>
         </div>
       </main>
@@ -208,6 +232,7 @@ export function mountApiChat(
   const agentCurrent = root.querySelector<HTMLButtonElement>("#apiAgentCurrent")!;
   const goCodex = root.querySelector<HTMLButtonElement>("#apiGoCodex")!;
   const goOpenCode = root.querySelector<HTMLButtonElement>("#apiGoOpenCode")!;
+  const goApi = root.querySelector<HTMLButtonElement>("#apiGoApi");
   const settingsTop = root.querySelector<HTMLButtonElement>("#apiSettingsTop")!;
   const newChat = root.querySelector<HTMLButtonElement>("#apiNewChat")!;
   const newChatTop = root.querySelector<HTMLButtonElement>("#apiNewChatTop")!;
@@ -349,7 +374,7 @@ export function mountApiChat(
   }
 
   const drafts = createChatDraftBinding<ApiAttachment[]>({
-    provider: "api-chat",
+    provider: options.draftProvider || "api-chat",
     input: prompt,
     storage: window.sessionStorage,
     getProjectId: () => localStorage.getItem(PROJECT_KEY),
@@ -378,7 +403,7 @@ export function mountApiChat(
     providerSelect.value = conversation.providerId;
     updateModels();
     if (currentProvider()) {
-      localStorage.setItem("devmoter-api-provider", providerSelect.value);
+      localStorage.setItem(providerStorageKey, providerSelect.value);
       modelSelect.value = conversation.model;
       if (modelSelect.value) localStorage.setItem(`devmoter-api-model:${providerSelect.value}`, modelSelect.value);
       updateReasoning();
@@ -520,7 +545,7 @@ export function mountApiChat(
     updateHeader();
     // Ready needs no line: the selectors in the composer foot already show the choice.
     status.textContent = !provider
-      ? t("apiChat.addApiHint")
+      ? t(addProviderHintKey)
       : provider.ready
         ? ""
         : `${provider.name} · ${t("apiChat.keyMissing")}`;
@@ -705,10 +730,13 @@ export function mountApiChat(
     try {
       const payload = await apiJson<unknown>("/api/llm/providers");
       if (requestGeneration !== providerCatalogRequestGeneration) return;
-      providers = normalizeApiProviderCatalog(payload) as ApiProvider[];
+      const catalog = normalizeApiProviderCatalog(payload) as ApiProvider[];
+      providers = fixedPresetId
+        ? catalog.filter(provider => provider.presetId === fixedPresetId)
+        : catalog;
       providerCatalogAvailable = true;
 
-      const saved = localStorage.getItem("devmoter-api-provider");
+      const saved = localStorage.getItem(providerStorageKey);
       providerSelect.replaceChildren();
 
       if (providers.length === 0) {
@@ -1069,8 +1097,10 @@ export function mountApiChat(
       advanced.open = provider.presetId === "custom";
       syncPresetButtons();
     } else {
-      const initial = presets[0];
+      const initial = presets.find(item => item.id === fixedPresetId) || presets[0];
       if (initial) presetSelect.value = initial.id;
+      // A dedicated surface only creates providers for its own preset.
+      if (fixedPresetId) presetSelect.disabled = true;
       apiKeyInput.placeholder = t("apiChat.pasteApiKeyPlaceholder");
       applyPreset();
     }
@@ -1162,7 +1192,7 @@ export function mountApiChat(
         const savedId = saved.provider?.id;
         if (savedId && providers.some(item => item.id === savedId)) {
           providerSelect.value = savedId;
-          localStorage.setItem("devmoter-api-provider", savedId);
+          localStorage.setItem(providerStorageKey, savedId);
           updateModels();
         }
 
@@ -1195,8 +1225,8 @@ export function mountApiChat(
           await apiJson(`/api/llm/providers/${encodeURIComponent(provider.id)}`, {
             method: "DELETE"
           });
-          if (localStorage.getItem("devmoter-api-provider") === provider.id) {
-            localStorage.removeItem("devmoter-api-provider");
+          if (localStorage.getItem(providerStorageKey) === provider.id) {
+            localStorage.removeItem(providerStorageKey);
           }
           await refresh();
           await renderSettingsList();
@@ -1360,13 +1390,17 @@ export function mountApiChat(
     closeSidebar();
     options.onOpenCode?.();
   });
+  goApi?.addEventListener("click", () => {
+    closeSidebar();
+    options.onApi?.();
+  });
   settingsTop.addEventListener("click", () => void openSettings());
   settingsClose.addEventListener("click", closeSettings);
   settingsModal.addEventListener("click", event => {
     if (event.target === settingsModal) closeSettings();
   });
   document.addEventListener("keydown", event => {
-    if (!document.body.classList.contains("api-mode")) return;
+    if (!document.body.classList.contains(modeClass)) return;
     const overlay = !settingsModal.classList.contains("hidden") ? settingsModal
       : sidebar.classList.contains("open") ? sidebar : null;
     if (!overlay) return;
@@ -1411,7 +1445,7 @@ export function mountApiChat(
       void openSettings();
       return;
     }
-    localStorage.setItem("devmoter-api-provider", providerSelect.value);
+    localStorage.setItem(providerStorageKey, providerSelect.value);
     updateModels();
     archiveConversation();
   });

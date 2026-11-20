@@ -3,7 +3,7 @@
 // written back into the input: nothing here sends a message.
 export const CHAT_DRAFT_PREFIX = "devmoter-chat-draft:v1:";
 export const CHAT_DRAFT_MAX_CHARS = 20000;
-export const CHAT_DRAFT_PROVIDERS = Object.freeze(["codex", "opencode", "api-chat", "qwen"]);
+export const CHAT_DRAFT_PROVIDERS = Object.freeze(["codex", "opencode", "api-chat", "deepseek-chat", "qwen"]);
 
 const NO_PROJECT = "_";
 

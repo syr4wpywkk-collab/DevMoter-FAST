@@ -208,7 +208,7 @@ function applyTheme(mode: ThemeMode) {
 function estimateTokens() {
   const selector = document.body.classList.contains("codex-mode") ? ".cx-transcript"
     : document.body.classList.contains("opencode-mode") ? ".ocx-transcript"
-    : document.body.classList.contains("api-mode") ? ".api-transcript" : null;
+    : document.body.classList.contains("api-mode") || document.body.classList.contains("deepseek-mode") ? ".api-transcript" : null;
   const text = selector ? document.querySelector<HTMLElement>(selector)?.innerText || "" : "";
   // A display-length heuristic only. Never reconstruct a prompt or claim backend usage from it.
   return Math.ceil(text.length / 4);

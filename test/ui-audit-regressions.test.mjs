@@ -51,8 +51,12 @@ test("theme overrides keep history and workspace controls readable", async () =>
 
 test("API Chat welcome and composer use a restrained workspace treatment", async () => {
   const api = await readFile(new URL("../src/api-chat.ts", import.meta.url), "utf8");
-  assert.match(api, /<h1>API Chat<\/h1>/);
-  assert.match(api, /t\("apiChat\.welcomePrompt"\)/);
+  // The welcome brand is a mount option (DeepSeek reuses this surface) that
+  // defaults to "API Chat", and the welcome prompt defaults to apiChat.welcomePrompt.
+  assert.match(api, /<h1>\$\{escapeHtml\(brandName\)\}<\/h1>/);
+  assert.match(api, /const brandName = options\.brandName \|\| "API Chat";/);
+  assert.match(api, /const welcomePromptKey = options\.welcomePromptKey \|\| "apiChat\.welcomePrompt";/);
+  assert.match(api, /t\(welcomePromptKey\)/);
   assert.match(DICTIONARIES.ja["apiChat.welcomePrompt"], /接続先を選んでメッセージを入力/);
   assert.doesNotMatch(api, /api-spark|どのAPIで考える/);
 

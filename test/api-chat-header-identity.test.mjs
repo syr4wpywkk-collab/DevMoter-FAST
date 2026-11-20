@@ -9,7 +9,10 @@ test("API Chat header keeps a visible, accessible identity and model label", asy
   const header = source.match(/<header class="api-topbar">([\s\S]*?)<\/header>/);
   assert.ok(header, "API Chat header markup exists");
   const markup = header[1];
-  assert.match(markup, /<div class="api-brand">\s*<strong>API Chat<\/strong>\s*<small id="apiModelTopLabel">/);
+  // The header brand is a mount option (the DeepSeek backend reuses this
+  // surface); it must default to "API Chat" and sit next to the model label.
+  assert.match(markup, /<div class="api-brand">\s*<strong>\$\{escapeHtml\(brandName\)\}<\/strong>\s*<small id="apiModelTopLabel">/);
+  assert.match(source, /const brandName = options\.brandName \|\| "API Chat";/);
   assert.doesNotMatch(markup.match(/<div class="api-brand">[\s\S]*?<\/div>/)[0], /aria-hidden|hidden|inert/);
   assert.match(markup, /chatHistoryTriggerMarkup\(\{ id: "apiMenu"[^}]*ariaLabel: t\(/);
   assert.match(markup, /<div class="api-header-actions">[\s\S]*id="apiSettingsTop"[^>]*aria-label=/);

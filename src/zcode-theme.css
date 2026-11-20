@@ -37,7 +37,7 @@ body { font-family: var(--font-ui); }
 }
 
 /* Chat providers share the same neutral surfaces and single emerald accent. */
-body.codex-mode, body.opencode-mode, body.api-mode { background: var(--canvas-base); }
+body.codex-mode, body.opencode-mode, body.api-mode, body.deepseek-mode { background: var(--canvas-base); }
 .cx-app {
   --cx-surface: var(--canvas-base);
   --cx-raised: var(--surface-card);

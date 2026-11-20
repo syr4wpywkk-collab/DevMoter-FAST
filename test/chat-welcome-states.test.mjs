@@ -11,7 +11,10 @@ test("#348: Codex, OpenCode, API Chat and Qwen each render a welcome state", asy
   assert.match(codex, /<div class="cx-welcome">[\s\S]*?t\("codex\.welcome\.title"\)[\s\S]*?t\("codex\.welcome\.subtitle"\)/);
   assert.match(opencode, /<div class="ocx-welcome">[\s\S]*?t\("opencode\.welcome\.title"\)[\s\S]*?t\("opencode\.welcome\.subtitle"\)/);
   for (const hint of ["plan", "build", "command"]) assert.match(opencode, new RegExp(`data-hint="${hint}"`), `OpenCode ${hint} hint`);
-  assert.match(api, /<section id="apiWelcome" class="api-welcome">[\s\S]*?t\("apiChat\.welcomePrompt"\)/);
+  // The API Chat welcome prompt is a mount option (DeepSeek reuses the
+  // surface) that defaults to apiChat.welcomePrompt.
+  assert.match(api, /<section id="apiWelcome" class="api-welcome">[\s\S]*?t\(welcomePromptKey\)/);
+  assert.match(api, /const welcomePromptKey = options\.welcomePromptKey \|\| "apiChat\.welcomePrompt";/);
   assert.match(qwen, /<section class="qx-welcome" data-qwen-welcome>/);
 });
 
