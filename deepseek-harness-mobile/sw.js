@@ -1,10 +1,11 @@
-const CACHE_NAME = "dsh-mobile-shell-v1";
+const CACHE_NAME = "dsh-mobile-shell-v2";
 const SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./src/app.js",
   "./src/connection.js",
+  "./src/deepseek.js",
   "./manifest.webmanifest",
   "./icon.svg"
 ];
