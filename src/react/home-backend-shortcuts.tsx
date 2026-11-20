@@ -2,12 +2,13 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { t } from "../i18n";
 
-export type ChatBackend = "opencode" | "codex" | "api";
+export type ChatBackend = "opencode" | "codex" | "api" | "deepseek";
 
 const WORKSPACES: ReadonlyArray<{ id: ChatBackend; title: string }> = [
   { id: "opencode", title: "OpenCode" },
   { id: "codex", title: "Codex" },
-  { id: "api", title: "API Chat" }
+  { id: "api", title: "API Chat" },
+  { id: "deepseek", title: "DeepSeek" }
 ];
 
 type ShortcutsProps = {

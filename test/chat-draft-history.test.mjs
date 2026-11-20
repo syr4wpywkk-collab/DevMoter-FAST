@@ -157,7 +157,11 @@ test("chat surfaces wire drafts, latest-answer copy and history retry without se
   );
 
   for (const [provider, source] of [["codex", codex], ["opencode", opencode], ["api-chat", apiChat]]) {
-    assert.match(source, new RegExp(`provider: "${provider}"`));
+    // The API Chat surface also backs the DeepSeek backend, so its draft
+    // provider is a mount option that defaults to "api-chat".
+    assert.match(source, provider === "api-chat"
+      ? /provider: options\.draftProvider \|\| "api-chat"/
+      : new RegExp(`provider: "${provider}"`));
     assert.match(source, /storage: window\.sessionStorage/);
     assert.match(source, /if \(drafts\.sync\(\)\) \{/);
     assert.match(source, /"devmoter:surface-changed", \(\) => \{?\s*(if \(uploadingCount === 0\) )?drafts\.sync\(\)/);

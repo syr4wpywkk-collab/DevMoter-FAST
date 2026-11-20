@@ -1,5 +1,5 @@
 /* API Chat presentation; native provider capabilities and form actions stay intact. */
-body.api-mode { padding: 0; overflow: hidden; background: var(--canvas-base, #fff); }
+body.api-mode, body.deepseek-mode { padding: 0; overflow: hidden; background: var(--canvas-base, #fff); }
 
 .api-app {
   --api-bg: var(--canvas-base, #fff);
@@ -196,7 +196,7 @@ body.api-mode { padding: 0; overflow: hidden; background: var(--canvas-base, #ff
 .api-app .api-provider-danger button { color: var(--status-error, #b3261e); }
 
 @media (max-width: 899px) {
-  body.api-mode .api-app .api-topbar { padding-left: max(12px, env(safe-area-inset-left)); }
+  body.api-mode .api-app .api-topbar, body.deepseek-mode .api-app .api-topbar { padding-left: max(12px, env(safe-area-inset-left)); }
 }
 @media (min-width: 760px) {
   .api-app .api-transcript { padding-inline: max(24px, calc((100% - var(--api-content-width)) / 2)); }

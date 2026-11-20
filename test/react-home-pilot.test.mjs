@@ -37,12 +37,13 @@ test("React Home pilot bundles, delegates navigation and unmounts its own root",
       await new Promise(resolve => setTimeout(resolve, 15));
     }
     const buttons = host.querySelectorAll("button");
-    assert.equal(buttons.length, 3, "show three supported backend choices");
+    assert.equal(buttons.length, 4, "show four supported backend choices");
     assert.equal(host.querySelector("nav")?.getAttribute("aria-label"), "Switch chat backend");
     assert.equal(buttons[0].getAttribute("type"), "button");
     host.querySelector("[aria-label='Open Codex workspace']").click();
     host.querySelector("[aria-label='Open OpenCode workspace']").click();
-    assert.deepEqual(changes, ["codex", "opencode"], "React must delegate and not bypass shell navigation");
+    host.querySelector("[aria-label='Open DeepSeek workspace']").click();
+    assert.deepEqual(changes, ["codex", "opencode", "deepseek"], "React must delegate and not bypass shell navigation");
     dispose();
     dispose = null;
     assert.equal(host.childElementCount, 0, "React must clean up its own DOM when unmounted");
