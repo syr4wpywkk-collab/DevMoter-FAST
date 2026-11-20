@@ -1914,6 +1914,7 @@ export const zhHant = {
   "qwen.chat.historyTitle": "對話紀錄",
   "qwen.chat.historyNew": "新增",
   "qwen.chat.saveHistoryFailed": "無法在此裝置儲存歷史紀錄。",
+  "qwen.chat.historyDamaged": "無法讀取已儲存的歷史紀錄，已另行保留。新對話會正常儲存。",
   "qwen.chat.projectNotFound": "找不到專案",
   "qwen.chat.noProject": "無專案",
   "qwen.chat.loadingProject": "正在載入專案…",

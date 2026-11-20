@@ -5,9 +5,12 @@ import { JSDOM } from "jsdom";
 import { build } from "esbuild";
 import {
   LEGACY_QWEN_SESSION_KEY,
+  QWEN_CHATS_DAMAGED_KEY,
   QWEN_CHATS_KEY,
   createNdjsonReader,
   loadQwenChats,
+  mergeStoredQwenChats,
+  readQwenHistory,
   qwenChatTime,
   qwenChatTitle,
   saveQwenChats
@@ -61,6 +64,40 @@ test("history helpers: titles, newest first, legacy resume id, bounded storage",
   assert.equal(saveQwenChats({ setItem() { throw new Error("quota"); } }, many), false);
 });
 
+test("history integrity: unreadable history is set aside once, duplicates keep the newest copy", () => {
+  const broken = memoryStorage({ [QWEN_CHATS_KEY]: "{broken" });
+  assert.deepEqual(readQwenHistory(broken), { chats: [], damaged: true });
+  assert.equal(broken.getItem(QWEN_CHATS_DAMAGED_KEY), "{broken", "raw text kept before the next save overwrites it");
+  broken.setItem(QWEN_CHATS_KEY, "[]");
+  assert.equal(readQwenHistory(broken).damaged, true);
+  assert.equal(broken.getItem(QWEN_CHATS_DAMAGED_KEY), "{broken", "the first copy is not replaced");
+  assert.deepEqual(readQwenHistory(memoryStorage()), { chats: [], damaged: false });
+  assert.equal(readQwenHistory({ getItem() { throw new Error("denied"); }, setItem() {}, removeItem() {} }).damaged, false);
+
+  const dupes = memoryStorage({ [QWEN_CHATS_KEY]: JSON.stringify({ version: 1, chats: [
+    { id: "a", title: "old copy", updatedAt: 1, messages: [{ role: "user", text: "x" }] },
+    { id: "a", title: "new copy", updatedAt: 9, messages: [{ role: "user", text: "y" }] },
+    { id: "b", title: "b", updatedAt: 5, messages: [{ role: "user", text: "z" }] }
+  ] }) });
+  const { chats, damaged } = readQwenHistory(dupes);
+  assert.equal(damaged, false);
+  assert.deepEqual(chats.map(chat => [chat.id, chat.title]), [["a", "new copy"], ["b", "b"]]);
+});
+
+test("history merge: another tab's save wins except the live chat and unsaved chats", () => {
+  const chat = (id, updatedAt, messages = [{ role: "user", text: id }]) => ({ id, title: id, sessionId: null, projectId: "", updatedAt, messages });
+  const stored = [chat("a", 5), chat("live", 1, [{ role: "user", text: "stale" }])];
+  const current = [chat("live", 9, [{ role: "user", text: "streaming" }]), chat("deleted-elsewhere", 4), chat("fresh", 8, [])];
+  const merged = mergeStoredQwenChats(stored, current, "live");
+  assert.deepEqual(merged.map(item => item.id), ["live", "fresh", "a"]);
+  assert.equal(merged[0].messages[0].text, "streaming", "the running chat is not replaced by the older stored copy");
+  assert.ok(!merged.some(item => item.id === "deleted-elsewhere"), "a chat deleted in another tab stays deleted");
+  const unsavedReply = mergeStoredQwenChats([chat("a", 5, [{ role: "user", text: "q" }])], [chat("a", 7, [{ role: "user", text: "q" }, { role: "assistant", text: "reply" }])]);
+  assert.equal(unsavedReply[0].messages.length, 2, "a newer local copy that failed to save is kept");
+  const staleTab = mergeStoredQwenChats([chat("a", 9, [{ role: "user", text: "newer" }])], [chat("a", 3, [{ role: "user", text: "older" }])]);
+  assert.equal(staleTab[0].messages[0].text, "newer", "an older local copy gives way to the stored one");
+});
+
 test("history times are relative for a week, then a date; NDJSON survives split chunks", () => {
   const now = Date.UTC(2026, 10, 3, 12);
   assert.equal(qwenChatTime(now - 5 * 60_000, now, "ja"), "5 分前");
@@ -98,7 +135,7 @@ function ndjsonResponse(events, { hold = false, signal } = {}) {
   return { ok: true, status: 200, body, json: async () => ({}) };
 }
 
-async function mount({ chat, seed, confirm = () => true, models = () => ({ ok: true, json: async () => MODELS }), install } = {}) {
+async function mount({ chat, seed, rawSeed, confirm = () => true, models = () => ({ ok: true, json: async () => MODELS }), install } = {}) {
   const dom = new JSDOM("<div id='root'></div>", { url: "https://devmoter.test/" });
   const requests = [];
   Object.assign(globalThis, {
@@ -118,6 +155,7 @@ async function mount({ chat, seed, confirm = () => true, models = () => ({ ok: t
   dom.window.localStorage.setItem("devmoter-language", "ja");
   dom.window.localStorage.setItem("opencode-pocket-project", "p1");
   if (seed) dom.window.localStorage.setItem(QWEN_CHATS_KEY, JSON.stringify(seed));
+  if (rawSeed !== undefined) dom.window.localStorage.setItem(QWEN_CHATS_KEY, rawSeed);
   const { mountQwenChat } = await loadQwenChat();
   const root = dom.window.document.getElementById("root");
   const opened = [];
@@ -461,6 +499,23 @@ test("model helpers: stored choice is validated, recent list is bounded and dedu
   assert.equal(store.qwenModelChipLabel(null, "zh-Hans"), "默认");
   assert.equal(store.qwenModelChipLabel(null, "zh-Hant"), "預設");
   assert.equal(store.qwenModelChipLabel(null, "zh"), "默认");
+});
+
+test("damaged history shows a notice and another tab's save updates the open history", async () => {
+  const { dom, root, $ } = await mount({ rawSeed: "{broken", chat: () => ndjsonResponse([]) });
+  try {
+    assert.equal($("[data-qwen-status]").textContent, "保存済みの履歴を読み込めなかったため退避しました。新しいチャットは通常どおり保存されます。");
+    assert.equal(dom.window.localStorage.getItem(QWEN_CHATS_DAMAGED_KEY), "{broken");
+
+    dom.window.localStorage.setItem(QWEN_CHATS_KEY, JSON.stringify({ version: 1, chats: [
+      { id: "other-tab", title: "別タブの会話", sessionId: null, projectId: "p1", updatedAt: Date.now(), messages: [{ role: "user", text: "別タブ" }] }
+    ] }));
+    dom.window.dispatchEvent(new dom.window.StorageEvent("storage", { key: QWEN_CHATS_KEY }));
+    $("[data-qwen-history]").click();
+    assert.deepEqual([...root.querySelectorAll(".qx-history-open strong")].map(node => node.textContent), ["別タブの会話"]);
+  } finally {
+    dom.window.close();
+  }
 });
 
 test("unsent Qwen text stays with its chat across chat switches and is cleared once sent", async () => {

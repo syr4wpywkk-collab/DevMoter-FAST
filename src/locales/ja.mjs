@@ -1914,6 +1914,7 @@ export const ja = {
   "qwen.chat.historyTitle": "チャット履歴",
   "qwen.chat.historyNew": "新規",
   "qwen.chat.saveHistoryFailed": "履歴を端末に保存できませんでした",
+  "qwen.chat.historyDamaged": "保存済みの履歴を読み込めなかったため退避しました。新しいチャットは通常どおり保存されます。",
   "qwen.chat.projectNotFound": "プロジェクトが見つかりません",
   "qwen.chat.noProject": "プロジェクトがありません",
   "qwen.chat.loadingProject": "プロジェクトを読み込み中…",

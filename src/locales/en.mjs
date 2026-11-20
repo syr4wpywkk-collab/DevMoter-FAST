@@ -1914,6 +1914,7 @@ export const en = {
   "qwen.chat.historyTitle": "Chat history",
   "qwen.chat.historyNew": "New",
   "qwen.chat.saveHistoryFailed": "Could not save history on this device.",
+  "qwen.chat.historyDamaged": "Saved history could not be read, so it was set aside. New chats are saved normally.",
   "qwen.chat.projectNotFound": "Project not found",
   "qwen.chat.noProject": "No project",
   "qwen.chat.loadingProject": "Loading project…",
