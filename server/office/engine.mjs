@@ -21804,6 +21804,8 @@ var Children = class {
     this.items = items;
     this.order = order;
   }
+  items;
+  order;
   get(name) {
     return this.items.find((c) => c.name === name);
   }

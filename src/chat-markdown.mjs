@@ -25,8 +25,8 @@ function safeHref(value) {
 }
 
 function codeSource(token) {
-  // Marked removes one terminal newline from fenced blocks, even while streaming.
-  // Recover it from the source token; copy operations never read the rendered DOM.
+  // How many terminal newlines Marked keeps in a fenced block differs between releases
+  // and while streaming. Restore them from the source token; copy never reads the DOM.
   const opening = /^ {0,3}(`{3,}|~{3,})[^\n]*(?:\n|$)/.exec(token.raw);
   if (!opening) return token.text;
   const lines = token.raw.slice(opening[0].length).split("\n");
@@ -35,10 +35,9 @@ function codeSource(token) {
   let lastLine = lines.length - 1;
   if (lines[lastLine] === "") lastLine -= 1;
   const hasClosingFence = lastLine >= 0 && closing.test(lines[lastLine]);
-  const hasTerminalNewline = hasClosingFence
-    ? lastLine > 0
-    : token.raw.slice(opening[0].length).endsWith("\n");
-  return token.text + (hasTerminalNewline ? "\n" : "");
+  const lineBreaks = hasClosingFence ? lastLine : lines.length - 1;
+  const text = token.text.replace(/\n+$/, "");
+  return text + "\n".repeat(Math.max(0, lineBreaks - (text.split("\n").length - 1)));
 }
 
 /** Render untrusted Markdown. Raw message state remains the caller's responsibility. */
