@@ -134,8 +134,8 @@ test("install source classes A/B may be preview candidates, C requires confirmat
   assert.equal(installSourceDecision({ installSupport: "blocked", installSourceClass: "A", installStatus: "candidate" }), "blocked");
 });
 
-test("all six adapters define server-owned install metadata and browser fields cannot replace it", () => {
-  assert.equal(setupAdapters.length, 6);
+test("all seven adapters define server-owned install metadata and browser fields cannot replace it", () => {
+  assert.equal(setupAdapters.length, 7);
   for (const adapter of setupAdapters) {
     assert.ok(["supported", "blocked"].includes(adapter.installSupport));
     assert.ok(["A", "B", "C", "D"].includes(adapter.installSourceClass));

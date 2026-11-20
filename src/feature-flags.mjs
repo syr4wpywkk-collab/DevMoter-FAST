@@ -12,8 +12,8 @@ export const DEFAULT_VISIBLE_BACKEND = "opencode";
 
 export const VISIBLE_CHAT_BACKENDS = Object.freeze(
   QWEN_UI_ENABLED
-    ? ["codex", "opencode", "api", "qwen"]
-    : ["codex", "opencode", "api"]
+    ? ["codex", "opencode", "api", "qwen", "devin"]
+    : ["codex", "opencode", "api", "devin"]
 );
 
 const VISIBLE_CHAT_BACKEND_SET = new Set(VISIBLE_CHAT_BACKENDS);

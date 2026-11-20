@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
 import { MIMEType } from "node:util";
 import { CodexBridge } from "./server/codex-bridge.mjs";
+import { DevinBridge } from "./server/devin-bridge.mjs";
 import { inspectKnownClis, launchCode } from "./server/cli-launch.mjs";
 import { buildOpenCodeProviderCatalog, PROVIDER_CATALOG_TTL_MS } from "./src/opencode-provider-catalog.mjs";
 import { canonicalOpenCodeEvent, createSseReader, lastAssistantText, lastTurnFailure, OPENCODE_API_V2, parseDevMoterPrompt, parsePermissionDecision, parseQuestionAnswers } from "./server/opencode-adapter.mjs";
@@ -175,6 +176,10 @@ const openCodeSessionModes = createSessionModeMap();
 const codex = new CodexBridge({
   bin: process.env.CODEX_BIN || "codex",
   cwd: process.env.CODEX_CWD || process.cwd()
+});
+const devin = new DevinBridge({
+  bin: process.env.DEVIN_BIN || "devin",
+  cwd: process.env.DEVIN_CWD || process.env.CODEX_CWD || process.cwd()
 });
 const agentRunService = createAgentRunService({
   filePath: join(PROJECT_CONFIG_DIR, "agent-runs.json"),
@@ -2639,6 +2644,135 @@ async function codexEvents(req, res) {
   res.on("close", cleanup);
 }
 
+const DEVIN_RPC_ALLOWLIST = new Set([
+  "session/new", "session/list", "session/prompt", "session/load", "session/set_config_option"
+]);
+
+const DEVIN_NOTIFY_ALLOWLIST = new Set([
+  "session/cancel"
+]);
+
+async function devinRpc(req, res) {
+  try {
+    const payload = await readJson(req, 2 * 1024 * 1024);
+    const method = payload?.method;
+    const params = payload?.params ?? {};
+
+    if (typeof method !== "string" || !DEVIN_RPC_ALLOWLIST.has(method)) {
+      json(res, 400, { error: "Devin RPC method is not allowed" });
+      return;
+    }
+
+    if (!params || typeof params !== "object" || Array.isArray(params)) {
+      json(res, 400, { error: "Devin RPC params must be an object" });
+      return;
+    }
+
+    const result = await devin.request(
+      method,
+      params,
+      method === "session/prompt" ? { timeoutMs: 180000 } : {}
+    );
+    json(res, 200, { result });
+  } catch (error) {
+    const message = errorMessage(error);
+    const status = Number(error?.status || (message === "Request body too large" ? 413 : 502));
+    const code = launchCode(error);
+    json(res, status, {
+      error: message,
+      ...(code ? { code } : {})
+    });
+  }
+}
+
+async function devinNotify(req, res) {
+  try {
+    const payload = await readJson(req, 2 * 1024 * 1024);
+    const method = payload?.method;
+    const params = payload?.params ?? {};
+
+    if (typeof method !== "string" || !DEVIN_NOTIFY_ALLOWLIST.has(method)) {
+      json(res, 400, { error: "Devin notification method is not allowed" });
+      return;
+    }
+
+    if (!params || typeof params !== "object" || Array.isArray(params)) {
+      json(res, 400, { error: "Devin notification params must be an object" });
+      return;
+    }
+
+    if (method === "session/cancel") {
+      const sessionId = String(params.sessionId || "");
+      if (!sessionId) {
+        json(res, 400, { error: "Devin session/cancel requires sessionId" });
+        return;
+      }
+      await devin.cancel(sessionId);
+    } else {
+      await devin.notify(method, params);
+    }
+    json(res, 200, { ok: true });
+  } catch (error) {
+    const message = errorMessage(error);
+    const status = Number(error?.status || (message === "Request body too large" ? 413 : 502));
+    const code = launchCode(error);
+    json(res, status, {
+      error: message,
+      ...(code ? { code } : {})
+    });
+  }
+}
+
+async function devinEvents(req, res) {
+  const health = await devin.health();
+  if (!health.online) {
+    json(res, 503, health);
+    return;
+  }
+
+  if (endIfResponseStarted(res)) return;
+  res.writeHead(200, {
+    ...PROXY_SECURITY_HEADERS,
+    "content-type": "text/event-stream; charset=utf-8",
+    "cache-control": "no-cache, no-transform",
+    "connection": "keep-alive",
+    "x-accel-buffering": "no"
+  });
+
+  const send = (event, data) => {
+    if (res.writableEnded || res.destroyed) return;
+    res.write(`event: ${redactText(event)}\n`);
+    res.write(`data: ${stringifyRedactedJson(data)}\n\n`);
+  };
+
+  const onNotification = event => send("notification", event);
+  const onClientRequest = event => send("client-request", event);
+  const onOffline = event => send("offline", event);
+  const onOnline = event => send("online", event);
+
+  devin.on("notification", onNotification);
+  devin.on("client-request", onClientRequest);
+  devin.on("offline", onOffline);
+  devin.on("online", onOnline);
+
+  send("ready", { online: true });
+
+  const heartbeat = setInterval(() => {
+    if (!res.writableEnded && !res.destroyed) {
+      res.write(": heartbeat\n\n");
+    }
+  }, 20000);
+
+  const cleanup = () => {
+    clearInterval(heartbeat);
+    devin.off("notification", onNotification);
+    devin.off("client-request", onClientRequest);
+    devin.off("offline", onOffline);
+    devin.off("online", onOnline);
+  };
+  req.on("close", cleanup);
+  res.on("close", cleanup);
+}
 
 function multiApiErrorStatus(error) {
   const message = errorMessage(error);
@@ -3986,17 +4120,19 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === "/api/health") {
-      const [openCode, codexHealth] = await Promise.all([
+      const [openCode, codexHealth, devinHealth] = await Promise.all([
         opencodeHealth(),
-        codex.health()
+        codex.health(),
+        devin.health()
       ]);
       json(res, 200, {
         version: "0.2.0",
         automationApiVersion: AUTOMATION_API_VERSION,
-        online: openCode.online || codexHealth.online,
+        online: openCode.online || codexHealth.online || devinHealth.online,
         backends: {
           opencode: openCode,
-          codex: codexHealth
+          codex: codexHealth,
+          devin: devinHealth
         },
         terminalAuthConfigured: terminal.configured
       });
@@ -4035,6 +4171,29 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/api/codex/events") {
       await codexEvents(req, res);
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/devin/health") {
+      const health = await devin.health();
+      json(res, health.online ? 200 : 503, health);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/devin/rpc") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devinRpc(req, res);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/devin/notify") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devinNotify(req, res);
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/devin/events") {
+      await devinEvents(req, res);
       return;
     }
 
@@ -4083,6 +4242,7 @@ server.listen(PORT, HOST, () => {
   console.log(`OpenCode directory: ${OPENCODE_DIRECTORY}`);
   console.log(`Codex binary: ${process.env.CODEX_BIN || "codex"}`);
   console.log(`Codex cwd: ${process.env.CODEX_CWD || process.cwd()}`);
+  console.log(`Devin binary: ${process.env.DEVIN_BIN || "devin"}`);
   controlPlane.start();
   void controlPlane.dispatchEvent("devmoter.lifecycle", "server.started", {
     startedAt: Date.now(),
