@@ -97,7 +97,7 @@ export function acpChildEnv(baseEnv = process.env, explicitEnv = null, inheritEn
 }
 
 export class AcpAdapter extends EventEmitter {
-  constructor({ command, args = [], cwd = process.cwd(), env = null, baseEnv = process.env, inheritEnvKeys = [], spawnImpl = spawn } = {}) {
+  constructor({ command, args = [], cwd = process.cwd(), env = null, baseEnv = process.env, inheritEnvKeys = [], spawnImpl = spawn, clientRequestHandler = null } = {}) {
     super();
     this.command = String(command || "").trim();
     this.args = Array.isArray(args) ? args.map(value => String(value)) : [];
@@ -106,6 +106,7 @@ export class AcpAdapter extends EventEmitter {
     this.baseEnv = baseEnv && typeof baseEnv === "object" && !Array.isArray(baseEnv) ? baseEnv : process.env;
     this.inheritEnvKeys = normalizeAcpEnvPassthrough(inheritEnvKeys);
     this.spawnImpl = spawnImpl;
+    this.clientRequestHandler = typeof clientRequestHandler === "function" ? clientRequestHandler : null;
     this.child = null;
     this.lines = null;
     this.pending = new Map();
@@ -294,19 +295,40 @@ export class AcpAdapter extends EventEmitter {
     }
 
     if (message && typeof message.method === "string" && "id" in message) {
-      this.emit("client-request", {
+      const clientRequest = {
         id: message.id,
         method: message.method,
         params: message.params || {}
-      });
-      this.#write({
-        jsonrpc: "2.0",
-        id: message.id,
-        error: {
-          code: -32601,
-          message: "DevMoter ACP compatibility adapter does not grant client-side capabilities implicitly"
-        }
-      });
+      };
+      this.emit("client-request", clientRequest);
+      const writeFallback = () => {
+        try {
+          this.#write({
+            jsonrpc: "2.0",
+            id: message.id,
+            error: {
+              code: -32601,
+              message: "DevMoter ACP compatibility adapter does not grant client-side capabilities implicitly"
+            }
+          });
+        } catch { /* adapter offline; nothing more to do */ }
+      };
+      if (typeof this.clientRequestHandler === "function") {
+        Promise.resolve()
+          .then(() => this.clientRequestHandler(clientRequest))
+          .then(result => {
+            if (result !== undefined && result !== null) {
+              try {
+                this.#write({ jsonrpc: "2.0", id: message.id, result });
+              } catch { /* adapter offline; nothing more to do */ }
+            } else {
+              writeFallback();
+            }
+          })
+          .catch(() => writeFallback());
+      } else {
+        writeFallback();
+      }
     }
   }
 

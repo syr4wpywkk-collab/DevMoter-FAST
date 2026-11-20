@@ -31,7 +31,7 @@ test("API chat bounds history and invalidates stale completions on New Chat", ()
 
 test("API chat is mounted as a first-class v3 surface and chat content is excluded from i18n mutation", () => {
   assert.match(mainSource, /mountApiChat/);
-  assert.match(mainSource, /"opencode" \| "codex" \| "api" \| "deepseek" \| "qwen" \| "integrations"/);
+  assert.match(mainSource, /"opencode" \| "codex" \| "api" \| "deepseek" \| "devin" \| "qwen" \| "integrations"/);
   assert.doesNotMatch(i18nCoreSource, /MutationObserver/);
   assert.match(apiChatSource, /row\.className = `api-message \$\{message\.role\}`;/);
   assert.match(apiChatSource, /bubble\.textContent = message\.content;/);

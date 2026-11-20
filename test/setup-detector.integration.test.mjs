@@ -67,14 +67,14 @@ function detectorEnv(bin, home) {
   return { PATH: bin, HOME: home, LANG: "C.UTF-8" };
 }
 
-test("detector reports all six tools missing and repeated scans are stable", async t => {
+test("detector reports all seven tools missing and repeated scans are stable", async t => {
   const { root, bin } = await fakePath(t);
   const env = detectorEnv(bin, root);
   const first = await createSetupStatus({ env });
   const second = await createSetupStatus({ env });
   assert.equal(first.phase, "experimental-phase-1");
   assert.equal(first.platform.supported, process.platform === "linux");
-  assert.deepEqual(first.tools.map(tool => tool.state), Array(6).fill("missing"));
+  assert.deepEqual(first.tools.map(tool => tool.state), Array(7).fill("missing"));
   assert.deepEqual(second, first);
 });
 

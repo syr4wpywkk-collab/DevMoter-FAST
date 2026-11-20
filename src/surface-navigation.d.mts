@@ -1,4 +1,4 @@
-export type MainSurface = "home" | "opencode" | "codex" | "api" | "deepseek" | "qwen" | "integrations";
+export type MainSurface = "home" | "opencode" | "codex" | "api" | "deepseek" | "devin" | "qwen" | "integrations";
 export function isMainSurface(value: unknown): value is MainSurface;
 export function initialMainSurface(search: string, options?: { hasProjectDeepLink?: boolean; savedBackend?: string }): MainSurface;
 export function createSurfaceNavigation(options: {

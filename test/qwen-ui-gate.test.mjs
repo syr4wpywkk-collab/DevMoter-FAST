@@ -51,7 +51,7 @@ test("shared QWEN_UI_ENABLED gate lives in src/feature-flags.mjs with owner docu
   assert.equal(flags.QWEN_UI_ENABLED, false);
   assert.match(source, /2026-11-15/);
   assert.match(source, /QWEN_UI_ENABLED/);
-  assert.deepEqual([...flags.VISIBLE_CHAT_BACKENDS], ["codex", "opencode", "api", "deepseek"]);
+  assert.deepEqual([...flags.VISIBLE_CHAT_BACKENDS], ["codex", "opencode", "api", "deepseek", "devin"]);
   assert.equal(flags.isVisibleChatBackend("qwen"), false);
   assert.equal(flags.isVisibleChatBackend("codex"), true);
   assert.equal(flags.normalizeVisibleBackend("qwen"), "opencode");
@@ -89,7 +89,7 @@ test("legacy app-shell fallback hides Qwen Code option and preserves persisted q
 
     const select = dom.window.document.querySelector("[data-fallback-backend]");
     assert.ok(select, "fallback AI picker renders when unifiedUI=0");
-    assert.deepEqual([...select.querySelectorAll("option")].map(o => o.value), ["codex", "opencode", "api", "deepseek"]);
+    assert.deepEqual([...select.querySelectorAll("option")].map(o => o.value), ["codex", "opencode", "api", "deepseek", "devin"]);
     assert.equal(select.value, "opencode");
 
     dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:launch-app", { detail: { id: "chat" } }));

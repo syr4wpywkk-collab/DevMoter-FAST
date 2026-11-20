@@ -7,8 +7,8 @@ import {
 
 const SURFACES = new Set(
   QWEN_UI_ENABLED
-    ? ["home", "opencode", "codex", "api", "deepseek", "qwen", "integrations"]
-    : ["home", "opencode", "codex", "api", "deepseek", "integrations"]
+    ? ["home", "opencode", "codex", "api", "deepseek", "devin", "qwen", "integrations"]
+    : ["home", "opencode", "codex", "api", "deepseek", "devin", "integrations"]
 );
 
 export function isMainSurface(value) {
