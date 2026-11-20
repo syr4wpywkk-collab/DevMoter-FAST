@@ -174,6 +174,15 @@ test("native completion reason survives the thread/read transcript replacement",
   assert.equal(document.activeElement, document.querySelector("#cxPromptInput"));
 });
 
+// jsdom finishes loading asynchronously and then fires load/pageshow. A real page mounts
+// before that only once; let it pass so the app's pageshow resume does not re-run here.
+async function documentLoaded(window) {
+  if (window.document.readyState !== "complete") {
+    await new Promise(resolve => window.addEventListener("load", resolve, { once: true }));
+  }
+  await new Promise(resolve => setImmediate(resolve));
+}
+
 async function mountWithFailedThreadList(t, { savedThread = null, storedDraft = null } = {}) {
   const dom = new JSDOM('<!doctype html><main id="root"></main>', {
     url: "https://devmoter.example/?surface=codex",
@@ -182,6 +191,7 @@ async function mountWithFailedThreadList(t, { savedThread = null, storedDraft = 
   t.after(() => dom.window.close());
   const { window } = dom;
   const { document } = window;
+  await documentLoaded(window);
   const methods = [];
   let listFailures = 1;
   window.matchMedia = () => ({ matches: false, addEventListener() {} });

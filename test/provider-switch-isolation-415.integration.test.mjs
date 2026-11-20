@@ -426,6 +426,10 @@ async function mountRealFrontend(t, {
   const w = dom.window;
   const auditor = createBoundaryAuditor();
 
+  // jsdom 31 fires pageshow after the initial load. The app treats pageshow as a return from
+  // the background and re-syncs, which would land in a later audited phase; skip that one.
+  w.addEventListener("pageshow", event => { if (event.isTrusted) event.stopImmediatePropagation(); }, true);
+
   Object.defineProperty(w.HTMLElement.prototype, "inert", {
     get() { return this.hasAttribute("inert"); },
     set(value) { this.toggleAttribute("inert", Boolean(value)); }
