@@ -2671,7 +2671,8 @@ async function devinRpc(req, res) {
     const result = await devin.request(
       method,
       params,
-      method === "session/prompt" ? { timeoutMs: 180000 } : {}
+      method === "session/prompt" ? { timeoutMs: 180000 } :
+      method === "session/list" ? { timeoutMs: 90000 } : {}
     );
     json(res, 200, { result });
   } catch (error) {

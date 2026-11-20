@@ -51,7 +51,7 @@ async function mountDevin(fetchImpl) {
   window.exports = {};
   window.Function("require", "exports", compiled)(require, window.exports);
   const controller = window.exports.mountDevinChat(document.querySelector("#root"));
-  return { dom, window, document, controller, getEventSource: () => eventSource };
+  return { dom, window, document, controller, exports: window.exports, getEventSource: () => eventSource };
 }
 
 const jsonResponse = (body, status = 200) => ({
@@ -194,4 +194,170 @@ test("Devin UI creates a session, streams chunks over SSE, changes config, and l
   assert.ok(requests.some(request => request.method === "session/load" && request.params.sessionId === "s-old"));
   assert.match(document.querySelector("[data-devin-messages]").textContent, /Earlier question/);
   assert.match(document.querySelector("[data-devin-messages]").textContent, /Earlier answer/);
+});
+
+test("isMethodNotFoundError identifies JSON-RPC -32601 and method-not-found messages", async t => {
+  const { dom, exports } = await mountDevin(async () => jsonResponse({}));
+  t.after(() => dom.window.close());
+  const { isMethodNotFoundError } = exports;
+
+  assert.equal(isMethodNotFoundError(new Error("Method not found")), true);
+  assert.equal(isMethodNotFoundError(new Error("JSON-RPC error -32601: session/list")), true);
+  assert.equal(isMethodNotFoundError({ message: "method not found" }), true);
+  assert.equal(isMethodNotFoundError({ code: -32601, message: "unsupported" }), true);
+  assert.equal(isMethodNotFoundError("Error -32601"), true);
+  assert.equal(isMethodNotFoundError(new Error("ACP request timeout: session/list")), false);
+  assert.equal(isMethodNotFoundError(new Error("")), false);
+  assert.equal(isMethodNotFoundError(null), false);
+});
+
+test("Devin UI retries session/list once after failure and succeeds without notice", async t => {
+  let listCalls = 0;
+  const { dom, window, document, controller } = await mountDevin(async (input, init = {}) => {
+    const path = String(input);
+    if (path === "/api/devin/health") return jsonResponse({ online: true, ready: true, loggedIn: true, bin: "devin", cwd: "/work/project" });
+    if (path === "/api/projects") return jsonResponse({ projects: [{ id: "p1", name: "Proj", path: "/work/project", available: true }] });
+    if (path === "/api/devin/rpc") {
+      const { method } = JSON.parse(String(init.body));
+      if (method === "session/list") {
+        listCalls += 1;
+        if (listCalls === 1) return jsonResponse({ error: "ACP request timeout: session/list" }, 502);
+        return jsonResponse({ result: { sessions: [{ sessionId: "s-retry", cwd: "/work/project", title: "Recovered session" }] } });
+      }
+    }
+    throw new Error(`Unexpected request: ${path}`);
+  });
+  t.after(() => dom.window.close());
+
+  const delays = [];
+  window.setTimeout = (fn, delay) => {
+    delays.push(delay);
+    setImmediate(fn);
+    return delays.length;
+  };
+
+  await controller.refresh();
+  await settle();
+
+  assert.equal(listCalls, 2);
+  assert.deepEqual(delays, [800]);
+  assert.equal(document.querySelector("[data-devin-status]").textContent, "");
+
+  document.querySelector("[data-devin-history]").click();
+  await settle();
+  const item = document.querySelector("[data-session-id='s-retry']");
+  assert.ok(item, "recovered sessions appear in the history sheet");
+  assert.equal(listCalls, 2, "opening history after a successful load does not re-fetch");
+});
+
+test("Devin UI shows server error in notice after retry fails, and re-fetches when opening history", async t => {
+  let listCalls = 0;
+  const { dom, window, document, controller } = await mountDevin(async (input, init = {}) => {
+    const path = String(input);
+    if (path === "/api/devin/health") return jsonResponse({ online: true, ready: true, loggedIn: true, bin: "devin", cwd: "/work/project" });
+    if (path === "/api/projects") return jsonResponse({ projects: [{ id: "p1", name: "Proj", path: "/work/project", available: true }] });
+    if (path === "/api/devin/rpc") {
+      const { method } = JSON.parse(String(init.body));
+      if (method === "session/list") {
+        listCalls += 1;
+        if (listCalls <= 2) return jsonResponse({ error: "ACP request timeout: session/list" }, 502);
+        return jsonResponse({ result: { sessions: [{ sessionId: "s-later", cwd: "/work/project", title: "Loaded on sheet open" }] } });
+      }
+    }
+    throw new Error(`Unexpected request: ${path}`);
+  });
+  t.after(() => dom.window.close());
+
+  const delays = [];
+  window.setTimeout = (fn, delay) => {
+    delays.push(delay);
+    setImmediate(fn);
+    return delays.length;
+  };
+
+  await controller.refresh();
+  await settle();
+
+  assert.equal(listCalls, 2);
+  assert.deepEqual(delays, [800]);
+  const statusText = document.querySelector("[data-devin-status]").textContent;
+  assert.ok(statusText.includes(i18nCore.translate("en", "devin.chat.sessionsLoadFailed")));
+  assert.ok(statusText.includes("ACP request timeout: session/list"));
+
+  // Opening the history sheet after a failed fetch retries session/list and clears the notice on success.
+  document.querySelector("[data-devin-history]").click();
+  await settle();
+  await settle();
+
+  assert.equal(listCalls, 3);
+  assert.equal(document.querySelector("[data-devin-status]").textContent, "");
+  assert.ok(document.querySelector("[data-session-id='s-later']"), "history sheet shows sessions loaded on retry");
+});
+
+test("Devin UI falls back to fixed notice when session/list error has no message", async t => {
+  let listCalls = 0;
+  const { dom, window, document, controller } = await mountDevin(async (input, init = {}) => {
+    const path = String(input);
+    if (path === "/api/devin/health") return jsonResponse({ online: true, ready: true, loggedIn: true, bin: "devin", cwd: "/work/project" });
+    if (path === "/api/projects") return jsonResponse({ projects: [] });
+    if (path === "/api/devin/rpc") {
+      const { method } = JSON.parse(String(init.body));
+      if (method === "session/list") {
+        listCalls += 1;
+        throw new Error("");
+      }
+    }
+    throw new Error(`Unexpected request: ${path}`);
+  });
+  t.after(() => dom.window.close());
+
+  window.setTimeout = fn => {
+    setImmediate(fn);
+    return 1;
+  };
+
+  await controller.refresh();
+  await settle();
+
+  assert.equal(listCalls, 2);
+  assert.equal(document.querySelector("[data-devin-status]").textContent, i18nCore.translate("en", "devin.chat.sessionsLoadFailed"));
+});
+
+test("Devin UI degrades gracefully without notice when session/list returns -32601 Method not found", async t => {
+  let listCalls = 0;
+  const { dom, window, document, controller } = await mountDevin(async (input, init = {}) => {
+    const path = String(input);
+    if (path === "/api/devin/health") return jsonResponse({ online: true, ready: true, loggedIn: true, bin: "devin", cwd: "/work/project" });
+    if (path === "/api/projects") return jsonResponse({ projects: [] });
+    if (path === "/api/devin/rpc") {
+      const { method } = JSON.parse(String(init.body));
+      if (method === "session/list") {
+        listCalls += 1;
+        return jsonResponse({ error: "JSON-RPC error -32601: Method not found" }, 502);
+      }
+    }
+    throw new Error(`Unexpected request: ${path}`);
+  });
+  t.after(() => dom.window.close());
+
+  const delays = [];
+  window.setTimeout = (fn, delay) => {
+    delays.push(delay);
+    setImmediate(fn);
+    return delays.length;
+  };
+
+  await controller.refresh();
+  await settle();
+
+  assert.equal(listCalls, 1, "-32601 does not retry");
+  assert.deepEqual(delays, []);
+  assert.equal(document.querySelector("[data-devin-status]").textContent, "");
+
+  document.querySelector("[data-devin-history]").click();
+  await settle();
+
+  assert.equal(listCalls, 1, "opening history after -32601 does not re-call session/list");
+  assert.equal(document.querySelector(".dv-history-empty")?.textContent, i18nCore.translate("en", "devin.chat.emptyHistory"));
+  assert.equal(document.querySelectorAll("[data-session-id]").length, 0);
 });
