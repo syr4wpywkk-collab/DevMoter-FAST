@@ -1541,6 +1541,13 @@ body.codex-mode #app {
   padding: 0 16px;
 }
 
+.cx-markdown .dm-code-block[data-wrap="true"] pre,
+.cx-markdown .dm-code-block[data-wrap="true"] pre code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.dm-code-head > .dm-code-language { margin-right: auto; }
+
 .dm-session-expired {
   position: fixed;
   top: calc(var(--space-2) + env(safe-area-inset-top));

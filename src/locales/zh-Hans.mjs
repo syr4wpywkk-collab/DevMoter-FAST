@@ -928,6 +928,7 @@ export const zhHans = {
 
   "markdown.imageFallback": "图片",
   "markdown.code": "代码",
+  "markdown.wrapCode": "自动换行",
   "markdown.copyCodeAria": "复制代码",
 
   "safety.repeatedActionDetected": "检测到重复执行相同操作。",

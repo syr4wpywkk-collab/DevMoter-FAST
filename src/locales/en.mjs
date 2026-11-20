@@ -928,6 +928,7 @@ export const en = {
 
   "markdown.imageFallback": "Image",
   "markdown.code": "Code",
+  "markdown.wrapCode": "Wrap",
   "markdown.copyCodeAria": "Copy code",
 
   "safety.repeatedActionDetected": "Repeated action detected.",

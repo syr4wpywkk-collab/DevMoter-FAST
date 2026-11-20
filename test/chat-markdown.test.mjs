@@ -131,3 +131,28 @@ test("tilde fenced code preserves indentation and trailing lines", t => {
   target.querySelector("button").click();
   assert.deepEqual(copied, ["    a  \n\n  b\n"]);
 });
+
+test("#350: each code block can wrap long lines without changing what Copy copies", t => {
+  const { dom, target } = fixture();
+  t.after(() => dom.window.close());
+  const copied = [];
+  const source = "const veryLongLine = " + "x".repeat(200) + ";\n";
+  renderChatMarkdown(target, "```js\n" + source + "```", text => copied.push(text));
+  const block = target.querySelector(".dm-code-block");
+  const wrap = block.querySelector(".dm-code-wrap");
+  assert.equal(wrap.getAttribute("aria-pressed"), "false");
+  assert.equal(block.dataset.wrap, undefined);
+  wrap.click();
+  assert.equal(block.dataset.wrap, "true");
+  assert.equal(wrap.getAttribute("aria-pressed"), "true");
+  wrap.click();
+  assert.equal(block.dataset.wrap, "false");
+  block.querySelector("button").click();
+  assert.deepEqual(copied, [source]);
+});
+
+test("#350: wrapped code overrides the surface no-wrap rule", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const css = await readFile(new URL("../src/styles/base.css", import.meta.url), "utf8");
+  assert.match(css, /\.cx-markdown \.dm-code-block\[data-wrap="true"\] pre code \{[^}]*white-space:\s*pre-wrap/);
+});
