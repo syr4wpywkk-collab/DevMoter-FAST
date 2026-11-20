@@ -54,7 +54,7 @@ test("inspectCli returns ready when the command is executable and versioned", as
 
 test("inspectKnownClis covers only the registered CLIs", async () => {
   const clis = await inspectKnownClis({ env: { PATH: "" } });
-  assert.deepEqual(clis.map(cli => cli.id), ["codex", "opencode"]);
+  assert.deepEqual(clis.map(cli => cli.id), ["codex", "opencode", "devin"]);
   assert.equal(clis.every(cli => cli.code === "not_installed"), true);
   assert.equal("resolvedPath" in clis[0], false);
 });

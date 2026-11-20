@@ -6,6 +6,7 @@ import { mountApiChat } from "./api-chat";
 import { startI18n } from "./i18n";
 import { mountIntegrations } from "./integrations";
 import { mountQwenChat } from "./qwen-chat";
+import { mountDevinChat } from "./devin-chat";
 import { mountAgentConsole } from "./agent-console";
 import { mountSessionControl } from "./session-control";
 import { mountWorkspaceTools } from "./workspace-tools";
@@ -70,6 +71,7 @@ app.innerHTML = `
   <div id="codexView" class="pocket-view hidden"><div id="codexMount"></div></div>
   <div id="apiView" class="pocket-view hidden"><div id="apiMount"></div></div>
   <div id="qwenView" class="pocket-view hidden"><div id="qwenMount"></div></div>
+  <div id="devinView" class="pocket-view hidden"><div id="devinMount"></div></div>
   <div id="integrationsView" class="pocket-view hidden"><div id="integrationsMount"></div></div>
   <div id="workflowMount"></div>
 `;
@@ -79,6 +81,7 @@ const homeView = document.querySelector<HTMLElement>("#devmoterHomeView")!;
 const codexView = document.querySelector<HTMLDivElement>("#codexView")!;
 const apiView = document.querySelector<HTMLDivElement>("#apiView")!;
 const qwenView = document.querySelector<HTMLDivElement>("#qwenView")!;
+const devinView = document.querySelector<HTMLDivElement>("#devinView")!;
 const integrationsView = document.querySelector<HTMLDivElement>("#integrationsView")!;
 const openCodeMount = document.querySelector<HTMLDivElement>("#openCodeMount")!;
 const codexMount = document.querySelector<HTMLDivElement>("#codexMount")!;
@@ -86,13 +89,13 @@ const apiMount = document.querySelector<HTMLDivElement>("#apiMount")!;
 const integrationsMount = document.querySelector<HTMLDivElement>("#integrationsMount")!;
 const workflowMount = document.querySelector<HTMLDivElement>("#workflowMount")!;
 
-type Backend = "opencode" | "codex" | "api" | "qwen" | "integrations";
+type Backend = "opencode" | "codex" | "api" | "qwen" | "devin" | "integrations";
 
 const deepLinkBackend = startupParams.get("backend");
 const deepLinkSession = startupParams.get("session");
 if (isVisibleChatBackend(deepLinkBackend)) {
   localStorage.setItem("opencode-pocket-backend", deepLinkBackend);
-  if (deepLinkSession && deepLinkBackend !== "api" && deepLinkBackend !== "qwen") {
+  if (deepLinkSession && deepLinkBackend !== "api" && deepLinkBackend !== "qwen" && deepLinkBackend !== "devin") {
     localStorage.setItem(
       deepLinkBackend === "codex" ? "opencode-pocket-codex-thread" : "opencode-pocket-opencode-session",
       deepLinkSession
@@ -123,14 +126,17 @@ function applyBackend(next: Backend) {
   codexView.classList.toggle("hidden", resolved !== "codex");
   apiView.classList.toggle("hidden", resolved !== "api");
   qwenView.classList.toggle("hidden", !QWEN_UI_ENABLED || resolved !== "qwen");
+  devinView.classList.toggle("hidden", resolved !== "devin");
   integrationsView.classList.toggle("hidden", resolved !== "integrations");
   document.body.classList.toggle("codex-mode", resolved === "codex");
   document.body.classList.toggle("opencode-mode", resolved === "opencode");
   document.body.classList.toggle("api-mode", resolved === "api");
   document.body.classList.toggle("qwen-mode", QWEN_UI_ENABLED && resolved === "qwen");
+  document.body.classList.toggle("devin-mode", resolved === "devin");
   document.body.classList.toggle("integrations-mode", resolved === "integrations");
   if (resolved === "api") void apiRemote.refresh();
   if (QWEN_UI_ENABLED && resolved === "qwen") void qwenRemote?.refresh();
+  if (resolved === "devin") void devinRemote.refresh();
   if (resolved === "integrations") void integrationsRemote.refresh();
   window.dispatchEvent(new CustomEvent("devmoter:backend-changed", { detail: { backend: resolved } }));
 }
@@ -155,8 +161,9 @@ function applySurface(surface: MainSurface) {
     codexView.classList.add("hidden");
     apiView.classList.add("hidden");
     qwenView.classList.add("hidden");
+    devinView.classList.add("hidden");
     integrationsView.classList.add("hidden");
-    document.body.classList.remove("codex-mode", "opencode-mode", "api-mode", "qwen-mode", "integrations-mode");
+    document.body.classList.remove("codex-mode", "opencode-mode", "api-mode", "qwen-mode", "devin-mode", "integrations-mode");
     document.body.classList.add("devmoter-home-mode");
     if (restoreHomeFocus) window.requestAnimationFrame(() => homeView.querySelector<HTMLElement>("#devmoterHomeTitle")?.focus({ preventScroll: true }));
     return;
@@ -200,6 +207,10 @@ const qwenRemote = QWEN_UI_ENABLED
       onIntegrations: () => setBackend("integrations")
     })
   : null;
+
+const devinRemote = mountDevinChat(document.querySelector<HTMLDivElement>("#devinMount")!, {
+  onIntegrations: () => setBackend("integrations")
+});
 
 const integrationsRemote = mountIntegrations(integrationsMount, {
   onOpenCode: () => setBackend("opencode"),
