@@ -1,6 +1,6 @@
 {
   "name": "deepseek-harness-mobile",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "description": "Mobile-first PWA companion for DeepSeek Harness",

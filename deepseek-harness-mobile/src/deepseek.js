@@ -6,8 +6,8 @@
 //   POST /chat/completions  -> { choices: [{ message: { content, reasoning_content? } }], usage: {...} }
 // CORS was verified empirically: api.deepseek.com reflects the request Origin
 // in Access-Control-Allow-Origin and allows the authorization header, so the
-// browser can call it directly. The API key is stored only in this device's
-// local storage and is sent only to api.deepseek.com.
+// browser can call it directly. The API key is held in volatile module memory
+// (never in localStorage) and is sent only to api.deepseek.com.
 
 export const API_BASE = "https://api.deepseek.com";
 export const API_KEY_STORAGE_KEY = "dsh-mobile.deepseek-api-key";
@@ -57,35 +57,38 @@ export function validateApiKey(input) {
   return { ok: true, value };
 }
 
-export function readApiKey(storage = globalThis.localStorage) {
-  try {
-    const saved = storage?.getItem(API_KEY_STORAGE_KEY);
-    if (!saved) return "";
-    const checked = validateApiKey(saved);
-    return checked.ok ? checked.value : "";
-  } catch {
-    return "";
-  }
-}
+// This static PWA cannot safely persist a reusable API secret in the browser.
+// Keep the key only for the lifetime of this JS module / loaded page.
+let activeApiKey = "";
 
-export function saveApiKey(value, storage = globalThis.localStorage) {
-  const checked = validateApiKey(value);
-  if (!checked.ok) return checked;
+// v0.2.0 stored the key in plaintext. Remove that old value on every startup,
+// save and clear; critically, do not import it into memory first.
+function purgeLegacyApiKey(storage) {
   try {
-    storage?.setItem(API_KEY_STORAGE_KEY, checked.value);
-    return { ok: true, value: checked.value };
-  } catch {
-    return { ok: false, error: "このブラウザでは API キーを保存できませんでした。" };
-  }
-}
-
-export function clearApiKey(storage = globalThis.localStorage) {
-  try {
-    storage?.removeItem(API_KEY_STORAGE_KEY);
+    const target = storage === undefined ? globalThis.localStorage : storage;
+    target?.removeItem(API_KEY_STORAGE_KEY);
     return true;
   } catch {
     return false;
   }
+}
+
+export function readApiKey(storage) {
+  purgeLegacyApiKey(storage);
+  return activeApiKey;
+}
+
+export function saveApiKey(value, storage) {
+  const checked = validateApiKey(value);
+  if (!checked.ok) return checked;
+  purgeLegacyApiKey(storage);
+  activeApiKey = checked.value;
+  return { ok: true, value: activeApiKey };
+}
+
+export function clearApiKey(storage) {
+  activeApiKey = "";
+  return purgeLegacyApiKey(storage);
 }
 
 // Only the last four characters are ever surfaced, so the key can be

@@ -33,7 +33,7 @@
             </div>
             <div id="balance-empty">
               <p class="empty-text">API キーが未設定のため、残高を表示できません。</p>
-              <button class="secondary-button" data-view="settings" type="button">設定で API キーを登録する</button>
+              <button class="secondary-button" data-view="settings" type="button">設定で API キーを入力する</button>
             </div>
             <div id="balance-content" hidden>
               <p class="balance-figure" id="balance-total">–</p>
@@ -148,9 +148,9 @@
             </dl>
             <label for="api-key">API キー</label>
             <input id="api-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk-...">
-            <p class="field-hint">キーはこの端末の中だけに保存されます。送信先は api.deepseek.com のみで、このアプリのサーバーや DSH へは送られません。</p>
+            <p class="field-hint">API キーは保存されず、この画面を開いている間だけメモリに保持されます。再読み込み後は再入力が必要です。送信先は api.deepseek.com のみです。</p>
             <p class="form-error" id="apikey-error" role="alert" hidden></p>
-            <button class="primary-button" id="save-apikey" type="button">API キーを保存</button>
+            <button class="primary-button" id="save-apikey" type="button">API キーを使用</button>
             <button class="danger-button" id="clear-apikey" type="button" disabled>API キーを削除</button>
           </article>
 
@@ -161,7 +161,7 @@
               <div class="row"><dt>API キー</dt><dd id="settings-apikey">未登録</dd></div>
               <div class="row"><dt>使用中のモデル</dt><dd id="settings-model">未選択</dd></div>
               <div class="row"><dt>この端末の累計</dt><dd id="settings-usage">リクエスト 0 回、合計 0 トークン</dd></div>
-              <div class="row"><dt>アプリバージョン</dt><dd>0.2.0</dd></div>
+              <div class="row"><dt>アプリバージョン</dt><dd>0.2.1</dd></div>
             </dl>
             <button class="danger-button" id="clear-host" type="button">保存した接続先を削除</button>
             <button class="danger-button" id="reset-ledger" type="button">使用量の累計をリセット</button>
@@ -169,7 +169,7 @@
 
           <article class="panel" aria-labelledby="privacy-title">
             <h2 id="privacy-title">プライバシー</h2>
-            <p class="body-text">このアプリが端末に保存するのは、DSH の接続先 URL、DeepSeek API キー、選択したモデル、モデル一覧のキャッシュ、この端末での使用量集計だけです。API キーは残高・モデル・チャットのリクエストと一緒に api.deepseek.com へだけ送信されます。DSH の認証情報を扱うことはありません。接続テストは認証情報なしの HEAD リクエストです。</p>
+            <p class="body-text">このアプリが端末に保存するのは、DSH の接続先 URL、選択したモデル、モデル一覧のキャッシュ、この端末での使用量集計だけです。DeepSeek API キーは保存せず、読み込み中のページのメモリにのみ保持します。旧版が localStorage に保存したキーはアプリ起動時に削除します。API キーは残高・モデル・チャットのリクエストと一緒に api.deepseek.com へだけ送信されます。DSH の認証情報を扱うことはありません。接続テストは認証情報なしの HEAD リクエストです。</p>
           </article>
         </section>
       </main>

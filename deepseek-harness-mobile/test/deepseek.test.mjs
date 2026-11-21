@@ -23,6 +23,7 @@ import {
   saveSelectedModel,
   validateApiKey,
   API_BASE,
+  API_KEY_STORAGE_KEY,
 } from "../src/deepseek.js";
 
 function memoryStorage() {
@@ -51,15 +52,35 @@ function recordingFetch(handler) {
   return { calls, fetchImpl };
 }
 
-test("API key storage round-trips and validates input", () => {
+test("API key stays in memory, purges legacy plaintext, and validates input", async () => {
   const storage = memoryStorage();
+  storage.setItem(API_KEY_STORAGE_KEY, "sk-legacy-secret");
+  assert.equal(readApiKey(storage), "");
+  assert.equal(storage.getItem(API_KEY_STORAGE_KEY), null);
   assert.deepEqual(validateApiKey(""), { ok: false, error: "API キーを入力してください。" });
   assert.equal(validateApiKey("sk- abc").ok, false);
   assert.deepEqual(saveApiKey(" sk-test-1234 ", storage), { ok: true, value: "sk-test-1234" });
   assert.equal(readApiKey(storage), "sk-test-1234");
+  assert.equal(storage.getItem(API_KEY_STORAGE_KEY), null);
   assert.equal(maskApiKey(readApiKey(storage)), "末尾 1234");
+  assert.equal(saveApiKey("invalid key", storage).ok, false);
+  assert.equal(readApiKey(storage), "sk-test-1234");
+
+  // Importing a fresh module simulates a page reload: no secret survives.
+  const restarted = await import("../src/deepseek.js?fresh-module-for-key-test");
+  assert.equal(restarted.readApiKey(storage), "");
   assert.equal(clearApiKey(storage), true);
   assert.equal(readApiKey(storage), "");
+  assert.equal(storage.getItem(API_KEY_STORAGE_KEY), null);
+});
+
+test("clearing a key also removes any newly encountered legacy value", () => {
+  const storage = memoryStorage();
+  saveApiKey("sk-session", storage);
+  storage.setItem(API_KEY_STORAGE_KEY, "sk-legacy-value");
+  assert.equal(clearApiKey(storage), true);
+  assert.equal(readApiKey(storage), "");
+  assert.equal(storage.getItem(API_KEY_STORAGE_KEY), null);
 });
 
 test("parseModels maps documented fields and drops entries without an id", () => {

@@ -172,8 +172,8 @@ $("#clear-host").addEventListener("click", () => {
 
 function renderApiKeyState() {
   const registered = Boolean(apiKey);
-  $("#apikey-state").textContent = registered ? `登録済み（${maskApiKey(apiKey)}）` : "未登録";
-  $("#settings-apikey").textContent = registered ? `登録済み（${maskApiKey(apiKey)}）` : "未登録";
+  $("#apikey-state").textContent = registered ? `使用中（${maskApiKey(apiKey)}）` : "未登録";
+  $("#settings-apikey").textContent = registered ? `使用中（${maskApiKey(apiKey)}）` : "未登録";
   $("#clear-apikey").disabled = !registered;
   $("#refresh-balance").disabled = !registered || balanceBusy;
   $("#refresh-models").disabled = !registered || modelsBusy;
