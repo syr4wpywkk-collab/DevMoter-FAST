@@ -8,7 +8,7 @@ import { createServer as createNetServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import ts from "typescript";
+import ts from "typescript-legacy";
 import { classifyProxyRoute, listWriteRoutePatterns, PROXY_ROUTE_TABLE } from "../server/proxy-route-policy.mjs";
 import { isAdapterOwnedRoute } from "../server/agent-mode-policy.mjs";
 

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import ts from "typescript";
+import ts from "typescript-legacy";
 import { JSDOM } from "jsdom";
 import * as projectLabels from "../src/project-labels.mjs";
 import * as sheetHeader from "../src/sheet-header.mjs";

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import ts from "typescript";
+import ts from "typescript-legacy";
 import { JSDOM } from "jsdom";
 import * as i18nCore from "../src/i18n-core.mjs";
 import { loadPureTypeScript } from "./helpers/ts-pure-modules.mjs";

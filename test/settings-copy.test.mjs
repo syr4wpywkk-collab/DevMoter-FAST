@@ -2,7 +2,7 @@ import test from "node:test";
 import * as fetchTimeout from "../src/fetch-with-timeout.mjs";
 import assert from "node:assert/strict";
 import vm from "node:vm";
-import ts from "typescript";
+import ts from "typescript-legacy";
 import { JSDOM } from "jsdom";
 import * as i18n from "../src/i18n-core.mjs";
 import * as deviceGate from "../src/device-gate.mjs";
