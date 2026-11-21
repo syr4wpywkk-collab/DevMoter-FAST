@@ -1,4 +1,4 @@
-const CACHE_NAME = "dsh-mobile-shell-v2";
+const CACHE_NAME = "dsh-mobile-shell-v3";
 const SHELL = [
   "./",
   "./index.html",
