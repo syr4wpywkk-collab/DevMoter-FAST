@@ -4,7 +4,7 @@ A mobile-first PWA companion for DeepSeek: check the account balance, pick a
 model, send a small test request to the DeepSeek API, and open a separately
 running DeepSeek Harness (DSH) instance.
 
-> **Scope (v0.2.0):** the app now calls the public DeepSeek API directly from
+> **Scope (v0.2.1):** the app now calls the public DeepSeek API directly from
 > the browser in addition to the original DSH connection shell. It still does
 > not reimplement DSH's agent RPC protocol, execute tools, or handle DSH
 > credentials. Agent conversations and runtime operations stay in the official
@@ -30,20 +30,32 @@ running DeepSeek Harness (DSH) instance.
   required for remote hosts; plain HTTP is accepted only for loopback
   development hosts.
 
-## API key handling (design change in v0.2.0)
+## API key handling (security fix in v0.2.1)
 
-Earlier versions stored no credentials at all. To call the DeepSeek API, the
-user now enters their own DeepSeek API key in the settings screen:
+The v0.2.0 release stored API keys in plaintext localStorage. This was
+unsafe because scripts running on the same origin, including injected scripts
+in an XSS incident, can read persistent browser storage.
 
-- The key is stored **only in this device's local storage**. It is never sent
-  to the app host, to DSH, or to any third party.
-- The only destination is `https://api.deepseek.com`, as the
-  `Authorization: Bearer` header of the balance / models / chat requests.
-  Browser-direct calls are possible because the API reflects the request
-  origin in `Access-Control-Allow-Origin` (verified against the live API and
-  the official reference at https://api-docs.deepseek.com).
-- On screen the key is identified only by its last four characters.
-- DSH credentials are still never asked for, stored, or proxied.
+- API keys are now held **only in the current page's JavaScript memory**.
+  They are never written to localStorage, sessionStorage, IndexedDB, or
+  service-worker caches.
+- The user must re-enter the API key after a reload, PWA restart, or tab close.
+- On loading the new version, the app **deletes the old plaintext
+  `dsh-mobile.deepseek-api-key` localStorage entry** instead of restoring it.
+- The API key is sent only to `https://api.deepseek.com` as the
+  `Authorization: Bearer` header of balance, model and chat requests, never
+  to this app's static host or to DSH. The UI displays only the last 4
+  characters while the page remains open.
+- This is a mitigation for **persistent credential storage**, not a complete
+  XSS defense. A malicious script running while the page is active could
+  still access the in-memory key. Do not load untrusted scripts.
+- For securely remembered credentials in a future release, use a trusted
+  authenticated backend with server-side secret storage rather than
+  storing a reusable API key in browser JavaScript.
+- If a key was previously exposed, revoke and rotate it in the DeepSeek
+  console; removing localStorage alone cannot undo earlier disclosure.
+
+DSH credentials are still never asked for, stored, or proxied.
 
 ## Run locally
 
@@ -65,7 +77,7 @@ For an iPhone, deploy this folder behind HTTPS and open it in Safari, then use *
 ## Use the DeepSeek API features
 
 1. Create an API key in the DeepSeek platform console.
-2. Open the settings screen in this app and save the key.
+2. Open the settings screen and enter the key for this session (it is not saved).
 3. The home screen shows the balance; the API screen fetches the model list
    and can send a test message.
 
@@ -99,7 +111,7 @@ iPhone Safari / installed PWA
           v
 deepseek-harness-mobile
           |\
-          | \  fetch with the user's API key (this device only)
+          | \  fetch with the session-only API key (this page only)
           |  v
           |  api.deepseek.com  (balance / models / chat completions)
           |
