@@ -213,13 +213,22 @@ For the supported installer, update flow, and user service, see [Operations](./d
 
 ### Private access from a phone
 
-Keep DevMoter on localhost and use a private HTTPS transport such as Tailscale Serve:
+Keep DevMoter on localhost and use a private HTTPS transport such as Tailscale Serve.
+**First inspect existing Serve/Funnel routes** (never reset them indiscriminately):
 
 ```bash
-tailscale serve reset
-tailscale serve --bg http://127.0.0.1:8787
 tailscale serve status
+tailscale serve get-config --all
 ```
+
+Only if there is no conflicting route, add DevMoter's private mapping:
+
+```bash
+tailscale serve --bg http://127.0.0.1:8787
+tailscale serve status --json
+```
+
+If a route conflicts, resolve it with the owner instead of deleting existing configuration.
 
 Open the private HTTPS address from a device on the same tailnet. Do not use Tailscale Funnel or an arbitrary public tunnel as a substitute for a public-ready authorization model.
 

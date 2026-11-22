@@ -306,13 +306,21 @@ http://127.0.0.1:8787
 
 DevMoter 以 localhost 运行为默认模式。
 
-安装 Tailscale 后：
+安装 Tailscale 后，**先检查现有 Serve/Funnel 路由**，不要重置其他服务的配置：
 
 ```bash
-tailscale serve reset
-tailscale serve --bg http://127.0.0.1:8787
 tailscale serve status
+tailscale serve get-config --all
 ```
+
+确认没有冲突的路由后，再配置 DevMoter 的私有 Serve：
+
+```bash
+tailscale serve --bg http://127.0.0.1:8787
+tailscale serve status --json
+```
+
+如果路由冲突，请保留已有配置，并由所有者确认如何处理。
 
 在同一 tailnet 的设备上打开输出的 private HTTPS URL。
 

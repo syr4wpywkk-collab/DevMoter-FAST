@@ -48,13 +48,22 @@ The launcher prepares/reuses private local authentication, builds the frontend, 
 
 ## 3. Private phone access
 
-With Tailscale installed on the host and phone:
+With Tailscale installed on the host and phone, inspect existing routes
+before making any changes (never reset unrelated Serve/Funnel configuration):
 
 ```bash
-tailscale serve reset
-tailscale serve --bg http://127.0.0.1:8787
 tailscale serve status
+tailscale serve get-config --all
 ```
+
+When there is no conflicting route, add the private mapping:
+
+```bash
+tailscale serve --bg http://127.0.0.1:8787
+tailscale serve status --json
+```
+
+If a route conflicts, stop and resolve it with the owner instead of clearing existing routes.
 
 Open the resulting HTTPS URL from the same tailnet. Public tunnels/Funnel are not the recommended Alpha deployment.
 
