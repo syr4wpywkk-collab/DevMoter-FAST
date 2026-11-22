@@ -328,3 +328,39 @@ html[data-devmoter-theme="light"] .dv-app { color-scheme: light; }
 .dv-message.thought .dv-message-body { color: var(--text-muted); font-size: var(--font-size-label); line-height: 1.6; }
 .dv-message.note .dv-message-body { color: var(--text-muted); font-size: var(--font-size-caption); text-align: center; }
 .dv-history-open { width: 100%; display: grid; text-align: left; }
+
+/* Blocking, accessible owner approval gate for Devin ACP tool requests. */
+.dv-permission-overlay:not([hidden]) {
+  position: absolute;
+  inset: 0;
+  z-index: 140;
+  display: grid;
+  place-items: center;
+  padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: rgb(0 0 0 / .64);
+}
+.dv-permission-overlay[hidden] { display: none; }
+.dv-permission-dialog {
+  width: min(100%, 460px);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--space-5, 20px);
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card, 16px);
+  box-shadow: 0 12px 45px rgb(0 0 0 / .22);
+}
+.dv-permission-dialog h2 { margin: 0 0 var(--space-3, 12px); font-size: var(--font-size-heading, 18px); }
+.dv-permission-dialog p { overflow-wrap: anywhere; }
+.dv-permission-warning { color: var(--text-secondary); font-size: var(--font-size-label); }
+.dv-permission-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2, 8px); margin-top: var(--space-4, 16px); }
+.dv-permission-actions button {
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+.dv-permission-actions [data-devin-permission-allow] { background: var(--surface-hover); }
