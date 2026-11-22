@@ -2724,6 +2724,24 @@ async function devinNotify(req, res) {
   }
 }
 
+async function devinPermissionDecision(req, res) {
+  try {
+    const payload = await readJson(req, 4096);
+    const { requestId, sessionId, decision } = payload || {};
+    if (typeof requestId !== "string" || typeof sessionId !== "string" ||
+        !["allow_once", "deny"].includes(decision) ||
+        requestId.length > 128 || sessionId.length > 512) {
+      json(res, 400, { error: "Invalid Devin permission response" });
+      return;
+    }
+    const resolved = devin.resolvePermission({ requestId, sessionId, decision });
+    json(res, resolved ? 200 : 409, resolved ? { ok: true } : { error: "Permission request expired or not found" });
+  } catch (error) {
+    json(res, error?.message === "Request body too large" ? 413 : 400,
+      { error: "Invalid Devin permission response" });
+  }
+}
+
 async function devinEvents(req, res) {
   const health = await devin.health();
   if (!health.online) {
@@ -2748,15 +2766,20 @@ async function devinEvents(req, res) {
 
   const onNotification = event => send("notification", event);
   const onClientRequest = event => send("client-request", event);
+  const onPermissionRequest = event => send("permission-request", event);
+  const onPermissionResolved = event => send("permission-resolved", event);
   const onOffline = event => send("offline", event);
   const onOnline = event => send("online", event);
 
   devin.on("notification", onNotification);
   devin.on("client-request", onClientRequest);
+  devin.on("permission-request", onPermissionRequest);
+  devin.on("permission-resolved", onPermissionResolved);
   devin.on("offline", onOffline);
   devin.on("online", onOnline);
 
   send("ready", { online: true });
+  for (const request of devin.pendingPermissionRequests()) send("permission-request", request);
 
   const heartbeat = setInterval(() => {
     if (!res.writableEnded && !res.destroyed) {
@@ -2768,6 +2791,8 @@ async function devinEvents(req, res) {
     clearInterval(heartbeat);
     devin.off("notification", onNotification);
     devin.off("client-request", onClientRequest);
+    devin.off("permission-request", onPermissionRequest);
+    devin.off("permission-resolved", onPermissionResolved);
     devin.off("offline", onOffline);
     devin.off("online", onOnline);
   };
@@ -4190,6 +4215,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/devin/notify") {
       if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
       await devinNotify(req, res);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/devin/permission") {
+      if (!claimOperation(req, res, `${req.method}:${url.pathname}`)) return;
+      await devinPermissionDecision(req, res);
       return;
     }
 
