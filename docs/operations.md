@@ -22,6 +22,17 @@ bash scripts/update.sh
 
 The updater shows current/target package versions and commits, refuses dirty worktrees, creates a recovery branch, uses a fast-forward-only update, rebuilds/tests, and rolls the checkout back if validation fails. User config/state under `~/.config/opencode-pocket` is preserved.
 
+## Rebuilds and ordinary restarts
+
+`scripts/build-if-needed.sh` fingerprints frontend/build inputs and only builds
+if the source changed or `dist/` is incomplete. The manual launcher and the
+user service both use this check, so an unchanged restart skips the Vite build.
+The installer and updater use it too. A modified source file triggers the next
+build automatically; a failed build never receives a current fingerprint.
+
+To force a fresh build for debugging, run `npm run build` and then
+`bash scripts/build-if-needed.sh` to refresh the fingerprint.
+
 ## systemd --user
 
 Install the user unit from the current checkout:
