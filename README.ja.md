@@ -220,12 +220,21 @@ http://127.0.0.1:8787
 ### スマートフォンからのPrivate access
 
 DevMoterはlocalhost運用を維持し、Tailscale ServeなどのPrivate HTTPS transportを利用してください。
+**まず既存のServe/Funnel設定を確認してください。** ほかの公開設定を一括削除しないでください。
 
 ```bash
-tailscale serve reset
-tailscale serve --bg http://127.0.0.1:8787
 tailscale serve status
+tailscale serve get-config --all
 ```
+
+競合する経路がないことを確認した場合に限り、DevMoterのPrivate Serveを追加します。
+
+```bash
+tailscale serve --bg http://127.0.0.1:8787
+tailscale serve status --json
+```
+
+競合がある場合は既存設定を消さず、利用者が内容を確認してから解決してください。
 
 同じtailnet上の端末からPrivate HTTPS URLを開きます。Tailscale Funnelや任意のPublic tunnelを、公開サービス向け認可モデルの代わりに使用しないでください。
 
