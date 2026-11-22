@@ -169,6 +169,8 @@ body:has(
 ) .dm-shell-menu-trigger,
 body.api-mode:has(.api-sidebar.open) .dm-shell-menu-trigger,
 body.deepseek-mode:has(.api-sidebar.open) .dm-shell-menu-trigger,
+body.devin-mode:has(.dv-sheet:not([hidden])) .dm-shell-menu-trigger,
+body.devin-mode:has(.dv-permission-overlay:not([hidden])) .dm-shell-menu-trigger,
 body.codex-mode:has(.cx-sidebar.open) .dm-shell-menu-trigger,
 body.opencode-mode:has(.ocx-modal:not(.hidden)) .dm-shell-menu-trigger,
 body.opencode-mode:has(.ocx-sidebar.open) .dm-shell-menu-trigger {
@@ -189,6 +191,13 @@ body.opencode-mode:has(.ocx-sidebar.open) .dm-shell-menu-trigger {
     left: max(10px, env(safe-area-inset-left));
   }
   body.api-mode .api-app .api-transcript, body.deepseek-mode .api-app .api-transcript { padding-top: 80px; }
+  /* Devin owns its 56px topbar history button. The shared Tools menu stays
+   * below it; leave clearance in the transcript for the floating trigger. */
+  body.devin-mode .dm-shell-menu-trigger {
+    top: calc(56px + env(safe-area-inset-top) + 8px);
+    left: max(10px, env(safe-area-inset-left));
+  }
+  body.devin-mode .dv-app .dv-transcript { padding-top: 80px; }
 }
 
 @media (min-width: 900px) {
