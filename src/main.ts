@@ -28,9 +28,11 @@ import { mountKnowledge } from "./knowledge";
 import { createSurfaceNavigation, type MainSurface } from "./surface-navigation.mjs";
 import {
   DEEPSEEK_UI_ENABLED,
+  DEVIN_UI_ENABLED,
   DEFAULT_VISIBLE_BACKEND,
   QWEN_UI_ENABLED,
   isHiddenDeepseekTarget,
+  isHiddenDevinTarget,
   isHiddenQwenTarget,
   isVisibleChatBackend,
   normalizeVisibleBackend,
@@ -120,11 +122,13 @@ let initialSurfaceApplied = false;
 function applyBackend(next: Backend) {
   const requestedHiddenQwen = isHiddenQwenTarget(next);
   const requestedHiddenDeepseek = isHiddenDeepseekTarget(next);
+  const requestedHiddenDevin = isHiddenDevinTarget(next);
   const preserveHiddenQwen = !QWEN_UI_ENABLED && localStorage.getItem("opencode-pocket-backend") === "qwen";
   const preserveHiddenDeepseek = !DEEPSEEK_UI_ENABLED && localStorage.getItem("opencode-pocket-backend") === "deepseek";
-  const resolved: Backend = requestedHiddenQwen || requestedHiddenDeepseek ? DEFAULT_VISIBLE_BACKEND : next;
+  const preserveHiddenDevin = !DEVIN_UI_ENABLED && localStorage.getItem("opencode-pocket-backend") === "devin";
+  const resolved: Backend = requestedHiddenQwen || requestedHiddenDeepseek || requestedHiddenDevin ? DEFAULT_VISIBLE_BACKEND : next;
   activeBackend = resolved;
-  if (!requestedHiddenQwen && !requestedHiddenDeepseek && !((preserveHiddenQwen || preserveHiddenDeepseek) && resolved === DEFAULT_VISIBLE_BACKEND)) {
+  if (!requestedHiddenQwen && !requestedHiddenDeepseek && !requestedHiddenDevin && !((preserveHiddenQwen || preserveHiddenDeepseek || preserveHiddenDevin) && resolved === DEFAULT_VISIBLE_BACKEND)) {
     localStorage.setItem("opencode-pocket-backend", resolved);
   }
   homeView.classList.add("hidden");
@@ -134,19 +138,19 @@ function applyBackend(next: Backend) {
   apiView.classList.toggle("hidden", resolved !== "api");
   deepseekView.classList.toggle("hidden", !DEEPSEEK_UI_ENABLED || resolved !== "deepseek");
   qwenView.classList.toggle("hidden", !QWEN_UI_ENABLED || resolved !== "qwen");
-  devinView.classList.toggle("hidden", resolved !== "devin");
+  devinView.classList.toggle("hidden", !DEVIN_UI_ENABLED || resolved !== "devin");
   integrationsView.classList.toggle("hidden", resolved !== "integrations");
   document.body.classList.toggle("codex-mode", resolved === "codex");
   document.body.classList.toggle("opencode-mode", resolved === "opencode");
   document.body.classList.toggle("api-mode", resolved === "api");
   document.body.classList.toggle("deepseek-mode", DEEPSEEK_UI_ENABLED && resolved === "deepseek");
   document.body.classList.toggle("qwen-mode", QWEN_UI_ENABLED && resolved === "qwen");
-  document.body.classList.toggle("devin-mode", resolved === "devin");
+  document.body.classList.toggle("devin-mode", DEVIN_UI_ENABLED && resolved === "devin");
   document.body.classList.toggle("integrations-mode", resolved === "integrations");
   if (resolved === "api") void apiRemote.refresh();
   if (DEEPSEEK_UI_ENABLED && resolved === "deepseek") void deepseekRemote.refresh();
   if (QWEN_UI_ENABLED && resolved === "qwen") void qwenRemote?.refresh();
-  if (resolved === "devin") void devinRemote.refresh();
+  if (DEVIN_UI_ENABLED && resolved === "devin") void devinRemote.refresh();
   if (resolved === "integrations") void integrationsRemote.refresh();
   window.dispatchEvent(new CustomEvent("devmoter:backend-changed", { detail: { backend: resolved } }));
 }
