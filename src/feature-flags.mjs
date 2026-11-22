@@ -17,6 +17,13 @@ export const QWEN_UI_ENABLED = false;
  */
 export const DEEPSEEK_UI_ENABLED = false;
 
+/**
+ * Devin is temporarily hidden from the backend selector by owner decision
+ * (2026-11-22). Its ACP bridge, session code, and chat UI remain intact.
+ * Set DEVIN_UI_ENABLED to true to restore its navigation and picker option.
+ */
+export const DEVIN_UI_ENABLED = false;
+
 export const DEFAULT_VISIBLE_BACKEND = "opencode";
 
 export const VISIBLE_CHAT_BACKENDS = Object.freeze([
@@ -24,7 +31,7 @@ export const VISIBLE_CHAT_BACKENDS = Object.freeze([
   "opencode",
   "api",
   ...(DEEPSEEK_UI_ENABLED ? ["deepseek"] : []),
-  "devin",
+  ...(DEVIN_UI_ENABLED ? ["devin"] : []),
   ...(QWEN_UI_ENABLED ? ["qwen"] : [])
 ]);
 
@@ -46,9 +53,13 @@ export function isHiddenDeepseekTarget(value) {
   return !DEEPSEEK_UI_ENABLED && value === "deepseek";
 }
 
+export function isHiddenDevinTarget(value) {
+  return !DEVIN_UI_ENABLED && value === "devin";
+}
+
 export function normalizeVisibleSurface(value, fallback = "home") {
   if (value === "home" || value === "integrations") return value;
-  return normalizeVisibleBackend(value, isHiddenQwenTarget(value) || isHiddenDeepseekTarget(value) ? DEFAULT_VISIBLE_BACKEND : fallback);
+  return normalizeVisibleBackend(value, isHiddenQwenTarget(value) || isHiddenDeepseekTarget(value) || isHiddenDevinTarget(value) ? DEFAULT_VISIBLE_BACKEND : fallback);
 }
 
 export function isVisibleIntegration(id) {
