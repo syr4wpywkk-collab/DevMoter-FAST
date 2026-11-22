@@ -224,6 +224,7 @@ test("start-pocket launcher sets umask 077, uses npm ci, and keeps curl credenti
 
   const scriptCopy = join(fakeScripts, "start-pocket.sh");
   await copyFile(resolve("scripts/start-pocket.sh"), scriptCopy);
+  await copyFile(resolve("scripts/build-if-needed.sh"), join(fakeScripts, "build-if-needed.sh"));
   await chmod(scriptCopy, 0o755);
 
   await executable(join(fakeBin, "pkill"), "#!/usr/bin/env bash\nexit 0\n");
@@ -232,6 +233,11 @@ test("start-pocket launcher sets umask 077, uses npm ci, and keeps curl credenti
 printf '%s\\n' "$*" >> "$DEVMOTER_NPM_LOG"
 if [ "$1" = "ci" ]; then
   mkdir -p node_modules
+fi
+if [ "$1" = "run" ] && [ "$2" = "build" ]; then
+  mkdir -p dist
+  printf 'mock' > dist/index.html
+  printf '{}' > dist/build.json
 fi
 exit 0
 `);

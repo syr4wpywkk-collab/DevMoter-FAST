@@ -94,6 +94,9 @@ fi
 OC_DIR="${OPENCODE_DIRECTORY:-$REPO}"
 cd "$REPO"
 
+# Build missing/stale assets once; ordinary service restarts skip the build.
+bash scripts/build-if-needed.sh
+
 echo "Starting OpenCode: $OPENCODE_BIN_RESOLVED"
 env \
   OPENCODE_SERVER_USERNAME=opencode \

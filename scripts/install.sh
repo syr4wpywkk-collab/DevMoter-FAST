@@ -39,7 +39,7 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 
 npm ci
-npm run build
+bash scripts/build-if-needed.sh
 
 echo
 echo "DevMoter installed at: $INSTALL_DIR"

@@ -87,8 +87,7 @@ if [ ! -d node_modules ]; then
   npm ci
 fi
 
-echo "🏗️ build"
-npm run build
+bash scripts/build-if-needed.sh
 
 echo "🔥 OpenCode"
 nohup env   OPENCODE_SERVER_USERNAME="opencode"   OPENCODE_SERVER_PASSWORD="$PASS"   opencode serve     --hostname 127.0.0.1     --port "$OC_PORT"   >"$OC_LOG" 2>&1 &
