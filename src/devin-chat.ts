@@ -24,6 +24,7 @@ type ConfigOption = {
   options?: ConfigOptionValue[];
 };
 type DevinSession = { sessionId: string; cwd?: string; title?: string; updatedAt?: string };
+type DevinPermission = { requestId: string; sessionId: string; title: string; kind: string };
 type Message = { role: "user" | "assistant" | "error" | "note" | "tool" | "thought"; text: string; code?: string };
 
 export type DevinChatOptions = {
@@ -128,6 +129,17 @@ export function mountDevinChat(root: HTMLElement, _options: DevinChatOptions = {
       <section class="dv-sheet" id="devinHistorySheet" data-devin-sheet role="dialog" aria-modal="true" aria-labelledby="devinHistoryTitle" hidden>
         <div class="dv-history" data-devin-history-list></div>
       </section>
+      <section class="dv-permission-overlay" data-devin-permission hidden>
+        <div class="dv-permission-dialog" role="dialog" aria-modal="true" aria-labelledby="devinPermissionTitle">
+          <h2 id="devinPermissionTitle">${escapeHtml(t("devin.permission.title"))}</h2>
+          <p data-devin-permission-tool></p>
+          <p class="dv-permission-warning">${escapeHtml(t("devin.permission.warning"))}</p>
+          <div class="dv-permission-actions">
+            <button type="button" data-devin-permission-deny>${escapeHtml(t("devin.permission.deny"))}</button>
+            <button type="button" data-devin-permission-allow>${escapeHtml(t("devin.permission.allowOnce"))}</button>
+          </div>
+        </div>
+      </section>
     </div>`;
 
   const historyButton = root.querySelector<HTMLButtonElement>("[data-devin-history]")!;
@@ -149,6 +161,10 @@ export function mountDevinChat(root: HTMLElement, _options: DevinChatOptions = {
   const scrim = root.querySelector<HTMLElement>("[data-devin-scrim]")!;
   const sheet = root.querySelector<HTMLElement>("[data-devin-sheet]")!;
   const historyList = root.querySelector<HTMLElement>("[data-devin-history-list]")!;
+  const permissionOverlay = root.querySelector<HTMLElement>("[data-devin-permission]")!;
+  const permissionTool = root.querySelector<HTMLElement>("[data-devin-permission-tool]")!;
+  const permissionDeny = root.querySelector<HTMLButtonElement>("[data-devin-permission-deny]")!;
+  const permissionAllow = root.querySelector<HTMLButtonElement>("[data-devin-permission-allow]")!;
   const background = [".dv-topbar", ".dv-configbar", ".dv-main", ".dv-composer-wrap"].map(selector => root.querySelector<HTMLElement>(selector)!);
   const composerWrap = background[3];
 
@@ -195,6 +211,8 @@ export function mountDevinChat(root: HTMLElement, _options: DevinChatOptions = {
   let reconnectTimer: number | null = null;
   let reconnectAttempts = 0;
   let sheetReturnFocus: HTMLElement | null = null;
+  const pendingPermissions = new Map<string, DevinPermission>();
+  let permissionBusy = false;
 
   const currentProject = () => {
     const usable = projects.filter(project => project.available !== false);
@@ -400,6 +418,44 @@ export function mountDevinChat(root: HTMLElement, _options: DevinChatOptions = {
     renderMessages();
     renderStatus();
     if (!sheet.hidden) renderHistory();
+    renderPermission();
+  }
+
+  function visiblePermission(): DevinPermission | null {
+    return [...pendingPermissions.values()].find(item => item.sessionId === sessionId) ?? null;
+  }
+
+  function renderPermission() {
+    const permission = visiblePermission();
+    permissionOverlay.hidden = !permission;
+    permissionTool.textContent = permission ? `${permission.title} (${permission.kind})` : "";
+    permissionAllow.disabled = permissionBusy;
+    permissionDeny.disabled = permissionBusy;
+    // Background is inaccessible while a tool is awaiting an owner decision.
+    permissionOverlay.setAttribute("aria-busy", String(permissionBusy));
+  }
+
+  async function answerPermission(decision: "allow_once" | "deny") {
+    const item = visiblePermission();
+    if (!item || permissionBusy) return;
+    permissionBusy = true;
+    renderPermission();
+    try {
+      const res = await fetch("/api/devin/permission", {
+        method: "POST",
+        headers: requestHeaders(),
+        body: JSON.stringify({ requestId: item.requestId, sessionId: item.sessionId, decision })
+      });
+      if (!res.ok) throw new Error("Permission request expired");
+      pendingPermissions.delete(item.requestId);
+    } catch {
+      // A failed network response must never be treated as an approval.
+      pendingPermissions.delete(item.requestId);
+      notice = t("devin.permission.expired");
+    } finally {
+      permissionBusy = false;
+      render();
+    }
   }
 
   function setOverlay(openSheetUi: boolean) {
@@ -538,6 +594,23 @@ export function mountDevinChat(root: HTMLElement, _options: DevinChatOptions = {
         if (payload?.method === "session/update") handleUpdate(payload.params ?? {});
       } catch { /* ignore malformed frames */ }
     });
+    source.addEventListener("permission-request", event => {
+      try {
+        const payload = JSON.parse((event as MessageEvent).data) as DevinPermission;
+        if (typeof payload?.requestId !== "string" || typeof payload?.sessionId !== "string") return;
+        if (typeof payload.title !== "string" || typeof payload.kind !== "string") return;
+        if (payload.requestId.length > 128 || payload.sessionId.length > 512) return;
+        pendingPermissions.set(payload.requestId, payload);
+        renderPermission();
+      } catch { /* ignore malformed permission events */ }
+    });
+    source.addEventListener("permission-resolved", event => {
+      try {
+        const payload = JSON.parse((event as MessageEvent).data);
+        if (typeof payload?.requestId === "string") pendingPermissions.delete(payload.requestId);
+        renderPermission();
+      } catch { /* ignore malformed permission events */ }
+    });
     source.addEventListener("offline", () => {
       setOnline(false);
     });
@@ -552,7 +625,10 @@ export function mountDevinChat(root: HTMLElement, _options: DevinChatOptions = {
     online = Boolean(next);
     availabilityCode = next ? "" : code;
     availabilityNotice = next ? "" : noticeText;
-    if (!online) closeEvents();
+    if (!online) {
+      closeEvents();
+      pendingPermissions.clear();
+    }
     render();
   }
 
@@ -736,6 +812,8 @@ export function mountDevinChat(root: HTMLElement, _options: DevinChatOptions = {
     input.style.height = `${Math.min(input.scrollHeight, 180)}px`;
   }
 
+  permissionDeny.addEventListener("click", () => void answerPermission("deny"));
+  permissionAllow.addEventListener("click", () => void answerPermission("allow_once"));
   historyButton.addEventListener("click", () => (sheet.hidden ? openSheet() : closeSheet()));
   newButton.addEventListener("click", startNewSession);
   scrim.addEventListener("click", closeSheet);
