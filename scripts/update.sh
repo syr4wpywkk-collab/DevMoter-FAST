@@ -32,13 +32,13 @@ rollback() {
   echo "Update failed; restoring $CURRENT" >&2
   git reset --hard "$CURRENT" >/dev/null
   npm ci >/dev/null 2>&1 || true
-  npm run build >/dev/null 2>&1 || true
+  bash scripts/build-if-needed.sh >/dev/null 2>&1 || true
 }
 trap rollback ERR
 
 git merge --ff-only "$TARGET"
 npm ci
-npm run build
+bash scripts/build-if-needed.sh
 npm test
 
 trap - ERR
