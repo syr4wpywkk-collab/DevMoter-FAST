@@ -95,3 +95,12 @@ test("Tools assistant reads like a project inspection utility instead of a chat 
   assert.doesNotMatch(css, /\.tools-ai-composer \{[^}]*linear-gradient/);
   assert.match(css, /\.tools-ai-composer \{[^}]*border-radius: 12px/);
 });
+
+test("Devin mobile history button and global Tools trigger have separate space", async () => {
+  const css = await readFile(new URL("../src/app-shell.css", import.meta.url), "utf8");
+  const mobile = css.split("@media (max-width: 899px) {")[1].split("@media (min-width: 900px) {")[0];
+  assert.match(mobile, /body\.devin-mode \.dm-shell-menu-trigger\s*\{[^}]*top: calc\(56px \+ env\(safe-area-inset-top\) \+ 8px\)/);
+  assert.match(mobile, /body\.devin-mode \.dv-app \.dv-transcript\s*\{\s*padding-top: 80px/);
+  assert.match(css, /body\.devin-mode:has\(\.dv-sheet:not\(\[hidden\]\)\) \.dm-shell-menu-trigger/);
+  assert.match(css, /body\.devin-mode:has\(\.dv-permission-overlay:not\(\[hidden\]\)\) \.dm-shell-menu-trigger/);
+});
