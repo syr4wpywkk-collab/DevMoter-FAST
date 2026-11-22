@@ -1,8 +1,10 @@
 import {
   DEEPSEEK_UI_ENABLED,
+  DEVIN_UI_ENABLED,
   DEFAULT_VISIBLE_BACKEND,
   QWEN_UI_ENABLED,
   isHiddenDeepseekTarget,
+  isHiddenDevinTarget,
   isHiddenQwenTarget,
   isVisibleChatBackend
 } from "./feature-flags.mjs";
@@ -13,7 +15,7 @@ const SURFACES = new Set([
   "codex",
   "api",
   ...(DEEPSEEK_UI_ENABLED ? ["deepseek"] : []),
-  "devin",
+  ...(DEVIN_UI_ENABLED ? ["devin"] : []),
   ...(QWEN_UI_ENABLED ? ["qwen"] : []),
   "integrations"
 ]);
@@ -26,17 +28,18 @@ export function initialMainSurface(search, { hasProjectDeepLink = false, savedBa
   const params = new URLSearchParams(search || "");
   const explicit = params.get("surface");
   if (isMainSurface(explicit)) return explicit;
-  if (isHiddenQwenTarget(explicit) || isHiddenDeepseekTarget(explicit)) return DEFAULT_VISIBLE_BACKEND;
+  if (isHiddenQwenTarget(explicit) || isHiddenDeepseekTarget(explicit) || isHiddenDevinTarget(explicit)) return DEFAULT_VISIBLE_BACKEND;
   const requestedBackend = params.get("backend");
   const hasResumeTarget =
     isVisibleChatBackend(requestedBackend) ||
     isHiddenQwenTarget(requestedBackend) ||
     isHiddenDeepseekTarget(requestedBackend) ||
+    isHiddenDevinTarget(requestedBackend) ||
     Boolean(params.get("session")) ||
     hasProjectDeepLink;
   if (hasResumeTarget) {
     if (isVisibleChatBackend(requestedBackend)) return requestedBackend;
-    if (isHiddenQwenTarget(requestedBackend) || isHiddenDeepseekTarget(requestedBackend)) return DEFAULT_VISIBLE_BACKEND;
+    if (isHiddenQwenTarget(requestedBackend) || isHiddenDeepseekTarget(requestedBackend) || isHiddenDevinTarget(requestedBackend)) return DEFAULT_VISIBLE_BACKEND;
     return SURFACES.has(savedBackend) && savedBackend !== "home" ? savedBackend : DEFAULT_VISIBLE_BACKEND;
   }
   return "home";
@@ -72,7 +75,8 @@ export function createSurfaceNavigation({ window, hasProjectDeepLink = false, sa
   if (!read()) replace(initial);
 
   function navigate(surface, { replaceCurrent = false } = {}) {
-    const target = isHiddenQwenTarget(surface) ? DEFAULT_VISIBLE_BACKEND : surface;
+    const target = isHiddenQwenTarget(surface) || isHiddenDeepseekTarget(surface) || isHiddenDevinTarget(surface)
+      ? DEFAULT_VISIBLE_BACKEND : surface;
     if (!isMainSurface(target)) return false;
     if (current() === target) {
       // A Home/provider navigation must dismiss a workspace overlay even
