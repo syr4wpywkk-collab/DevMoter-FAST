@@ -3,6 +3,7 @@ import type { MainSurface } from "./surface-navigation.mjs";
 import { shouldUseUnifiedWorkspace } from "./unified-ui-mode.mjs";
 import {
   DEEPSEEK_UI_ENABLED,
+  DEVIN_UI_ENABLED,
   QWEN_UI_ENABLED,
   isVisibleChatBackend,
   normalizeVisibleBackend,
@@ -293,7 +294,7 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     row.className = "dm-shell-fallback-row";
     row.innerHTML = `
       <label><span>AI</span><select data-fallback-backend aria-label="${escapeHtml(t("shell.aiSwitchAria"))}">
-        <option value="codex">Codex</option><option value="opencode">OpenCode</option><option value="api">API Chat</option>${DEEPSEEK_UI_ENABLED ? '<option value="deepseek">DeepSeek</option>' : ""}<option value="devin">Devin</option>${QWEN_UI_ENABLED ? '<option value="qwen">Qwen Code</option>' : ""}
+        <option value="codex">Codex</option><option value="opencode">OpenCode</option><option value="api">API Chat</option>${DEEPSEEK_UI_ENABLED ? '<option value="deepseek">DeepSeek</option>' : ""}${DEVIN_UI_ENABLED ? '<option value="devin">Devin</option>' : ""}${QWEN_UI_ENABLED ? '<option value="qwen">Qwen Code</option>' : ""}
       </select></label>
       <label><span>${escapeHtml(t("nav.language"))}</span><select data-language-select aria-label="${escapeHtml(t("language.ariaLabel"))}">
         <option value="ja">日本語</option><option value="en">English</option><option value="zh-Hans">简体中文</option><option value="zh-Hant">繁體中文</option>
