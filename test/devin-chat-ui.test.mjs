@@ -361,3 +361,81 @@ test("Devin UI degrades gracefully without notice when session/list returns -326
   assert.equal(document.querySelector(".dv-history-empty")?.textContent, i18nCore.translate("en", "devin.chat.emptyHistory"));
   assert.equal(document.querySelectorAll("[data-session-id]").length, 0);
 });
+
+test("Devin permission dialog requires a click and posts an allow-once decision", async t => {
+  const decisions = [];
+  let finishPrompt;
+  const { dom, window, document, controller, getEventSource } = await mountDevin(async (input, init = {}) => {
+    const path = String(input);
+    if (path === "/api/devin/health") return jsonResponse({ online: true, ready: true, loggedIn: true, cwd: "/work/project" });
+    if (path === "/api/projects") return jsonResponse({ projects: [{ id: "p1", name: "Proj", path: "/work/project", available: true }] });
+    if (path === "/api/devin/permission") {
+      decisions.push(JSON.parse(String(init.body)));
+      return jsonResponse({ ok: true });
+    }
+    if (path !== "/api/devin/rpc") throw new Error("Unexpected fetch: " + path);
+    const { method } = JSON.parse(String(init.body));
+    if (method === "session/list") return jsonResponse({ result: { sessions: [] } });
+    if (method === "session/new") return jsonResponse({ result: { sessionId: "s1", configOptions: [] } });
+    if (method === "session/prompt") return new Promise(resolve => { finishPrompt = () => resolve(jsonResponse({ result: { stopReason: "end_turn" } })); });
+    throw new Error("Unexpected RPC: " + method);
+  });
+  t.after(() => dom.window.close());
+  await controller.refresh();
+  await settle();
+  const input = document.querySelector("[data-devin-input]");
+  input.value = "Test tool approval";
+  document.querySelector("[data-devin-form]").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+  await settle();
+  await settle();
+  assert.equal(typeof finishPrompt, "function");
+  getEventSource().emit("permission-request", {
+    requestId: "req-1", sessionId: "s1", title: "<unsafe tool title>", kind: "execute"
+  });
+  const dialog = document.querySelector("[data-devin-permission]");
+  assert.equal(dialog.hidden, false);
+  assert.match(dialog.textContent, /<unsafe tool title>/);
+  assert.equal(dialog.querySelector("script"), null, "tool title never enters the DOM as HTML");
+  assert.deepEqual(decisions, [], "SSE event alone does not approve anything");
+  document.querySelector("[data-devin-permission-allow]").click();
+  await settle();
+  assert.deepEqual(decisions, [{ requestId: "req-1", sessionId: "s1", decision: "allow_once" }]);
+  assert.equal(dialog.hidden, true);
+  finishPrompt();
+  await settle();
+});
+
+test("Devin tool permission can be explicitly denied", async t => {
+  const decisions = [];
+  let finishPrompt;
+  const { dom, window, document, controller, getEventSource } = await mountDevin(async (input, init = {}) => {
+    const path = String(input);
+    if (path === "/api/devin/health") return jsonResponse({ online: true, ready: true, loggedIn: true, cwd: "/work/project" });
+    if (path === "/api/projects") return jsonResponse({ projects: [] });
+    if (path === "/api/devin/permission") {
+      decisions.push(JSON.parse(String(init.body)));
+      return jsonResponse({ ok: true });
+    }
+    if (path === "/api/devin/rpc") {
+      const { method } = JSON.parse(String(init.body));
+      if (method === "session/list") return jsonResponse({ result: { sessions: [] } });
+      if (method === "session/new") return jsonResponse({ result: { sessionId: "s1", configOptions: [] } });
+      if (method === "session/prompt") return new Promise(resolve => { finishPrompt = () => resolve(jsonResponse({ result: { stopReason: "end_turn" } })); });
+    }
+    throw new Error("Unexpected fetch: " + path);
+  });
+  t.after(() => dom.window.close());
+  await controller.refresh();
+  await settle();
+  document.querySelector("[data-devin-input]").value = "Test deny";
+  document.querySelector("[data-devin-form]").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+  await settle();
+  await settle();
+  getEventSource().emit("permission-request", { requestId: "req-2", sessionId: "s1", title: "Run command", kind: "execute" });
+  document.querySelector("[data-devin-permission-deny]").click();
+  await settle();
+  assert.deepEqual(decisions, [{ requestId: "req-2", sessionId: "s1", decision: "deny" }]);
+  assert.equal(document.querySelector("[data-devin-permission]").hidden, true);
+  finishPrompt();
+  await settle();
+});

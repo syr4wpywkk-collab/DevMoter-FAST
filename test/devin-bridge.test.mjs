@@ -257,13 +257,13 @@ function clientRequestFake(captured, agentRequest) {
   });
 }
 
-test("Devin bridge auto-approves session/request_permission with allow_once option", async () => {
+test("Devin requires explicit owner approval and never grants allow_always", async () => {
   const captured = [];
   const child = clientRequestFake(captured, {
     method: "session/request_permission",
     params: {
       sessionId: "perm-session",
-      toolCall: { toolCallId: "tool-1", title: "Run sleep 3", kind: "execute" },
+      toolCall: { toolCallId: "tool-1", title: "Run a safe command", kind: "execute" },
       options: [
         { optionId: "allow-always-opt", name: "Allow always", kind: "allow_always" },
         { optionId: "allow-once-opt", name: "Allow once", kind: "allow_once" },
@@ -272,23 +272,73 @@ test("Devin bridge auto-approves session/request_permission with allow_once opti
     }
   });
   const bridge = new DevinBridge({
-    bin: "fake-devin",
-    cwd: "/workspace",
-    prepareCli: readyCli,
-    runAuthStatus: loggedInAuth,
-    spawnImpl: () => child
+    bin: "fake-devin", cwd: "/workspace", prepareCli: readyCli,
+    runAuthStatus: loggedInAuth, spawnImpl: () => child
   });
-
+  let requests = 0;
+  bridge.on("permission-request", request => {
+    requests += 1;
+    assert.equal(request.title, "Run a safe command");
+    assert.equal(request.sessionId, "perm-session");
+    assert.equal(bridge.pendingPermissionRequests().length, 1);
+    assert.equal(bridge.resolvePermission({ requestId: request.requestId, sessionId: "wrong-session", decision: "allow_once" }), false);
+    assert.equal(bridge.resolvePermission({ requestId: request.requestId, sessionId: request.sessionId, decision: "allow_always" }), false);
+    assert.equal(bridge.resolvePermission({ requestId: request.requestId, sessionId: request.sessionId, decision: "allow_once" }), true);
+    assert.equal(bridge.resolvePermission({ requestId: request.requestId, sessionId: request.sessionId, decision: "allow_once" }), false);
+  });
   const session = await bridge.request("session/new", { cwd: "/workspace", mcpServers: [] });
   const result = await bridge.request("session/prompt", {
-    sessionId: session.sessionId,
-    prompt: [{ type: "text", text: "run sleep 3" }]
+    sessionId: session.sessionId, prompt: [{ type: "text", text: "run safe command" }]
   });
   assert.equal(result.stopReason, "end_turn");
-  assert.equal(captured.length, 1, "adapter should respond to the agent's permission request");
-  assert.equal(captured[0].error, undefined);
+  assert.equal(requests, 1);
+  assert.equal(captured.length, 1);
   assert.deepEqual(captured[0].result, { outcome: { outcome: "selected", optionId: "allow-once-opt" } });
+  assert.equal(bridge.pendingPermissionRequests().length, 0);
+  bridge.close();
+});
 
+test("Devin rejects permission without a UI answer when the timeout expires", async () => {
+  const captured = [];
+  const child = clientRequestFake(captured, {
+    method: "session/request_permission",
+    params: {
+      sessionId: "perm-session",
+      toolCall: { title: "Run command", kind: "execute" },
+      options: [{ optionId: "allow-once-opt", kind: "allow_once" }]
+    }
+  });
+  const bridge = new DevinBridge({
+    bin: "fake-devin", cwd: "/workspace", prepareCli: readyCli,
+    runAuthStatus: loggedInAuth, spawnImpl: () => child,
+    permissionTimeoutMs: 50
+  });
+  const session = await bridge.request("session/new", { cwd: "/workspace", mcpServers: [] });
+  const result = await bridge.request("session/prompt", {
+    sessionId: session.sessionId, prompt: [{ type: "text", text: "run command" }]
+  });
+  assert.equal(result.stopReason, "end_turn");
+  assert.deepEqual(captured[0].result, { outcome: { outcome: "cancelled" } });
+  assert.equal(bridge.pendingPermissionRequests().length, 0);
+  bridge.close();
+});
+
+test("Devin fails closed if only a persistent allow_always option is offered", async () => {
+  const captured = [];
+  const child = clientRequestFake(captured, {
+    method: "session/request_permission",
+    params: {
+      sessionId: "perm-session",
+      options: [{ optionId: "allow-forever", kind: "allow_always" }]
+    }
+  });
+  const bridge = new DevinBridge({
+    bin: "fake-devin", cwd: "/workspace", prepareCli: readyCli,
+    runAuthStatus: loggedInAuth, spawnImpl: () => child
+  });
+  const session = await bridge.request("session/new", { cwd: "/workspace", mcpServers: [] });
+  await bridge.request("session/prompt", { sessionId: session.sessionId, prompt: [{ type: "text", text: "command" }] });
+  assert.deepEqual(captured[0].result, { outcome: { outcome: "cancelled" } });
   bridge.close();
 });
 
