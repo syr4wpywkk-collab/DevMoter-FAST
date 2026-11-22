@@ -22,7 +22,7 @@ test("unchanged restart skips build; source edit and missing output force rebuil
   await writeFile(npm, `#!/bin/sh
 set -eu
 printf 'build\\n' >> "$BUILD_LOG"
-if [ "${BUILD_FAIL:-0}" = 1 ]; then exit 1; fi
+if [ "\${BUILD_FAIL:-0}" = 1 ]; then exit 1; fi
 mkdir -p dist
 printf 'fixture' > dist/index.html
 printf '{}' > dist/build.json
