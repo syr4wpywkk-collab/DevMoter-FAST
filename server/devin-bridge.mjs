@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { AcpAdapter } from "./acp-adapter.mjs";
 import { assertCliReady, launchCode } from "./cli-launch.mjs";
@@ -73,27 +74,15 @@ function normalizeAuthResult(result) {
   return null;
 }
 
+const CANCELLED_PERMISSION = Object.freeze({ outcome: { outcome: "cancelled" } });
+const MAX_PENDING_PERMISSIONS = 8;
+
 /**
- * Handle a client-side request from the Devin agent.
- *
- * v1 policy: auto-approve `session/request_permission` by selecting
- * the `allow_once` option (falling back to `allow_always` when no
- * `allow_once` option is offered). This is intentional for v1: even
- * in the default `accept-edits` mode Devin issues permission
- * requests for terminal / exec tools, and rejecting them (-32601)
- * ends the turn with tool_rejected. The Devin session mode is the
- * substantive control here; a UI approval flow is future work.
- * All other client requests return undefined so AcpAdapter falls
- * back to its default -32601 rejection (no implicit capabilities).
+ * Fails closed when a Devin client request is not explicitly handled.
+ * Never select allow_once or allow_always without an owner's response.
  */
-export function devinClientRequestHandler({ method, params } = {}) {
-  if (method !== "session/request_permission") return undefined;
-  const options = Array.isArray(params?.options) ? params.options : [];
-  const chosen =
-    options.find(option => option && option.kind === "allow_once") ||
-    options.find(option => option && option.kind === "allow_always");
-  if (!chosen || chosen.optionId === undefined || chosen.optionId === null) return undefined;
-  return { outcome: { outcome: "selected", optionId: chosen.optionId } };
+export function devinClientRequestHandler({ method } = {}) {
+  return method === "session/request_permission" ? CANCELLED_PERMISSION : undefined;
 }
 
 /**
@@ -104,12 +93,9 @@ export function devinClientRequestHandler({ method, params } = {}) {
  * shape: injectable bin / prepareCli / spawnImpl, health() returning
  * { online, ready, ... , error, code } on failure.
  *
- * Permission requests: AcpAdapter is created with
- * `devinClientRequestHandler` (see above). v1 auto-approves
- * `session/request_permission` with `allow_once`; the Devin session
- * mode is the substantive control and a UI approval flow is a
- * future task. Other client requests keep the adapter's -32601
- * fallback.
+ * Permission requests wait for an explicit owner decision, with timeout,
+ * a bounded queue, session matching and fail-closed disconnect behavior.
+ * Other client-side capabilities remain denied by AcpAdapter.
  */
 export class DevinBridge extends EventEmitter {
   constructor({
@@ -118,6 +104,7 @@ export class DevinBridge extends EventEmitter {
     spawnImpl = spawn,
     prepareCli = assertCliReady,
     runAuthStatus = defaultRunAuthStatus,
+    permissionTimeoutMs = 60_000,
     adapter = null,
     env = null,
     inheritEnvKeys = []
@@ -133,11 +120,12 @@ export class DevinBridge extends EventEmitter {
     this.serverInfo = null;
     this.loggedIn = null;
 
-    if (adapter && typeof adapter === "object" && !adapter.clientRequestHandler) {
-      // Injected adapter (tests / embedding): install the same v1
-      // permission handler so behaviour does not depend on who
-      // constructed the adapter.
-      try { adapter.clientRequestHandler = devinClientRequestHandler; } catch { /* ignore */ }
+    this.permissionTimeoutMs = Math.max(50, Math.min(120_000, permissionTimeoutMs));
+    this.pendingPermissions = new Map();
+    const permissionHandler = request => this.handleClientRequest(request);
+    if (adapter && typeof adapter === "object") {
+      // Even injected adapters must not retain an unsafe auto-allow handler.
+      adapter.clientRequestHandler = permissionHandler;
     }
     this.adapter = adapter || new AcpAdapter({
       command: bin,
@@ -146,10 +134,7 @@ export class DevinBridge extends EventEmitter {
       env,
       inheritEnvKeys,
       spawnImpl,
-      // v1: auto-approve session/request_permission via allow_once
-      // (see devinClientRequestHandler); other methods fall back
-      // to AcpAdapter's -32601 rejection.
-      clientRequestHandler: devinClientRequestHandler
+      clientRequestHandler: permissionHandler
     });
 
     // Re-emit adapter events so SSE handlers can subscribe to the bridge
@@ -157,6 +142,7 @@ export class DevinBridge extends EventEmitter {
     this.adapter.on("notification", event => this.emit("notification", event));
     this.adapter.on("client-request", event => this.emit("client-request", event));
     this.adapter.on("offline", event => {
+      this.cancelPendingPermissions();
       this.serverInfo = null;
       this.emit("offline", event);
     });
@@ -167,6 +153,61 @@ export class DevinBridge extends EventEmitter {
         this.emit("online", info);
         this.emit("ready", info);
       });
+    }
+  }
+
+  /** Only non-sensitive request metadata is sent to the owner UI. */
+  pendingPermissionRequests() {
+    return [...this.pendingPermissions.values()].map(({ requestId, sessionId, title, kind }) =>
+      ({ requestId, sessionId, title, kind })
+    );
+  }
+
+  handleClientRequest({ method, params } = {}) {
+    if (method !== "session/request_permission") return undefined;
+    const sessionId = typeof params?.sessionId === "string" ? params.sessionId : "";
+    const allowOnce = Array.isArray(params?.options)
+      ? params.options.find(option => option?.kind === "allow_once" && typeof option.optionId === "string" && option.optionId.length > 0)
+      : null;
+    // Reject requests that cannot be approved once, or cannot be linked to a session.
+    if (!sessionId || !allowOnce || this.pendingPermissions.size >= MAX_PENDING_PERMISSIONS) {
+      return CANCELLED_PERMISSION;
+    }
+    const requestId = randomUUID();
+    const title = typeof params?.toolCall?.title === "string"
+      ? params.toolCall.title.slice(0, 240) : "Devin tool operation";
+    const kind = typeof params?.toolCall?.kind === "string"
+      ? params.toolCall.kind.slice(0, 64) : "other";
+    return new Promise(resolve => {
+      const timeout = setTimeout(() => {
+        this.resolvePermission({ requestId, sessionId, decision: "deny" });
+      }, this.permissionTimeoutMs);
+      timeout.unref?.();
+      this.pendingPermissions.set(requestId, { requestId, sessionId, title, kind, optionId: allowOnce.optionId, resolve, timeout });
+      this.emit("permission-request", { requestId, sessionId, title, kind });
+    });
+  }
+
+  resolvePermission({ requestId, sessionId, decision } = {}) {
+    const pending = this.pendingPermissions.get(requestId);
+    if (!pending || !sessionId || pending.sessionId !== sessionId || !["allow_once", "deny"].includes(decision)) {
+      return false;
+    }
+    clearTimeout(pending.timeout);
+    this.pendingPermissions.delete(requestId);
+    const outcome = decision === "allow_once"
+      ? { outcome: { outcome: "selected", optionId: pending.optionId } }
+      : CANCELLED_PERMISSION;
+    pending.resolve(outcome);
+    this.emit("permission-resolved", { requestId, sessionId });
+    return true;
+  }
+
+  cancelPendingPermissions(sessionId = null) {
+    for (const pending of [...this.pendingPermissions.values()]) {
+      if (!sessionId || pending.sessionId === sessionId) {
+        this.resolvePermission({ requestId: pending.requestId, sessionId: pending.sessionId, decision: "deny" });
+      }
     }
   }
 
@@ -191,6 +232,7 @@ export class DevinBridge extends EventEmitter {
 
   cancel(sessionId) {
     if (!sessionId) return Promise.resolve();
+    this.cancelPendingPermissions(String(sessionId));
     if (this.adapter.child?.stdin?.writable) {
       this.adapter.cancel(sessionId);
       return Promise.resolve();
@@ -208,6 +250,7 @@ export class DevinBridge extends EventEmitter {
   }
 
   close() {
+    this.cancelPendingPermissions();
     try { this.adapter.close(); } catch { /* ignore */ }
     this.serverInfo = null;
   }
