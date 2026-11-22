@@ -482,7 +482,7 @@ test("unified AI backend selector hides Qwen Code and normalizes stale qwen stat
     });
     const select = dom.window.document.querySelector("[data-workspace-backend]");
     const values = [...select.querySelectorAll("option")].map(option => option.value).filter(Boolean);
-    assert.deepEqual(values, ["codex", "opencode", "api", "devin"]);
+    assert.deepEqual(values, ["codex", "opencode", "api"]);
     assert.equal(select.value, "opencode");
 
     dom.window.dispatchEvent(new dom.window.CustomEvent("devmoter:backend-changed", { detail: { backend: "qwen" } }));
