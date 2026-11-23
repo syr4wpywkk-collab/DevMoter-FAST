@@ -7,3 +7,10 @@ rust-version.workspace = true
 description = "Spreadsheet formula engine core: values, parser, dependency graph, evaluator"
 
 [dependencies]
+
+[dev-dependencies]
+criterion = "0.7.0"
+
+[[bench]]
+name = "eval_scaffold"
+harness = false
