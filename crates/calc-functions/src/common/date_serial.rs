@@ -199,6 +199,47 @@ pub fn trunc_to_i64(v: f64) -> i64 {
     }
 }
 
+/// Whole-day part of a date serial, truncated toward zero.
+/// (Added for the text functions; kept alongside the i64-based API.)
+pub fn whole_days(serial: f64) -> f64 {
+    serial.trunc()
+}
+
+/// Convert the integer part of a date serial to `(year, month, day)`.
+///
+/// - `Excel1900`: serial 1 = 1900-01-01; serial 60 is the fictitious
+///   1900-02-29 and is returned verbatim; serial 0 is the Excel
+///   "January 0" quirk, returned as `(1900, 1, 0)`.
+/// - `Excel1904`: serial 0 = 1904-01-01.
+///
+/// Returns `None` for negative or non-finite serials, which callers map
+/// to `#NUM!`.
+pub fn serial_to_ymd(serial: f64, system: DateSystem) -> Option<(i32, u32, u32)> {
+    if !serial.is_finite() || serial < 0.0 || serial >= 3_000_000.0 {
+        return None;
+    }
+    let s = serial.trunc() as i64;
+    match system {
+        DateSystem::Excel1904 => {
+            let epoch = days_from_civil(1904, 1, 1);
+            let (y, m, d) = civil_from_days(epoch + s);
+            Some((y as i32, m, d))
+        }
+        DateSystem::Excel1900 => {
+            if s == 0 {
+                return Some((1900, 1, 0));
+            }
+            if s == 60 {
+                return Some((1900, 2, 29));
+            }
+            let epoch = days_from_civil(1899, 12, 31);
+            let days = if s > 60 { s - 1 } else { s };
+            let (y, m, d) = civil_from_days(epoch + days);
+            Some((y as i32, m, d))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
