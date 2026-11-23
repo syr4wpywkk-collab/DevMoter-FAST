@@ -192,13 +192,7 @@ fn gamma_cf_q(a: f64, x: f64) -> f64 {
 /// `a > 0`, `b > 0`, `0 <= x <= 1`; the endpoints give 0 and 1.
 /// Returns `NaN` outside the domain. Relative error ≲ 1e-13.
 pub fn regularized_beta(x: f64, a: f64, b: f64) -> f64 {
-    if a.is_nan()
-        || b.is_nan()
-        || x.is_nan()
-        || a <= 0.0
-        || b <= 0.0
-        || !(0.0..=1.0).contains(&x)
-    {
+    if a.is_nan() || b.is_nan() || x.is_nan() || a <= 0.0 || b <= 0.0 || !(0.0..=1.0).contains(&x) {
         return f64::NAN;
     }
     if x == 0.0 {
