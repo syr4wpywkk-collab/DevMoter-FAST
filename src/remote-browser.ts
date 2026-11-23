@@ -517,7 +517,13 @@ function createRemoteBrowser() {
   }
 
   function sendText(text: string) {
-    for (const chunk of splitText(text)) if (chunk) act({ type: "type", text: chunk });
+    const chunks = splitText(text).filter(Boolean);
+    // All or nothing: a paste larger than the queue is refused rather than typed in part.
+    if (outbox.length + chunks.length > MAX_QUEUED_ACTIONS) {
+      setStatus(t("remoteBrowser.actionFailed", { error: "text_too_long" }));
+      return;
+    }
+    for (const chunk of chunks) act({ type: "type", text: chunk });
   }
 
   // Pointer input: a short press without movement is a tap (click); a drag

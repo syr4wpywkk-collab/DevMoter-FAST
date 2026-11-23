@@ -287,6 +287,11 @@ test("a long paste is sent in order without overrunning the host queue, and Esca
     const ime = env.dom.window.document.querySelector("[data-rb-ime]");
     const paste = new env.dom.window.Event("paste", { bubbles: true, cancelable: true });
     paste.clipboardData = { getData: () => "x".repeat(2000 * 12) };
+    const tooLong = new env.dom.window.Event("paste", { bubbles: true, cancelable: true });
+    tooLong.clipboardData = { getData: () => "x".repeat(2000 * 257) };
+    ime.dispatchEvent(tooLong);
+    assert.equal(ws.acts().length, 0, "a paste larger than the queue is not typed in part");
+    assert.match(env.dom.window.document.querySelector("[data-rb-status]").textContent, /text_too_long/);
     ime.dispatchEvent(paste);
     assert.equal(ws.acts().length, 4, "no more than four actions wait on the host at once");
     while (ws.acts().length < 12) {
