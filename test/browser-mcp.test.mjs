@@ -149,6 +149,22 @@ async function tokenFileFor(dir, token) {
   return file;
 }
 
+test("a Run whose device was revoked before it started gets no browser token", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-browser-revoked-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const active = new Set(["device-1"]);
+  const launcher = createBrowserAgentLauncher({
+    tokens: createBrowserAgentTokens(),
+    stateDir: dir,
+    baseUrl: "http://127.0.0.1:8787",
+    cliPath: "/opt/devmoter/cli/devmoter.mjs",
+    isDeviceActive: async id => active.has(id)
+  });
+  assert.ok(await launcher.forRun({ runId: "r1", projectId: "p", access: "act", deviceId: "device-1" }));
+  active.delete("device-1");
+  assert.equal(await launcher.forRun({ runId: "r2", projectId: "p", access: "act", deviceId: "device-1" }), null);
+});
+
 test("browser action classes: read, act, and evaluate is always denied", () => {
   assert.equal(browserActionClass("screenshot"), "browser.read");
   assert.equal(browserActionClass("dom"), "browser.read");

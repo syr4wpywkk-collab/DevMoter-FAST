@@ -464,7 +464,7 @@ export async function handleBrowserAgentRequest(req, res, url, { manager, tokens
  * points `devmoter browser-mcp` at a 0600 token file. The token is revoked
  * and the file deleted when the run ends.
  */
-export function createBrowserAgentLauncher({ tokens, stateDir, baseUrl, cliPath, nodePath = process.execPath, enabled = () => true }) {
+export function createBrowserAgentLauncher({ tokens, stateDir, baseUrl, cliPath, nodePath = process.execPath, enabled = () => true, isDeviceActive = null }) {
   const tokenDir = join(stateDir, "browser-agent-tokens");
   const files = new Map();
   const ready = rm(tokenDir, { recursive: true, force: true }).catch(() => {});
@@ -480,6 +480,8 @@ export function createBrowserAgentLauncher({ tokens, stateDir, baseUrl, cliPath,
     const capabilities = capabilitiesForAccess(access);
     if (!capabilities.length || !baseUrl || !enabled()) return null;
     await ready;
+    // A Run queued before its device was revoked must not get a token in that device's name.
+    if (deviceId && isDeviceActive && !await isDeviceActive(deviceId)) return null;
     const { token, record } = tokens.issue({ projectId, capabilities, runId, deviceId, ttlMs, label: "agent-run" });
     await mkdir(tokenDir, { recursive: true, mode: 0o700 });
     const file = join(tokenDir, record.id + ".token");

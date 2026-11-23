@@ -206,7 +206,8 @@ const browserAgentLauncher = createBrowserAgentLauncher({
   stateDir: PROJECT_CONFIG_DIR,
   baseUrl: BROWSER_AGENT_BASE_URL,
   cliPath: BROWSER_MCP_CLI,
-  enabled: () => process.env.DEVMOTER_BROWSER_AUTOMATION === "1"
+  enabled: () => process.env.DEVMOTER_BROWSER_AUTOMATION === "1",
+  isDeviceActive: deviceId => systemFeatures.isDeviceActive(deviceId)
 });
 const agentRunService = createAgentRunService({
   filePath: join(PROJECT_CONFIG_DIR, "agent-runs.json"),
