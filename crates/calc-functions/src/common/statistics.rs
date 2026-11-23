@@ -18,7 +18,7 @@ use calc_core::value::Value;
 /// Members of one argument as `(value, range_derived)` pairs in
 /// row-major order — the positional pairing `CORREL`/`SLOPE`/
 /// `INTERCEPT` need. Scalars and single refs are one-element vectors.
-fn arg_members(ctx: &mut EvalContext<'_>, arg: &Expr) -> Result<Vec<(Value, bool)>, EvalError> {
+pub fn arg_members(ctx: &mut EvalContext<'_>, arg: &Expr) -> Result<Vec<(Value, bool)>, EvalError> {
     Ok(match ctx.eval_arg(arg)? {
         ArgValue::Scalar(Value::Array(a)) | ArgValue::Ref(Value::Array(a)) => {
             a.into_iter().map(|v| (v, true)).collect()
@@ -32,7 +32,7 @@ fn arg_members(ctx: &mut EvalContext<'_>, arg: &Expr) -> Result<Vec<(Value, bool
 /// One member of a paired argument: `Some(n)` for a usable number,
 /// `None` for a range member that is ignored (text/boolean/blank) or a
 /// scalar that stays non-numeric after coercion, `Err` to propagate.
-fn member_number(v: &Value, ranged: bool) -> Result<Option<f64>, CalcError> {
+pub fn member_number(v: &Value, ranged: bool) -> Result<Option<f64>, CalcError> {
     if let Some(e) = v.error() {
         return Err(e);
     }
