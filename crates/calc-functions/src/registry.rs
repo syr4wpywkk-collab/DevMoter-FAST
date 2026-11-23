@@ -61,15 +61,14 @@ mod tests {
 
     #[test]
     fn registers_the_phase1_13() {
-        let mut names: Vec<_> = registered_names().collect();
-        names.sort_unstable();
-        assert_eq!(
-            names,
-            [
-                "ABS", "AND", "AVERAGE", "COUNT", "COUNTA", "IF", "IFERROR", "MAX", "MIN", "NOT",
-                "OR", "ROUND", "SUM",
-            ]
-        );
+        // Every Phase-1 function is registered; later waves add more.
+        let names: Vec<_> = registered_names().collect();
+        for expected in [
+            "ABS", "AND", "AVERAGE", "COUNT", "COUNTA", "IF", "IFERROR", "MAX", "MIN", "NOT", "OR",
+            "ROUND", "SUM",
+        ] {
+            assert!(names.contains(&expected), "missing {expected}");
+        }
     }
 
     #[test]
