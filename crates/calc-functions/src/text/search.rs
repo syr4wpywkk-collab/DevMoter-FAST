@@ -17,14 +17,14 @@ use calc_core::registry::check_arity;
 use calc_core::value::Value;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-enum Pc {
+pub(crate) enum Pc {
     Lit(char),
     Any,
     Star,
 }
 
 /// Compile `~`-escaped wildcard pattern.
-fn compile(pattern: &str) -> Vec<Pc> {
+pub(crate) fn compile(pattern: &str) -> Vec<Pc> {
     let mut out = Vec::new();
     let mut chars = pattern.chars();
     while let Some(c) = chars.next() {
@@ -46,7 +46,7 @@ fn eq_ci(a: char, b: char) -> bool {
 }
 
 /// Does `p` match a prefix of `s` (any length, anchored at `s[0]`)?
-fn match_prefix(p: &[Pc], s: &[char]) -> bool {
+pub(crate) fn match_prefix(p: &[Pc], s: &[char]) -> bool {
     match p.split_first() {
         None => true,
         Some((&Pc::Star, rest)) => (0..=s.len()).any(|k| match_prefix(rest, &s[k..])),

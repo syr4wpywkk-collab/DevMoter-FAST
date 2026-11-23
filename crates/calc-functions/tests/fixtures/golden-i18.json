@@ -1,0 +1,3793 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-24",
+  "referenceDefaults": {},
+  "cases": [
+    {
+      "id": "I18-CELL-001",
+      "formula": "=CELL(\"row\",B7)",
+      "inputs": {},
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-CELL-002",
+      "formula": "=CELL(\"col\",B7)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-CELL-003",
+      "formula": "=CELL(\"type\",A1)",
+      "inputs": {
+        "A1": "x"
+      },
+      "expected": {
+        "text": "l"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-CELL-004",
+      "formula": "=CELL(\"type\",A1)",
+      "inputs": {},
+      "expected": {
+        "text": "b"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-CELL-005",
+      "formula": "=CELL(\"type\",A1)",
+      "inputs": {
+        "A1": 5
+      },
+      "expected": {
+        "text": "v"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-CELL-006",
+      "formula": "=CELL(\"address\",C3)",
+      "inputs": {},
+      "expected": {
+        "text": "$C$3"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-CELL-007",
+      "formula": "=CELL(\"contents\",A1)",
+      "inputs": {
+        "A1": 42
+      },
+      "expected": {
+        "number": 42
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-CELL-008",
+      "formula": "=CELL(\"contents\",A1)",
+      "inputs": {},
+      "expected": {
+        "blank": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-CELL-009",
+      "formula": "=CELL(\"row\",C5:E9)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-CELL-010",
+      "formula": "=CELL(\"bogus\",A1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-CELL-011",
+      "formula": "=CELL(\"filename\",A1)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "No persistence layer; engine documents constant \"\". Confirm Excel's unsaved-workbook result."
+    },
+    {
+      "id": "I18-CELL-012",
+      "formula": "=CELL(\"format\",A1)",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Known-but-unmodelled info_type returns #N/A (engine-defined); confirm desired error vs #VALUE!."
+    },
+    {
+      "id": "I18-CELL-013",
+      "formula": "=CELL(\"ROW\",B7)",
+      "inputs": {},
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ERRORTYPE-001",
+      "formula": "=ERROR.TYPE(#NULL!)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ERRORTYPE-002",
+      "formula": "=ERROR.TYPE(#DIV/0!)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ERRORTYPE-003",
+      "formula": "=ERROR.TYPE(#VALUE!)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ERRORTYPE-004",
+      "formula": "=ERROR.TYPE(#REF!)",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ERRORTYPE-005",
+      "formula": "=ERROR.TYPE(#NAME?)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ERRORTYPE-006",
+      "formula": "=ERROR.TYPE(#NUM!)",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ERRORTYPE-007",
+      "formula": "=ERROR.TYPE(#N/A)",
+      "inputs": {},
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ERRORTYPE-008",
+      "formula": "=ERROR.TYPE(1/0)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ERRORTYPE-009",
+      "formula": "=ERROR.TYPE(NA())",
+      "inputs": {},
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ERRORTYPE-010",
+      "formula": "=ERROR.TYPE(5)",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ERRORTYPE-011",
+      "formula": "=ERROR.TYPE(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ERRORTYPE-012",
+      "formula": "=ERROR.TYPE(#SPILL!)",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Undocumented code for post-2007 errors; #N/A chosen per spec doc."
+    },
+    {
+      "id": "I18-ERRORTYPE-013",
+      "formula": "=ERROR.TYPE(A1)",
+      "inputs": {
+        "A1": {
+          "error": "#NUM!"
+        }
+      },
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-INFO-001",
+      "formula": "=INFO(\"numfile\")",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-INFO-002",
+      "formula": "=INFO(\"recalc\")",
+      "inputs": {},
+      "expected": {
+        "text": "Automatic"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-INFO-003",
+      "formula": "=INFO(\"directory\")",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine-fixed constant; no filesystem concept."
+    },
+    {
+      "id": "I18-INFO-004",
+      "formula": "=INFO(\"origin\")",
+      "inputs": {},
+      "expected": {
+        "text": "$A:$A$1"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine-fixed constant; no scroll state headless."
+    },
+    {
+      "id": "I18-INFO-005",
+      "formula": "=INFO(\"system\")",
+      "inputs": {},
+      "expected": {
+        "text": "unix"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Returns std::env::consts::FAMILY; value is platform-dependent (\"unix\" on Linux)."
+    },
+    {
+      "id": "I18-INFO-006",
+      "formula": "=INFO(\"osversion\")",
+      "inputs": {},
+      "expected": {
+        "text": "linux"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Returns std::env::consts::OS; value is platform-dependent (\"linux\" here)."
+    },
+    {
+      "id": "I18-INFO-007",
+      "formula": "=INFO(\"release\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.1.0"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Returns the calc-functions crate version; fixture pins current Cargo.toml version."
+    },
+    {
+      "id": "I18-INFO-008",
+      "formula": "=INFO(\"bogus\")",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Error code for unknown type_text: #N/A chosen; some references say #VALUE!."
+    },
+    {
+      "id": "I18-INFO-009",
+      "formula": "=INFO(\"NUMFILE\")",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-INFO-010",
+      "formula": "=INFO(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISBLANK-001",
+      "formula": "=ISBLANK(A1)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISBLANK-002",
+      "formula": "=ISBLANK(A1)",
+      "inputs": {
+        "A1": ""
+      },
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISBLANK-003",
+      "formula": "=ISBLANK(A1)",
+      "inputs": {
+        "A1": 0
+      },
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISBLANK-004",
+      "formula": "=ISBLANK(A1)",
+      "inputs": {
+        "A1": false
+      },
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISBLANK-005",
+      "formula": "=ISBLANK(A1)",
+      "inputs": {
+        "A1": " "
+      },
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISBLANK-006",
+      "formula": "=ISBLANK(\"\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISBLANK-007",
+      "formula": "=ISBLANK(NA())",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISBLANK-008",
+      "formula": "=ISBLANK(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISBLANK-009",
+      "formula": "=ISBLANK(A1)",
+      "inputs": {
+        "A1": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISBLANK-010",
+      "formula": "=ISBLANK(5)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISBLANK-011",
+      "formula": "=ISBLANK(A1:B2)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Range argument semantics (implicit intersection vs array) undecided; array value is not Blank."
+    },
+    {
+      "id": "I18-ISERR-001",
+      "formula": "=ISERR(#DIV/0!)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERR-002",
+      "formula": "=ISERR(#VALUE!)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERR-003",
+      "formula": "=ISERR(#REF!)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERR-004",
+      "formula": "=ISERR(#NAME?)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERR-005",
+      "formula": "=ISERR(#NUM!)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERR-006",
+      "formula": "=ISERR(#NULL!)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERR-007",
+      "formula": "=ISERR(NA())",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERR-008",
+      "formula": "=ISERR(#N/A)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERR-009",
+      "formula": "=ISERR(1/0)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERR-010",
+      "formula": "=ISERR(0)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERR-011",
+      "formula": "=ISERR(\"text\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERR-012",
+      "formula": "=ISERR(TRUE)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERR-013",
+      "formula": "=ISERR(A1)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERR-014",
+      "formula": "=ISERR(#SPILL!)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Post-2007 errors: expected TRUE (only #N/A excluded) per spec doc, confirm against Excel."
+    },
+    {
+      "id": "I18-ISERROR-001",
+      "formula": "=ISERROR(#DIV/0!)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERROR-002",
+      "formula": "=ISERROR(#VALUE!)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERROR-003",
+      "formula": "=ISERROR(#REF!)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERROR-004",
+      "formula": "=ISERROR(#NAME?)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERROR-005",
+      "formula": "=ISERROR(#NUM!)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERROR-006",
+      "formula": "=ISERROR(#N/A)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERROR-007",
+      "formula": "=ISERROR(#NULL!)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERROR-008",
+      "formula": "=ISERROR(#SPILL!)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERROR-009",
+      "formula": "=ISERROR(#CALC!)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERROR-010",
+      "formula": "=ISERROR(1/0)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERROR-011",
+      "formula": "=ISERROR(NA())",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERROR-012",
+      "formula": "=ISERROR(0)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERROR-013",
+      "formula": "=ISERROR(\"\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERROR-014",
+      "formula": "=ISERROR(TRUE)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISERROR-015",
+      "formula": "=ISERROR(A1)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISEVEN-001",
+      "formula": "=ISEVEN(4)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISEVEN-002",
+      "formula": "=ISEVEN(3)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISEVEN-003",
+      "formula": "=ISEVEN(-2.5)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISEVEN-004",
+      "formula": "=ISEVEN(\"six\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISEVEN-005",
+      "formula": "=ISEVEN(2.9)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISEVEN-006",
+      "formula": "=ISEVEN(-4)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISEVEN-007",
+      "formula": "=ISEVEN(0)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISEVEN-008",
+      "formula": "=ISEVEN(\"4\")",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISEVEN-009",
+      "formula": "=ISEVEN(TRUE)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISEVEN-010",
+      "formula": "=ISEVEN(A1)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Blank argument treated as 0 -> TRUE; spec doc marks this confirm-against-reference."
+    },
+    {
+      "id": "I18-ISEVEN-011",
+      "formula": "=ISEVEN(4.99999)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISEVEN-012",
+      "formula": "=ISEVEN(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISFORMULA-001",
+      "formula": "=ISFORMULA(A1)",
+      "inputs": {
+        "A1": 42
+      },
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISFORMULA-002",
+      "formula": "=ISFORMULA(A1)",
+      "inputs": {
+        "A1": "text"
+      },
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISFORMULA-003",
+      "formula": "=ISFORMULA(A1)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISFORMULA-004",
+      "formula": "=ISFORMULA(5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISFORMULA-005",
+      "formula": "=ISFORMULA(\"A1\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISFORMULA-006",
+      "formula": "=ISFORMULA(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISFORMULA-007",
+      "formula": "=ISFORMULA(Nosuch!A1)",
+      "inputs": {},
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISFORMULA-008",
+      "formula": "=ISFORMULA(A1:B2)",
+      "inputs": {
+        "A1": 1
+      },
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Multi-cell range: top-left cell checked; spill semantics open."
+    },
+    {
+      "id": "I18-ISFORMULA-009",
+      "formula": "=ISFORMULA(A1)",
+      "inputs": {
+        "A1": true
+      },
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISFORMULA-010",
+      "formula": "=ISFORMULA(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISFORMULA-011",
+      "formula": "=ISFORMULA(A1)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Fixture format cannot express a formula cell input; case documents expected TRUE for a formula cell.",
+      "notes": "Recorded from unit tests: a cell holding =1+1 returns TRUE."
+    },
+    {
+      "id": "I18-ISLOGICAL-001",
+      "formula": "=ISLOGICAL(TRUE)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISLOGICAL-002",
+      "formula": "=ISLOGICAL(FALSE)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISLOGICAL-003",
+      "formula": "=ISLOGICAL(1)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISLOGICAL-004",
+      "formula": "=ISLOGICAL(\"TRUE\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISLOGICAL-005",
+      "formula": "=ISLOGICAL(A1)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISLOGICAL-006",
+      "formula": "=ISLOGICAL(A1)",
+      "inputs": {
+        "A1": false
+      },
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISLOGICAL-007",
+      "formula": "=ISLOGICAL(1=1)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISLOGICAL-008",
+      "formula": "=ISLOGICAL(0)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISLOGICAL-009",
+      "formula": "=ISLOGICAL(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISLOGICAL-010",
+      "formula": "=ISLOGICAL(\"\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNA-001",
+      "formula": "=ISNA(NA())",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNA-002",
+      "formula": "=ISNA(#N/A)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNA-003",
+      "formula": "=ISNA(1/0)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNA-004",
+      "formula": "=ISNA(#VALUE!)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNA-005",
+      "formula": "=ISNA(#REF!)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNA-006",
+      "formula": "=ISNA(0)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNA-007",
+      "formula": "=ISNA(\"#N/A\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNA-008",
+      "formula": "=ISNA(A1)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNA-009",
+      "formula": "=ISNA(A1)",
+      "inputs": {
+        "A1": {
+          "error": "#N/A"
+        }
+      },
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNA-010",
+      "formula": "=ISNA(A1)",
+      "inputs": {
+        "A1": {
+          "error": "#DIV/0!"
+        }
+      },
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNA-011",
+      "formula": "=ISNA(TRUE)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNONTEXT-001",
+      "formula": "=ISNONTEXT(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNONTEXT-002",
+      "formula": "=ISNONTEXT(\"\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNONTEXT-003",
+      "formula": "=ISNONTEXT(42)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNONTEXT-004",
+      "formula": "=ISNONTEXT(TRUE)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNONTEXT-005",
+      "formula": "=ISNONTEXT(A1)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNONTEXT-006",
+      "formula": "=ISNONTEXT(A1)",
+      "inputs": {
+        "A1": "x"
+      },
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNONTEXT-007",
+      "formula": "=ISNONTEXT(A1)",
+      "inputs": {
+        "A1": ""
+      },
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNONTEXT-008",
+      "formula": "=ISNONTEXT(A1)",
+      "inputs": {
+        "A1": 7
+      },
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNONTEXT-009",
+      "formula": "=ISNONTEXT(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISNONTEXT-010",
+      "formula": "=ISNONTEXT(-3.5)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISODD-001",
+      "formula": "=ISODD(3)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISODD-002",
+      "formula": "=ISODD(4)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISODD-003",
+      "formula": "=ISODD(-2.5)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISODD-004",
+      "formula": "=ISODD(\"4\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISODD-005",
+      "formula": "=ISODD(3.9)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISODD-006",
+      "formula": "=ISODD(-3)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISODD-007",
+      "formula": "=ISODD(0)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISODD-008",
+      "formula": "=ISODD(\"3\")",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISODD-009",
+      "formula": "=ISODD(TRUE)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISODD-010",
+      "formula": "=ISODD(\"three\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISODD-011",
+      "formula": "=ISODD(A1)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Blank argument treated as 0 -> FALSE; spec doc marks this confirm-against-reference."
+    },
+    {
+      "id": "I18-ISODD-012",
+      "formula": "=ISODD(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISOMITTED-001",
+      "formula": "=LAMBDA(x,y,ISOMITTED(y))(5,)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine has no optional-lambda-parameter syntax; empty argument slot binds Blank. Confirm vs Excel's [y] optional form."
+    },
+    {
+      "id": "I18-ISOMITTED-002",
+      "formula": "=LAMBDA(x,y,ISOMITTED(y))(5,10)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISOMITTED-003",
+      "formula": "=LAMBDA(x,y,IF(ISOMITTED(y),x,x+y))(3,)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISOMITTED-004",
+      "formula": "=LAMBDA(x,y,IF(ISOMITTED(y),x,x+y))(3,4)",
+      "inputs": {},
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISOMITTED-005",
+      "formula": "=LAMBDA(a,b,c,ISOMITTED(b))(1,,3)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISOMITTED-006",
+      "formula": "=ISOMITTED(y)",
+      "inputs": {},
+      "expected": {
+        "error": "#NAME?"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Exact error for ISOMITTED outside a LAMBDA is unconfirmed; #NAME? chosen for unbound name."
+    },
+    {
+      "id": "I18-ISOMITTED-007",
+      "formula": "=ISOMITTED(5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISOMITTED-008",
+      "formula": "=LAMBDA(x,ISOMITTED(x))(0)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISOMITTED-009",
+      "formula": "=LET(z,9,ISOMITTED(z))",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "LET-bound name bound to a value reports not-omitted; spec silent on LET scopes."
+    },
+    {
+      "id": "I18-ISOMITTED-010",
+      "formula": "=LAMBDA(a,b,c,ISOMITTED(a))(1,,3)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISREF-001",
+      "formula": "=ISREF(A1)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISREF-002",
+      "formula": "=ISREF(A1:B2)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISREF-003",
+      "formula": "=ISREF(Sheet1!A1)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISREF-004",
+      "formula": "=ISREF(\"A1\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISREF-005",
+      "formula": "=ISREF(5)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISREF-006",
+      "formula": "=ISREF(TRUE)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISREF-007",
+      "formula": "=ISREF(1+1)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISREF-008",
+      "formula": "=ISREF(#REF!)",
+      "inputs": {},
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether a #REF! value argument returns TRUE, FALSE or propagates; propagation chosen."
+    },
+    {
+      "id": "I18-ISREF-009",
+      "formula": "=ISREF(Nosuch!A1)",
+      "inputs": {},
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISREF-010",
+      "formula": "=ISREF(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-ISREF-011",
+      "formula": "=ISREF(\"\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-N-001",
+      "formula": "=N(3.5)",
+      "inputs": {},
+      "expected": {
+        "number": 3.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-N-002",
+      "formula": "=N(TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-N-003",
+      "formula": "=N(FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-N-004",
+      "formula": "=N(\"17\")",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-N-005",
+      "formula": "=N(A1)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-N-006",
+      "formula": "=N(DATE(2020,1,1))",
+      "inputs": {},
+      "expected": {
+        "number": 43831
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-N-007",
+      "formula": "=N(NA())",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-N-008",
+      "formula": "=N(\"\")",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-N-009",
+      "formula": "=N(-10)",
+      "inputs": {},
+      "expected": {
+        "number": -10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-N-010",
+      "formula": "=N(A1)",
+      "inputs": {
+        "A1": "5"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-N-011",
+      "formula": "=N(A1)",
+      "inputs": {
+        "A1": true
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-NA-001",
+      "formula": "=NA()",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-NA-002",
+      "formula": "=ISNA(NA())",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-NA-003",
+      "formula": "=ISERROR(NA())",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-NA-004",
+      "formula": "=ISERR(NA())",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-NA-005",
+      "formula": "=NA()+5",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-NA-006",
+      "formula": "=IF(A1=\"\",NA(),A1)",
+      "inputs": {
+        "A1": ""
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-NA-007",
+      "formula": "=N(NA())",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-NA-008",
+      "formula": "=TYPE(NA())",
+      "inputs": {},
+      "expected": {
+        "number": 16
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-NA-009",
+      "formula": "=ERROR.TYPE(NA())",
+      "inputs": {},
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-NA-010",
+      "formula": "=NA(1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-SHEET-001",
+      "formula": "=SHEET()",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Single-sheet fixture workbook."
+    },
+    {
+      "id": "I18-SHEET-002",
+      "formula": "=SHEET(A1)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-SHEET-003",
+      "formula": "=SHEET(Sheet1!A1)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-SHEET-004",
+      "formula": "=SHEET(\"Sheet1\")",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether Excel accepts a bare sheet-name text argument; implemented per Microsoft docs wording."
+    },
+    {
+      "id": "I18-SHEET-005",
+      "formula": "=SHEET(Sheet9!A1)",
+      "inputs": {},
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-SHEET-006",
+      "formula": "=SHEET(\"Nope\")",
+      "inputs": {},
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Exact error for unknown sheet name (#REF! chosen)."
+    },
+    {
+      "id": "I18-SHEET-007",
+      "formula": "=SHEET(5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Exact error for non-reference scalar (#VALUE! chosen)."
+    },
+    {
+      "id": "I18-SHEET-008",
+      "formula": "=SHEET(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Exact error for non-reference scalar (#VALUE! chosen)."
+    },
+    {
+      "id": "I18-SHEET-009",
+      "formula": "=SHEET(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-SHEET-010",
+      "formula": "=SHEET(B7:D9)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-SHEET-011",
+      "formula": "=SHEET(A1,B1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-SHEETS-001",
+      "formula": "=SHEETS()",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Single-sheet fixture workbook."
+    },
+    {
+      "id": "I18-SHEETS-002",
+      "formula": "=SHEETS(A1)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-SHEETS-003",
+      "formula": "=SHEETS(Sheet1!B4)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-SHEETS-004",
+      "formula": "=SHEETS(A1:C3)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-SHEETS-005",
+      "formula": "=SHEETS(Nosuch!A1)",
+      "inputs": {},
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-SHEETS-006",
+      "formula": "=SHEETS(3)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Exact error for non-reference scalar (#VALUE! chosen)."
+    },
+    {
+      "id": "I18-SHEETS-007",
+      "formula": "=SHEETS(\"Sheet1\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Exact error for non-reference scalar (#VALUE! chosen)."
+    },
+    {
+      "id": "I18-SHEETS-008",
+      "formula": "=SHEETS(NA())",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-SHEETS-009",
+      "formula": "=SHEET()<=SHEETS()",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-SHEETS-010",
+      "formula": "=SHEETS(A1,B1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-SHEETS-011",
+      "formula": "=SHEETS(Sheet1:Sheet2!A1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NAME?"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "3-D sheet-span references unsupported by the parser; exact failure mode (parse vs #REF!) open.",
+      "notes": "Engine parse rejects the sheet-span form; fixture documents the gap."
+    },
+    {
+      "id": "I18-STOCKHISTORY-001",
+      "formula": "=STOCKHISTORY(\"MSFT\",DATE(2024,1,1))",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "NOT IMPLEMENTABLE OFFLINE: registered stub returns #N/A; real Excel returns live market data."
+    },
+    {
+      "id": "I18-STOCKHISTORY-002",
+      "formula": "=STOCKHISTORY(\"XNAS:AAPL\",DATE(2024,6,3),DATE(2024,6,7),0,1,0,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "NOT IMPLEMENTABLE OFFLINE: registered stub returns #N/A; real Excel returns live market data."
+    },
+    {
+      "id": "I18-STOCKHISTORY-003",
+      "formula": "=STOCKHISTORY(\"MSFT\",\"2024-01-01\")",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "NOT IMPLEMENTABLE OFFLINE: registered stub returns #N/A; real Excel returns live market data."
+    },
+    {
+      "id": "I18-STOCKHISTORY-004",
+      "formula": "=STOCKHISTORY(\"AAPL\",44197)",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "NOT IMPLEMENTABLE OFFLINE: registered stub returns #N/A; real Excel returns live market data."
+    },
+    {
+      "id": "I18-STOCKHISTORY-005",
+      "formula": "=STOCKHISTORY()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Offline stub: arity error chosen as #VALUE!."
+    },
+    {
+      "id": "I18-STOCKHISTORY-006",
+      "formula": "=STOCKHISTORY(\"MSFT\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Offline stub: arity error chosen as #VALUE!."
+    },
+    {
+      "id": "I18-STOCKHISTORY-007",
+      "formula": "=ISNA(STOCKHISTORY(\"MSFT\",DATE(2024,1,1)))",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Offline stub composition check."
+    },
+    {
+      "id": "I18-STOCKHISTORY-008",
+      "formula": "=ISERROR(STOCKHISTORY(\"MSFT\",DATE(2024,1,1)))",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Offline stub composition check."
+    },
+    {
+      "id": "I18-STOCKHISTORY-009",
+      "formula": "=ERROR.TYPE(STOCKHISTORY(\"MSFT\",DATE(2024,1,1)))",
+      "inputs": {},
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Offline stub composition check."
+    },
+    {
+      "id": "I18-STOCKHISTORY-010",
+      "formula": "=STOCKHISTORY(\"MSFT\",DATE(2024,1,1))+1",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Offline stub propagates as #N/A."
+    },
+    {
+      "id": "I18-TYPE-001",
+      "formula": "=TYPE(1.5)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-TYPE-002",
+      "formula": "=TYPE(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-TYPE-003",
+      "formula": "=TYPE(TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-TYPE-004",
+      "formula": "=TYPE(1/0)",
+      "inputs": {},
+      "expected": {
+        "number": 16
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-TYPE-005",
+      "formula": "=TYPE({1,2;3,4})",
+      "inputs": {},
+      "expected": {
+        "number": 64
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-TYPE-006",
+      "formula": "=TYPE(A1)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Blank cell types as 1 per spec expectation; confirm against reference."
+    },
+    {
+      "id": "I18-TYPE-007",
+      "formula": "=TYPE(NA())",
+      "inputs": {},
+      "expected": {
+        "number": 16
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-TYPE-008",
+      "formula": "=TYPE(A1:B2)",
+      "inputs": {},
+      "expected": {
+        "number": 64
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-TYPE-009",
+      "formula": "=TYPE(DATE(2020,1,1))",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-TYPE-010",
+      "formula": "=TYPE(A1)",
+      "inputs": {
+        "A1": "x"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I18-TYPE-011",
+      "formula": "=TYPE(LAMBDA(x,x))",
+      "inputs": {},
+      "expected": {
+        "number": 128
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Exact code for lambda values unconfirmed; 128 ('other') chosen."
+    },
+    {
+      "id": "I18-TYPE-012",
+      "formula": "=TYPE(A1)",
+      "inputs": {
+        "A1": {
+          "error": "#REF!"
+        }
+      },
+      "expected": {
+        "number": 16
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and docs/functions/<NAME>.md; to be re-recorded empirically per plan section 10.5"
+      }
+    }
+  ]
+}

@@ -229,7 +229,8 @@ impl CalcEngine {
             CellInput::Formula(text) => {
                 // Parse before mutating anything.
                 let expr = parse(&text)?;
-                let deps = graph::extract_deps(&expr, &self.workbook, sheet_id);
+                let deps =
+                    graph::extract_deps(&expr, &self.workbook, sheet_id, self.registry.as_ref());
                 self.workbook
                     .set_cell(sheet_id, r.row, r.col, CellInput::Formula(text))?;
                 self.deindex_deps(id);
