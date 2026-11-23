@@ -92,7 +92,9 @@ export function duckdbInvocation(options: DuckdbAdapterOptions, sql: string, par
   const args = ['-safe', '-batch', '-no-init', '-bail', '-json'];
   if (options.readOnly) args.push('-readonly');
   args.push(path.resolve(options.file));
-  return { args, input: `${text}\n`, explain: shape.firstKeyword === 'EXPLAIN' && shape.statements === 1 && params.length === 0 };
+  // The shell drops one carriage return before each line feed it reads. Doubling it keeps a
+  // CRLF inside a string literal as it was sent; outside a literal it is blank space either way.
+  return { args, input: `${text}\n`.replaceAll('\r\n', '\r\r\n'), explain: shape.firstKeyword === 'EXPLAIN' && shape.statements === 1 && params.length === 0 };
 }
 
 /** Turns the shell's error output into a message about the caller's SQL. */
