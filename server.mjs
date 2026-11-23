@@ -39,6 +39,16 @@ import { createUploadRegistry } from "./server/upload-registry.mjs";
 import { ControlPlane } from "./server/control-plane.mjs";
 import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/workspace-control.mjs";
 import { handleBrowserApiRequest } from "./server/browser-api.mjs";
+import { remoteBrowserHostCapability } from "./server/browser-session.mjs";
+import {
+  BROWSER_AGENT_PATH,
+  browserMcpClientConfig,
+  createBrowserAgentLauncher,
+  createBrowserAgentTokens,
+  bindBrowserAgentRevocation,
+  createBrowserAudit,
+  handleBrowserAgentRequest
+} from "./server/browser-agent.mjs";
 import { createBrowserSocketTickets, installBrowserWebSocketEndpoint } from "./server/browser-websocket.mjs";
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
 import { normalizeProxyRoutePath } from "./server/opencode-proxy-path.mjs";
@@ -183,11 +193,27 @@ const devin = new DevinBridge({
   bin: process.env.DEVIN_BIN || "devin",
   cwd: process.env.DEVIN_CWD || process.env.CODEX_CWD || process.cwd()
 });
+// Browser MCP processes reach this server over loopback only, with a short-lived agent token.
+const BROWSER_AGENT_BASE_URL = `http://${HOST === "::1" ? "[::1]" : HOST === "localhost" || HOST.startsWith("127.") ? HOST : "127.0.0.1"}:${PORT}`;
+const BROWSER_MCP_CLI = fileURLToPath(new URL("./cli/devmoter.mjs", import.meta.url));
+const browserAgentTokens = createBrowserAgentTokens();
+const browserAudit = createBrowserAudit({
+  filePath: join(PROJECT_CONFIG_DIR, "browser-audit.jsonl"),
+  onError: error => console.error("Browser audit write failed", redactLog(errorMessage(error)))
+});
+const browserAgentLauncher = createBrowserAgentLauncher({
+  tokens: browserAgentTokens,
+  stateDir: PROJECT_CONFIG_DIR,
+  baseUrl: BROWSER_AGENT_BASE_URL,
+  cliPath: BROWSER_MCP_CLI,
+  enabled: () => process.env.DEVMOTER_BROWSER_AUTOMATION === "1"
+});
 const agentRunService = createAgentRunService({
   filePath: join(PROJECT_CONFIG_DIR, "agent-runs.json"),
   codex,
   resolveProject: id => getProjectById(id),
-  assertExecutionAllowed: () => assertExternalBackendExecutionAllowed("codex")
+  assertExecutionAllowed: () => assertExternalBackendExecutionAllowed("codex"),
+  browserAgent: browserAgentLauncher
 });
 void agentRunService.ready().catch(error => {
   console.error("Agent run service initialization failed", redactLog(errorMessage(error)));
@@ -226,11 +252,15 @@ const workspaceControl = createWorkspaceControl({
   stateDir: PROJECT_CONFIG_DIR,
   resolveProject: getProjectById
 });
+void workspaceControl.loadPolicy().catch(error => {
+  console.error("Workspace policy load failed", redactLog(errorMessage(error)));
+});
 const advancedApi = createAdvancedApi({
   homeDir: HOME_DIR,
   configDir: PROJECT_CONFIG_DIR,
   getProjectById
-});
+});bindBrowserAgentRevocation(browserAgentTokens, () => advancedApi.remoteBrowser);
+
 const taskWorkflow = createTaskWorkflow({ homeDir: HOME_DIR, getProjectById });
 const devWorkflows = createDevWorkflowService({
   homeDir: HOME_DIR,
@@ -293,7 +323,8 @@ const hostRuntime = createHostAdapter({
     git: { state: "available", features: ["status", "diff", "reviewed-changes"] },
     agents: { state: "available", features: ["codex", "opencode"] },
     notifications: { state: "available", features: ["web-push", "agent-state"] },
-    secrets: { state: "available", features: ["encrypted-at-rest", "project-bindings", "metadata-api"] }
+    secrets: { state: "available", features: ["encrypted-at-rest", "project-bindings", "metadata-api"] },
+    browser: remoteBrowserHostCapability({ env: process.env })
   }
 });
 const browserSocketTickets = createBrowserSocketTickets();
@@ -312,6 +343,7 @@ const systemFeatures = createSystemFeatures({
   onDeviceRevoked: deviceId => {
     terminal.revokeDeviceSessions(deviceId);
     browserSocketTickets.revokeDevice(deviceId);
+    browserAgentTokens.revokeDevice(deviceId);
     void advancedApi.remoteBrowser.stopDevice(deviceId);
   }
 });
@@ -3134,6 +3166,17 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // Authenticated by a short-lived agent token (not the owner password or a device), host-local only.
+    if (url.pathname === BROWSER_AGENT_PATH || url.pathname.startsWith(BROWSER_AGENT_PATH + "/")) {
+      await handleBrowserAgentRequest(req, res, url, {
+        manager: advancedApi.remoteBrowser,
+        tokens: browserAgentTokens,
+        audit: browserAudit,
+        decide: input => workspaceControl.policy.decide(input)
+      });
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/control/events/github") {
       await githubWebhookRoute(req, res);
       return;
@@ -3398,7 +3441,11 @@ const server = http.createServer(async (req, res) => {
       ) return;
       if (await handleBrowserApiRequest(req, res, url, advancedApi.remoteBrowser, {
         tickets: browserSocketTickets,
-        authenticateDevice: request => systemFeatures.authenticate(request)
+        authenticateDevice: request => systemFeatures.authenticate(request),
+        agentTokens: browserAgentTokens,
+        audit: browserAudit,
+        resolveProject: id => getProjectById(id),
+        mcpClientConfig: browserMcpClientConfig({ baseUrl: BROWSER_AGENT_BASE_URL, cliPath: BROWSER_MCP_CLI })
       })) return;
     }
 
@@ -4277,7 +4324,8 @@ const server = http.createServer(async (req, res) => {
 const browserSockets = installBrowserWebSocketEndpoint(server, advancedApi.remoteBrowser, browserSocketTickets, {
   publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
   trustedProxies: DEVMOTER_TRUSTED_PROXIES,
-  isDeviceActive: deviceId => systemFeatures.isDeviceActive(deviceId)
+  isDeviceActive: deviceId => systemFeatures.isDeviceActive(deviceId),
+  audit: browserAudit
 });
 const terminalSockets = installTerminalWebSocketEndpoint(server, terminal, {
   publicOrigin: DEVMOTER_PUBLIC_ORIGIN,

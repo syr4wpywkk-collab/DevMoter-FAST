@@ -37,15 +37,16 @@ const ICONS: Record<string, string> = {
   "review": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>',
   "sessions": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>',
   "settings": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+  "browser": '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
   "terminal": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M12 15h5"/></svg>',
   "theme": '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M12 8h5M12 12h6M12 16h5"/></svg>',
   "tools": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M9 8V5h6v3M3 13h18"/></svg>',
 };
 
 type ChatBackend = "codex" | "opencode" | "api" | "deepseek" | "devin" | "qwen";
-type WorkspaceTab = "tasks" | "chat" | "review" | "tools" | "terminal";
+type WorkspaceTab = "tasks" | "chat" | "review" | "tools" | "terminal" | "browser";
 const isWorkspaceTab = (value: unknown): value is WorkspaceTab =>
-  value === "tasks" || value === "chat" || value === "review" || value === "tools" || value === "terminal";
+  value === "tasks" || value === "chat" || value === "review" || value === "tools" || value === "terminal" || value === "browser";
 
 type WorkspaceActions = {
   initialSurface: MainSurface;
@@ -56,6 +57,7 @@ type WorkspaceActions = {
   openReview: () => void;
   openTools: () => void;
   openTerminal: () => void;
+  openBrowser?: () => void;
 };
 
 /**
@@ -106,6 +108,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
         <button type="button" data-workspace-action="review" aria-label="${escapeHtml(t("nav.reviewAria"))}"><span aria-hidden="true">${ICONS.review}</span><strong>${escapeHtml(t("nav.review"))}</strong></button>
         <button type="button" data-workspace-action="tools" aria-label="${escapeHtml(t("nav.toolsAria"))}"><span aria-hidden="true">${ICONS.tools}</span><strong>${escapeHtml(t("nav.tools"))}</strong></button>
         <button type="button" data-workspace-action="terminal" aria-label="${escapeHtml(t("nav.terminalAria"))}"><span aria-hidden="true">${ICONS.terminal}</span><strong>${escapeHtml(t("nav.terminal"))}</strong></button>
+        <button type="button" data-workspace-action="browser" aria-label="${escapeHtml(t("nav.browserAria"))}"><span aria-hidden="true">${ICONS.browser}</span><strong>${escapeHtml(t("nav.browser"))}</strong></button>
         <hr aria-hidden="true" />
         <button type="button" data-workspace-command="theme"><span aria-hidden="true">${ICONS.theme}</span><strong>${escapeHtml(t("nav.theme"))}</strong><small data-workspace-theme-value></small></button>
         <button type="button" data-workspace-command="context"><span aria-hidden="true">${ICONS.context}</span><strong>${escapeHtml(t("nav.context"))}</strong></button>
@@ -336,6 +339,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
       else if (tab === "review") actions.openReview();
       else if (tab === "tools") actions.openTools();
       else if (tab === "terminal") actions.openTerminal();
+      else if (tab === "browser") actions.openBrowser?.();
       else if (backend || surface === "home" || surface === "integrations") {
         if (backend) backend = normalizeVisibleBackend(backend);
         const previousSurface = new URL(window.location.href).searchParams.get("surface");

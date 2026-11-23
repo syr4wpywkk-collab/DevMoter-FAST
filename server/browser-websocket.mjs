@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { WebSocketServer } from "ws";
 import { expectedRequestOrigin, parseTrustedProxies } from "./auth.mjs";
+import { browserActionClass } from "./browser-agent.mjs";
 
 const SOCKET_PATH = /^\/api\/browser\/sessions\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/socket$/;
 export const BROWSER_PROTOCOL = "devmoter-browser.v1";
@@ -79,7 +80,7 @@ function errorCode(error) {
   return typeof error?.code === "string" ? error.code : "action_failed";
 }
 
-export function bindBrowserViewer(webSocket, manager, grant, { now = Date.now } = {}) {
+export function bindBrowserViewer(webSocket, manager, grant, { now = Date.now, audit = null } = {}) {
   let windowStart = now();
   let windowCount = 0;
   let handle = null;
@@ -91,10 +92,17 @@ export function bindBrowserViewer(webSocket, manager, grant, { now = Date.now } 
     frame: frame => send(encodeFrame(frame)),
     close: (code, reason) => webSocket.close(code, String(reason || "").slice(0, 120))
   };
+  // Listeners go on before attaching: a socket error after a failed attach
+  // must not become an unhandled 'error' event.
+  webSocket.on("close", () => handle?.detach());
+  webSocket.on("error", () => {
+    handle?.detach();
+    try { webSocket.terminate?.(); } catch {}
+  });
   try {
     handle = manager.attachViewer(grant.sessionId, sink, { deviceId: grant.deviceId });
   } catch (error) {
-    webSocket.close(4003, errorCode(error));
+    try { webSocket.close(4003, errorCode(error)); } catch {}
     return null;
   }
   webSocket.on("message", (data, isBinary) => {
@@ -121,14 +129,27 @@ export function bindBrowserViewer(webSocket, manager, grant, { now = Date.now } 
       handle.ack(message.seq);
     } else if (message?.t === "act") {
       const id = Number.isSafeInteger(message.id) ? message.id : null;
+      const action = message.action && typeof message.action === "object" && !Array.isArray(message.action) ? message.action : {};
+      // Same audit line as POST /api/browser/sessions/:id/actions; typed text is never recorded.
+      // Hostile action fields (e.g. {"toString": 1}) must not turn auditing into an unhandled rejection.
+      const log = entry => {
+        try {
+          audit?.record({
+            actor: "user", deviceId: grant.deviceId, event: "action", sessionId: grant.sessionId,
+            action, capability: browserActionClass(action.type), transport: "websocket", ...entry
+          });
+        } catch {}
+      };
       void manager.act(grant.sessionId, message.action, {
         holder: "user",
         generation: message.generation,
         deviceId: grant.deviceId
       }).then(result => {
+        log({ ok: result?.ok !== false });
         const { data: _data, ...rest } = result || {};
         send(JSON.stringify({ t: "result", id, ok: true, result: rest }));
       }, error => {
+        log({ ok: false, code: errorCode(error) });
         send(JSON.stringify({ t: "result", id, ok: false, error: errorCode(error) }));
       });
     } else if (message?.t === "ping") {
@@ -137,8 +158,6 @@ export function bindBrowserViewer(webSocket, manager, grant, { now = Date.now } 
       webSocket.close(4400, "bad_message");
     }
   });
-  webSocket.on("close", () => handle.detach());
-  webSocket.on("error", () => handle.detach());
   return handle;
 }
 
@@ -149,7 +168,8 @@ export function installBrowserWebSocketEndpoint(
   {
     publicOrigin = "",
     trustedProxies = parseTrustedProxies(process.env.DEVMOTER_TRUST_PROXY),
-    isDeviceActive = async () => true
+    isDeviceActive = async () => true,
+    audit = null
   } = {}
 ) {
   const webSockets = new WebSocketServer({
@@ -216,7 +236,7 @@ export function installBrowserWebSocketEndpoint(
         return;
       }
       webSockets.handleUpgrade(req, socket, head, webSocket => {
-        bindBrowserViewer(webSocket, manager, grant);
+        bindBrowserViewer(webSocket, manager, grant, { audit });
       });
     }).catch(() => rejectUpgrade(socket));
   };

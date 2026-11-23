@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { once } from "node:events";
+import { EventEmitter, once } from "node:events";
 import { createServer } from "node:http";
 import { WebSocket } from "ws";
 import {
+  bindBrowserViewer,
   BROWSER_PROTOCOL,
   createBrowserSocketTickets,
   encodeFrame,
@@ -124,7 +125,8 @@ test("browser socket rejects a revoked device", async t => {
 });
 
 test("browser socket relays frames, ACKs and generation-checked actions", async t => {
-  const { manager, issue, connect } = await setup(t);
+  const audited = [];
+  const { manager, issue, connect } = await setup(t, { audit: { record: entry => { String(entry.action.type); audited.push(entry); } } });
   const { socket, messages } = await connect(issue());
   await until(() => messages.length >= 1);
   assert.equal(messages[0].t, "hello");
@@ -136,6 +138,8 @@ test("browser socket relays frames, ACKs and generation-checked actions", async 
   socket.send(JSON.stringify({ t: "act", id: 2, generation: 0, action: { type: "click", x: 1, y: 2 } }));
   socket.send(JSON.stringify({ t: "ping" }));
   await until(() => messages.length >= 5);
+  socket.send(JSON.stringify({ t: "act", id: 3, generation: 1, action: { type: { toString: 1 } } }));
+  await until(() => messages.some(message => message.t === "result" && message.id === 3));
   assert.deepEqual(manager.state.acks, [3]);
   assert.equal(manager.state.acts[0].options.holder, "user");
   assert.equal(manager.state.acts[0].options.deviceId, "d");
@@ -143,6 +147,10 @@ test("browser socket relays frames, ACKs and generation-checked actions", async 
   assert.deepEqual(results.find(r => r.id === 1), { t: "result", id: 1, ok: true, result: { ok: true } });
   assert.deepEqual(results.find(r => r.id === 2), { t: "result", id: 2, ok: false, error: "stale_generation" });
   assert.ok(messages.some(message => message.t === "pong"));
+  assert.deepEqual(audited.map(({ actor, deviceId, event, sessionId, capability, transport, ok, code }) => ({ actor, deviceId, event, sessionId, capability, transport, ok, code })), [
+    { actor: "user", deviceId: "d", event: "action", sessionId: SESSION, capability: "browser.act", transport: "websocket", ok: true, code: undefined },
+    { actor: "user", deviceId: "d", event: "action", sessionId: SESSION, capability: "browser.act", transport: "websocket", ok: false, code: "stale_generation" }
+  ]);
   const closed = once(socket, "close");
   socket.close();
   await closed;
@@ -162,4 +170,36 @@ test("browser socket closes on bad messages, oversized payloads and floods", asy
   const flood = await connect(issue());
   for (let i = 0; i < 80; i += 1) flood.socket.send(JSON.stringify({ t: "ping" }));
   assert.equal((await once(flood.socket, "close"))[0], 4029);
+});
+
+test("#704 a viewer whose attach fails cannot crash the server with a later socket error", () => {
+  for (const failure of ["session_not_found", "viewer_limit"]) {
+    const socket = new EventEmitter();
+    socket.OPEN = 1;
+    socket.readyState = 1;
+    const closed = [];
+    socket.close = (code, reason) => { closed.push([code, reason]); socket.emit("close"); };
+    socket.send = () => {};
+    let terminated = 0;
+    socket.terminate = () => { terminated += 1; };
+    const manager = { attachViewer() { throw Object.assign(new Error("nope"), { code: failure }); } };
+    const handle = bindBrowserViewer(socket, manager, { sessionId: "s", deviceId: "d" });
+    assert.equal(handle, null);
+    assert.deepEqual(closed, [[4003, failure]]);
+    assert.doesNotThrow(() => socket.emit("error", new Error("ECONNRESET after close")));
+    assert.equal(terminated, 1);
+  }
+  const socket = new EventEmitter();
+  socket.OPEN = 1;
+  socket.readyState = 1;
+  socket.close = () => { throw new Error("already closed"); };
+  socket.send = () => {};
+  assert.doesNotThrow(() => bindBrowserViewer(socket, { attachViewer() { throw new Error("x"); } }, { sessionId: "s", deviceId: "d" }));
+  let detached = 0;
+  const ok = new EventEmitter();
+  ok.OPEN = 1; ok.readyState = 1; ok.close = () => {}; ok.send = () => {};
+  bindBrowserViewer(ok, { attachViewer: () => ({ ack() {}, detach() { detached += 1; } }) }, { sessionId: "s", deviceId: "d" });
+  ok.emit("error", new Error("reset"));
+  ok.emit("close");
+  assert.ok(detached >= 1);
 });

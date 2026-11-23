@@ -23,6 +23,15 @@ async function readBody(req, limit = 256 * 1024) {
 
 const APPROVAL_DECISIONS = new Set(["accept", "acceptForSession", "decline", "cancel"]);
 
+// The browser device is set by the server from the authenticated device, never by the caller.
+function withBrowserDevice(spec, deviceId) {
+  if (!spec || typeof spec !== "object" || Array.isArray(spec)) return spec;
+  const context = spec.context && typeof spec.context === "object" && !Array.isArray(spec.context) ? { ...spec.context } : {};
+  delete context.browserDeviceId;
+  if (context.browser !== undefined) context.browserDeviceId = deviceId;
+  return { ...spec, context };
+}
+
 export function createAgentRunApi({
   service,
   authenticateDevice,
@@ -103,14 +112,14 @@ export function createAgentRunApi({
         if (req.method === "POST" && url.pathname === "/api/agent-runs") {
           if (!claimOperation(req, res, `agent-runs:${device.id}:spawn`)) return true;
           const body = await readBody(req);
-          send(res, 201, { run: await service.spawn(body?.spec || body) });
+          send(res, 201, { run: await service.spawn(withBrowserDevice(body?.spec || body, device.id)) });
           return true;
         }
 
         if (req.method === "POST" && url.pathname === "/api/agent-fleets") {
           if (!claimOperation(req, res, `agent-fleets:${device.id}:spawn`)) return true;
           const body = await readBody(req);
-          const specs = Array.isArray(body?.specs) ? body.specs : [];
+          const specs = (Array.isArray(body?.specs) ? body.specs : []).map(spec => withBrowserDevice(spec, device.id));
           send(res, 201, {
             fleet: await service.runFleet(specs, {
               id: body?.id,

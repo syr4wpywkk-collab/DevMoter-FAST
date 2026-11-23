@@ -80,7 +80,8 @@ export function createPolicyEngine(initialRules = []) {
       return {
         decision: selected?.effect || "ask",
         reason: selected?.reason || (selected ? `matched policy ${selected.id || "rule"}` : "no matching rule"),
-        ruleId: selected?.id || null
+        ruleId: selected?.id || null,
+        matched: Boolean(selected)
       };
     }
   };
@@ -457,6 +458,12 @@ export function createWorkspaceControl({ stateDir, resolveProject, policyRules =
     policy,
     locks,
     events,
+
+    async loadPolicy() {
+      const current = await settings();
+      policy.setRules(current.policyRules || []);
+      return policy;
+    },
 
     async getOverview() {
       const current = await settings();

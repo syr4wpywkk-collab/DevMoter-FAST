@@ -100,6 +100,7 @@ DevMoter 明确区分 **Shipped / Experimental / Planned**。UI 中出现入口�
 | Reviewed Changes / Tasks | 🧪 Experimental | proposal review、hunk decision、drift check、apply/commit、worktree、PR flow |
 | Project context / local index | 🧪 Experimental | bounded project search、structure/symbol context、local indexing |
 | Persistent terminal | 🧪 Experimental | authenticated project-scoped terminal、bounded replay、reconnect |
+| Remote browser | 🧪 Experimental | 需 `DEVMOTER_BROWSER_AUTOMATION=1` 选择启用；仅限项目的 loopback live preview；手机端画面串流、点击/滚动/IME 输入、用户接管、经 `devmoter browser-mcp` 的 agent 操作。详见 [Remote browser](./docs/REMOTE_BROWSER.md) |
 | API Chat / model routing | 🧪 Experimental | configurable provider/model、reasoning mode、routing/failover、image attachment |
 | Qwen Code | 🧪 Experimental | 本地 Qwen Code CLI 聊天（streaming、stop、设备内聊天历史、model 选择、“Add API”）与 Local Integrations 启动卡；需要本地安装 Qwen Code CLI；UI 默认隐藏（feature flag） |
 | Developer workflows | 🧪 Experimental | Skills、Rules、MCP 管理、可选 ACP、Extensions、验证/审查工作流；成熟度因功能而异 |
