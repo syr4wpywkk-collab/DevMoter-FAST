@@ -76,6 +76,11 @@ export async function handleBrowserApiRequest(req, res, url, manager, { authenti
           sendJson(res, 404, { error: "Registered project not found", code: "project_not_found" });
           return true;
         }
+        // The device may be revoked while the project resolves; its revocation
+        // hook has already run, so a token issued now would outlive it.
+        if ((await authenticateDevice(req))?.id !== device.id) {
+          throw Object.assign(new Error("Trusted device required"), { statusCode: 403, code: "device_revoked" });
+        }
         const minutes = Math.min(Math.max(Math.floor(Number(payload.ttlMinutes) || 30), 1), MAX_MANUAL_TOKEN_TTL_MS / 60000);
         const issued = agentTokens.issue({
           projectId: project.id,

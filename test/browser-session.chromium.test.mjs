@@ -8,6 +8,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createBrowserSessionManager } from "../server/browser-session.mjs";
+import { readListenerIdentity } from "../server/listener-identity.mjs";
 
 // Real Chromium check. Runs when DEVMOTER_TEST_CHROMIUM_BIN (or a chromium on
 // PATH) is available; skipped otherwise so CI without a browser stays green.
@@ -69,7 +70,7 @@ fetch('https://example.com/').catch(() => {});
   const manager = createBrowserSessionManager({
     configDir,
     resolveProject: async id => ({ id, path: projectDir, name: id }),
-    getPreview: () => ({ projectId: "real", host: "127.0.0.1", port: preview.port, token: "t" }),
+    getPreview: () => ({ projectId: "real", host: "127.0.0.1", port: preview.port, token: "t", listener: readListenerIdentity("127.0.0.1", preview.port) }),
     env: {
       ...process.env,
       DEVMOTER_BROWSER_AUTOMATION: "1",

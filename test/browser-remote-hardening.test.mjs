@@ -79,7 +79,7 @@ async function setup(t, { chrome = {}, processes = null, preexisting = null } = 
   const manager = createBrowserSessionManager({
     configDir,
     resolveProject: async id => ({ id, path: "/tmp/devmoter-project", name: id }),
-    getPreview: id => ({ projectId: id, host: "127.0.0.1", port: 3000, token: "tok" }),
+    getPreview: id => ({ projectId: id, host: "127.0.0.1", port: 3000, token: "tok", listener: "socket:1" }),
     readPreviewListener: () => "socket:1",
     env: { DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_SANDBOX: "required", PATH: "" },
     spawnImpl: () => {

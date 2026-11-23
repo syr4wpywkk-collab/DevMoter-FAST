@@ -2,11 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
-import { mkdtemp, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import {
   browserAutomationPolicy,
+  binaryGrant,
   browserAutomationStatus,
   createBrowserAutomation
 } from "../server/browser-tool.mjs";
@@ -99,4 +101,42 @@ test("required browser sandbox fails closed when bwrap is missing", async t => {
   });
 
   await assert.rejects(() => manager.start("p1"), /sandbox is required.*unavailable/i);
+});
+
+test("legacy browser tool mounts a project-local Chromium read-only inside the sandbox", async t => {
+  const root = await mkdtemp(join(tmpdir(), "devmoter-browser-local-bin-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const binDir = join(root, "project", ".browsers", "chromium");
+  await mkdir(binDir, { recursive: true });
+  const binary = join(binDir, "chrome");
+  await writeFile(binary, "#!/bin/sh\n");
+  await chmod(binary, 0o755);
+  const spawns = [];
+  const manager = createBrowserAutomation({
+    configDir: join(root, "config"),
+    resolveProject: async id => ({ id, path: join(root, "project"), name: "Project" }),
+    getPreview: id => ({ projectId: id, host: "127.0.0.1", port: 3000 }),
+    env: { DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_SANDBOX: "required", DEVMOTER_BROWSER_BIN: binary },
+    spawnImpl: (command, args) => {
+      spawns.push({ command, args });
+      return fakeChild();
+    },
+    spawnSyncImpl: command => command === "bwrap" ? { status: 0, stdout: "bubblewrap 0.10.0" } : command === binary ? { status: 0, stdout: "Chromium 140.0" } : { status: 127, stdout: "" }
+  });
+  await manager.start("p1");
+  const args = spawns[0].args;
+  const mount = args.findIndex((value, index) => value === "--ro-bind" && args[index + 1] === binDir);
+  assert.ok(mount >= 0, "the binary's directory is mounted read-only");
+  assert.ok(!args.some((value, index) => (value === "--bind" || value === "--ro-bind") && args[index + 1] === join(root, "project")), "the project itself stays unmounted");
+  assert.equal(args[args.indexOf("--") + 1], binary);
+  await manager.stop("p1");
+});
+
+test("a browser binary directly in a temp or home directory is refused, not mounted", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-chrome-dir-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await writeFile(join(dir, "chrome"), "#!/bin/sh\n");
+  assert.deepEqual(binaryGrant(join(dir, "chrome"), {}), { path: realpathSync(dir), mode: "read-only" });
+  assert.throws(() => binaryGrant(join(dir, "chrome"), { TMPDIR: dir }), /own directory/);
+  assert.throws(() => binaryGrant(join(dir, "chrome"), { HOME: dir }), /own directory/);
 });

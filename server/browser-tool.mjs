@@ -1,8 +1,54 @@
 import { spawn, spawnSync } from "node:child_process";
+import { existsSync, realpathSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { delimiter, dirname, isAbsolute, join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { homedir, tmpdir } from "node:os";
 import { buildBubblewrapCommand } from "./advanced-features.mjs";
+
+export const SANDBOX_SYSTEM_MOUNTS = Object.freeze(["/usr", "/bin", "/lib", "/lib64", "/etc", "/run"]);
+
+export function resolveExecutable(binary, env) {
+  if (!binary) return null;
+  const candidates = isAbsolute(binary)
+    ? [binary]
+    : String(env.PATH || "").split(delimiter).filter(Boolean).map(dir => join(dir, binary));
+  for (const candidate of candidates) {
+    try {
+      if (existsSync(candidate)) return realpathSync(candidate);
+    } catch {
+      // Keep searching PATH entries.
+    }
+  }
+  return null;
+}
+
+function realDir(path) {
+  try { return realpathSync(path); } catch { return path; }
+}
+
+// Mounting one of these would cover the sandbox's own /tmp, /proc or /dev, or
+// expose the host's root, temp files or home directories.
+function broadBinaryDirs(env) {
+  const dirs = new Set(["/", "/tmp", "/var/tmp", "/proc", "/dev", "/home", "/root", realDir(tmpdir()), realDir(homedir())]);
+  for (const key of ["TMPDIR", "HOME"]) {
+    if (env?.[key] && isAbsolute(String(env[key]))) dirs.add(realDir(String(env[key])));
+  }
+  return dirs;
+}
+
+// A binary outside the sandbox system mounts (e.g. inside the project) needs
+// its directory mounted read-only to be runnable.
+export function binaryGrant(binary, env) {
+  const real = resolveExecutable(binary, env);
+  if (!real) return null;
+  if (SANDBOX_SYSTEM_MOUNTS.some(root => real === root || real.startsWith(root + "/"))) return null;
+  const dir = dirname(real);
+  if (broadBinaryDirs(env).has(dir)) {
+    throw new Error("Browser binary must live in its own directory to be mounted into the sandbox: " + dir);
+  }
+  return { path: dir, mode: "read-only" };
+}
 
 const OUTPUT_LIMIT = 512 * 1024;
 const PROCESS_TIMEOUT_MS = 15000;
@@ -235,7 +281,7 @@ export function createBrowserAutomation({
     try {
       return buildBubblewrapCommand({
         projectPath: ctx.project.path,
-        grants: [{ path: profileDir, mode: "read-write" }],
+        grants: [{ path: profileDir, mode: "read-write" }, binaryGrant(ctx.binary, env)].filter(Boolean),
         projectMount: "none",
         command: ctx.binary,
         args,

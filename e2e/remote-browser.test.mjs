@@ -12,6 +12,7 @@ import { chromium } from "playwright";
 import { createBrowserSessionManager } from "../server/browser-session.mjs";
 import { handleBrowserApiRequest } from "../server/browser-api.mjs";
 import { createBrowserSocketTickets, installBrowserWebSocketEndpoint } from "../server/browser-websocket.mjs";
+import { readListenerIdentity } from "../server/listener-identity.mjs";
 
 // Real-browser check of the remote browser tab: a phone-sized Chromium page
 // drives the host Chromium through the real HTTP API and ticketed WebSocket.
@@ -101,7 +102,7 @@ test("phone UI streams the host browser, taps, scrolls, commits IME text and tak
   const manager = createBrowserSessionManager({
     configDir: dir,
     resolveProject: async id => ({ id, path: projectDir, name: id }),
-    getPreview: () => ({ projectId: "real", host: "127.0.0.1", port: preview.port, token: "t" }),
+    getPreview: () => ({ projectId: "real", host: "127.0.0.1", port: preview.port, token: "t", listener: readListenerIdentity("127.0.0.1", preview.port) }),
     env: {
       ...process.env,
       DEVMOTER_BROWSER_AUTOMATION: "1",

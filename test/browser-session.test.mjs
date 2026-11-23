@@ -13,6 +13,7 @@ import {
   remoteBrowserArgs
 } from "../server/browser-session.mjs";
 import { handleBrowserApiRequest } from "../server/browser-api.mjs";
+import { createBrowserAgentTokens } from "../server/browser-agent.mjs";
 
 function probe(command) {
   if (command === "chromium") return { status: 0, stdout: "Chromium 140.0" };
@@ -75,9 +76,9 @@ async function setup(t, overrides = {}) {
   const configDir = await mkdtemp(join(tmpdir(), "devmoter-remote-browser-"));
   t.after(() => rm(configDir, { recursive: true, force: true }));
   const previews = new Map([
-    ["p1", { projectId: "p1", host: "127.0.0.1", port: 3000, token: "tok1" }],
-    ["p2", { projectId: "p2", host: "127.0.0.1", port: 3001, token: "tok2" }],
-    ["p3", { projectId: "p3", host: "127.0.0.1", port: 3002, token: "tok3" }]
+    ["p1", { projectId: "p1", host: "127.0.0.1", port: 3000, token: "tok1", listener: "socket:1" }],
+    ["p2", { projectId: "p2", host: "127.0.0.1", port: 3001, token: "tok2", listener: "socket:2" }],
+    ["p3", { projectId: "p3", host: "127.0.0.1", port: 3002, token: "tok3", listener: "socket:3" }]
   ]);
   const listeners = new Map([[3000, "socket:1"], [3001, "socket:2"], [3002, "socket:3"]]);
   const spawns = [];
@@ -159,7 +160,7 @@ test("session start is opt-in, preview-scoped and sandbox fail-closed", async t 
   const disabled = createBrowserSessionManager({
     configDir: disabledDir,
     resolveProject: async id => ({ id, path: "/tmp/p" }),
-    getPreview: () => ({ host: "127.0.0.1", port: 3000 }),
+    getPreview: () => ({ host: "127.0.0.1", port: 3000, listener: "socket:1" }),
     readPreviewListener: () => "socket:1",
     env: {},
     spawnSyncImpl: probe
@@ -169,7 +170,7 @@ test("session start is opt-in, preview-scoped and sandbox fail-closed", async t 
   const noBwrap = createBrowserSessionManager({
     configDir: disabledDir,
     resolveProject: async id => ({ id, path: "/tmp/p" }),
-    getPreview: () => ({ host: "127.0.0.1", port: 3000 }),
+    getPreview: () => ({ host: "127.0.0.1", port: 3000, listener: "socket:1" }),
     readPreviewListener: () => "socket:1",
     env: { DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_SANDBOX: "required" },
     spawnImpl: () => { throw new Error("must not spawn"); },
@@ -181,7 +182,7 @@ test("session start is opt-in, preview-scoped and sandbox fail-closed", async t 
     const unsandboxed = createBrowserSessionManager({
       configDir: disabledDir,
       resolveProject: async id => ({ id, path: "/tmp/p" }),
-      getPreview: () => ({ host: "127.0.0.1", port: 3000 }),
+      getPreview: () => ({ host: "127.0.0.1", port: 3000, listener: "socket:1" }),
       readPreviewListener: () => "socket:1",
       env: { DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_SANDBOX: mode },
       spawnImpl: () => { throw new Error("must not spawn"); },
@@ -317,7 +318,7 @@ test("history navigation refuses entries outside the preview", async t => {
   const manager = createBrowserSessionManager({
     configDir,
     resolveProject: async id => ({ id, path: "/tmp/p" }),
-    getPreview: () => ({ host: "127.0.0.1", port: 3000 }),
+    getPreview: () => ({ host: "127.0.0.1", port: 3000, listener: "socket:1" }),
     readPreviewListener: () => "socket:1",
     env: { DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_SANDBOX: "required", PATH: "" },
     spawnImpl: () => fakeChrome({ history: { currentIndex: 1, entries: [{ id: 1, url: "http://127.0.0.1:4000/" }, { id: 2, url: "http://127.0.0.1:3000/" }] } }),
@@ -338,7 +339,7 @@ test("session limits, preview changes, idle and lifetime stops", async t => {
   assert.notEqual(replaced.id, a.id);
   assert.throws(() => manager.get(a.id), error => error.statusCode === 404);
 
-  previews.set("p2", { projectId: "p2", host: "127.0.0.1", port: 3001, token: "rotated" });
+  previews.set("p2", { projectId: "p2", host: "127.0.0.1", port: 3001, token: "rotated", listener: "socket:2" });
   await assert.rejects(() => manager.act(b.id, { type: "screenshot" }), error => error.code === "preview_changed");
   await new Promise(resolve => setTimeout(resolve, 10));
   assert.equal(manager.status("p2").session, null);
@@ -368,7 +369,7 @@ test("device revocation and browser exit stop the session", async t => {
   assert.throws(() => manager.get(b.id), error => error.statusCode === 404);
 });
 
-async function callApi(manager, method, path, body, deviceId = "dev-a", { headers = {}, tickets, authenticateDevice } = {}) {
+async function callApi(manager, method, path, body, deviceId = "dev-a", { headers = {}, tickets, authenticateDevice, agentTokens, resolveProject } = {}) {
   const req = Readable.from(body === undefined ? [] : [Buffer.from(typeof body === "string" ? body : JSON.stringify(body))]);
   req.method = method;
   req.headers = headers;
@@ -378,7 +379,9 @@ async function callApi(manager, method, path, body, deviceId = "dev-a", { header
   const url = new URL("http://127.0.0.1" + path);
   const handled = await handleBrowserApiRequest(req, res, url, manager, {
     authenticateDevice: authenticateDevice || (async () => deviceId ? { id: deviceId } : null),
-    tickets
+    tickets,
+    agentTokens,
+    resolveProject
   });
   assert.equal(handled, true);
   const isJson = String(res.headers["content-type"] || "").startsWith("application/json");
@@ -734,7 +737,7 @@ test("#702 stopping or replacing a preview cancels a browser start in flight", a
   const second = await setup(t, { chrome: { gate: message => again.gate(message) } });
   const replaced = second.manager.start("p1", { deviceId: "dev-a" });
   await again.reached.promise;
-  second.previews.set("p1", { projectId: "p1", host: "127.0.0.1", port: 3000, token: "rotated" });
+  second.previews.set("p1", { projectId: "p1", host: "127.0.0.1", port: 3000, token: "rotated", listener: "socket:1" });
   again.release();
   await assert.rejects(replaced, error => error.code === "preview_changed");
   assert.equal(second.manager.status("p1", { deviceId: "dev-a" }).session, null);
@@ -823,7 +826,31 @@ test("#708 a different process on the same preview port is not the approved prev
   // The preview was registered for socket:1; a start against another listener fails closed.
   previews.set("p1", { ...previews.get("p1"), listener: "socket:1" });
   await assert.rejects(() => manager.start("p1", { deviceId: "dev-a" }), error => error.code === "preview_changed");
-  listeners.delete(3000);
+  // A preview registered without a listener identity binds to nothing, so a
+  // process later reusing the port is never trusted.
+  listeners.set(3000, "socket:1");
   previews.set("p1", { projectId: "p1", host: "127.0.0.1", port: 3000, token: "tok1" });
   await assert.rejects(() => manager.start("p1", { deviceId: "dev-a" }), error => error.code === "preview_changed");
+  listeners.delete(3000);
+  previews.set("p1", { projectId: "p1", host: "127.0.0.1", port: 3000, token: "tok1", listener: "socket:1" });
+  await assert.rejects(() => manager.start("p1", { deviceId: "dev-a" }), error => error.code === "preview_changed");
+});
+
+test("an agent token is not issued to a device revoked while the project resolves", async t => {
+  const { manager } = await setup(t);
+  const agentTokens = createBrowserAgentTokens();
+  let trusted = true;
+  const authenticateDevice = async () => trusted ? { id: "dev-a" } : null;
+  const resolveProject = async id => {
+    trusted = false;
+    agentTokens.revokeDevice("dev-a");
+    return { id };
+  };
+  const response = await callApi(manager, "POST", "/api/browser/agent-tokens", { projectId: "p1", access: "act" }, "dev-a", { authenticateDevice, agentTokens, resolveProject });
+  assert.equal(response.status, 403);
+  assert.deepEqual(agentTokens.list({ deviceId: "dev-a" }), []);
+  trusted = true;
+  const issued = await callApi(manager, "POST", "/api/browser/agent-tokens", { projectId: "p1" }, "dev-a", { authenticateDevice, agentTokens, resolveProject: async id => ({ id }) });
+  assert.equal(issued.status, 201);
+  assert.equal(agentTokens.list({ deviceId: "dev-a" }).length, 1);
 });
