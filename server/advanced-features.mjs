@@ -534,7 +534,10 @@ export function assertExternalBackendExecutionAllowed(backend, options = {}) {
 /**
  * Builds a bubblewrap (`bwrap`) command wrapper when available, or fails closed when `failClosed` or `DEVMOTER_SANDBOX=required` is set.
  */
-export function buildBubblewrapCommand({ projectPath, grants = [], command, args = [], allowNetwork = false, failClosed = false, env = process.env, spawn = spawnSync }) {
+// projectMount: "read-write" (agent tools), "read-only", or "none" (a browser
+// has no business reading or writing the project's files).
+export function buildBubblewrapCommand({ projectPath, grants = [], command, args = [], allowNetwork = false, failClosed = false, projectMount = "read-write", unsharePid = false, chdir = null, env = process.env, spawn = spawnSync }) {
+  if (!["read-write", "read-only", "none"].includes(projectMount)) throw new Error("Unknown sandbox project mount: " + projectMount);
   const status = sandboxStatus({ env, spawn });
   if (status.mode === "off") {
     if (failClosed) throw new Error("Sandbox is disabled (DEVMOTER_SANDBOX=off) and fail-closed sandboxing is required");
@@ -549,13 +552,16 @@ export function buildBubblewrapCommand({ projectPath, grants = [], command, args
   }
   const bwrapArgs = ["--die-with-parent", "--new-session", "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp"];
   if (!allowNetwork) bwrapArgs.push("--unshare-net");
+  if (unsharePid) bwrapArgs.push("--unshare-pid");
   for (const systemPath of ["/usr", "/bin", "/lib", "/lib64", "/etc", "/run"]) bwrapArgs.push("--ro-bind-try", systemPath, systemPath);
-  bwrapArgs.push("--bind", projectPath, projectPath, "--chdir", projectPath);
+  if (projectMount === "read-write") bwrapArgs.push("--bind", projectPath, projectPath);
+  else if (projectMount === "read-only") bwrapArgs.push("--ro-bind", projectPath, projectPath);
   for (const grant of grants) {
     if (!grant?.path || !String(grant.path).startsWith("/")) continue;
     bwrapArgs.push(grant.mode === "read-write" ? "--bind" : "--ro-bind", grant.path, grant.path);
   }
-  bwrapArgs.push("--", command, ...args.map(value => String(value)));
+  const workdir = chdir || (projectMount === "none" ? "/tmp" : projectPath);
+  bwrapArgs.push("--chdir", workdir, "--", command, ...args.map(value => String(value)));
   return { sandboxed: true, command: "bwrap", args: bwrapArgs, policy: status };
 }
 

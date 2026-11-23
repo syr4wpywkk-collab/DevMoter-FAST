@@ -1,7 +1,9 @@
 import { remoteBrowserPolicy } from "./browser-session.mjs";
+import { MAX_MANUAL_TOKEN_TTL_MS, browserActionClass, capabilitiesForAccess } from "./browser-agent.mjs";
 
 const MAX_BODY_BYTES = 64 * 1024;
-const SESSION_PATH = /^\/api\/browser\/sessions\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/(actions|driver|screenshot))?$/;
+const AGENT_TOKEN_PATH = /^\/api\/browser\/agent-tokens(?:\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}))?$/;
+const SESSION_PATH = /^\/api\/browser\/sessions\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/(actions|driver|screenshot|ticket))?$/;
 
 function sendJson(res, status, value) {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -35,13 +37,65 @@ function errorBody(error) {
  * workspace control); the composition root has already enforced owner auth,
  * same-origin mutation checks and operation-id de-duplication.
  */
-export async function handleBrowserApiRequest(req, res, url, manager, { authenticateDevice } = {}) {
+export async function handleBrowserApiRequest(req, res, url, manager, { authenticateDevice, tickets, agentTokens, audit, resolveProject, mcpClientConfig } = {}) {
   const path = url.pathname;
   if (path !== "/api/browser" && !path.startsWith("/api/browser/")) return false;
   try {
     const device = typeof authenticateDevice === "function" ? await authenticateDevice(req) : null;
     if (!device?.id) {
       sendJson(res, 403, { error: "Trusted device required" });
+      return true;
+    }
+    const log = entry => audit?.record({ actor: "user", deviceId: device.id, ...entry });
+    // A device revoked while its request body was arriving gets nothing done.
+    const readPayload = async () => {
+      const payload = await readJson(req);
+      const again = await authenticateDevice(req);
+      if (again?.id !== device.id) {
+        throw Object.assign(new Error("Trusted device required"), { statusCode: 403, code: "device_revoked" });
+      }
+      return payload;
+    };
+    const tokenMatch = path.match(AGENT_TOKEN_PATH);
+    if (tokenMatch) {
+      if (!agentTokens) {
+        sendJson(res, 404, { error: "Browser agent tokens are not available" });
+        return true;
+      }
+      const [, tokenId] = tokenMatch;
+      if (!tokenId && req.method === "GET") {
+        sendJson(res, 200, { tokens: agentTokens.list({ deviceId: device.id }) });
+        return true;
+      }
+      if (!tokenId && req.method === "POST") {
+        const payload = await readPayload();
+        const project = typeof resolveProject === "function"
+          ? await Promise.resolve(resolveProject(String(payload.projectId || ""))).catch(() => null)
+          : null;
+        if (!project?.id) {
+          sendJson(res, 404, { error: "Registered project not found", code: "project_not_found" });
+          return true;
+        }
+        const minutes = Math.min(Math.max(Math.floor(Number(payload.ttlMinutes) || 30), 1), MAX_MANUAL_TOKEN_TTL_MS / 60000);
+        const issued = agentTokens.issue({
+          projectId: project.id,
+          capabilities: capabilitiesForAccess(payload.access === "act" ? "act" : "read"),
+          deviceId: device.id,
+          ttlMs: minutes * 60 * 1000,
+          label: "manual"
+        });
+        log({ event: "agent_token_issue", projectId: project.id, tokenId: issued.record.id, capability: issued.record.capabilities.join(","), ok: true });
+        sendJson(res, 201, { token: issued.token, tokenRecord: issued.record, mcp: mcpClientConfig || null });
+        return true;
+      }
+      if (tokenId && req.method === "DELETE") {
+        const owned = agentTokens.list({ deviceId: device.id }).some(record => record.id === tokenId);
+        const revoked = owned ? agentTokens.revoke(tokenId) : 0;
+        log({ event: "agent_token_revoke", tokenId, ok: revoked > 0 });
+        sendJson(res, revoked ? 200 : 404, revoked ? { ok: true } : { error: "Agent token not found" });
+        return true;
+      }
+      sendJson(res, 405, { error: "Method not allowed" });
       return true;
     }
 
@@ -51,8 +105,9 @@ export async function handleBrowserApiRequest(req, res, url, manager, { authenti
     }
 
     if (req.method === "POST" && path === "/api/browser/sessions") {
-      const payload = await readJson(req);
+      const payload = await readPayload();
       const result = await manager.start(payload.projectId, { viewport: payload.viewport, deviceId: device.id });
+      log({ event: "start", projectId: result.session?.projectId, sessionId: result.session?.id, ok: true });
       sendJson(res, 201, result);
       return true;
     }
@@ -69,29 +124,53 @@ export async function handleBrowserApiRequest(req, res, url, manager, { authenti
       return true;
     }
     if (!sub && req.method === "DELETE") {
-      sendJson(res, 200, await manager.stop(sessionId, "user_stopped", { deviceId: device.id }));
+      const stopped = await manager.stop(sessionId, "user_stopped", { deviceId: device.id });
+      log({ event: "stop", sessionId, ok: true });
+      sendJson(res, 200, stopped);
       return true;
     }
     if (sub === "driver" && req.method === "POST") {
-      const payload = await readJson(req);
+      const payload = await readPayload();
       if (payload.op === "acquire") {
-        sendJson(res, 200, { driver: manager.acquireDriver(sessionId, { holder: "user", deviceId: device.id }) });
+        const driver = manager.acquireDriver(sessionId, { holder: "user", deviceId: device.id });
+        log({ event: "driver_acquire", sessionId, ok: true, driverGeneration: driver.generation });
+        sendJson(res, 200, { driver });
       } else if (payload.op === "release") {
-        sendJson(res, 200, { driver: manager.releaseDriver(sessionId, { holder: "user", generation: payload.generation, deviceId: device.id }) });
+        const driver = manager.releaseDriver(sessionId, { holder: "user", generation: payload.generation, deviceId: device.id });
+        log({ event: "driver_release", sessionId, ok: true });
+        sendJson(res, 200, { driver });
       } else {
         sendJson(res, 400, { error: "Driver op must be acquire or release", code: "invalid_driver" });
       }
       return true;
     }
     if (sub === "actions" && req.method === "POST") {
-      const payload = await readJson(req);
-      const result = await manager.act(sessionId, payload.action, {
-        holder: "user",
-        generation: payload.generation,
-        deviceId: device.id
-      });
+      const payload = await readPayload();
+      const action = payload.action && typeof payload.action === "object" ? payload.action : {};
+      let result;
+      try {
+        result = await manager.act(sessionId, payload.action, {
+          holder: "user",
+          generation: payload.generation,
+          deviceId: device.id
+        });
+      } catch (error) {
+        log({ event: "action", sessionId, action, capability: browserActionClass(action.type), ok: false, code: error?.code || "action_failed" });
+        throw error;
+      }
+      log({ event: "action", sessionId, action, capability: browserActionClass(action.type), ok: result.ok !== false });
       if (Buffer.isBuffer(result.data)) result.data = result.data.toString("base64");
       sendJson(res, 200, result);
+      return true;
+    }
+    if (sub === "ticket" && req.method === "POST") {
+      const origin = String(req.headers.origin || "");
+      if (!origin || !tickets) {
+        sendJson(res, 403, { error: "Browser socket Origin is required" });
+        return true;
+      }
+      const session = manager.get(sessionId, { deviceId: device.id });
+      sendJson(res, 201, tickets.issue({ sessionId, deviceId: device.id, origin, generation: session.driver.generation }));
       return true;
     }
     if (sub === "screenshot" && req.method === "GET") {
@@ -111,7 +190,9 @@ export async function handleBrowserApiRequest(req, res, url, manager, { authenti
     return true;
   } catch (error) {
     const status = Number(error?.statusCode || error?.status || 500);
-    sendJson(res, status >= 400 && status < 600 ? status : 500, errorBody(error));
+    const safeStatus = status >= 400 && status < 600 ? status : 500;
+    // Unexpected failures may carry internal details; only deliberate HTTP errors are echoed.
+    sendJson(res, safeStatus, safeStatus >= 500 && !error?.code ? { error: "Browser request failed" } : errorBody(error));
     return true;
   }
 }

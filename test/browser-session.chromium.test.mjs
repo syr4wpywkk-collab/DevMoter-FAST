@@ -49,6 +49,8 @@ test("real Chromium stays inside the approved preview", { skip: chromium ? false
 <p id="marker">remote-browser-ok</p>
 <input id="name" oninput="document.getElementById('echo').textContent = this.value">
 <p id="echo"></p>
+<div id="pane" style="position:fixed;left:0;top:300px;width:200px;height:100px;overflow:auto" onscroll="document.getElementById('pos').textContent = 'pane:' + this.scrollTop"><div style="height:2000px"></div></div>
+<p id="pos"></p>
 <button id="escape" onclick="location.href='file:///etc/passwd'">escape</button>
 <button id="dataurl" onclick="location.href='data:text/html,<p>data-escape</p>'">data</button>
 <button id="popup" onclick="window.open('${leak}/popup')">popup</button>
@@ -104,6 +106,15 @@ fetch('https://example.com/').catch(() => {});
   assert.equal(shot.data[0], 0xff);
   assert.equal(shot.data[1], 0xd8);
 
+  const frames = [];
+  const viewer = manager.attachViewer(session.id, { event() {}, frame: frame => frames.push(frame), close() {} }, { deviceId: "dev" });
+  await waitFor(() => frames.length >= 1);
+  assert.equal(frames[0].data[0], 0xff);
+  assert.equal(frames[0].data[1], 0xd8);
+  assert.ok(frames[0].width > 0 && frames[0].height > 0);
+  viewer.ack(frames[0].seq);
+  viewer.detach();
+
   const opts = { generation: 1, deviceId: "dev" };
   await manager.act(session.id, { type: "click", selector: "#name" }, opts);
   await manager.act(session.id, { type: "type", text: "日本語入力" }, opts);
@@ -127,6 +138,10 @@ fetch('https://example.com/').catch(() => {});
   await waitFor(async () => (await dom()).includes("next-page"));
   await manager.act(session.id, { type: "back" }, opts);
   await waitFor(async () => (await dom()).includes("remote-browser-ok"));
+
+  // A drag over a nested scroller scrolls that scroller, not whatever sits at the center.
+  await manager.act(session.id, { type: "scroll", dy: 200, x: 50, y: 350 }, opts);
+  await waitFor(async () => /pane:[1-9]/.test(await dom()));
 
   assert.deepEqual(forbiddenHits, []);
   assert.ok(manager.get(session.id).blockedRequests >= 1);

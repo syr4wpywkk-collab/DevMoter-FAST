@@ -40,6 +40,8 @@ export function installTerminalWebSocketEndpoint(
       rejectUpgrade(socket, 400, "Bad Request");
       return;
     }
+    // The remote browser endpoint owns its own upgrade path.
+    if (url.pathname.startsWith("/api/browser/")) return;
     const match = url.pathname.match(TERMINAL_SOCKET_PATH);
     if (!match || req.method !== "GET") {
       rejectUpgrade(socket, 404, "Not Found");
