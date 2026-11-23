@@ -38,6 +38,7 @@ import { createAutomationApi, AUTOMATION_API_VERSION } from "./server/automation
 import { createUploadRegistry } from "./server/upload-registry.mjs";
 import { ControlPlane } from "./server/control-plane.mjs";
 import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/workspace-control.mjs";
+import { handleBrowserApiRequest } from "./server/browser-api.mjs";
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
 import { normalizeProxyRoutePath } from "./server/opencode-proxy-path.mjs";
 import { createSessionModeMap, isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, isSessionAgentRoute, isSessionCreateRoute, modeFromAgent, parseAgentMode, readOnlyToolsFor, resolveEffectiveAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
@@ -306,7 +307,10 @@ const systemFeatures = createSystemFeatures({
   version: process.env.DEVMOTER_VERSION || "0.2.0",
   publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
   trustedProxies: DEVMOTER_TRUSTED_PROXIES,
-  onDeviceRevoked: deviceId => terminal.revokeDeviceSessions(deviceId)
+  onDeviceRevoked: deviceId => {
+    terminal.revokeDeviceSessions(deviceId);
+    void advancedApi.remoteBrowser.stopDevice(deviceId);
+  }
 });
 const toolsAiStore = createRunStore({ filePath: join(PROJECT_CONFIG_DIR, "tools-ai-runs.json") });
 void toolsAiStore.ready().catch(error => console.error("Tools AI store initialization failed", redactLog(errorMessage(error))));
@@ -3379,6 +3383,17 @@ const server = http.createServer(async (req, res) => {
         !claimOperation(req, res, `${req.method}:${url.pathname}`)
       ) return;
       if (await handleWorkspaceControlRequest(req, res, url, workspaceControl, {
+        authenticateDevice: request => systemFeatures.authenticate(request)
+      })) return;
+    }
+
+    if (url.pathname === "/api/browser" || url.pathname.startsWith("/api/browser/")) {
+      if (
+        req.method !== "GET" &&
+        req.method !== "HEAD" &&
+        !claimOperation(req, res, `${req.method}:${url.pathname}`)
+      ) return;
+      if (await handleBrowserApiRequest(req, res, url, advancedApi.remoteBrowser, {
         authenticateDevice: request => systemFeatures.authenticate(request)
       })) return;
     }

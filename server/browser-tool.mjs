@@ -7,11 +7,11 @@ import { buildBubblewrapCommand } from "./advanced-features.mjs";
 const OUTPUT_LIMIT = 512 * 1024;
 const PROCESS_TIMEOUT_MS = 15000;
 
-function loopbackHost(host) {
+export function loopbackHost(host) {
   return host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "[::1]";
 }
 
-function browserCandidates(env = process.env) {
+export function browserCandidates(env = process.env) {
   return [
     String(env.DEVMOTER_BROWSER_BIN || "").trim(),
     "chromium",
@@ -21,7 +21,7 @@ function browserCandidates(env = process.env) {
   ].filter(Boolean);
 }
 
-function detectBrowserBinary({ env = process.env, spawnSyncImpl = spawnSync } = {}) {
+export function detectBrowserBinary({ env = process.env, spawnSyncImpl = spawnSync } = {}) {
   if (String(env.DEVMOTER_BROWSER_AUTOMATION || "") !== "1") return { binary: null, version: null };
   for (const candidate of browserCandidates(env)) {
     try {
