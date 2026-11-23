@@ -13,6 +13,7 @@ pub mod complex;
 // stating their intended role — no stub implementations.
 pub mod compare;
 pub mod criteria;
+pub mod database;
 pub mod date_serial;
 pub mod ets;
 pub mod finance;

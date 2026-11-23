@@ -9,8 +9,8 @@
 use calc_core::registry::{Function, FunctionRegistry};
 
 use crate::{
-    aggregate, array, datetime, engineering, financial, functional, logical, lookup, math,
-    statistics, text,
+    aggregate, array, database, datetime, engineering, financial, functional, logical, lookup,
+    math, statistics, text,
 };
 
 /// Aggregation point — exactly one entry per v2 §3 category, in the
@@ -28,6 +28,7 @@ const CATEGORIES: &[&[(&str, Function)]] = &[
     functional::FUNCTIONS,
     engineering::FUNCTIONS,
     financial::FUNCTIONS,
+    database::FUNCTIONS,
 ];
 
 /// Registry containing every implemented function. Lookup is a linear
@@ -173,8 +174,11 @@ mod tests {
                 "CUMIPMT",
                 "CUMPRINC",
                 "DATE",
+                "DAVERAGE",
                 "DAY",
                 "DB",
+                "DCOUNT",
+                "DCOUNTA",
                 "DDB",
                 "DEC2BIN",
                 "DEC2HEX",
@@ -183,11 +187,20 @@ mod tests {
                 "DEGREES",
                 "DELTA",
                 "DEVSQ",
+                "DGET",
                 "DISC",
+                "DMAX",
+                "DMIN",
                 "DOLLARDE",
                 "DOLLARFR",
+                "DPRODUCT",
                 "DROP",
+                "DSTDEV",
+                "DSTDEVP",
+                "DSUM",
                 "DURATION",
+                "DVAR",
+                "DVARP",
                 "EDATE",
                 "EFFECT",
                 "EOMONTH",
