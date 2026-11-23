@@ -46,7 +46,7 @@ test("real Chromium stays inside the approved preview", { skip: chromium ? false
   const forbidden = await listen((req, res) => { forbiddenHits.push(req.url); res.end("forbidden"); });
   forbidden.server.on("upgrade", req => forbiddenHits.push("ws:" + req.url));
   const leak = "http://127.0.0.1:" + forbidden.port;
-  const page = `<!doctype html><html><head><title>preview</title></head><body>
+  const page = `<!doctype html><html><head><meta name="viewport" content="width=device-width"><title>preview</title></head><body>
 <p id="marker">remote-browser-ok</p>
 <input id="name" oninput="document.getElementById('echo').textContent = this.value">
 <p id="echo"></p>
@@ -151,4 +151,43 @@ fetch('https://example.com/').catch(() => {});
   assert.equal(profile.length, 1);
   await manager.stop(session.id);
   assert.equal(existsSync(profile[0]), false);
+});
+
+test("real Chromium taps land where they are shown on a page zoomed out to fit a phone", { skip: chromium ? false : "no Chromium binary available" }, async t => {
+  // No viewport meta tag: a mobile viewport lays the page out at 980px and scales it down.
+  const page = `<!doctype html><html><body style="margin:0">
+<div id="target" style="position:absolute;left:300px;top:300px;width:60px;height:60px" onclick="document.title += 'hit'"></div>
+<p id="state" style="position:absolute;top:600px"></p>
+<script>setInterval(() => { document.getElementById('state').textContent = 'width=' + innerWidth + ' title=' + document.title; }, 50)</script>
+</body></html>`;
+  const preview = await listen((req, res) => { res.setHeader("content-type", "text/html; charset=utf-8"); res.end(page); });
+  const configDir = await mkdtemp(join(tmpdir(), "devmoter-remote-browser-zoom-"));
+  const manager = createBrowserSessionManager({
+    configDir,
+    resolveProject: async id => ({ id, path: configDir, name: id }),
+    getPreview: () => ({ projectId: "zoom", host: "127.0.0.1", port: preview.port, token: "t", listener: readListenerIdentity("127.0.0.1", preview.port) }),
+    env: { ...process.env, DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_BROWSER_BIN: chromium, DEVMOTER_SANDBOX: process.env.DEVMOTER_TEST_SANDBOX || "preferred" },
+    limits: { sweepMs: 0 }
+  });
+  t.after(async () => {
+    await manager.stopAll();
+    preview.server.close();
+    await rm(configDir, { recursive: true, force: true });
+  });
+  let session;
+  try {
+    ({ session } = await manager.start("zoom", { deviceId: "dev", viewport: { width: 390, height: 700, mobile: true } }));
+  } catch (error) {
+    if (process.env.DEVMOTER_TEST_CHROMIUM_REQUIRED !== "1" && ["browser_start_failed", "sandbox_required"].includes(error?.code)) {
+      t.skip("Chromium could not start in this sandbox: " + error.message.slice(0, 160));
+      return;
+    }
+    throw error;
+  }
+  const state = async () => (await manager.act(session.id, { type: "dom" })).content.match(/width=(\d+) title=(\w*)/);
+  const layoutWidth = Number((await waitFor(state))[1]);
+  assert.ok(layoutWidth > 390, "the page is laid out wider than the screen");
+  const shown = 390 / layoutWidth;
+  await manager.act(session.id, { type: "click", x: 330 * shown, y: 330 * shown }, { generation: 1, deviceId: "dev" });
+  await waitFor(async () => (await state())?.[2] === "hit");
 });
