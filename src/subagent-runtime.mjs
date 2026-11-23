@@ -374,14 +374,14 @@ export class SubagentRuntime {
       if (this.runs.get(run.id)?.state === "starting") this.update(run.id, { state: "running" });
       return this.getRun(run.id);
     } catch (error) {
-      // A cancel that landed while the backend was starting stays a cancel, not a failure.
-      if (this.runs.get(run.id)?.state === "cancelled") return this.getRun(run.id);
       if (parentRun) {
         parentRun.budget.tokensRemaining += tokenLimit;
         parentRun.budget.turnsRemaining += turnLimit;
         parentRun.updatedAt = Date.now();
         this.#emit(parentRun);
       }
+      // A cancel that landed while the backend was starting stays a cancel, not a failure.
+      if (this.runs.get(run.id)?.state === "cancelled") return this.getRun(run.id);
       this.update(run.id, {
         state: "failed",
         error: error instanceof Error ? error.message : String(error)
