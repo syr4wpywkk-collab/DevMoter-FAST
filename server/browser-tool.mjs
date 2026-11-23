@@ -269,11 +269,13 @@ export function createBrowserAutomation({
     session.stoppedByUser = true;
     session.stoppedAt = Date.now();
     const exited = await terminateProcess(session.child, session.watcher, termination);
-    if (sessions.get(key) === session) sessions.delete(key);
     if (!exited) {
-      // Chromium is still writing to the profile; keep it and report the failure.
+      // Chromium is still writing to the profile; keep it and the session so a
+      // later stop or start retries, and let the exit handler delete it.
+      session.stopFailed = true;
       return { ok: false, cleanup: "process_alive", session: publicSession(session) };
     }
+    if (sessions.get(key) === session) sessions.delete(key);
     await rm(session.profileDir, { recursive: true, force: true }).catch(() => {});
     return { ok: true, session: publicSession(session) };
   }
@@ -325,7 +327,7 @@ export function createBrowserAutomation({
       session.exitCode = code;
       session.stoppedAt = Date.now();
       if (sessions.get(ctx.project.id) === session) sessions.delete(ctx.project.id);
-      if (!session.stoppedByUser) void rm(profileDir, { recursive: true, force: true }).catch(() => {});
+      if (!session.stoppedByUser || session.stopFailed) void rm(profileDir, { recursive: true, force: true }).catch(() => {});
     });
     return { session: publicSession(session), status: ctx.status };
   }

@@ -114,6 +114,20 @@ test("#709 descendants that outlive Chromium are killed before the profile is de
   assert.ok(env.table.some(row => row.pid === 200), "unrelated processes are never signalled");
 });
 
+test("#709 descendants reparented when Chromium exits on Browser.close are still killed", async t => {
+  const env = await setup(t);
+  env.table.push({ pid: 100, ppid: 1, startTime: "1" }, { pid: 101, ppid: 100, startTime: "2" });
+  const { session } = await env.manager.start("p1");
+  env.spawns[0].stdio[3].on("data", chunk => {
+    if (!chunk.toString("utf8").includes("Browser.close")) return;
+    env.table.splice(env.table.findIndex(row => row.pid === 100), 1);
+    env.table.find(row => row.pid === 101).ppid = 1;
+  });
+  const stopped = await env.manager.stop(session.id);
+  assert.deepEqual(env.killed.map(entry => entry.pid), [101]);
+  assert.equal(stopped.session.cleanup, "complete");
+});
+
 test("#709 a profile is kept, not deleted, while any browser process is still alive", async t => {
   const env = await setup(t);
   env.table.push({ pid: 100, ppid: 1, startTime: "1" }, { pid: 101, ppid: 100, startTime: "2", immortal: true });
@@ -279,6 +293,18 @@ test("#715 legacy stop keeps the profile and refuses a restart while the browser
   assert.equal(result.ok, false);
   assert.equal(result.cleanup, "process_alive");
   assert.ok(existsSync(children[0].profileDir));
+  const again = await manager.stop("p1");
+  assert.equal(again.ok, false, "a second stop retries instead of forgetting the live browser");
+  assert.deepEqual(children[0].signals, ["SIGTERM", "SIGKILL", "SIGTERM", "SIGKILL"]);
+  await assert.rejects(manager.start("p1"), error => error.code === "process_alive");
+  assert.equal(children.length, 1);
+  children[0].emit("exit", 0);
+  children[0].emit("close", 0);
+  await sleep(20);
+  assert.equal(existsSync(children[0].profileDir), false, "the profile is deleted once the browser finally exits");
+  await manager.start("p1");
+  assert.equal(children.length, 2);
+  await manager.stop("p1").catch(() => {});
 });
 
 test("#715 concurrent start/stop are serialized and never leave a second browser", async t => {
