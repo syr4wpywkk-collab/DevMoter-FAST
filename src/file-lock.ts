@@ -4,7 +4,7 @@
 
 import { randomBytes } from 'node:crypto';
 import { constants } from 'node:fs';
-import { mkdir, open, rmdir, unlink, writeFile, type FileHandle } from 'node:fs/promises';
+import { link, mkdir, open, rmdir, unlink, writeFile, type FileHandle } from 'node:fs/promises';
 import os from 'node:os';
 
 const LOCK_WAIT_MS = 5000;
@@ -92,6 +92,34 @@ async function reclaim(lock: string): Promise<void> {
   }
 }
 
+let drafts = 0;
+
+/**
+ * Creates the lock with its owner already written in it, or reports that there is one.
+ * The lock is a second name for a finished file: a process that dies in here leaves no
+ * lock without an owner, which nobody could tell from one that is about to be signed.
+ */
+async function createLock(lock: string): Promise<boolean> {
+  const draft = `${lock}.${process.pid}.${INSTANCE}.${(drafts += 1)}`;
+  await writeFile(draft, ownership(), { flag: 'wx', mode: 0o600 });
+  try {
+    await link(draft, lock);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') return false;
+  } finally {
+    await unlink(draft).catch(() => {});
+  }
+  // No second names on this file system (app storage on Android, some network shares).
+  try {
+    await writeFile(lock, ownership(), { flag: 'wx', mode: 0o600 });
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') return false;
+    throw error;
+  }
+}
+
 /**
  * Runs `task` while holding the lock of `file`: a file beside it that only one
  * writer at a time can create. Fails when the lock cannot be had in time.
@@ -99,13 +127,7 @@ async function reclaim(lock: string): Promise<void> {
 export async function withFileLock<T>(file: string, task: () => Promise<T>, waitMs = LOCK_WAIT_MS): Promise<T> {
   const lock = `${file}.lock`;
   const deadline = Date.now() + waitMs;
-  for (;;) {
-    try {
-      await writeFile(lock, ownership(), { flag: 'wx', mode: 0o600 });
-      break;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-    }
+  while (!(await createLock(lock))) {
     // A writer that died while holding the lock must not block the file for good.
     if (ownerIsGone(await readLock(lock))) await reclaim(lock);
     if (Date.now() > deadline) throw new Error(`${file} is locked by another writer; if none is running, remove ${lock} and ${lock}.reclaim`);
