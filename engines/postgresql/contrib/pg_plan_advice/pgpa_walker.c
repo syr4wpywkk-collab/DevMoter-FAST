@@ -1,0 +1,1387 @@
+/*-------------------------------------------------------------------------
+ *
+ * pgpa_walker.c
+ *	  Main entrypoints for analyzing a plan to generate an advice string
+ *
+ * Copyright (c) 2016-2026, PostgreSQL Global Development Group
+ *
+ *	  contrib/pg_plan_advice/pgpa_walker.c
+ *
+ *-------------------------------------------------------------------------
+ */
+#include "postgres.h"
+
+#include "pgpa_join.h"
+#include "pgpa_planner.h"
+#include "pgpa_scan.h"
+#include "pgpa_walker.h"
+
+#include "access/tsmapi.h"
+#include "miscadmin.h"
+#include "nodes/plannodes.h"
+#include "parser/parsetree.h"
+#include "utils/lsyscache.h"
+
+static void pgpa_walk_recursively(pgpa_plan_walker_context *walker, Plan *plan,
+								  bool within_setop,
+								  bool within_join_problem,
+								  pgpa_join_unroller *join_unroller,
+								  List *active_query_features,
+								  bool beneath_any_gather);
+static Bitmapset *pgpa_process_unrolled_join(pgpa_plan_walker_context *walker,
+											 pgpa_unrolled_join *ujoin);
+
+static pgpa_query_feature *pgpa_add_feature(pgpa_plan_walker_context *walker,
+											pgpa_qf_type type,
+											Plan *plan);
+
+static void pgpa_qf_add_rti(List *active_query_features, Index rti);
+static void pgpa_qf_add_rtis(List *active_query_features, Bitmapset *relids);
+static void pgpa_qf_add_plan_rtis(List *active_query_features, Plan *plan,
+								  List *rtable);
+
+static unsigned pgpa_walker_join_order_matches(pgpa_unrolled_join *ujoin,
+											   Index rtable_length,
+											   pgpa_identifier *rt_identifiers,
+											   pgpa_advice_target *target);
+static bool pgpa_walker_join_order_matches_members(pgpa_unrolled_join *ujoin,
+												   unsigned *match_position,
+												   Index rtable_length,
+												   pgpa_identifier *rt_identifiers,
+												   pgpa_advice_target *target);
+static Bitmapset *pgpa_walker_join_member_relids(pgpa_join_member *member);
+static pgpa_scan *pgpa_walker_find_scan(pgpa_plan_walker_context *walker,
+										pgpa_scan_strategy strategy,
+										Bitmapset *relids);
+static bool pgpa_walker_index_target_matches_plan(pgpa_index_target *itarget,
+												  Plan *plan);
+static bool pgpa_walker_contains_feature(pgpa_plan_walker_context *walker,
+										 pgpa_qf_type type,
+										 Bitmapset *relids);
+static bool pgpa_walker_contains_join(pgpa_plan_walker_context *walker,
+									  pgpa_join_strategy strategy,
+									  Bitmapset *relids);
+static bool pgpa_walker_contains_no_gather(pgpa_plan_walker_context *walker,
+										   Bitmapset *relids);
+static void pgpa_classify_alternative_subplans(pgpa_plan_walker_context *walker,
+											   List *proots,
+											   List **chosen_proots,
+											   List **discarded_proots);
+
+/*
+ * Top-level entrypoint for the plan tree walk.
+ *
+ * Populates walker based on a traversal of the Plan trees in pstmt.
+ *
+ * proots is the list of pgpa_planner_info objects that were generated
+ * during planning.
+ */
+void
+pgpa_plan_walker(pgpa_plan_walker_context *walker, PlannedStmt *pstmt,
+				 List *proots)
+{
+	ListCell   *lc;
+	List	   *sj_unique_rtis = NULL;
+	List	   *sj_nonunique_qfs = NULL;
+	List	   *chosen_proots;
+	List	   *discarded_proots;
+
+	/* Initialization. */
+	memset(walker, 0, sizeof(pgpa_plan_walker_context));
+	walker->pstmt = pstmt;
+
+	/* Walk the main plan tree. */
+	pgpa_walk_recursively(walker, pstmt->planTree, false, false, NULL, NIL,
+						  false);
+
+	/* Main plan tree walk won't reach subplans, so walk those. */
+	foreach(lc, pstmt->subplans)
+	{
+		Plan	   *plan = lfirst(lc);
+
+		if (plan != NULL)
+			pgpa_walk_recursively(walker, plan, false, false, NULL, NIL,
+								  false);
+	}
+
+	/* Adjust RTIs from sj_unique_rels for the flattened range table. */
+	foreach_ptr(pgpa_planner_info, proot, proots)
+	{
+		/* If there are no sj_unique_rels for this proot, we can skip it. */
+		if (proot->sj_unique_rels == NIL)
+			continue;
+
+		/* If this is a subplan, find the range table offset. */
+		if (!proot->has_rtoffset)
+			elog(ERROR, "no rtoffset for plan %s", proot->plan_name);
+
+		/* Offset each relid set by the proot's rtoffset. */
+		foreach_node(Bitmapset, relids, proot->sj_unique_rels)
+		{
+			int			rtindex = -1;
+			Bitmapset  *flat_relids = NULL;
+
+			while ((rtindex = bms_next_member(relids, rtindex)) >= 0)
+				flat_relids = bms_add_member(flat_relids,
+											 rtindex + proot->rtoffset);
+
+			sj_unique_rtis = lappend(sj_unique_rtis, flat_relids);
+		}
+	}
+
+	/*
+	 * Remove any non-unique semijoin query features for which making the rel
+	 * unique wasn't considered.
+	 */
+	foreach_ptr(pgpa_query_feature, qf,
+				walker->query_features[PGPAQF_SEMIJOIN_NON_UNIQUE])
+	{
+		if (list_member(sj_unique_rtis, qf->relids))
+			sj_nonunique_qfs = lappend(sj_nonunique_qfs, qf);
+	}
+	walker->query_features[PGPAQF_SEMIJOIN_NON_UNIQUE] = sj_nonunique_qfs;
+
+	/*
+	 * If we find any cases where analysis of the Plan tree shows that the
+	 * semijoin was made unique but this possibility was never observed to be
+	 * considered during planning, then we have a bug somewhere.
+	 */
+	foreach_ptr(pgpa_query_feature, qf,
+				walker->query_features[PGPAQF_SEMIJOIN_UNIQUE])
+	{
+		if (!list_member(sj_unique_rtis, qf->relids))
+		{
+			StringInfoData buf;
+
+			initStringInfo(&buf);
+			outBitmapset(&buf, qf->relids);
+			elog(ERROR,
+				 "unique semijoin found for relids %s but not observed during planning",
+				 buf.data);
+		}
+	}
+
+	/*
+	 * It's possible for a Gather or Gather Merge query feature to find no
+	 * RTIs when partitionwise aggregation is in use. We shouldn't emit
+	 * something like GATHER_MERGE(()), so instead emit nothing. This means
+	 * that we won't advise either GATHER or GATHER_MERGE or NO_GATHER in such
+	 * cases, which might be something we want to improve in the future.
+	 *
+	 * The same thing happens when a Gather or Gather Merge node sits atop a
+	 * set operation that was not flattened, because we decline to add RTIs
+	 * from unflattened set operations to query features. In that case,
+	 * there's no planner hook that would allow us to enforce the advice.
+	 *
+	 * (Should the Partial Aggregates in such a case be created in an
+	 * UPPERREL_GROUP_AGG with a non-empty relid set? Right now that doesn't
+	 * happen, but it seems like it would make life easier for us if it did.)
+	 */
+	for (int t = 0; t < NUM_PGPA_QF_TYPES; ++t)
+	{
+		List	   *query_features = NIL;
+
+		foreach_ptr(pgpa_query_feature, qf, walker->query_features[t])
+		{
+			if (qf->relids != NULL)
+				query_features = lappend(query_features, qf);
+			else
+				Assert(t == PGPAQF_GATHER || t == PGPAQF_GATHER_MERGE);
+		}
+
+		walker->query_features[t] = query_features;
+	}
+
+	/* Classify alternative subplans. */
+	pgpa_classify_alternative_subplans(walker, proots,
+									   &chosen_proots, &discarded_proots);
+
+	/*
+	 * Figure out which of the discarded alternatives have a non-discarded
+	 * alternative. Those are the ones for which we want to emit DO_NOT_SCAN
+	 * advice. (If every alternative was discarded, then there's no point.)
+	 */
+	foreach_ptr(pgpa_planner_info, discarded_proot, discarded_proots)
+	{
+		bool		some_alternative_chosen = false;
+
+		foreach_ptr(pgpa_planner_info, chosen_proot, chosen_proots)
+		{
+			if (strings_equal_or_both_null(discarded_proot->alternative_plan_name,
+										   chosen_proot->alternative_plan_name))
+			{
+				some_alternative_chosen = true;
+				break;
+			}
+		}
+
+		if (some_alternative_chosen)
+		{
+			for (int rti = 1; rti <= discarded_proot->rid_array_size; rti++)
+			{
+				pgpa_identifier *rid = &discarded_proot->rid_array[rti - 1];
+
+				if (rid->alias_name != NULL)
+					walker->do_not_scan_identifiers =
+						lappend(walker->do_not_scan_identifiers, rid);
+			}
+		}
+	}
+}
+
+/*
+ * Main workhorse for the plan tree walk.
+ *
+ * If within_setop is true, the portion of the plan tree in which this node
+ * occurs was generated while planning an unflattened set operation.
+ *
+ * If within_join_problem is true, we encountered a join at some higher level
+ * of the tree walk and haven't yet descended out of the portion of the plan
+ * tree that is part of that same join problem. We're no longer in the same
+ * join problem if (1) we cross into a different subquery or (2) we descend
+ * through an Append or MergeAppend node, below which any further joins would
+ * be partitionwise joins planned separately from the outer join problem.
+ *
+ * If join_unroller != NULL, the join unroller code expects us to find a join
+ * that should be unrolled into that object. This implies that we're within a
+ * join problem, but the reverse is not true: when we've traversed all the
+ * joins but are still looking for the scan that is the leaf of the join tree,
+ * join_unroller will be NULL but within_join_problem will be true.
+ *
+ * Each element of active_query_features corresponds to some item of advice
+ * that needs to enumerate all the relations it affects. We add RTIs we find
+ * during tree traversal to each of these query features.
+ *
+ * If beneath_any_gather == true, some higher level of the tree traversal found
+ * a Gather or Gather Merge node, except that we reset it for the non-partial
+ * children of a Parallel Append, for reasons explained in the comments below.
+ */
+static void
+pgpa_walk_recursively(pgpa_plan_walker_context *walker, Plan *plan,
+					  bool within_setop,
+					  bool within_join_problem,
+					  pgpa_join_unroller *join_unroller,
+					  List *active_query_features,
+					  bool beneath_any_gather)
+{
+	pgpa_join_unroller *outer_join_unroller = NULL;
+	pgpa_join_unroller *inner_join_unroller = NULL;
+	bool		join_unroller_toplevel = false;
+	ListCell   *lc;
+	List	   *extraplans = NIL;
+	int			first_partial_plan = 0;
+
+	Assert(within_join_problem || join_unroller == NULL);
+
+	/*
+	 * Check the future_query_features list to see whether this was previously
+	 * identified as a plan node that needs to be treated as a query feature.
+	 * We must do this before handling elided nodes, because if there's an
+	 * elided node associated with a future query feature, the RTIs associated
+	 * with the elided node should be the only ones attributed to the query
+	 * feature.
+	 */
+	foreach_ptr(pgpa_query_feature, qf, walker->future_query_features)
+	{
+		if (qf->plan == plan)
+		{
+			active_query_features = list_copy(active_query_features);
+			active_query_features = lappend(active_query_features, qf);
+			walker->future_query_features =
+				list_delete_ptr(walker->future_query_features, qf);
+			break;
+		}
+	}
+
+	/*
+	 * Process elided nodes that pertain to this Plan node. In the pstmt's
+	 * list, the logically uppermost elided node appears last, so we walk the
+	 * list in reverse order.
+	 */
+	for (int n = list_length(walker->pstmt->elidedNodes) - 1; n >= 0; --n)
+	{
+		ElidedNode *elided_node = list_nth(walker->pstmt->elidedNodes, n);
+
+		/* Ignore elided nodes that do not pertain to this plan node. */
+		if (elided_node->plan_node_id != plan->plan_node_id)
+			continue;
+
+		/* Did an unflattened set operation produce this ElidedNode? */
+		if (!within_setop)
+			within_setop = pgpa_is_setop_parent(plan, elided_node,
+												walker->pstmt->rtable);
+
+		/*
+		 * Collect RTIs for any currently-active query features, unless we're
+		 * within a set operation. There's no hook to enforce any advice
+		 * pertaining to set operations, so we shouldn't generate any.
+		 */
+		if (!within_setop)
+			pgpa_qf_add_rtis(active_query_features,
+							 pgpa_filter_out_join_relids(elided_node->relids,
+														 walker->pstmt->rtable));
+
+		/* Sanity check. */
+		if (within_setop && within_join_problem)
+			elog(ERROR, "set operations cannot be part of a join problem");
+
+		/*
+		 * If we're within a join problem, the join unroller is responsible
+		 * for building any required scan. If not, we do it here.
+		 */
+		if (!within_join_problem)
+			(void) pgpa_build_scan(walker, plan, elided_node,
+								   !beneath_any_gather && !within_setop,
+								   false);
+
+		/* Set operations can't span a subquery boundary. */
+		if (elided_node->elided_type == T_SubqueryScan)
+			within_setop = false;
+
+		/*
+		 * Everything below an elided node is not part of the same join
+		 * problem.
+		 */
+		within_join_problem = false;
+		join_unroller = NULL;
+
+		/* Elided nodes act as barriers to query features. */
+		active_query_features = NIL;
+	}
+
+	/*
+	 * If this is a Gather or Gather Merge node, directly add it to the list
+	 * of currently-active query features. We must do this after handling
+	 * elided nodes, since the Gather or Gather Merge node occurs logically
+	 * beneath any associated elided nodes.
+	 *
+	 * Exception: We disregard any single_copy Gather nodes. These are created
+	 * by debug_parallel_query, and having them affect the plan advice is
+	 * counterproductive, as the result will be to advise the use of a real
+	 * Gather node, rather than a single copy one.
+	 */
+	if (IsA(plan, Gather) && !((Gather *) plan)->single_copy)
+	{
+		active_query_features =
+			lappend(list_copy(active_query_features),
+					pgpa_add_feature(walker, PGPAQF_GATHER, plan));
+		beneath_any_gather = true;
+	}
+	else if (IsA(plan, GatherMerge))
+	{
+		active_query_features =
+			lappend(list_copy(active_query_features),
+					pgpa_add_feature(walker, PGPAQF_GATHER_MERGE, plan));
+		beneath_any_gather = true;
+	}
+
+	/* Did an unflattened set operation produce this Plan node? */
+	if (!within_setop)
+		within_setop = pgpa_is_setop_parent(plan, NULL, walker->pstmt->rtable);
+
+	/* Sanity check. */
+	if (within_setop && within_join_problem)
+		elog(ERROR, "set operations cannot be part of a join problem");
+
+	/*
+	 * If we're within a join problem, the join unroller is responsible for
+	 * building any required scan for this node. If not, we do it here.
+	 */
+	if (!within_join_problem)
+		(void) pgpa_build_scan(walker, plan, NULL,
+							   !beneath_any_gather && !within_setop,
+							   false);
+
+	/*
+	 * If this join needs to be unrolled but there's no join unroller already
+	 * available, create one.
+	 */
+	if (join_unroller == NULL && pgpa_is_join(plan))
+	{
+		join_unroller = pgpa_create_join_unroller();
+		join_unroller_toplevel = true;
+		within_join_problem = true;
+	}
+
+	/*
+	 * If this join is to be unrolled, pgpa_unroll_join() will return the join
+	 * unroller object that should be passed down when we recurse into the
+	 * outer and inner sides of the plan.
+	 */
+	if (join_unroller != NULL)
+		pgpa_unroll_join(walker, plan, beneath_any_gather, join_unroller,
+						 &outer_join_unroller, &inner_join_unroller);
+
+	/*
+	 * Collect RTIs for any currently-active query features, unless we're
+	 * within a set operation. There's no hook to enforce any advice
+	 * pertaining to set operations, so we shouldn't generate any.
+	 */
+	if (!within_setop)
+		pgpa_qf_add_plan_rtis(active_query_features, plan,
+							  walker->pstmt->rtable);
+
+	/*
+	 * Recurse into the outer and inner subtrees.
+	 *
+	 * As an exception, if this is a ForeignScan, don't recurse. postgres_fdw
+	 * sometimes stores an EPQ recheck plan in plan->lefttree, but that's
+	 * going to mention the same set of relations as the ForeignScan itself,
+	 * and we have no way to emit advice targeting the EPQ case vs. the
+	 * non-EPQ case. Moreover, it's not entirely clear what other FDWs might
+	 * do with the left and right subtrees. Maybe some better handling is
+	 * needed here, but for now, we just punt.
+	 */
+	if (!IsA(plan, ForeignScan))
+	{
+		if (plan->lefttree != NULL)
+			pgpa_walk_recursively(walker, plan->lefttree, within_setop,
+								  within_join_problem, outer_join_unroller,
+								  active_query_features, beneath_any_gather);
+		if (plan->righttree != NULL)
+			pgpa_walk_recursively(walker, plan->righttree, within_setop,
+								  within_join_problem, inner_join_unroller,
+								  active_query_features, beneath_any_gather);
+	}
+
+	/*
+	 * If we created a join unroller up above, then it's also our join to use
+	 * it to build the final pgpa_unrolled_join, and to destroy the object.
+	 */
+	if (join_unroller_toplevel)
+	{
+		pgpa_unrolled_join *ujoin;
+
+		ujoin = pgpa_build_unrolled_join(walker, join_unroller);
+		walker->toplevel_unrolled_joins =
+			lappend(walker->toplevel_unrolled_joins, ujoin);
+		pgpa_destroy_join_unroller(join_unroller);
+		(void) pgpa_process_unrolled_join(walker, ujoin);
+	}
+
+	/*
+	 * Some plan types can have additional children. Nodes like Append that
+	 * can have any number of children store them in a List; a SubqueryScan
+	 * just has a field for a single additional Plan.
+	 */
+	switch (nodeTag(plan))
+	{
+		case T_Append:
+			{
+				Append	   *aplan = (Append *) plan;
+
+				extraplans = aplan->appendplans;
+				if (aplan->plan.parallel_aware)
+					first_partial_plan = aplan->first_partial_plan;
+			}
+			break;
+		case T_MergeAppend:
+			{
+				MergeAppend *maplan = (MergeAppend *) plan;
+
+				extraplans = maplan->mergeplans;
+			}
+			break;
+		case T_BitmapAnd:
+			extraplans = ((BitmapAnd *) plan)->bitmapplans;
+			break;
+		case T_BitmapOr:
+			extraplans = ((BitmapOr *) plan)->bitmapplans;
+			break;
+		case T_SubqueryScan:
+
+			/*
+			 * We don't pass down active_query_features across here, because
+			 * those are specific to a subquery level.
+			 */
+			pgpa_walk_recursively(walker, ((SubqueryScan *) plan)->subplan,
+								  false, false, NULL, NIL, beneath_any_gather);
+			break;
+		case T_CustomScan:
+			extraplans = ((CustomScan *) plan)->custom_plans;
+			break;
+		default:
+			break;
+	}
+
+	/* If we found a list of extra children, iterate over it. */
+	foreach(lc, extraplans)
+	{
+		Plan	   *subplan = lfirst(lc);
+		bool		child_beneath_any_gather = beneath_any_gather;
+
+		/*
+		 * NO_GATHER() is defined to both suppress placement of Gather and
+		 * Gather Merge nodes within a join problem, and also to suppress
+		 * generation of partial paths. For a non-partial child of a Parallel
+		 * Append, both behaviors are appropriate, even though such a plan
+		 * node is necessarily beneath a Gather or Gather Merge node. Hence,
+		 * we fudge.
+		 */
+		if (foreach_current_index(lc) < first_partial_plan)
+			child_beneath_any_gather = false;
+
+		pgpa_walk_recursively(walker, subplan, within_setop, false, NULL,
+							  NIL, child_beneath_any_gather);
+	}
+}
+
+/*
+ * Perform final processing of a newly-constructed pgpa_unrolled_join. This
+ * only needs to be called for toplevel pgpa_unrolled_join objects, since it
+ * recurses to sub-joins as needed.
+ *
+ * Our goal is to add the set of inner relids to the relevant join_strategies
+ * list, and to do the same for any sub-joins. To that end, the return value
+ * is the set of relids found beneath the join, but it is expected that
+ * the toplevel caller will ignore this.
+ */
+static Bitmapset *
+pgpa_process_unrolled_join(pgpa_plan_walker_context *walker,
+						   pgpa_unrolled_join *ujoin)
+{
+	Bitmapset  *all_relids = bms_copy(ujoin->outer.scan->relids);
+
+	/* If this fails, we didn't unroll properly. */
+	Assert(ujoin->outer.unrolled_join == NULL);
+
+	for (unsigned k = 0; k < ujoin->ninner; ++k)
+	{
+		pgpa_join_member *member = &ujoin->inner[k];
+		Bitmapset  *relids;
+
+		if (member->unrolled_join != NULL)
+			relids = pgpa_process_unrolled_join(walker,
+												member->unrolled_join);
+		else
+		{
+			Assert(member->scan != NULL);
+			relids = member->scan->relids;
+		}
+		walker->join_strategies[ujoin->strategy[k]] =
+			lappend(walker->join_strategies[ujoin->strategy[k]], relids);
+		all_relids = bms_add_members(all_relids, relids);
+	}
+
+	return all_relids;
+}
+
+/*
+ * Arrange for the given plan node to be treated as a query feature when the
+ * tree walk reaches it.
+ *
+ * Make sure to only use this for nodes that the tree walk can't have reached
+ * yet!
+ */
+void
+pgpa_add_future_feature(pgpa_plan_walker_context *walker,
+						pgpa_qf_type type, Plan *plan)
+{
+	pgpa_query_feature *qf = pgpa_add_feature(walker, type, plan);
+
+	walker->future_query_features =
+		lappend(walker->future_query_features, qf);
+}
+
+/*
+ * Return the last of any elided nodes associated with this plan node ID.
+ *
+ * The last elided node is the one that would have been uppermost in the plan
+ * tree had it not been removed during setrefs processing.
+ */
+ElidedNode *
+pgpa_last_elided_node(PlannedStmt *pstmt, Plan *plan)
+{
+	ElidedNode *elided_node = NULL;
+
+	foreach_node(ElidedNode, n, pstmt->elidedNodes)
+	{
+		if (n->plan_node_id == plan->plan_node_id)
+			elided_node = n;
+	}
+
+	return elided_node;
+}
+
+/*
+ * Certain plan nodes can refer to a set of RTIs. Extract and return the set.
+ */
+Bitmapset *
+pgpa_relids(Plan *plan)
+{
+	if (IsA(plan, Result))
+		return ((Result *) plan)->relids;
+	else if (IsA(plan, ForeignScan))
+		return ((ForeignScan *) plan)->fs_relids;
+	else if (IsA(plan, CustomScan))
+		return ((CustomScan *) plan)->custom_relids;
+	else if (IsA(plan, Append))
+		return ((Append *) plan)->apprelids;
+	else if (IsA(plan, MergeAppend))
+		return ((MergeAppend *) plan)->apprelids;
+
+	return NULL;
+}
+
+/*
+ * Extract the scanned RTI from a plan node.
+ *
+ * Returns 0 if there isn't one.
+ */
+Index
+pgpa_scanrelid(Plan *plan)
+{
+	switch (nodeTag(plan))
+	{
+		case T_SeqScan:
+		case T_SampleScan:
+		case T_BitmapHeapScan:
+		case T_TidScan:
+		case T_TidRangeScan:
+		case T_SubqueryScan:
+		case T_FunctionScan:
+		case T_TableFuncScan:
+		case T_ValuesScan:
+		case T_CteScan:
+		case T_NamedTuplestoreScan:
+		case T_WorkTableScan:
+		case T_ForeignScan:
+		case T_CustomScan:
+		case T_IndexScan:
+		case T_IndexOnlyScan:
+			return ((Scan *) plan)->scanrelid;
+		default:
+			return 0;
+	}
+}
+
+/*
+ * Check whether a plan node is a Material node that should be treated as
+ * a scan. Currently, this only happens when set_tablesample_rel_pathlist
+ * inserts a Material node to protect a SampleScan that uses a non-repeatable
+ * tablesample method.
+ *
+ * (Most Material nodes we're likely to encounter are actually part of the
+ * join strategy: nested loops and merge joins can choose to materialize the
+ * inner sides of the join. The cases identified here are the rare
+ * exceptions.)
+ */
+bool
+pgpa_is_scan_level_materialize(Plan *plan)
+{
+	Plan	   *child;
+	SampleScan *sscan;
+	TsmRoutine *tsm;
+
+	if (!IsA(plan, Material))
+		return false;
+	child = plan->lefttree;
+	if (child == NULL || !IsA(child, SampleScan))
+		return false;
+	sscan = (SampleScan *) child;
+	tsm = GetTsmRoutine(sscan->tablesample->tsmhandler);
+	return !tsm->repeatable_across_scans;
+}
+
+/*
+ * Construct a new Bitmapset containing non-RTE_JOIN members of 'relids'.
+ */
+Bitmapset *
+pgpa_filter_out_join_relids(Bitmapset *relids, List *rtable)
+{
+	int			rti = -1;
+	Bitmapset  *result = NULL;
+
+	while ((rti = bms_next_member(relids, rti)) >= 0)
+	{
+		RangeTblEntry *rte = rt_fetch(rti, rtable);
+
+		if (rte->rtekind != RTE_JOIN)
+			result = bms_add_member(result, rti);
+	}
+
+	return result;
+}
+
+/*
+ * Create a pgpa_query_feature and add it to the list of all query features
+ * for this plan.
+ */
+static pgpa_query_feature *
+pgpa_add_feature(pgpa_plan_walker_context *walker,
+				 pgpa_qf_type type, Plan *plan)
+{
+	pgpa_query_feature *qf = palloc0_object(pgpa_query_feature);
+
+	qf->type = type;
+	qf->plan = plan;
+
+	walker->query_features[qf->type] =
+		lappend(walker->query_features[qf->type], qf);
+
+	return qf;
+}
+
+/*
+ * Add a single RTI to each active query feature.
+ */
+static void
+pgpa_qf_add_rti(List *active_query_features, Index rti)
+{
+	foreach_ptr(pgpa_query_feature, qf, active_query_features)
+	{
+		qf->relids = bms_add_member(qf->relids, rti);
+	}
+}
+
+/*
+ * Add a set of RTIs to each active query feature.
+ */
+static void
+pgpa_qf_add_rtis(List *active_query_features, Bitmapset *relids)
+{
+	foreach_ptr(pgpa_query_feature, qf, active_query_features)
+	{
+		qf->relids = bms_add_members(qf->relids, relids);
+	}
+}
+
+/*
+ * Add RTIs directly contained in a plan node to each active query feature,
+ * but filter out any join RTIs, since advice doesn't mention those.
+ */
+static void
+pgpa_qf_add_plan_rtis(List *active_query_features, Plan *plan, List *rtable)
+{
+	Bitmapset  *relids;
+	Index		rti;
+
+	if ((relids = pgpa_relids(plan)) != NULL)
+	{
+		relids = pgpa_filter_out_join_relids(relids, rtable);
+		pgpa_qf_add_rtis(active_query_features, relids);
+	}
+	else if ((rti = pgpa_scanrelid(plan)) != 0)
+		pgpa_qf_add_rti(active_query_features, rti);
+}
+
+/*
+ * If we generated plan advice using the provided walker object and array
+ * of identifiers, would we generate the specified tag/target combination?
+ *
+ * If yes, the plan conforms to the advice; if no, it does not. Note that
+ * we have no way of knowing whether the planner was forced to emit a plan
+ * that conformed to the advice or just happened to do so.
+ */
+bool
+pgpa_walker_would_advise(pgpa_plan_walker_context *walker,
+						 pgpa_identifier *rt_identifiers,
+						 pgpa_advice_tag_type tag,
+						 pgpa_advice_target *target)
+{
+	Index		rtable_length = list_length(walker->pstmt->rtable);
+	Bitmapset  *relids = NULL;
+
+	if (tag == PGPA_TAG_JOIN_ORDER)
+	{
+		foreach_ptr(pgpa_unrolled_join, ujoin, walker->toplevel_unrolled_joins)
+		{
+			/*
+			 * The advice need not account for every member of the join, so
+			 * any non-zero result is good enough.
+			 */
+			if (pgpa_walker_join_order_matches(ujoin, rtable_length,
+											   rt_identifiers, target) != 0)
+				return true;
+		}
+
+		return false;
+	}
+
+	/*
+	 * DO_NOT_SCAN advice targets rels that may not be in the flat range table
+	 * (e.g. MinMaxAgg losers), so pgpa_compute_rti_from_identifier won't work
+	 * here. Instead, check directly against the do_not_scan_identifiers list.
+	 */
+	if (tag == PGPA_TAG_DO_NOT_SCAN)
+	{
+		if (target->ttype != PGPA_TARGET_IDENTIFIER)
+			return false;
+		foreach_ptr(pgpa_identifier, rid, walker->do_not_scan_identifiers)
+		{
+			if (strcmp(rid->alias_name, target->rid.alias_name) == 0 &&
+				rid->occurrence == target->rid.occurrence &&
+				strings_equal_or_both_null(rid->partnsp,
+										   target->rid.partnsp) &&
+				strings_equal_or_both_null(rid->partrel,
+										   target->rid.partrel) &&
+				strings_equal_or_both_null(rid->plan_name,
+										   target->rid.plan_name))
+				return true;
+		}
+		return false;
+	}
+
+	if (target->ttype == PGPA_TARGET_IDENTIFIER)
+	{
+		Index		rti;
+
+		rti = pgpa_compute_rti_from_identifier(rtable_length, rt_identifiers,
+											   &target->rid);
+		if (rti == 0)
+			return false;
+		relids = bms_make_singleton(rti);
+	}
+	else
+	{
+		Assert(target->ttype == PGPA_TARGET_ORDERED_LIST);
+		foreach_ptr(pgpa_advice_target, child_target, target->children)
+		{
+			Index		rti;
+
+			Assert(child_target->ttype == PGPA_TARGET_IDENTIFIER);
+			rti = pgpa_compute_rti_from_identifier(rtable_length,
+												   rt_identifiers,
+												   &child_target->rid);
+			if (rti == 0)
+				return false;
+			relids = bms_add_member(relids, rti);
+		}
+	}
+
+	switch (tag)
+	{
+		case PGPA_TAG_JOIN_ORDER:
+			/* should have been handled above */
+			pg_unreachable();
+			break;
+		case PGPA_TAG_DO_NOT_SCAN:
+			/* should have been handled above */
+			pg_unreachable();
+			break;
+		case PGPA_TAG_BITMAP_HEAP_SCAN:
+			return pgpa_walker_find_scan(walker,
+										 PGPA_SCAN_BITMAP_HEAP,
+										 relids) != NULL;
+		case PGPA_TAG_FOREIGN_JOIN:
+			return pgpa_walker_find_scan(walker,
+										 PGPA_SCAN_FOREIGN,
+										 relids) != NULL;
+		case PGPA_TAG_INDEX_ONLY_SCAN:
+			{
+				pgpa_scan  *scan;
+
+				scan = pgpa_walker_find_scan(walker, PGPA_SCAN_INDEX_ONLY,
+											 relids);
+				if (scan == NULL)
+					return false;
+
+				return pgpa_walker_index_target_matches_plan(target->itarget, scan->plan);
+			}
+		case PGPA_TAG_INDEX_SCAN:
+			{
+				pgpa_scan  *scan;
+
+				scan = pgpa_walker_find_scan(walker, PGPA_SCAN_INDEX,
+											 relids);
+				if (scan == NULL)
+					return false;
+
+				return pgpa_walker_index_target_matches_plan(target->itarget, scan->plan);
+			}
+		case PGPA_TAG_PARTITIONWISE:
+			return pgpa_walker_find_scan(walker,
+										 PGPA_SCAN_PARTITIONWISE,
+										 relids) != NULL;
+		case PGPA_TAG_SEQ_SCAN:
+			return pgpa_walker_find_scan(walker,
+										 PGPA_SCAN_SEQ,
+										 relids) != NULL;
+		case PGPA_TAG_TID_SCAN:
+			return pgpa_walker_find_scan(walker,
+										 PGPA_SCAN_TID,
+										 relids) != NULL;
+		case PGPA_TAG_GATHER:
+			return pgpa_walker_contains_feature(walker,
+												PGPAQF_GATHER,
+												relids);
+		case PGPA_TAG_GATHER_MERGE:
+			return pgpa_walker_contains_feature(walker,
+												PGPAQF_GATHER_MERGE,
+												relids);
+		case PGPA_TAG_SEMIJOIN_NON_UNIQUE:
+			return pgpa_walker_contains_feature(walker,
+												PGPAQF_SEMIJOIN_NON_UNIQUE,
+												relids);
+		case PGPA_TAG_SEMIJOIN_UNIQUE:
+			return pgpa_walker_contains_feature(walker,
+												PGPAQF_SEMIJOIN_UNIQUE,
+												relids);
+		case PGPA_TAG_HASH_JOIN:
+			return pgpa_walker_contains_join(walker,
+											 JSTRAT_HASH_JOIN,
+											 relids);
+		case PGPA_TAG_MERGE_JOIN_MATERIALIZE:
+			return pgpa_walker_contains_join(walker,
+											 JSTRAT_MERGE_JOIN_MATERIALIZE,
+											 relids);
+		case PGPA_TAG_MERGE_JOIN_PLAIN:
+			return pgpa_walker_contains_join(walker,
+											 JSTRAT_MERGE_JOIN_PLAIN,
+											 relids);
+		case PGPA_TAG_NESTED_LOOP_MATERIALIZE:
+			return pgpa_walker_contains_join(walker,
+											 JSTRAT_NESTED_LOOP_MATERIALIZE,
+											 relids);
+		case PGPA_TAG_NESTED_LOOP_MEMOIZE:
+			return pgpa_walker_contains_join(walker,
+											 JSTRAT_NESTED_LOOP_MEMOIZE,
+											 relids);
+		case PGPA_TAG_NESTED_LOOP_PLAIN:
+			return pgpa_walker_contains_join(walker,
+											 JSTRAT_NESTED_LOOP_PLAIN,
+											 relids);
+		case PGPA_TAG_NO_GATHER:
+			return pgpa_walker_contains_no_gather(walker, relids);
+	}
+
+	/* should not get here */
+	return false;
+}
+
+/*
+ * Does the index target match the Plan?
+ *
+ * Should only be called when we know that itarget mandates an Index Scan or
+ * Index Only Scan and this corresponds to the type of Plan. Here, our job is
+ * just to check whether it's the same index.
+ */
+static bool
+pgpa_walker_index_target_matches_plan(pgpa_index_target *itarget, Plan *plan)
+{
+	Oid			indexoid = InvalidOid;
+
+	/* Retrieve the index OID from the plan. */
+	if (IsA(plan, IndexScan))
+		indexoid = ((IndexScan *) plan)->indexid;
+	else if (IsA(plan, IndexOnlyScan))
+		indexoid = ((IndexOnlyScan *) plan)->indexid;
+	else
+		elog(ERROR, "unrecognized node type: %d", (int) nodeTag(plan));
+
+	/* Check whether schema name matches, if specified in index target. */
+	if (itarget->indnamespace != NULL)
+	{
+		Oid			nspoid = get_rel_namespace(indexoid);
+		char	   *relnamespace = get_namespace_name_or_temp(nspoid);
+
+		if (strcmp(itarget->indnamespace, relnamespace) != 0)
+			return false;
+	}
+
+	/* Check whether relation name matches. */
+	return (strcmp(itarget->indname, get_rel_name(indexoid)) == 0);
+}
+
+/*
+ * Does an unrolled join match the join order specified by an advice target?
+ *
+ * The return value is the number of join members matched, or 0 if they do not
+ * match. This allows the caller to distinguish between a complete match
+ * (where the return value will be ujoin->ninner + 1) and a partial match
+ * (where the return value will be some smaller positive integer), if desired.
+ */
+static unsigned
+pgpa_walker_join_order_matches(pgpa_unrolled_join *ujoin,
+							   Index rtable_length,
+							   pgpa_identifier *rt_identifiers,
+							   pgpa_advice_target *target)
+{
+	unsigned	match_position = 0;
+
+	Assert(target->ttype == PGPA_TARGET_ORDERED_LIST);
+
+	foreach_ptr(pgpa_advice_target, child_target, target->children)
+	{
+		if (match_position > ujoin->ninner)
+			return 0;
+		if (!pgpa_walker_join_order_matches_members(ujoin, &match_position,
+													rtable_length,
+													rt_identifiers,
+													child_target))
+			return 0;
+	}
+
+	return match_position;
+}
+
+/*
+ * Does the specified portion of an unrolled join match an advice target?
+ *
+ * We'll look for a match within ujoin beginning at *match_position, where 0
+ * means a match starting with the outer member, and a positive value of N
+ * means a match starting with the inner member at index N - 1. If a match is
+ * found, returns true and *match_position is incremented by the number of
+ * pgpa_join_member objects consumed; if not, returns false and the value
+ * of *match_position is undefined.
+ */
+static bool
+pgpa_walker_join_order_matches_members(pgpa_unrolled_join *ujoin,
+									   unsigned *match_position,
+									   Index rtable_length,
+									   pgpa_identifier *rt_identifiers,
+									   pgpa_advice_target *target)
+{
+	pgpa_join_member *member;
+
+	check_stack_depth();
+
+	/*
+	 * Find the pgpa_join_member to which *match_position refers.
+	 */
+	if (*match_position == 0)
+		member = &ujoin->outer;
+	else
+	{
+		Assert(*match_position <= ujoin->ninner);
+		member = &ujoin->inner[*match_position - 1];
+	}
+
+	/*
+	 * Single-element lists within a join order specification have no clear
+	 * meaning, since a join intrinsically involves at least two tables, but
+	 * enforcement treats them as if the extra list levels were not present.
+	 * That is, JOIN_ORDER((({a})) b) is elsewhere treated as synonymous with
+	 * JOIN_ORDER(a b), so we do that here as well.
+	 */
+	while (target->ttype != PGPA_TARGET_IDENTIFIER &&
+		   list_length(target->children) == 1)
+		target = linitial(target->children);
+
+	/* Now do the real work. */
+	switch (target->ttype)
+	{
+		case PGPA_TARGET_ORDERED_LIST:
+
+			/*
+			 * Since outer-deep joins are flattened, a sublist that begins at
+			 * the outer member describes the start of this unrolled join. For
+			 * instance, JOIN_ORDER((a b) c d) is a less-convenient but still
+			 * acceptable way of writing JOIN_ORDER(a b c d).
+			 */
+			if (*match_position == 0)
+			{
+				unsigned	nmatched;
+
+				nmatched = pgpa_walker_join_order_matches(ujoin,
+														  rtable_length,
+														  rt_identifiers,
+														  target);
+				if (nmatched == 0)
+					return false;
+				*match_position += nmatched;
+				return true;
+			}
+
+			/*
+			 * In contrast, a sublist being matched to an inner member can
+			 * only ever match that one member, which must therefore be an
+			 * unrolled join.
+			 */
+			if (member->unrolled_join != NULL)
+			{
+				pgpa_unrolled_join *nested = member->unrolled_join;
+				unsigned	nmatched;
+
+				nmatched = pgpa_walker_join_order_matches(nested,
+														  rtable_length,
+														  rt_identifiers,
+														  target);
+
+				/*
+				 * Only a complete match suffices. Something like JOIN_ORDER(a
+				 * (b c d) e) still matches if, after those five tables are
+				 * joined as shown, there are additional joins to other
+				 * tables. But table a must be joined first to a three-way
+				 * join between exactly b, c, and d: no additional tables are
+				 * allowed beyond those named in the sublist.
+				 */
+				if (nmatched == nested->ninner + 1)
+				{
+					*match_position += 1;
+					return true;
+				}
+			}
+
+			return false;
+
+		case PGPA_TARGET_UNORDERED_LIST:
+			{
+				Bitmapset  *relids = NULL;
+				Bitmapset  *member_relids;
+				Bitmapset  *accumulated_relids;
+				BMS_Comparison comparison;
+				unsigned	ninner = 0;
+
+				/*
+				 * Convert this unordered sublist to a set of RTIs; but, if
+				 * any relation identifier can't be mapped to an RTI, then
+				 * there is no match.
+				 */
+				foreach_ptr(pgpa_advice_target, child_target, target->children)
+				{
+					Index		rti;
+
+					rti = pgpa_compute_rti_from_identifier(rtable_length,
+														   rt_identifiers,
+														   &child_target->rid);
+					if (rti == 0)
+						return false;
+					relids = bms_add_member(relids, rti);
+				}
+
+				/* See whether it matches the set of RTIs for this member. */
+				member_relids = pgpa_walker_join_member_relids(member);
+				comparison = bms_subset_compare(member_relids, relids);
+				if (comparison == BMS_EQUAL)
+				{
+					/* Exact match: we're done! */
+					*match_position += 1;
+					return true;
+				}
+
+				/*
+				 * If we're matching this target against an inner member, the
+				 * target must match exactly one member, or else it's not a
+				 * match at all.
+				 */
+				if (*match_position != 0)
+					return false;
+
+				/*
+				 * Since outer-deep joins are flattened, a sublist that begins
+				 * at the outer member describes the start of this unrolled
+				 * join.
+				 *
+				 * For instance, JOIN_ORDER({a b} c d) allows for an unrolled
+				 * join with either a or b as the outer rel and the other as
+				 * the first inner rel.
+				 *
+				 * This means we need to iterate to figure out how many inner
+				 * members this advice target matches (or to discover that
+				 * there is no match).
+				 */
+				accumulated_relids = bms_copy(member_relids);
+				while (comparison == BMS_SUBSET1 && ninner < ujoin->ninner)
+				{
+					member = &ujoin->inner[ninner++];
+					member_relids = pgpa_walker_join_member_relids(member);
+					accumulated_relids = bms_add_members(accumulated_relids,
+														 member_relids);
+					comparison = bms_subset_compare(accumulated_relids,
+													relids);
+				}
+
+				/*
+				 * If we found a number of inner members such that the union
+				 * of all their RTIs exactly matches the set that the advice
+				 * target must cover, then consume them all and return true.
+				 * If not, it's not a match, so return false.
+				 */
+				if (comparison == BMS_EQUAL)
+				{
+					*match_position += 1 + ninner;
+					return true;
+				}
+				return false;
+			}
+
+		case PGPA_TARGET_IDENTIFIER:
+			{
+				Index		rti;
+				int			scan_rti;
+
+				/* Could only match a scan */
+				if (member->unrolled_join != NULL)
+					return false;
+
+				rti = pgpa_compute_rti_from_identifier(rtable_length,
+													   rt_identifiers,
+													   &target->rid);
+				if (rti == 0)
+					return false;
+
+				if (!bms_get_singleton_member(member->scan->relids, &scan_rti))
+					return false;
+				if (rti != (Index) scan_rti)
+					return false;
+
+				*match_position += 1;
+				return true;
+			}
+	}
+
+	pg_unreachable();
+	return false;
+}
+
+/*
+ * Compute the set of relations covered by one member of an unrolled join.
+ */
+static Bitmapset *
+pgpa_walker_join_member_relids(pgpa_join_member *member)
+{
+	pgpa_unrolled_join *ujoin;
+	Bitmapset  *all_relids;
+
+	check_stack_depth();
+
+	/* If it's a scan, this is easy. */
+	if (member->scan != NULL)
+		return member->scan->relids;
+
+	/* Otherwise, it's an unrolled join. */
+	ujoin = member->unrolled_join;
+	Assert(ujoin != NULL);
+
+	/* Collect outer relids (which must be from a scan). */
+	Assert(ujoin->outer.unrolled_join == NULL);
+	all_relids = bms_copy(ujoin->outer.scan->relids);
+
+	/* Collect each set of inner relids. */
+	for (unsigned k = 0; k < ujoin->ninner; ++k)
+		all_relids =
+			bms_add_members(all_relids,
+							pgpa_walker_join_member_relids(&ujoin->inner[k]));
+
+	return all_relids;
+}
+
+/*
+ * Find the scan where the walker says that the given scan strategy should be
+ * used for the given relid set, if one exists.
+ *
+ * Returns the pgpa_scan object, or NULL if none was found.
+ */
+static pgpa_scan *
+pgpa_walker_find_scan(pgpa_plan_walker_context *walker,
+					  pgpa_scan_strategy strategy,
+					  Bitmapset *relids)
+{
+	List	   *scans = walker->scans[strategy];
+
+	foreach_ptr(pgpa_scan, scan, scans)
+	{
+		if (bms_equal(scan->relids, relids))
+			return scan;
+	}
+
+	return NULL;
+}
+
+/*
+ * Does this walker say that the given query feature applies to the given
+ * relid set?
+ */
+static bool
+pgpa_walker_contains_feature(pgpa_plan_walker_context *walker,
+							 pgpa_qf_type type,
+							 Bitmapset *relids)
+{
+	List	   *query_features = walker->query_features[type];
+
+	foreach_ptr(pgpa_query_feature, qf, query_features)
+	{
+		if (bms_equal(qf->relids, relids))
+			return true;
+	}
+
+	return false;
+}
+
+/*
+ * Does the walker say that the given join strategy should be used for the
+ * given relid set?
+ */
+static bool
+pgpa_walker_contains_join(pgpa_plan_walker_context *walker,
+						  pgpa_join_strategy strategy,
+						  Bitmapset *relids)
+{
+	List	   *join_strategies = walker->join_strategies[strategy];
+
+	foreach_ptr(Bitmapset, jsrelids, join_strategies)
+	{
+		if (bms_equal(jsrelids, relids))
+			return true;
+	}
+
+	return false;
+}
+
+/*
+ * Does the walker say that the given relids should be marked as NO_GATHER?
+ */
+static bool
+pgpa_walker_contains_no_gather(pgpa_plan_walker_context *walker,
+							   Bitmapset *relids)
+{
+	return bms_is_subset(relids, walker->no_gather_scans);
+}
+
+/*
+ * Classify alternative subplans as chosen or discarded.
+ */
+static void
+pgpa_classify_alternative_subplans(pgpa_plan_walker_context *walker,
+								   List *proots,
+								   List **chosen_proots,
+								   List **discarded_proots)
+{
+	Bitmapset  *all_scan_rtis = NULL;
+
+	/* Initialize both output lists to empty. */
+	*chosen_proots = NIL;
+	*discarded_proots = NIL;
+
+	/* Collect all scan RTIs. */
+	for (int s = 0; s < NUM_PGPA_SCAN_STRATEGY; s++)
+		foreach_ptr(pgpa_scan, scan, walker->scans[s])
+			all_scan_rtis = bms_add_members(all_scan_rtis, scan->relids);
+
+	/* Now classify each subplan. */
+	foreach_ptr(pgpa_planner_info, proot, proots)
+	{
+		bool		chosen = false;
+
+		/*
+		 * We're only interested in classifying subplans for which there are
+		 * alternatives.
+		 */
+		if (!proot->is_alternative_plan)
+			continue;
+
+		/*
+		 * A subplan has been chosen if any of its scan RTIs appear in the
+		 * final plan. This cannot be the case if it has no RT offset.
+		 */
+		if (proot->has_rtoffset)
+		{
+			for (int rti = 1; rti <= proot->rid_array_size; rti++)
+			{
+				if (proot->rid_array[rti - 1].alias_name != NULL &&
+					bms_is_member(proot->rtoffset + rti, all_scan_rtis))
+				{
+					chosen = true;
+					break;
+				}
+			}
+		}
+
+		/* Add it to the correct list. */
+		if (chosen)
+			*chosen_proots = lappend(*chosen_proots, proot);
+		else
+			*discarded_proots = lappend(*discarded_proots, proot);
+	}
+}

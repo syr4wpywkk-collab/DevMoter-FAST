@@ -1,0 +1,521 @@
+# 2024-05-01
+#
+# The author disclaims copyright to this source code.  In place of
+# a legal notice, here is a blessing:
+#
+#    May you do good and not evil.
+#    May you find forgiveness for yourself and forgive others.
+#    May you share freely, never taking more than you give.
+#
+#***********************************************************************
+#
+#
+
+set testdir [file dirname $argv0]
+source $testdir/tester.tcl
+set testprefix in7
+
+do_execsql_test 1.0 {
+  CREATE TABLE t1(a, b, c PRIMARY KEY);
+  CREATE TABLE t2(x, y, z);
+}
+
+foreach {tn nNext idx sql} {
+  1 1 {
+    CREATE INDEX i1 ON t1(a, b);
+  } {
+    SELECT * FROM t1 WHERE (a, b) IN (SELECT x, y FROM t2)
+  } 
+
+  2 0 {
+    CREATE UNIQUE INDEX i1 ON t1(a, b);
+  } {
+    SELECT * FROM t1 WHERE (a, b) IN (SELECT x, y FROM t2)
+  } 
+
+  3 0 {
+    CREATE UNIQUE INDEX i1 ON t1(a, b);
+  } {
+    SELECT * FROM t1 WHERE a = ? AND b = ?
+  } 
+
+  3 1 {
+    CREATE UNIQUE INDEX i1 ON t1(a, b);
+  } {
+    SELECT * FROM t1 WHERE a = ? AND b IS ?
+  } 
+
+  4 0 {
+    CREATE UNIQUE INDEX i1 ON t1(a, b);
+  } {
+    SELECT * FROM t1 WHERE a = ? AND b IN (?, ?, ?);
+  } 
+
+  5 1 {
+    CREATE UNIQUE INDEX i1 ON t1(a, b, c);
+  } {
+    SELECT * FROM t1 WHERE a = ? AND b = ?
+  } 
+
+  6 0 {
+  } {
+    SELECT * FROM t1 WHERE c IN (SELECT z FROM t2)
+  } 
+
+  7 0 {
+  } {
+    SELECT * FROM t1 WHERE (a, c) IN (SELECT z, x FROM t2)
+  } 
+
+  8 1 {
+  } {
+    SELECT * FROM t1 WHERE a IN (SELECT z FROM t2)
+  } 
+
+  9 1 {
+    CREATE UNIQUE INDEX i1 ON t1(a, b);
+  } {
+    SELECT * FROM t1 WHERE a IN (SELECT z FROM t2) AND b IS ?
+  } 
+  10 0 {
+    CREATE UNIQUE INDEX i1 ON t1(a, b);
+  } {
+    SELECT * FROM t1 WHERE a IN (SELECT z FROM t2) AND b = ?
+  } 
+  11 1 {
+    CREATE UNIQUE INDEX i1 ON t1(a, b);
+  } {
+    SELECT * FROM t1 WHERE a IS NULL AND b IN (SELECT z FROM t2)
+  } 
+  12 0 {
+    CREATE UNIQUE INDEX i1 ON t1(a, b);
+  } {
+    SELECT * FROM t1 WHERE a = ? AND b IN (SELECT z FROM t2)
+  } 
+} {
+  do_test 1.1.$tn {
+    execsql BEGIN
+    execsql $idx
+
+    catch { array unset root_to_tbl }
+    catch { array unset csr_to_root }
+
+    db eval {SELECT rootpage, tbl_name FROM sqlite_schema} {
+      set root_to_tbl($rootpage) $tbl_name
+    }
+
+    set nSeen 0
+    db eval "explain $sql" {
+      if {$opcode=="OpenRead"} {
+        set csr_to_root($p1) $p2
+      }
+      if {$opcode=="Next"} {
+        catch {
+          set root $csr_to_root($p1)
+          set tbl $root_to_tbl($root)
+          if {$tbl=="t1"} {incr nSeen}
+        }
+      }
+    }
+
+    execsql ROLLBACK
+
+    set nSeen
+  } $nNext
+}
+
+#-------------------------------------------------------------------------
+reset_db
+do_execsql_test 2.0 {
+  CREATE TABLE t1(a TEXT PRIMARY KEY, b TEXT) WITHOUT ROWID;
+  INSERT INTO t1 VALUES('1', 'one');
+  INSERT INTO t1 VALUES('2', NULL);
+  INSERT INTO t1 VALUES('3', 'three');
+}
+
+do_execsql_test 2.1 {
+  SELECT b FROM t1 WHERE a IN (1,2,3) ORDER BY b ASC NULLS LAST;
+} {one three {}}
+
+#-------------------------------------------------------------------------
+reset_db
+do_execsql_test 3.0 {
+  CREATE TABLE x1(a);
+  INSERT INTO x1 VALUES(1), (2), (3);
+
+  CREATE TABLE x2(b);
+  INSERT INTO x2 VALUES(4), (5), (6);
+
+  CREATE TABLE t1(u);
+  INSERT INTO t1 VALUES(1), (2), (3), (4), (5), (6);
+
+  CREATE VIEW v1 AS SELECT u FROM t1 WHERE u IN (
+    SELECT a FROM x1
+  );
+  CREATE VIEW v2 AS SELECT u FROM t1 WHERE u IN (
+    SELECT b FROM x2
+  );
+}
+
+do_execsql_test 3.1 {
+  SELECT * FROM v1
+} {
+  1 2 3
+}
+
+do_execsql_test 3.2 {
+  SELECT * FROM v2
+} {
+  4 5 6 
+}
+
+do_execsql_test 3.3 {
+  SELECT * FROM v2
+  UNION ALL
+  SELECT * FROM v1
+} {
+  4 5 6
+  1 2 3 
+}
+
+do_execsql_test 3.4 {
+  WITH w1 AS (
+    SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3
+  ),
+  w2 AS (
+    SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+  )
+  SELECT * FROM v1 WHERE u IN w1
+  UNION ALL
+  SELECT * FROM v2 WHERE u IN w2
+} {
+  1 2 3 4 5 6
+}
+
+# 2024-11-20 https://sqlite.org/forum/forumpost/0b9ded2f8428ac00
+#
+# Bug in SubrtnSig logic.  If a SELECT statement is copied and the copy
+# is subsequently modified, we need to change the Select.selId on the
+# copy so that when the copy is used to generate code, the SubrtnSig
+# logic won't try to substitute the original SELECT in place of the
+# copy which is now different.
+#
+do_execsql_test 3.5 {
+  DROP TABLE IF EXISTS t1;
+  DROP TABLE IF EXISTS t2;
+  CREATE TABLE t1 (a int UNIQUE);
+  CREATE TABLE t2 (b int UNIQUE);
+  INSERT INTO t1 VALUES (1);
+  INSERT INTO t2 VALUES (1), (2);
+  SELECT t1.a, t2.b FROM t1, t2 WHERE (t1.a, t2.b) = (1, 1);
+} {1 1}
+do_execsql_test 3.6 {
+  SELECT t1.a, t2.b FROM t1, t2 WHERE (t1.a, t2.b) IN ((1, 1));
+} {1 1}
+do_execsql_test 3.7 {
+  SELECT t1.a, t2.b FROM t1, t2 WHERE (t1.a, t2.b) = (1, 2);
+} {1 2}
+do_execsql_test 3.8 {
+  SELECT t1.a, t2.b FROM t1, t2 WHERE (t1.a, t2.b) IN ((1, 2));
+} {1 2}
+
+# 2025-01-30 Inifinite loop in byte-code discovered by dbsqlfuzz
+# having to do with SubrtnSig logic.  The code was using a Subroutine
+# from within itself resulting in infinite recursion.
+#
+# This test will spin forever if the bug has not been fixed, or if
+# it reappears.
+#
+reset_db
+do_execsql_test 4.0 {
+  CREATE TABLE t1(a INTEGER PRIMARY KEY, b);
+  INSERT INTO t1 VALUES(1,x'1111');
+  CREATE TABLE t2(c);
+  CREATE TABLE t3(d);
+  CREATE TRIGGER t1tr UPDATE ON t1 BEGIN
+    UPDATE t1 SET b=x'2222' FROM t2;
+    UPDATE t1
+       SET b = (SELECT a IN (SELECT a
+                               FROM t1
+                              WHERE (b,a) IN (SELECT rowid, d
+                                                FROM t3
+                                             )
+                            )
+                  FROM t1 NATURAL RIGHT JOIN t1
+               );
+  END;
+  UPDATE t1 SET b=x'3333';
+  SELECT quote(b) FROM t1;
+} {X'3333'}
+
+
+reset_db
+do_execsql_test 5.0 {
+  CREATE TABLE t0(c0 INT, c1 TEXT, PRIMARY KEY(c0));
+  CREATE VIEW v74(vout) AS SELECT t0.c1 FROM t0 GROUP BY t0.c1;
+  INSERT INTO t0(c0, c1) VALUES (1, -89807229);
+}
+
+do_execsql_test 5.1 {
+  SELECT vout,
+         (vout IN (SELECT t0.c1 FROM t0)) AS A,
+         (vout IN (SELECT t0.c0 FROM t0)) AS D,
+         ((vout IN (SELECT t0.c1 FROM t0)) AND NOT (vout IN (SELECT t0.c0 FROM t0))) AS P
+           FROM v74;
+} {-89807229 1 0 1}
+
+do_execsql_test 5.2 {
+  SELECT * FROM v74
+    WHERE (vout IN (SELECT t0.c1 FROM t0))
+} {-89807229}
+
+do_execsql_test 5.3 {
+  SELECT * FROM v74
+    WHERE NOT (vout IN (SELECT t0.c0 FROM t0));
+} {-89807229}
+
+do_execsql_test 5.4 {
+  SELECT * FROM v74
+    WHERE (vout IN (SELECT t0.c1 FROM t0))
+} {-89807229}
+
+do_execsql_test 5.5 {
+  SELECT t0.c1 FROM t0 GROUP BY t0.c1
+     HAVING 
+     NOT (t0.c1 IN (SELECT t0.c0 FROM t0))
+     AND (t0.c1 IN (SELECT t0.c1 FROM t0)) 
+} {-89807229}
+
+do_execsql_test 5.6 {
+  SELECT t0.c1 FROM t0 GROUP BY t0.c1
+     HAVING 
+             (t0.c1 IN (SELECT t0.c1 FROM t0)) 
+     AND NOT (t0.c1 IN (SELECT t0.c0 FROM t0))
+} {-89807229}
+
+#---------------------------------------------------------------
+
+do_execsql_test 5.7 {
+  CREATE TABLE t1(a TEXT);
+  INSERT INTO t1 VALUES('07777');
+
+  CREATE TABLE t2(b TEXT);
+  INSERT INTO t2 VALUES('07777');
+
+  CREATE TABLE t3(c INT, PRIMARY KEY(c));
+  INSERT INTO t3 VALUES(7777);
+}
+
+do_execsql_test 5.8 {
+  SELECT * FROM t1 GROUP BY t1.a
+} {07777}
+
+do_execsql_test 5.9 {
+  SELECT * FROM t1 GROUP BY t1.a
+     HAVING 
+             (t1.a IN (SELECT t3.c FROM t3)) 
+         AND (t1.a IN (SELECT t2.b FROM t2))
+} {07777}
+
+do_execsql_test 5.10 {
+  SELECT * FROM t1 GROUP BY t1.a
+     HAVING 
+             (t1.a IN (SELECT t2.b FROM t2))
+         AND (t1.a IN (SELECT t3.c FROM t3)) 
+} {07777}
+
+do_execsql_test 5.11 {
+  SELECT * FROM t1 GROUP BY t1.a HAVING (t1.a IN (SELECT t3.c FROM t3)) 
+} {07777}
+
+do_execsql_test 5.12 {
+  SELECT 
+      t1.a, 
+      (t1.a IN (SELECT t3.c FROM t3)), 
+      t1.a
+  FROM t1 
+  GROUP BY t1.a 
+} {07777 1 07777}
+
+#-------------------------------------------------------------------------
+# Report <https://sqlite.org/bugs/info/2026-08-03T09:05:06Z>
+#
+reset_db
+do_execsql_test 6.0 {
+  CREATE TABLE t0(c1 INTEGER NOT NULL, UNIQUE(c1));
+  INSERT INTO t0(c1) VALUES (5), (-1);
+
+  CREATE TABLE t2(c2 INTEGER NOT NULL, UNIQUE(c2));
+  INSERT INTO t2(c2) VALUES (5), (-1);
+} {}
+
+do_execsql_test 6.1 {
+  SELECT c1 FROM t0 WHERE (((c1),(c1)) IN (
+        SELECT c2, min(c2) FROM t2)
+  );
+} {-1}
+
+reset_db
+do_execsql_test 6.2 {
+  CREATE TABLE t1(a, b);
+  INSERT INTO t1 VALUES(2, 'two');
+  INSERT INTO t1 VALUES(1, 'one');
+  INSERT INTO t1 VALUES(4, 'four');
+  INSERT INTO t1 VALUES(3, 'three');
+
+  CREATE TABLE t2(x);
+  INSERT INTO t2 VALUES(1), (2), (3);
+}
+
+foreach {tn idx} {
+  3 { CREATE INDEX i1 ON t1(a) }
+  4 { CREATE INDEX i1 ON t1(b) }
+} {
+  do_execsql_test 6.$tn.1 { DROP INDEX IF EXISTS i1 }
+  execsql $idx
+
+  do_execsql_test 6.$tn.2 {
+    SELECT * FROM t1 WHERE a IN (SELECT count(*) FROM t2)
+  } {3 three}
+
+  do_execsql_test 6.$tn.3 {
+    SELECT * FROM t1 WHERE (a, b) IN (SELECT count(*), 'three' FROM t2)
+  } {3 three}
+
+  do_eqp_test 6.$tn.4 {
+    SELECT * FROM t1 WHERE (a, b) IN (SELECT count(*), 'three' FROM t2)
+  } {SEARCH t1 USING INDEX i1}
+
+  do_eqp_test 6.$tn.5 {
+    SELECT * FROM t1 WHERE (a, b) IN (SELECT min(x), 'one' FROM t2)
+  } {SCAN t1}
+
+  do_execsql_test 6.$tn.6 {
+    SELECT * FROM t1 WHERE (a, b) IN (SELECT min(x), 'one' FROM t2)
+  } {1 one}
+}
+
+# Bug 2026-08-23T06:58:36Z
+#
+# When generating code to evaluate a vector IN constraint where the RHS
+# of the IN operator is a subquery, if the removeUnindexableInClauseTerms()
+# subroutine changes the order of terms in the IN operator, then do not
+# allow the modified IN operator to reuse a previously generated evaluation
+# of the subquery.
+#
+reset_db
+do_execsql_test 7.1 {
+  CREATE TABLE t0(x INT);
+  CREATE TABLE t1(a INT, b TEXT);
+  CREATE INDEX t1a ON t1(a);
+  INSERT INTO t1(a,b) VALUES(9,'z');
+  SELECT b, a, (b, a) IN (('z',9)) AS p FROM t0 RIGHT JOIN t1 ON true;
+} {z 9 1}
+do_execsql_test 7.2 {
+  SELECT b, a FROM t0 RIGHT JOIN t1 ON true WHERE b='z' AND a=9;
+} {z 9}
+do_execsql_test 7.3 {
+  SELECT b, a FROM t0 RIGHT JOIN t1 ON true WHERE (b,+a) IN (('z',9));
+} {z 9}
+do_execsql_test 7.4 {
+  SELECT b, a FROM t0 RIGHT JOIN t1 ON true WHERE ((b,a) IN (('z',9))) IS TRUE;
+} {z 9}
+do_execsql_test 7.5 {
+  SELECT b, a FROM t0 RIGHT JOIN t1 ON true WHERE (a,b) IN ((9,'z'));
+} {z 9}
+do_execsql_test 7.6 {
+  SELECT b, a FROM t0 RIGHT JOIN t1 ON true WHERE (b,a) IN (('z',9));
+} {z 9}
+
+#-------------------------------------------------------------------------
+# Vector IN operator where the RHS is a DESC index and NULL and FALSE
+# results must be distinguished.
+#
+reset_db
+do_execsql_test 8.0 {
+  CREATE TABLE t0(c0, c1);
+  INSERT INTO t0 VALUES(NULL, 1.0), (1.0, -1), (3, 1);
+}
+do_execsql_test 8.1 {
+  SELECT * FROM t0 WHERE (c1, c0) NOT IN (SELECT c0, c1 FROM t0);
+} {3 1}
+do_execsql_test 8.2 {
+  CREATE INDEX i1 ON t0(c1 DESC, c0 DESC);
+}
+do_execsql_test 8.3 {
+  SELECT * FROM t0 WHERE (c1, c0) NOT IN (SELECT c0, c1 FROM t0);
+} {3 1}
+
+#-------------------------------------------------------------------------
+# Bug report https://sqlite.org/bugs/forumpost/2bfd1ae270
+#
+reset_db
+do_execsql_test 9.0 {
+  CREATE TABLE t1(a, b);
+  CREATE TABLE t2(x);
+  CREATE TABLE t3(y);
+  CREATE TABLE log1(v);
+  CREATE TABLE log2(v);
+  CREATE TABLE trig(z);
+  INSERT INTO t1 VALUES(1,10),(2,20),(3,30),(10,40);
+  INSERT INTO t2 VALUES(10),(20),(30),(40);
+  INSERT INTO t3 VALUES(2),(3);
+  CREATE VIEW v1 AS SELECT a FROM t1 WHERE b IN (SELECT x FROM t2);
+  CREATE TRIGGER r1 AFTER INSERT ON trig BEGIN
+    INSERT INTO log1 
+    SELECT a FROM v1 WHERE (SELECT 1) AND a IN (SELECT y FROM t3);
+  END;
+  CREATE TRIGGER r2 AFTER INSERT ON trig BEGIN
+    INSERT INTO log2 SELECT a FROM v1 WHERE a IN (SELECT y FROM t3);
+  END;
+  INSERT INTO trig VALUES(1);
+}
+
+do_execsql_test 9.1 {
+  SELECT a FROM v1 WHERE (SELECT 1) AND a IN (SELECT y FROM t3);
+} {2 3}
+
+do_execsql_test 9.2 {
+  SELECT v FROM log2;
+} {2 3}
+
+do_execsql_test 9.3 {
+  SELECT v FROM log1;
+} {2 3}
+
+do_execsql_test 9.4 {
+  CREATE TABLE log3(v);
+  CREATE TABLE trig3(z);
+  CREATE TRIGGER r3 AFTER INSERT ON trig3 WHEN (SELECT 1) BEGIN
+    INSERT INTO log3 SELECT a FROM v1 WHERE a IN (SELECT y FROM t3);
+  END;
+  INSERT INTO trig3 VALUES(1);
+  SELECT v FROM log3;
+} {2 3}
+
+do_execsql_test 9.5 {
+  CREATE TABLE log4(v);
+  CREATE TABLE trig4(z);
+  CREATE TRIGGER r4 AFTER INSERT ON trig4 BEGIN
+    INSERT INTO log4 SELECT a FROM t1 WHERE a<0;
+    INSERT INTO log4 SELECT a FROM v1 WHERE a IN (SELECT y FROM t3);
+  END;
+  INSERT INTO trig4 VALUES(1);
+  SELECT v FROM log4;
+} {2 3}
+
+do_execsql_test 9.6 {
+  CREATE TABLE log5(v);
+  CREATE TABLE log6(v);
+  CREATE TABLE trig5(z);
+  CREATE TRIGGER r5 AFTER INSERT ON trig5 BEGIN
+    INSERT INTO log5 SELECT a FROM v1;
+    INSERT INTO log6 SELECT a FROM t1 WHERE a IN (SELECT y FROM t3);
+  END;
+  INSERT INTO trig5 VALUES(1);
+  SELECT v FROM log5;
+  SELECT '|';
+  SELECT v FROM log6;
+} {1 2 3 10 | 2 3}
+
+finish_test

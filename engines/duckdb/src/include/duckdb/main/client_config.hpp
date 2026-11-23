@@ -1,0 +1,124 @@
+//===----------------------------------------------------------------------===//
+//                         DuckDB
+//
+// duckdb/main/client_config.hpp
+//
+//
+//===----------------------------------------------------------------------===//
+
+#pragma once
+
+#include "duckdb/common/case_insensitive_map.hpp"
+#include "duckdb/common/common.hpp"
+#include "duckdb/common/identifier.hpp"
+#include "duckdb/common/optional_idx.hpp"
+#include "duckdb/common/enums/output_type.hpp"
+#include "duckdb/common/progress_bar/progress_bar.hpp"
+#include "duckdb/common/types/value.hpp"
+#include "duckdb/common/optional.hpp"
+#include "duckdb/common/enums/profiling_coverage.hpp"
+#include "duckdb/main/user_settings.hpp"
+
+namespace duckdb {
+
+class ClientContext;
+class PhysicalResultCollector;
+class PreparedStatementData;
+struct CompiledGrammar;
+struct ReplacementScan;
+
+//! The grammar a session parses with, together with the grammar registry version and the effective
+//! selection snapshot (session or database default, compared by identity) it was composed from
+struct CachedSessionGrammar {
+	shared_ptr<CompiledGrammar> grammar;
+	idx_t registry_version;
+	shared_ptr<const vector<string>> selection;
+};
+
+typedef std::function<unique_ptr<PhysicalOperator>(ClientContext &context, PreparedStatementData &data)>
+    get_result_collector_t;
+
+struct ClientConfig {
+	//! If the query profiler is enabled or not.
+	bool enable_profiler = false;
+	//! The format to print query profiling information in (default: query_tree), if enabled.
+	//! This is the profiler format name passed to QueryProfiler::CreateProfiler.
+	string profiler_print_format = "query_tree";
+
+	//! system-wide progress bar disable.
+	const char *system_progress_bar_disable_reason = nullptr;
+
+	//! Force parallelism of small tables, used for testing
+	bool verify_parallelism = false;
+	//! If this context should also try to use the available replacement scans
+	//! True by default
+	bool use_replacement_scans = true;
+	//! Replacement scans visible only to this connection, consulted before the database-wide ones in DBConfig.
+	//! Held by pointer so that copying a ClientConfig stays possible; a ReplacementScan owns its data uniquely.
+	vector<shared_ptr<ReplacementScan>> replacement_scans;
+
+	//! The maximum memory for query intermediates (sorts, hash tables) per connection (in bytes). Default: Global
+	//! memory limit.
+	optional_idx operator_memory_limit;
+
+	//! Callback to create a progress bar display
+	progress_bar_display_create_func_t display_create_func = nullptr;
+
+	//! Generic options
+	LocalUserSettings user_settings;
+
+	//! Variables set by the user
+	identifier_map_t<Value> user_variables;
+
+	//! Function that is used to create the result collector for a materialized result.
+	get_result_collector_t get_result_collector = nullptr;
+
+	optional<string> current_dialect;
+	//! The (ordered) list of explicitly activated grammar extensions: nullptr means not set (the
+	//! database default applies), a non-null empty list is an explicit opt-out. An immutable
+	//! snapshot replaced on SET/RESET and loaded atomically because parsing can run without the
+	//! client context lock
+	shared_ptr<const vector<string>> active_grammar_extensions;
+	//! The grammar composed for the connection; recomposed lazily when unset or stale. The snapshot
+	//! is immutable and stored/loaded atomically (see active_grammar_extensions); its validity is
+	//! keyed on the registry version and the selection identity, so a parse that raced a SET cannot
+	//! install a grammar that passes as composed from the new selection
+	shared_ptr<CachedSessionGrammar> cached_grammar;
+	//! The grammar of the database this client is CONNECT-ed to; unset when not connected
+	shared_ptr<CompiledGrammar> connected_grammar;
+
+public:
+	static ClientConfig &GetConfig(ClientContext &context);
+	static const ClientConfig &GetConfig(const ClientContext &context);
+
+	void SetUserVariable(const String &name, Value value);
+	bool GetUserVariable(const Identifier &name, Value &result);
+	bool GetUserVariable(const string &name, Value &result);
+	void ResetUserVariable(const String &name);
+};
+
+struct ScopedConfigSetting {
+public:
+	using config_modify_func_t = std::function<void(ClientConfig &config)>;
+
+public:
+	explicit ScopedConfigSetting(ClientConfig &config, config_modify_func_t set_f = nullptr,
+	                             config_modify_func_t unset_f = nullptr)
+	    : config(config), set(std::move(set_f)), unset(std::move(unset_f)) {
+		if (set) {
+			set(config);
+		}
+	}
+	~ScopedConfigSetting() {
+		if (unset) {
+			unset(config);
+		}
+	}
+
+public:
+	ClientConfig &config;
+	config_modify_func_t set;
+	config_modify_func_t unset;
+};
+
+} // namespace duckdb

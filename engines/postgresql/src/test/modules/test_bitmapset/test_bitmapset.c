@@ -1,0 +1,928 @@
+/*-------------------------------------------------------------------------
+ *
+ * test_bitmapset.c
+ *	  Test the Bitmapset data structure.
+ *
+ * This module tests the Bitmapset implementation in PostgreSQL, covering
+ * all public API functions.
+ *
+ * Copyright (c) 2025-2026, PostgreSQL Global Development Group
+ *
+ * IDENTIFICATION
+ *		src/test/modules/test_bitmapset/test_bitmapset.c
+ *
+ *-------------------------------------------------------------------------
+ */
+
+#include "postgres.h"
+
+#include <stddef.h>
+#include "catalog/pg_type.h"
+#include "common/pg_prng.h"
+#include "fmgr.h"
+#include "miscadmin.h"
+#include "nodes/bitmapset.h"
+#include "nodes/nodes.h"
+#include "nodes/pg_list.h"
+#include "nodes/readfuncs.h"
+#include "utils/array.h"
+#include "utils/builtins.h"
+#include "utils/timestamp.h"
+
+PG_MODULE_MAGIC;
+
+/* Bitmapset API functions in order of appearance in bitmapset.c */
+PG_FUNCTION_INFO_V1(test_bms_make_singleton);
+PG_FUNCTION_INFO_V1(test_bms_add_member);
+PG_FUNCTION_INFO_V1(test_bms_del_member);
+PG_FUNCTION_INFO_V1(test_bms_is_member);
+PG_FUNCTION_INFO_V1(test_bms_num_members);
+PG_FUNCTION_INFO_V1(test_bms_copy);
+PG_FUNCTION_INFO_V1(test_bms_equal);
+PG_FUNCTION_INFO_V1(test_bms_compare);
+PG_FUNCTION_INFO_V1(test_bms_is_subset);
+PG_FUNCTION_INFO_V1(test_bms_subset_compare);
+PG_FUNCTION_INFO_V1(test_bms_union);
+PG_FUNCTION_INFO_V1(test_bms_intersect);
+PG_FUNCTION_INFO_V1(test_bms_difference);
+PG_FUNCTION_INFO_V1(test_bms_offset_members);
+PG_FUNCTION_INFO_V1(test_bms_is_empty);
+PG_FUNCTION_INFO_V1(test_bms_membership);
+PG_FUNCTION_INFO_V1(test_bms_singleton_member);
+PG_FUNCTION_INFO_V1(test_bms_get_singleton_member);
+PG_FUNCTION_INFO_V1(test_bms_next_member);
+PG_FUNCTION_INFO_V1(test_bms_prev_member);
+PG_FUNCTION_INFO_V1(test_bms_hash_value);
+PG_FUNCTION_INFO_V1(test_bms_overlap);
+PG_FUNCTION_INFO_V1(test_bms_overlap_list);
+PG_FUNCTION_INFO_V1(test_bms_nonempty_difference);
+PG_FUNCTION_INFO_V1(test_bms_member_index);
+PG_FUNCTION_INFO_V1(test_bms_add_range);
+PG_FUNCTION_INFO_V1(test_bms_add_members);
+PG_FUNCTION_INFO_V1(test_bms_int_members);
+PG_FUNCTION_INFO_V1(test_bms_del_members);
+PG_FUNCTION_INFO_V1(test_bms_replace_members);
+PG_FUNCTION_INFO_V1(test_bms_join);
+PG_FUNCTION_INFO_V1(test_bitmap_hash);
+PG_FUNCTION_INFO_V1(test_bitmap_match);
+
+/* Test utility functions */
+PG_FUNCTION_INFO_V1(test_random_operations);
+PG_FUNCTION_INFO_V1(test_random_offset_operations);
+
+/* Convenient macros to test results */
+#define EXPECT_TRUE(expr)	\
+	do { \
+		if (!(expr)) \
+			elog(ERROR, \
+				 "%s was unexpectedly false in file \"%s\" line %u", \
+				 #expr, __FILE__, __LINE__); \
+	} while (0)
+
+#define EXPECT_NOT_NULL(expr)	\
+	do { \
+		if ((expr) == NULL) \
+			elog(ERROR, \
+				 "%s was unexpectedly true in file \"%s\" line %u", \
+				 #expr, __FILE__, __LINE__); \
+	} while (0)
+
+/* Encode Bitmapset to TEXT */
+#define BITMAPSET_TO_TEXT(bms) cstring_to_text(nodeToString(bms))
+
+/*
+ * Decode Bitmapset from text
+ */
+static Bitmapset *
+text_to_bitmapset(text *txt)
+{
+	char	   *str = text_to_cstring(txt);
+	ReadNodeContext ctx;
+	const char *token;
+	int			length;
+	bool		is_bitmapset = false;
+	Node	   *node;
+
+	ctx.str = str;
+
+	token = pg_strtok(&ctx, &length);
+
+	/* Check empty case, translated to "<>". */
+	if (token != NULL && length == 0)
+		return NULL;
+
+	/* First token has to be a single '('. */
+	if (token != NULL && length == 1 && token[0] == '(')
+	{
+		/* Second token has to be a single 'b'. */
+		token = pg_strtok(&ctx, &length);
+		is_bitmapset = (token != NULL && length == 1 && token[0] == 'b');
+	}
+
+	if (!is_bitmapset)
+		elog(ERROR, "argument is not a Bitmapset");
+
+	node = stringToNode(str);
+	Assert(node == NULL || IsA(node, Bitmapset));
+
+	return (Bitmapset *) node;
+}
+
+/*
+ * Helper macro to fetch text parameters as Bitmapsets. SQL-NULL means empty
+ * set.
+ */
+#define PG_ARG_GETBITMAPSET(n) \
+	(PG_ARGISNULL(n) ? NULL : text_to_bitmapset(PG_GETARG_TEXT_PP(n)))
+
+/*
+ * Helper macro to handle converting sets back to text, returning the
+ * resulting text representation of the set.
+ */
+#define PG_RETURN_BITMAPSET_AS_TEXT(bms) \
+	PG_RETURN_TEXT_P(BITMAPSET_TO_TEXT(bms))
+
+/*
+ * Individual test functions for each bitmapset API function
+ *
+ * Primarily, we aim to keep these as close to simple wrapper functions as
+ * possible in order to publish the functions of bitmapset.c to the SQL layer
+ * with as little interference as possible.  We opt to return SQL NULL in
+ * cases where the input given to the SQL function isn't valid to pass to the
+ * underlying bitmapset.c function.  For example we cannot do much useful
+ * testing if someone calls test_bms_make_singleton(NULL) since
+ * bms_make_singleton() expects an integer argument.
+ *
+ * For function arguments which are to be converted to Bitmapsets, we accept
+ * SQL NULL as a valid argument to mean an empty set.  Optionally callers may
+ * pass '(b)'.
+ *
+ * For the test functions which return a Bitmapset, these are converted back
+ * to text with result generated by nodeToString().
+ */
+
+Datum
+test_bms_add_member(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms;
+	int			member;
+
+	if (PG_ARGISNULL(1))
+		PG_RETURN_NULL();		/* invalid input */
+
+	bms = PG_ARG_GETBITMAPSET(0);
+	member = PG_GETARG_INT32(1);
+
+	bms = bms_add_member(bms, member);
+
+	PG_RETURN_BITMAPSET_AS_TEXT(bms);
+}
+
+Datum
+test_bms_add_members(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms1 = PG_ARG_GETBITMAPSET(0);
+	Bitmapset  *bms2 = PG_ARG_GETBITMAPSET(1);
+
+	/* left input is recycled */
+	bms1 = bms_add_members(bms1, bms2);
+
+	PG_RETURN_BITMAPSET_AS_TEXT(bms1);
+}
+
+Datum
+test_bms_del_member(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms;
+	int32		member;
+
+	if (PG_ARGISNULL(1))
+		PG_RETURN_NULL();		/* invalid input */
+
+	bms = PG_ARG_GETBITMAPSET(0);
+	member = PG_GETARG_INT32(1);
+
+	bms = bms_del_member(bms, member);
+
+	PG_RETURN_BITMAPSET_AS_TEXT(bms);
+}
+
+Datum
+test_bms_is_member(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms;
+	int32		member;
+	bool		result;
+
+	if (PG_ARGISNULL(1))
+		PG_RETURN_NULL();		/* invalid input */
+
+	bms = PG_ARG_GETBITMAPSET(0);
+	member = PG_GETARG_INT32(1);
+
+	result = bms_is_member(member, bms);
+
+	PG_RETURN_BOOL(result);
+}
+
+Datum
+test_bms_num_members(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms = PG_ARG_GETBITMAPSET(0);
+	int			result;
+
+	result = bms_num_members(bms);
+
+	PG_RETURN_INT32(result);
+}
+
+Datum
+test_bms_make_singleton(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms;
+	int32		member;
+
+	member = PG_GETARG_INT32(0);
+	bms = bms_make_singleton(member);
+
+	PG_RETURN_BITMAPSET_AS_TEXT(bms);
+}
+
+Datum
+test_bms_copy(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms = PG_ARG_GETBITMAPSET(0);
+	Bitmapset  *copy_bms;
+
+	copy_bms = bms_copy(bms);
+
+	PG_RETURN_BITMAPSET_AS_TEXT(copy_bms);
+}
+
+Datum
+test_bms_equal(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms1 = PG_ARG_GETBITMAPSET(0);
+	Bitmapset  *bms2 = PG_ARG_GETBITMAPSET(1);
+	bool		result;
+
+	result = bms_equal(bms1, bms2);
+
+	PG_RETURN_BOOL(result);
+}
+
+Datum
+test_bms_union(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms1 = PG_ARG_GETBITMAPSET(0);
+	Bitmapset  *bms2 = PG_ARG_GETBITMAPSET(1);
+	Bitmapset  *result_bms;
+
+	result_bms = bms_union(bms1, bms2);
+
+	PG_RETURN_BITMAPSET_AS_TEXT(result_bms);
+}
+
+Datum
+test_bms_membership(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms = PG_ARG_GETBITMAPSET(0);
+	BMS_Membership result;
+
+	result = bms_membership(bms);
+
+	PG_RETURN_INT32((int32) result);
+}
+
+Datum
+test_bms_next_member(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms;
+	int32		prevmember;
+	int			result;
+
+	if (PG_ARGISNULL(1))
+		PG_RETURN_NULL();		/* invalid input */
+
+	bms = PG_ARG_GETBITMAPSET(0);
+	prevmember = PG_GETARG_INT32(1);
+
+	result = bms_next_member(bms, prevmember);
+
+	PG_RETURN_INT32(result);
+}
+
+Datum
+test_bms_intersect(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms1 = PG_ARG_GETBITMAPSET(0);
+	Bitmapset  *bms2 = PG_ARG_GETBITMAPSET(1);
+	Bitmapset  *result_bms;
+
+	result_bms = bms_intersect(bms1, bms2);
+
+	PG_RETURN_BITMAPSET_AS_TEXT(result_bms);
+}
+
+Datum
+test_bms_difference(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms1 = PG_ARG_GETBITMAPSET(0);
+	Bitmapset  *bms2 = PG_ARG_GETBITMAPSET(1);
+	Bitmapset  *result_bms;
+
+	result_bms = bms_difference(bms1, bms2);
+
+	PG_RETURN_BITMAPSET_AS_TEXT(result_bms);
+}
+
+Datum
+test_bms_offset_members(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms = PG_ARG_GETBITMAPSET(0);
+	int			offset = PG_GETARG_INT32(1);
+
+	bms = bms_offset_members(bms, offset);
+
+	PG_RETURN_BITMAPSET_AS_TEXT(bms);
+}
+
+Datum
+test_bms_compare(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms1 = PG_ARG_GETBITMAPSET(0);
+	Bitmapset  *bms2 = PG_ARG_GETBITMAPSET(1);
+	int			result;
+
+	result = bms_compare(bms1, bms2);
+
+	PG_RETURN_INT32(result);
+}
+
+Datum
+test_bms_is_empty(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms = PG_ARG_GETBITMAPSET(0);
+	bool		result;
+
+	result = bms_is_empty(bms);
+
+	PG_RETURN_BOOL(result);
+}
+
+Datum
+test_bms_is_subset(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms1 = PG_ARG_GETBITMAPSET(0);
+	Bitmapset  *bms2 = PG_ARG_GETBITMAPSET(1);
+	bool		result;
+
+	result = bms_is_subset(bms1, bms2);
+
+	PG_RETURN_BOOL(result);
+}
+
+Datum
+test_bms_subset_compare(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms1 = PG_ARG_GETBITMAPSET(0);
+	Bitmapset  *bms2 = PG_ARG_GETBITMAPSET(1);
+	BMS_Comparison result;
+
+	result = bms_subset_compare(bms1, bms2);
+
+	PG_RETURN_INT32((int32) result);
+}
+
+Datum
+test_bms_singleton_member(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms = PG_ARG_GETBITMAPSET(0);
+	int			result;
+
+	result = bms_singleton_member(bms);
+
+	PG_RETURN_INT32(result);
+}
+
+Datum
+test_bms_get_singleton_member(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms = PG_ARG_GETBITMAPSET(0);
+	int			member;
+
+	/*
+	 * Keep this simple.  Return -1 when we detect the set is not a singleton
+	 * set, otherwise return the singleton member.
+	 */
+	if (!bms_get_singleton_member(bms, &member))
+		member = -1;
+
+	PG_RETURN_INT32(member);
+}
+
+Datum
+test_bms_prev_member(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms;
+	int32		prevmember;
+	int			result;
+
+	if (PG_ARGISNULL(1))
+		PG_RETURN_NULL();		/* invalid input */
+
+	bms = PG_ARG_GETBITMAPSET(0);
+	prevmember = PG_GETARG_INT32(1);
+
+	result = bms_prev_member(bms, prevmember);
+
+	PG_RETURN_INT32(result);
+}
+
+Datum
+test_bms_overlap(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms1 = PG_ARG_GETBITMAPSET(0);
+	Bitmapset  *bms2 = PG_ARG_GETBITMAPSET(1);
+	bool		result;
+
+	result = bms_overlap(bms1, bms2);
+
+	PG_RETURN_BOOL(result);
+}
+
+Datum
+test_bms_overlap_list(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms;
+	ArrayType  *array;
+	List	   *int_list = NIL;
+	bool		result;
+	Datum	   *elem_datums = NULL;
+	bool	   *elem_nulls = NULL;
+	int			elem_count;
+	int			i;
+
+	bms = PG_ARG_GETBITMAPSET(0);
+
+	if (!PG_ARGISNULL(1))
+	{
+		array = PG_GETARG_ARRAYTYPE_P(1);
+
+		deconstruct_array(array,
+						  INT4OID, sizeof(int32), true, 'i',
+						  &elem_datums, &elem_nulls, &elem_count);
+
+		for (i = 0; i < elem_count; i++)
+		{
+			if (!elem_nulls[i])
+			{
+				int32		member = DatumGetInt32(elem_datums[i]);
+
+				int_list = lappend_int(int_list, member);
+			}
+		}
+	}
+
+	result = bms_overlap_list(bms, int_list);
+
+	list_free(int_list);
+
+	if (elem_datums)
+		pfree(elem_datums);
+
+	if (elem_nulls)
+		pfree(elem_nulls);
+
+	PG_RETURN_BOOL(result);
+}
+
+Datum
+test_bms_nonempty_difference(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms1 = PG_ARG_GETBITMAPSET(0);
+	Bitmapset  *bms2 = PG_ARG_GETBITMAPSET(1);
+	bool		result;
+
+	result = bms_nonempty_difference(bms1, bms2);
+
+	PG_RETURN_BOOL(result);
+}
+
+Datum
+test_bms_member_index(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms;
+	int32		member;
+	int			result;
+
+	if (PG_ARGISNULL(1))
+		PG_RETURN_NULL();		/* invalid input */
+
+	bms = PG_ARG_GETBITMAPSET(0);
+	member = PG_GETARG_INT32(1);
+
+	result = bms_member_index(bms, member);
+
+	PG_RETURN_INT32(result);
+}
+
+Datum
+test_bms_add_range(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms;
+	int32		lower,
+				upper;
+
+	if (PG_ARGISNULL(1) || PG_ARGISNULL(2))
+		PG_RETURN_NULL();		/* invalid input */
+
+	bms = PG_ARG_GETBITMAPSET(0);
+	lower = PG_GETARG_INT32(1);
+	upper = PG_GETARG_INT32(2);
+
+	bms = bms_add_range(bms, lower, upper);
+
+	PG_RETURN_BITMAPSET_AS_TEXT(bms);
+}
+
+Datum
+test_bms_int_members(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms1 = PG_ARG_GETBITMAPSET(0);
+	Bitmapset  *bms2 = PG_ARG_GETBITMAPSET(1);
+
+	/* left input gets recycled */
+	bms1 = bms_int_members(bms1, bms2);
+
+	PG_RETURN_BITMAPSET_AS_TEXT(bms1);
+}
+
+Datum
+test_bms_del_members(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms1 = PG_ARG_GETBITMAPSET(0);
+	Bitmapset  *bms2 = PG_ARG_GETBITMAPSET(1);
+
+	/* left input gets recycled */
+	bms1 = bms_del_members(bms1, bms2);
+
+	PG_RETURN_BITMAPSET_AS_TEXT(bms1);
+}
+
+Datum
+test_bms_replace_members(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms1 = PG_ARG_GETBITMAPSET(0);
+	Bitmapset  *bms2 = PG_ARG_GETBITMAPSET(1);
+
+	/* left input gets recycled */
+	bms1 = bms_replace_members(bms1, bms2);
+
+	PG_RETURN_BITMAPSET_AS_TEXT(bms1);
+}
+
+Datum
+test_bms_join(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms1 = PG_ARG_GETBITMAPSET(0);
+	Bitmapset  *bms2 = PG_ARG_GETBITMAPSET(1);
+	Bitmapset  *result_bms;
+
+	/* either input can be recycled */
+	result_bms = bms_join(bms1, bms2);
+
+	PG_RETURN_BITMAPSET_AS_TEXT(result_bms);
+}
+
+Datum
+test_bms_hash_value(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms = PG_ARG_GETBITMAPSET(0);
+	uint32		hash_result;
+
+	hash_result = bms_hash_value(bms);
+
+	PG_RETURN_INT32(hash_result);
+}
+
+Datum
+test_bitmap_hash(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms = PG_ARG_GETBITMAPSET(0);
+	uint32		hash_result;
+
+	/* Call bitmap_hash */
+	hash_result = bitmap_hash(&bms, sizeof(Bitmapset *));
+
+	PG_RETURN_INT32(hash_result);
+}
+
+Datum
+test_bitmap_match(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms1 = PG_ARG_GETBITMAPSET(0);
+	Bitmapset  *bms2 = PG_ARG_GETBITMAPSET(1);
+	int			match_result;
+
+	/* Call bitmap_match with addresses of the Bitmapset pointers */
+	match_result = bitmap_match(&bms1, &bms2, sizeof(Bitmapset *));
+
+	PG_RETURN_INT32(match_result);
+}
+
+/*
+ * Contrary to most of the other functions which are one-one mappings with the
+ * equivalent C functions, this stresses Bitmapsets in a random fashion for
+ * various operations.
+ *
+ * Arguments:
+ *  arg1: optional random seed.  NULL autoselects the seed.
+ *  arg2: defines the number of times each operation is done.
+ *  arg3: the minimum bitmapset member number to use in the random set.
+ *  arg4: the maximum bitmapset member number to use in the random set.
+ *
+ * The return value is the number of times all operations have been executed.
+ */
+Datum
+test_random_operations(PG_FUNCTION_ARGS)
+{
+	Bitmapset  *bms1 = NULL;
+	Bitmapset  *bms2 = NULL;
+	Bitmapset  *bms = NULL;
+	Bitmapset  *result = NULL;
+	pg_prng_state state;
+	uint64		seed = GetCurrentTimestamp();
+	int			num_ops;
+	int			min_value;
+	int			max_value;
+	int			member;
+	uint32		range;
+	int		   *members;
+	int			num_members = 0;
+	int			total_ops = 0;
+
+	if (!PG_ARGISNULL(0))
+		seed = PG_GETARG_INT64(0);
+
+	if (PG_ARGISNULL(1) || PG_GETARG_INT32(1) <= 0)
+		elog(ERROR, "invalid number of operations");
+	if (PG_ARGISNULL(2) || PG_GETARG_INT32(2) < 0)
+		elog(ERROR, "invalid minimum value");
+	if (PG_ARGISNULL(3) || PG_GETARG_INT32(3) < 0)
+		elog(ERROR, "invalid maximum value");
+
+	num_ops = PG_GETARG_INT32(1);
+	min_value = PG_GETARG_INT32(2);
+	max_value = PG_GETARG_INT32(3);
+
+	if (max_value < min_value)
+		elog(ERROR, "maximum value must be greater than or equal to minimum value");
+
+	pg_prng_seed(&state, seed);
+	range = (uint32) max_value - (uint32) min_value + 1;
+
+	/*
+	 * There can be up to "num_ops" members added.  This is very unlikely,
+	 * still possible if all the operations hit the "0" case during phase 4
+	 * where multiple operation types are mixed together.
+	 */
+	members = palloc_array(int, num_ops);
+
+	/* Phase 1: Random insertions in first set */
+	for (int i = 0; i < num_ops / 2; i++)
+	{
+		CHECK_FOR_INTERRUPTS();
+
+		member = min_value + (pg_prng_uint32(&state) % range);
+
+		if (!bms_is_member(member, bms1))
+			members[num_members++] = member;
+		bms1 = bms_add_member(bms1, member);
+	}
+
+	/* Phase 2: Random insertions in second set */
+	for (int i = 0; i < num_ops / 4; i++)
+	{
+		CHECK_FOR_INTERRUPTS();
+
+		member = min_value + (pg_prng_uint32(&state) % range);
+
+		if (!bms_is_member(member, bms2))
+			members[num_members++] = member;
+		bms2 = bms_add_member(bms2, member);
+	}
+
+	/* Test union */
+	result = bms_union(bms1, bms2);
+	EXPECT_NOT_NULL(result);
+
+	/* Verify union contains all members from first and second sets */
+	for (int i = 0; i < num_members; i++)
+	{
+		CHECK_FOR_INTERRUPTS();
+
+		if (!bms_is_member(members[i], result))
+			elog(ERROR, "union missing member %d, seed " UINT64_FORMAT,
+				 members[i], seed);
+	}
+	bms_free(result);
+
+	/*
+	 * Test intersection, checking that all the members in the result are from
+	 * both the first and second sets.
+	 */
+	result = bms_intersect(bms1, bms2);
+	if (result != NULL)
+	{
+		member = -1;
+
+		while ((member = bms_next_member(result, member)) >= 0)
+		{
+			CHECK_FOR_INTERRUPTS();
+
+			if (!bms_is_member(member, bms1) || !bms_is_member(member, bms2))
+				elog(ERROR, "intersection contains invalid member %d, seed " UINT64_FORMAT,
+					 member, seed);
+		}
+		bms_free(result);
+	}
+
+	/* Phase 3: Test range operations */
+	result = NULL;
+	for (int i = 0; i < num_ops; i++)
+	{
+		int			lower = pg_prng_uint32(&state) % 100;
+		int			upper = lower + (pg_prng_uint32(&state) % 20);
+
+		CHECK_FOR_INTERRUPTS();
+
+		result = bms_add_range(result, lower, upper);
+	}
+	if (result != NULL)
+	{
+		EXPECT_TRUE(bms_num_members(result) > 0);
+		bms_free(result);
+	}
+
+	bms_free(bms1);
+	bms_free(bms2);
+
+	/*
+	 * Phase 4: mix of operations on a single set, cross-checking a bitmap
+	 * with a secondary state, "members".
+	 */
+	num_members = 0;
+
+	for (int op = 0; op < num_ops; op++)
+	{
+		CHECK_FOR_INTERRUPTS();
+
+		switch (pg_prng_uint32(&state) % 3)
+		{
+			case 0:				/* add */
+				member = min_value + (pg_prng_uint32(&state) % range);
+				if (!bms_is_member(member, bms))
+					members[num_members++] = member;
+				bms = bms_add_member(bms, member);
+				break;
+			case 1:				/* delete */
+				if (num_members > 0)
+				{
+					int			pos = pg_prng_uint32(&state) % num_members;
+
+					member = members[pos];
+					if (!bms_is_member(member, bms))
+						elog(ERROR, "expected %d to be a valid member, seed " UINT64_FORMAT,
+							 member, seed);
+
+					bms = bms_del_member(bms, member);
+
+					/*
+					 * Move the final array member at the position of the
+					 * member just deleted, reducing the array size by one.
+					 */
+					members[pos] = members[--num_members];
+				}
+				break;
+			case 2:				/* test membership */
+				/* Verify that bitmap contains all members */
+				for (int i = 0; i < num_members; i++)
+				{
+					if (!bms_is_member(members[i], bms))
+						elog(ERROR, "missing member %d, seed " UINT64_FORMAT,
+							 members[i], seed);
+				}
+				break;
+		}
+		total_ops++;
+	}
+
+	bms_free(bms);
+	pfree(members);
+
+	PG_RETURN_INT32(total_ops);
+}
+
+/*
+ * Random testing for bms_offset_members().  Generates a random set and then
+ * picks a number to offset the members by.  We then create another set, which
+ * is built by looping over the members of the random set and performing
+ * bms_add_member and adding on the offset to create a known good set to
+ * compare the result of bms_offset_members() to.
+ *
+ * Arguments:
+ *  arg1: optional random seed.  NULL means use a random seed.
+ *  arg2: the number of operations to perform.
+ *  arg3: the minimum bitmapset member number to use in the random set.
+ *  arg4: the maximum bitmapset member number to use in the random set.
+ */
+Datum
+test_random_offset_operations(PG_FUNCTION_ARGS)
+{
+	pg_prng_state state;
+	int64		seed;
+	int			num_ops;
+	int			min_value;
+	int			max_value;
+	int			member;
+	uint32		range;
+
+	if (PG_ARGISNULL(0))
+		seed = GetCurrentTimestamp();
+	else
+		seed = PG_GETARG_INT64(0);
+
+	if (PG_ARGISNULL(1) || PG_GETARG_INT32(1) <= 0)
+		elog(ERROR, "invalid number of operations");
+	if (PG_ARGISNULL(2) || PG_GETARG_INT32(2) < 0)
+		elog(ERROR, "invalid minimum value");
+	if (PG_ARGISNULL(3) || PG_GETARG_INT32(3) < 0)
+		elog(ERROR, "invalid maximum value");
+
+	num_ops = PG_GETARG_INT32(1);
+	min_value = PG_GETARG_INT32(2);
+	max_value = PG_GETARG_INT32(3);
+
+	if (max_value < min_value)
+		elog(ERROR, "maximum value must be greater than or equal to minimum value");
+
+	pg_prng_seed(&state, (uint64) seed);
+	range = (uint32) max_value - (uint32) min_value + 1;
+
+	for (int op = 0; op < num_ops; op++)
+	{
+		Bitmapset  *random_bms = NULL;
+		Bitmapset  *offset_bms1;
+		Bitmapset  *offset_bms2 = NULL;
+		int			offset;
+		uint32		nmembers;
+
+		CHECK_FOR_INTERRUPTS();
+
+		/*
+		 * Choose a random offset for passing to bms_offset_members().  We
+		 * want a number between -max_value and max_value so we test both left
+		 * and right shifting and also test cases that push members,
+		 * occasionally all of them, off the bottom of the set.
+		 */
+		offset = (int) (pg_prng_uint32(&state) % ((uint32) max_value + 1));
+		offset -= (int) (pg_prng_uint32(&state) % ((uint32) max_value + 1));
+
+		/* decide how many members to add */
+		nmembers = pg_prng_uint32(&state) % range;
+
+		/*
+		 * Add a random number of members with values between the minimum and
+		 * maximum values.
+		 */
+		for (uint32 i = 0; i < nmembers; i++)
+		{
+			member = min_value + (pg_prng_uint32(&state) % range);
+			random_bms = bms_add_member(random_bms, member);
+		}
+
+		/* create a known-good set the old fashioned way */
+		offset_bms2 = NULL;
+		member = -1;
+		while ((member = bms_next_member(random_bms, member)) >= 0)
+		{
+			if (member + offset >= 0)
+				offset_bms2 = bms_add_member(offset_bms2, member + offset);
+		}
+
+		/* do the offsetting */
+		offset_bms1 = bms_offset_members(random_bms, offset);
+
+		/* check against the known-good set */
+		if (!bms_equal(offset_bms1, offset_bms2))
+			elog(ERROR, "bms_offset_members failed with offset %d seed " INT64_FORMAT, offset, seed);
+
+		/* Cleanup before the next loop */
+		bms_free(random_bms);
+		bms_free(offset_bms1);
+		bms_free(offset_bms2);
+	}
+
+	PG_RETURN_INT32(num_ops);
+}

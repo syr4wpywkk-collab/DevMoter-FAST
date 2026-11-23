@@ -1,0 +1,337 @@
+<!--
+doc/src/sgml/ref/pg_checksums.sgml
+PostgreSQL documentation
+-->
+
+<refentry id="app-pgchecksums">
+ <indexterm zone="app-pgchecksums">
+  <primary>pg_checksums</primary>
+ </indexterm>
+
+ <refmeta>
+  <refentrytitle><application>pg_checksums</application></refentrytitle>
+  <manvolnum>1</manvolnum>
+  <refmiscinfo>Application</refmiscinfo>
+ </refmeta>
+
+ <refnamediv>
+  <refname>pg_checksums</refname>
+  <refpurpose>enable, disable or check data checksums in a <productname>PostgreSQL</productname> database cluster</refpurpose>
+ </refnamediv>
+
+ <refsynopsisdiv>
+  <cmdsynopsis>
+   <command>pg_checksums</command>
+   <arg rep="repeat" choice="opt"><replaceable class="parameter">option</replaceable></arg>
+   <arg choice="opt">
+    <group choice="opt">
+     <arg choice="plain"><option>-D</option></arg>
+     <arg choice="plain"><option>--pgdata</option></arg>
+    </group>
+    <replaceable class="parameter">datadir</replaceable>
+   </arg>
+  </cmdsynopsis>
+ </refsynopsisdiv>
+
+ <refsect1 id="r1-app-pgchecksums-1">
+  <title>Description</title>
+  <para>
+   <application>pg_checksums</application> checks, enables or disables data
+   checksums in a <productname>PostgreSQL</productname> cluster.  The server
+   must be shut down cleanly before running <application>pg_checksums</application>.
+   Checksums can also be enabled while the cluster is running using
+   <xref linkend="checksums-online-enable-disable"/> processing, see
+   <xref linkend="checksums"/> for further details on the different approaches.
+   When verifying checksums, the exit
+   status is zero if there are no checksum errors, and nonzero if at least one
+   checksum failure is detected. When enabling or disabling checksums, the
+   exit status is nonzero if the operation failed.
+  </para>
+
+  <para>
+   If checksums were in the process of being enabled or disabled using
+   <xref linkend="checksums-online-enable-disable"/> when the cluster was
+   shut down, the control file still records that interrupted state, and
+   <application>pg_checksums</application> refuses to run in any mode.
+   Start the cluster and shut it down cleanly to reset the state, then
+   retry; on a standby, let replication complete the transition first.
+  </para>
+
+  <para>
+   When verifying checksums, every file in the cluster is scanned. When
+   enabling checksums, each relation file block with a changed checksum is
+   rewritten in-place.
+   Disabling checksums only updates the file <filename>pg_control</filename>.
+  </para>
+ </refsect1>
+
+ <refsect1>
+  <title>Options</title>
+
+   <para>
+    The following command-line options are available:
+
+    <variablelist>
+     <varlistentry>
+      <term><option>-D <replaceable>datadir</replaceable></option></term>
+      <term><option>--pgdata=<replaceable>datadir</replaceable></option></term>
+      <listitem>
+       <para>
+        Specifies the directory where the database cluster is stored.
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry>
+      <term><option>-c</option></term>
+      <term><option>--check</option></term>
+      <listitem>
+       <para>
+        Checks checksums. This is the default mode if nothing else is
+        specified.
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry>
+      <term><option>-d</option></term>
+      <term><option>--disable</option></term>
+      <listitem>
+       <para>
+        Disables checksums.
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry>
+      <term><option>-e</option></term>
+      <term><option>--enable</option></term>
+      <listitem>
+       <para>
+        Enables checksums.
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry>
+      <term><option>-f <replaceable>filenode</replaceable></option></term>
+      <term><option>--filenode=<replaceable>filenode</replaceable></option></term>
+      <listitem>
+       <para>
+        Only validate checksums in the relation with filenode
+        <replaceable>filenode</replaceable>.  This option can only be used
+        together with <option>--check</option>.
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry>
+      <term><option>-N</option></term>
+      <term><option>--no-sync</option></term>
+      <listitem>
+       <para>
+        By default, <command>pg_checksums</command> will wait for all files
+        to be written safely to disk.  This option causes
+        <command>pg_checksums</command> to return without waiting, which is
+        faster, but means that a subsequent operating system crash can leave
+        the updated data directory corrupt.  Generally, this option is useful
+        for testing but should not be used on a production installation.
+        This option has no effect when using <literal>--check</literal>.
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry>
+      <term><option>-P</option></term>
+      <term><option>--progress</option></term>
+      <listitem>
+       <para>
+        Enable progress reporting. Turning this on will deliver a progress
+        report while checking or enabling checksums.
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry>
+      <term><option>--sync-method=<replaceable>method</replaceable></option></term>
+      <listitem>
+       <para>
+        When set to <literal>fsync</literal>, which is the default,
+        <command>pg_checksums</command> will recursively open and synchronize
+        all files in the data directory.  The search for files will follow
+        symbolic links for the WAL directory and each configured tablespace.
+       </para>
+       <para>
+        On Linux, <literal>syncfs</literal> may be used instead to ask the
+        operating system to synchronize the whole file systems that contain the
+        data directory, the WAL files, and each tablespace.  See
+        <xref linkend="guc-recovery-init-sync-method"/> for information about
+        the caveats to be aware of when using <literal>syncfs</literal>.
+       </para>
+       <para>
+        This option has no effect when <option>--no-sync</option> is used.
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry>
+      <term><option>-v</option></term>
+      <term><option>--verbose</option></term>
+      <listitem>
+       <para>
+        Enable verbose output. Lists all checked files.
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry>
+       <term><option>-V</option></term>
+       <term><option>--version</option></term>
+       <listitem>
+       <para>
+        Print the <application>pg_checksums</application> version and exit.
+       </para>
+       </listitem>
+     </varlistentry>
+
+     <varlistentry>
+      <term><option>-?</option></term>
+      <term><option>--help</option></term>
+       <listitem>
+        <para>
+         Show help about <application>pg_checksums</application> command line
+         arguments, and exit.
+        </para>
+       </listitem>
+      </varlistentry>
+    </variablelist>
+   </para>
+ </refsect1>
+
+ <refsect1>
+  <title>Environment</title>
+
+  <variablelist>
+   <varlistentry>
+    <term><envar>PGDATA</envar></term>
+
+    <listitem>
+     <para>
+      Specifies the directory where the database cluster is
+      stored; can be overridden using the <option>-D</option> option.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><envar>PG_COLOR</envar></term>
+    <listitem>
+     <para>
+      Specifies whether to use color in diagnostic messages. Possible values
+      are <literal>always</literal>, <literal>auto</literal> and
+      <literal>never</literal>.
+     </para>
+    </listitem>
+   </varlistentry>
+  </variablelist>
+ </refsect1>
+
+ <refsect1>
+  <title>Notes</title>
+  <para>
+   Enabling checksums in a large cluster can potentially take a long time.
+   During this operation, the cluster or other programs that write to the
+   data directory must not be started or else data loss may occur.
+  </para>
+  <para>
+   Enabling or disabling checksums with
+   <application>pg_checksums</application> changes only the local data
+   directory; the new state is not replicated to any other node.  In a
+   replication setup the same change must be applied to every node:
+  </para>
+
+  <procedure>
+   <step id="shut-down-nodes">
+    <title>Shut down all nodes</title>
+    <para>
+     All nodes participating in the replication must be stopped with a
+     clean shutdown; <application>pg_checksums</application> refuses to run
+     on a data directory left behind by an immediate shutdown.  Before
+     stopping a standby, make sure it has replayed all WAL of the primary:
+     stop the primary first, read its <quote>Latest checkpoint
+     location</quote> with <xref linkend="app-pgcontroldata"/>, and check
+     that <function>pg_last_wal_replay_lsn()</function> on the standby has
+     advanced past it.  Comparing the replay position with
+     <function>pg_last_wal_receive_lsn()</function> is not enough, as it
+     only shows that the WAL the standby received has been replayed.
+    </para>
+   </step>
+
+   <step>
+    <title>Enable or disable data checksums on each node</title>
+    <para>
+     Run <application>pg_checksums</application> on the data directory of
+     each node in the replication setup.  Nodes can be processed in
+     parallel while they are shut down.  Processing must complete
+     successfully on all nodes before continuing.
+    </para>
+   </step>
+
+   <step>
+    <title>Restart all nodes</title>
+    <para>
+     Start the nodes normally, verify that
+     <xref linkend="guc-data-checksums"/> matches on all of them, and
+     monitor the logs of the standbys for data checksum state mismatch
+     warnings.
+    </para>
+   </step>
+  </procedure>
+
+  <para>
+   The replay requirement in <xref linkend="shut-down-nodes"/> exists
+   because an offline change is recorded only in the control file and
+   has no defined ordering against WAL the node has not replayed yet; see
+   <xref linkend="checksums-offline-enable-disable"/>.  A node stopped
+   before replaying an online checksum state change applies that change
+   when it is restarted, overriding the offline change, and the states of
+   the nodes silently diverge until a later checkpoint record triggers
+   the warning described below.  Because of this it is best not to mix
+   the two mechanisms: change the state of a replication setup either
+   with the offline procedure above or with an online transition, and
+   make sure the previous change has reached every node before starting
+   the next one.
+  </para>
+  <para>
+   If the change is applied inconsistently, each node keeps its own state,
+   and a standby logs a warning when the state recorded in the replayed WAL
+   differs from its own.  The same warning can appear transiently while a
+   standby catches up over WAL written before a consistent change; it stops
+   once a checkpoint record carrying the new state has been replayed.
+  </para>
+  <para>
+   A standby whose data directory was never checksummed must not have
+   checksums enabled by catching up this way.  Converge the cluster by
+   running <application>pg_checksums</application> on it while stopped as
+   outlined above, by enabling checksums online, or by recreating it from
+   a base backup.  Note
+   that an online enable only starts from a primary whose checksums are off,
+   so if they are already enabled there, disable them online first.
+  </para>
+  <para>
+   If <application>pg_checksums</application> is aborted or killed while
+   enabling or disabling checksums, the cluster's data checksum configuration
+   remains unchanged, and <application>pg_checksums</application> can be
+   re-run to perform the same operation.
+  </para>
+  <para>
+   Tools that copy relation file blocks directly between nodes, such as
+   <xref linkend="app-pgrewind"/>, require all nodes to be in
+   the same data checksum state, else there is risk for data corruption.
+  </para>
+  <para>
+   The target cluster must have the same major version as
+   <application>pg_checksums</application>.
+  </para>
+ </refsect1>
+</refentry>

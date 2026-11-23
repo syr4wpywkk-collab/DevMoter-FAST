@@ -1,0 +1,774 @@
+# 2001 September 15
+#
+# The author disclaims copyright to this source code.  In place of
+# a legal notice, here is a blessing:
+#
+#    May you do good and not evil.
+#    May you find forgiveness for yourself and forgive others.
+#    May you share freely, never taking more than you give.
+#
+#***********************************************************************
+# This file implements regression tests for SQLite library.
+#
+# This file implements tests for foreign keys.
+#
+
+set testdir [file dirname $argv0]
+source $testdir/tester.tcl
+set testprefix fkey8
+
+ifcapable {!foreignkey} {
+  finish_test
+  return
+}
+do_execsql_test 1.0 { PRAGMA foreign_keys = 1; }
+
+
+foreach {tn use_stmt sql schema} {
+  1   1 "DELETE FROM p1" {
+    CREATE TABLE p1(a PRIMARY KEY);
+    CREATE TABLE c1(b REFERENCES p1);
+  }
+
+  2.1     0 "DELETE FROM p1" {
+    CREATE TABLE p1(a PRIMARY KEY);
+    CREATE TABLE c1(b REFERENCES p1 ON DELETE CASCADE);
+  }
+  2.2   0 "DELETE FROM p1" {
+    CREATE TABLE p1(a PRIMARY KEY);
+    CREATE TABLE c1(b REFERENCES p1 ON DELETE SET NULL);
+  }
+  2.3   1 "DELETE FROM p1" {
+    CREATE TABLE p1(a PRIMARY KEY);
+    CREATE TABLE c1(b REFERENCES p1 ON DELETE SET DEFAULT);
+  }
+
+  3   1 "DELETE FROM p1" {
+    CREATE TABLE p1(a PRIMARY KEY);
+    CREATE TABLE c1(b REFERENCES p1 ON DELETE CASCADE);
+    CREATE TRIGGER ct1 AFTER DELETE ON c1 BEGIN
+      INSERT INTO p1 VALUES('x');
+    END;
+  }
+
+  4   1 "DELETE FROM p1" {
+    CREATE TABLE p1(a PRIMARY KEY);
+    CREATE TABLE c1(b REFERENCES p1 ON DELETE CASCADE, c PRIMARY KEY);
+    CREATE TABLE cc1(d REFERENCES c1);
+  }
+
+  5.1   0 "DELETE FROM p1" {
+    CREATE TABLE p1(a PRIMARY KEY);
+    CREATE TABLE c1(b REFERENCES p1 ON DELETE CASCADE, c PRIMARY KEY);
+    CREATE TABLE cc1(d REFERENCES c1 ON DELETE CASCADE);
+  }
+  5.2   0 "DELETE FROM p1" {
+    CREATE TABLE p1(a PRIMARY KEY);
+    CREATE TABLE c1(b REFERENCES p1 ON DELETE CASCADE, c PRIMARY KEY);
+    CREATE TABLE cc1(d REFERENCES c1 ON DELETE SET NULL);
+  }
+  5.3   1 "DELETE FROM p1" {
+    CREATE TABLE p1(a PRIMARY KEY);
+    CREATE TABLE c1(b REFERENCES p1 ON DELETE CASCADE, c PRIMARY KEY);
+    CREATE TABLE cc1(d REFERENCES c1 ON DELETE SET DEFAULT);
+  }
+
+  6.1   1 "UPDATE p1 SET a = ?" {
+    CREATE TABLE p1(a PRIMARY KEY);
+    CREATE TABLE c1(b REFERENCES p1 ON UPDATE SET NULL, c);
+  }
+  6.2   0 "UPDATE OR IGNORE p1 SET a = ?" {
+    CREATE TABLE p1(a PRIMARY KEY);
+    CREATE TABLE c1(b REFERENCES p1 ON UPDATE SET NULL, c);
+  }
+  6.3   1 "UPDATE OR IGNORE p1 SET a = ?" {
+    CREATE TABLE p1(a PRIMARY KEY);
+    CREATE TABLE c1(b REFERENCES p1 ON UPDATE CASCADE, c);
+  }
+  6.4   1 "UPDATE OR IGNORE p1 SET a = ?" {
+    CREATE TABLE p1(a PRIMARY KEY);
+    CREATE TABLE c1(b NOT NULL REFERENCES p1 ON UPDATE SET NULL, c);
+  }
+
+} {
+  drop_all_tables
+  do_test 1.$tn {
+    execsql $schema
+    set stmt [sqlite3_prepare_v2 db $sql -1 dummy]
+    set ret [uses_stmt_journal $stmt]
+    sqlite3_finalize $stmt
+    set ret
+  } $use_stmt
+}
+
+#-------------------------------------------------------------------------
+# The following tests check that foreign key constaint counters are
+# correctly updated for any implicit DELETE operations that occur
+# when a REPLACE command is executed against a WITHOUT ROWID table
+# that has no triggers or auxiliary indexes.
+#
+reset_db
+do_execsql_test 2.1.0 {
+  PRAGMA foreign_keys = on;
+  CREATE TABLE p1(a PRIMARY KEY, b) WITHOUT ROWID;
+  CREATE TABLE c1(x REFERENCES p1 DEFERRABLE INITIALLY DEFERRED);
+
+  INSERT INTO p1 VALUES(1, 'one');
+  INSERT INTO p1 VALUES(2, 'two');
+  INSERT INTO c1 VALUES(1);
+  INSERT INTO c1 VALUES(2);
+}
+
+do_catchsql_test 2.1.2 {
+  BEGIN;
+    DELETE FROM p1 WHERE a=1;
+    INSERT OR REPLACE INTO p1 VALUES(2, 'two');
+  COMMIT;
+} {1 {FOREIGN KEY constraint failed}}
+
+reset_db
+do_execsql_test 2.2.0 {
+  PRAGMA foreign_keys = on;
+  CREATE TABLE p2(a PRIMARY KEY, b);
+  CREATE TABLE c2(
+    x PRIMARY KEY,
+    y REFERENCES p2 DEFERRABLE INITIALLY DEFERRED
+  ) WITHOUT ROWID;
+}
+
+do_catchsql_test 2.2.1 {
+  BEGIN;
+    INSERT INTO c2 VALUES(13, 13);
+    INSERT OR REPLACE INTO c2 VALUES(13, 13);
+    DELETE FROM c2;
+  COMMIT;
+} {0 {}}
+
+reset_db
+do_execsql_test 2.3.0 {
+  PRAGMA foreign_keys = on;
+  CREATE TABLE p3(a PRIMARY KEY, b) WITHOUT ROWID;
+  CREATE TABLE c3(x REFERENCES p3);
+
+  INSERT INTO p3 VALUES(1, 'one');
+  INSERT INTO p3 VALUES(2, 'two');
+  INSERT INTO c3 VALUES(1);
+  INSERT INTO c3 VALUES(2);
+
+  CREATE TRIGGER p3d AFTER DELETE ON p3 WHEN old.a=1 BEGIN
+    INSERT OR REPLACE INTO p3 VALUES(2, 'three');
+  END;
+}
+
+do_catchsql_test 2.3.1 {
+  DELETE FROM p3 WHERE a=1
+} {1 {FOREIGN KEY constraint failed}}
+
+
+do_execsql_test 3.0 {
+  PRAGMA foreign_keys=ON;
+  CREATE TABLE t2(
+    a PRIMARY KEY, b, c, d, e,
+      FOREIGN KEY(b, c) REFERENCES t2(d, e)
+  ) WITHOUT ROWID;
+  CREATE UNIQUE INDEX idx ON t2(d, e);
+
+  INSERT INTO t2 VALUES(1, 'one', 'one', 'one', 'one'); -- row is parent of self
+  INSERT INTO t2 VALUES(2, 'one', 'one', 'one', NULL);  -- parent is row 1
+}
+
+do_catchsql_test 3.1 {
+  DELETE FROM t2 WHERE a=1;
+} {1 {FOREIGN KEY constraint failed}}
+
+do_execsql_test 4.0 {
+  CREATE TABLE t1 (
+      c1 PRIMARY KEY,
+      c2 NUMERIC,
+      FOREIGN KEY(c1) REFERENCES t1(c2)
+      ) WITHOUT ROWID ;
+  CREATE INDEX t1c1 ON t1(c1);
+  CREATE UNIQUE INDEX t1c1unique ON t1(c2);
+}
+do_catchsql_test 4.1 {
+  INSERT OR REPLACE INTO t1 VALUES(10000, 20000);
+} {1 {FOREIGN KEY constraint failed}}
+do_execsql_test 4.2 {
+  INSERT OR REPLACE INTO t1 VALUES(20000, 20000);
+}
+
+#-------------------------------------------------------------------------
+reset_db
+do_execsql_test 5.0 {
+  PRAGMA foreign_keys = true;
+  CREATE TABLE parent(
+    p TEXT PRIMARY KEY
+  );
+  CREATE TABLE child(
+    c INTEGER UNIQUE, 
+    FOREIGN KEY(c) REFERENCES parent(p) DEFERRABLE INITIALLY DEFERRED
+  );
+  BEGIN;
+    INSERT INTO child VALUES(123);
+    INSERT INTO parent VALUES('123');
+  COMMIT;
+}
+do_execsql_test 5.1 {
+  PRAGMA integrity_check;
+} {ok}
+
+do_execsql_test 5.2 {
+  INSERT INTO parent VALUES(1200);
+  BEGIN;
+    INSERT INTO child VALUES(456);
+    UPDATE parent SET p = '456' WHERE p=1200;
+  COMMIT;
+}
+do_execsql_test 5.3 {
+  PRAGMA integrity_check;
+} {ok}
+
+#-------------------------------------------------------------------------
+reset_db
+forcedelete test.db2
+do_execsql_test 6.1 {
+  PRAGMA foreign_keys = on;
+  CREATE TABLE c1(b);
+  INSERT INTO c1 VALUES(123);
+}
+
+do_execsql_test 6.2 {
+  ATTACH 'test.db2' AS aux;
+  CREATE TABLE aux.p1(a INTEGER PRIMARY KEY);
+  CREATE TABLE aux.c1(b REFERENCES p1(a) ON DELETE RESTRICT);
+
+  INSERT INTO aux.p1 VALUES(123);
+}
+
+do_execsql_test 6.3 {
+  DELETE FROM aux.p1 WHERE a=123;
+}
+
+#-------------------------------------------------------------------------
+# Forum: https://sqlite.org/forum/forumpost/636bd0180a
+#
+reset_db
+do_execsql_test 7.0 {
+  PRAGMA foreign_keys = ON;
+  CREATE TABLE p1 (pid PRIMARY KEY);
+  CREATE TABLE c1 (cid PRIMARY KEY,
+      pid REFERENCES p1(pid) ON UPDATE CASCADE
+  );
+}
+
+do_execsql_test 7.1 {
+  ATTACH ':memory:' AS aux;
+  CREATE TABLE aux.p1 (pid PRIMARY KEY);
+  CREATE TABLE aux.c1 (cid PRIMARY KEY,
+      pid REFERENCES p1(pid) ON UPDATE CASCADE);
+
+  INSERT INTO aux.p1 VALUES (10);
+  INSERT INTO aux.p1 VALUES (20);
+
+  INSERT INTO aux.c1 VALUES(11, 10);
+  INSERT INTO aux.c1 VALUES(12, 10);
+  INSERT INTO aux.c1 VALUES(21, 20);
+  INSERT INTO aux.c1 VALUES(22, 20);
+}
+
+do_catchsql_test 7.2 {
+  UPDATE aux.p1 SET pid = pid * 10;
+} {0 {}}
+
+do_execsql_test 7.3 {
+  SELECT * FROM aux.p1;
+} {100 200}
+
+do_execsql_test 7.4 {
+  SELECT * FROM aux.c1;
+} {11 100 12 100 21 200 22 200}
+
+#-------------------------------------------------------------------------
+# Bug report: https://sqlite.org/bugs/forumpost/89bb27c659
+#
+reset_db
+
+do_execsql_test 8.0 {
+  PRAGMA foreign_keys=ON;
+  CREATE TABLE parent(id INTEGER PRIMARY KEY, code TEXT UNIQUE);
+
+  CREATE TABLE child(
+      id INTEGER PRIMARY KEY, 
+      k REFERENCES parent(code) ON DELETE CASCADE
+  );
+  INSERT INTO parent VALUES(1, '1001'), (2, '1002');
+
+  INSERT INTO child VALUES(10, 1001), (11, 1002);
+}
+
+do_catchsql_test 8.1 {
+  INSERT INTO child VALUES(12, 1003);
+} {1 {FOREIGN KEY constraint failed}}
+
+do_execsql_test 8.2 {
+  DELETE FROM parent WHERE code = '1001';
+  SELECT id, quote(k) FROM child;
+} {
+  11 1002
+}
+
+do_execsql_test 8.3 { PRAGMA foreign_key_check }
+
+# Parent columns with numeric affinity, child columns with BLOB affinity.
+# The child keys are text values that only match the parent keys once
+# the parent column affinity has been applied.
+#
+do_execsql_test 8.4 {
+  CREATE TABLE p2(id INTEGER PRIMARY KEY, n INTEGER UNIQUE, r REAL UNIQUE);
+  CREATE TABLE c1(k REFERENCES p2(n) ON DELETE CASCADE);
+  CREATE TABLE c2(k REFERENCES p2(n) ON UPDATE CASCADE);
+  CREATE TABLE c3(k REFERENCES p2(r) ON DELETE SET NULL);
+  CREATE TABLE c4(k REFERENCES p2(id) ON DELETE CASCADE);
+  INSERT INTO p2 VALUES(1, 5, 1.5), (2, 6, 2.5), (3, 7, 3.5), (4, 8, 4.5);
+  INSERT INTO c1 VALUES('5');
+  INSERT INTO c2 VALUES('6');
+  INSERT INTO c3 VALUES('3.5');
+  INSERT INTO c4 VALUES('4');
+}
+
+do_execsql_test 8.5 {
+  DELETE FROM p2 WHERE n=5;
+  SELECT count(*) FROM c1;
+} {0}
+
+do_execsql_test 8.6 {
+  UPDATE p2 SET n=60 WHERE n=6;
+  SELECT quote(k) FROM c2;
+} {60}
+
+do_execsql_test 8.7 {
+  DELETE FROM p2 WHERE n=7;
+  SELECT quote(k) FROM c3;
+} {NULL}
+
+do_execsql_test 8.8 {
+  DELETE FROM p2 WHERE n=8;
+  SELECT count(*) FROM c4;
+} {0}
+
+do_execsql_test 8.9 { PRAGMA foreign_key_check }
+
+#-------------------------------------------------------------------------
+# More cases where (parent_key = child_key) does not naturally use the
+# affinity of the parent key. Each is tested both with and without an
+# index on the child key.
+#
+foreach {tn idx} {1 0 2 1} {
+  reset_db
+  execsql { PRAGMA foreign_keys=ON }
+
+  # TEXT parent, INTEGER child. Child value 1001 matches '1001' but
+  # not '01001'.
+  do_execsql_test 9.$tn.1 {
+    CREATE TABLE p1(code TEXT PRIMARY KEY);
+    CREATE TABLE c1(k INTEGER REFERENCES p1 ON DELETE CASCADE);
+    INSERT INTO p1 VALUES('01001'), ('1001');
+    INSERT INTO c1 VALUES(1001);
+  }
+  if {$idx} { execsql { CREATE INDEX c1k ON c1(k) } }
+  do_execsql_test 9.$tn.2 {
+    DELETE FROM p1 WHERE code='01001';
+    SELECT quote(k) FROM c1;
+  } {1001}
+  do_execsql_test 9.$tn.3 {
+    DELETE FROM p1 WHERE code='1001';
+    SELECT quote(k) FROM c1;
+  } {}
+
+  # TEXT parent, REAL child. Child value 1001.0 matches '1001.0' but
+  # not '1001'.
+  do_execsql_test 9.$tn.4 {
+    CREATE TABLE p2(code TEXT PRIMARY KEY);
+    CREATE TABLE c2(k REAL REFERENCES p2 ON DELETE SET NULL);
+    INSERT INTO p2 VALUES('1001'), ('1001.0');
+    INSERT INTO c2 VALUES(1001);
+  }
+  if {$idx} { execsql { CREATE INDEX c2k ON c2(k) } }
+  do_execsql_test 9.$tn.5 {
+    DELETE FROM p2 WHERE code='1001';
+    SELECT quote(k) FROM c2;
+  } {1001.0}
+  do_execsql_test 9.$tn.6 {
+    DELETE FROM p2 WHERE code='1001.0';
+    SELECT quote(k) FROM c2;
+  } {NULL}
+
+  # BLOB parent, INTEGER child. Child value 5 matches 5 but not '5'.
+  do_execsql_test 9.$tn.7 {
+    CREATE TABLE p3(code UNIQUE);
+    CREATE TABLE c3(k INTEGER REFERENCES p3(code) ON DELETE CASCADE);
+    INSERT INTO p3 VALUES('5'), (5);
+    INSERT INTO c3 VALUES(5);
+  }
+  if {$idx} { execsql { CREATE INDEX c3k ON c3(k) } }
+  do_execsql_test 9.$tn.8 {
+    DELETE FROM p3 WHERE code='5';
+    SELECT quote(k) FROM c3;
+  } {5}
+  do_execsql_test 9.$tn.9 {
+    DELETE FROM p3 WHERE code=5;
+    SELECT quote(k) FROM c3;
+  } {}
+
+  # TEXT parent, BLOB child, ON UPDATE CASCADE.
+  do_execsql_test 9.$tn.10 {
+    CREATE TABLE p4(code TEXT PRIMARY KEY);
+    CREATE TABLE c4(k REFERENCES p4 ON UPDATE CASCADE);
+    INSERT INTO p4 VALUES('7'), ('07');
+    INSERT INTO c4 VALUES(7), ('07');
+  }
+  if {$idx} { execsql { CREATE INDEX c4k ON c4(k) } }
+  do_execsql_test 9.$tn.11 {
+    UPDATE p4 SET code='8' WHERE code='7';
+    SELECT quote(k) FROM c4 ORDER BY 1;
+  } {'07' '8'}
+
+  # TEXT parent with NOCASE collation, BLOB child.
+  do_execsql_test 9.$tn.12 {
+    CREATE TABLE p5(code TEXT COLLATE nocase PRIMARY KEY);
+    CREATE TABLE c5(k REFERENCES p5 ON DELETE CASCADE);
+    INSERT INTO p5 VALUES('abc'), ('10');
+    INSERT INTO c5 VALUES('ABC'), (10);
+  }
+  if {$idx} { execsql { CREATE INDEX c5k ON c5(k COLLATE nocase) } }
+  do_execsql_test 9.$tn.13 {
+    DELETE FROM p5;
+    SELECT count(*) FROM c5;
+  } {0}
+
+  # Immediate constraint (no action) on a TEXT parent with a BLOB child.
+  do_execsql_test 9.$tn.14 {
+    CREATE TABLE p6(code TEXT PRIMARY KEY);
+    CREATE TABLE c6(k REFERENCES p6);
+    INSERT INTO p6 VALUES('1'), ('01');
+    INSERT INTO c6 VALUES(1);
+  }
+  if {$idx} { execsql { CREATE INDEX c6k ON c6(k) } }
+  do_execsql_test 9.$tn.15 {
+    DELETE FROM p6 WHERE code='01';
+  } {}
+  do_catchsql_test 9.$tn.16 {
+    DELETE FROM p6 WHERE code='1';
+  } {1 {FOREIGN KEY constraint failed}}
+
+  do_execsql_test 9.$tn.17 { PRAGMA foreign_key_check }
+}
+
+#-------------------------------------------------------------------------
+# Check that an index on the child key can still be used when the
+# comparison does not naturally use the affinity of the parent key.
+#
+reset_db
+do_execsql_test 10.0 {
+  PRAGMA foreign_keys=ON;
+  CREATE TABLE parent(id INTEGER PRIMARY KEY, code TEXT UNIQUE);
+  CREATE TABLE c1(id INTEGER PRIMARY KEY, k REFERENCES parent(code));
+  CREATE INDEX c1k ON c1(k);
+  CREATE TABLE c2(id INTEGER PRIMARY KEY,
+    k REFERENCES parent(code) ON DELETE CASCADE
+  );
+  CREATE INDEX c2k ON c2(k);
+  CREATE TABLE c3(k INTEGER PRIMARY KEY REFERENCES parent(code)
+    ON UPDATE CASCADE
+  );
+}
+
+do_eqp_test 10.1 {
+  DELETE FROM parent WHERE id=1;
+} {
+  QUERY PLAN
+  |--SEARCH parent USING INTEGER PRIMARY KEY (rowid=?)
+  |--SEARCH c3 USING INTEGER PRIMARY KEY (rowid=?)
+  |--SEARCH c2 USING COVERING INDEX c2k (k=?)
+  `--SEARCH c1 USING COVERING INDEX c1k (k=?)
+}
+
+do_eqp_test 10.2 {
+  UPDATE parent SET code='x' WHERE id=1;
+} {
+  QUERY PLAN
+  |--SEARCH parent USING INTEGER PRIMARY KEY (rowid=?)
+  |--SEARCH c3 USING INTEGER PRIMARY KEY (rowid=?)
+  |--SEARCH c2 USING COVERING INDEX c2k (k=?)
+  |--SEARCH c1 USING COVERING INDEX c1k (k=?)
+  |--SEARCH c3 USING INTEGER PRIMARY KEY (rowid=?)
+  |--SEARCH c2 USING COVERING INDEX c2k (k=?)
+  `--SEARCH c1 USING COVERING INDEX c1k (k=?)
+}
+
+#-------------------------------------------------------------------------
+# The extra IN term used to drive an index lookup on the child key is
+# only generated if there is a suitable index on the child key. In
+# this test the IN term, if present, would use an ephemeral table. So
+# check for an OP_OpenEphemeral in the program that implements the
+# no-action foreign key checks.
+#
+proc has_ephemeral {sql} {
+  expr {[lsearch [db eval "EXPLAIN $sql" ] OpenEphemeral]>=0}
+}
+reset_db
+do_execsql_test 11.0 {
+  PRAGMA foreign_keys=ON;
+  CREATE TABLE parent(id INTEGER PRIMARY KEY, code TEXT UNIQUE);
+  CREATE TABLE c1(id INTEGER PRIMARY KEY, k REFERENCES parent(code));
+}
+do_test 11.1 { has_ephemeral {DELETE FROM parent WHERE id=1} } 0
+
+# An index with the wrong collation sequence is not suitable.
+do_execsql_test 11.2 { CREATE INDEX c1k1 ON c1(k COLLATE nocase) }
+do_test 11.3 { has_ephemeral {DELETE FROM parent WHERE id=1} } 0
+
+# Nor is a partial index, or one on which k is not the left-most column.
+do_execsql_test 11.4 {
+  CREATE INDEX c1k2 ON c1(k) WHERE id>10;
+  CREATE INDEX c1k3 ON c1(id, k);
+}
+do_test 11.5 { has_ephemeral {DELETE FROM parent WHERE id=1} } 0
+
+do_execsql_test 11.6 { CREATE INDEX c1k4 ON c1(k) }
+do_test 11.7 { has_ephemeral {DELETE FROM parent WHERE id=1} } 1
+
+#-------------------------------------------------------------------------
+# Check that an index on a composite child key can be used for all
+# columns of the key, not just the left-most, when the comparisons do
+# not naturally use the affinity of the parent key.
+#
+reset_db
+do_execsql_test 12.0 {
+  PRAGMA foreign_keys=ON;
+  CREATE TABLE parent(id INTEGER PRIMARY KEY, x TEXT, y TEXT, UNIQUE(x, y));
+  CREATE TABLE c1(a, b, FOREIGN KEY(a, b) REFERENCES parent(x, y));
+  CREATE INDEX c1ab ON c1(a, b);
+  CREATE TABLE c2(a, b, FOREIGN KEY(a, b) REFERENCES parent(x, y));
+  CREATE INDEX c2ba ON c2(b, a);
+}
+
+do_eqp_test 12.1 {
+  DELETE FROM parent WHERE id=1;
+} {
+  QUERY PLAN
+  |--SEARCH parent USING INTEGER PRIMARY KEY (rowid=?)
+  |--SEARCH c2 USING COVERING INDEX c2ba (b=? AND a=?)
+  `--SEARCH c1 USING COVERING INDEX c1ab (a=? AND b=?)
+}
+
+# Bug 2026-10-22T05:11:21Z
+# FK delete/update scan misses child rows again when parent key
+# is TEXT and child stores ±Inf.
+#
+# Fixed by teaching sqlite3AtoF() to understand ±Inf.
+#
+reset_db
+do_execsql_test 13.1 {
+  PRAGMA foreign_keys=ON;
+  CREATE TABLE p(x TEXT PRIMARY KEY);
+  CREATE TABLE c(y BLOB REFERENCES p(x));
+  INSERT INTO p VALUES('Inf');
+  INSERT INTO c VALUES(9e999);      -- insert-side check passes
+  PRAGMA foreign_key_check;
+} {}
+do_catchsql_test 13.2 {
+  DELETE FROM p WHERE x='Inf';      -- SUCCEEDS, but must fail
+} {1 {FOREIGN KEY constraint failed}}
+
+#-------------------------------------------------------------------------
+# A row of a self-referencing table that refers to itself must be
+# accepted when its child key matches its own parent key only under the
+# parent key's collation sequence or after the parent key's affinity is
+# applied. Previously, the "row matches itself" check in fkLookupParent()
+# compared the raw registers using BINARY and no affinity.
+#
+reset_db
+do_execsql_test 14.1.0 {
+  PRAGMA foreign_keys=ON;
+  CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    ref REFERENCES t1(name),
+    name TEXT COLLATE NOCASE UNIQUE
+  );
+}
+do_execsql_test 14.1.1 {
+  INSERT INTO t1 VALUES(1,'a','A');
+  SELECT * FROM t1;
+} {1 a A}
+do_execsql_test 14.1.2 {
+  INSERT INTO t1 VALUES(2,NULL,'B');
+  INSERT INTO t1 VALUES(3,'b',NULL);
+  PRAGMA foreign_key_check;
+} {}
+do_execsql_test 14.1.3 {
+  UPDATE t1 SET ref='b' WHERE id=2;
+  SELECT * FROM t1 WHERE id=2;
+} {2 b B}
+do_execsql_test 14.1.4 {
+  PRAGMA foreign_key_check;
+} {}
+do_catchsql_test 14.1.5 {
+  INSERT INTO t1 VALUES(4,'x','y');
+} {1 {FOREIGN KEY constraint failed}}
+
+# Affinity instead of collation.
+do_execsql_test 14.2.0 {
+  CREATE TABLE t2(id INTEGER PRIMARY KEY, ref TEXT REFERENCES t2(num),
+      num NUMERIC UNIQUE
+  );
+  INSERT INTO t2 VALUES(1,'7',7);
+  INSERT INTO t2 VALUES(2,NULL,8);
+  INSERT INTO t2 VALUES(3,'8',NULL);
+  SELECT id, quote(ref), quote(num) FROM t2;
+} {1 '7' 7 2 NULL 8 3 '8' NULL}
+do_execsql_test 14.2.1 {
+  UPDATE t2 SET ref='8' WHERE id=2;
+  SELECT quote(ref) FROM t2 WHERE id=2;
+  PRAGMA foreign_key_check;
+} {'8'}
+
+# Deferred constraint: the statement succeeded, but COMMIT failed.
+do_execsql_test 14.3.0 {
+  CREATE TABLE t3(
+    id INTEGER PRIMARY KEY,
+    ref REFERENCES t3(name) DEFERRABLE INITIALLY DEFERRED,
+    name TEXT COLLATE NOCASE UNIQUE
+  );
+  BEGIN;
+    INSERT INTO t3 VALUES(1,'a','A');
+    PRAGMA foreign_key_check;
+  COMMIT;
+  SELECT * FROM t3;
+} {1 a A}
+
+# WITHOUT ROWID table with a NOCASE PRIMARY KEY parent key.
+do_execsql_test 14.4.0 {
+  CREATE TABLE t4(
+    name TEXT COLLATE NOCASE PRIMARY KEY,
+    ref REFERENCES t4(name)
+  ) WITHOUT ROWID;
+  INSERT INTO t4 VALUES('A','a');
+  SELECT * FROM t4;
+} {A a}
+
+# Rowid table with a NUMERIC PRIMARY KEY parent key.
+do_execsql_test 14.5.0 {
+  CREATE TABLE t5(num NUMERIC PRIMARY KEY, ref TEXT REFERENCES t5(num));
+  INSERT INTO t5 VALUES(7,'7');
+  SELECT quote(num), quote(ref) FROM t5;
+} {7 '7'}
+
+# Child column declared COLLATE NOCASE as well.
+do_execsql_test 14.6.0 {
+  CREATE TABLE t6(
+    id INTEGER PRIMARY KEY,
+    ref COLLATE NOCASE REFERENCES t6(name),
+    name TEXT COLLATE NOCASE UNIQUE
+  );
+  INSERT INTO t6 VALUES(1,'a','A');
+  SELECT * FROM t6;
+} {1 a A}
+
+# Composite parent key with both a collation and an affinity.
+do_execsql_test 14.7.0 {
+  CREATE TABLE t7(
+    id INTEGER PRIMARY KEY,
+    r1 TEXT, r2 TEXT,
+    a TEXT COLLATE NOCASE, b NUMERIC,
+    UNIQUE(a, b),
+    FOREIGN KEY(r1, r2) REFERENCES t7(a, b)
+  );
+  INSERT INTO t7 VALUES(1, 'x', '5', 'X', 5);
+  SELECT id, r1, quote(r2), a, quote(b) FROM t7;
+} {1 x '5' X 5}
+do_catchsql_test 14.7.1 {
+  INSERT INTO t7 VALUES(2, 'y', '6', 'Y', 7);
+} {1 {FOREIGN KEY constraint failed}}
+
+#-------------------------------------------------------------------------
+# UPDATE statements that assign to the parent key column, but not the child
+# key column, of a self-referencing table. 
+#
+# Report: https://sqlite.org/bugs/forumpost/4f3c5d1527
+#
+foreach {tn schema} {
+  1 { CREATE TABLE t1(a INT PRIMARY KEY, b INT REFERENCES t1(a)); }
+  2 { CREATE TABLE t1(a INT UNIQUE, b INT REFERENCES t1(a)); }
+  3 { CREATE TABLE t1(a INTEGER PRIMARY KEY, b INT REFERENCES t1(a)); }
+  4 { CREATE TABLE t1(a INT PRIMARY KEY, b INT REFERENCES t1(a)) WITHOUT ROWID; }
+} {
+  reset_db
+  do_execsql_test 15.$tn.0 "
+    PRAGMA foreign_keys=ON;
+    $schema
+  "
+
+  do_execsql_test 15.$tn.1.0 {
+    INSERT INTO t1 VALUES(2,3),(3,2);
+  }
+  do_catchsql_test 15.$tn.1.1 {
+    UPDATE t1 SET a=a-1;
+  } {1 {FOREIGN KEY constraint failed}}
+  do_execsql_test 15.$tn.1.2 {
+    SELECT * FROM t1 ORDER BY a;
+    PRAGMA foreign_key_check;
+  } {2 3 3 2}
+
+  do_catchsql_test 15.$tn.2 {
+    UPDATE t1 SET a=a-1, b=b;
+  } {1 {FOREIGN KEY constraint failed}}
+
+  do_execsql_test 15.$tn.3.0 {
+    DELETE FROM t1;
+    INSERT INTO t1 VALUES(6,6),(7,6);
+  }
+  do_execsql_test 15.$tn.3.1 {
+    UPDATE t1 SET a=a WHERE a=6;
+    SELECT * FROM t1 ORDER BY a;
+    PRAGMA foreign_key_check;
+  } {6 6 7 6}
+  do_execsql_test 15.$tn.3.2 {
+    UPDATE t1 SET a=a+0 WHERE a=6;
+    SELECT * FROM t1 ORDER BY a;
+  } {6 6 7 6}
+  do_execsql_test 15.$tn.3.3 {
+    UPDATE t1 SET a=a;
+    SELECT * FROM t1 ORDER BY a;
+  } {6 6 7 6}
+
+  do_catchsql_test 15.$tn.4.1 {
+    UPDATE t1 SET a=8 WHERE a=6;
+  } {1 {FOREIGN KEY constraint failed}}
+  do_execsql_test 15.$tn.4.2 {
+    SELECT * FROM t1 ORDER BY a;
+  } {6 6 7 6}
+
+  do_execsql_test 15.$tn.5.1 {
+    DELETE FROM t1;
+    INSERT INTO t1 VALUES(6,6),(7,7);
+    UPDATE t1 SET a=a WHERE a=6;
+    SELECT * FROM t1 ORDER BY a;
+  } {6 6 7 7}
+  do_execsql_test 15.$tn.5.2 {
+    DELETE FROM t1;
+    INSERT INTO t1 VALUES(6,7),(7,6);
+    UPDATE t1 SET a=a WHERE a=6;
+    SELECT * FROM t1 ORDER BY a;
+  } {6 7 7 6}
+  do_execsql_test 15.$tn.5.3 {
+    DELETE FROM t1;
+    INSERT INTO t1 VALUES(6,7),(7,7);
+    UPDATE t1 SET a=5 WHERE a=6;
+    SELECT * FROM t1 ORDER BY a;
+    PRAGMA foreign_key_check;
+  } {5 7 7 7}
+}
+
+
+finish_test

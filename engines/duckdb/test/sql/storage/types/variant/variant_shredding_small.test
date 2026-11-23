@@ -1,0 +1,78 @@
+# name: test/sql/storage/types/variant/variant_shredding_small.test
+# group: [variant]
+
+load {TEST_DIR}/variant_shredding_small.db readwrite v1.5.0
+
+statement ok
+SET variant_minimum_shredding_size = 0;
+
+statement ok
+create table tbl (id INT PRIMARY KEY, col VARIANT)
+
+statement ok
+insert into tbl select i id, {'i': i, 'j': i * 100} FROm range(5) t(i);
+
+statement ok
+CHECKPOINT
+
+query I
+SELECT col FROM tbl
+----
+{'i': 0, 'j': 0}
+{'i': 1, 'j': 100}
+{'i': 2, 'j': 200}
+{'i': 3, 'j': 300}
+{'i': 4, 'j': 400}
+
+query I
+SELECT col.j FROM tbl
+----
+0
+100
+200
+300
+400
+
+query I
+SELECT col.j::INT FROM tbl
+----
+0
+100
+200
+300
+400
+
+query I
+SELECT col FROM tbl WHERE id=3
+----
+{'i': 3, 'j': 300}
+
+query I
+SELECT col FROM tbl WHERE col.i=3
+----
+{'i': 3, 'j': 300}
+
+# Returning a shredded vector materializes each result row through GetValue.
+# Keep a partially shredded nested object, an incompatible value, and NULL in one vector.
+statement ok
+CREATE TABLE get_value_rows (id INTEGER, col VARIANT);
+
+statement ok
+INSERT INTO get_value_rows VALUES
+    (0, {'kind': 'profile', 'id': 1, 'details': {'active': true, 'fallback': 'first'}}::VARIANT),
+    (1, {'kind': 'profile', 'id': 2, 'details': {'active': false, 'extra': [1, 2]}}::VARIANT),
+    (2, NULL),
+    (3, ['not', 'an', 'object']::VARIANT),
+    (4, {'kind': 'profile', 'id': 5, 'details': {'active': true}}::VARIANT);
+
+statement ok
+CHECKPOINT;
+
+query I
+SELECT col FROM get_value_rows ORDER BY id;
+----
+{'details': {'active': true, 'fallback': first}, 'id': 1, 'kind': profile}
+{'details': {'active': false, 'extra': [1, 2]}, 'id': 2, 'kind': profile}
+NULL
+[not, an, object]
+{'details': {'active': true}, 'id': 5, 'kind': profile}
