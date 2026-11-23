@@ -520,13 +520,15 @@ export function createBrowserSessionManager({
         try { viewer.sink.event({ t: "closed", reason: session.stopReason }); } catch { /* Socket may already be closed. */ }
         detachViewer(session, viewer, { code: 4001, reason: session.stopReason });
       }
+      // Chromium keeps writing to its profile until every process in its
+      // tree exits, so the profile is deleted only after that is confirmed.
+      // The tree is captured before Browser.close: once the browser exits its
+      // children are reparented and can no longer be found from its pid.
+      const tree = processDescendants(session.child?.pid, listProcesses());
       if (session.cdp && !session.cdp.closed) {
         await session.cdp.send("Browser.close", {}, { timeout: 2000 }).catch(() => {});
         session.cdp.close(reason);
       }
-      // Chromium keeps writing to its profile until every process in its
-      // tree exits, so the profile is deleted only after that is confirmed.
-      const tree = processDescendants(session.child?.pid, listProcesses());
       let exited = await waitForExit(session, 2000);
       if (!exited) {
         try { session.child?.kill?.("SIGTERM"); } catch { /* Process may already be gone. */ }
