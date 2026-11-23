@@ -281,6 +281,7 @@ fn golden_phase1_non_specopen_cases() {
         run += 1;
 
         let mut engine = CalcEngine::new();
+        engine.set_registry(Box::new(calc_functions::default_registry()));
         engine.add_sheet("Sheet1").unwrap();
         if let Some(Json::Obj(inputs)) = case.get("inputs") {
             for (addr, v) in inputs {

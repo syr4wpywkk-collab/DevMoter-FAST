@@ -9,6 +9,7 @@ description = "Spreadsheet formula engine core: values, parser, dependency graph
 [dependencies]
 
 [dev-dependencies]
+calc-functions = { path = "../calc-functions" }
 criterion = "0.7.0"
 
 [[bench]]

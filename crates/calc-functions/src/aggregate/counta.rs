@@ -1,16 +1,17 @@
 //! `COUNTA(value1, [value2], ...)` — counts non-empty values.
 //! Spec: `docs/functions/COUNTA.md`.
 
-use crate::ast::Expr;
-use crate::eval::{EvalContext, EvalError};
-use crate::functions::{MAX_ARGS, check_arity, helpers};
-use crate::value::Value;
+use crate::common::coercion;
+use calc_core::ast::Expr;
+use calc_core::eval::{EvalContext, EvalError};
+use calc_core::registry::{MAX_ARGS, check_arity};
+use calc_core::value::Value;
 
 pub fn call(ctx: &mut EvalContext<'_>, args: &[Expr]) -> Result<Value, EvalError> {
     if let Err(e) = check_arity(args, 1, MAX_ARGS) {
         return Ok(Value::Error(e));
     }
-    let flat = helpers::flatten_args(ctx, args)?;
+    let flat = coercion::flatten_args(ctx, args)?;
     let mut count = 0u64;
     for (v, ranged) in flat {
         if ranged {
@@ -34,8 +35,8 @@ pub fn call(ctx: &mut EvalContext<'_>, args: &[Expr]) -> Result<Value, EvalError
 
 #[cfg(test)]
 mod tests {
-    use super::super::helpers::test_support::*;
-    use crate::{CalcError, Value};
+    use crate::common::coercion::test_support::*;
+    use calc_core::{CalcError, Value};
 
     fn n(v: &Value) -> f64 {
         match v {

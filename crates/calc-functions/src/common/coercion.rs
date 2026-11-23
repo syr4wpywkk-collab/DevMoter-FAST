@@ -1,4 +1,5 @@
-//! Shared argument/coercion helpers for Phase 1 functions.
+//! Implicit coercion layer (v2 §3): the single owner of Excel's
+//! argument-conversion rules.
 //!
 //! The central distinction is *direct scalar* vs *range-derived* values
 //! (see `docs/functions/README.md`): scalars coerce via
@@ -9,10 +10,10 @@
 //! Lazy special forms (`IF`, `IFERROR`) must not use [`flatten_args`]: it
 //! evaluates every argument eagerly.
 
-use crate::ast::Expr;
-use crate::error::CalcError;
-use crate::eval::{ArgValue, EvalContext, EvalError};
-use crate::value::{Value, parse_number_text};
+use calc_core::ast::Expr;
+use calc_core::error::CalcError;
+use calc_core::eval::{ArgValue, EvalContext, EvalError};
+use calc_core::value::{Value, parse_number_text};
 
 /// Evaluate every argument and flatten into `(value, range_derived)`
 /// pairs, preserving left-to-right order (floating-point accumulation
@@ -102,13 +103,15 @@ pub fn text_is_number(s: &str) -> bool {
 
 #[cfg(test)]
 pub(crate) mod test_support {
-    use crate::engine::CalcEngine;
-    use crate::value::Value;
-    use crate::workbook::CellInput;
+    use calc_core::CalcEngine;
+    use calc_core::value::Value;
+    use calc_core::workbook::CellInput;
 
-    /// Evaluate `formula` on `Sheet1` after storing `inputs` as values.
+    /// Evaluate `formula` on `Sheet1` after storing `inputs` as values,
+    /// using the standard function registry.
     pub fn eval_with(inputs: &[(&str, Value)], formula: &str) -> Value {
         let mut e = CalcEngine::new();
+        e.set_registry(Box::new(crate::registry::default_registry()));
         e.add_sheet("Sheet1").unwrap();
         for (addr, v) in inputs {
             e.set_cell("Sheet1", addr, CellInput::Value(v.clone()))

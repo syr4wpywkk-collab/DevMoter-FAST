@@ -11,10 +11,10 @@ pub mod cell;
 pub mod engine;
 pub mod error;
 pub mod eval;
-pub mod functions;
 pub mod graph;
 pub mod lexer;
 pub mod parser;
+pub mod registry;
 pub mod value;
 pub mod workbook;
 
@@ -32,6 +32,7 @@ pub use lexer::{LexError, LexErrorKind, Token, TokenKind, lex};
 pub use parser::{
     MAX_AST_NODES, MAX_DEPTH, MAX_FORMULA_LEN, MAX_TOKENS, ParseError, ParseErrorKind, parse,
 };
+pub use registry::{EmptyRegistry, Function, FunctionRegistry};
 pub use value::{Value, ValueKind};
 pub use workbook::{Cell, CellInput, DateSystem, Sheet, Workbook, WorkbookError};
 

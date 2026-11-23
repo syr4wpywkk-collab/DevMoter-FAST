@@ -1,0 +1,10 @@
+[package]
+name = "calc-functions"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Standard worksheet-function library for calc-core (v2 §3 category layout)"
+
+[dependencies]
+calc-core = { path = "../calc-core" }
