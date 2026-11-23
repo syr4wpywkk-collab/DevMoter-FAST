@@ -191,7 +191,11 @@ export function createPostgresqlAdapter(options: PostgresqlAdapterOptions): SqlA
 
       let stop: (error: EngineError) => void = () => {};
       const stopped = new Promise<never>((_resolve, reject) => {
+        let done = false;
         stop = (error) => {
+          // Once: the rows already received keep arriving after the limit is passed, and each cancel opens a connection.
+          if (done) return;
+          done = true;
           reject(error);
           cancel(client);
         };
