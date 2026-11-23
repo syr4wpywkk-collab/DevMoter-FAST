@@ -10,7 +10,14 @@ use calc_core::registry::Function;
 
 mod lambda;
 mod let_fn;
+mod map;
+mod reduce;
 
 /// `(name, implementation)` pairs contributed by this category,
 /// consumed by [`crate::registry`].
-pub const FUNCTIONS: &[(&str, Function)] = &[("LAMBDA", lambda::call), ("LET", let_fn::call)];
+pub const FUNCTIONS: &[(&str, Function)] = &[
+    ("LAMBDA", lambda::call),
+    ("LET", let_fn::call),
+    ("MAP", map::call),
+    ("REDUCE", reduce::call),
+];
