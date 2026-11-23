@@ -50,6 +50,12 @@ export function binaryGrant(binary, env) {
   return { path: dir, mode: "read-only" };
 }
 
+// The path to run inside the sandbox: a binary mounted by binaryGrant is only
+// visible at its real path, not through a symlink outside the mount.
+export function sandboxedBinaryPath(binary, env) {
+  return binaryGrant(binary, env) ? resolveExecutable(binary, env) : binary;
+}
+
 const OUTPUT_LIMIT = 512 * 1024;
 const PROCESS_TIMEOUT_MS = 15000;
 
@@ -283,7 +289,7 @@ export function createBrowserAutomation({
         projectPath: ctx.project.path,
         grants: [{ path: profileDir, mode: "read-write" }, binaryGrant(ctx.binary, env)].filter(Boolean),
         projectMount: "none",
-        command: ctx.binary,
+        command: sandboxedBinaryPath(ctx.binary, env),
         args,
         allowNetwork: true,
         failClosed: true,

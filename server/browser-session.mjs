@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { delimiter, dirname, isAbsolute, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { buildBubblewrapCommand, sandboxStatus } from "./advanced-features.mjs";
-import { SANDBOX_SYSTEM_MOUNTS as SYSTEM_MOUNTS, binaryGrant, browserAutomationStatus, browserProcessEnv, detectBrowserBinary, loopbackHost, resolveExecutable } from "./browser-tool.mjs";
+import { SANDBOX_SYSTEM_MOUNTS as SYSTEM_MOUNTS, binaryGrant, browserAutomationStatus, sandboxedBinaryPath, browserProcessEnv, detectBrowserBinary, loopbackHost, resolveExecutable } from "./browser-tool.mjs";
 import { createCdpPipeConnection } from "./browser-cdp.mjs";
 import { listenerConnectHost, readListenerIdentity } from "./listener-identity.mjs";
 
@@ -328,7 +328,7 @@ export function buildRemoteBrowserSandbox({ projectPath, profileDir, relaySocket
     command: process.execPath,
     args: [
       RELAY_SCRIPT, "--host", policy.host, "--port", String(policy.port), "--socket", relaySocket,
-      "--", binary, ...browserArgs
+      "--", sandboxedBinaryPath(binary, env), ...browserArgs
     ],
     allowNetwork: false,
     unsharePid: true,
