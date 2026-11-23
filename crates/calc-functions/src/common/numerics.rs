@@ -524,6 +524,90 @@ pub fn ln_poisson_pmf(k: f64, lambda: f64) -> f64 {
     k * lambda.ln() - lambda - ln_gamma(k + 1.0)
 }
 
+/// Student's t CDF `P(T <= x)` for `T ~ t_df` (left tail).
+///
+/// Via the incomplete-beta identity: with `u = df/(df + x²)`,
+/// `P(T <= x) = 1 - ½ I_u(df/2, ½)` for `x > 0` and `½ I_u(df/2, ½)`
+/// for `x <= 0`. Domain: `df >= 1` (any real `x`); `x = 0` gives
+/// `0.5` exactly. Returns `NaN` outside the domain.
+///
+/// See `docs/functions/T.DIST.md`.
+pub fn t_cdf(x: f64, df: f64) -> f64 {
+    if x.is_nan() || df.is_nan() || df < 1.0 {
+        return f64::NAN;
+    }
+    if x == 0.0 {
+        return 0.5;
+    }
+    let u = df / (df + x * x);
+    let ib = regularized_beta(u, df / 2.0, 0.5);
+    if x > 0.0 { 1.0 - 0.5 * ib } else { 0.5 * ib }
+}
+
+/// Student's t survival function `P(T >= x)` (right tail).
+///
+/// Computed as the upper tail of the same incomplete-beta identity so
+/// the far right tail keeps full precision (a literal `1 - t_cdf(x)`
+/// would collapse to 0 for large `x`). `x = 0` gives `0.5`.
+///
+/// See `docs/functions/T.DIST.RT.md`.
+pub fn t_sf(x: f64, df: f64) -> f64 {
+    if x.is_nan() || df.is_nan() || df < 1.0 {
+        return f64::NAN;
+    }
+    if x == 0.0 {
+        return 0.5;
+    }
+    let u = df / (df + x * x);
+    let ib = regularized_beta(u, df / 2.0, 0.5);
+    if x > 0.0 { 0.5 * ib } else { 1.0 - 0.5 * ib }
+}
+
+/// Student's t density at `x` for `df` degrees of freedom:
+/// `Γ((df+1)/2) / (√(df·π) · Γ(df/2)) · (1 + x²/df)^(-(df+1)/2)`,
+/// evaluated in log space. Returns `NaN` for `df < 1` or `NaN` input.
+///
+/// See `docs/functions/T.DIST.md`.
+pub fn t_pdf(x: f64, df: f64) -> f64 {
+    if x.is_nan() || df.is_nan() || df < 1.0 {
+        return f64::NAN;
+    }
+    let ln = ln_gamma((df + 1.0) / 2.0)
+        - ln_gamma(df / 2.0)
+        - 0.5 * (df * std::f64::consts::PI).ln()
+        - (df + 1.0) / 2.0 * (1.0 + x * x / df).ln();
+    ln.exp()
+}
+
+/// Inverse of the Student's t CDF: the `x` with `P(T <= x) = p`.
+///
+/// Symmetry enforced (`p < 0.5` reflects through `-t_inv(1-p)`), then
+/// the generic [`inverse_cdf`] solver on [`t_cdf`]; the upper bracket
+/// doubles from 1 until it covers `p` so far-tail quantiles still
+/// resolve. Returns `NaN` for `p` outside the open `(0, 1)` or
+/// `df < 1`.
+///
+/// See `docs/functions/T.INV.md`.
+pub fn t_inv(p: f64, df: f64) -> f64 {
+    if p.is_nan() || df.is_nan() || df < 1.0 || p <= 0.0 || p >= 1.0 {
+        return f64::NAN;
+    }
+    if p == 0.5 {
+        return 0.0;
+    }
+    if p < 0.5 {
+        return -t_inv(1.0 - p, df);
+    }
+    let cdf = |t: f64| t_cdf(t, df);
+    let mut lo = 0.0;
+    let mut hi = 1.0;
+    while cdf(hi) < p && hi < 1e300 {
+        lo = hi;
+        hi *= 2.0;
+    }
+    inverse_cdf(cdf, p, lo, hi, hi * 1e-13, 1000)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
