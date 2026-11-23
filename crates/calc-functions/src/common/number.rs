@@ -217,3 +217,117 @@ fn to_radix(n: i64, radix: u32) -> String {
     }
     buf.iter().rev().collect()
 }
+
+/// Fixed-point text formatting shared by `FIXED` and `DOLLAR`
+/// (`docs/functions/FIXED.md`, `DOLLAR.md`): en-US fixed-locale
+/// output — `,` grouping, `.` decimal point, no currency symbol.
+///
+/// `places` is already truncated by the caller; negative values round
+/// left of the decimal point and the clamp `[-30, 30]` stands in for
+/// Excel's loosely-documented range limit (SPEC-OPEN in both spec
+/// docs). Rounding is half away from zero on the 15-significant-digit
+/// decimal representation — the same basis as `TEXT`'s `round_places`
+/// and `ROUND`.
+pub fn format_fixed(n: f64, places: i32, commas: bool) -> String {
+    let places = places.clamp(-30, 30);
+    if !n.is_finite() {
+        return format!("{n}");
+    }
+    let neg = n.is_sign_negative();
+    let v = n.abs();
+
+    // 15 significant decimal digits: |v| = 0.d[0]d[1]… × 10^exp10.
+    let (mut d, mut exp10) = if v == 0.0 {
+        (vec![b'0'], 0)
+    } else {
+        let s = format!("{v:.14e}");
+        let (mant, exp) = s.split_once('e').unwrap();
+        (
+            mant.bytes().filter(|b| b.is_ascii_digit()).collect(),
+            exp.parse::<i32>().unwrap() + 1,
+        )
+    };
+
+    // Round half away from zero at `keep = exp10 + places` digits.
+    let keep = exp10 + places;
+    if keep <= 0 {
+        // Everything is discarded: rounds to zero unless the first
+        // significant digit is >= 5 and the rounding place is exactly
+        // the leading position (e.g. FIXED(99.5, -2) -> "100").
+        if keep == 0 && d[0] >= b'5' {
+            d = vec![b'1'];
+            exp10 += 1;
+        } else {
+            d.clear();
+            exp10 = 1;
+        }
+    } else {
+        if (keep as usize) < d.len() && d[keep as usize] >= b'5' {
+            let mut i = keep as usize;
+            loop {
+                if i == 0 {
+                    d = vec![b'1'];
+                    d.resize(keep as usize, b'0');
+                    exp10 += 1;
+                    break;
+                }
+                i -= 1;
+                if d[i] == b'9' {
+                    d[i] = b'0';
+                } else {
+                    d[i] += 1;
+                    break;
+                }
+            }
+        }
+        d.resize(keep as usize, b'0');
+        d.truncate(keep as usize);
+    }
+
+    // Digit d[k] sits at decimal position exp10-1-k. Positions with no
+    // stored digit are '0' (truncated-away or beyond precision).
+    let int_len = exp10.max(0) as usize;
+    let mut int = String::with_capacity(int_len + int_len / 3);
+    for k in 0..int_len {
+        int.push(d.get(k).copied().unwrap_or(b'0') as char);
+    }
+    if int.is_empty() {
+        int.push('0');
+    }
+    if commas {
+        int = group_thousands(&int);
+    }
+
+    let mut out = String::new();
+    if neg {
+        out.push('-');
+    }
+    out.push_str(&int);
+    if places > 0 {
+        out.push('.');
+        // Fraction position p in -1..=-places maps to digit index
+        // k = exp10-1-p; indices below 0 are leading zeros.
+        for j in 0..places {
+            let k = exp10 + j;
+            out.push(if k >= 0 {
+                d.get(k as usize).copied().unwrap_or(b'0') as char
+            } else {
+                '0'
+            });
+        }
+    }
+    out
+}
+
+/// Insert `,` thousands separators into an integer digit string.
+fn group_thousands(s: &str) -> String {
+    let n = s.len();
+    let mut out = String::with_capacity(n + n / 3);
+    for (i, c) in s.chars().enumerate() {
+        if i > 0 && (n - i) % 3 == 0 {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
+}
