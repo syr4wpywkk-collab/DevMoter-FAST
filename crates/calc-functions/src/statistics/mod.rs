@@ -30,7 +30,30 @@ mod devsq;
 mod expon_dist;
 mod f_dist;
 mod f_dist_rt;
+mod f_inv;
+mod f_inv_rt;
+mod f_test;
+mod fisher;
+mod fisherinv;
+mod forecast;
+mod forecast_ets;
+mod forecast_ets_confint;
+mod forecast_ets_seasonality;
+mod forecast_ets_stat;
+mod forecast_linear;
+mod frequency;
+mod gamma;
+mod gamma_dist;
+mod gamma_inv;
+mod gammaln;
+mod gammaln_precise;
+mod gauss;
+mod geomean;
+mod growth;
+mod harmean;
+mod hypgeom_dist;
 mod intercept;
+mod kurt;
 mod large;
 mod median;
 mod mode_sngl;
@@ -62,6 +85,28 @@ pub const FUNCTIONS: &[(&str, Function)] = &[
     ("CONFIDENCE.NORM", confidence_norm::call),
     ("CONFIDENCE.T", confidence_t::call),
     ("CORREL", correl::call),
+    ("F.INV", f_inv::call),
+    ("F.INV.RT", f_inv_rt::call),
+    ("F.TEST", f_test::call),
+    ("FISHER", fisher::call),
+    ("FISHERINV", fisherinv::call),
+    ("FORECAST", forecast::call),
+    ("FORECAST.ETS", forecast_ets::call),
+    ("FORECAST.ETS.CONFINT", forecast_ets_confint::call),
+    ("FORECAST.ETS.SEASONALITY", forecast_ets_seasonality::call),
+    ("FORECAST.ETS.STAT", forecast_ets_stat::call),
+    ("FORECAST.LINEAR", forecast_linear::call),
+    ("FREQUENCY", frequency::call),
+    ("GAMMA", gamma::call),
+    ("GAMMA.DIST", gamma_dist::call),
+    ("GAMMA.INV", gamma_inv::call),
+    ("GAMMALN", gammaln::call),
+    ("GAMMALN.PRECISE", gammaln_precise::call),
+    ("GAUSS", gauss::call),
+    ("GEOMEAN", geomean::call),
+    ("GROWTH", growth::call),
+    ("HARMEAN", harmean::call),
+    ("HYPGEOM.DIST", hypgeom_dist::call),
     ("COUNTBLANK", countblank::call),
     ("COVARIANCE.P", covariance_p::call),
     ("COVARIANCE.S", covariance_s::call),
@@ -70,6 +115,7 @@ pub const FUNCTIONS: &[(&str, Function)] = &[
     ("F.DIST", f_dist::call),
     ("F.DIST.RT", f_dist_rt::call),
     ("INTERCEPT", intercept::call),
+    ("KURT", kurt::call),
     ("LARGE", large::call),
     ("MEDIAN", median::call),
     ("MODE.SNGL", mode_sngl::call),

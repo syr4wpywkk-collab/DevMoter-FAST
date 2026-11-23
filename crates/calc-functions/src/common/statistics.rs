@@ -83,6 +83,41 @@ pub fn numeric_pairs(
     Ok(Ok(out))
 }
 
+/// Numbers of a single array argument (`F.TEST`, `FREQUENCY`):
+/// evaluates `arg` via `eval_array` and keeps `Value::Number` members;
+/// text/boolean/blank members are ignored and error members propagate.
+/// Scalars wrap into a one-element array, so a scalar argument yields
+/// a single-element vector (or empty for a blank/non-numeric scalar —
+/// scalar non-numeric is ignored like an array member, matching
+/// Excel's array-argument behavior).
+pub fn array_numbers(
+    ctx: &mut EvalContext<'_>,
+    arg: &Expr,
+) -> Result<Result<Vec<f64>, CalcError>, EvalError> {
+    let arr = match ctx.eval_arg(arg)? {
+        ArgValue::Range(a) => a,
+        ArgValue::Scalar(Value::Array(a)) | ArgValue::Ref(Value::Array(a)) => a,
+        ArgValue::Scalar(v) | ArgValue::Ref(v) => {
+            return Ok(match v.error() {
+                Some(e) => Err(e),
+                None => Ok(match v.to_number() {
+                    Ok(n) => vec![n],
+                    Err(e) => return Ok(Err(e)),
+                }),
+            });
+        }
+    };
+    let mut out = Vec::with_capacity(arr.cells().len());
+    for v in arr.cells() {
+        match v {
+            Value::Number(n) => out.push(*n),
+            Value::Error(e) => return Ok(Err(*e)),
+            _ => {}
+        }
+    }
+    Ok(Ok(out))
+}
+
 /// Two-pass sample variance `Σ(x - x̄)² / (n - 1)`.
 ///
 /// Two-pass is chosen over Welford for exactness on typical inputs and
