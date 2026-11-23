@@ -38,6 +38,7 @@ fn sort_rank(v: &Value) -> u8 {
         Value::Error(_) => 3,
         Value::Blank => 4,
         Value::Array(_) => 5,
+        Value::Lambda(_) => 5,
     }
 }
 
