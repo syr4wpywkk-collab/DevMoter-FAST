@@ -1,0 +1,4237 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-24",
+  "referenceDefaults": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+  },
+  "cases": [
+    {
+      "id": "I04-QUARTILE.EXC-001",
+      "formula": "=QUARTILE.EXC(A1:A8,1)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 4,
+        "A4": 7,
+        "A5": 8,
+        "A6": 9,
+        "A7": 10,
+        "A8": 12
+      },
+      "expected": {
+        "number": 2.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-QUARTILE.EXC-002",
+      "formula": "=QUARTILE.EXC(A1:A8,2)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 4,
+        "A4": 7,
+        "A5": 8,
+        "A6": 9,
+        "A7": 10,
+        "A8": 12
+      },
+      "expected": {
+        "number": 7.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-QUARTILE.EXC-003",
+      "formula": "=QUARTILE.EXC(A1:A8,3)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 4,
+        "A4": 7,
+        "A5": 8,
+        "A6": 9,
+        "A7": 10,
+        "A8": 12
+      },
+      "expected": {
+        "number": 9.75,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-QUARTILE.EXC-004",
+      "formula": "=QUARTILE.EXC({1;2;3;4},1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.25,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-QUARTILE.EXC-005",
+      "formula": "=QUARTILE.EXC({1;2;3;4},0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-QUARTILE.EXC-006",
+      "formula": "=QUARTILE.EXC({1;2;3;4},4)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-QUARTILE.EXC-007",
+      "formula": "=QUARTILE.EXC({1;2;3;4},-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-QUARTILE.EXC-008",
+      "formula": "=QUARTILE.EXC({5;1;9;3;7},2)",
+      "inputs": {},
+      "expected": {
+        "number": 5.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-QUARTILE.EXC-009",
+      "formula": "=QUARTILE.EXC(A1:A2,1)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2
+      },
+      "expected": {
+        "error": "#NUM!"
+      },
+      "specOpen": true,
+      "specOpenReason": "n < 4 for quart 1 fails in Excel per exclusive method; exact behavior to confirm",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-QUARTILE.EXC-010",
+      "formula": "=QUARTILE.EXC({1;2;3},1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-QUARTILE.EXC-011",
+      "formula": "=QUARTILE.EXC({2;4;6;8},2)",
+      "inputs": {},
+      "expected": {
+        "number": 5.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-QUARTILE.EXC-012",
+      "formula": "=QUARTILE.EXC({1;2;3;4},\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RANK.AVG-001",
+      "formula": "=RANK.AVG(7,{1;3;5;7;9})",
+      "inputs": {},
+      "expected": {
+        "number": 2.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RANK.AVG-002",
+      "formula": "=RANK.AVG(3,{1;3;3;5;7},1)",
+      "inputs": {},
+      "expected": {
+        "number": 2.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RANK.AVG-003",
+      "formula": "=RANK.AVG(3,{1;3;3;5;7})",
+      "inputs": {},
+      "expected": {
+        "number": 3.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RANK.AVG-004",
+      "formula": "=RANK.AVG(9,{1;3;5;7;9})",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RANK.AVG-005",
+      "formula": "=RANK.AVG(1,{1;3;5;7;9})",
+      "inputs": {},
+      "expected": {
+        "number": 5.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RANK.AVG-006",
+      "formula": "=RANK.AVG(6,{1;3;5;7;9})",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RANK.AVG-007",
+      "formula": "=RANK.AVG(A1,A1:A5)",
+      "inputs": {
+        "A1": 5,
+        "A2": "x",
+        "A3": 7,
+        "A4": 3,
+        "A5": 1
+      },
+      "expected": {
+        "number": 2.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RANK.AVG-008",
+      "formula": "=RANK.AVG(5,{1;3;5;7;9},-1)",
+      "inputs": {},
+      "expected": {
+        "number": 3.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RANK.AVG-009",
+      "formula": "=RANK.AVG(\"x\",{1;2;3})",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RANK.AVG-010",
+      "formula": "=RANK.AVG(2,{2;2;2;2})",
+      "inputs": {},
+      "expected": {
+        "number": 2.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RSQ-001",
+      "formula": "=RSQ({2;3;9;1;8;7;5},{6;5;11;7;5;4;4})",
+      "inputs": {},
+      "expected": {
+        "number": 0.057950191570881236,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RSQ-002",
+      "formula": "=RSQ({1;2;3;4},{1;2;3;4})",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RSQ-003",
+      "formula": "=RSQ({4;3;2;1},{1;2;3;4})",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RSQ-004",
+      "formula": "=RSQ({1;2},{1})",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RSQ-005",
+      "formula": "=RSQ({1;2;3},{5;5;5})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RSQ-006",
+      "formula": "=RSQ({1},{1})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RSQ-007",
+      "formula": "=RSQ(A1:A4,B1:B4)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "B1": 2,
+        "B2": 4,
+        "B3": 6,
+        "B4": 8
+      },
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RSQ-008",
+      "formula": "=RSQ(A1:A3,B1:B3)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 1,
+        "B2": "x",
+        "B3": 3
+      },
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RSQ-009",
+      "formula": "=RSQ(A1:A3,B1:B3)",
+      "inputs": {
+        "A1": 1,
+        "A2": 1,
+        "A3": 1,
+        "B1": 1,
+        "B2": 2,
+        "B3": 3
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-RSQ-010",
+      "formula": "=RSQ({1/0;2},{1;2})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW-001",
+      "formula": "=SKEW({3;4;5;2;3;4;5;6;4;7})",
+      "inputs": {},
+      "expected": {
+        "number": 0.35954307140679753,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW-002",
+      "formula": "=SKEW({1;2;3;4;5})",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW-003",
+      "formula": "=SKEW({5;5;5;5})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW-004",
+      "formula": "=SKEW({1;2})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW-005",
+      "formula": "=SKEW(A1:A4)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 10
+      },
+      "expected": {
+        "number": 1.7636326148038886,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW-006",
+      "formula": "=SKEW(\"abc\",1,2,3)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW-007",
+      "formula": "=SKEW(1,2,3,4,5,100)",
+      "inputs": {},
+      "expected": {
+        "number": 2.442472638945116,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW-008",
+      "formula": "=SKEW({4;4;4;5;5;6})",
+      "inputs": {},
+      "expected": {
+        "number": 0.8573214099741108,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW-009",
+      "formula": "=SKEW({1;1;1;1;9})",
+      "inputs": {},
+      "expected": {
+        "number": 2.2360679774997894,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW-010",
+      "formula": "=SKEW(A1:A3)",
+      "inputs": {
+        "A1": "x",
+        "A2": "y"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW.P-001",
+      "formula": "=SKEW.P({3;4;5;2;3;4;5;6;4;7})",
+      "inputs": {},
+      "expected": {
+        "number": 0.30319333935414394,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW.P-002",
+      "formula": "=SKEW.P({1;2;3;4;5})",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW.P-003",
+      "formula": "=SKEW.P({1;1;1;1;9})",
+      "inputs": {},
+      "expected": {
+        "number": 1.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW.P-004",
+      "formula": "=SKEW.P({5;5;5;5})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW.P-005",
+      "formula": "=SKEW.P(A1:A3)",
+      "inputs": {
+        "A1": "x"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW.P-006",
+      "formula": "=SKEW.P({1})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": true,
+      "specOpenReason": "SKEW.P of a single value: Excel may return #DIV/0! or 0; expected value unpinned",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW.P-007",
+      "formula": "=SKEW.P({1;2;3;4;5;100})",
+      "inputs": {},
+      "expected": {
+        "number": 1.7837298139192148,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW.P-008",
+      "formula": "=SKEW.P(\"abc\",1,2,3)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW.P-009",
+      "formula": "=SKEW.P(A1:A4)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 10
+      },
+      "expected": {
+        "number": 1.0182337649086284,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-SKEW.P-010",
+      "formula": "=SKEW.P({4;4;4;5;5;6})",
+      "inputs": {},
+      "expected": {
+        "number": 0.6260990336999399,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STANDARDIZE-001",
+      "formula": "=STANDARDIZE(42,40,1.5)",
+      "inputs": {},
+      "expected": {
+        "number": 1.3333333333333333,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STANDARDIZE-002",
+      "formula": "=STANDARDIZE(40,40,1.5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STANDARDIZE-003",
+      "formula": "=STANDARDIZE(38.5,40,1.5)",
+      "inputs": {},
+      "expected": {
+        "number": -1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STANDARDIZE-004",
+      "formula": "=STANDARDIZE(42,40,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STANDARDIZE-005",
+      "formula": "=STANDARDIZE(42,40,-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STANDARDIZE-006",
+      "formula": "=STANDARDIZE(\"x\",40,1.5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STANDARDIZE-007",
+      "formula": "=STANDARDIZE(42,\"x\",1.5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STANDARDIZE-008",
+      "formula": "=STANDARDIZE(42,40,\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STANDARDIZE-009",
+      "formula": "=STANDARDIZE(A1,A2,A3)",
+      "inputs": {
+        "A1": 10,
+        "A2": 20,
+        "A3": 5
+      },
+      "expected": {
+        "number": -2.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STANDARDIZE-010",
+      "formula": "=STANDARDIZE(1/0,0,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEV.P-001",
+      "formula": "=STDEV.P({1;2;3;4;5})",
+      "inputs": {},
+      "expected": {
+        "number": 1.4142135623730951,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEV.P-002",
+      "formula": "=STDEV.P(1345,1301,1368,1322,1310,1370,1318,1350,1303,1299)",
+      "inputs": {},
+      "expected": {
+        "number": 26.0545587425,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEV.P-003",
+      "formula": "=STDEV.P({5;5;5})",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEV.P-004",
+      "formula": "=STDEV.P(A1:A3)",
+      "inputs": {
+        "A1": "x"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEV.P-005",
+      "formula": "=STDEV.P(A1:A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "A3": true,
+        "A4": 3
+      },
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEV.P-006",
+      "formula": "=STDEV.P(\"1\",3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEV.P-007",
+      "formula": "=STDEV.P(\"abc\",3)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEV.P-008",
+      "formula": "=STDEV.P(TRUE,3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEV.P-009",
+      "formula": "=STDEV.P(A1:A3)",
+      "inputs": {
+        "A1": {
+          "error": "#N/A"
+        },
+        "A2": 1
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEV.P-010",
+      "formula": "=STDEV.P(4)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVA-001",
+      "formula": "=STDEVA(1,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVA-002",
+      "formula": "=STDEVA(A1:A3)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "A3": 3
+      },
+      "expected": {
+        "number": 1.5275252316519468,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVA-003",
+      "formula": "=STDEVA(A1:A3)",
+      "inputs": {
+        "A1": true,
+        "A2": "x"
+      },
+      "expected": {
+        "number": 0.5773502691896257,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVA-004",
+      "formula": "=STDEVA(\"1\",3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.4142135623730951,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVA-005",
+      "formula": "=STDEVA(\"abc\",3)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVA-006",
+      "formula": "=STDEVA(TRUE,3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.4142135623730951,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVA-007",
+      "formula": "=STDEVA(10)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVA-008",
+      "formula": "=STDEVA(A1:A3)",
+      "inputs": {
+        "A1": {
+          "error": "#N/A"
+        },
+        "A2": 1
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVA-009",
+      "formula": "=STDEVA(5,5,5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVA-010",
+      "formula": "=STDEVA(A1:A4)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "A3": false,
+        "A4": 3
+      },
+      "expected": {
+        "number": 1.4142135623730951,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVPA-001",
+      "formula": "=STDEVPA(1,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 0.816496580927726,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVPA-002",
+      "formula": "=STDEVPA(A1:A3)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "A3": 3
+      },
+      "expected": {
+        "number": 1.247219128924647,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVPA-003",
+      "formula": "=STDEVPA(A1:A3)",
+      "inputs": {
+        "A1": true,
+        "A2": "x"
+      },
+      "expected": {
+        "number": 0.4714045207910317,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVPA-004",
+      "formula": "=STDEVPA(\"1\",3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVPA-005",
+      "formula": "=STDEVPA(\"abc\",3)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVPA-006",
+      "formula": "=STDEVPA(TRUE,3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVPA-007",
+      "formula": "=STDEVPA(10)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVPA-008",
+      "formula": "=STDEVPA(A1:A3)",
+      "inputs": {
+        "A1": {
+          "error": "#N/A"
+        },
+        "A2": 1
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVPA-009",
+      "formula": "=STDEVPA(5,5,5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STDEVPA-010",
+      "formula": "=STDEVPA(A1:A4)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "A3": false,
+        "A4": 3
+      },
+      "expected": {
+        "number": 1.224744871391589,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STEYX-001",
+      "formula": "=STEYX(A1:A7,B1:B7)",
+      "inputs": {
+        "A1": 2,
+        "A2": 3,
+        "A3": 9,
+        "A4": 1,
+        "A5": 8,
+        "A6": 7,
+        "A7": 5,
+        "B1": 6,
+        "B2": 5,
+        "B3": 11,
+        "B4": 7,
+        "B5": 5,
+        "B6": 4,
+        "B7": 4
+      },
+      "expected": {
+        "number": 3.305719,
+        "tolerance": 1e-05
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STEYX-002",
+      "formula": "=STEYX({1;2;3;4},{1;2;3;4})",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STEYX-003",
+      "formula": "=STEYX({1;2},{1;2})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STEYX-004",
+      "formula": "=STEYX({1;2;3},{5;5;5})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STEYX-005",
+      "formula": "=STEYX({1;2},{1})",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STEYX-006",
+      "formula": "=STEYX(A1:A4,B1:B4)",
+      "inputs": {
+        "A1": 2,
+        "A2": 4,
+        "A3": 6,
+        "A4": 8,
+        "B1": 1,
+        "B2": 2,
+        "B3": 3,
+        "B4": 4
+      },
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STEYX-007",
+      "formula": "=STEYX(A1:A3,B1:B3)",
+      "inputs": {
+        "A1": 2,
+        "A2": 4,
+        "A3": 6,
+        "B1": 1,
+        "B2": 2,
+        "B3": 3
+      },
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STEYX-008",
+      "formula": "=STEYX(A1:A3,B1:B3)",
+      "inputs": {
+        "A1": "x",
+        "A2": "y",
+        "A3": "z",
+        "B1": 1,
+        "B2": 2,
+        "B3": 3
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STEYX-009",
+      "formula": "=STEYX({1/0;2;3},{1;2;3})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-STEYX-010",
+      "formula": "=STEYX({2;4;5;6},{1;2;3;4})",
+      "inputs": {},
+      "expected": {
+        "number": 0.3872983346207417,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST-001",
+      "formula": "=T.DIST(60,1,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.9946953263673768,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST-002",
+      "formula": "=T.DIST(8,3,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0007369065209469265,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST-003",
+      "formula": "=T.DIST(0,10,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST-004",
+      "formula": "=T.DIST(-1.812461,10,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.050000010018875045,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST-005",
+      "formula": "=T.DIST(1.5,10,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.1274447942870917,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST-006",
+      "formula": "=T.DIST(1,10.9,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.82955343384897,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST-007",
+      "formula": "=T.DIST(1,0.5,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST-008",
+      "formula": "=T.DIST(\"x\",10,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST-009",
+      "formula": "=T.DIST(0,10,\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST-010",
+      "formula": "=T.DIST(0,10,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST-011",
+      "formula": "=T.DIST(1/0,10,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.2T-001",
+      "formula": "=T.DIST.2T(1.959999998,60)",
+      "inputs": {},
+      "expected": {
+        "number": 0.05464492973652926,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.2T-002",
+      "formula": "=T.DIST.2T(0,10)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.2T-003",
+      "formula": "=T.DIST.2T(2.228139,10)",
+      "inputs": {},
+      "expected": {
+        "number": 0.04999998745288255,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.2T-004",
+      "formula": "=T.DIST.2T(-1,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.2T-005",
+      "formula": "=T.DIST.2T(1.5,5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.19390368024247315,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.2T-006",
+      "formula": "=T.DIST.2T(1,10.9)",
+      "inputs": {},
+      "expected": {
+        "number": 0.3408931323020601,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.2T-007",
+      "formula": "=T.DIST.2T(1,0.5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.2T-008",
+      "formula": "=T.DIST.2T(\"x\",10)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.2T-009",
+      "formula": "=T.DIST.2T(0.001,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.9993633804398389,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.2T-010",
+      "formula": "=T.DIST.2T(1/0,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.RT-001",
+      "formula": "=T.DIST.RT(1.959999998,60)",
+      "inputs": {},
+      "expected": {
+        "number": 0.02732246486826463,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.RT-002",
+      "formula": "=T.DIST.RT(0,10)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.RT-003",
+      "formula": "=T.DIST.RT(-1.812461,10)",
+      "inputs": {},
+      "expected": {
+        "number": 0.9499999899811249,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.RT-004",
+      "formula": "=T.DIST.RT(50,5)",
+      "inputs": {},
+      "expected": {
+        "number": 3.023878813300617e-08,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.RT-005",
+      "formula": "=T.DIST.RT(1,10.9)",
+      "inputs": {},
+      "expected": {
+        "number": 0.17044656615103004,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.RT-006",
+      "formula": "=T.DIST.RT(1,0.5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.RT-007",
+      "formula": "=T.DIST.RT(\"x\",10)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.RT-008",
+      "formula": "=T.DIST.RT(1.812461,10)",
+      "inputs": {},
+      "expected": {
+        "number": 0.050000010018875045,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.RT-009",
+      "formula": "=T.DIST.RT(1/0,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.DIST.RT-010",
+      "formula": "=T.DIST.RT(2.228139,10)",
+      "inputs": {},
+      "expected": {
+        "number": 0.024999993726441273,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV-001",
+      "formula": "=T.INV(0.054645,60)",
+      "inputs": {},
+      "expected": {
+        "number": -1.6255366542659624,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV-002",
+      "formula": "=T.INV(0.95,10)",
+      "inputs": {},
+      "expected": {
+        "number": 1.8124611228107335,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV-003",
+      "formula": "=T.INV(0.5,5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV-004",
+      "formula": "=T.INV(0.1,10)",
+      "inputs": {},
+      "expected": {
+        "number": -1.3721836411102861,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV-005",
+      "formula": "=T.INV(0,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV-006",
+      "formula": "=T.INV(1,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV-007",
+      "formula": "=T.INV(-0.5,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV-008",
+      "formula": "=T.INV(0.5,0.5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV-009",
+      "formula": "=T.INV(0.9,10.9)",
+      "inputs": {},
+      "expected": {
+        "number": 1.3721836411102863,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV-010",
+      "formula": "=T.INV(\"x\",10)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV-011",
+      "formula": "=T.INV(1/0,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV.2T-001",
+      "formula": "=T.INV.2T(0.05,10)",
+      "inputs": {},
+      "expected": {
+        "number": 2.2281388519649385,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV.2T-002",
+      "formula": "=T.INV.2T(0.546449,60)",
+      "inputs": {},
+      "expected": {
+        "number": 0.6065330757886429,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV.2T-003",
+      "formula": "=T.INV.2T(1,10)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV.2T-004",
+      "formula": "=T.INV.2T(0,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV.2T-005",
+      "formula": "=T.INV.2T(1.5,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV.2T-006",
+      "formula": "=T.INV.2T(-0.5,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV.2T-007",
+      "formula": "=T.INV.2T(0.5,0.5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV.2T-008",
+      "formula": "=T.INV.2T(0.05,10.9)",
+      "inputs": {},
+      "expected": {
+        "number": 2.2281388519649385,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV.2T-009",
+      "formula": "=T.INV.2T(\"x\",10)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV.2T-010",
+      "formula": "=T.INV.2T(0.2,7)",
+      "inputs": {},
+      "expected": {
+        "number": 1.4149239276488585,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.INV.2T-011",
+      "formula": "=T.INV.2T(1/0,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.TEST-001",
+      "formula": "=T.TEST({3;4;5;8;9;1;2;4;5},{6;19;3;2;14;4;5;17;1},2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.19601578492528215,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.TEST-002",
+      "formula": "=T.TEST({3;4;5;8;9;1;2;4;5},{6;19;3;2;14;4;5;17;1},1,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.09800789246264108,
+        "tolerance": 1e-06
+      },
+      "specOpen": true,
+      "specOpenReason": "one-tailed convention: we use |t| (LibreOffice convention); Excel sign handling to confirm",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.TEST-003",
+      "formula": "=T.TEST({3;4;5;8;9;1;2;4;5},{6;19;3;2;14;4;5;17;1},2,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.19199588676039628,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.TEST-004",
+      "formula": "=T.TEST({3;4;5;8;9;1;2;4;5},{6;19;3;2;14;4;5;17;1},2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 0.2022939233686779,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.TEST-005",
+      "formula": "=T.TEST({1;2;3},{1;2},2,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "specOpen": true,
+      "specOpenReason": "paired count mismatch: Excel error code #N/A to confirm",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.TEST-006",
+      "formula": "=T.TEST({3;4;5},{6;19;3},3,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.TEST-007",
+      "formula": "=T.TEST({3;4;5},{6;19;3},2,4)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.TEST-008",
+      "formula": "=T.TEST({1},{2},2,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.TEST-009",
+      "formula": "=T.TEST({1;2;3},{1;2;3},2,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.TEST-010",
+      "formula": "=T.TEST({3;4;5;8;9;1;2;4;5},{6;19;3;2;14;4;5;17;1},\"x\",1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-T.TEST-011",
+      "formula": "=T.TEST({1/0;2},{1;2},2,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TREND-001",
+      "formula": "=TREND({2;4;6;8},{1;2;3;4},{5;6})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            10.0
+          ],
+          [
+            12.0
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TREND-002",
+      "formula": "=TREND({3;5;7;9})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            3.0
+          ],
+          [
+            5.0
+          ],
+          [
+            7.0
+          ],
+          [
+            9.0
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "array expectations carry no tolerance; fitted values differ from integers only in the last FP bit"
+    },
+    {
+      "id": "I04-TREND-003",
+      "formula": "=TREND({1;2;3;4},{1;2;3;4},{5},FALSE)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            5.0
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TREND-004",
+      "formula": "=TREND({1;3;2;4},{1;2;3;4},{5})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            4.5
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "array expectations carry no tolerance; FP last-bit difference vs pinned 4.5"
+    },
+    {
+      "id": "I04-TREND-005",
+      "formula": "=TREND({2,4,6,8},{1,2,3,4},{5,6})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            10.0,
+            12.0
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TREND-006",
+      "formula": "=TREND({5;4;11;8},{1,2;2,1;3,4;4,2},{5,4;6,4.5})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            13.0
+          ],
+          [
+            15.0
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TREND-007",
+      "formula": "=TREND({5;4;11;8},{1,2;2,1;3,4;4,2},{5})",
+      "inputs": {},
+      "expected": {
+        "error": "#REF!"
+      },
+      "specOpen": true,
+      "specOpenReason": "error code for new_xs variable-count mismatch: docs suggest #REF!, confirm",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TREND-008",
+      "formula": "=TREND({1;2;3},{1;2})",
+      "inputs": {},
+      "expected": {
+        "error": "#REF!"
+      },
+      "specOpen": true,
+      "specOpenReason": "error code for known_xs observation-count mismatch, confirm",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TREND-009",
+      "formula": "=TREND({1;2;3},{1,2;2,4;3,6},{4,8})",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "specOpen": true,
+      "specOpenReason": "collinear xs: Excel's LINEST drops the collinear column; we return #NUM!",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TREND-010",
+      "formula": "=TREND({1/0;2})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TRIMMEAN-001",
+      "formula": "=TRIMMEAN({4;5;6;7;2;3;4;5;1;2;3},0.2)",
+      "inputs": {},
+      "expected": {
+        "number": 3.7777777777777777,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TRIMMEAN-002",
+      "formula": "=TRIMMEAN({1;2;3;4;100},0)",
+      "inputs": {},
+      "expected": {
+        "number": 22.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TRIMMEAN-003",
+      "formula": "=TRIMMEAN({1;2;3;4;5},0.4)",
+      "inputs": {},
+      "expected": {
+        "number": 3.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TRIMMEAN-004",
+      "formula": "=TRIMMEAN({1;2;3;4;5;6;7;8;9;10},0.25)",
+      "inputs": {},
+      "expected": {
+        "number": 5.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TRIMMEAN-005",
+      "formula": "=TRIMMEAN({1;2;3},1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TRIMMEAN-006",
+      "formula": "=TRIMMEAN({1;2;3},-0.1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TRIMMEAN-007",
+      "formula": "=TRIMMEAN(A1:A3,0.2)",
+      "inputs": {
+        "A1": "x"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": true,
+      "specOpenReason": "empty array: #DIV/0! chosen (AVERAGE-like); Excel may use #NUM!",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TRIMMEAN-008",
+      "formula": "=TRIMMEAN(A1:A5,0)",
+      "inputs": {
+        "A1": 10,
+        "A2": "x",
+        "A3": true,
+        "A4": 20
+      },
+      "expected": {
+        "number": 15.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TRIMMEAN-009",
+      "formula": "=TRIMMEAN({1;2;3},\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-TRIMMEAN-010",
+      "formula": "=TRIMMEAN({9;1;5;3;7},0.4)",
+      "inputs": {},
+      "expected": {
+        "number": 5.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VAR.P-001",
+      "formula": "=VAR.P({1;2;3;4;5})",
+      "inputs": {},
+      "expected": {
+        "number": 2.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VAR.P-002",
+      "formula": "=VAR.P(1345,1301,1368,1322,1310,1370,1318,1350,1303,1299)",
+      "inputs": {},
+      "expected": {
+        "number": 678.84,
+        "tolerance": 0.01
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VAR.P-003",
+      "formula": "=VAR.P({5;5;5})",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VAR.P-004",
+      "formula": "=VAR.P(A1:A3)",
+      "inputs": {
+        "A1": "x"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VAR.P-005",
+      "formula": "=VAR.P(A1:A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "A3": true,
+        "A4": 3
+      },
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VAR.P-006",
+      "formula": "=VAR.P(\"1\",3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VAR.P-007",
+      "formula": "=VAR.P(\"abc\",3)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VAR.P-008",
+      "formula": "=VAR.P(TRUE,3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VAR.P-009",
+      "formula": "=VAR.P(A1:A3)",
+      "inputs": {
+        "A1": {
+          "error": "#N/A"
+        },
+        "A2": 1
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VAR.P-010",
+      "formula": "=VAR.P(4)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARA-001",
+      "formula": "=VARA(1,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARA-002",
+      "formula": "=VARA(A1:A3)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "A3": 3
+      },
+      "expected": {
+        "number": 2.3333333333333335,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARA-003",
+      "formula": "=VARA(A1:A3)",
+      "inputs": {
+        "A1": true,
+        "A2": "x"
+      },
+      "expected": {
+        "number": 0.3333333333333333,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARA-004",
+      "formula": "=VARA(\"1\",3)",
+      "inputs": {},
+      "expected": {
+        "number": 2.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARA-005",
+      "formula": "=VARA(\"abc\",3)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARA-006",
+      "formula": "=VARA(TRUE,3)",
+      "inputs": {},
+      "expected": {
+        "number": 2.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARA-007",
+      "formula": "=VARA(10)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARA-008",
+      "formula": "=VARA(A1:A3)",
+      "inputs": {
+        "A1": {
+          "error": "#N/A"
+        },
+        "A2": 1
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARA-009",
+      "formula": "=VARA(5,5,5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARA-010",
+      "formula": "=VARA(A1:A4)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "A3": false,
+        "A4": 3
+      },
+      "expected": {
+        "number": 2.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARPA-001",
+      "formula": "=VARPA(1,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 0.6666666666666666,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARPA-002",
+      "formula": "=VARPA(A1:A3)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "A3": 3
+      },
+      "expected": {
+        "number": 1.5555555555555556,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARPA-003",
+      "formula": "=VARPA(A1:A3)",
+      "inputs": {
+        "A1": true,
+        "A2": "x"
+      },
+      "expected": {
+        "number": 0.22222222222222224,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARPA-004",
+      "formula": "=VARPA(\"1\",3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARPA-005",
+      "formula": "=VARPA(\"abc\",3)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARPA-006",
+      "formula": "=VARPA(TRUE,3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARPA-007",
+      "formula": "=VARPA(10)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARPA-008",
+      "formula": "=VARPA(A1:A3)",
+      "inputs": {
+        "A1": {
+          "error": "#N/A"
+        },
+        "A2": 1
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARPA-009",
+      "formula": "=VARPA(5,5,5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-VARPA-010",
+      "formula": "=VARPA(A1:A4)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "A3": false,
+        "A4": 3
+      },
+      "expected": {
+        "number": 1.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-WEIBULL.DIST-001",
+      "formula": "=WEIBULL.DIST(105,20,100,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.9295813900692769,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-WEIBULL.DIST-002",
+      "formula": "=WEIBULL.DIST(105,20,100,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.035588864024504334,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-WEIBULL.DIST-003",
+      "formula": "=WEIBULL.DIST(0,1,2,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-WEIBULL.DIST-004",
+      "formula": "=WEIBULL.DIST(2,1,2,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.6321205588285577,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-WEIBULL.DIST-005",
+      "formula": "=WEIBULL.DIST(0,1,2,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-WEIBULL.DIST-006",
+      "formula": "=WEIBULL.DIST(0,0.5,2,FALSE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "specOpen": true,
+      "specOpenReason": "divergent pdf at x=0,alpha<1: we return #NUM!; Excel may return a huge number",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-WEIBULL.DIST-007",
+      "formula": "=WEIBULL.DIST(-1,1,2,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-WEIBULL.DIST-008",
+      "formula": "=WEIBULL.DIST(1,0,2,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-WEIBULL.DIST-009",
+      "formula": "=WEIBULL.DIST(1,1,-2,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-WEIBULL.DIST-010",
+      "formula": "=WEIBULL.DIST(\"x\",1,2,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-WEIBULL.DIST-011",
+      "formula": "=WEIBULL.DIST(1/0,1,2,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-Z.TEST-001",
+      "formula": "=Z.TEST({3;6;7;8;6;5;4;2;1;9},4)",
+      "inputs": {},
+      "expected": {
+        "number": 0.09057419685136386,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-Z.TEST-002",
+      "formula": "=Z.TEST({3;6;7;8;6;5;4;2;1;9},6)",
+      "inputs": {},
+      "expected": {
+        "number": 0.8630433891295299,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-Z.TEST-003",
+      "formula": "=Z.TEST({3;6;7;8;6;5;4;2;1;9},5,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.43718353058144616,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-Z.TEST-004",
+      "formula": "=Z.TEST({1;2;3},2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-Z.TEST-005",
+      "formula": "=Z.TEST(A1:A3,5)",
+      "inputs": {
+        "A1": "x"
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "specOpen": true,
+      "specOpenReason": "empty array error code: #N/A per docs, confirm vs #DIV/0!",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-Z.TEST-006",
+      "formula": "=Z.TEST({1;2;3},2,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-Z.TEST-007",
+      "formula": "=Z.TEST({1;2;3},2,-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-Z.TEST-008",
+      "formula": "=Z.TEST({5},5)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-Z.TEST-009",
+      "formula": "=Z.TEST({5;5;5},4)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-Z.TEST-010",
+      "formula": "=Z.TEST({1;2;3},\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I04-Z.TEST-011",
+      "formula": "=Z.TEST({1;2;3},2,\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; scipy/numpy cross-check; to be re-recorded empirically per plan section 10.5"
+      }
+    }
+  ]
+}

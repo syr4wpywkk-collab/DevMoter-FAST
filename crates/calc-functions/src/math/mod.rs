@@ -3,12 +3,55 @@
 use calc_core::registry::Function;
 
 mod abs;
+mod acos;
+mod acosh;
+mod acot;
+mod acoth;
+mod aggregate;
+mod arabic;
+mod asin;
+mod asinh;
+mod atan;
+mod atan2;
+mod atanh;
+mod base;
+mod ceiling;
 mod ceiling_math;
+mod ceiling_precise;
+mod combin;
+mod combina;
+mod cos;
+mod cosh;
+mod cot;
+mod coth;
+mod csc;
+mod csch;
+mod decimal;
+mod degrees;
+mod even;
 mod exp;
+mod fact;
+mod factdouble;
+mod floor;
 mod floor_math;
+mod floor_precise;
+mod gcd;
 mod int;
+mod iso_ceiling;
+mod lcm;
+mod ln;
 mod log;
+mod log10;
+mod matrix;
+mod mdeterm;
+mod minverse;
+mod mmult;
 mod mod_fn;
+mod mround;
+mod multinomial;
+mod munit;
+mod odd;
+mod percentof;
 mod pi;
 mod power;
 mod quotient;
@@ -41,13 +84,55 @@ mod trunc;
 /// consumed by [`crate::registry`].
 pub const FUNCTIONS: &[(&str, Function)] = &[
     ("ABS", abs::call),
+    ("ACOS", acos::call),
+    ("ACOSH", acosh::call),
+    ("ACOT", acot::call),
+    ("ACOTH", acoth::call),
+    ("AGGREGATE", aggregate::call),
+    ("ARABIC", arabic::call),
+    ("ASIN", asin::call),
+    ("ASINH", asinh::call),
+    ("ATAN", atan::call),
+    ("ATAN2", atan2::call),
+    ("ATANH", atanh::call),
+    ("BASE", base::call),
+    ("CEILING", ceiling::call),
     ("CEILING.MATH", ceiling_math::call),
+    ("CSCH", csch::call),
+    ("DECIMAL", decimal::call),
+    ("DEGREES", degrees::call),
+    ("EVEN", even::call),
+    ("CEILING.PRECISE", ceiling_precise::call),
+    ("COMBIN", combin::call),
+    ("COMBINA", combina::call),
+    ("COS", cos::call),
+    ("COSH", cosh::call),
+    ("COT", cot::call),
+    ("COTH", coth::call),
+    ("CSC", csc::call),
     ("EXP", exp::call),
+    ("FACT", fact::call),
+    ("FACTDOUBLE", factdouble::call),
+    ("FLOOR", floor::call),
     ("FLOOR.MATH", floor_math::call),
+    ("FLOOR.PRECISE", floor_precise::call),
+    ("GCD", gcd::call),
     ("INT", int::call),
+    ("ISO.CEILING", iso_ceiling::call),
+    ("LCM", lcm::call),
+    ("LN", ln::call),
     ("LOG", log::call),
+    ("LOG10", log10::call),
+    ("MDETERM", mdeterm::call),
+    ("MINVERSE", minverse::call),
+    ("MMULT", mmult::call),
     ("MOD", mod_fn::call),
     ("PI", pi::call),
+    ("MROUND", mround::call),
+    ("MULTINOMIAL", multinomial::call),
+    ("MUNIT", munit::call),
+    ("ODD", odd::call),
+    ("PERCENTOF", percentof::call),
     ("POWER", power::call),
     ("QUOTIENT", quotient::call),
     ("RADIANS", radians::call),
