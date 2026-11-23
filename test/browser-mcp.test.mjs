@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { EventEmitter, once } from "node:events";
 import http from "node:http";
-import { access, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { access, mkdtemp, open, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
@@ -401,8 +401,11 @@ test("Agent Runs get a scoped browser MCP config, revoked with its token file wh
     assert.equal(start[key], undefined, key);
   }
   const tokenFile = server.args[5];
-  assert.equal((await stat(tokenFile)).mode & 0o777, 0o600);
-  const token = (await readFile(tokenFile, "utf8")).trim();
+  const handle = await open(tokenFile, "r");
+  const token = await handle.stat().then(async info => {
+    assert.equal(info.mode & 0o777, 0o600);
+    return (await handle.readFile("utf8")).trim();
+  }).finally(() => handle.close());
   const record = tokens.verify(token);
   assert.equal(record.runId, run.id);
   assert.equal(record.projectId, "project-1");
