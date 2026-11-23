@@ -10,6 +10,7 @@
 
 import pg from 'pg';
 
+import { sqlShape } from './sql-text.ts';
 import { EngineError, resolveTimeout, sqlHealth, type QueryOptions, type QueryParam, type QueryResult, type ResultSet, type SqlAdapter } from './types.ts';
 
 export const MAX_SQL_BYTES = 1024 * 1024;
@@ -54,10 +55,43 @@ export function encodePostgresqlParam(param: QueryParam, position: number): stri
   throw new EngineError('invalid_request', `parameter ${position} must be null, a boolean, a number, a string or {"$base64": "..."}`);
 }
 
+/**
+ * Whether a statement is COPY ... TO STDOUT or COPY ... FROM STDIN, which move data over the
+ * connection itself. The client cannot carry that data, and by the time the server announces
+ * the copy a statement such as COPY (INSERT ... RETURNING ...) TO STDOUT has already written.
+ */
+export function copiesThroughClient(sql: string): boolean {
+  let found = false;
+  let first = true; // the next token opens a statement
+  let copy = false;
+  let depth = 0;
+  let previous = '';
+  sqlShape(sql, {}, (token) => {
+    if (token === ';') {
+      first = true;
+      copy = false;
+      depth = 0;
+      previous = '';
+      return;
+    }
+    const word = /^[A-Za-z_]/.test(token) ? token.toUpperCase() : '';
+    if (first) copy = word === 'COPY';
+    else if (copy && depth === 0 && (word === 'STDOUT' || word === 'STDIN') && (previous === 'TO' || previous === 'FROM')) found = true;
+    first = false;
+    if (token === '(') depth += 1;
+    else if (token === ')') depth -= 1;
+    previous = word;
+  });
+  return found;
+}
+
 export function validatePostgresqlRequest(sql: string, params: readonly QueryParam[]): (string | Buffer | null)[] {
   if (typeof sql !== 'string' || sql.trim() === '') throw new EngineError('invalid_request', 'sql must be a non-empty string');
   if (sql.includes('\0')) throw new EngineError('invalid_request', 'sql must not contain a NUL character');
   if (Buffer.byteLength(sql, 'utf8') > MAX_SQL_BYTES) throw new EngineError('invalid_request', `sql is longer than ${MAX_SQL_BYTES} bytes`);
+  if (copiesThroughClient(sql)) {
+    throw new EngineError('invalid_request', 'COPY ... TO STDOUT and COPY ... FROM STDIN are not available through the API; use SELECT to read rows and INSERT to add them');
+  }
   if (!Array.isArray(params)) throw new EngineError('invalid_request', 'params must be an array');
   if (params.length > MAX_PARAMS) throw new EngineError('invalid_request', `more than ${MAX_PARAMS} parameters`);
   return params.map((param, index) => encodePostgresqlParam(param, index + 1));
@@ -236,9 +270,10 @@ export function createPostgresqlAdapter(options: PostgresqlAdapterOptions): SqlA
           bytes += message.length;
           if (bytes > MAX_RESULT_BYTES) stop(new EngineError('result_too_large', `the result is larger than ${MAX_RESULT_BYTES} bytes`));
         });
-        // The client drops COPY data, so COPY ... TO STDOUT would look like a statement that returned nothing.
+        // The client drops COPY data, so a COPY ... TO STDOUT that got past the check on the text
+        // would look like a statement that returned nothing. The server may have finished it by now.
         (client as unknown as { connection: { on(event: 'copyOutResponse', listener: () => void): void } }).connection.on('copyOutResponse', () =>
-          stop(new EngineError('query_failed', 'COPY ... TO STDOUT is not available through the API; use SELECT to read the rows')),
+          stop(new EngineError('query_failed', 'COPY ... TO STDOUT is not available through the API; the statement may already have run, so check its effect before sending it again')),
         );
         // Without parameters the simple protocol is used, which accepts several statements.
         const result = await Promise.race([values.length > 0 ? client.query(sql, values) : client.query(sql), stopped]);
