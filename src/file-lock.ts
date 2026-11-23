@@ -6,6 +6,7 @@ import { randomBytes } from 'node:crypto';
 import { constants } from 'node:fs';
 import { link, mkdir, open, rmdir, unlink, writeFile, type FileHandle } from 'node:fs/promises';
 import os from 'node:os';
+import path from 'node:path';
 
 const LOCK_WAIT_MS = 5000;
 const RETRY_MS = 10;
@@ -100,7 +101,8 @@ let drafts = 0;
  * lock without an owner, which nobody could tell from one that is about to be signed.
  */
 async function createLock(lock: string): Promise<boolean> {
-  const draft = `${lock}.${process.pid}.${INSTANCE}.${(drafts += 1)}`;
+  // A short name of its own: one built on the lock's could be too long where the lock's is not.
+  const draft = path.join(path.dirname(lock), `.dmb-lock-${process.pid}-${INSTANCE}-${(drafts += 1)}`);
   await writeFile(draft, ownership(), { flag: 'wx', mode: 0o600 });
   try {
     await link(draft, lock);
