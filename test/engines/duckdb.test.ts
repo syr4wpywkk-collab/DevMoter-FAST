@@ -135,11 +135,19 @@ describe('DuckDB adapter against the built engine', { skip: duckdb.skip }, () =>
     assert.deepEqual((await adapter.query("SELECT count(*) AS c FROM duckdb_tables() WHERE table_name = 'leaked'", [])).results[0]?.rows, [{ c: 0 }]);
   });
 
+  test('a CRLF inside a string literal is stored as sent', async () => {
+    const { results } = await adapter.query("SELECT hex('a\r\nb') AS crlf, hex('a\rb') AS cr,\r\n hex($1::VARCHAR) AS param", ['x\r\ny']);
+    assert.deepEqual(results[0]?.rows, [{ crlf: '610D0A62', cr: '610D62', param: '780D0A79' }]);
+  });
+
   test('EXPLAIN returns the plan as text', async () => {
     const { results } = await adapter.query('EXPLAIN SELECT count(*) FROM t', []);
     assert.deepEqual(results[0]?.columns, ['plan']);
     assert.equal(results[0]?.rowCount, 1);
     assert.match(String(results[0]?.rows[0]?.plan), /Scan/);
+    // DuckDB reads a no-break space as a space, so this is an EXPLAIN too.
+    const spaced = await adapter.query('EXPLAIN\u00a0SELECT count(*) FROM t', []);
+    assert.deepEqual(spaced.results[0]?.columns, ['plan']);
     const json = await adapter.query('EXPLAIN (FORMAT JSON) SELECT count(*) FROM t', []);
     assert.equal(Array.isArray(JSON.parse(String(json.results[0]?.rows[0]?.plan))), true);
   });
