@@ -4,6 +4,7 @@
 //! Layout mirrors `docs/FUNCTION_PLAN_V2.md` §1: one file per function
 //! inside its category directory (`aggregate/`, `logical/`, `math/`,
 //! `lookup/`, `text/`, `datetime/`, `statistics/`, `array/`,
+//! `functional/`, `information/`); shared semantics live in [`common`]; [`registry`]
 //! `functional/`, `compatibility/`); shared semantics live in
 //! [`common`]; [`registry`]
 //! aggregates every category's `FUNCTIONS` list into the
@@ -21,6 +22,7 @@ pub mod datetime;
 pub mod engineering;
 pub mod financial;
 pub mod functional;
+pub mod information;
 pub mod logical;
 pub mod lookup;
 pub mod math;
