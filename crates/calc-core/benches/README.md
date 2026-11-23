@@ -8,6 +8,9 @@ where real benchmarks plug in.
 
 - `eval_scaffold.rs` — placeholder bench group. Real benches should be grouped
   per scenario below, one file per workload class as they land.
+- `parse_bench.rs` — "Initial parse" scenario: small formula, 100-term sum,
+  deeply nested calls, and long range references through `calc_core::parse`.
+  Run alone with `cargo bench -p calc-core --bench parse_bench`.
 
 ## Scenario list (docs/IMPLEMENTATION_PLAN.md §11)
 

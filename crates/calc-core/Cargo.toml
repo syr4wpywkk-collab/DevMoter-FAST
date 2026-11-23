@@ -14,3 +14,7 @@ criterion = "0.7.0"
 [[bench]]
 name = "eval_scaffold"
 harness = false
+
+[[bench]]
+name = "parse_bench"
+harness = false
