@@ -7,6 +7,7 @@
 //! must not re-implement these rules locally.
 
 pub mod coercion;
+pub mod complex;
 
 // Declared per v2 §3. Modules with no code yet carry a doc comment
 // stating their intended role — no stub implementations.
