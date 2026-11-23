@@ -124,10 +124,15 @@ export function bindBrowserViewer(webSocket, manager, grant, { now = Date.now, a
       const id = Number.isSafeInteger(message.id) ? message.id : null;
       const action = message.action && typeof message.action === "object" && !Array.isArray(message.action) ? message.action : {};
       // Same audit line as POST /api/browser/sessions/:id/actions; typed text is never recorded.
-      const log = entry => audit?.record({
-        actor: "user", deviceId: grant.deviceId, event: "action", sessionId: grant.sessionId,
-        action, capability: browserActionClass(action.type), transport: "websocket", ...entry
-      });
+      // Hostile action fields (e.g. {"toString": 1}) must not turn auditing into an unhandled rejection.
+      const log = entry => {
+        try {
+          audit?.record({
+            actor: "user", deviceId: grant.deviceId, event: "action", sessionId: grant.sessionId,
+            action, capability: browserActionClass(action.type), transport: "websocket", ...entry
+          });
+        } catch {}
+      };
       void manager.act(grant.sessionId, message.action, {
         holder: "user",
         generation: message.generation,

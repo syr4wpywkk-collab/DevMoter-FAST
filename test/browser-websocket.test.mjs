@@ -125,7 +125,7 @@ test("browser socket rejects a revoked device", async t => {
 
 test("browser socket relays frames, ACKs and generation-checked actions", async t => {
   const audited = [];
-  const { manager, issue, connect } = await setup(t, { audit: { record: entry => audited.push(entry) } });
+  const { manager, issue, connect } = await setup(t, { audit: { record: entry => { String(entry.action.type); audited.push(entry); } } });
   const { socket, messages } = await connect(issue());
   await until(() => messages.length >= 1);
   assert.equal(messages[0].t, "hello");
@@ -137,6 +137,8 @@ test("browser socket relays frames, ACKs and generation-checked actions", async 
   socket.send(JSON.stringify({ t: "act", id: 2, generation: 0, action: { type: "click", x: 1, y: 2 } }));
   socket.send(JSON.stringify({ t: "ping" }));
   await until(() => messages.length >= 5);
+  socket.send(JSON.stringify({ t: "act", id: 3, generation: 1, action: { type: { toString: 1 } } }));
+  await until(() => messages.some(message => message.t === "result" && message.id === 3));
   assert.deepEqual(manager.state.acks, [3]);
   assert.equal(manager.state.acts[0].options.holder, "user");
   assert.equal(manager.state.acts[0].options.deviceId, "d");
