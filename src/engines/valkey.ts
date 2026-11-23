@@ -108,6 +108,7 @@ export function encodeArguments(args: readonly CommandArg[]): (string | Buffer)[
       value = arg;
     } else if (typeof arg === 'number') {
       if (!Number.isFinite(arg)) throw new EngineError('invalid_request', `argument ${index + 1} is not a finite number`);
+      if (Number.isInteger(arg) && !Number.isSafeInteger(arg)) throw new EngineError('invalid_request', `argument ${index + 1} is an integer too large to be exact as a number; send it as a string`);
       value = Object.is(arg, -0) ? '0' : String(arg);
     } else if (typeof arg === 'object' && arg !== null && !Array.isArray(arg) && Object.keys(arg).length === 1 && typeof arg.$base64 === 'string') {
       if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(arg.$base64)) throw new EngineError('invalid_request', `argument ${index + 1} is not valid base64`);

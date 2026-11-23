@@ -38,6 +38,7 @@ export function encodePostgresqlParam(param: QueryParam, position: number): stri
   if (typeof param === 'boolean') return param ? 'true' : 'false';
   if (typeof param === 'number') {
     if (!Number.isFinite(param)) throw new EngineError('invalid_request', `parameter ${position} is not a finite number`);
+    if (Number.isInteger(param) && !Number.isSafeInteger(param)) throw new EngineError('invalid_request', `parameter ${position} is an integer too large to be exact as a number; send it as a string`);
     return Object.is(param, -0) ? '0' : String(param);
   }
   if (typeof param === 'string') {
