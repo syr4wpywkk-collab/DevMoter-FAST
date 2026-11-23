@@ -8,7 +8,9 @@
 
 use calc_core::registry::{Function, FunctionRegistry};
 
-use crate::{aggregate, array, datetime, functional, logical, lookup, math, statistics, text};
+use crate::{
+    aggregate, array, datetime, financial, functional, logical, lookup, math, statistics, text,
+};
 
 /// Aggregation point — exactly one entry per v2 §3 category, in the
 /// plan's order. Empty categories contribute `&[]` so the structure is
@@ -23,6 +25,7 @@ const CATEGORIES: &[&[(&str, Function)]] = &[
     statistics::FUNCTIONS,
     array::FUNCTIONS,
     functional::FUNCTIONS,
+    financial::FUNCTIONS,
 ];
 
 /// Registry containing every implemented function. Lookup is a linear
@@ -135,21 +138,28 @@ mod tests {
                 "OR",
                 "PERCENTILE.INC",
                 "POWER",
+                "PRICEDISC",
+                "PRICEMAT",
                 "PRODUCT",
                 "PROPER",
+                "PV",
                 "QUARTILE.INC",
                 "RAND",
                 "RANDBETWEEN",
                 "RANK.EQ",
+                "RATE",
+                "RECEIVED",
                 "REDUCE",
                 "REPLACE",
                 "RIGHT",
                 "ROUND",
                 "ROW",
                 "ROWS",
+                "RRI",
                 "SEARCH",
                 "SECOND",
                 "SEQUENCE",
+                "SLN",
                 "SLOPE",
                 "SMALL",
                 "SORT",
@@ -161,7 +171,11 @@ mod tests {
                 "SUMIFS",
                 "SUMPRODUCT",
                 "SWITCH",
+                "SYD",
                 "TAKE",
+                "TBILLEQ",
+                "TBILLPRICE",
+                "TBILLYIELD",
                 "TEXT",
                 "TEXTJOIN",
                 "TIME",
@@ -175,10 +189,16 @@ mod tests {
                 "UPPER",
                 "VALUE",
                 "VAR.S",
+                "VDB",
                 "VLOOKUP",
                 "VSTACK",
+                "XIRR",
                 "XLOOKUP",
+                "XNPV",
                 "YEAR",
+                "YIELD",
+                "YIELDDISC",
+                "YIELDMAT"
             ]
         );
     }
