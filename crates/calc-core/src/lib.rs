@@ -12,6 +12,7 @@ pub mod engine;
 pub mod error;
 pub mod eval;
 pub mod graph;
+pub mod lambda;
 pub mod lexer;
 pub mod parser;
 pub mod registry;
@@ -28,6 +29,7 @@ pub use engine::{CalcEngine, EngineError, RecalcReport};
 pub use error::CalcError;
 pub use eval::{ArgValue, Clock, EvalContext, EvalError, FixedClock, MAX_EVAL_STEPS, SystemClock};
 pub use graph::Dep;
+pub use lambda::LambdaValue;
 pub use lexer::{LexError, LexErrorKind, Token, TokenKind, lex};
 pub use parser::{
     MAX_AST_NODES, MAX_DEPTH, MAX_FORMULA_LEN, MAX_TOKENS, ParseError, ParseErrorKind, parse,

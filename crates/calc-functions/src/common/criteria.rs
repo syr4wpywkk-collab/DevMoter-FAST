@@ -105,7 +105,7 @@ impl Criterion {
     pub fn from_value(v: &Value) -> Result<Criterion, CalcError> {
         match v {
             Value::Error(e) => Err(*e),
-            Value::Array(_) => Err(CalcError::Value),
+            Value::Array(_) | Value::Lambda(_) => Err(CalcError::Value),
             Value::Number(n) => Ok(Criterion {
                 op: CmpOp::Eq,
                 operand: Operand::Number {
@@ -162,7 +162,8 @@ impl Criterion {
                 | Value::Blank
                 | Value::Text(_)
                 | Value::Error(_)
-                | Value::Array(_) => self.op == CmpOp::Ne && !cell.is_blank(),
+                | Value::Array(_)
+                | Value::Lambda(_) => self.op == CmpOp::Ne && !cell.is_blank(),
             },
             Operand::Bool { b, via_string } => {
                 let hit = match cell {
@@ -186,7 +187,7 @@ impl Criterion {
                     op => op.test_text(s, pat),
                 },
                 Value::Number(_) | Value::Boolean(_) => self.op == CmpOp::Ne,
-                Value::Blank | Value::Error(_) | Value::Array(_) => false,
+                Value::Blank | Value::Error(_) | Value::Array(_) | Value::Lambda(_) => false,
             },
         }
     }

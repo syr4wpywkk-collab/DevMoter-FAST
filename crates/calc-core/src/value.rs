@@ -2,7 +2,9 @@
 
 use crate::array::ArrayValue;
 use crate::error::CalcError;
+use crate::lambda::LambdaValue;
 use std::fmt;
+use std::rc::Rc;
 
 /// A single spreadsheet value.
 ///
@@ -23,6 +25,10 @@ pub enum Value {
     Error(CalcError),
     /// Rectangular 2-D array (dynamic array / spill result, array literals).
     Array(ArrayValue),
+    /// Anonymous function produced by `LAMBDA` (v2 §3). Lambdas cannot be
+    /// displayed in a cell: every scalar coercion yields `#VALUE!` and a
+    /// lambda that reaches a cell boundary becomes `#VALUE!`.
+    Lambda(Rc<LambdaValue>),
 }
 
 /// The kind of a [`Value`], for error messages and type checks.
@@ -34,6 +40,7 @@ pub enum ValueKind {
     Boolean,
     Error,
     Array,
+    Lambda,
 }
 
 impl Value {
@@ -46,6 +53,7 @@ impl Value {
             Value::Boolean(_) => ValueKind::Boolean,
             Value::Error(_) => ValueKind::Error,
             Value::Array(_) => ValueKind::Array,
+            Value::Lambda(_) => ValueKind::Lambda,
         }
     }
 
@@ -85,7 +93,7 @@ impl Value {
             Value::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
             Value::Text(s) => parse_number_text(s).ok_or(CalcError::Value),
             Value::Error(e) => Err(*e),
-            Value::Array(_) => Err(CalcError::Value),
+            Value::Array(_) | Value::Lambda(_) => Err(CalcError::Value),
         }
     }
 
@@ -107,7 +115,7 @@ impl Value {
                 _ => Err(CalcError::Value),
             },
             Value::Error(e) => Err(*e),
-            Value::Array(_) => Err(CalcError::Value),
+            Value::Array(_) | Value::Lambda(_) => Err(CalcError::Value),
         }
     }
 
@@ -127,7 +135,7 @@ impl Value {
             Value::Number(n) => Ok(format_number(*n)),
             Value::Boolean(b) => Ok(if *b { "TRUE" } else { "FALSE" }.to_string()),
             Value::Error(e) => Err(*e),
-            Value::Array(_) => Err(CalcError::Value),
+            Value::Array(_) | Value::Lambda(_) => Err(CalcError::Value),
         }
     }
 }
@@ -224,6 +232,7 @@ impl fmt::Display for Value {
             Value::Boolean(b) => f.write_str(if *b { "TRUE" } else { "FALSE" }),
             Value::Error(e) => write!(f, "{e}"),
             Value::Array(a) => write!(f, "<array {}x{}>", a.rows(), a.cols()),
+            Value::Lambda(_) => f.write_str("<lambda>"),
         }
     }
 }
