@@ -17,9 +17,14 @@ use calc_core::value::Value;
 
 /// Members of one argument as `(value, range_derived)` pairs in
 /// row-major order — the positional pairing `CORREL`/`SLOPE`/
-/// `INTERCEPT` need. Scalars and single refs are one-element vectors.
-fn arg_members(ctx: &mut EvalContext<'_>, arg: &Expr) -> Result<Vec<(Value, bool)>, EvalError> {
+/// `INTERCEPT` need. Scalars and single refs are one-element vectors;
+/// array literals and array-valued refs expand to ranged members (their
+/// elements follow the range rule: non-numerics are ignored).
+pub fn arg_members(ctx: &mut EvalContext<'_>, arg: &Expr) -> Result<Vec<(Value, bool)>, EvalError> {
     Ok(match ctx.eval_arg(arg)? {
+        ArgValue::Scalar(Value::Array(a)) | ArgValue::Ref(Value::Array(a)) => {
+            a.into_iter().map(|v| (v, true)).collect()
+        }
         ArgValue::Scalar(v) => vec![(v, false)],
         ArgValue::Ref(v) => vec![(v, true)],
         ArgValue::Range(a) => a.into_iter().map(|v| (v, true)).collect(),
@@ -29,7 +34,7 @@ fn arg_members(ctx: &mut EvalContext<'_>, arg: &Expr) -> Result<Vec<(Value, bool
 /// One member of a paired argument: `Some(n)` for a usable number,
 /// `None` for a range member that is ignored (text/boolean/blank) or a
 /// scalar that stays non-numeric after coercion, `Err` to propagate.
-fn member_number(v: &Value, ranged: bool) -> Result<Option<f64>, CalcError> {
+pub fn member_number(v: &Value, ranged: bool) -> Result<Option<f64>, CalcError> {
     if let Some(e) = v.error() {
         return Err(e);
     }
@@ -184,6 +189,24 @@ pub fn scalar_number(
     arg: &Expr,
 ) -> Result<Result<f64, CalcError>, EvalError> {
     Ok(ctx.eval(arg)?.to_number())
+}
+
+/// Two-pass population variance `Σ(x - x̄)² / n` — the `STDEV.P`/`VAR.P`
+/// kernel, same stability argument as [`sample_variance`]. `None` when
+/// `n < 1` (callers map to `#DIV/0!`); a single value gives `0`.
+pub fn population_variance(nums: &[f64]) -> Option<f64> {
+    if nums.is_empty() {
+        return None;
+    }
+    let mean = nums.iter().sum::<f64>() / nums.len() as f64;
+    let ss = nums
+        .iter()
+        .map(|x| {
+            let d = x - mean;
+            d * d
+        })
+        .sum::<f64>();
+    Some(ss / nums.len() as f64)
 }
 
 #[cfg(test)]
