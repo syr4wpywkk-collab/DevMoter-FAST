@@ -164,6 +164,21 @@ test("browser action classes: read, act, and evaluate is always denied", () => {
   assert.equal(decideBrowserAction({ record, type: "dom", decide: input => engine.decide(input) }).decision, "allow");
   const askEngine = createPolicyEngine([{ id: "ask-act", tool: "browser", action: "browser.act", effect: "ask" }]);
   assert.equal(decideBrowserAction({ record, type: "click", decide: input => askEngine.decide(input) }).code, "approval_unavailable");
+  const anonymousDeny = createPolicyEngine([{ tool: "browser", action: "browser.act", effect: "deny" }]);
+  assert.equal(decideBrowserAction({ record, type: "click", decide: input => anonymousDeny.decide(input) }).code, "policy_denied", "a rule without an id still applies");
+});
+
+test("an agent can close the browser it opened after releasing control", async t => {
+  const { dir, manager, tokens, baseUrl } = await agentServer(t);
+  const { token } = tokens.issue({ projectId: "project-1", capabilities: ["browser.act"], runId: "run-close" });
+  const mcp = await mcpClient(t, { baseUrl, tokenFile: await tokenFileFor(dir, token) });
+  await mcp.request("initialize", { protocolVersion: "2025-06-18" });
+  assert.equal((await mcp.callTool("browser_open")).isError, undefined);
+  assert.equal((await mcp.callTool("browser_release_control")).isError, undefined);
+  const closed = await mcp.callTool("browser_close");
+  assert.equal(closed.isError, undefined, closed.content[0].text);
+  assert.equal(JSON.parse(closed.content[0].text).stopped, true);
+  assert.equal(manager.sessions.size, 0);
 });
 
 test("agent tokens are hashed, scoped, expire and revoke by run, device and id", () => {
