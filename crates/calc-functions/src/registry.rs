@@ -8,7 +8,9 @@
 
 use calc_core::registry::{Function, FunctionRegistry};
 
-use crate::{aggregate, array, datetime, functional, logical, lookup, math, statistics, text};
+use crate::{
+    aggregate, array, datetime, engineering, functional, logical, lookup, math, statistics, text,
+};
 
 /// Aggregation point — exactly one entry per v2 §3 category, in the
 /// plan's order. Empty categories contribute `&[]` so the structure is
@@ -23,6 +25,7 @@ const CATEGORIES: &[&[(&str, Function)]] = &[
     statistics::FUNCTIONS,
     array::FUNCTIONS,
     functional::FUNCTIONS,
+    engineering::FUNCTIONS,
 ];
 
 /// Registry containing every implemented function. Lookup is a linear
@@ -82,11 +85,25 @@ mod tests {
                 "ABS",
                 "AND",
                 "AVERAGE",
+                "BESSELI",
+                "BESSELJ",
+                "BESSELK",
+                "BESSELY",
+                "BIN2DEC",
+                "BIN2HEX",
+                "BIN2OCT",
+                "BITAND",
+                "BITLSHIFT",
+                "BITOR",
+                "BITRSHIFT",
+                "BITXOR",
                 "CEILING.MATH",
                 "CHOOSE",
                 "COLUMN",
                 "COLUMNS",
+                "COMPLEX",
                 "CONCAT",
+                "CONVERT",
                 "CORREL",
                 "COUNT",
                 "COUNTA",
@@ -94,6 +111,10 @@ mod tests {
                 "COUNTIFS",
                 "DATE",
                 "DAY",
+                "DEC2BIN",
+                "DEC2HEX",
+                "DEC2OCT",
+                "DELTA",
                 "DROP",
                 "EDATE",
                 "EOMONTH",

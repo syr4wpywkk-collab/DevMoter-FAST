@@ -16,6 +16,7 @@ pub mod aggregate;
 pub mod array;
 pub mod common;
 pub mod datetime;
+pub mod engineering;
 pub mod functional;
 pub mod logical;
 pub mod lookup;
