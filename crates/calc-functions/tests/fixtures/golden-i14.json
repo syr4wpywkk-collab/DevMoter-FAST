@@ -1,0 +1,3427 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-24",
+  "referenceDefaults": {
+    "reference": {
+      "implementation": "Microsoft Excel",
+      "version": "general documented behavior (not empirically recorded)",
+      "dateSystem": "1900",
+      "os": "any",
+      "locale": "en-US",
+      "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+    }
+  },
+  "cases": [
+    {
+      "id": "I14-BETADIST-001",
+      "formula": "=BETADIST(0.5,2,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-12
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETADIST-002",
+      "formula": "=BETADIST(0.75,2,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.84375,
+        "tolerance": 1e-12
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETADIST-003",
+      "formula": "=BETADIST(8,2,3,5,10)",
+      "inputs": {},
+      "expected": {
+        "number": 0.8208000000000001,
+        "tolerance": 1e-09
+      },
+      "notes": "spec doc claims 0.68256 but I_{0.6}(2,3)=6x^2-8x^3+3x^4=0.8208 exactly; spec example value corrected",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETADIST-004",
+      "formula": "=BETADIST(0.4,3,5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5800959999999998,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETADIST-005",
+      "formula": "=BETADIST(0,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETADIST-006",
+      "formula": "=BETADIST(1,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETADIST-007",
+      "formula": "=BETADIST(0.3,1,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.3,
+        "tolerance": 1e-12
+      },
+      "notes": "uniform",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETADIST-008",
+      "formula": "=BETADIST(-0.5,2,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETADIST-009",
+      "formula": "=BETADIST(0.5,0,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETADIST-010",
+      "formula": "=BETADIST(1,2,2,1,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETADIST-011",
+      "formula": "=BETADIST(\"x\",2,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETAINV-001",
+      "formula": "=BETAINV(0.5,2,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-07
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETAINV-002",
+      "formula": "=BETAINV(0.84375,2,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.75,
+        "tolerance": 1e-07
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETAINV-003",
+      "formula": "=BETAINV(0.8208,2,3,5,10)",
+      "inputs": {},
+      "expected": {
+        "number": 8.0,
+        "tolerance": 1e-07
+      },
+      "notes": "inverts I14-BETADIST-003",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETAINV-004",
+      "formula": "=BETAINV(0.4,3,5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.32058583056420176,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETAINV-005",
+      "formula": "=BETAINV(0,2,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETAINV-006",
+      "formula": "=BETAINV(1,2,2)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETAINV-007",
+      "formula": "=BETAINV(0.7,2,2,2,8)",
+      "inputs": {},
+      "expected": {
+        "number": 5.820455053456591,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETAINV-008",
+      "formula": "=BETAINV(1.5,2,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETAINV-009",
+      "formula": "=BETAINV(0.5,-1,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BETAINV-010",
+      "formula": "=BETAINV(0.5,2,2,3,3)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BINOMDIST-001",
+      "formula": "=BINOMDIST(3,10,0.5,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.1171875,
+        "tolerance": 1e-12
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BINOMDIST-002",
+      "formula": "=BINOMDIST(2,10,0.5,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0546875,
+        "tolerance": 1e-12
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BINOMDIST-003",
+      "formula": "=BINOMDIST(6,10,0.5,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.205078125,
+        "tolerance": 1e-12
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BINOMDIST-004",
+      "formula": "=BINOMDIST(4,12,0.3,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.7236554695300006,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BINOMDIST-005",
+      "formula": "=BINOMDIST(4,12,0.3,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.23113969609499976,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BINOMDIST-006",
+      "formula": "=BINOMDIST(0,10,0,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BINOMDIST-007",
+      "formula": "=BINOMDIST(10,10,1,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BINOMDIST-008",
+      "formula": "=BINOMDIST(3.9,10,0.5,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.1171875,
+        "tolerance": 1e-12
+      },
+      "notes": "truncation",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BINOMDIST-009",
+      "formula": "=BINOMDIST(11,10,0.5,FALSE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BINOMDIST-010",
+      "formula": "=BINOMDIST(1,10,1.1,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-BINOMDIST-011",
+      "formula": "=BINOMDIST(-1,10,0.5,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIDIST-001",
+      "formula": "=CHIDIST(18.307,10)",
+      "inputs": {},
+      "expected": {
+        "number": 0.05000058909139817,
+        "tolerance": 1e-06
+      },
+      "notes": "docs example ~0.05",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIDIST-002",
+      "formula": "=CHIDIST(5.991464547107979,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.05,
+        "tolerance": 1e-09
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIDIST-003",
+      "formula": "=CHIDIST(0,5)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 0
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIDIST-004",
+      "formula": "=CHIDIST(7.5,6)",
+      "inputs": {},
+      "expected": {
+        "number": 0.27706844336610703,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIDIST-005",
+      "formula": "=CHIDIST(0.5,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.4795001221869536,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIDIST-006",
+      "formula": "=CHIDIST(12,4.9)",
+      "inputs": {},
+      "expected": {
+        "number": 0.01735126523666451,
+        "tolerance": 1e-09
+      },
+      "notes": "df truncation",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIDIST-007",
+      "formula": "=CHIDIST(30,20)",
+      "inputs": {},
+      "expected": {
+        "number": 0.06985366069941001,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIDIST-008",
+      "formula": "=CHIDIST(-1,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIDIST-009",
+      "formula": "=CHIDIST(2,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIDIST-010",
+      "formula": "=CHIDIST(2,1e10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIDIST-011",
+      "formula": "=CHIDIST(\"x\",5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIINV-001",
+      "formula": "=CHIINV(0.05,2)",
+      "inputs": {},
+      "expected": {
+        "number": 5.991464547107979,
+        "tolerance": 1e-07
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIINV-002",
+      "formula": "=CHIINV(0.05,10)",
+      "inputs": {},
+      "expected": {
+        "number": 18.307,
+        "tolerance": 0.001
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIINV-003",
+      "formula": "=CHIINV(0.3,7)",
+      "inputs": {},
+      "expected": {
+        "number": 8.383430828610017,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIINV-004",
+      "formula": "=CHIINV(1,5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIINV-005",
+      "formula": "=CHIINV(0.95,10)",
+      "inputs": {},
+      "expected": {
+        "number": 3.9402991361191653,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIINV-006",
+      "formula": "=CHIINV(0.5,4.9)",
+      "inputs": {},
+      "expected": {
+        "number": 3.356693980033924,
+        "tolerance": 1e-07
+      },
+      "notes": "df truncation",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIINV-007",
+      "formula": "=CHIINV(0.9,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.015790774093147775,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIINV-008",
+      "formula": "=CHIINV(1.5,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIINV-009",
+      "formula": "=CHIINV(0.5,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHIINV-010",
+      "formula": "=CHIINV(\"x\",5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHITEST-001",
+      "formula": "=CHITEST({58,11,10;35,25,23},{45.35,17.56,16.09;47.65,18.44,16.91})",
+      "inputs": {},
+      "expected": {
+        "number": 0.0003081920170083095,
+        "tolerance": 1e-09
+      },
+      "notes": "docs example ~0.000308",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHITEST-002",
+      "formula": "=CHITEST({10,20},{15,15})",
+      "inputs": {},
+      "expected": {
+        "number": 0.06788915486182877,
+        "tolerance": 1e-09
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHITEST-003",
+      "formula": "=CHITEST({3,4},{3,4})",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 0
+      },
+      "notes": "stat=0 -> 1",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHITEST-004",
+      "formula": "=CHITEST({5,15;10,20},{10,10;15,15})",
+      "inputs": {},
+      "expected": {
+        "number": 0.00389241712277862,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHITEST-005",
+      "formula": "=CHITEST({1,2,3,4},{1,2,3,4})",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHITEST-006",
+      "formula": "=CHITEST({2,4,6;8,10,12},{3,5,7;7,11,11})",
+      "inputs": {},
+      "expected": {
+        "number": 0.6062681491520436,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHITEST-007",
+      "formula": "=CHITEST({1,2,3},{1,2})",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHITEST-008",
+      "formula": "=CHITEST({5},{5})",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHITEST-009",
+      "formula": "=CHITEST({1,2},{1,0})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CHITEST-010",
+      "formula": "=CHITEST({\"a\",2},{1,2})",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CONFIDENCE-001",
+      "formula": "=CONFIDENCE(0.05,2.5,50)",
+      "inputs": {},
+      "expected": {
+        "number": 0.6929519121748391,
+        "tolerance": 1e-09
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CONFIDENCE-002",
+      "formula": "=CONFIDENCE(0.05,1,1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.959963984540054,
+        "tolerance": 1e-09
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CONFIDENCE-003",
+      "formula": "=CONFIDENCE(0.5,1,100)",
+      "inputs": {},
+      "expected": {
+        "number": 0.06744897502234225,
+        "tolerance": 1e-09
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CONFIDENCE-004",
+      "formula": "=CONFIDENCE(0.01,1,100)",
+      "inputs": {},
+      "expected": {
+        "number": 0.25758293064439264,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CONFIDENCE-005",
+      "formula": "=CONFIDENCE(0.1,3,40)",
+      "inputs": {},
+      "expected": {
+        "number": 0.7802225809510904,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CONFIDENCE-006",
+      "formula": "=CONFIDENCE(0.05,2.5,50.9)",
+      "inputs": {},
+      "expected": {
+        "number": 0.6929519121748391,
+        "tolerance": 1e-09
+      },
+      "notes": "size truncation",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CONFIDENCE-007",
+      "formula": "=CONFIDENCE(0,1,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CONFIDENCE-008",
+      "formula": "=CONFIDENCE(1,1,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CONFIDENCE-009",
+      "formula": "=CONFIDENCE(0.05,-1,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CONFIDENCE-010",
+      "formula": "=CONFIDENCE(0.05,1,0.5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-COVAR-001",
+      "formula": "=COVAR({3,2,4,5,6},{9,7,12,15,17})",
+      "inputs": {},
+      "expected": {
+        "number": 5.2,
+        "tolerance": 1e-12
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-COVAR-002",
+      "formula": "=COVAR({1,2,3},{4,5,6})",
+      "inputs": {},
+      "expected": {
+        "number": 0.6666666666666666,
+        "tolerance": 1e-12
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-COVAR-003",
+      "formula": "=COVAR({1,2,3},{1,2,3})",
+      "inputs": {},
+      "expected": {
+        "number": 0.6666666666666666,
+        "tolerance": 1e-12
+      },
+      "notes": "= VAR.P",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-COVAR-004",
+      "formula": "=COVAR({3},{7})",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 0
+      },
+      "notes": "single pair",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-COVAR-005",
+      "formula": "=COVAR({2,4,8},{6,12,18})",
+      "inputs": {},
+      "expected": {
+        "number": 12.0,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-COVAR-006",
+      "formula": "=COVAR({1,2},{5,5})",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-COVAR-007",
+      "formula": "=COVAR({-1,0,1},{2,-2,4})",
+      "inputs": {},
+      "expected": {
+        "number": 0.6666666666666666,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-COVAR-008",
+      "formula": "=COVAR({1,2,3},{1,2})",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-COVAR-009",
+      "formula": "=COVAR({\"a\"},{\"b\"})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-COVAR-010",
+      "formula": "=COVAR(A1:B1,C1:D1)",
+      "inputs": {
+        "A1": {
+          "error": "#N/A"
+        },
+        "B1": 2,
+        "C1": 3,
+        "D1": 4
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CRITBINOM-001",
+      "formula": "=CRITBINOM(6,0.5,0.75)",
+      "inputs": {},
+      "expected": {
+        "number": 4.0,
+        "tolerance": 0
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CRITBINOM-002",
+      "formula": "=CRITBINOM(10,0.5,0.5)",
+      "inputs": {},
+      "expected": {
+        "number": 5.0,
+        "tolerance": 0
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CRITBINOM-003",
+      "formula": "=CRITBINOM(10,0.5,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 0
+      },
+      "notes": "alpha=0",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CRITBINOM-004",
+      "formula": "=CRITBINOM(10,0.5,1)",
+      "inputs": {},
+      "expected": {
+        "number": 10.0,
+        "tolerance": 0
+      },
+      "notes": "alpha=1",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CRITBINOM-005",
+      "formula": "=CRITBINOM(20,0.4,0.6)",
+      "inputs": {},
+      "expected": {
+        "number": 9.0,
+        "tolerance": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CRITBINOM-006",
+      "formula": "=CRITBINOM(6.9,0.5,0.75)",
+      "inputs": {},
+      "expected": {
+        "number": 4.0,
+        "tolerance": 0
+      },
+      "notes": "trials truncation",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CRITBINOM-007",
+      "formula": "=CRITBINOM(10,0,0.5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 0
+      },
+      "notes": "p=0",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CRITBINOM-008",
+      "formula": "=CRITBINOM(-1,0.5,0.5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CRITBINOM-009",
+      "formula": "=CRITBINOM(10,1.1,0.5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-CRITBINOM-010",
+      "formula": "=CRITBINOM(10,0.5,1.1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-EXPONDIST-001",
+      "formula": "=EXPONDIST(0.2,10,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.8646647167633873,
+        "tolerance": 1e-12
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-EXPONDIST-002",
+      "formula": "=EXPONDIST(0.2,10,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 1.353352832366127,
+        "tolerance": 1e-12
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-EXPONDIST-003",
+      "formula": "=EXPONDIST(0,10,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 0
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-EXPONDIST-004",
+      "formula": "=EXPONDIST(0,10,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 10.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-EXPONDIST-005",
+      "formula": "=EXPONDIST(1.5,2,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.950212931632136,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-EXPONDIST-006",
+      "formula": "=EXPONDIST(1.5,2,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.09957413673572789,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-EXPONDIST-007",
+      "formula": "=EXPONDIST(1000,10,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-EXPONDIST-008",
+      "formula": "=EXPONDIST(1000,10,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 0
+      },
+      "notes": "underflow",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-EXPONDIST-009",
+      "formula": "=EXPONDIST(-0.1,10,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-EXPONDIST-010",
+      "formula": "=EXPONDIST(0.2,0,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-EXPONDIST-011",
+      "formula": "=EXPONDIST(\"x\",10,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FDIST-001",
+      "formula": "=FDIST(15.20686486,6,4)",
+      "inputs": {},
+      "expected": {
+        "number": 0.01000000000141659,
+        "tolerance": 1e-09
+      },
+      "notes": "docs example ~0.01",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FDIST-002",
+      "formula": "=FDIST(4,2,5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.09174166759556827,
+        "tolerance": 1e-09
+      },
+      "notes": "docs example ~0.100438",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FDIST-003",
+      "formula": "=FDIST(0,5,5)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 0
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FDIST-004",
+      "formula": "=FDIST(1,1,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-12
+      },
+      "notes": "median",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FDIST-005",
+      "formula": "=FDIST(2.5,6,8)",
+      "inputs": {},
+      "expected": {
+        "number": 0.11507523016935452,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FDIST-006",
+      "formula": "=FDIST(2,4.9,5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.23288269466567352,
+        "tolerance": 1e-09
+      },
+      "notes": "df truncation",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FDIST-007",
+      "formula": "=FDIST(0.5,10,20)",
+      "inputs": {},
+      "expected": {
+        "number": 0.8701603741695993,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FDIST-008",
+      "formula": "=FDIST(-1,5,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FDIST-009",
+      "formula": "=FDIST(2,0,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FDIST-010",
+      "formula": "=FDIST(2,5,1e10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FDIST-011",
+      "formula": "=FDIST(\"x\",5,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FINV-001",
+      "formula": "=FINV(0.01,6,4)",
+      "inputs": {},
+      "expected": {
+        "number": 15.20686486115825,
+        "tolerance": 1e-06
+      },
+      "notes": "docs example ~15.20686486",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FINV-002",
+      "formula": "=FINV(0.100438,2,5)",
+      "inputs": {},
+      "expected": {
+        "number": 3.7687476307680567,
+        "tolerance": 1e-06
+      },
+      "notes": "docs example ~4.0",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FINV-003",
+      "formula": "=FINV(0.5,1,1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "notes": "median",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FINV-004",
+      "formula": "=FINV(1,6,4)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FINV-005",
+      "formula": "=FINV(0.3,6,8)",
+      "inputs": {},
+      "expected": {
+        "number": 1.4674446738468139,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FINV-006",
+      "formula": "=FINV(0.99,6,4)",
+      "inputs": {},
+      "expected": {
+        "number": 0.1093099141245796,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FINV-007",
+      "formula": "=FINV(0.05,4.9,5)",
+      "inputs": {},
+      "expected": {
+        "number": 5.192167772803824,
+        "tolerance": 1e-07
+      },
+      "notes": "df truncation",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FINV-008",
+      "formula": "=FINV(2,5,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FINV-009",
+      "formula": "=FINV(0.5,0,4)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FINV-010",
+      "formula": "=FINV(\"x\",5,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FTEST-001",
+      "formula": "=FTEST({6,7,9,15,21},{20,28,31,38,40})",
+      "inputs": {},
+      "expected": {
+        "number": 0.6483178467861748,
+        "tolerance": 1e-09
+      },
+      "notes": "docs example ~0.648318",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FTEST-002",
+      "formula": "=FTEST({1,2,3,4,5,6,7,8,9,10},{1,2,3,4,5,6,7,8,9,10})",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-12
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FTEST-003",
+      "formula": "=FTEST({1,2,3},{2,4,6,8})",
+      "inputs": {},
+      "expected": {
+        "number": 0.26643165591710516,
+        "tolerance": 1e-09
+      },
+      "notes": "different sizes",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FTEST-004",
+      "formula": "=FTEST({6,8,10,12},{4,6,8,10})",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "notes": "equal variances",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FTEST-005",
+      "formula": "=FTEST({1,5,9,2,7},{3,3,4,5,8,8,1})",
+      "inputs": {},
+      "expected": {
+        "number": 0.5724755263311518,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FTEST-006",
+      "formula": "=FTEST({1,1,1},{2,3,4})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FTEST-007",
+      "formula": "=FTEST({1},{1,2,3})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FTEST-008",
+      "formula": "=FTEST({\"a\",\"b\"},{1,2,3})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FTEST-009",
+      "formula": "=FTEST(A1:A3,B1:B3)",
+      "inputs": {
+        "A1": 6,
+        "A2": 7,
+        "A3": 9,
+        "B1": 20,
+        "B2": 28,
+        "B3": 31
+      },
+      "expected": {
+        "number": 0.13461538461538458,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-FTEST-010",
+      "formula": "=FTEST(A1:B2,C1:D2)",
+      "inputs": {
+        "A1": {
+          "error": "#N/A"
+        },
+        "A2": 1,
+        "B1": 2,
+        "B2": 3,
+        "C1": 2,
+        "C2": 3,
+        "D1": 4,
+        "D2": 5
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMADIST-001",
+      "formula": "=GAMMADIST(10,9,2,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.03263901967407947,
+        "tolerance": 1e-09
+      },
+      "notes": "docs example ~0.032639",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMADIST-002",
+      "formula": "=GAMMADIST(10,9,2,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.06809363472184854,
+        "tolerance": 1e-09
+      },
+      "notes": "docs example ~0.068094",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMADIST-003",
+      "formula": "=GAMMADIST(1,1,1,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.6321205588285577,
+        "tolerance": 1e-12
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMADIST-004",
+      "formula": "=GAMMADIST(0,2,2,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMADIST-005",
+      "formula": "=GAMMADIST(0,1,2,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMADIST-006",
+      "formula": "=GAMMADIST(0,9,2,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMADIST-007",
+      "formula": "=GAMMADIST(4,3,1.5,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.1647015140096037,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMADIST-008",
+      "formula": "=GAMMADIST(4,3,1.5,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.4981750745019891,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMADIST-009",
+      "formula": "=GAMMADIST(-1,9,2,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMADIST-010",
+      "formula": "=GAMMADIST(1,0,2,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMADIST-011",
+      "formula": "=GAMMADIST(1,9,-2,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMAINV-001",
+      "formula": "=GAMMAINV(0.068094,9,2)",
+      "inputs": {},
+      "expected": {
+        "number": 10.000011191434623,
+        "tolerance": 0.0001
+      },
+      "notes": "docs example ~10.0000112",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMAINV-002",
+      "formula": "=GAMMAINV(0.632120559,1,1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.000000000466116,
+        "tolerance": 1e-06
+      },
+      "notes": "docs example ~1",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMAINV-003",
+      "formula": "=GAMMAINV(0,9,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 0
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMAINV-004",
+      "formula": "=GAMMAINV(0.5,1,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.6931471805599453,
+        "tolerance": 1e-09
+      },
+      "notes": "exponential median",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMAINV-005",
+      "formula": "=GAMMAINV(0.4,3,1.5)",
+      "inputs": {},
+      "expected": {
+        "number": 3.4276153560052762,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMAINV-006",
+      "formula": "=GAMMAINV(0.5939941502901619,2,2)",
+      "inputs": {},
+      "expected": {
+        "number": 4.000000000001819,
+        "tolerance": 1e-07
+      },
+      "notes": "~4",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMAINV-007",
+      "formula": "=GAMMAINV(0.9,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 11.669160509607536,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMAINV-008",
+      "formula": "=GAMMAINV(1.5,9,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMAINV-009",
+      "formula": "=GAMMAINV(1,9,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-GAMMAINV-010",
+      "formula": "=GAMMAINV(0.5,-1,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-HYPGEOMDIST-001",
+      "formula": "=HYPGEOMDIST(1,4,8,20)",
+      "inputs": {},
+      "expected": {
+        "number": 0.3632610939112469,
+        "tolerance": 1e-09
+      },
+      "notes": "docs example ~0.363261",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-HYPGEOMDIST-002",
+      "formula": "=HYPGEOMDIST(0,4,8,20)",
+      "inputs": {},
+      "expected": {
+        "number": 0.10216718266253821,
+        "tolerance": 1e-09
+      },
+      "notes": "docs example ~0.102253",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-HYPGEOMDIST-003",
+      "formula": "=HYPGEOMDIST(2,5,10,30)",
+      "inputs": {},
+      "expected": {
+        "number": 0.3599848427434608,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-HYPGEOMDIST-004",
+      "formula": "=HYPGEOMDIST(4,4,8,20)",
+      "inputs": {},
+      "expected": {
+        "number": 0.014447884416924588,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-HYPGEOMDIST-005",
+      "formula": "=HYPGEOMDIST(1.9,4,8,20)",
+      "inputs": {},
+      "expected": {
+        "number": 0.3632610939112469,
+        "tolerance": 1e-09
+      },
+      "notes": "truncation",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-HYPGEOMDIST-006",
+      "formula": "=HYPGEOMDIST(3,10,15,50)",
+      "inputs": {},
+      "expected": {
+        "number": 0.2978556995210253,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-HYPGEOMDIST-007",
+      "formula": "=HYPGEOMDIST(2,4,8,20)",
+      "inputs": {},
+      "expected": {
+        "number": 0.3814241486068093,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-HYPGEOMDIST-008",
+      "formula": "=HYPGEOMDIST(5,4,8,20)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-HYPGEOMDIST-009",
+      "formula": "=HYPGEOMDIST(1,4,8,-20)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-HYPGEOMDIST-010",
+      "formula": "=HYPGEOMDIST(5,9,8,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-HYPGEOMDIST-011",
+      "formula": "=HYPGEOMDIST(0,4,0,20)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGINV-001",
+      "formula": "=LOGINV(0.5,3.5,1.2)",
+      "inputs": {},
+      "expected": {
+        "number": 33.11545195869231,
+        "tolerance": 1e-06
+      },
+      "notes": "docs example ~33.11545196",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGINV-002",
+      "formula": "=LOGINV(0.039084,3.5,1.2)",
+      "inputs": {},
+      "expected": {
+        "number": 4.0000252097768065,
+        "tolerance": 1e-06
+      },
+      "notes": "docs example ~4",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGINV-003",
+      "formula": "=LOGINV(0.5,0,1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGINV-004",
+      "formula": "=LOGINV(0.3,1,0.5)",
+      "inputs": {},
+      "expected": {
+        "number": 2.0913289880908765,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGINV-005",
+      "formula": "=LOGINV(0.975,0,1)",
+      "inputs": {},
+      "expected": {
+        "number": 7.099071395448868,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGINV-006",
+      "formula": "=LOGINV(0.1,2,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5694392762080206,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGINV-007",
+      "formula": "=LOGINV(0,3.5,1.2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGINV-008",
+      "formula": "=LOGINV(1,3.5,1.2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGINV-009",
+      "formula": "=LOGINV(0.5,3.5,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGINV-010",
+      "formula": "=LOGINV(\"x\",3.5,1.2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGNORMDIST-001",
+      "formula": "=LOGNORMDIST(4,3.5,1.2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0390835557068005,
+        "tolerance": 1e-09
+      },
+      "notes": "docs example ~0.039084",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGNORMDIST-002",
+      "formula": "=LOGNORMDIST(1,0,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-12
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGNORMDIST-003",
+      "formula": "=LOGNORMDIST(33.11545196,3.5,1.2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5000000000131282,
+        "tolerance": 1e-09
+      },
+      "notes": "docs example ~0.5",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGNORMDIST-004",
+      "formula": "=LOGNORMDIST(2.5,1,0.5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.4335203705946609,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGNORMDIST-005",
+      "formula": "=LOGNORMDIST(0.5,0,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.24410859578558275,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGNORMDIST-006",
+      "formula": "=LOGNORMDIST(10,2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.6188969618546742,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGNORMDIST-007",
+      "formula": "=LOGNORMDIST(0,3.5,1.2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGNORMDIST-008",
+      "formula": "=LOGNORMDIST(-1,3.5,1.2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGNORMDIST-009",
+      "formula": "=LOGNORMDIST(4,3.5,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-LOGNORMDIST-010",
+      "formula": "=LOGNORMDIST(\"x\",0,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-MODE-001",
+      "formula": "=MODE({5.6,4,4,3,2,4})",
+      "inputs": {},
+      "expected": {
+        "number": 4.0,
+        "tolerance": 0
+      },
+      "notes": "docs example",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-MODE-002",
+      "formula": "=MODE({1,1,2,2,3})",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 0
+      },
+      "notes": "first-encountered tie",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-MODE-003",
+      "formula": "=MODE(1,2,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 2.0,
+        "tolerance": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-MODE-004",
+      "formula": "=MODE({7,7,7,1,1})",
+      "inputs": {},
+      "expected": {
+        "number": 7.0,
+        "tolerance": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-MODE-005",
+      "formula": "=MODE(\"3\",\"3\",1)",
+      "inputs": {},
+      "expected": {
+        "number": 3.0,
+        "tolerance": 0
+      },
+      "notes": "numeric text coerced",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-MODE-006",
+      "formula": "=MODE({2,2,3,3,3})",
+      "inputs": {},
+      "expected": {
+        "number": 3.0,
+        "tolerance": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-MODE-007",
+      "formula": "=MODE(A1:A3)",
+      "inputs": {
+        "A1": 5,
+        "A2": 7,
+        "A3": 7
+      },
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-MODE-008",
+      "formula": "=MODE(A1:A3)",
+      "inputs": {
+        "A1": "x",
+        "A2": 7,
+        "A3": 7
+      },
+      "expected": {
+        "number": 7
+      },
+      "notes": "range text ignored",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-MODE-009",
+      "formula": "=MODE(A1:A2,{7,7})",
+      "inputs": {
+        "A1": {
+          "blank": true
+        },
+        "A2": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "number": 7
+      },
+      "notes": "range blanks ignored",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-MODE-010",
+      "formula": "=MODE({1,2,3,4})",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I14-MODE-011",
+      "formula": "=MODE({7,7},\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Numerical-Recipes incomplete beta/gamma, Acklam inverse normal, log-space binomial coefficients); to be re-recorded empirically per plan section 10.5"
+      }
+    }
+  ]
+}
