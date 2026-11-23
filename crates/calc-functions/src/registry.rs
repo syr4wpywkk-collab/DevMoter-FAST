@@ -47,7 +47,7 @@ pub fn default_registry() -> StandardRegistry {
     StandardRegistry
 }
 
-/// Names of every registered function (Phase 1: the basic 13).
+/// Names of every registered function.
 pub fn registered_names() -> impl Iterator<Item = &'static str> {
     CATEGORIES
         .iter()
@@ -60,16 +60,97 @@ mod tests {
     use super::*;
 
     #[test]
-    fn registers_the_phase1_13() {
-        // Subset check: later PRs add more functions; the Phase-1 13 must
-        // all stay registered.
-        let names: Vec<_> = registered_names().collect();
-        for expected in [
-            "ABS", "AND", "AVERAGE", "COUNT", "COUNTA", "IF", "IFERROR", "MAX", "MIN", "NOT", "OR",
-            "ROUND", "SUM",
-        ] {
-            assert!(names.contains(&expected), "missing {expected}");
-        }
+    fn registers_all_implemented_functions() {
+        let mut names: Vec<_> = registered_names().collect();
+        names.sort_unstable();
+        assert_eq!(
+            names,
+            [
+                "ABS",
+                "AND",
+                "AVERAGE",
+                "CEILING.MATH",
+                "CHOOSE",
+                "COLUMN",
+                "COLUMNS",
+                "CONCAT",
+                "CORREL",
+                "COUNT",
+                "COUNTA",
+                "COUNTIF",
+                "COUNTIFS",
+                "DATE",
+                "DAY",
+                "EDATE",
+                "EOMONTH",
+                "EXP",
+                "FIND",
+                "FLOOR.MATH",
+                "HLOOKUP",
+                "HOUR",
+                "IF",
+                "IFERROR",
+                "IFS",
+                "INDEX",
+                "INT",
+                "INTERCEPT",
+                "ISNUMBER",
+                "ISTEXT",
+                "LARGE",
+                "LEFT",
+                "LEN",
+                "LOG",
+                "LOOKUP",
+                "LOWER",
+                "MATCH",
+                "MAX",
+                "MEDIAN",
+                "MID",
+                "MIN",
+                "MINUTE",
+                "MOD",
+                "MODE.SNGL",
+                "MONTH",
+                "NOT",
+                "NOW",
+                "OR",
+                "PERCENTILE.INC",
+                "POWER",
+                "PRODUCT",
+                "PROPER",
+                "QUARTILE.INC",
+                "RANK.EQ",
+                "REPLACE",
+                "RIGHT",
+                "ROUND",
+                "ROW",
+                "ROWS",
+                "SEARCH",
+                "SECOND",
+                "SLOPE",
+                "SMALL",
+                "SQRT",
+                "STDEV.S",
+                "SUBSTITUTE",
+                "SUM",
+                "SUMIF",
+                "SUMIFS",
+                "SUMPRODUCT",
+                "SWITCH",
+                "TEXT",
+                "TEXTJOIN",
+                "TIME",
+                "TODAY",
+                "TRIM",
+                "TRUNC",
+                "UPPER",
+                "VALUE",
+                "VAR.S",
+                "VLOOKUP",
+                "XLOOKUP",
+                "YEAR",
+            ]
+        );
     }
 
     #[test]

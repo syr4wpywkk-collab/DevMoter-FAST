@@ -1,0 +1,1506 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-23",
+  "referenceDefaults": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md + Excel documented behavior"
+  },
+  "cases": [
+    {
+      "id": "P2-PRODUCT-001",
+      "formula": "=PRODUCT(2,3,4)",
+      "inputs": {},
+      "expected": {
+        "number": 24
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2-PRODUCT-002",
+      "formula": "=PRODUCT(A1:A3)",
+      "inputs": {
+        "A1": 2,
+        "A2": 3,
+        "A3": 4
+      },
+      "expected": {
+        "number": 24
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2-PRODUCT-003",
+      "formula": "=PRODUCT(A1:A3)",
+      "inputs": {
+        "A1": 2,
+        "A2": "x"
+      },
+      "expected": {
+        "number": 2
+      },
+      "notes": "Range members ignore text and blanks (SUM model).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2-PRODUCT-004",
+      "formula": "=PRODUCT(A1:A3)",
+      "inputs": {
+        "A1": "x"
+      },
+      "expected": {
+        "number": 1
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec asks to confirm: Excel returns 1 for PRODUCT over a range with no numeric values.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2-PRODUCT-005",
+      "formula": "=PRODUCT(\"3\",2)",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2-PRODUCT-006",
+      "formula": "=PRODUCT(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2-PRODUCT-007",
+      "formula": "=PRODUCT(TRUE,5)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2-PRODUCT-008",
+      "formula": "=PRODUCT(A1:A2)",
+      "inputs": {
+        "A1": 0,
+        "A2": 9
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2-PRODUCT-009",
+      "formula": "=PRODUCT(A1:A2)",
+      "inputs": {
+        "A1": {
+          "error": "#N/A"
+        },
+        "A2": 2
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2-PRODUCT-010",
+      "formula": "=PRODUCT(A1)",
+      "inputs": {
+        "A1": "3"
+      },
+      "expected": {
+        "number": 1
+      },
+      "notes": "Single-cell ref follows range rules: text ignored -> empty product = 1.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2-PRODUCT-011",
+      "formula": "=PRODUCT(-2,-3)",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2-PRODUCT-012",
+      "formula": "=PRODUCT()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIF-001",
+      "formula": "=SUMIF(A1:A4,\">2\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4
+      },
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIF-002",
+      "formula": "=SUMIF(A1:A3,\">=2\",B1:B3)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "number": 50
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIF-003",
+      "formula": "=SUMIF(A1:A3,2)",
+      "inputs": {
+        "A1": 2,
+        "A2": 3,
+        "A3": 2
+      },
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIF-004",
+      "formula": "=SUMIF(A1:A3,\"<>x\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "number": 6
+      },
+      "notes": "'<>x' matches every non-blank non-x cell, including numbers.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIF-005",
+      "formula": "=SUMIF(A1:A4,\"a?p*\",B1:B4)",
+      "inputs": {
+        "A1": "apple",
+        "A2": "apex",
+        "A3": "banana",
+        "A4": "apt",
+        "B1": 1,
+        "B2": 2,
+        "B3": 3,
+        "B4": 4
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      },
+      "notes": "a?p* matches 'apple' only (apex/apt fail the literal p)."
+    },
+    {
+      "id": "P2X-SUMIF-006",
+      "formula": "=SUMIF(A1:A2,\"<0\")",
+      "inputs": {
+        "A1": -5,
+        "A2": 3
+      },
+      "expected": {
+        "number": -5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIF-007",
+      "formula": "=SUMIF(A1:A3,A4)",
+      "inputs": {
+        "A1": 1,
+        "A2": 4,
+        "A3": 4,
+        "A4": 4
+      },
+      "expected": {
+        "number": 8
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIF-008",
+      "formula": "=SUMIF(A1:A3,\">5\",C1)",
+      "inputs": {
+        "A1": 1,
+        "A2": 6,
+        "A3": 7,
+        "C1": 100,
+        "C2": 200,
+        "C3": 300
+      },
+      "expected": {
+        "number": 500
+      },
+      "notes": "sum_range C1 resizes to C1:C3 (3x1) anchored at C1.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIF-009",
+      "formula": "=SUMIF(A1:A2,\">0\",B1:B2)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "B1": 10,
+        "B2": "x"
+      },
+      "expected": {
+        "number": 10
+      },
+      "notes": "Text in sum_range contributes nothing at matched positions.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIF-010",
+      "formula": "=SUMIF(A1:A2,1/0)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIF-011",
+      "formula": "=SUMIF(A1:A2,\">0\",B1:B2)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "B1": {
+          "error": "#DIV/0!"
+        },
+        "B2": 5
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "notes": "Error in sum_range at a matched position propagates.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIF-012",
+      "formula": "=SUMIF(A1:A2,\">0\",B1:B2)",
+      "inputs": {
+        "A1": 1,
+        "A2": -1,
+        "B1": 10,
+        "B2": {
+          "error": "#DIV/0!"
+        }
+      },
+      "expected": {
+        "number": 10
+      },
+      "specOpen": true,
+      "specOpenReason": "Error cell in sum_range at a NON-matched position: expected ignored (phase2 P2-SUMIF-013 is the same open question).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIF-013",
+      "formula": "=SUMIF(A1:A4,\"=\",B1:B4)",
+      "inputs": {
+        "A1": 5,
+        "A3": 7,
+        "B1": 1,
+        "B2": 2,
+        "B3": 3,
+        "B4": 4
+      },
+      "expected": {
+        "number": 3
+      },
+      "specOpen": true,
+      "specOpenReason": "'=' blank matching: which of blank cells / empty strings match must be recorded empirically (expected: B2+B4=3 if blanks match).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIFS-001",
+      "formula": "=SUMIFS(C1:C3,A1:A3,\">1\",B1:B3,\"x\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": "x",
+        "B2": "x",
+        "B3": "y",
+        "C1": 10,
+        "C2": 20,
+        "C3": 30
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIFS-002",
+      "formula": "=SUMIFS(C1:C3,A1:A3,\">0\",B1:B2,\"x\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": "x",
+        "B2": "x",
+        "C1": 1,
+        "C2": 2,
+        "C3": 3
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIFS-003",
+      "formula": "=SUMIFS(C1:C3,A1:A3)",
+      "inputs": {
+        "A1": 1,
+        "C1": 1
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": true,
+      "specOpenReason": "Even argument count is an arity failure; Excel reports it at entry time \u2014 #VALUE! mapping unconfirmed.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIFS-004",
+      "formula": "=SUMIFS(B1:B3,A1:A3,2)",
+      "inputs": {
+        "A1": 2,
+        "A2": 2,
+        "A3": 1,
+        "B1": 5,
+        "B2": 6,
+        "B3": 7
+      },
+      "expected": {
+        "number": 11
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIFS-005",
+      "formula": "=SUMIFS(B1:B3,A1:A3,\">0\",A1:A3,\"<3\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "number": 30
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIFS-006",
+      "formula": "=SUMIFS(C1:C3,A1:A3,\"<=2\",B1:B3,\"<>a*\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": "apple",
+        "B2": "x",
+        "B3": "avocado",
+        "C1": 5,
+        "C2": 6,
+        "C3": 7
+      },
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIFS-007",
+      "formula": "=SUMIFS(B1:B3,A1:A3,\">0\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": {
+          "error": "#DIV/0!"
+        },
+        "B3": 30
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": true,
+      "specOpenReason": "Error cell in sum_range at a matched position: expected propagation (phase2 P2-SUMIFS-006); confirm error-code passthrough.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIFS-008",
+      "formula": "=SUMIFS(B1:B3,A1:A3,\"*\")",
+      "inputs": {
+        "A1": "x",
+        "A2": 5,
+        "B1": 1,
+        "B2": 2,
+        "B3": 3
+      },
+      "expected": {
+        "number": 4
+      },
+      "specOpen": true,
+      "specOpenReason": "'*' is documented to match text cells only; confirm numbers/blanks excluded (expected B1+B3=4).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIFS-009",
+      "formula": "=SUMIFS(B1:B3,A1:A3,TRUE)",
+      "inputs": {
+        "A1": true,
+        "A2": false,
+        "A3": true,
+        "B1": 1,
+        "B2": 2,
+        "B3": 3
+      },
+      "expected": {
+        "number": 4
+      },
+      "specOpen": true,
+      "specOpenReason": "Boolean criterion vs boolean cells: expected equality (phase2 P2-SUMIFS-009); confirm.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIFS-010",
+      "formula": "=SUMIFS(D1:D3,A1:A3,\">0\",B1:B3,\"<10\",C1:C3,\"x\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 5,
+        "B2": 15,
+        "B3": 8,
+        "C1": "x",
+        "C2": "x",
+        "C3": "x",
+        "D1": 10,
+        "D2": 20,
+        "D3": 30
+      },
+      "expected": {
+        "number": 40
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMIFS-011",
+      "formula": "=SUMIFS(B1:B2,A1:A2,1/0)",
+      "inputs": {
+        "A1": 1,
+        "B1": 1
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      },
+      "notes": "Error in the criteria argument propagates."
+    },
+    {
+      "id": "P2X-SUMIFS-012",
+      "formula": "=SUMIFS(B1:B2,A1:A2,\">0\")",
+      "inputs": {
+        "A1": {
+          "error": "#N/A"
+        },
+        "A2": 1,
+        "B1": 9,
+        "B2": 4
+      },
+      "expected": {
+        "number": 4
+      },
+      "specOpen": true,
+      "specOpenReason": "Error cell inside a criteria range: expected skipped rather than propagated; confirm.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIF-001",
+      "formula": "=COUNTIF(A1:A4,\">1\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIF-002",
+      "formula": "=COUNTIF(A1:A4,\"<=2\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIF-003",
+      "formula": "=COUNTIF(A1:A4,5)",
+      "inputs": {
+        "A1": 5,
+        "A2": 6,
+        "A3": 5,
+        "A4": 7
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIF-004",
+      "formula": "=COUNTIF(A1:A3,\"b*\")",
+      "inputs": {
+        "A1": "banana",
+        "A2": "berry",
+        "A3": "apple"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIF-005",
+      "formula": "=COUNTIF(A1:A3,\"a??e\")",
+      "inputs": {
+        "A1": "apple",
+        "A2": "axze",
+        "A3": "axe"
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      },
+      "notes": "a??e is exactly 4 chars: matches 'axze' only."
+    },
+    {
+      "id": "P2X-COUNTIF-006",
+      "formula": "=COUNTIF(A1:A3,\"*~**\")",
+      "inputs": {
+        "A1": "a*b",
+        "A2": "*",
+        "A3": "ab"
+      },
+      "expected": {
+        "number": 2
+      },
+      "notes": "'~*' escapes a literal star inside a wildcard pattern.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIF-007",
+      "formula": "=COUNTIF(A1:A3,\">=10\")",
+      "inputs": {
+        "A1": 5,
+        "A2": 10,
+        "A3": "x"
+      },
+      "expected": {
+        "number": 1
+      },
+      "notes": "Ordered numeric comparison does not match text cells.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIF-008",
+      "formula": "=COUNTIF(A1:A3,D1)",
+      "inputs": {
+        "A1": 9,
+        "A2": 9,
+        "A3": 1,
+        "D1": 9
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIF-009",
+      "formula": "=COUNTIF(A1:A3,\"<>x\")",
+      "inputs": {
+        "A1": "x",
+        "A2": 5,
+        "A3": "y"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIF-010",
+      "formula": "=COUNTIF(A1:A4,\"\")",
+      "inputs": {
+        "A1": 1,
+        "A4": 2
+      },
+      "expected": {
+        "number": 2
+      },
+      "specOpen": true,
+      "specOpenReason": "'' criteria vs blanks/empty strings \u2014 must be recorded (phase2 P2-COUNTIF-010); expected 2 if '' matches blanks.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIF-011",
+      "formula": "=COUNTIF(A1:A2,\">0\")",
+      "inputs": {
+        "A1": {
+          "error": "#DIV/0!"
+        },
+        "A2": 2
+      },
+      "expected": {
+        "number": 1
+      },
+      "specOpen": true,
+      "specOpenReason": "Error cell inside the criteria range: expected skipped (phase2 P2-COUNTIF-013); confirm.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIF-012",
+      "formula": "=COUNTIF(A1:A2,\"5\")",
+      "inputs": {
+        "A1": "5",
+        "A2": 5
+      },
+      "expected": {
+        "number": 1
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether the text criterion '5' also matches the text cell '5' is flagged confirm-in-reference in COUNTIF.md; expected yes for numbers at least.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIFS-001",
+      "formula": "=COUNTIFS(A1:A4,\">1\",B1:B4,\"x\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "B1": "x",
+        "B2": "x",
+        "B3": "y",
+        "B4": "x"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIFS-002",
+      "formula": "=COUNTIFS(A1:A3,\">0\",B1:B2,\"x\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": "x",
+        "B2": "x"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIFS-003",
+      "formula": "=COUNTIFS(A1:A3,\">0\",B1:B3)",
+      "inputs": {
+        "A1": 1
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": true,
+      "specOpenReason": "Odd argument count (dangling range) is an arity failure; #VALUE! mapping unconfirmed.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIFS-004",
+      "formula": "=COUNTIFS(A1:A3,\">0\",A1:A3,\"<3\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIFS-005",
+      "formula": "=COUNTIFS(A1:A3,\"app?e\",B1:B3,\">=5\")",
+      "inputs": {
+        "A1": "apple",
+        "A2": "apble",
+        "A3": "banana",
+        "B1": 6,
+        "B2": 4,
+        "B3": 9
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIFS-006",
+      "formula": "=COUNTIFS(A1:A3,D1)",
+      "inputs": {
+        "A1": 9,
+        "A2": 9,
+        "A3": 1,
+        "D1": 9
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIFS-007",
+      "formula": "=COUNTIFS(A1:A3,\">99\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIFS-008",
+      "formula": "=COUNTIFS(A1:A4,\"<>\")",
+      "inputs": {
+        "A1": "x",
+        "A3": "y",
+        "A4": 5
+      },
+      "expected": {
+        "number": 3
+      },
+      "specOpen": true,
+      "specOpenReason": "'<>' non-blank criterion: expected to count all non-blank cells (phase2 P2-COUNTIFS-010); confirm.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIFS-009",
+      "formula": "=COUNTIFS(A1:A3,TRUE)",
+      "inputs": {
+        "A1": true,
+        "A2": false,
+        "A3": true
+      },
+      "expected": {
+        "number": 2
+      },
+      "specOpen": true,
+      "specOpenReason": "Boolean criterion vs boolean cells \u2014 confirm (phase2 P2-COUNTIFS-009).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIFS-010",
+      "formula": "=COUNTIFS(A1:A3,\"\",B1:B3,\">0\")",
+      "inputs": {
+        "A2": "x",
+        "B1": 1,
+        "B2": 1,
+        "B3": 1
+      },
+      "expected": {
+        "number": 2
+      },
+      "specOpen": true,
+      "specOpenReason": "'' criterion matching blanks \u2014 same open question as P2-COUNTIF-010; expected 2.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIFS-011",
+      "formula": "=COUNTIFS(A1:A2,\">0\",B1:B2,\"*\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "B1": "a",
+        "B2": 5
+      },
+      "expected": {
+        "number": 1
+      },
+      "specOpen": true,
+      "specOpenReason": "'*' in a COUNTIFS pair matches text cells only; confirm (phase2 P2-COUNTIFS-011).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-COUNTIFS-012",
+      "formula": "=COUNTIFS(A1:A3,\">0\",A1:A3,\"<3\",B1:B3,\"x\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": "x",
+        "B2": "x",
+        "B3": "x"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMPRODUCT-001",
+      "formula": "=SUMPRODUCT(A1:A3,B1:B3)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 4,
+        "B2": 5,
+        "B3": 6
+      },
+      "expected": {
+        "number": 32
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMPRODUCT-002",
+      "formula": "=SUMPRODUCT(A1:A3)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMPRODUCT-003",
+      "formula": "=SUMPRODUCT(A1:A3,B1:B2)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 1,
+        "B2": 2
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMPRODUCT-004",
+      "formula": "=SUMPRODUCT(A1:A3,B1:D1)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 1,
+        "C1": 2,
+        "D1": 3
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "1x3 vs 3x1 are different shapes even at equal length (Excel: #VALUE!).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMPRODUCT-005",
+      "formula": "=SUMPRODUCT(A1:A2,B1:B2)",
+      "inputs": {
+        "A1": 2,
+        "A2": "x",
+        "B1": 5,
+        "B2": 5
+      },
+      "expected": {
+        "number": 10
+      },
+      "notes": "Non-numeric array entries are treated as 0.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMPRODUCT-006",
+      "formula": "=SUMPRODUCT(A1:A2,B1:B2)",
+      "inputs": {
+        "A1": 2,
+        "B1": 5,
+        "B2": 5
+      },
+      "expected": {
+        "number": 10
+      },
+      "notes": "Blank cell counts as 0 in the element product.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMPRODUCT-007",
+      "formula": "=SUMPRODUCT(A1,B1)",
+      "inputs": {
+        "A1": true,
+        "B1": 5
+      },
+      "expected": {
+        "number": 0
+      },
+      "specOpen": true,
+      "specOpenReason": "Raw boolean array entries counting as 0 (vs coerced 1) is flagged confirm in SUMPRODUCT.md; expected 0.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMPRODUCT-008",
+      "formula": "=SUMPRODUCT(A1:B2,C1:D2)",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4,
+        "C1": 10,
+        "D1": 10,
+        "C2": 10,
+        "D2": 10
+      },
+      "expected": {
+        "number": 100
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMPRODUCT-009",
+      "formula": "=SUMPRODUCT(A1,B1)",
+      "inputs": {
+        "A1": {
+          "error": "#N/A"
+        },
+        "B1": 5
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMPRODUCT-010",
+      "formula": "=SUMPRODUCT(3,4)",
+      "inputs": {},
+      "expected": {
+        "number": 12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMPRODUCT-011",
+      "formula": "=SUMPRODUCT(A1,B1,C1)",
+      "inputs": {
+        "A1": 2,
+        "B1": 3,
+        "C1": 4
+      },
+      "expected": {
+        "number": 24
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    },
+    {
+      "id": "P2X-SUMPRODUCT-012",
+      "formula": "=SUMPRODUCT()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md + Excel documented behavior"
+      }
+    }
+  ]
+}
