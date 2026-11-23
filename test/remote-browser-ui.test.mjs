@@ -81,6 +81,8 @@ function fakeBackend(sessionDriver = { holder: "user", generation: 3 }) {
     const method = init.method || "GET";
     calls.push({ path, method, body: init.body ? JSON.parse(init.body) : undefined, headers: init.headers });
     const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+    const overridden = await backend.override?.(path, method, json);
+    if (overridden) return overridden;
     if (path.startsWith("/api/browser?")) return json(200, { capability: { enabled: backend.enabled, available: true }, session: session.active ? session : null });
     if (path.endsWith("/ticket")) return json(201, { ticket: "t".repeat(63) + String(++ticketCount % 10) });
     if (path.endsWith("/driver")) {
@@ -289,6 +291,102 @@ test("unexpected disconnects reconnect with a fresh ticket; a closed session doe
     await sleep(600);
     assert.equal(backend.sockets.length, 2);
     assert.equal(env.dom.window.document.querySelector("[data-rb-start]").hidden, false);
+    destroyRemoteBrowser();
+  } finally {
+    env.restore();
+  }
+});
+
+test("#712 a failed stop keeps the session attached instead of showing it as stopped", async () => {
+  const env = installDom();
+  const backend = fakeBackend();
+  try {
+    env.dom.window.localStorage.setItem("opencode-pocket-project", "/projects/demo");
+    const { openRemoteBrowser, destroyRemoteBrowser } = await loadRemoteBrowser();
+    openRemoteBrowser();
+    await sleep(20);
+    const doc = env.dom.window.document;
+    backend.override = (path, method, json) => method === "DELETE" ? json(503, { error: "host busy" }) : null;
+    doc.querySelector("[data-rb-stop]").click();
+    await sleep(30);
+    assert.match(doc.querySelector("[data-rb-status]").textContent, /停止できませんでした/);
+    assert.equal(doc.querySelector("[data-rb-start]").hidden, true);
+    assert.equal(backend.sockets.length, 2, "it reattaches to the still-running browser");
+
+    backend.override = (path, method, json) => method === "DELETE" ? json(404, { error: "gone" }) : null;
+    doc.querySelector("[data-rb-stop]").click();
+    await sleep(30);
+    assert.equal(doc.querySelector("[data-rb-start]").hidden, false, "an already-gone session counts as stopped");
+    destroyRemoteBrowser();
+  } finally {
+    env.restore();
+  }
+});
+
+test("#712 reconnect keeps retrying after failed refreshes, then offers a manual retry", async () => {
+  const env = installDom();
+  const backend = fakeBackend();
+  try {
+    env.dom.window.localStorage.setItem("opencode-pocket-project", "/projects/demo");
+    const { openRemoteBrowser, destroyRemoteBrowser } = await loadRemoteBrowser();
+    openRemoteBrowser();
+    await sleep(20);
+    const doc = env.dom.window.document;
+    let failures = 0;
+    backend.override = path => {
+      if (path.startsWith("/api/browser?") && failures < 2) { failures += 1; throw new TypeError("Failed to fetch"); }
+      return null;
+    };
+    backend.sockets[0].close(1006);
+    await sleep(500 + 1000 + 2000 + 200);
+    assert.equal(failures, 2);
+    assert.equal(backend.sockets.length, 2, "the third attempt reconnects once the network is back");
+
+    let refreshes = 0;
+    backend.override = path => {
+      if (path.startsWith("/api/browser?")) { refreshes += 1; throw new TypeError("Failed to fetch"); }
+      return null;
+    };
+    const timers = [];
+    const realSetTimeout = env.dom.window.setTimeout.bind(env.dom.window);
+    env.dom.window.setTimeout = (fn, ms) => { timers.push(ms); return realSetTimeout(fn, 0); };
+    backend.sockets[1].close(1006);
+    await sleep(200);
+    assert.equal(refreshes, 8, "attempts are bounded");
+    assert.deepEqual(timers.filter(ms => ms >= 500), [500, 1000, 2000, 4000, 8000, 8000, 8000, 8000]);
+    assert.equal(doc.querySelector("[data-rb-retry]").hidden, false);
+    env.dom.window.setTimeout = realSetTimeout;
+    backend.override = null;
+    doc.querySelector("[data-rb-retry]").click();
+    await sleep(30);
+    assert.equal(backend.sockets.length, 3);
+    destroyRemoteBrowser();
+  } finally {
+    env.restore();
+  }
+});
+
+test("#713 an older driver HTTP response never overwrites a newer socket takeover", async () => {
+  const env = installDom();
+  const backend = fakeBackend({ holder: null, generation: 3 });
+  try {
+    env.dom.window.localStorage.setItem("opencode-pocket-project", "/projects/demo");
+    const { openRemoteBrowser, destroyRemoteBrowser } = await loadRemoteBrowser();
+    openRemoteBrowser();
+    await sleep(20);
+    const doc = env.dom.window.document;
+    let answer;
+    backend.override = (path, method, json) => path.endsWith("/driver") ? new Promise(resolve => { answer = () => resolve(json(200, { driver: { holder: "user", generation: 4 } })); }) : null;
+    doc.querySelector("[data-rb-takeover]").click();
+    await sleep(10);
+    backend.sockets[0].emit({ t: "driver", holder: "agent", generation: 5 });
+    await sleep(10);
+    answer();
+    await sleep(20);
+    assert.equal(doc.querySelector("[data-rb-takeover]").textContent, "操作を取り戻す", "the agent (generation 5) still holds control");
+    backend.sockets[0].emit({ t: "driver", holder: "user", generation: 4 });
+    await sleep(10);
+    assert.equal(doc.querySelector("[data-rb-takeover]").textContent, "操作を取り戻す", "a reordered older socket event is ignored too");
     destroyRemoteBrowser();
   } finally {
     env.restore();

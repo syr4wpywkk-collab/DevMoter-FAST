@@ -311,6 +311,8 @@ export const zhHant = {
   "remoteBrowser.starting": "正在啟動瀏覽器…",
   "remoteBrowser.startFailed": "無法啟動瀏覽器：{error}",
   "remoteBrowser.stopped": "瀏覽器已停止。",
+  "remoteBrowser.stopFailed": "無法停止瀏覽器，它可能仍在執行（{error}）。",
+  "remoteBrowser.retry": "重試",
   "remoteBrowser.reconnecting": "連線已中斷，正在重新連線…",
   "remoteBrowser.ended": "瀏覽器工作階段已結束。請重新啟動以繼續。",
   "remoteBrowser.agentTookOver": "代理程式已接管操作。取回操作權即可繼續。",

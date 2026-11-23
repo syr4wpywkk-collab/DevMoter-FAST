@@ -311,6 +311,8 @@ export const en = {
   "remoteBrowser.starting": "Starting browser…",
   "remoteBrowser.startFailed": "Could not start the browser: {error}",
   "remoteBrowser.stopped": "Browser stopped.",
+  "remoteBrowser.stopFailed": "Could not stop the browser; it may still be running ({error}).",
+  "remoteBrowser.retry": "Retry",
   "remoteBrowser.reconnecting": "Connection lost. Reconnecting…",
   "remoteBrowser.ended": "The browser session ended. Start it again to continue.",
   "remoteBrowser.agentTookOver": "An agent took control. Take back control to keep operating.",
