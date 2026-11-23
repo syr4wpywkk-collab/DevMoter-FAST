@@ -1,0 +1,21 @@
+[package]
+name = "calc-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+calc-core = { path = "../crates/calc-core" }
+
+# Fuzz targets are added here as they land. Keep one target per fuzzed
+# entry point (parser, evaluator, workbook serializer, ...).
+[[bin]]
+name = "parser_fuzz"
+path = "fuzz_targets/parser_fuzz.rs"
+test = false
+doc = false
+bench = false
