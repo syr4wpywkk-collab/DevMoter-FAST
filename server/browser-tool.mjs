@@ -201,17 +201,21 @@ export function createBrowserAutomation({
 
   async function prepare(profileDir, ctx, args) {
     await mkdir(profileDir, { recursive: true, mode: 0o700 });
-    const wrapped = buildBubblewrapCommand({
-      projectPath: ctx.project.path,
-      grants: [{ path: profileDir, mode: "read-write" }],
-      command: ctx.binary,
-      args,
-      allowNetwork: true,
-      failClosed: true,
-      env,
-      spawn: spawnSyncImpl
-    });
-    return wrapped;
+    try {
+      return buildBubblewrapCommand({
+        projectPath: ctx.project.path,
+        grants: [{ path: profileDir, mode: "read-write" }],
+        command: ctx.binary,
+        args,
+        allowNetwork: true,
+        failClosed: true,
+        env,
+        spawn: spawnSyncImpl
+      });
+    } catch (error) {
+      await rm(profileDir, { recursive: true, force: true }).catch(() => {});
+      throw error;
+    }
   }
 
   async function stop(projectId) {
