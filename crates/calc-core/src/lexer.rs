@@ -14,7 +14,6 @@
 //!
 //! `;` outside an array literal (locale argument separators) is rejected
 //! by the parser.
-
 use crate::error::CalcError;
 
 /// A lexical token with its start byte offset in the source.
@@ -42,14 +41,14 @@ pub enum TokenKind {
     LParen,
     RParen,
     Comma,
-    /// `;` — row separator inside array literals.
-    Semicolon,
+    Colon,
+    Bang,
     /// `{` — array literal open.
     LBrace,
     /// `}` — array literal close.
     RBrace,
-    Colon,
-    Bang,
+    /// `;` — array literal row separator (rejected elsewhere).
+    Semi,
     Plus,
     Minus,
     Star,
@@ -175,8 +174,8 @@ pub fn lex(src: &str, max_tokens: usize) -> Result<Vec<Token>, LexError> {
                 push!(TokenKind::Comma, at);
                 i += 1;
             }
-            b';' => {
-                push!(TokenKind::Semicolon, at);
+            b':' => {
+                push!(TokenKind::Colon, at);
                 i += 1;
             }
             b'{' => {
@@ -187,8 +186,8 @@ pub fn lex(src: &str, max_tokens: usize) -> Result<Vec<Token>, LexError> {
                 push!(TokenKind::RBrace, at);
                 i += 1;
             }
-            b':' => {
-                push!(TokenKind::Colon, at);
+            b';' => {
+                push!(TokenKind::Semi, at);
                 i += 1;
             }
             b'!' => {

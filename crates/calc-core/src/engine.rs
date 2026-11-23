@@ -280,7 +280,7 @@ impl CalcEngine {
         self.recalculate()?;
         let expr = parse(formula)?;
         let mut ctx = self.make_ctx(sheet_id);
-        Ok(ctx.eval(&expr)?)
+        Ok(cell_boundary_value(ctx.eval(&expr)?))
     }
 
     /// Is this formula cell awaiting (re)evaluation?
@@ -552,5 +552,15 @@ impl CalcEngine {
 impl Default for CalcEngine {
     fn default() -> Self {
         CalcEngine::new()
+    }
+}
+
+/// A lambda that reaches a cell boundary cannot be displayed; per the
+/// value-model spec (`docs/functions/LAMBDA.md`) it becomes `#VALUE!`
+/// (SPEC-OPEN: Excel shows `#CALC!` for an uncalled LAMBDA).
+fn cell_boundary_value(v: Value) -> Value {
+    match v {
+        Value::Lambda(_) => Value::Error(CalcError::Value),
+        v => v,
     }
 }

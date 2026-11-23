@@ -302,14 +302,31 @@ impl<'a> Parser<'a> {
         r
     }
 
-    // postfix := primary '%'*
+    // postfix := primary ('%' | '(' args ')')*
+    //
+    // A `(` after any expression is a lambda invocation (`Expr::Invoke`)
+    // covering `LAMBDA(x,x+1)(5)`; named calls `F(..)` still parse as
+    // `Expr::Call` inside primary.
     fn parse_postfix(&mut self) -> Result<Expr, ParseError> {
         let mut e = self.parse_primary()?;
-        while self.at(&TokenKind::Percent) {
-            self.bump();
-            e = self.make(Expr::Percent(Box::new(e)))?;
+        loop {
+            if self.at(&TokenKind::Percent) {
+                self.bump();
+                e = self.make(Expr::Percent(Box::new(e)))?;
+            } else if self.at(&TokenKind::LParen) {
+                self.bump(); // '('
+                self.enter()?;
+                let args = self.parse_args();
+                self.leave();
+                let args = args?;
+                e = self.make(Expr::Invoke {
+                    callee: Box::new(e),
+                    args,
+                })?;
+            } else {
+                return Ok(e);
+            }
         }
-        Ok(e)
     }
 
     fn parse_primary(&mut self) -> Result<Expr, ParseError> {
@@ -323,7 +340,6 @@ impl<'a> Parser<'a> {
         let t = self.bump();
         let offset = t.offset;
         match &t.kind {
-            TokenKind::LBrace => self.parse_array_literal(),
             TokenKind::Number(n) => self.make(Expr::Literal(Literal::Number(*n))),
             TokenKind::Str(s) => self.make(Expr::Literal(Literal::Text(s.clone()))),
             TokenKind::ErrorLit(e) => self.make(Expr::Literal(Literal::Error(*e))),
@@ -343,6 +359,7 @@ impl<'a> Parser<'a> {
                 // A parenthesized expression: no extra node kind needed.
                 Ok(inner)
             }
+            TokenKind::LBrace => self.parse_array_literal(offset),
             TokenKind::QuotedName(name) => {
                 let name = name.clone();
                 if !self.at(&TokenKind::Bang) {
@@ -470,32 +487,91 @@ impl<'a> Parser<'a> {
         self.make(Expr::Name(w.to_string()))
     }
 
-    /// `{ r1c1, r1c2 ; r2c1, r2c2 }` — array literal. `,` separates
-    /// columns, `;` separates rows. Rows must be non-empty and all the
-    /// same length (Excel rejects ragged literals at entry).
-    fn parse_array_literal(&mut self) -> Result<Expr, ParseError> {
+    /// `name(` — parse the argument list.
+    fn parse_call(&mut self, name: &str, offset: usize) -> Result<Expr, ParseError> {
+        if !is_valid_fn_name(name) {
+            return Err(ParseError::new(ParseErrorKind::InvalidFunctionName, offset));
+        }
+        self.bump(); // '('
         self.enter()?;
-        let r = (|| {
-            let mut rows: Vec<Vec<Expr>> = Vec::new();
-            let mut width = 0usize;
-            loop {
-                let mut row = vec![self.parse_comparison()?];
-                while self.at(&TokenKind::Comma) {
+        let args = self.parse_args();
+        self.leave();
+        let args = args?;
+        self.make(Expr::Call {
+            name: name.to_string(),
+            args,
+        })
+    }
+
+    /// Parse a comma-separated argument list up to and including the
+    /// closing `)`; the opening `(` must already be consumed. Empty
+    /// positions become [`Expr::Missing`]. Assumes the caller has done
+    /// [`Parser::enter`] for the list's depth accounting.
+    fn parse_args(&mut self) -> Result<Vec<Expr>, ParseError> {
+        let mut args = Vec::new();
+        if self.at(&TokenKind::RParen) {
+            self.bump();
+            return Ok(args);
+        }
+        loop {
+            // Omitted argument: `F(,x)` / `F(x,)`.
+            if self.at(&TokenKind::Comma) || self.at(&TokenKind::RParen) {
+                args.push(self.make(Expr::Missing)?);
+            } else {
+                args.push(self.parse_comparison()?);
+            }
+            match self.peek().kind {
+                TokenKind::Comma => {
                     self.bump();
-                    row.push(self.parse_comparison()?);
                 }
-                if rows.is_empty() {
-                    width = row.len();
-                } else if row.len() != width {
+                TokenKind::RParen => {
+                    self.bump();
+                    break;
+                }
+                TokenKind::Eof => {
                     return Err(ParseError::new(
-                        ParseErrorKind::NonRectangularArray,
+                        ParseErrorKind::UnexpectedEof,
                         self.peek().offset,
                     ));
                 }
-                rows.push(row);
-                match self.peek().kind {
-                    TokenKind::Semicolon => {
+                _ => {
+                    let t = self.peek();
+                    return Err(ParseError::new(
+                        ParseErrorKind::Expected("',' or ')'"),
+                        t.offset,
+                    ));
+                }
+            }
+        }
+        Ok(args)
+    }
+
+    /// `{expr,expr;expr,expr}` — array literal: `,` separates columns,
+    /// `;` separates rows. Rows must all have the same width (enforced at
+    /// evaluation, where it becomes `#VALUE!`).
+    fn parse_array_literal(&mut self, offset: usize) -> Result<Expr, ParseError> {
+        self.enter()?;
+        let r = (|| {
+            let mut rows: Vec<Vec<Expr>> = vec![Vec::new()];
+            loop {
+                let t = self.peek();
+                match t.kind {
+                    TokenKind::Eof => {
+                        return Err(ParseError::new(ParseErrorKind::UnexpectedEof, t.offset));
+                    }
+                    TokenKind::RBrace if rows.len() == 1 && rows[0].is_empty() => {
                         self.bump();
+                        return Err(ParseError::new(ParseErrorKind::UnexpectedToken, offset));
+                    }
+                    _ => rows.last_mut().unwrap().push(self.parse_comparison()?),
+                }
+                match self.peek().kind {
+                    TokenKind::Comma => {
+                        self.bump();
+                    }
+                    TokenKind::Semi => {
+                        self.bump();
+                        rows.push(Vec::new());
                     }
                     TokenKind::RBrace => {
                         self.bump();
@@ -510,68 +586,19 @@ impl<'a> Parser<'a> {
                     _ => {
                         let t = self.peek();
                         return Err(ParseError::new(
-                            ParseErrorKind::Expected("',' or ';' or '}'"),
+                            ParseErrorKind::Expected("',', ';' or '}'"),
                             t.offset,
                         ));
                     }
                 }
+            }
+            // Rectangularity is enforced at parse time (Excel rejects
+            // ragged literals at entry).
+            let width = rows.first().map_or(0, Vec::len);
+            if rows.iter().any(|r| r.len() != width) {
+                return Err(ParseError::new(ParseErrorKind::NonRectangularArray, offset));
             }
             self.make(Expr::ArrayLiteral(rows))
-        })();
-        self.leave();
-        r
-    }
-
-    /// `name(` — parse the argument list.
-    fn parse_call(&mut self, name: &str, offset: usize) -> Result<Expr, ParseError> {
-        if !is_valid_fn_name(name) {
-            return Err(ParseError::new(ParseErrorKind::InvalidFunctionName, offset));
-        }
-        self.bump(); // '('
-        self.enter()?;
-        let r = (|| {
-            let mut args = Vec::new();
-            if self.at(&TokenKind::RParen) {
-                self.bump();
-                return self.make(Expr::Call {
-                    name: name.to_string(),
-                    args,
-                });
-            }
-            loop {
-                // Omitted argument: `F(,x)` / `F(x,)`.
-                if self.at(&TokenKind::Comma) || self.at(&TokenKind::RParen) {
-                    args.push(self.make(Expr::Missing)?);
-                } else {
-                    args.push(self.parse_comparison()?);
-                }
-                match self.peek().kind {
-                    TokenKind::Comma => {
-                        self.bump();
-                    }
-                    TokenKind::RParen => {
-                        self.bump();
-                        break;
-                    }
-                    TokenKind::Eof => {
-                        return Err(ParseError::new(
-                            ParseErrorKind::UnexpectedEof,
-                            self.peek().offset,
-                        ));
-                    }
-                    _ => {
-                        let t = self.peek();
-                        return Err(ParseError::new(
-                            ParseErrorKind::Expected("',' or ')'"),
-                            t.offset,
-                        ));
-                    }
-                }
-            }
-            self.make(Expr::Call {
-                name: name.to_string(),
-                args,
-            })
         })();
         self.leave();
         r
