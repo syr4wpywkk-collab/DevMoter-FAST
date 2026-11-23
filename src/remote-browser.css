@@ -5,7 +5,7 @@
 .rb-panel {
   position: fixed;
   z-index: 85;
-  inset: var(--dw-top-height, calc(56px + env(safe-area-inset-top))) 0 0;
+  inset: var(--dw-top-height, calc(56px + env(safe-area-inset-top))) 0 var(--dm-keyboard-inset, 0px);
   display: flex;
   flex-direction: column;
   min-height: 0;
