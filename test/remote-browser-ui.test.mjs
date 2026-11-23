@@ -196,6 +196,19 @@ test("remote browser streams frames, maps taps, sends committed IME text and tak
     await sleep(120);
     assert.deepEqual(ws.acts().at(-1).action, { type: "scroll", dx: 0, dy: 100, x: 200, y: 600 }, "drag scrolls at the point where it started");
 
+    canvas.dispatchEvent(new env.dom.window.WheelEvent("wheel", { deltaY: 3, deltaMode: 1, clientX: 50, clientY: 100, bubbles: true, cancelable: true }));
+    await sleep(120);
+    assert.deepEqual(ws.acts().at(-1).action, { type: "scroll", dx: 0, dy: 48, x: 100, y: 200 }, "line-mode wheel deltas are converted to pixels");
+
+    const beforeRight = ws.acts().length;
+    const right = new env.dom.window.MouseEvent("pointerdown", { clientX: 50, clientY: 100, button: 2, bubbles: true });
+    Object.defineProperty(right, "pointerType", { value: "mouse" });
+    Object.defineProperty(right, "pointerId", { value: 9 });
+    canvas.dispatchEvent(right);
+    pointer(env.dom.window, canvas, "pointerup", 50, 100, 9);
+    assert.equal(ws.acts().length, beforeRight, "right clicks are not sent as clicks");
+    assert.equal(doc.querySelector("[data-rb-ime]").tabIndex, -1, "the hidden IME field is out of the Tab order");
+
     const ime = doc.querySelector("[data-rb-ime]");
     const before = ws.acts().length;
     ime.dispatchEvent(new env.dom.window.CompositionEvent("compositionstart", { data: "" }));

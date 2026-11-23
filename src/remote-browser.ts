@@ -31,6 +31,7 @@ export type BrowserFrame = { seq: number; width: number; height: number; jpeg: U
 
 const PROTOCOL = "devmoter-browser.v1";
 const TAP_SLOP_PX = 8;
+const WHEEL_LINE_PX = 16;
 const SCROLL_FLUSH_MS = 80;
 const MAX_TEXT_CHUNK = 2000;
 const RECONNECT_MIN_MS = 500;
@@ -158,7 +159,7 @@ function createRemoteBrowser() {
       </div>
     </div>
     <p class="rb-status" role="status" aria-live="polite" data-rb-status></p>
-    <textarea class="rb-ime" data-rb-ime rows="1" aria-label="${t("remoteBrowser.inputAria")}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go"></textarea>
+    <textarea class="rb-ime" data-rb-ime rows="1" tabindex="-1" aria-label="${t("remoteBrowser.inputAria")}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go"></textarea>
   `;
   document.body.append(panel);
 
@@ -480,6 +481,7 @@ function createRemoteBrowser() {
 
   canvas.addEventListener("pointerdown", event => {
     if (!canDrive() || (pointer && pointer.id !== event.pointerId)) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
     pointer = { id: event.pointerId, x: event.clientX, y: event.clientY, lastX: event.clientX, lastY: event.clientY, dragging: false };
     canvas.setPointerCapture?.(event.pointerId);
     event.preventDefault();
@@ -506,7 +508,8 @@ function createRemoteBrowser() {
   canvas.addEventListener("wheel", event => {
     if (!canDrive()) return;
     event.preventDefault();
-    queueScroll(event.deltaX, event.deltaY, viewportPoint(event.clientX, event.clientY));
+    const unit = event.deltaMode === 1 ? WHEEL_LINE_PX : event.deltaMode === 2 ? (session?.viewport.height || 1) : 1;
+    queueScroll(event.deltaX * unit, event.deltaY * unit, viewportPoint(event.clientX, event.clientY));
   }, { passive: false });
 
   // Text input goes through an off-screen textarea so the soft keyboard and
