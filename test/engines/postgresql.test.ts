@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 
+import pg from 'pg';
+
 import { MAX_PARAMS, MAX_SQL_BYTES, createPostgresqlAdapter, encodePostgresqlParam, postgresqlError, postgresqlTypes, validatePostgresqlRequest } from '../../src/engines/postgresql.ts';
 import { EngineError, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
 import { builtEngine, startPostgresql, type TestServer } from './helpers.ts';
@@ -16,6 +18,8 @@ test('parameters are converted to what the client sends separately from the SQL'
   assert.equal(encodePostgresqlParam(-0, 1), '0');
   assert.equal(encodePostgresqlParam("a'b", 1), "a'b");
   assert.deepEqual(encodePostgresqlParam({ $base64: 'AP8=' }, 1), Buffer.from([0, 255]));
+  assert.equal(encodePostgresqlParam(Number.MAX_SAFE_INTEGER, 1), '9007199254740991');
+  assert.throws(() => encodePostgresqlParam(2 ** 53, 2), rejectsWith('invalid_request', /parameter 2 .* as a string/));
   const bad: unknown[] = [Number.NaN, Number.POSITIVE_INFINITY, '\ud800', 'a\0b', { $base64: '!' }, { other: 1 }, [1], undefined];
   for (const param of bad) assert.throws(() => encodePostgresqlParam(param as QueryParam, 2), rejectsWith('invalid_request', /parameter 2/), String(param));
 });
@@ -130,6 +134,39 @@ describe('PostgreSQL adapter against the built engine', { skip }, () => {
 
   test('a result larger than the limit is refused', async () => {
     await assert.rejects(adapter.query("SELECT repeat('x', 1000) FROM generate_series(1, 40000)", []), rejectsWith('result_too_large'));
+  });
+
+  test('a result larger than the limit asks the server to cancel once, not once per row', async () => {
+    const original = pg.Client;
+    let clients = 0;
+    pg.Client = class extends original {
+      constructor(config?: string | pg.ClientConfig) {
+        super(config);
+        clients += 1;
+      }
+    };
+    try {
+      await assert.rejects(adapter.query("SELECT repeat('x', 100) FROM generate_series(1, 400000)", []), rejectsWith('result_too_large'));
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    } finally {
+      pg.Client = original;
+    }
+    assert.equal(clients, 2, 'one connection for the query and one to cancel it');
+  });
+
+  test('COPY ... TO STDOUT is refused instead of returning an empty result', async () => {
+    await assert.rejects(adapter.query('COPY t TO STDOUT', []), rejectsWith('query_failed', /COPY .* TO STDOUT is not available/));
+    await assert.rejects(adapter.query('COPY (SELECT $1::int) TO STDOUT', [1]), rejectsWith('query_failed'));
+    await assert.rejects(adapter.query('COPY t FROM STDIN', []), rejectsWith('query_failed'));
+    assert.deepEqual((await adapter.query('SELECT 1 AS one', [])).results[0]?.rows, [{ one: 1 }]);
+  });
+
+  test('numbers inside json and jsonb values are never rounded', async () => {
+    const doc = '{"a":0.1234567890123456789,"b":1e400,"c":1.5,"d":12345678901234567890,"e":[1.10,-0.5e-3,7]}';
+    const { results } = await adapter.query(`SELECT '${doc}'::json AS j, '${doc}'::jsonb AS b`, []);
+    const row = results[0]?.rows[0] as { j: unknown; b: unknown };
+    assert.deepEqual(row.j, { a: '0.1234567890123456789', b: '1e400', c: 1.5, d: '12345678901234567890', e: [1.1, -0.0005, 7] });
+    assert.deepEqual(row.b, { a: '0.1234567890123456789', b: `1${'0'.repeat(400)}`, c: 1.5, d: '12345678901234567890', e: [1.1, -0.0005, 7] });
   });
 
   test('a read-only database starts every transaction read-only', async () => {

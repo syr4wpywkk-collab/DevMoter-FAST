@@ -11,6 +11,8 @@ const rejectsWith = (code: string, message?: RegExp) => (error: unknown) =>
 test('arguments are validated and converted', () => {
   assert.deepEqual(encodeArguments(['SET', 'k', 5, -0, { $base64: 'AP8=' }]), ['SET', 'k', '5', '0', Buffer.from([0, 255])]);
   const invalid = rejectsWith('invalid_request');
+  assert.throws(() => encodeArguments(['SET', 'k', 2 ** 53]), rejectsWith('invalid_request', /argument 3 .* as a string/));
+  assert.throws(() => encodeArguments(['SET', 'k', -1e21]), invalid);
   const bad: unknown[] = [[], 'GET k', [null], ['GET', null], ['GET', true], ['GET', Number.NaN], ['GET', '\ud800'], ['GET', { $base64: '!' }], ['GET', ['k']], [5], [{ $base64: 'R0VU' }], ['GET k'], ['']];
   for (const args of bad) assert.throws(() => encodeArguments(args as CommandArg[]), invalid, JSON.stringify(args));
   assert.throws(() => encodeArguments(new Array<CommandArg>(MAX_ARGS + 1).fill('x')), invalid);
@@ -120,6 +122,25 @@ describe('Valkey adapter against the built engine', { skip: valkey.skip }, () =>
     await other.close();
   });
 
+  test('a command cannot reach a logical database other than the configured one', async () => {
+    await run('SET', 'stays', 'here');
+    await assert.rejects(adapter.command(['MOVE', 'stays', 1]), rejectsWith('command_not_allowed', /other logical database/));
+    await assert.rejects(adapter.command(['COPY', 'stays', 'copy', 'db', 1]), rejectsWith('command_not_allowed', /other logical database/));
+    await assert.rejects(adapter.command(['COPY', 'stays', 'copy', 'REPLACE', { $base64: 'REI=' }, 1]), rejectsWith('command_not_allowed'));
+    assert.equal(await run('COPY', 'stays', 'copy'), 1);
+    assert.equal(await run('GET', 'copy'), 'here');
+    const other = createValkeyAdapter({ socketPath: server.socket, db: 1 });
+    assert.equal((await other.command(['EXISTS', 'stays', 'copy'])).result, 0);
+    await other.close();
+  });
+
+  test('a value or field name that starts with U+FEFF comes back unchanged', async () => {
+    await run('SET', 'bom', '\ufeffvalue');
+    assert.equal(await run('GET', 'bom'), '\ufeffvalue');
+    await run('HSET', 'bom-hash', '\ufefff', '1', 'f', '2');
+    assert.deepEqual(await run('HGETALL', 'bom-hash'), { '\ufefff': '1', f: '2' });
+  });
+
   test('a blocked command is stopped at the time limit or when cancelled', async () => {
     await assert.rejects(adapter.command(['BLPOP', 'no-such-list', 0], { timeoutMs: 200 }), rejectsWith('timeout'));
     const abort = new AbortController();
@@ -141,6 +162,23 @@ describe('Valkey adapter against the built engine', { skip: valkey.skip }, () =>
     const closed = createValkeyAdapter({ socketPath: server.socket });
     await closed.close();
     await assert.rejects(closed.command(['PING']), rejectsWith('engine_unavailable'));
+  });
+});
+
+describe('Valkey adapter against a server whose user may not run COMMAND INFO', { skip: valkey.skip }, () => {
+  let server: TestServer;
+  before(async () => {
+    server = await startValkey(valkey.binary, ['--user', 'limited', 'on', '>test-only-password', '~*', '+ping', '+get', '+hello', '+auth', '+select']);
+  });
+  after(() => server.stop());
+
+  test('health is unavailable, as every command would fail', async () => {
+    const adapter = createValkeyAdapter({ socketPath: server.socket, username: 'limited', password: 'test-only-password' });
+    await assert.rejects(adapter.command(['GET', 'k']), rejectsWith('engine_unavailable', /COMMAND INFO/));
+    const health = await adapter.health();
+    assert.equal(health.status, 'unavailable');
+    assert.match(health.message ?? '', /COMMAND INFO/);
+    await adapter.close();
   });
 });
 
