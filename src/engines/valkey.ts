@@ -242,6 +242,8 @@ export function createValkeyAdapter(options: ValkeyAdapterOptions): KeyValueAdap
         const server = await withConnection(HEALTH_TIMEOUT_MS, undefined, async (connection) => {
           const description = await open(connection);
           await connection.setup(['PING'], 'PING');
+          // Every command is looked up with COMMAND INFO first, so a user who may not run it cannot run anything.
+          await connection.setup(['COMMAND', 'INFO', 'ping'], 'COMMAND INFO');
           return description;
         });
         const version = typeof server === 'object' && server !== null && !Array.isArray(server) ? (server as Record<string, RespValue>).version : undefined;
