@@ -20,10 +20,8 @@ use calc_core::value::Value;
 /// `INTERCEPT` need. Scalars and single refs are one-element vectors.
 fn arg_members(ctx: &mut EvalContext<'_>, arg: &Expr) -> Result<Vec<(Value, bool)>, EvalError> {
     Ok(match ctx.eval_arg(arg)? {
-        // Array literals/spill results contribute their cells with
-        // array semantics — the same ignore-non-numeric rule as ranges.
         ArgValue::Scalar(Value::Array(a)) | ArgValue::Ref(Value::Array(a)) => {
-            a.cells().iter().cloned().map(|v| (v, true)).collect()
+            a.into_iter().map(|v| (v, true)).collect()
         }
         ArgValue::Scalar(v) => vec![(v, false)],
         ArgValue::Ref(v) => vec![(v, true)],
