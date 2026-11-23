@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 
-import { MAX_PARAMS, MAX_SQL_BYTES, createDuckdbAdapter, duckdbArguments, duckdbErrorMessage, encodeDuckdbLiteral } from '../../src/engines/duckdb.ts';
+import { MAX_PARAMS, MAX_SQL_BYTES, createDuckdbAdapter, duckdbErrorMessage, duckdbInvocation, encodeDuckdbLiteral } from '../../src/engines/duckdb.ts';
 import { createSqliteAdapter } from '../../src/engines/sqlite.ts';
 import { EngineError, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
 import { builtEngine } from './helpers.ts';
@@ -26,25 +26,53 @@ test('parameters are encoded so that no character of a value is read as SQL', ()
   for (const param of bad) assert.throws(() => encodeDuckdbLiteral(param as QueryParam, 2), rejectsWith('invalid_request', /parameter 2/), String(param));
 });
 
-test('the shell runs in safe mode and the SQL can never be a dot-command', () => {
+test('the shell runs in safe mode and nothing of the request is a program argument', () => {
   const options = { binary: '/x/duckdb', file: '/data/a.duckdb' };
-  assert.deepEqual(duckdbArguments(options, '.shell id', []), ['-safe', '-batch', '-no-init', '-json', '/data/a.duckdb', '-c', ' .shell id']);
-  assert.deepEqual(duckdbArguments({ ...options, readOnly: true }, 'SELECT 1', []).slice(0, 5), ['-safe', '-batch', '-no-init', '-json', '-readonly']);
-  assert.equal(
-    duckdbArguments(options, 'SELECT ?, ? -- note ;\n', ['a', 2]).at(-1),
-    " PREPARE devmoter_base_request AS SELECT ?, ? -- note\n; EXECUTE devmoter_base_request(decode(from_hex('61')),2)",
-  );
+  assert.deepEqual(duckdbInvocation(options, "SELECT 'sql-secret'", []), {
+    args: ['-safe', '-batch', '-no-init', '-bail', '-json', '/data/a.duckdb'],
+    input: "SELECT 'sql-secret'\n",
+    explain: false,
+  });
+  assert.deepEqual(duckdbInvocation({ ...options, readOnly: true }, 'SELECT 1', []).args, ['-safe', '-batch', '-no-init', '-bail', '-json', '-readonly', '/data/a.duckdb']);
+  const prepared = duckdbInvocation(options, 'SELECT ?, ? -- note ;\n', ['a', 2]);
+  assert.deepEqual(prepared.args, ['-safe', '-batch', '-no-init', '-bail', '-json', '/data/a.duckdb']);
+  assert.equal(prepared.input, "PREPARE devmoter_base_request AS SELECT ?, ? -- note\n; EXECUTE devmoter_base_request(decode(from_hex('61')),2);\n");
+});
+
+test('the SQL can never be a dot-command of the shell', () => {
+  const options = { binary: '/x/duckdb', file: '/data/a.duckdb' };
+  for (const sql of ['.shell id', 'SELECT 1;\n.open /tmp/x', "SELECT '\n.text'"]) {
+    assert.throws(() => duckdbInvocation(options, sql, []), rejectsWith('invalid_request', /must not start with "\."/), sql);
+  }
+  for (const sql of ['SELECT 1;\n .5 + 1', 'SELECT t\n  .id FROM t', '-init x']) assert.equal(duckdbInvocation(options, sql, []).input, `${sql}\n`);
+  assert.doesNotMatch(duckdbInvocation(options, 'SELECT ?', ['a\n.shell id']).input, /^\.shell/m);
+});
+
+test('with parameters only one statement is accepted: a second one would run before the values are checked', () => {
+  const options = { binary: '/x/duckdb', file: '/data/a.duckdb' };
+  const single = rejectsWith('invalid_request', /single statement/);
+  assert.throws(() => duckdbInvocation(options, 'SELECT ?; DELETE FROM t', [1]), single);
+  assert.throws(() => duckdbInvocation(options, 'SELECT $1; -- c\n INSERT INTO t VALUES (1);', [1]), single);
+  assert.doesNotThrow(() => duckdbInvocation(options, "SELECT ?, 'a;b' /* ; */ ; -- ;\n", [1]));
+  assert.doesNotThrow(() => duckdbInvocation(options, 'SELECT 1; SELECT 2', []));
+});
+
+test('a single EXPLAIN statement is marked: its output is a plan, not rows', () => {
+  const options = { binary: '/x/duckdb', file: '/data/a.duckdb' };
+  assert.equal(duckdbInvocation(options, '-- why\n explain analyze SELECT 1;', []).explain, true);
+  assert.equal(duckdbInvocation(options, 'SELECT 1; EXPLAIN SELECT 1', []).explain, false);
+  assert.equal(duckdbInvocation(options, 'EXPLAIN SELECT 1; SELECT 1', []).explain, false);
 });
 
 test('oversized or malformed requests are rejected before the engine starts', () => {
   const options = { binary: '/x/duckdb', file: '/data/a.duckdb' };
   const invalid = rejectsWith('invalid_request');
-  assert.throws(() => duckdbArguments(options, ' ', []), invalid);
-  assert.throws(() => duckdbArguments(options, 'SELECT 1\0', []), invalid);
-  assert.throws(() => duckdbArguments(options, `SELECT '${'x'.repeat(MAX_SQL_BYTES)}'`, []), invalid);
-  assert.throws(() => duckdbArguments(options, 'SELECT 1', 'x' as unknown as QueryParam[]), invalid);
-  assert.throws(() => duckdbArguments(options, 'SELECT 1', new Array<QueryParam>(MAX_PARAMS + 1).fill(1)), invalid);
-  assert.throws(() => duckdbArguments(options, 'SELECT ?', ['x'.repeat(30_000)]), rejectsWith('invalid_request', /parameters are larger/));
+  assert.throws(() => duckdbInvocation(options, ' ', []), invalid);
+  assert.throws(() => duckdbInvocation(options, 'SELECT 1\0', []), invalid);
+  assert.throws(() => duckdbInvocation(options, `SELECT '${'x'.repeat(MAX_SQL_BYTES)}'`, []), invalid);
+  assert.throws(() => duckdbInvocation(options, 'SELECT 1', 'x' as unknown as QueryParam[]), invalid);
+  assert.throws(() => duckdbInvocation(options, 'SELECT 1', new Array<QueryParam>(MAX_PARAMS + 1).fill(1)), invalid);
+  assert.throws(() => duckdbInvocation(options, 'SELECT ?', ['x'.repeat(30_000)]), rejectsWith('invalid_request', /parameters are larger/));
 });
 
 test('error output is reduced to the engine message', () => {
@@ -102,6 +130,49 @@ describe('DuckDB adapter against the built engine', { skip: duckdb.skip }, () =>
     await assert.rejects(adapter.query('SELECT $1 AS a, $2 AS b', ['only one']), rejectsWith('query_failed', /Values were not provided/));
   });
 
+  test('a request with parameters and a second statement changes nothing', async () => {
+    await assert.rejects(adapter.query('SELECT $1 AS a, $2 AS b; CREATE TABLE leaked(a INTEGER)', ['only one']), rejectsWith('invalid_request', /single statement/));
+    assert.deepEqual((await adapter.query("SELECT count(*) AS c FROM duckdb_tables() WHERE table_name = 'leaked'", [])).results[0]?.rows, [{ c: 0 }]);
+  });
+
+  test('EXPLAIN returns the plan as text', async () => {
+    const { results } = await adapter.query('EXPLAIN SELECT count(*) FROM t', []);
+    assert.deepEqual(results[0]?.columns, ['plan']);
+    assert.equal(results[0]?.rowCount, 1);
+    assert.match(String(results[0]?.rows[0]?.plan), /Scan/);
+    const json = await adapter.query('EXPLAIN (FORMAT JSON) SELECT count(*) FROM t', []);
+    assert.equal(Array.isArray(JSON.parse(String(json.results[0]?.rows[0]?.plan))), true);
+  });
+
+  test('the SQL and the parameters are not visible in the process list', { skip: process.platform !== 'linux' }, async () => {
+    const endless = adapter.query("SELECT 'sql-secret', $1, count(*) FROM range(100000000000) a, range(1000) b", ['param-secret'], { timeoutMs: 1_500 });
+    const outcome = assert.rejects(endless, rejectsWith('timeout'));
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const commandLines = readdirSync('/proc')
+      .filter((entry) => /^\d+$/.test(entry))
+      .map((pid) => {
+        try {
+          return readFileSync(`/proc/${pid}/cmdline`, 'utf8');
+        } catch {
+          return ''; // the process ended meanwhile
+        }
+      });
+    const shells = commandLines.filter((line) => line.includes(path.join(dir, 'a.duckdb')));
+    await outcome;
+    assert.ok(shells.length >= 1, 'the running shell was found');
+    for (const line of commandLines) assert.doesNotMatch(line, /sql-secret|param-secret|706172616d2d736563726574/);
+  });
+
+  test('closing the adapter stops the queries still running, so no engine process outlives it', async () => {
+    const closing = createDuckdbAdapter({ binary: duckdb.binary, file: path.join(dir, 'closing.duckdb') });
+    const outcome = assert.rejects(closing.query('SELECT count(*) FROM range(100000000000) a, range(1000) b', [], { timeoutMs: 60_000 }), rejectsWith('cancelled'));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const begun = performance.now();
+    await closing.close();
+    await outcome;
+    assert.ok(performance.now() - begun < 5_000);
+  });
+
   test('a failed statement rolls back the transaction it is in', async () => {
     await assert.rejects(adapter.query('BEGIN; INSERT INTO t(id) VALUES (9); SELECT nope; COMMIT;', []), rejectsWith('query_failed'));
     assert.deepEqual((await adapter.query('SELECT count(*) AS c FROM t WHERE id = 9', [])).results[0]?.rows, [{ c: 0 }]);
@@ -118,11 +189,13 @@ describe('DuckDB adapter against the built engine', { skip: duckdb.skip }, () =>
       "SELECT getenv('HOME')",
       'INSTALL httpfs',
       'SET enable_external_access = true',
-      `.shell touch ${outside}`,
-      `.open ${outside}.duckdb`,
+      ` .shell touch ${outside}`,
       `-init ${outside}`,
     ];
     for (const sql of attempts) await assert.rejects(adapter.query(sql, []), rejectsWith('query_failed'), sql);
+    for (const sql of [`.shell touch ${outside}`, `.open ${outside}.duckdb`, `SELECT 1;\n.shell touch ${outside}`]) {
+      await assert.rejects(adapter.query(sql, []), rejectsWith('invalid_request'), sql);
+    }
     for (const suffix of ['', '.duckdb', '.csv']) assert.equal(existsSync(outside + suffix), false);
   });
 
