@@ -330,7 +330,10 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
         openTasks: () => run(() => launchApp("sessions")),
         openReview: () => run(() => launchApp("review")),
         openTools: openSidebar,
-        openTerminal: () => run(() => launchApp("terminal"))
+        openTerminal: () => run(() => launchApp("terminal")),
+        openBrowser: () => run(() => {
+          void import("./remote-browser").then(module => { module.openRemoteBrowser(); }).catch(() => notify(t("shell.featureUnavailable")));
+        })
       }))
       .catch(error => {
         // A missing/cached JS chunk or a partial mount must never leave the
