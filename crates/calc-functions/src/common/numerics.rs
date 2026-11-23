@@ -705,6 +705,350 @@ pub fn f_inv(p: f64, d1: f64, d2: f64) -> f64 {
     d2 * z / (d1 * (1.0 - z))
 }
 
+/// I_n(x) for integer `n >= 0`, any real `x`. Overflow returns `inf`.
+pub fn bessel_i(n: i64, x: f64) -> f64 {
+    if n < 0 || x.is_nan() {
+        return f64::NAN;
+    }
+    if n == 0 {
+        return bessel_i0(x);
+    }
+    if n == 1 {
+        return bessel_i1(x);
+    }
+    if x == 0.0 {
+        return 0.0;
+    }
+    let ax = x.abs();
+    let i0 = bessel_i0(ax);
+    if !i0.is_finite() {
+        return f64::INFINITY;
+    }
+    // Downward recurrence normalized by I_0.
+    let tox = 2.0 / ax;
+    let nf = n as f64;
+    let m = 2 * (n + (40.0 * nf).sqrt() as i64);
+    let mut bi = 1.0;
+    let mut bip = 0.0;
+    let mut ans = 0.0;
+    for j in (1..=m).rev() {
+        let bim = bip + j as f64 * tox * bi;
+        bip = bi;
+        bi = bim;
+        if bi.abs() > 1e10 {
+            bi *= 1e-10;
+            bip *= 1e-10;
+            ans *= 1e-10;
+        }
+        if j == n {
+            ans = bip;
+        }
+    }
+    ans *= i0 / bi;
+    if x < 0.0 && n % 2 == 1 { -ans } else { ans }
+}
+
+/// I_0(x): NR bessi0 (A&S 9.8.1/9.8.2 polynomial fits, |err| <~ 2e-7).
+fn bessel_i0(x: f64) -> f64 {
+    let ax = x.abs();
+    if ax < 3.75 {
+        let y = (x / 3.75) * (x / 3.75);
+        1.0 + y
+            * (3.5156229
+                + y * (3.0899424
+                    + y * (1.2067492 + y * (0.2659732 + y * (0.360768e-1 + y * 0.45813e-2)))))
+    } else {
+        let y = 3.75 / ax;
+        (ax.exp() / ax.sqrt())
+            * (0.39894228
+                + y * (0.1328592e-1
+                    + y * (0.225319e-2
+                        + y * (-0.157565e-2
+                            + y * (0.916281e-2
+                                + y * (-0.2057706e-1
+                                    + y * (0.2635537e-1
+                                        + y * (-0.1647633e-1 + y * 0.392377e-2))))))))
+    }
+}
+
+/// I_1(x): NR bessi1.
+fn bessel_i1(x: f64) -> f64 {
+    let ax = x.abs();
+    let ans = if ax < 3.75 {
+        let y = (x / 3.75) * (x / 3.75);
+        ax * (0.5
+            + y * (0.87890594
+                + y * (0.51498869
+                    + y * (0.15084934 + y * (0.2658733e-1 + y * (0.301532e-2 + y * 0.32411e-3))))))
+    } else {
+        let y = 3.75 / ax;
+        (ax.exp() / ax.sqrt())
+            * (0.39894228
+                + y * (-0.3988024e-1
+                    + y * (-0.362018e-2
+                        + y * (0.163801e-2
+                            + y * (-0.1031555e-1
+                                + y * (0.2282967e-1
+                                    + y * (-0.2895312e-1
+                                        + y * (0.1787654e-1 - y * 0.420059e-2))))))))
+    };
+    if x < 0.0 { -ans } else { ans }
+}
+
+/// J_n(x) for integer `n >= 0`, any real `x`.
+pub fn bessel_j(n: i64, x: f64) -> f64 {
+    if n < 0 || x.is_nan() {
+        return f64::NAN;
+    }
+    if n == 0 {
+        return bessel_j0(x);
+    }
+    if n == 1 {
+        return bessel_j1(x);
+    }
+    if x == 0.0 {
+        return 0.0;
+    }
+    let ax = x.abs();
+    let nf = n as f64;
+    if ax > nf {
+        // Upward recurrence is stable for n < x.
+        let tox = 2.0 / ax;
+        let mut bjm = bessel_j0(ax);
+        let mut bj = bessel_j1(ax);
+        for k in 1..n {
+            let bjp = k as f64 * tox * bj - bjm;
+            bjm = bj;
+            bj = bjp;
+        }
+        if x < 0.0 && n % 2 == 1 { -bj } else { bj }
+    } else {
+        // Miller's algorithm: downward recurrence normalized by the
+        // known J_0 sum.
+        let tox = 2.0 / ax;
+        let m = 2 * ((n + (40.0 * nf).sqrt() as i64) / 2);
+        let mut bj = 1.0;
+        let mut bjp = 0.0;
+        let mut ans = 0.0;
+        let mut sum = 0.0;
+        let mut take = false;
+        for j in (1..=m).rev() {
+            let bjm = j as f64 * tox * bj - bjp;
+            bjp = bj;
+            bj = bjm;
+            if bj.abs() > 1e10 {
+                bj *= 1e-10;
+                bjp *= 1e-10;
+                ans *= 1e-10;
+                sum *= 1e-10;
+            }
+            if take {
+                sum += bj;
+            }
+            take = !take;
+            if j == n {
+                ans = bjp;
+            }
+        }
+        sum = 2.0 * sum - bj;
+        ans /= sum;
+        if x < 0.0 && n % 2 == 1 { -ans } else { ans }
+    }
+}
+
+/// J_0(x): rational fit for |x| < 8, asymptotic form beyond (NR bessj0).
+fn bessel_j0(x: f64) -> f64 {
+    let ax = x.abs();
+    if ax < 8.0 {
+        let y = x * x;
+        let num = 57568490574.0
+            + y * (-13362590354.0
+                + y * (651619640.7 + y * (-11214424.18 + y * (77392.33017 + y * (-184.9052456)))));
+        let den = 57568490411.0
+            + y * (1029532985.0 + y * (9494680.718 + y * (59272.64853 + y * (267.8532712 + y))));
+        num / den
+    } else {
+        let z = 8.0 / ax;
+        let y = z * z;
+        let xx = ax - 0.785398164;
+        let p = 1.0
+            + y * (-0.1098628627e-2
+                + y * (0.2734510407e-4 + y * (-0.2073370639e-5 + y * 0.2093887211e-6)));
+        let q = -0.1562499995e-1
+            + y * (0.1430488765e-3
+                + y * (-0.6911147651e-5 + y * (0.7621095161e-6 + y * (-0.934945152e-7))));
+        (std::f64::consts::FRAC_2_PI / ax).sqrt() * (xx.cos() * p - z * xx.sin() * q)
+    }
+}
+
+/// J_1(x): NR bessj1.
+fn bessel_j1(x: f64) -> f64 {
+    let ax = x.abs();
+    let ans = if ax < 8.0 {
+        let y = x * x;
+        let num = x
+            * (72362614232.0
+                + y * (-7895059235.0
+                    + y * (242396853.1
+                        + y * (-2972611.439 + y * (15704.48260 + y * (-30.16036606))))));
+        let den = 144725228442.0
+            + y * (2300535178.0 + y * (18583304.74 + y * (99447.43394 + y * (376.9991397 + y))));
+        num / den
+    } else {
+        let z = 8.0 / ax;
+        let y = z * z;
+        let xx = ax - 2.356194491;
+        let p = 1.0
+            + y * (0.183105e-2
+                + y * (-0.3516396496e-4 + y * (0.2457520174e-5 + y * (-0.240337019e-6))));
+        let q = 0.04687499995
+            + y * (-0.2002690873e-3
+                + y * (0.8449199096e-5 + y * (-0.88228987e-6 + y * 0.105787412e-6)));
+        (std::f64::consts::FRAC_2_PI / ax).sqrt() * (xx.cos() * p - z * xx.sin() * q)
+    };
+    if x < 0.0 { -ans } else { ans }
+}
+
+/// K_n(x) for integer `n >= 0`, `x > 0`. Returns `NaN` for `x <= 0`.
+pub fn bessel_k(n: i64, x: f64) -> f64 {
+    if n < 0 || x.is_nan() || x <= 0.0 {
+        return f64::NAN;
+    }
+    if n == 0 {
+        return bessel_k0(x);
+    }
+    if n == 1 {
+        return bessel_k1(x);
+    }
+    // Upward recurrence is always stable for K.
+    let tox = 2.0 / x;
+    let mut bkm = bessel_k0(x);
+    let mut bk = bessel_k1(x);
+    for k in 1..n {
+        let bkp = bkm + k as f64 * tox * bk;
+        bkm = bk;
+        bk = bkp;
+    }
+    bk
+}
+
+/// K_0(x), `x > 0`: NR bessk0.
+fn bessel_k0(x: f64) -> f64 {
+    if x <= 2.0 {
+        let y = x * x / 4.0;
+        (-(x / 2.0).ln()) * bessel_i0(x)
+            + (-0.57721566
+                + y * (0.42278420
+                    + y * (0.23069756
+                        + y * (0.3488590e-1 + y * (0.262698e-2 + y * (0.10750e-3 + y * 0.74e-5))))))
+    } else {
+        let y = 2.0 / x;
+        ((-x).exp() / x.sqrt())
+            * (1.25331414
+                + y * (-0.7832358e-1
+                    + y * (0.2189568e-1
+                        + y * (-0.1062446e-1
+                            + y * (0.587872e-2 + y * (-0.251540e-2 + y * 0.53208e-3))))))
+    }
+}
+
+/// K_1(x), `x > 0`: NR bessk1.
+fn bessel_k1(x: f64) -> f64 {
+    if x <= 2.0 {
+        let y = x * x / 4.0;
+        (x / 2.0).ln() * bessel_i1(x)
+            + (1.0 / x)
+                * (1.0
+                    + y * (0.15443144
+                        + y * (-0.67278579
+                            + y * (-0.18156897
+                                + y * (-0.1919402e-1 + y * (-0.110404e-2 + y * (-0.4686e-4)))))))
+    } else {
+        let y = 2.0 / x;
+        ((-x).exp() / x.sqrt())
+            * (1.25331414
+                + y * (0.23498619
+                    + y * (-0.3655620e-1
+                        + y * (0.1504268e-1
+                            + y * (-0.780353e-2 + y * (0.325614e-2 + y * (-0.68245e-3)))))))
+    }
+}
+
+/// Y_n(x) for integer `n >= 0`, `x > 0`. Returns `NaN` for `x <= 0`.
+pub fn bessel_y(n: i64, x: f64) -> f64 {
+    if n < 0 || x.is_nan() || x <= 0.0 {
+        return f64::NAN;
+    }
+    if n == 0 {
+        return bessel_y0(x);
+    }
+    if n == 1 {
+        return bessel_y1(x);
+    }
+    // Upward recurrence is always stable for Y.
+    let tox = 2.0 / x;
+    let mut bym = bessel_y0(x);
+    let mut by = bessel_y1(x);
+    for k in 1..n {
+        let byp = k as f64 * tox * by - bym;
+        bym = by;
+        by = byp;
+    }
+    by
+}
+
+/// Y_0(x), `x > 0`: NR bessy0.
+fn bessel_y0(x: f64) -> f64 {
+    if x < 8.0 {
+        let y = x * x;
+        let num = -2957821389.0
+            + y * (7062834065.0
+                + y * (-512359803.6 + y * (10879881.29 + y * (-86327.92757 + y * 228.4622733))));
+        let den = 40076544269.0
+            + y * (745249964.8 + y * (7189466.438 + y * (47447.26470 + y * (226.1030244 + y))));
+        num / den + std::f64::consts::FRAC_2_PI * bessel_j0(x) * x.ln()
+    } else {
+        let z = 8.0 / x;
+        let y = z * z;
+        let xx = x - 0.785398164;
+        let p = 1.0
+            + y * (-0.1098628627e-2
+                + y * (0.2734510407e-4 + y * (-0.2073370639e-5 + y * 0.2093887211e-6)));
+        let q = -0.1562499995e-1
+            + y * (0.1430488765e-3
+                + y * (-0.6911147651e-5 + y * (0.7621095161e-6 + y * (-0.934945152e-7))));
+        (std::f64::consts::FRAC_2_PI / x).sqrt() * (xx.sin() * p + z * xx.cos() * q)
+    }
+}
+
+/// Y_1(x), `x > 0`: NR bessy1.
+fn bessel_y1(x: f64) -> f64 {
+    if x < 8.0 {
+        let y = x * x;
+        let num = x
+            * (-0.4900604943e13
+                + y * (0.1275274390e13
+                    + y * (-0.5153438139e11
+                        + y * (0.7349264551e9 + y * (-0.4237922726e7 + y * 0.8511937935e4)))));
+        let den = 0.2499580570e14
+            + y * (0.4244419664e12
+                + y * (0.3733650367e10
+                    + y * (0.2245904002e8 + y * (0.1020426050e6 + y * (0.3549632885e3 + y)))));
+        num / den + std::f64::consts::FRAC_2_PI * (bessel_j1(x) * x.ln() - 1.0 / x)
+    } else {
+        let z = 8.0 / x;
+        let y = z * z;
+        let xx = x - 2.356194491;
+        let p = 1.0
+            + y * (0.183105e-2
+                + y * (-0.3516396496e-4 + y * (0.2457520174e-5 + y * (-0.240337019e-6))));
+        let q = 0.04687499995
+            + y * (-0.2002690873e-3
+                + y * (0.8449199096e-5 + y * (-0.88228987e-6 + y * 0.105787412e-6)));
+        (std::f64::consts::FRAC_2_PI / x).sqrt() * (xx.sin() * p + z * xx.cos() * q)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

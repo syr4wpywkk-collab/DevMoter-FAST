@@ -9,7 +9,8 @@
 use calc_core::registry::{Function, FunctionRegistry};
 
 use crate::{
-    aggregate, array, datetime, financial, functional, logical, lookup, math, statistics, text,
+    aggregate, array, datetime, engineering, financial, functional, logical, lookup, math,
+    statistics, text,
 };
 
 /// Aggregation point — exactly one entry per v2 §3 category, in the
@@ -25,6 +26,7 @@ const CATEGORIES: &[&[(&str, Function)]] = &[
     statistics::FUNCTIONS,
     array::FUNCTIONS,
     functional::FUNCTIONS,
+    engineering::FUNCTIONS,
     financial::FUNCTIONS,
 ];
 
@@ -113,11 +115,23 @@ mod tests {
                 "AVERAGEIF",
                 "AVERAGEIFS",
                 "BASE",
+                "BESSELI",
+                "BESSELJ",
+                "BESSELK",
+                "BESSELY",
                 "BETA.DIST",
                 "BETA.INV",
+                "BIN2DEC",
+                "BIN2HEX",
+                "BIN2OCT",
                 "BINOM.DIST",
                 "BINOM.DIST.RANGE",
                 "BINOM.INV",
+                "BITAND",
+                "BITLSHIFT",
+                "BITOR",
+                "BITRSHIFT",
+                "BITXOR",
                 "CEILING",
                 "CEILING.MATH",
                 "CEILING.PRECISE",
@@ -131,9 +145,11 @@ mod tests {
                 "COLUMNS",
                 "COMBIN",
                 "COMBINA",
+                "COMPLEX",
                 "CONCAT",
                 "CONFIDENCE.NORM",
                 "CONFIDENCE.T",
+                "CONVERT",
                 "CORREL",
                 "COS",
                 "COSH",
@@ -160,8 +176,12 @@ mod tests {
                 "DAY",
                 "DB",
                 "DDB",
+                "DEC2BIN",
+                "DEC2HEX",
+                "DEC2OCT",
                 "DECIMAL",
                 "DEGREES",
+                "DELTA",
                 "DEVSQ",
                 "DISC",
                 "DOLLARDE",
