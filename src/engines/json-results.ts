@@ -40,6 +40,36 @@ export function splitJsonValues(text: string): string[] {
   return values;
 }
 
+/**
+ * Column names of the first row, in the order the engine wrote them. `Object.keys` cannot be
+ * used: JavaScript objects list integer-like keys ("2024") first, in numeric order.
+ * `source` must be valid JSON: one array of row objects.
+ */
+export function firstRowKeys(source: string): string[] {
+  const keys = new Set<string>();
+  let depth = 0; // 1: inside the array, 2: inside a row
+  let expectKey = false;
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === '"') {
+      let end = index + 1;
+      while (source[end] !== '"') end += source[end] === '\\' ? 2 : 1;
+      if (depth === 2 && expectKey) keys.add(JSON.parse(source.slice(index, end + 1)) as string);
+      expectKey = false;
+      index = end;
+    } else if (char === '[' || char === '{') {
+      depth += 1;
+      expectKey = depth === 2;
+    } else if (char === ']' || char === '}') {
+      depth -= 1;
+      if (depth <= 1) break;
+    } else if (char === ',' && depth === 2) {
+      expectKey = true;
+    }
+  }
+  return [...keys];
+}
+
 export function parseResultSets(text: string): ResultSet[] {
   return splitJsonValues(text).map((source) => {
     const rows: unknown = (JSON.parse as (text: string, reviver: typeof exactNumbers) => unknown)(source, exactNumbers);
@@ -47,6 +77,6 @@ export function parseResultSets(text: string): ResultSet[] {
       throw new SyntaxError('expected an array of row objects');
     }
     const typed = rows as Record<string, unknown>[];
-    return { columns: typed[0] ? Object.keys(typed[0]) : [], rows: typed, rowCount: typed.length };
+    return { columns: firstRowKeys(source), rows: typed, rowCount: typed.length };
   });
 }

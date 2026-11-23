@@ -32,3 +32,10 @@ test('rejects output that is not rows', () => {
   assert.throws(() => parseResultSets('[1,2]'), SyntaxError);
   assert.throws(() => parseResultSets('{"a":1}'), SyntaxError);
 });
+
+test('columns keep the order the engine wrote them, also when a name looks like a number', () => {
+  const [set] = parseResultSets('[{"2024":1,"2023":2,"b":{"x":[1,{"y":2}],"z":"q"},"a\\"\\\\":"},{","10":null},\n{"2024":3,"2023":4,"b":null,"a\\"\\\\":"","10":1}]');
+  assert.deepEqual(set?.columns, ['2024', '2023', 'b', 'a"\\', '10']);
+  assert.equal(set?.rows[0]?.['2023'], 2);
+  assert.deepEqual(parseResultSets('[]')[0]?.columns, []);
+});
