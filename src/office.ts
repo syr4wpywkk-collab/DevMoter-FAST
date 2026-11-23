@@ -14,13 +14,26 @@ type Doc = {
 type DocMeta = { id: string; name: string; updatedAt: string; openedAt?: string };
 type AiRun = {
   id: string;
+  kind?: "edit" | "shape" | "ask" | "generate";
   documentId?: string;
   revision?: string;
   status: string;
-  edits?: { blockId: string; text: string }[];
+  edits?: {
+    blockId: string;
+    text?: string;
+    type?: "paragraph" | "heading" | "listItem";
+    level?: number;
+    list?: "bullet" | "ordered";
+    ilvl?: number;
+    align?: "left" | "center" | "right" | "justify";
+  }[];
+  answer?: string;
+  createdDocumentId?: string;
+  name?: string;
   error?: string;
   sharing?: { excluded: number; truncated: boolean };
 };
+type AiMode = "edit" | "shape" | "ask" | "generate";
 type Provider = { id: string; name: string; models: string[]; ready: boolean; projectId?: string };
 type Pane = "list" | "editor" | "ai";
 
@@ -130,7 +143,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
         <h2>${esc(t("office.tab.ai"))}</h2>
         <div class="office-ai-empty" data-ai-empty hidden><p>${esc(t("office.aiRequiresDoc"))}</p></div>
         <div class="office-ai-setup" data-ai-unconfigured hidden><p>${esc(t("office.aiUnconfigured"))}</p><button type="button" data-configure>${esc(t("office.aiOpenSettings"))}</button></div>
-        <form data-ai-form hidden><label>${esc(t("office.aiGoalLabel"))}<textarea data-goal rows="3" placeholder="${esc(t("office.aiGoalPlaceholder"))}"></textarea></label><div class="office-ai-selectors" role="group" aria-label="${esc(t("office.aiSelectorGroupAria"))}"><label>${esc(t("office.aiProviderLabel"))}<select data-provider></select></label><label>${esc(t("office.aiModelLabel"))}<select data-model></select></label></div><details data-project-details hidden><summary>${esc(t("office.aiProjectLabel"))}</summary><label>${esc(t("office.aiProjectLabel"))}<select data-project></select></label></details><p class="office-quiet" data-provider-notice></p><p class="office-quiet office-ai-single-hint" data-ai-single-hint hidden>${esc(t("office.aiSingleOptionHint"))}</p><label class="office-consent"><input type="checkbox" data-share>${esc(t("office.aiConsent"))}</label><div class="office-ai-actions"><button data-ai-send>${esc(t("office.aiGenerate"))}</button><button type="button" data-stop hidden>${esc(t("common.stop"))}</button></div></form>
+        <form data-ai-form hidden><label>${esc(t("office.aiModeLabel"))}<select data-ai-mode><option value="edit">${esc(t("office.aiMode.edit"))}</option><option value="shape">${esc(t("office.aiMode.shape"))}</option><option value="ask">${esc(t("office.aiMode.ask"))}</option><option value="generate">${esc(t("office.aiMode.generate"))}</option></select></label><label>${esc(t("office.aiGoalLabel"))}<textarea data-goal rows="3" placeholder="${esc(t("office.aiGoalPlaceholder"))}"></textarea></label><div class="office-ai-selectors" role="group" aria-label="${esc(t("office.aiSelectorGroupAria"))}"><label>${esc(t("office.aiProviderLabel"))}<select data-provider></select></label><label>${esc(t("office.aiModelLabel"))}<select data-model></select></label></div><details data-project-details hidden><summary>${esc(t("office.aiProjectLabel"))}</summary><label>${esc(t("office.aiProjectLabel"))}<select data-project></select></label></details><p class="office-quiet" data-provider-notice></p><p class="office-quiet office-ai-single-hint" data-ai-single-hint hidden>${esc(t("office.aiSingleOptionHint"))}</p><label class="office-consent"><input type="checkbox" data-share>${esc(t("office.aiConsent"))}</label><div class="office-ai-actions"><button data-ai-send>${esc(t("office.aiGenerate"))}</button><button type="button" data-stop hidden>${esc(t("common.stop"))}</button></div></form>
         <p class="office-quiet" data-ai-status role="status" aria-live="polite"></p><div data-proposal></div>
       </aside>
     </div>`;
@@ -140,6 +153,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   const provider = get<HTMLSelectElement>("[data-provider]");
   const model = get<HTMLSelectElement>("[data-model]");
   const project = get<HTMLSelectElement>("[data-project]");
+  const aiMode = get<HTMLSelectElement>("[data-ai-mode]");
   let doc: Doc | null = null;
   let docsCount = 0;
   let libraryLoaded = false;
@@ -317,7 +331,8 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     get<HTMLButtonElement>("[data-empty-open]").disabled = busy;
     get<HTMLButtonElement>("[data-download]").disabled = busy || !doc;
     get<HTMLButtonElement>("[data-ai-send]").disabled =
-      busy || !doc || !aiReady() || !selectedProvider() || !model.value || ["planning", "stop_requested"].includes(run?.status || "");
+      busy || (!doc && aiMode.value !== "generate") || !aiReady() || !selectedProvider() || !model.value || ["planning", "stop_requested"].includes(run?.status || "");
+    get<HTMLButtonElement>("[data-ai-send]").textContent = t(`office.aiSend.${aiMode.value in { edit: 1, shape: 1, ask: 1, generate: 1 } ? aiMode.value : "edit"}`);
     const state = get("[data-save-state]");
     const label = !doc ? "" : saveError ? t("office.saveState.error") : saving ? t("office.saveState.saving") : dirty ? t("office.saveState.dirty") : t("office.saveState.saved");
     state.textContent = label;
@@ -556,9 +571,10 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       return;
     }
     const ready = aiReady();
+    const needsDoc = aiMode.value !== "generate";
     get("[data-ai-unconfigured]").hidden = ready;
-    get("[data-ai-empty]").hidden = !ready || !!doc;
-    get("[data-ai-form]").hidden = !ready || !doc;
+    get("[data-ai-empty]").hidden = !ready || !!doc || !needsDoc;
+    get("[data-ai-form]").hidden = !ready || (!doc && needsDoc);
     syncProviderNotice();
   };
   const syncProjectForProvider = () => {
@@ -621,7 +637,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     fillModels(keepModel ? previousModel : "");
   };
   const renderRun = () => {
-    const aiStatusKeys = new Set(["planning", "proposed", "stop_requested", "stopped", "failed", "unknown"]);
+    const aiStatusKeys = new Set(["planning", "proposed", "answered", "created", "stop_requested", "stopped", "failed", "unknown"]);
     const statusText = run
       ? (aiStatusKeys.has(run.status) ? t(`office.aiStatus.${run.status}`) : run.status)
       : "";
@@ -633,15 +649,35 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     proposal.replaceChildren();
     if (run?.sharing && (run.sharing.excluded || run.sharing.truncated))
       proposal.append(node("p", t("office.aiSharingExcluded"), "office-sharing-notice"));
+    if (run?.status === "answered" && run.answer)
+      proposal.append(node("p", run.answer, "office-ai-answer"));
+    if (run?.status === "created" && run.createdDocumentId) {
+      proposal.append(node("p", t("office.aiCreatedDoc", { name: run.name || "" }), "office-ai-answer"));
+      const created = run.createdDocumentId;
+      proposal.append(button(t("office.openProposalDoc"), () => void openDocument(created).then(renderRun)));
+    }
     if (run?.status === "proposed" && run.documentId === doc?.id) {
       for (const edit of run.edits || []) {
         const details = document.createElement("details");
         details.open = true;
-        details.append(
-          node("summary", t("office.paragraphProposal")),
-          node("del", doc?.blocks.find((b) => b.id === edit.blockId)?.text || ""),
-          node("ins", edit.text),
-        );
+        if (edit.text !== undefined) {
+          details.append(
+            node("summary", t("office.paragraphProposal")),
+            node("del", doc?.blocks.find((b) => b.id === edit.blockId)?.text || ""),
+            node("ins", edit.text),
+          );
+        } else {
+          const shape = [
+            edit.type ? t(`office.shapeType.${edit.type}`) : "",
+            edit.type === "heading" && edit.level ? ` ${edit.level}` : "",
+            edit.type === "listItem" && edit.list ? ` · ${t(`office.shapeList.${edit.list}`)}` : "",
+            edit.align ? ` · ${t(`office.shapeAlign.${edit.align}`)}` : "",
+          ].join("");
+          details.append(
+            node("summary", `${t("office.shapeProposal")}: ${doc?.blocks.find((b) => b.id === edit.blockId)?.text || ""}`),
+            node("ins", shape),
+          );
+        }
         proposal.append(details);
       }
       proposal.append(
@@ -652,7 +688,9 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
           }
           for (const edit of run.edits || []) {
             const key = editor.blockKeyFor(edit.blockId);
-            if (key) editor.replaceText(key, edit.text);
+            if (!key) continue;
+            if (edit.text !== undefined) editor.replaceText(key, edit.text);
+            else editor.applyShape(key, edit);
           }
           run = null;
           localStorage.removeItem("devmoter-office-ai-run");
@@ -683,22 +721,39 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       poll = window.setTimeout(() => void pollRun(), 3000);
     }
   };
+  aiMode.addEventListener("change", () => {
+    controls();
+  });
   get("[data-ai-form]").addEventListener("submit", (e) => {
     e.preventDefault();
     void task(async () => {
       const selected = selectedProvider();
-      if (!doc || !selected || !model.value) return;
-      await save();
-      if (dirty) throw new Error(t("office.saveBeforeAi"));
-      run = await api<AiRun>("/api/office/ai/runs", "POST", {
-        documentId: doc.id,
-        revision: doc.revision,
+      const mode: AiMode = (["edit", "shape", "ask", "generate"] as const).includes(aiMode.value as AiMode)
+        ? (aiMode.value as AiMode)
+        : "edit";
+      if ((!doc && mode !== "generate") || !selected || !model.value) return;
+      if (mode !== "generate") {
+        await save();
+        if (dirty) throw new Error(t("office.saveBeforeAi"));
+      }
+      const common = {
         goal: get<HTMLTextAreaElement>("[data-goal]").value,
         providerId: selected.id,
         model: model.value,
         projectId: project.value || null,
         share: get<HTMLInputElement>("[data-share]").checked,
-      });
+      };
+      run =
+        mode === "generate"
+          ? await api<AiRun>("/api/office/ai/generate", "POST", common)
+          : mode === "ask"
+            ? await api<AiRun>("/api/office/ai/ask", "POST", { ...common, documentId: doc!.id, revision: doc!.revision })
+            : await api<AiRun>("/api/office/ai/runs", "POST", {
+                ...common,
+                mode,
+                documentId: doc!.id,
+                revision: doc!.revision,
+              });
       writeStorage("devmoter-office-ai-run", run.id);
       renderRun();
       void pollRun();

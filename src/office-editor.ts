@@ -941,6 +941,23 @@ export function createOfficeEditor(page: HTMLElement, options: OfficeEditorOptio
       for (const [key, value] of ids) if (value === id) return key;
       return undefined;
     },
+    /** Apply an AI shaping proposal: structure only (type/level/list/align), runs untouched. */
+    applyShape(key: string, shape: { type?: BlockType; level?: number; list?: "bullet" | "ordered"; ilvl?: number; align?: "left" | "center" | "right" | "justify" }) {
+      const el = page.querySelector<HTMLElement>(`[data-key="${key}"]`);
+      if (!el || isLocked(el)) return false;
+      const model = readModel(el);
+      const type = shape.type || model.type;
+      commit(() =>
+        setType(el, {
+          type,
+          level: type === "heading" ? shape.level || model.level || 1 : undefined,
+          list: type === "listItem" ? shape.list || model.list || "bullet" : undefined,
+          ilvl: type === "listItem" ? shape.ilvl ?? model.ilvl ?? 0 : undefined,
+          align: shape.align !== undefined ? shape.align : model.align,
+        }),
+      );
+      return true;
+    },
     replaceText(key: string, text: string) {
       const el = page.querySelector<HTMLElement>(`[data-key="${key}"]`);
       if (!el || isLocked(el)) return false;

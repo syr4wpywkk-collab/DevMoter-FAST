@@ -60,6 +60,65 @@ export function validateEdits(parsed, edits) {
     return { blockId: block.id, text: edit.text };
   });
 }
+const SHAPE_KEYS = ["blockId", "type", "level", "list", "ilvl", "align"];
+const SHAPE_TYPES = ["paragraph", "heading", "listItem"];
+const SHAPE_LISTS = ["bullet", "ordered"];
+const SHAPE_ALIGNS = ["left", "center", "right", "justify"];
+/**
+ * AI shaping proposals address one block each and only normalize its structure
+ * (type, heading level, list kind/level, alignment). They are validated here —
+ * including against the revision they were proposed for — and applied in the
+ * editor like text proposals; nothing is written by the proposal itself.
+ */
+export function validateShapeEdits(parsed, shapes) {
+  if (
+    !Array.isArray(shapes) ||
+    !shapes.length ||
+    shapes.length > OFFICE_LIMITS.edits
+  )
+    throw fail("変更件数が不正です。");
+  const seen = new Set();
+  return shapes.map((shape) => {
+    if (
+      !shape ||
+      Object.keys(shape).some((key) => !SHAPE_KEYS.includes(key)) ||
+      (shape.type !== undefined && !SHAPE_TYPES.includes(shape.type)) ||
+      (shape.level !== undefined &&
+        !(Number.isInteger(shape.level) && shape.level >= 1 && shape.level <= 9)) ||
+      (shape.list !== undefined && !SHAPE_LISTS.includes(shape.list)) ||
+      (shape.ilvl !== undefined &&
+        !(Number.isInteger(shape.ilvl) && shape.ilvl >= 0 && shape.ilvl <= 8)) ||
+      (shape.align !== undefined && !SHAPE_ALIGNS.includes(shape.align)) ||
+      !Object.keys(shape).some((key) => key !== "blockId")
+    )
+      throw fail("構成の変更案が不正です。");
+    const block = parsed.blocks.find((item) => item.id === shape.blockId);
+    if (!block || !editable(block, parsed) || seen.has(shape.blockId))
+      throw fail("編集できない、または重複した本文です。");
+    seen.add(shape.blockId);
+    const type = shape.type ??
+      (block.type === "heading" ? "heading" : block.type === "listItem" ? "listItem" : "paragraph");
+    if (
+      (shape.level !== undefined && type !== "heading") ||
+      (shape.list !== undefined && type !== "listItem") ||
+      (shape.ilvl !== undefined && type !== "listItem")
+    )
+      throw fail("構成の変更案が不正です。");
+    const edit = { blockId: block.id, type };
+    if (type === "heading") {
+      const level = shape.level ?? block.level;
+      if (!(Number.isInteger(level) && level >= 1 && level <= 9))
+        throw fail("構成の変更案が不正です。");
+      edit.level = level;
+    }
+    if (type === "listItem") {
+      edit.list = shape.list ?? (block.list?.kind === "ordered" ? "ordered" : "bullet");
+      edit.ilvl = shape.ilvl ?? Math.min(Math.max(block.list?.ilvl || 0, 0), 8);
+    }
+    if (shape.align !== undefined) edit.align = shape.align;
+    return edit;
+  });
+}
 // Autosave writes often; saves within this window replace the latest edit
 // revision instead of adding one, so history stays meaningful.
 const COALESCE_MS = 10 * 60 * 1000;
@@ -309,6 +368,12 @@ export function createOfficeStore({ rootDir }) {
       if (data.meta.revision !== revision)
         throw fail("文書が更新されています。再読み込みしてください。", 409);
       return validateEdits(data.parsed, edits);
+    },
+    validateShapes: async (id, revision, shapes) => {
+      const data = await load(id);
+      if (data.meta.revision !== revision)
+        throw fail("文書が更新されています。再読み込みしてください。", 409);
+      return validateShapeEdits(data.parsed, shapes);
     },
     restore: (id, revision, target) =>
       serial(async () => {

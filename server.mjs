@@ -3288,6 +3288,8 @@ const server = http.createServer(async (req, res) => {
         const restoreMatch = path.match(/^\/api\/office\/documents\/([a-f0-9-]{36})\/restore$/);
         if (restoreMatch && req.method === "POST") { const payload = await readJson(req, 1000); json(res, 200, await officeStore.restore(restoreMatch[1], payload.revision, payload.target)); return; }
         if (path === "/api/office/ai/runs" && req.method === "POST") { json(res, 202, await officeAi.start(await readJson(req, 8000), identity)); return; }
+        if (path === "/api/office/ai/ask" && req.method === "POST") { json(res, 202, await officeAi.ask(await readJson(req, 8000), identity)); return; }
+        if (path === "/api/office/ai/generate" && req.method === "POST") { json(res, 202, await officeAi.generate(await readJson(req, 8000), identity)); return; }
         const aiMatch = path.match(/^\/api\/office\/ai\/runs\/([a-f0-9-]{36})(\/stop)?$/);
         if (aiMatch && req.method === "GET" && !aiMatch[2]) { json(res, 200, officeAi.get(aiMatch[1], identity)); return; }
         if (aiMatch && req.method === "POST" && aiMatch[2]) { json(res, 200, officeAi.stop(aiMatch[1], identity)); return; }
