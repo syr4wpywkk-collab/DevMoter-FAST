@@ -46,7 +46,9 @@ CI（GitHub Actions）は Pull Request と main への push ごとに、x86-64 �
 - `package.json` の依存がすべて厳密なバージョン指定である
 - `package-lock.json` が `package.json` と一致し、全パッケージが npm 公式レジストリ由来で sha512 の整合性ハッシュを持つ
 - ライセンスが許可リスト内である
-- インストールスクリプトを実行するパッケージが許可リスト内である
+- インストールスクリプトを持つパッケージが許可リスト内である
 - high 以上の既知の脆弱性がない（`npm audit`。`--offline` で省略可）
+
+依存パッケージのインストールスクリプトは `.npmrc` の `ignore-scripts=true` で実行されません。CI は `npm ci` の前に `node scripts/deps/check.ts --offline` で lockfile を検査します。スクリプトが必要なパッケージを入れる場合は、許可リストに追加したうえで `npm rebuild <パッケージ名> --ignore-scripts=false` を明示的に実行します。
 
 npm パッケージと GitHub Actions の更新は Dependabot が週次で PR にします。

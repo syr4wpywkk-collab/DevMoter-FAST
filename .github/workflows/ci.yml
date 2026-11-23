@@ -39,7 +39,9 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - run: node --version && uname -m
-      - run: npm ci
+      - name: Check the lockfile against policy before installing anything
+        run: node scripts/deps/check.ts --offline
+      - run: npm ci --ignore-scripts
       - run: npm run typecheck
       - run: npm test
       - run: npm run deps:check
