@@ -9,10 +9,11 @@
 //! Supported tokens: numbers, `"strings"` (`""` escape), `'quoted names'`
 //! (`''` escape, for sheet qualifiers), error literals (`#N/A` …),
 //! words (identifiers / function names / `$`-decorated cell references),
-//! operators `+ - * / ^ & % = < > <= >= <>`, `( ) , : !`.
+//! operators `+ - * / ^ & % = < > <= >= <>`, `( ) , : !` and the array
+//! literal punctuation `{ } ;`.
 //!
-//! `;`, `{`, `}` (array literals, locale argument separators) are rejected
-//! as unexpected characters for now.
+//! `;` outside an array literal (locale argument separators) is rejected
+//! by the parser.
 
 use crate::error::CalcError;
 
@@ -41,6 +42,12 @@ pub enum TokenKind {
     LParen,
     RParen,
     Comma,
+    /// `;` — row separator inside array literals.
+    Semicolon,
+    /// `{` — array literal open.
+    LBrace,
+    /// `}` — array literal close.
+    RBrace,
     Colon,
     Bang,
     Plus,
@@ -166,6 +173,18 @@ pub fn lex(src: &str, max_tokens: usize) -> Result<Vec<Token>, LexError> {
             }
             b',' => {
                 push!(TokenKind::Comma, at);
+                i += 1;
+            }
+            b';' => {
+                push!(TokenKind::Semicolon, at);
+                i += 1;
+            }
+            b'{' => {
+                push!(TokenKind::LBrace, at);
+                i += 1;
+            }
+            b'}' => {
+                push!(TokenKind::RBrace, at);
                 i += 1;
             }
             b':' => {

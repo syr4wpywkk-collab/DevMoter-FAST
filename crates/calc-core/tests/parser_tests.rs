@@ -169,12 +169,8 @@ fn lex_offsets() {
 #[test]
 fn lex_rejects_bad_input() {
     assert_eq!(
-        lex("{1,2}", MAX_TOKENS).unwrap_err().kind,
-        LexErrorKind::UnexpectedChar('{')
-    );
-    assert_eq!(
-        lex(";", MAX_TOKENS).unwrap_err().kind,
-        LexErrorKind::UnexpectedChar(';')
+        lex("@", MAX_TOKENS).unwrap_err().kind,
+        LexErrorKind::UnexpectedChar('@')
     );
     assert_eq!(
         lex("\"abc", MAX_TOKENS).unwrap_err().kind,
