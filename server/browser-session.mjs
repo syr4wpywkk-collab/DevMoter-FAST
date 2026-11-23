@@ -1094,6 +1094,15 @@ export function createBrowserSessionManager({
     return point;
   }
 
+  // Screen points are pixels of what is shown; input events take page CSS
+  // pixels from the corner of the shown area. They differ while the page is
+  // zoomed (a page without a viewport meta tag on a phone is shown scaled down).
+  async function screenToPage(send) {
+    const viewport = (await send("Page.getLayoutMetrics", {}).catch(() => null))?.cssVisualViewport;
+    const scale = Number(viewport?.scale) > 0 ? Number(viewport.scale) : 1;
+    return { scale, point: (x, y) => ({ x: x / scale, y: y / scale }) };
+  }
+
   async function historyNavigate(session, offset, send) {
     const { currentIndex, entries = [] } = await send("Page.getNavigationHistory", {});
     const entry = entries[currentIndex + offset];
@@ -1118,9 +1127,13 @@ export function createBrowserSessionManager({
         return result.errorText ? { ok: false, error: String(result.errorText).slice(0, 200) } : { ok: true };
       }
       case "click": {
-        const point = action.selector ? await centerOfSelector(session, action.selector, send) : action;
-        const x = clamp(point.x, 0, width - 1);
-        const y = clamp(point.y, 0, height - 1);
+        let x;
+        let y;
+        if (action.selector) {
+          ({ x, y } = await centerOfSelector(session, action.selector, send));
+        } else {
+          ({ x, y } = (await screenToPage(send)).point(clamp(action.x, 0, width - 1), clamp(action.y, 0, height - 1)));
+        }
         await send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
         await send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 });
         await send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
@@ -1137,9 +1150,12 @@ export function createBrowserSessionManager({
         return { ok: true };
       }
       case "scroll": {
-        const x = action.x === undefined ? Math.floor(width / 2) : clamp(action.x, 0, width - 1);
-        const y = action.y === undefined ? Math.floor(height / 2) : clamp(action.y, 0, height - 1);
-        await send("Input.dispatchMouseEvent", { type: "mouseWheel", x, y, deltaX: action.dx, deltaY: action.dy });
+        const { scale, point } = await screenToPage(send);
+        const { x, y } = point(
+          action.x === undefined ? Math.floor(width / 2) : clamp(action.x, 0, width - 1),
+          action.y === undefined ? Math.floor(height / 2) : clamp(action.y, 0, height - 1)
+        );
+        await send("Input.dispatchMouseEvent", { type: "mouseWheel", x, y, deltaX: action.dx / scale, deltaY: action.dy / scale });
         return { ok: true, x, y };
       }
       case "back":

@@ -380,6 +380,8 @@ export class SubagentRuntime {
         parentRun.updatedAt = Date.now();
         this.#emit(parentRun);
       }
+      // A cancel that landed while the backend was starting stays a cancel, not a failure.
+      if (this.runs.get(run.id)?.state === "cancelled") return this.getRun(run.id);
       this.update(run.id, {
         state: "failed",
         error: error instanceof Error ? error.message : String(error)
