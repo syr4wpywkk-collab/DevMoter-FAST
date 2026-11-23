@@ -524,6 +524,103 @@ pub fn ln_poisson_pmf(k: f64, lambda: f64) -> f64 {
     k * lambda.ln() - lambda - ln_gamma(k + 1.0)
 }
 
+/// Inverse of the regularized lower incomplete gamma: `x` such that
+/// `P(a, x) = p`, for `a > 0` and `0 <= p < 1` (`p = 1` has no finite
+/// answer — returns `NaN`; callers map to `#NUM!`).
+///
+/// Bracketed inversion of [`regularized_gamma_p`] on `[0, hi]` with the
+/// upper bound doubled from `max(1, a)` until it covers `p` (the gamma
+/// CDF is monotone and reaches 1). [`inverse_cdf`]'s safeguarded secant
+/// then converges to ~1e-12 absolute on the bracket.
+///
+/// See `docs/functions/GAMMA.INV.md`.
+pub fn regularized_gamma_inv(a: f64, p: f64) -> f64 {
+    if a.is_nan() || p.is_nan() || a <= 0.0 || !(0.0..1.0).contains(&p) {
+        return f64::NAN;
+    }
+    if p == 0.0 {
+        return 0.0;
+    }
+    let cdf = |x: f64| regularized_gamma_p(a, x);
+    let mut hi = a.max(1.0);
+    while cdf(hi) < p {
+        hi *= 2.0;
+        if !hi.is_finite() {
+            return f64::NAN;
+        }
+    }
+    inverse_cdf(cdf, p, 0.0, hi, hi * 1e-13, 500)
+}
+
+/// Inverse of the regularized incomplete beta: `x` such that
+/// `I_x(a, b) = p`, for `a, b > 0` and `0 <= p <= 1` (the endpoints
+/// return `0` and `1`).
+///
+/// Direct bracketed inversion of [`regularized_beta`] on `[0, 1]` —
+/// the support is bounded so no bracket search is needed.
+///
+/// See `docs/functions/BETA.INV.md` and `docs/functions/F.INV.md`.
+pub fn regularized_beta_inv(p: f64, a: f64, b: f64) -> f64 {
+    if a.is_nan() || b.is_nan() || p.is_nan() || a <= 0.0 || b <= 0.0 || !(0.0..=1.0).contains(&p) {
+        return f64::NAN;
+    }
+    inverse_cdf(|x| regularized_beta(x, a, b), p, 0.0, 1.0, 1e-14, 500)
+}
+
+/// F-distribution CDF: `P(F <= x)` for `F ~ F(d1, d2)`, via the
+/// incomplete-beta identity `F_cdf(x) = I_z(d1/2, d2/2)` with
+/// `z = d1·x / (d1·x + d2)`. Domain: `x >= 0`, `d1, d2 > 0`; returns
+/// `NaN` outside it (`x = 0` gives 0, `x = +inf` gives 1).
+///
+/// See `docs/functions/F.DIST.md`.
+pub fn f_cdf(x: f64, d1: f64, d2: f64) -> f64 {
+    if x.is_nan() || d1.is_nan() || d2.is_nan() || x < 0.0 || d1 <= 0.0 || d2 <= 0.0 {
+        return f64::NAN;
+    }
+    if x == 0.0 {
+        return 0.0;
+    }
+    if x == f64::INFINITY {
+        return 1.0;
+    }
+    // Compute z in the stable form that avoids d1*x overflow.
+    let z = if d1 * x < d2 {
+        let t = d1 * x;
+        t / (t + d2)
+    } else {
+        d1 / (d1 + d2 / x)
+    };
+    regularized_beta(z, d1 / 2.0, d2 / 2.0)
+}
+
+/// Inverse of the F-distribution CDF: `x` such that `F_cdf(x; d1,d2)
+/// = p` for `0 <= p < 1` and `d1, d2 > 0`. `p = 1` is unbounded —
+/// returns `NaN` (callers map to `#NUM!`).
+///
+/// Inverts through the beta identity above: `z = I⁻¹(p; d1/2, d2/2)`,
+/// `x = d2·z / (d1·(1−z))`.
+///
+/// See `docs/functions/F.INV.md`.
+pub fn f_inv(p: f64, d1: f64, d2: f64) -> f64 {
+    if p.is_nan()
+        || d1.is_nan()
+        || d2.is_nan()
+        || !(0.0..1.0).contains(&p)
+        || d1 <= 0.0
+        || d2 <= 0.0
+    {
+        return f64::NAN;
+    }
+    if p == 0.0 {
+        return 0.0;
+    }
+    let z = regularized_beta_inv(p, d1 / 2.0, d2 / 2.0);
+    if !(0.0..1.0).contains(&z) {
+        return f64::NAN;
+    }
+    d2 * z / (d1 * (1.0 - z))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

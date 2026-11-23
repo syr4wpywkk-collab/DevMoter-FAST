@@ -29,6 +29,13 @@ pub fn flatten_args(
     let mut out = Vec::new();
     for arg in args {
         match ctx.eval_arg(arg)? {
+            // Array results (array literals `{1,2;3,4}`, spilled arrays)
+            // contribute their cells with array semantics: members are
+            // collected like range members (non-numeric ignored), which
+            // matches Excel's treatment of literal-array elements.
+            ArgValue::Scalar(Value::Array(a)) | ArgValue::Ref(Value::Array(a)) => {
+                out.extend(a.cells().iter().cloned().map(|v| (v, true)));
+            }
             ArgValue::Scalar(v) => out.push((v, false)),
             ArgValue::Ref(v) => out.push((v, true)),
             ArgValue::Range(a) => out.extend(a.into_iter().map(|v| (v, true))),

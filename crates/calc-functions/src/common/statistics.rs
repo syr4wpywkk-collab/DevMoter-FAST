@@ -20,6 +20,11 @@ use calc_core::value::Value;
 /// `INTERCEPT` need. Scalars and single refs are one-element vectors.
 fn arg_members(ctx: &mut EvalContext<'_>, arg: &Expr) -> Result<Vec<(Value, bool)>, EvalError> {
     Ok(match ctx.eval_arg(arg)? {
+        // Array literals/spill results contribute their cells with
+        // array semantics — the same ignore-non-numeric rule as ranges.
+        ArgValue::Scalar(Value::Array(a)) | ArgValue::Ref(Value::Array(a)) => {
+            a.cells().iter().cloned().map(|v| (v, true)).collect()
+        }
         ArgValue::Scalar(v) => vec![(v, false)],
         ArgValue::Ref(v) => vec![(v, true)],
         ArgValue::Range(a) => a.into_iter().map(|v| (v, true)).collect(),
@@ -75,6 +80,41 @@ pub fn numeric_pairs(
         };
         if let (Some(x), Some(y)) = (na, nb) {
             out.push((x, y));
+        }
+    }
+    Ok(Ok(out))
+}
+
+/// Numbers of a single array argument (`F.TEST`, `FREQUENCY`):
+/// evaluates `arg` via `eval_array` and keeps `Value::Number` members;
+/// text/boolean/blank members are ignored and error members propagate.
+/// Scalars wrap into a one-element array, so a scalar argument yields
+/// a single-element vector (or empty for a blank/non-numeric scalar —
+/// scalar non-numeric is ignored like an array member, matching
+/// Excel's array-argument behavior).
+pub fn array_numbers(
+    ctx: &mut EvalContext<'_>,
+    arg: &Expr,
+) -> Result<Result<Vec<f64>, CalcError>, EvalError> {
+    let arr = match ctx.eval_arg(arg)? {
+        ArgValue::Range(a) => a,
+        ArgValue::Scalar(Value::Array(a)) | ArgValue::Ref(Value::Array(a)) => a,
+        ArgValue::Scalar(v) | ArgValue::Ref(v) => {
+            return Ok(match v.error() {
+                Some(e) => Err(e),
+                None => Ok(match v.to_number() {
+                    Ok(n) => vec![n],
+                    Err(e) => return Ok(Err(e)),
+                }),
+            });
+        }
+    };
+    let mut out = Vec::with_capacity(arr.cells().len());
+    for v in arr.cells() {
+        match v {
+            Value::Number(n) => out.push(*n),
+            Value::Error(e) => return Ok(Err(*e)),
+            _ => {}
         }
     }
     Ok(Ok(out))
