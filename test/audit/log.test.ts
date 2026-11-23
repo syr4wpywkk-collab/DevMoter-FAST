@@ -7,16 +7,22 @@ import { after, before, describe, test } from 'node:test';
 import { commandOperation, createAuditLog, sqlOperation, verifyAuditLog } from '../../src/audit/log.ts';
 
 test('an operation is described by its kind only', () => {
-  assert.equal(sqlOperation('select * from secrets'), 'SELECT');
-  assert.equal(sqlOperation('  -- note\n /* a\n b */ Insert INTO t VALUES (1)'), 'INSERT');
-  assert.equal(sqlOperation('WITH x AS (SELECT 1) DELETE FROM t'), 'WITH');
-  assert.equal(sqlOperation("'password=hunter2'"), 'OTHER');
-  assert.equal(sqlOperation('hunter2hunter2hunter2 x'), 'OTHER');
-  assert.equal(sqlOperation(''), 'OTHER');
+  assert.equal(sqlOperation('select * from secrets', 'postgresql'), 'SELECT');
+  assert.equal(sqlOperation('  -- note\n /* a\n b */ Insert INTO t VALUES (1)', 'postgresql'), 'INSERT');
+  assert.equal(sqlOperation('WITH x AS (SELECT 1) DELETE FROM t', 'postgresql'), 'WITH');
+  assert.equal(sqlOperation("'password=hunter2'", 'postgresql'), 'OTHER');
+  assert.equal(sqlOperation('hunter2hunter2hunter2 x', 'postgresql'), 'OTHER');
+  assert.equal(sqlOperation('', 'postgresql'), 'OTHER');
   // A word that is not an SQL statement keyword is part of the request, not its kind.
-  assert.equal(sqlOperation('hunter x'), 'OTHER');
-  assert.equal(sqlOperation('swordfish'), 'OTHER');
-  assert.equal(sqlOperation('/* a */ -- b\n explain select 1'), 'EXPLAIN');
+  assert.equal(sqlOperation('hunter x', 'postgresql'), 'OTHER');
+  assert.equal(sqlOperation('swordfish', 'postgresql'), 'OTHER');
+  assert.equal(sqlOperation('/* a */ -- b\n explain select 1', 'postgresql'), 'EXPLAIN');
+  // Read as the engine reads it: an SQLite comment ends at the first "*/", DuckDB takes a no-break space as a space.
+  assert.equal(sqlOperation('/* a /* b */ INSERT INTO t VALUES (1)', 'sqlite'), 'INSERT');
+  assert.equal(sqlOperation('/* a /* b */ INSERT INTO t VALUES (1) */ SELECT 1', 'postgresql'), 'SELECT');
+  assert.equal(sqlOperation('/* a /* b */ INSERT INTO t VALUES (1) */ SELECT 1', 'sqlite'), 'INSERT');
+  assert.equal(sqlOperation('/* never closed', 'sqlite'), 'OTHER');
+  assert.equal(sqlOperation('DELETE\u00a0FROM t', 'duckdb'), 'DELETE');
   assert.equal(commandOperation(['set', 'private-key', 'v']), 'SET');
   assert.equal(commandOperation(['CLIENT', 'LIST']), 'CLIENT');
   assert.equal(commandOperation([{ $base64: 'AA==' }]), 'OTHER');
@@ -26,8 +32,8 @@ test('an operation is described by its kind only', () => {
 
 test('the kind of a request made of many comments is found at once', () => {
   const started = performance.now();
-  assert.equal(sqlOperation(`${'/**/'.repeat(5000)}1`), 'OTHER');
-  assert.equal(sqlOperation(`${'/**/'.repeat(5000)}select 1`), 'SELECT');
+  assert.equal(sqlOperation(`${'/**/'.repeat(5000)}1`, 'postgresql'), 'OTHER');
+  assert.equal(sqlOperation(`${'/**/'.repeat(5000)}select 1`, 'postgresql'), 'SELECT');
   assert.ok(performance.now() - started < 1000);
 });
 

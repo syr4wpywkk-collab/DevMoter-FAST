@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { DUCKDB_SQL, sqlShape } from '../../src/engines/sql-text.ts';
+import { DUCKDB_SQL, SQLITE_SQL, sqlShape } from '../../src/engines/sql-text.ts';
 
 test('counts statements and finds the first word', () => {
   const cases: [string, number, string][] = [
@@ -28,6 +28,13 @@ test('characters an engine reads as blank space end a word only for that engine'
   // Not blank space to DuckDB: part of the word.
   assert.equal(sqlShape('EXPLAIN\u1680SELECT 1', DUCKDB_SQL).firstKeyword, 'EXPLAIN\u1680SELECT');
   assert.equal(sqlShape('SÉLECT 1', DUCKDB_SQL).firstKeyword, 'SÉLECT');
+});
+
+test('a block comment nests, except where the engine ends it at the first "*/"', () => {
+  assert.deepEqual(sqlShape('/* a /* b */ SELECT 1; */ DELETE FROM t'), { statements: 1, firstKeyword: 'DELETE' });
+  assert.deepEqual(sqlShape('/* a /* b */ SELECT 1; */ DELETE FROM t', SQLITE_SQL), { statements: 2, firstKeyword: 'SELECT' });
+  assert.deepEqual(sqlShape('/*/ SELECT 1 */ SELECT 2', SQLITE_SQL), { statements: 1, firstKeyword: 'SELECT' });
+  assert.deepEqual(sqlShape('/* open SELECT 1', SQLITE_SQL), { statements: 0, firstKeyword: '' });
 });
 
 test('a ";" inside quoted text or a comment does not end a statement', () => {
