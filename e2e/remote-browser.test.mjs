@@ -75,12 +75,29 @@ openRemoteBrowser();`);
 }
 
 test("phone UI streams the host browser, taps, scrolls, commits IME text and takes back control", { skip: chromiumBin ? false : "no Chromium binary available", timeout: 120000 }, async t => {
+  // Register each cleanup as soon as its resource exists so a failed step
+  // never leaves a listening server keeping the test process alive.
+  const cleanups = [];
+  t.after(async () => {
+    for (const cleanup of cleanups.reverse()) await Promise.resolve().then(cleanup).catch(() => {});
+  });
+  let browser;
+  try {
+    browser = await chromium.launch({ executablePath: chromiumBin, headless: true, timeout: 30000 });
+  } catch (error) {
+    if (process.env.DEVMOTER_TEST_CHROMIUM_REQUIRED === "1") throw error;
+    t.skip("Chromium could not be launched: " + String(error?.message || error).split("\n")[0]);
+    return;
+  }
+  cleanups.push(() => browser.close());
   const preview = await listen((req, res) => {
     res.setHeader("content-type", "text/html; charset=utf-8");
     res.end(previewPage);
   });
+  cleanups.push(() => preview.server.close());
   const dir = await mkdtemp(path.join(os.tmpdir(), "devmoter-remote-browser-ui-"));
   const projectDir = await mkdtemp(path.join(os.tmpdir(), "devmoter-remote-browser-ui-project-"));
+  cleanups.push(() => rm(dir, { recursive: true, force: true }), () => rm(projectDir, { recursive: true, force: true }));
   const manager = createBrowserSessionManager({
     configDir: dir,
     resolveProject: async id => ({ id, path: projectDir, name: id }),
@@ -93,6 +110,7 @@ test("phone UI streams the host browser, taps, scrolls, commits IME text and tak
     },
     limits: { sweepMs: 0 }
   });
+  cleanups.push(() => manager.stopAll());
   const assets = await bundleApp(dir);
   const tickets = createBrowserSocketTickets();
   const app = await listen(async (req, res) => {
@@ -104,19 +122,10 @@ test("phone UI streams the host browser, taps, scrolls, commits IME text and tak
       `<!doctype html><html lang="ja"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/app.css"></head><body><script type="module" src="/app.js"></script></body></html>`
     );
   });
+  cleanups.push(() => { app.server.closeAllConnections?.(); app.server.close(); });
   const origin = "http://127.0.0.1:" + app.port;
   const sockets = installBrowserWebSocketEndpoint(app.server, manager, tickets, { publicOrigin: origin });
-  const browser = await chromium.launch({ executablePath: chromiumBin, headless: true });
-  t.after(async () => {
-    await browser.close();
-    sockets?.close?.();
-    await manager.stopAll();
-    app.server.closeAllConnections?.();
-    app.server.close();
-    preview.server.close();
-    await rm(dir, { recursive: true, force: true });
-    await rm(projectDir, { recursive: true, force: true });
-  });
+  cleanups.push(() => sockets?.close?.());
 
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await context.addInitScript(() => {
