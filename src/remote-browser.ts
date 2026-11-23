@@ -351,6 +351,13 @@ function createRemoteBrowser() {
 
   function scheduleReconnect(generation: number) {
     if (!isOpen || generation !== socketGeneration || reconnectTimer !== null) return;
+    // A socket that keeps failing to open (the session lookup still succeeds)
+    // stops after the same number of attempts; the user retries by hand.
+    if (reconnectAttempts >= RECONNECT_MAX_ATTEMPTS) {
+      setStatus("");
+      showEmpty(t("remoteBrowser.loadFailed", { error: "socket_closed" }), false, true);
+      return;
+    }
     setStatus(t("remoteBrowser.reconnecting"));
     const delay = reconnectDelay;
     reconnectDelay = Math.min(RECONNECT_MAX_MS, reconnectDelay * 2);

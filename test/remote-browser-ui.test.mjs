@@ -64,7 +64,7 @@ function fakeBackend(sessionDriver = { holder: "user", generation: 3 }) {
       this.readyState = FakeSocket.OPEN;
       this.sent = [];
       sockets.push(this);
-      queueMicrotask(() => this.onopen?.());
+      queueMicrotask(() => backend.failSockets ? this.close(1006) : this.onopen?.());
     }
     send(data) {
       const message = JSON.parse(data);
@@ -406,6 +406,50 @@ test("#712 reconnect keeps retrying after failed refreshes, then offers a manual
     doc.querySelector("[data-rb-retry]").click();
     await sleep(30);
     assert.equal(backend.sockets.length, 3);
+    destroyRemoteBrowser();
+  } finally {
+    env.restore();
+  }
+});
+
+test("a socket that never opens stops reconnecting after the attempt limit and offers a manual retry", async () => {
+  const env = installDom();
+  const backend = fakeBackend();
+  try {
+    env.dom.window.localStorage.setItem("opencode-pocket-project", "/projects/demo");
+    const { openRemoteBrowser, destroyRemoteBrowser } = await loadRemoteBrowser();
+    openRemoteBrowser();
+    await sleep(20);
+    const doc = env.dom.window.document;
+    backend.failSockets = true;
+    const realSetTimeout = env.dom.window.setTimeout.bind(env.dom.window);
+    env.dom.window.setTimeout = fn => realSetTimeout(fn, 0);
+    backend.sockets[0].close(1006);
+    await sleep(200);
+    env.dom.window.setTimeout = realSetTimeout;
+    assert.equal(backend.sockets.length, 9, "eight reconnect attempts, then it stops");
+    assert.equal(doc.querySelector("[data-rb-retry]").hidden, false);
+    backend.failSockets = false;
+    doc.querySelector("[data-rb-retry]").click();
+    await sleep(30);
+    assert.equal(backend.sockets.length, 10);
+    destroyRemoteBrowser();
+  } finally {
+    env.restore();
+  }
+});
+
+test("pressing the keyboard button does not move focus off the text field", async () => {
+  const env = installDom();
+  fakeBackend();
+  try {
+    env.dom.window.localStorage.setItem("opencode-pocket-project", "/projects/demo");
+    const { openRemoteBrowser, destroyRemoteBrowser } = await loadRemoteBrowser();
+    openRemoteBrowser();
+    await sleep(20);
+    const press = new env.dom.window.MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    env.dom.window.document.querySelector("[data-rb-keyboard]").dispatchEvent(press);
+    assert.equal(press.defaultPrevented, true);
     destroyRemoteBrowser();
   } finally {
     env.restore();
