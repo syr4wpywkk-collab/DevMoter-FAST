@@ -60,14 +60,41 @@ mod tests {
     use super::*;
 
     #[test]
-    fn registers_the_phase1_13() {
+    fn registers_every_implemented_function() {
         let mut names: Vec<_> = registered_names().collect();
         names.sort_unstable();
         assert_eq!(
             names,
             [
-                "ABS", "AND", "AVERAGE", "COUNT", "COUNTA", "IF", "IFERROR", "MAX", "MIN", "NOT",
-                "OR", "ROUND", "SUM",
+                "ABS",
+                "AND",
+                "AVERAGE",
+                "CONCAT",
+                "COUNT",
+                "COUNTA",
+                "FIND",
+                "IF",
+                "IFERROR",
+                "LEFT",
+                "LEN",
+                "LOWER",
+                "MAX",
+                "MID",
+                "MIN",
+                "NOT",
+                "OR",
+                "PROPER",
+                "REPLACE",
+                "RIGHT",
+                "ROUND",
+                "SEARCH",
+                "SUBSTITUTE",
+                "SUM",
+                "TEXT",
+                "TEXTJOIN",
+                "TRIM",
+                "UPPER",
+                "VALUE",
             ]
         );
     }

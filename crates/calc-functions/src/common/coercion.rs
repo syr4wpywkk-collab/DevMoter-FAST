@@ -95,6 +95,26 @@ pub fn collect_booleans(
     Ok(Ok(out))
 }
 
+/// Evaluate `arg` and coerce the scalar result to text via
+/// [`Value::to_text`] (direct-argument rules). A range argument becomes
+/// `Value::Array` and therefore `#VALUE!`, matching Excel's implicit
+/// intersection failure for scalar-parameter functions.
+pub fn eval_text(
+    ctx: &mut EvalContext<'_>,
+    arg: &Expr,
+) -> Result<Result<String, CalcError>, EvalError> {
+    Ok(ctx.eval(arg)?.to_text())
+}
+
+/// Evaluate `arg` and coerce the scalar result to a number via
+/// [`Value::to_number`] (direct-argument rules).
+pub fn eval_number(
+    ctx: &mut EvalContext<'_>,
+    arg: &Expr,
+) -> Result<Result<f64, CalcError>, EvalError> {
+    Ok(ctx.eval(arg)?.to_number())
+}
+
 /// Whether a scalar text value parses as a number (COUNT's direct-arg
 /// rule: `"5"` counts, `"x"` does not and does not error).
 pub fn text_is_number(s: &str) -> bool {
