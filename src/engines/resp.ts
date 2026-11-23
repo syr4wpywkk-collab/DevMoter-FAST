@@ -25,7 +25,8 @@ export function encodeCommand(args: readonly (string | Buffer)[]): Buffer {
   return Buffer.concat(parts);
 }
 
-const decoder = new TextDecoder('utf-8', { fatal: true });
+// ignoreBOM: a leading U+FEFF is part of the value, not a marker to drop.
+const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 
 /** Text when the bytes are valid UTF-8, otherwise `{ "$base64": "..." }`: bulk strings may hold any bytes. */
 function text(bytes: Buffer): string | { $base64: string } {
