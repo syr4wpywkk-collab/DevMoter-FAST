@@ -150,3 +150,27 @@ Excel/LibreOffice questions that still need recorded fixtures).
 | 3-D シート範囲参照 | `SHEETS(Sheet1:Sheet3!A1)` のシートスパン参照はパーサー/モデル未対応。`SHEETS()` の引数なし形はメタデータ API で実現可能。 |
 | 参照の遅延評価伝播 | `IF`/`CHOOSE`/`INDEX` が「参照を返す」Excel セマンティクスは、遅延特殊形式が `eval_ref`/`eval_arg_keep_refs` を使う拡張が必要。現状は `Value::Reference` を返す関数経由のみ伝播する。 |
 | 動的参照の依存追跡 | `INDIRECT`/`OFFSET` 経由の参照先は実行時決定のため静的 Dep 辺を張れない。volatile（全パス再計算）で保守的に正しさを確保。pass ごとの依存再登録による絞り込みは将来の最適化。 |
+
+## Track i03 (v3 statistics part 3)
+
+`specOpen: true` cases in `tests/fixtures/golden-i03.json` mirror the
+table below; code comments at each call site say `SPEC-OPEN`.
+
+| Item | Question |
+|---|---|
+| LINEST/LOGEST non-numeric inputs | Text/boolean/blank cells inside `known_ys`/`known_xs`: ignore-pair vs `#VALUE!` — implemented as `#VALUE!`. |
+| LINEST stats block orientation | Spec doc says "(p+1) x 5"; implemented Excel's 5 rows x (p+1) columns layout. Confirm. |
+| LINEST collinearity | Dropped columns get coefficient 0 and SE 0; pivot tolerance `1e-10` relative is undocumented in Excel. |
+| LINEST perfect fit | With `sse = 0` and `df_resid > 0`, F and SEs come out 0 — Excel's exact cell values unverified. |
+| LINEST mismatched dims | `#REF!` chosen per spec-doc note (Excel reportedly `#REF!`, not `#VALUE!`) — confirm. |
+| LOGEST non-positive y | `#VALUE!` chosen; `#NUM!` possible per spec doc. |
+| LOGEST SE row | Reported SEs are those of the log-scale fit (`se(ln m)`, `se(ln b)`); Excel's exact convention unverified. |
+| NEGBINOM.DIST p edge | `p=0`/`p=1` return degenerate values; docs only pin `#NUM!` outside `[0,1]`. |
+| PERCENTILE.EXC boundary | `k = 1/(n+1)` and `k = n/(n+1)` return min/max (spec-doc example); Excel help text suggesting strict bounds is unverified. |
+| PERCENTRANK.* duplicates | First-matching-rank convention on ties; Excel's duplicate behavior poorly documented. |
+| PERCENTRANK.* precision | Result truncated (not rounded) to `significance` digits — confirm. |
+| PROB prob-sum tolerance | `|sum - 1| <= 1e-9` absolute tolerance; Excel's tolerance undocumented. |
+| PROB non-numeric x | Text/blank `x_range` cells exclude their position from the sum (may instead error). |
+| MAXA/MINA direct text | `MAXA("x")` returns `#VALUE!`; spec docs mark the 0-vs-error question open. |
+| Truncation fixtures | Non-integer args for NEGBINOM.DIST/PERMUT/PERMUTATIONA/POISSON.DIST are truncated; specOpen fixtures document each. |
+| Paired-array cell-count rule | `numeric_pairs` compares raw member counts (pre-filter) for `#N/A`; Excel may compare post-filter counts. |
