@@ -184,6 +184,30 @@ pub fn year_fraction(
     Some(numerator / denominator)
 }
 
+/// Simple year fraction `days(start, end) / days_in_first_year` — the
+/// `ACCRINT`/`ACCRINTM` kernel (LibreOffice `GetYearDiff`): the
+/// denominator is `360` for bases 0/2/4, `365` for basis 3, and for
+/// basis 1 the length of the calendar year containing `start`
+/// (SPEC-OPEN: Excel may instead use the year(s) spanned by the
+/// interval). Unlike [`year_fraction`] this is *not* the YEARFRAC
+/// convention for basis 1.
+pub fn year_diff(start: i64, end: i64, basis: DayCountBasis, system: DateSystem) -> Option<f64> {
+    let numerator = days_between(start, end, basis, system)? as f64;
+    let denominator = match basis {
+        DayCountBasis::Us30_360 | DayCountBasis::Act360 | DayCountBasis::Eur30_360 => 360.0,
+        DayCountBasis::Act365 => 365.0,
+        DayCountBasis::ActAct => {
+            let (y, ..) = date_serial::serial_to_date(start, system)?;
+            if date_serial::is_leap_year(y, system) {
+                366.0
+            } else {
+                365.0
+            }
+        }
+    };
+    Some(numerator / denominator)
+}
+
 // -------------------------------------------------------------------
 // Coupon schedule
 // -------------------------------------------------------------------
