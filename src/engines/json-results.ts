@@ -75,27 +75,23 @@ export function firstRowKeys(source: string): string[] {
  * They are returned as the strings "Infinity", "-Infinity" and "NaN".
  */
 export function quoteNonFinite(source: string): string {
-  let out = '';
-  let index = 0;
-  while (index < source.length) {
-    const char = source[index];
-    if (char === '"') {
-      let end = index + 1;
+  // Results can be tens of megabytes: the text is copied in a few large slices, never character by character.
+  const token = /"|-?Infinity|NaN/g;
+  const parts: string[] = [];
+  let copied = 0;
+  for (let match = token.exec(source); match !== null; match = token.exec(source)) {
+    if (match[0] === '"') {
+      let end = match.index + 1;
       while (end < source.length && source[end] !== '"') end += source[end] === '\\' ? 2 : 1;
-      out += source.slice(index, end + 1);
-      index = end + 1;
-      continue;
-    }
-    const match = /^(?:-?Infinity|NaN)/.exec(source.slice(index, index + 9));
-    if (match) {
-      out += `"${match[0]}"`;
-      index += match[0].length;
+      token.lastIndex = end + 1;
     } else {
-      out += char;
-      index += 1;
+      parts.push(source.slice(copied, match.index), `"${match[0]}"`);
+      copied = token.lastIndex;
     }
   }
-  return out;
+  if (copied === 0) return source;
+  parts.push(source.slice(copied));
+  return parts.join('');
 }
 
 export function parseResultSets(text: string, options: { nonFinite?: boolean } = {}): ResultSet[] {

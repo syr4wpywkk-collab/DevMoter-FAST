@@ -45,3 +45,14 @@ test('non-finite numbers are quoted only outside strings', () => {
   assert.deepEqual(parseResultSets('[{"a":Infinity,"b":"x"}]', { nonFinite: true })[0]?.rows, [{ a: 'Infinity', b: 'x' }]);
   assert.throws(() => parseResultSets('[{"a":Infinity}]'), SyntaxError);
 });
+
+test('a large result with non-finite numbers is converted without copying it character by character', () => {
+  const row = '{"id":123456,"name":"some \\"text\\" NaN","v":1.5,"w":NaN},';
+  const source = `[${row.repeat(100_000)}{"z":-Infinity}]`;
+  const started = performance.now();
+  const out = quoteNonFinite(source);
+  assert.ok(performance.now() - started < 2_000);
+  assert.equal(out.length, source.length + 2 * 100_001);
+  assert.equal(out.endsWith('"w":"NaN"},{"z":"-Infinity"}]'), true);
+  assert.equal(quoteNonFinite('[{"a":"NaN"}]'), '[{"a":"NaN"}]');
+});
