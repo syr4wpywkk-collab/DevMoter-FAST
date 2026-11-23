@@ -124,7 +124,8 @@ test("browser socket rejects a revoked device", async t => {
 });
 
 test("browser socket relays frames, ACKs and generation-checked actions", async t => {
-  const { manager, issue, connect } = await setup(t);
+  const audited = [];
+  const { manager, issue, connect } = await setup(t, { audit: { record: entry => audited.push(entry) } });
   const { socket, messages } = await connect(issue());
   await until(() => messages.length >= 1);
   assert.equal(messages[0].t, "hello");
@@ -143,6 +144,10 @@ test("browser socket relays frames, ACKs and generation-checked actions", async 
   assert.deepEqual(results.find(r => r.id === 1), { t: "result", id: 1, ok: true, result: { ok: true } });
   assert.deepEqual(results.find(r => r.id === 2), { t: "result", id: 2, ok: false, error: "stale_generation" });
   assert.ok(messages.some(message => message.t === "pong"));
+  assert.deepEqual(audited.map(({ actor, deviceId, event, sessionId, capability, transport, ok, code }) => ({ actor, deviceId, event, sessionId, capability, transport, ok, code })), [
+    { actor: "user", deviceId: "d", event: "action", sessionId: SESSION, capability: "browser.act", transport: "websocket", ok: true, code: undefined },
+    { actor: "user", deviceId: "d", event: "action", sessionId: SESSION, capability: "browser.act", transport: "websocket", ok: false, code: "stale_generation" }
+  ]);
   const closed = once(socket, "close");
   socket.close();
   await closed;

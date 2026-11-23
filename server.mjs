@@ -4320,7 +4320,8 @@ const server = http.createServer(async (req, res) => {
 const browserSockets = installBrowserWebSocketEndpoint(server, advancedApi.remoteBrowser, browserSocketTickets, {
   publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
   trustedProxies: DEVMOTER_TRUSTED_PROXIES,
-  isDeviceActive: deviceId => systemFeatures.isDeviceActive(deviceId)
+  isDeviceActive: deviceId => systemFeatures.isDeviceActive(deviceId),
+  audit: browserAudit
 });
 const terminalSockets = installTerminalWebSocketEndpoint(server, terminal, {
   publicOrigin: DEVMOTER_PUBLIC_ORIGIN,

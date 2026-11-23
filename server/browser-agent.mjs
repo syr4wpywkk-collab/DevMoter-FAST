@@ -165,7 +165,7 @@ export function auditActionDetail(action) {
 /** Append-only JSONL audit of browser starts, stops, driver changes and actions (0600). */
 export function createBrowserAudit({ filePath, now = Date.now, onError = () => {} } = {}) {
   let chain = Promise.resolve();
-  const ALLOWED = ["actor", "event", "projectId", "sessionId", "deviceId", "tokenId", "runId", "capability", "decision", "ok", "code", "driverGeneration", "reason"];
+  const ALLOWED = ["actor", "event", "projectId", "sessionId", "deviceId", "tokenId", "runId", "capability", "decision", "ok", "code", "driverGeneration", "reason", "transport"];
   function record(entry = {}) {
     const line = { at: now() };
     for (const key of ALLOWED) {

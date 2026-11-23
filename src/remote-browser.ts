@@ -24,7 +24,7 @@ type BrowserAction =
   | { type: "click"; x: number; y: number }
   | { type: "type"; text: string }
   | { type: "press"; key: string }
-  | { type: "scroll"; dx: number; dy: number }
+  | { type: "scroll"; dx: number; dy: number; x?: number; y?: number }
   | { type: "back" | "forward" | "reload" };
 
 export type BrowserFrame = { seq: number; width: number; height: number; jpeg: Uint8Array };
@@ -454,19 +454,24 @@ function createRemoteBrowser() {
   // Pointer input: a short press without movement is a tap (click); a drag
   // scrolls the page the way a finger would.
   let pointer: { id: number; x: number; y: number; lastX: number; lastY: number; dragging: boolean } | null = null;
-  let pendingScroll = { dx: 0, dy: 0 };
+  type ScrollOrigin = { x: number; y: number } | null;
+  let pendingScroll: { dx: number; dy: number; origin: ScrollOrigin } = { dx: 0, dy: 0, origin: null };
   let scrollTimer: number | null = null;
 
-  function queueScroll(dx: number, dy: number) {
-    pendingScroll = { dx: pendingScroll.dx + dx, dy: pendingScroll.dy + dy };
+  // The wheel event goes where the gesture started, so nested scrollers under the finger move.
+  function queueScroll(dx: number, dy: number, origin: ScrollOrigin) {
+    pendingScroll = { dx: pendingScroll.dx + dx, dy: pendingScroll.dy + dy, origin: pendingScroll.origin || origin };
     if (scrollTimer !== null) return;
     scrollTimer = window.setTimeout(() => {
       scrollTimer = null;
-      const { dx: x, dy: y } = pendingScroll;
-      pendingScroll = { dx: 0, dy: 0 };
-      if (Math.round(x) || Math.round(y)) act({ type: "scroll", dx: Math.round(x), dy: Math.round(y) });
+      const { dx, dy, origin: at } = pendingScroll;
+      pendingScroll = { dx: 0, dy: 0, origin: null };
+      if (Math.round(dx) || Math.round(dy)) act({ type: "scroll", dx: Math.round(dx), dy: Math.round(dy), ...(at || {}) });
     }, SCROLL_FLUSH_MS);
   }
+
+  const viewportPoint = (clientX: number, clientY: number) =>
+    session ? toViewportPoint(clientX, clientY, canvas.getBoundingClientRect(), session.viewport) : null;
 
   const scale = () => {
     const rect = canvas.getBoundingClientRect();
@@ -484,7 +489,7 @@ function createRemoteBrowser() {
     if (!pointer.dragging && Math.hypot(event.clientX - pointer.x, event.clientY - pointer.y) > TAP_SLOP_PX) pointer.dragging = true;
     if (pointer.dragging) {
       const ratio = scale();
-      queueScroll((pointer.lastX - event.clientX) * ratio, (pointer.lastY - event.clientY) * ratio);
+      queueScroll((pointer.lastX - event.clientX) * ratio, (pointer.lastY - event.clientY) * ratio, viewportPoint(pointer.x, pointer.y));
     }
     pointer.lastX = event.clientX;
     pointer.lastY = event.clientY;
@@ -501,7 +506,7 @@ function createRemoteBrowser() {
   canvas.addEventListener("wheel", event => {
     if (!canDrive()) return;
     event.preventDefault();
-    queueScroll(event.deltaX, event.deltaY);
+    queueScroll(event.deltaX, event.deltaY, viewportPoint(event.clientX, event.clientY));
   }, { passive: false });
 
   // Text input goes through an off-screen textarea so the soft keyboard and

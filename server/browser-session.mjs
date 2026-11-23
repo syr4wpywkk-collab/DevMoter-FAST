@@ -169,12 +169,19 @@ export function normalizeBrowserAction(input, { maxTextLength = DEFAULT_LIMITS.m
       if (!Object.hasOwn(KEY_DEFINITIONS, key)) throw httpError("press key is not allowed", 400, "invalid_action");
       return { type, key };
     }
-    case "scroll":
-      return {
+    case "scroll": {
+      const scroll = {
         type,
         dx: clamp(finiteNumber(input.dx ?? 0, "dx"), -10000, 10000),
         dy: clamp(finiteNumber(input.dy ?? 0, "dy"), -10000, 10000)
       };
+      // Optional wheel origin in viewport CSS px, so the element under the finger scrolls.
+      if (input.x !== undefined || input.y !== undefined) {
+        scroll.x = finiteNumber(input.x, "x");
+        scroll.y = finiteNumber(input.y, "y");
+      }
+      return scroll;
+    }
     case "back":
     case "forward":
     case "reload":
@@ -853,11 +860,12 @@ export function createBrowserSessionManager({
         await send("Input.dispatchKeyEvent", { ...base, type: "keyUp" });
         return { ok: true };
       }
-      case "scroll":
-        await send("Input.dispatchMouseEvent", {
-          type: "mouseWheel", x: Math.floor(width / 2), y: Math.floor(height / 2), deltaX: action.dx, deltaY: action.dy
-        });
-        return { ok: true };
+      case "scroll": {
+        const x = action.x === undefined ? Math.floor(width / 2) : clamp(action.x, 0, width - 1);
+        const y = action.y === undefined ? Math.floor(height / 2) : clamp(action.y, 0, height - 1);
+        await send("Input.dispatchMouseEvent", { type: "mouseWheel", x, y, deltaX: action.dx, deltaY: action.dy });
+        return { ok: true, x, y };
+      }
       case "back":
         return historyNavigate(session, -1);
       case "forward":
@@ -913,6 +921,10 @@ export function createBrowserSessionManager({
     assertPreviewUnchanged(session);
     const result = await runAction(session, action);
     if (mutating) session.lastActivityAt = now();
+    // Viewers show where an agent clicked or scrolled.
+    if (holder === "agent" && Number.isFinite(result?.x) && Number.isFinite(result?.y)) {
+      notify(session, { t: "action", source: "agent", type: action.type, x: result.x, y: result.y });
+    }
     return { ...result, action: action.type, session: publicSession(session) };
   }
 

@@ -131,6 +131,8 @@ test("Chromium flags use a private CDP pipe and a dead proxy for everything but 
 test("actions are validated against a fixed schema", () => {
   assert.deepEqual(normalizeBrowserAction({ type: "click", x: "5", y: 6, extra: "ignored" }), { type: "click", x: 5, y: 6 });
   assert.deepEqual(normalizeBrowserAction({ type: "scroll", dy: 99999 }), { type: "scroll", dx: 0, dy: 10000 });
+  assert.deepEqual(normalizeBrowserAction({ type: "scroll", dy: 40, x: "12", y: 30 }), { type: "scroll", dx: 0, dy: 40, x: 12, y: 30 });
+  assert.throws(() => normalizeBrowserAction({ type: "scroll", dy: 40, x: 12 }), error => error.statusCode === 400);
   assert.deepEqual(normalizeBrowserAction({ type: "screenshot", quality: 500 }), { type: "screenshot", format: "jpeg", quality: 90 });
   for (const bad of [
     null, [], { type: "evaluate", expression: "1" }, { type: "Runtime.evaluate" }, { type: "click", x: "a", y: 1 },
@@ -579,4 +581,21 @@ test("a still page gets its final screen after Chromium's frame budget was full"
   viewer.ack(frames[2].seq);
   await wait(400);
   assert.equal(frames.length, 3, "a single held frame does not trigger another capture");
+});
+
+test("scroll dispatches the wheel at the given point and agent actions reach viewers", async t => {
+  const { manager, spawns } = await setup(t);
+  const { session } = await manager.start("p1", { deviceId: "d" });
+  const events = [];
+  manager.attachViewer(session.id, { event: event => events.push(event), frame: () => {}, close: () => {} }, { deviceId: "d" });
+  const wheels = () => spawns[0].child.calls.filter(call => call.method === "Input.dispatchMouseEvent" && call.params.type === "mouseWheel").map(call => call.params);
+  await manager.act(session.id, { type: "scroll", dy: 50, x: 40, y: 99999 }, { generation: 1, deviceId: "d" });
+  await manager.act(session.id, { type: "scroll", dy: 50 }, { generation: 1, deviceId: "d" });
+  const { width, height } = session.viewport;
+  assert.deepEqual(wheels().map(({ x, y }) => [x, y]), [[40, height - 1], [Math.floor(width / 2), Math.floor(height / 2)]]);
+  assert.equal(events.some(event => event.t === "action"), false, "user actions are not echoed");
+  manager.releaseDriver(session.id, { holder: "user", generation: 1, deviceId: "d" });
+  const agent = manager.acquireDriver(session.id, { holder: "agent" });
+  await manager.act(session.id, { type: "click", x: 10, y: 20 }, { holder: "agent", generation: agent.generation });
+  assert.deepEqual(events.filter(event => event.t === "action"), [{ t: "action", source: "agent", type: "click", x: 10, y: 20 }]);
 });

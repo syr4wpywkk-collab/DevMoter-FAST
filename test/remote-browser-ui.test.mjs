@@ -194,7 +194,7 @@ test("remote browser streams frames, maps taps, sends committed IME text and tak
     pointer(env.dom.window, canvas, "pointermove", 100, 250);
     pointer(env.dom.window, canvas, "pointerup", 100, 250);
     await sleep(120);
-    assert.deepEqual(ws.acts().at(-1).action, { type: "scroll", dx: 0, dy: 100 });
+    assert.deepEqual(ws.acts().at(-1).action, { type: "scroll", dx: 0, dy: 100, x: 200, y: 600 }, "drag scrolls at the point where it started");
 
     const ime = doc.querySelector("[data-rb-ime]");
     const before = ws.acts().length;
