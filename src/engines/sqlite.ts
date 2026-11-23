@@ -89,7 +89,9 @@ export function sqliteInvocation(options: SqliteAdapterOptions, sql: string, par
     lines.push('.parameter init', `INSERT INTO temp.sqlite_parameters(key,value) VALUES${values};`);
   }
   lines.push(sql, '');
-  return { args, input: lines.join('\n') };
+  // The shell drops one carriage return before each line feed it reads. Doubling it keeps a
+  // CRLF inside a string literal as it was sent; outside a literal it is blank space either way.
+  return { args, input: lines.join('\n').replaceAll('\r\n', '\r\r\n') };
 }
 
 /** Turns the shell's error output into a message about the caller's SQL. */
