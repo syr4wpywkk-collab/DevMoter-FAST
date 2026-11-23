@@ -8,3 +8,7 @@ description = "Standard worksheet-function library for calc-core (v2 §3 categor
 
 [dependencies]
 calc-core = { path = "../calc-core" }
+# REGEXTEST/REGEXEXTRACT/REGEXREPLACE (v3): std has no regex engine and
+# the spec requires a real regex dialect. regex 1.x is already in the
+# workspace lockfile (criterion dev-dep) — same version, std-compatible.
+regex = "1.13"
