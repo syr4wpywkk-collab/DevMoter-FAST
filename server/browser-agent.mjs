@@ -43,6 +43,25 @@ export function browserActionClass(type) {
  * in memory: a host restart revokes every token. Each token is bound to one
  * project, a capability set, an optional Agent Run and the issuing device.
  */
+// An Agent Run with no device owns its sessions as that agent; it never shares a device's.
+export function browserAgentOwner(record) {
+  return record?.deviceId ? undefined : "agent:" + (record?.runId || record?.id);
+}
+
+// Revoking a token ends what it was doing, not just future requests.
+export function bindBrowserAgentRevocation(tokens, getManager) {
+  return tokens.onRevoke(record => {
+    const manager = getManager();
+    if (typeof manager?.revokeAgent !== "function") return;
+    void Promise.resolve(manager.revokeAgent({
+      projectId: record.projectId,
+      agentId: browserAgentOwner(record) ?? null,
+      deviceId: record.deviceId ?? null,
+      tokenId: record.id
+    })).catch(() => {});
+  });
+}
+
 export function createBrowserAgentTokens({ now = Date.now, maxLive = MAX_LIVE_TOKENS } = {}) {
   const records = new Map();
   const listeners = new Set();
@@ -199,18 +218,29 @@ export function decideBrowserAction({ record, type, decide }) {
   if (!record.capabilities.includes(capability)) {
     return { capability, decision: "deny", code: "capability_denied", reason: `This agent token does not grant ${capability}` };
   }
-  const policy = typeof decide === "function" ? decide({ tool: "browser", action: capability, mode: "agent" }) : null;
-  if (policy?.matched || policy?.ruleId) {
-    if (policy.decision === "allow") return { capability, decision: "allow", ruleId: policy.ruleId };
-    return {
-      capability,
-      decision: "deny",
-      ruleId: policy.ruleId,
-      code: policy.decision === "ask" ? "approval_unavailable" : "policy_denied",
-      reason: policy.decision === "ask" ? `${capability} requires approval, which agents cannot request` : `${capability} is denied by workspace policy`
-    };
+  if (typeof decide !== "function") return { capability, decision: DEFAULT_DECISIONS[capability] || "deny" };
+  let policy;
+  try {
+    policy = decide({ tool: "browser", action: capability, mode: "agent" });
+  } catch {
+    return { capability, decision: "deny", code: "policy_error", reason: "Workspace policy could not be evaluated" };
   }
-  return { capability, decision: DEFAULT_DECISIONS[capability] || "deny" };
+  // Only a policy that says it matched nothing falls back to the defaults;
+  // an explicit deny/ask is honored and anything unrecognized fails closed.
+  const noMatch = policy === null || policy === undefined ||
+    (typeof policy === "object" && policy.matched === false && !policy.ruleId);
+  if (noMatch) return { capability, decision: DEFAULT_DECISIONS[capability] || "deny" };
+  if (typeof policy !== "object" || !["allow", "deny", "ask"].includes(policy.decision)) {
+    return { capability, decision: "deny", code: "policy_invalid", reason: "Workspace policy returned an unrecognized decision" };
+  }
+  if (policy.decision === "allow") return { capability, decision: "allow", ruleId: policy.ruleId };
+  return {
+    capability,
+    decision: "deny",
+    ruleId: policy.ruleId,
+    code: policy.decision === "ask" ? "approval_unavailable" : "policy_denied",
+    reason: policy.decision === "ask" ? `${capability} requires approval, which agents cannot request` : `${capability} is denied by workspace policy`
+  };
 }
 
 function sendJson(res, status, value) {
@@ -276,9 +306,11 @@ export async function handleBrowserAgentRequest(req, res, url, { manager, tokens
     }
     const base = { projectId: record.projectId, tokenId: record.id, runId: record.runId };
     const deviceId = record.deviceId ?? null;
+    const agentId = browserAgentOwner(record);
+    const owner = { deviceId, agentId };
     const current = () => {
       // Skip the synchronous browser-binary probe on the per-action path.
-      const status = manager.status(record.projectId, { deviceId, capability: false });
+      const status = manager.status(record.projectId, { ...owner, capability: false });
       const session = status.session;
       if (session && record.sessionId && session.id !== record.sessionId) {
         record.sessionId = null;
@@ -324,15 +356,20 @@ export async function handleBrowserAgentRequest(req, res, url, { manager, tokens
       }
       let { session } = current();
       if (!session) {
-        const started = await manager.start(record.projectId, { viewport: payload.viewport, deviceId, driver: "agent" });
+        const started = await manager.start(record.projectId, { viewport: payload.viewport, ...owner, driver: "agent", tokenId: record.id });
+        if (!tokens.verify(bearerToken(req))) {
+          await manager.stop(started.session.id, "agent_revoked").catch(() => {});
+          sendJson(res, 401, { error: "A valid browser agent token is required", code: "agent_token_invalid" });
+          return true;
+        }
         session = started.session;
         record.startedSessionId = session.id;
         record.generation = session.driver.generation;
         log({ ...base, event: "start", sessionId: session.id, decision: "allow", ok: true, driverGeneration: record.generation });
       } else if (session.driver.holder !== "user") {
-        const driver = manager.acquireDriver(session.id, { holder: "agent", deviceId });
+        const driver = manager.acquireDriver(session.id, { holder: "agent", ...owner, tokenId: record.id });
         record.generation = driver.generation;
-        session = manager.get(session.id, { deviceId });
+        session = manager.get(session.id, owner);
         log({ ...base, event: "driver_acquire", sessionId: session.id, decision: "allow", ok: true, driverGeneration: driver.generation });
       }
       record.sessionId = session.id;
@@ -349,7 +386,7 @@ export async function handleBrowserAgentRequest(req, res, url, { manager, tokens
           throw httpError(decision.reason, 403, decision.code);
         }
         try {
-          const driver = manager.acquireDriver(session.id, { holder: "agent", deviceId });
+          const driver = manager.acquireDriver(session.id, { holder: "agent", ...owner, tokenId: record.id });
           record.generation = driver.generation;
           log({ ...base, event: "driver_acquire", sessionId: session.id, decision: "allow", ok: true, driverGeneration: driver.generation });
         } catch (error) {
@@ -357,13 +394,13 @@ export async function handleBrowserAgentRequest(req, res, url, { manager, tokens
           throw error;
         }
       } else if (payload.op === "release") {
-        manager.releaseDriver(session.id, { holder: "agent", generation: record.generation, deviceId });
+        manager.releaseDriver(session.id, { holder: "agent", generation: record.generation, ...owner });
         record.generation = null;
         log({ ...base, event: "driver_release", sessionId: session.id, ok: true });
       } else {
         throw httpError("Driver op must be acquire or release", 400, "invalid_driver");
       }
-      sendJson(res, 200, view(manager.get(session.id, { deviceId })));
+      sendJson(res, 200, view(manager.get(session.id, owner)));
       return true;
     }
 
@@ -376,7 +413,7 @@ export async function handleBrowserAgentRequest(req, res, url, { manager, tokens
       }
       const session = requireOpen();
       try {
-        const result = await manager.act(session.id, action, { holder: "agent", generation: record.generation ?? -1, deviceId });
+        const result = await manager.act(session.id, action, { holder: "agent", generation: record.generation ?? -1, ...owner, authorize: () => Boolean(tokens.verify(bearerToken(req))) });
         log({ ...base, event: "action", sessionId: session.id, action, capability: decision.capability, decision: "allow", ok: result.ok !== false, code: result.ok === false ? String(result.error || "") : undefined, driverGeneration: record.generation });
         if (Buffer.isBuffer(result.data)) result.data = result.data.toString("base64");
         sendJson(res, 200, result);
@@ -392,10 +429,10 @@ export async function handleBrowserAgentRequest(req, res, url, { manager, tokens
       let stopped = false;
       const ownsDriver = session && session.driver.holder === "agent" && record.generation === session.driver.generation;
       if (session && record.startedSessionId === session.id && (ownsDriver || session.driver.holder === null)) {
-        await manager.stop(session.id, "agent_closed", { deviceId });
+        await manager.stop(session.id, "agent_closed", owner);
         stopped = true;
       } else if (ownsDriver) {
-        manager.releaseDriver(session.id, { holder: "agent", generation: record.generation, deviceId });
+        manager.releaseDriver(session.id, { holder: "agent", generation: record.generation, ...owner });
       }
       log({ ...base, event: "close", sessionId: session?.id, ok: true, reason: stopped ? "stopped" : "released" });
       record.sessionId = null;
