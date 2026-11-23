@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test \"test/**/*.test.ts\"",
     "deps:check": "node scripts/deps/check.ts",
-    "check": "npm run typecheck && npm test && npm run deps:check"
+    "upstream:verify": "node scripts/upstream/verify.ts",
+    "check": "npm run typecheck && npm test && npm run deps:check && npm run upstream:verify"
   },
   "devDependencies": {
     "@types/node": "22.20.5",
