@@ -29,7 +29,14 @@ export async function runKeysCommand(args: readonly string[], store: KeyStore, a
   }
   if (command === 'create' && argument !== undefined) {
     const { key, info } = await store.create(argument);
-    await audit?.record({ event: 'key.created', keyId: info.id });
+    try {
+      await audit?.record({ event: 'key.created', keyId: info.id });
+    } catch {
+      // The key is shown only after its creation is on record; one that cannot be recorded must not stay usable.
+      const revoked = await store.revoke(info.id).then((key) => key !== undefined, () => false);
+      print(`The audit record could not be written, so no key was issued. ${revoked ? `Key ${info.id} was revoked.` : `Key ${info.id} could not be revoked: remove it from the key file.`}`);
+      return 1;
+    }
     print(`Created key ${info.id} (${info.name}). It is shown only this once:`);
     print(key);
     return 0;
