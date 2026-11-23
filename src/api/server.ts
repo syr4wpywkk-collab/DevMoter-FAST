@@ -193,6 +193,13 @@ export function createApiServer(options: ApiOptions): http.Server {
       if (!ok) reply.status = 503;
       return { status: ok ? 'ok' : 'degraded', databases: checks };
     }
+    /** The database a request is about; from here on its log line and audit record name it. */
+    const target = (name: string): Database => {
+      const database = findDatabase(name);
+      log.database = database.name;
+      log.engine = database.engine;
+      return database;
+    };
     if (pathname === '/v1/databases') {
       log.route = 'databases.list';
       allow('GET');
@@ -201,12 +208,12 @@ export function createApiServer(options: ApiOptions): http.Server {
     if (segments[0] === 'v1' && segments[1] === 'databases' && segments[2] !== undefined && segments.length === 3) {
       log.route = 'databases.get';
       allow('GET');
-      return describe(findDatabase(segments[2]));
+      return describe(target(segments[2]));
     }
     if (segments[0] === 'v1' && segments[1] === 'databases' && segments[2] !== undefined && segments[3] === 'health' && segments.length === 4) {
       log.route = 'databases.health';
       allow('GET');
-      const check = await health(findDatabase(segments[2]));
+      const check = await health(target(segments[2]));
       if (check.status !== 'ok') reply.status = 503;
       return check;
     }
@@ -214,9 +221,7 @@ export function createApiServer(options: ApiOptions): http.Server {
     if (segments[0] === 'v1' && segments[1] === 'databases' && segments[2] !== undefined && (operation === 'query' || operation === 'command') && segments.length === 4) {
       log.route = `databases.${operation}`;
       allow('POST');
-      const database = findDatabase(segments[2]);
-      log.database = database.name;
-      log.engine = database.engine;
+      const database = target(segments[2]);
       const { adapter } = database;
       const body = await readJsonBody(request, maxBodyBytes);
       const input = operation === 'query' ? parseQueryBody(body) : parseCommandBody(body);
