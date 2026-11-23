@@ -30,6 +30,10 @@ test("#708 localhost dials the address family whose listener was identified", ()
   const onlyV6 = tables("", v6);
   assert.equal(readListenerIdentity("localhost", 3000, onlyV6), "socket:5151");
   assert.equal(listenerConnectHost("localhost", 3000, onlyV6), "::1");
+  const wildcardV6 = "   0: 00000000000000000000000000000000:0BB8 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 6161 1 0 100 0 0 10 0";
+  assert.equal(readListenerIdentity("localhost", 3000, tables("", wildcardV6)), "socket:6161");
+  assert.equal(listenerConnectHost("localhost", 3000, tables("", wildcardV6)), "::1", "an IPv6-only [::] listener is dialed over ::1");
+  assert.equal(listenerConnectHost("127.0.0.1", 3000, tables("", wildcardV6)), "127.0.0.1");
   assert.equal(listenerConnectHost("localhost", 3000, tables("", "")), null);
   assert.equal(listenerConnectHost("[::1]", 3000, tables("", "")), "::1");
   assert.equal(listenerConnectHost("127.0.0.1", 3000, tables("", "")), "127.0.0.1");

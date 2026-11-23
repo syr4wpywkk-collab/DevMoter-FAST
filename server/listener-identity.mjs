@@ -11,7 +11,11 @@ function hexIpv4(address) {
 // the listener it matches, so "localhost" never resolves to another family.
 function candidates(host) {
   const value = String(host || "").replace(/^\[|\]$/g, "").toLowerCase();
-  if (value === "localhost") return [...candidates("127.0.0.1"), ...candidates("::1")];
+  if (value === "localhost") {
+    // A "::" listener may be IPv6-only, and "::1" reaches it either way.
+    const v4 = candidates("127.0.0.1").map(candidate => (candidate.file === "tcp6" && candidate.address === "0".repeat(32) ? { ...candidate, connect: "::1" } : candidate));
+    return [...v4, ...candidates("::1")];
+  }
   if (value === "::1") {
     return [
       { file: "tcp6", address: "00000000000000000000000001000000", connect: "::1" },
