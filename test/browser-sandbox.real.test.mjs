@@ -107,6 +107,7 @@ test("#706 #707 the remote browser sandbox cannot touch the project or any netwo
   const [code] = await once(child, "exit");
   assert.equal(code, 0, stderr);
   const result = JSON.parse(report);
+  t.diagnostic("sandbox probe: " + JSON.stringify(result));
   assert.equal(result.readProject, "ENOENT", "the project is not mounted");
   assert.notEqual(result.writeProject, "written");
   assert.equal(result.writeProfile, "written", "the ephemeral profile stays writable");
