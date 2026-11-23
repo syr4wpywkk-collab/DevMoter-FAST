@@ -29,9 +29,9 @@
 
 | # | 機能 | 初期 | 状態 | 実装・検証 |
 |---|---|---|---|---|
-| 11 | 統合REST API | ● | 未着手 |  |
+| 11 | 統合REST API | ● | 実装済み | `src/api/server.ts`、`src/main.ts`、`docs/api/v1.md`（ループバック限定） |
 | 12 | PostgreSQL接続アダプター | ● | 未着手 |  |
-| 13 | SQLite接続アダプター | ● | 未着手 |  |
+| 13 | SQLite接続アダプター | ● | 実装済み | `src/engines/sqlite.ts`、`test/engines/sqlite.test.ts` |
 | 14 | DuckDB接続アダプター | ● | 未着手 |  |
 | 15 | Valkey接続アダプター | ● | 未着手 |  |
 | 16 | 接続プール管理 |  | 未着手 |  |

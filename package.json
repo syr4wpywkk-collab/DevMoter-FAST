@@ -8,6 +8,7 @@
     "node": ">=22.18"
   },
   "scripts": {
+    "start": "node src/main.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --test \"test/**/*.test.ts\"",
     "deps:check": "node scripts/deps/check.ts",
