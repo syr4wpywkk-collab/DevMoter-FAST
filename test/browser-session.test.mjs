@@ -532,3 +532,51 @@ test("screencast frames are paced by viewer ACKs and slow viewers are dropped", 
   await flush();
   assert.ok(child.calls.some(call => call.method === "Page.stopScreencast"));
 });
+
+test("superseded frames are acked and a silent viewer is dropped without waiting for the sweep", async t => {
+  const { manager, spawns } = await setup(t, { limits: { frameAckTimeoutMs: 60 } });
+  const { session } = await manager.start("p1", { deviceId: "d" });
+  const child = spawns[0].child;
+  const frames = [];
+  const closed = [];
+  const viewer = manager.attachViewer(session.id, { event() {}, frame: frame => frames.push(frame), close: (code, reason) => closed.push([code, reason]) }, { deviceId: "d" });
+  const jpeg = Buffer.from([0xff, 0xd8]).toString("base64");
+  const ackIds = () => child.calls.filter(call => call.method === "Page.screencastFrameAck").map(call => call.params.sessionId);
+  child.emitEvent("Page.screencastFrame", { data: jpeg, sessionId: 1 });
+  child.emitEvent("Page.screencastFrame", { data: jpeg, sessionId: 2 });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.deepEqual(ackIds(), [], "capture pauses while the viewer has not acked");
+  viewer.ack(frames[0].seq);
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(frames.length, 2);
+  viewer.ack(frames[1].seq);
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.deepEqual(ackIds(), [1, 2], "held frames are all acked once the viewer drains");
+  child.emitEvent("Page.screencastFrame", { data: jpeg, sessionId: 3 });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.deepEqual(closed, []);
+  await new Promise(resolve => setTimeout(resolve, 120));
+  assert.deepEqual(closed, [[4008, "slow_consumer"]]);
+});
+
+test("a still page gets its final screen after Chromium's frame budget was full", async t => {
+  const { manager, spawns } = await setup(t);
+  const { session } = await manager.start("p1", { deviceId: "d" });
+  const child = spawns[0].child;
+  const frames = [];
+  const viewer = manager.attachViewer(session.id, { event() {}, frame: frame => frames.push(frame), close() {} }, { deviceId: "d" });
+  const jpeg = Buffer.from([0xff, 0xd8]).toString("base64");
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+  child.emitEvent("Page.screencastFrame", { data: jpeg, sessionId: 1 });
+  child.emitEvent("Page.screencastFrame", { data: jpeg, sessionId: 2 });
+  await wait(20);
+  viewer.ack(frames[0].seq);
+  await wait(20);
+  viewer.ack(frames[1].seq);
+  await wait(400);
+  assert.equal(frames.length, 3);
+  assert.equal(frames[2].data.toString(), "jpeg-bytes");
+  viewer.ack(frames[2].seq);
+  await wait(400);
+  assert.equal(frames.length, 3, "a single held frame does not trigger another capture");
+});

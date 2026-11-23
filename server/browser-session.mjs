@@ -22,6 +22,8 @@ const DEFAULT_LIMITS = Object.freeze({
   screencastQuality: 60
 });
 
+const SCREENCAST_FRAMES_IN_FLIGHT = 2;
+const SCREENCAST_REFRESH_MS = 250;
 const SYSTEM_MOUNTS = ["/usr", "/bin", "/lib", "/lib64", "/etc", "/run"];
 const DENIED_PERMISSIONS = Object.freeze([
   "geolocation", "notifications", "videoCapture", "audioCapture", "clipboardReadWrite",
@@ -319,7 +321,8 @@ export function createBrowserSessionManager({
     const screencast = session.screencast;
     if (!screencast.running) return;
     screencast.running = false;
-    screencast.pendingAck = null;
+    screencast.pendingAcks = [];
+    clearTimeout(screencast.refreshTimer);
     if (session.cdp && !session.cdp.closed) {
       void session.cdp.send("Page.stopScreencast", {}, { sessionId: session.cdpSessionId }).catch(() => {});
     }
@@ -327,13 +330,38 @@ export function createBrowserSessionManager({
 
   function ackChromiumWhenDrained(session) {
     const screencast = session.screencast;
-    if (screencast.pendingAck === null) return;
+    if (!screencast.pendingAcks.length) return;
     for (const viewer of session.viewers) if (viewer.inflight !== null) return;
-    const ackId = screencast.pendingAck;
-    screencast.pendingAck = null;
+    const ackIds = screencast.pendingAcks;
+    screencast.pendingAcks = [];
     if (session.cdp && !session.cdp.closed) {
-      void session.cdp.send("Page.screencastFrameAck", { sessionId: ackId }, { sessionId: session.cdpSessionId }).catch(() => {});
+      for (const ackId of ackIds) {
+        void session.cdp.send("Page.screencastFrameAck", { sessionId: ackId }, { sessionId: session.cdpSessionId }).catch(() => {});
+      }
     }
+    // Chromium drops frames while its in-flight budget is full; if the page
+    // then goes still no new frame comes, so capture the final screen once.
+    if (ackIds.length >= SCREENCAST_FRAMES_IN_FLIGHT) scheduleRefresh(session);
+  }
+
+  function scheduleRefresh(session) {
+    const screencast = session.screencast;
+    clearTimeout(screencast.refreshTimer);
+    const seq = screencast.seq;
+    screencast.refreshTimer = setTimeout(async () => {
+      screencast.refreshTimer = null;
+      if (!screencast.running || screencast.seq !== seq || !session.cdp || session.cdp.closed) return;
+      const { data = "" } = await session.cdp.send("Page.captureScreenshot", {
+        format: "jpeg",
+        quality: limits.screencastQuality,
+        captureBeyondViewport: false
+      }, { sessionId: session.cdpSessionId }).catch(() => ({}));
+      const bytes = Buffer.from(String(data), "base64");
+      if (!screencast.running || screencast.seq !== seq || !bytes.length || bytes.length > limits.maxFrameBytes) return;
+      screencast.latest = { seq: screencast.seq += 1, data: bytes, width: session.viewport.width, height: session.viewport.height };
+      deliverFrame(session);
+    }, SCREENCAST_REFRESH_MS);
+    screencast.refreshTimer.unref?.();
   }
 
   function deliverFrame(session) {
@@ -344,6 +372,11 @@ export function createBrowserSessionManager({
         viewer.inflight = frame.seq;
         viewer.lastSeq = frame.seq;
         viewer.sentAt = now();
+        clearTimeout(viewer.ackTimer);
+        viewer.ackTimer = setTimeout(() => {
+          if (viewer.inflight !== null) detachViewer(session, viewer, { code: 4008, reason: "slow_consumer" });
+        }, limits.frameAckTimeoutMs);
+        viewer.ackTimer.unref?.();
         try { viewer.sink.frame(frame); } catch { detachViewer(session, viewer); }
       }
     }
@@ -352,6 +385,7 @@ export function createBrowserSessionManager({
 
   function detachViewer(session, viewer, { code, reason } = {}) {
     if (!session.viewers.delete(viewer)) return;
+    clearTimeout(viewer.ackTimer);
     if (code) {
       try { viewer.sink.close(code, reason); } catch { /* Socket may already be closed. */ }
     }
@@ -364,7 +398,7 @@ export function createBrowserSessionManager({
     if (session.viewers.size >= limits.maxViewers) {
       throw httpError("Too many viewers for this browser session", 429, "viewer_limit");
     }
-    const viewer = { sink, inflight: null, lastSeq: 0, sentAt: 0 };
+    const viewer = { sink, inflight: null, lastSeq: 0, sentAt: 0, ackTimer: null };
     session.viewers.add(viewer);
     session.lastActivityAt = now();
     sink.event({ t: "hello", session: publicSession(session) });
@@ -374,6 +408,7 @@ export function createBrowserSessionManager({
       ack(seq) {
         if (!session.viewers.has(viewer) || viewer.inflight !== seq) return false;
         viewer.inflight = null;
+        clearTimeout(viewer.ackTimer);
         deliverFrame(session);
         return true;
       },
@@ -554,7 +589,9 @@ export function createBrowserSessionManager({
       const screencast = session.screencast;
       if (!screencast.running || !Number.isSafeInteger(params?.sessionId)) return;
       const data = Buffer.from(String(params.data || ""), "base64");
-      screencast.pendingAck = params.sessionId;
+      // Every held frame is acked once viewers drain, so a slow viewer
+      // pauses capture without losing Chromium's in-flight budget.
+      screencast.pendingAcks.push(params.sessionId);
       if (!data.length || data.length > limits.maxFrameBytes) {
         ackChromiumWhenDrained(session);
         return;
@@ -685,7 +722,7 @@ export function createBrowserSessionManager({
         targetId: null,
         listeners: new Set(),
         viewers: new Set(),
-        screencast: { running: false, latest: null, seq: 0, pendingAck: null },
+        screencast: { running: false, latest: null, seq: 0, pendingAcks: [], refreshTimer: null },
         exited: null
       };
       sessions.set(project.id, session);
