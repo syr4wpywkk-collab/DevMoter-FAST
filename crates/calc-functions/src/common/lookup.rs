@@ -28,7 +28,7 @@ fn type_rank(v: &Value) -> u8 {
         Value::Number(_) | Value::Blank => 0,
         Value::Text(_) => 1,
         Value::Boolean(_) => 2,
-        Value::Error(_) | Value::Array(_) | Value::Lambda(_) => 3,
+        Value::Error(_) | Value::Array(_) | Value::Lambda(_) | Value::Reference(_) => 3,
     }
 }
 

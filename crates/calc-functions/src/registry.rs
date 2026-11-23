@@ -48,7 +48,11 @@ impl FunctionRegistry for StandardRegistry {
 /// Function names whose cells re-evaluate on every `recalculate()`
 /// pass (v2 §5.1 volatile functions). `TODAY`/`NOW` were already
 /// volatile-via-clock; the flag now covers `RAND`/`RANDBETWEEN` too.
-pub const VOLATILE_NAMES: &[&str] = &["RAND", "RANDBETWEEN", "TODAY", "NOW"];
+/// `INDIRECT`/`OFFSET` are volatile because their target reference is
+/// only known at evaluation time — the dependency graph cannot track
+/// it statically (ADR 0002); listed ahead of their implementations so
+/// formulas containing them are already conservative.
+pub const VOLATILE_NAMES: &[&str] = &["RAND", "RANDBETWEEN", "TODAY", "NOW", "INDIRECT", "OFFSET"];
 
 /// The default registry with all implemented functions — what
 /// `calc-cli`, `calc-wasm` and tests install on the engine.

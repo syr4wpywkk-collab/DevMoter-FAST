@@ -19,9 +19,10 @@ use std::fmt;
 
 use crate::array::ArrayValue;
 use crate::ast::{BinaryOp, Expr, Literal, UnaryOp};
-use crate::cell::{CellId, CellRef, RangeRef};
+use crate::cell::{CellId, CellRef, RangeRef, RefTarget, parse_sheet_qualified_ref};
 use crate::error::CalcError;
 use crate::lambda::LambdaValue;
+use crate::reference::{MAX_REF_TEXT_LEN, RefValue};
 use crate::value::Value;
 use crate::workbook::{DateSystem, Workbook};
 
@@ -161,8 +162,10 @@ pub struct EvalContext<'a> {
     clock: &'a dyn Clock,
     rng: &'a dyn RngSource,
     registry: &'a dyn crate::registry::FunctionRegistry,
-    /// Sheet the evaluated formula lives on (for unqualified references).
-    current_sheet: u32,
+    /// Cell the evaluated formula lives on. The sheet part resolves
+    /// unqualified references; the full position anchors R1C1-relative
+    /// and "current cell" semantics (v3 reference functions).
+    caller: CellId,
     max_steps: usize,
     steps: usize,
     depth: usize,
@@ -179,7 +182,7 @@ impl<'a> EvalContext<'a> {
         clock: &'a dyn Clock,
         rng: &'a dyn RngSource,
         registry: &'a dyn crate::registry::FunctionRegistry,
-        current_sheet: u32,
+        caller: CellId,
     ) -> EvalContext<'a> {
         EvalContext {
             workbook,
@@ -187,7 +190,7 @@ impl<'a> EvalContext<'a> {
             clock,
             rng,
             registry,
-            current_sheet,
+            caller,
             max_steps: MAX_EVAL_STEPS,
             steps: 0,
             depth: 0,
@@ -227,7 +230,26 @@ impl<'a> EvalContext<'a> {
     }
 
     /// Evaluate `expr` preserving the scalar-vs-range distinction.
+    ///
+    /// A `Value::Reference` produced by the expression (e.g. an
+    /// `OFFSET`-style call) is dereferenced here: 1x1 references become
+    /// [`ArgValue::Ref`], larger ones [`ArgValue::Range`], so existing
+    /// functions see the same range-side coercion semantics as for a
+    /// written `A1`/`A1:B2` argument. Use [`Self::eval_ref`] when the
+    /// reference itself — not its values — is the argument.
     pub fn eval_arg(&mut self, expr: &Expr) -> Result<ArgValue, EvalError> {
+        let arg = self.eval_arg_keep_refs(expr)?;
+        match arg {
+            ArgValue::Scalar(Value::Reference(r)) => self.deref(&r),
+            other => Ok(other),
+        }
+    }
+
+    /// Raw argument evaluation: a reference-valued result is kept as
+    /// `ArgValue::Scalar(Value::Reference)` for callers that need the
+    /// reference object ([`Self::eval_ref`]). Everything else is
+    /// identical to [`Self::eval_arg`].
+    fn eval_arg_keep_refs(&mut self, expr: &Expr) -> Result<ArgValue, EvalError> {
         self.step()?;
         if self.depth >= MAX_EVAL_DEPTH {
             return Err(EvalError::DepthExceeded);
@@ -236,6 +258,152 @@ impl<'a> EvalContext<'a> {
         let result = self.eval_node(expr);
         self.depth -= 1;
         result
+    }
+
+    /// Dereference `reference` to the values currently stored under it:
+    /// [`ArgValue::Ref`] for a single cell, [`ArgValue::Range`] for a
+    /// multi-cell range. This is the single point where a
+    /// `Value::Reference` turns back into cell data; unknown/deleted
+    /// sheets resolve to `#REF!`.
+    pub fn deref(&mut self, reference: &RefValue) -> Result<ArgValue, EvalError> {
+        if self.workbook.sheet(reference.sheet_id).is_none() {
+            return Ok(ArgValue::Scalar(Value::Error(CalcError::Ref)));
+        }
+        let r = &reference.range;
+        if reference.is_single() {
+            let v = self
+                .values
+                .get(&CellId {
+                    sheet_id: reference.sheet_id,
+                    row: r.start.row,
+                    col: r.start.col,
+                })
+                .cloned()
+                .unwrap_or(Value::Blank);
+            return Ok(ArgValue::Ref(v));
+        }
+        if reference.cell_count() > crate::array::MAX_ARRAY_CELLS as u64 {
+            return Ok(ArgValue::Scalar(Value::Error(CalcError::Value)));
+        }
+        let rows = r.end.row - r.start.row + 1;
+        let cols = r.end.col - r.start.col + 1;
+        let mut cells = Vec::with_capacity(rows as usize * cols as usize);
+        for row in r.start.row..=r.end.row {
+            for col in r.start.col..=r.end.col {
+                self.step()?;
+                cells.push(
+                    self.values
+                        .get(&CellId {
+                            sheet_id: reference.sheet_id,
+                            row,
+                            col,
+                        })
+                        .cloned()
+                        .unwrap_or(Value::Blank),
+                );
+            }
+        }
+        match ArrayValue::new(rows, cols, cells) {
+            Ok(a) => Ok(ArgValue::Range(a)),
+            Err(e) => Ok(ArgValue::Scalar(Value::Error(e))),
+        }
+    }
+
+    /// Evaluate `expr` *as a reference*, the way `OFFSET`'s anchor,
+    /// `ISFORMULA`, `AREAS` and friends consume their argument:
+    ///
+    /// - `Expr::CellRef`/`Expr::RangeRef` resolve to their geometry
+    ///   (`#REF!` for a sheet that does not exist).
+    /// - Any other expression is evaluated; a `Value::Reference`
+    ///   result is returned as-is, an error propagates, and any other
+    ///   value is `#VALUE!` (Excel's "argument must be a reference").
+    ///
+    /// SPEC-OPEN: reference *propagation* through `IF`/`CHOOSE`/`INDEX`
+    /// (Excel treats a branch that is a reference as a reference
+    /// result) requires the lazy special forms to opt into
+    /// [`Self::eval_ref`]/`eval_arg_keep_refs`; only functions
+    /// returning `Value::Reference` propagate today.
+    pub fn eval_ref(&mut self, expr: &Expr) -> Result<Result<RefValue, CalcError>, EvalError> {
+        match expr {
+            Expr::CellRef { sheet, cell } => Ok(match self.resolve_sheet(sheet.as_deref()) {
+                Some(sheet_id) => Ok(RefValue::single(sheet_id, *cell)),
+                None => Err(CalcError::Ref),
+            }),
+            Expr::RangeRef { sheet, range } => Ok(match self.resolve_sheet(sheet.as_deref()) {
+                Some(sheet_id) => Ok(RefValue::new(sheet_id, *range)),
+                None => Err(CalcError::Ref),
+            }),
+            _ => match self.eval_arg_keep_refs(expr)?.into_value() {
+                Value::Reference(r) => Ok(Ok(r)),
+                Value::Error(e) => Ok(Err(e)),
+                _ => Ok(Err(CalcError::Value)),
+            },
+        }
+    }
+
+    /// Parse `text` as an A1-style reference and resolve it against the
+    /// workbook — the `ref_text` interpretation `INDIRECT` needs.
+    ///
+    /// Sheet-qualified forms (`Sheet2!A1`, `'My Sheet'!$A$1`) resolve
+    /// against [`Workbook::sheet_id`]; unqualified text binds to the
+    /// caller's sheet. Every failure — unparseable text, text beyond
+    /// [`MAX_REF_TEXT_LEN`], a sheet that does not exist, coordinates
+    /// outside the grid — is `#REF!` (INDIRECT spec).
+    ///
+    /// Defined names and R1C1 text (`a1=FALSE`) are not parsed here;
+    /// they are tracked in `docs/SPEC-OPEN.md`.
+    pub fn ref_from_a1_text(&self, text: &str) -> Result<RefValue, CalcError> {
+        if text.len() > MAX_REF_TEXT_LEN {
+            return Err(CalcError::Ref);
+        }
+        let parsed = parse_sheet_qualified_ref(text).map_err(|_| CalcError::Ref)?;
+        let sheet_id = match &parsed.sheet {
+            None => self.caller.sheet_id,
+            Some(name) => self.workbook.sheet_id(name).ok_or(CalcError::Ref)?,
+        };
+        Ok(match parsed.target {
+            RefTarget::Cell(cell) => RefValue::single(sheet_id, cell),
+            RefTarget::Range(range) => RefValue::new(sheet_id, range),
+        })
+    }
+
+    /// The cell containing the formula being evaluated (caller
+    /// position for R1C1-relative forms and `SHEET()`'s default).
+    pub fn caller(&self) -> CellId {
+        self.caller
+    }
+
+    /// Number of worksheets in the workbook (`SHEETS()`).
+    pub fn sheet_count(&self) -> usize {
+        self.workbook.sheets().len()
+    }
+
+    /// Name of sheet `sheet_id`, or `None` when out of range.
+    pub fn sheet_name(&self, sheet_id: u32) -> Option<&str> {
+        self.workbook.sheet(sheet_id).map(|s| s.name())
+    }
+
+    /// 0-based ordinal of the sheet named `name` (case-insensitive),
+    /// which is the `SHEET()` position minus one.
+    pub fn sheet_index(&self, name: &str) -> Option<u32> {
+        self.workbook.sheet_id(name)
+    }
+
+    /// Whether `cell` contains a formula (stored input, regardless of
+    /// its evaluated value — `ISFORMULA` semantics).
+    pub fn cell_is_formula(&self, cell: CellId) -> bool {
+        self.workbook
+            .cell(cell.sheet_id, cell.row, cell.col)
+            .is_some_and(|c| c.input.is_formula())
+    }
+
+    /// The stored formula text of `cell` *without* the leading `=`
+    /// (workbook storage form; `FORMULATEXT` prepends `=`). `None`
+    /// for blank and literal cells.
+    pub fn cell_formula_text(&self, cell: CellId) -> Option<&str> {
+        self.workbook
+            .cell(cell.sheet_id, cell.row, cell.col)
+            .and_then(|c| c.input.formula())
     }
 
     fn eval_node(&mut self, expr: &Expr) -> Result<ArgValue, EvalError> {
@@ -383,7 +551,7 @@ impl<'a> EvalContext<'a> {
 
     fn resolve_sheet(&self, sheet: Option<&str>) -> Option<u32> {
         match sheet {
-            None => Some(self.current_sheet),
+            None => Some(self.caller.sheet_id),
             Some(name) => self.workbook.sheet_id(name),
         }
     }
@@ -559,7 +727,7 @@ fn type_rank(v: &Value) -> u8 {
         Value::Number(_) | Value::Blank => 0,
         Value::Text(_) => 1,
         Value::Boolean(_) => 2,
-        Value::Error(_) | Value::Array(_) | Value::Lambda(_) => 3,
+        Value::Error(_) | Value::Array(_) | Value::Lambda(_) | Value::Reference(_) => 3,
     }
 }
 

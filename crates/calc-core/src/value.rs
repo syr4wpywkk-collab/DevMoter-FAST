@@ -3,6 +3,7 @@
 use crate::array::ArrayValue;
 use crate::error::CalcError;
 use crate::lambda::LambdaValue;
+use crate::reference::RefValue;
 use std::fmt;
 use std::rc::Rc;
 
@@ -29,6 +30,12 @@ pub enum Value {
     /// displayed in a cell: every scalar coercion yields `#VALUE!` and a
     /// lambda that reaches a cell boundary becomes `#VALUE!`.
     Lambda(Rc<LambdaValue>),
+    /// A resolved cell-range reference (v3, ADR 0002). Produced by
+    /// reference-returning functions (`OFFSET`, `INDIRECT`, the reference
+    /// form of `INDEX`); the evaluator dereferences it to cell values
+    /// before it can reach scalar coercion or a cell boundary, so a
+    /// `Reference` observed by scalar coercion is `#VALUE!`.
+    Reference(RefValue),
 }
 
 /// The kind of a [`Value`], for error messages and type checks.
@@ -41,6 +48,7 @@ pub enum ValueKind {
     Error,
     Array,
     Lambda,
+    Reference,
 }
 
 impl Value {
@@ -54,6 +62,7 @@ impl Value {
             Value::Error(_) => ValueKind::Error,
             Value::Array(_) => ValueKind::Array,
             Value::Lambda(_) => ValueKind::Lambda,
+            Value::Reference(_) => ValueKind::Reference,
         }
     }
 
@@ -93,7 +102,7 @@ impl Value {
             Value::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
             Value::Text(s) => parse_number_text(s).ok_or(CalcError::Value),
             Value::Error(e) => Err(*e),
-            Value::Array(_) | Value::Lambda(_) => Err(CalcError::Value),
+            Value::Array(_) | Value::Lambda(_) | Value::Reference(_) => Err(CalcError::Value),
         }
     }
 
@@ -115,7 +124,7 @@ impl Value {
                 _ => Err(CalcError::Value),
             },
             Value::Error(e) => Err(*e),
-            Value::Array(_) | Value::Lambda(_) => Err(CalcError::Value),
+            Value::Array(_) | Value::Lambda(_) | Value::Reference(_) => Err(CalcError::Value),
         }
     }
 
@@ -135,7 +144,7 @@ impl Value {
             Value::Number(n) => Ok(format_number(*n)),
             Value::Boolean(b) => Ok(if *b { "TRUE" } else { "FALSE" }.to_string()),
             Value::Error(e) => Err(*e),
-            Value::Array(_) | Value::Lambda(_) => Err(CalcError::Value),
+            Value::Array(_) | Value::Lambda(_) | Value::Reference(_) => Err(CalcError::Value),
         }
     }
 }
@@ -233,6 +242,7 @@ impl fmt::Display for Value {
             Value::Error(e) => write!(f, "{e}"),
             Value::Array(a) => write!(f, "<array {}x{}>", a.rows(), a.cols()),
             Value::Lambda(_) => f.write_str("<lambda>"),
+            Value::Reference(r) => write!(f, "<ref {}>", r.range.to_a1()),
         }
     }
 }
