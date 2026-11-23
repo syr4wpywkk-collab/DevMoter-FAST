@@ -132,8 +132,17 @@ export function createCdpPipeConnection({
   readable.on?.("error", onError);
   writable.on?.("error", onError);
 
+  // Once a session starts stopping only its shutdown commands may still go out.
+  let drainAllowed = null;
+  function drain(allowed = []) {
+    drainAllowed = new Set(allowed);
+  }
+
   function send(method, params = {}, { sessionId = null, timeout = timeoutMs } = {}) {
     if (closed) return Promise.reject(new CdpError("CDP connection closed: " + closeReason, { code: "cdp_closed", method }));
+    if (drainAllowed && !drainAllowed.has(method)) {
+      return Promise.reject(new CdpError("CDP connection is shutting down", { code: "cdp_draining", statusCode: 409, method }));
+    }
     if (typeof method !== "string" || !/^[A-Z][A-Za-z]+\.[a-zA-Z]+$/.test(method)) {
       return Promise.reject(new CdpError("Invalid CDP method", { code: "cdp_invalid_method", statusCode: 500, method }));
     }
@@ -184,6 +193,8 @@ export function createCdpPipeConnection({
     on,
     onClose,
     close,
+    drain,
+    get draining() { return drainAllowed !== null; },
     get closed() { return closed; },
     get pendingCount() { return pending.size; }
   };

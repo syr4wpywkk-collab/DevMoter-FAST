@@ -15,6 +15,7 @@ import {
   createBrowserAgentTokens,
   createBrowserAudit,
   decideBrowserAction,
+  bindBrowserAgentRevocation,
   handleBrowserAgentRequest
 } from "../server/browser-agent.mjs";
 import { createPolicyEngine } from "../server/workspace-control.mjs";
@@ -211,7 +212,7 @@ test("agent tokens are hashed, scoped, expire and revoke by run, device and id",
 
 test("audit detail never carries typed text, selectors, queries or fragments", () => {
   assert.deepEqual(auditActionDetail({ type: "type", text: typedSecret }), { type: "type", length: typedSecret.length });
-  assert.deepEqual(auditActionDetail({ type: "navigate", url: `/login?key=${querySecret}#${querySecret}` }), { type: "navigate", path: "/login" });
+  assert.deepEqual(auditActionDetail({ type: "navigate", url: `/login?key=${querySecret}#${querySecret}` }), { type: "navigate", target: { segments: 1, query: true, fragment: true } });
   assert.deepEqual(auditActionDetail({ type: "click", selector: `input[value="${typedSecret}"]` }), { type: "click", by: "selector" });
   assert.deepEqual(auditActionDetail({ type: "press", key: "Enter" }), { type: "press", key: "Enter" });
 });
@@ -541,4 +542,38 @@ test("real Chromium driven through devmoter browser-mcp, with user takeover and 
   await audit.flush();
   const log = await readFile(auditFile, "utf8");
   for (const secret of [typedSecret, querySecret, token]) assert.equal(log.includes(secret), false);
+});
+
+test("#703 explicit deny/ask, unknown policy shapes and policy errors never fall back to allow", () => {
+  const record = { capabilities: ["browser.read", "browser.act"] };
+  const decide = policy => () => (typeof policy === "function" ? policy() : policy);
+  assert.equal(decideBrowserAction({ record, type: "click", decide: decide({ decision: "deny" }) }).code, "policy_denied");
+  assert.equal(decideBrowserAction({ record, type: "click", decide: decide({ decision: "ask" }) }).code, "approval_unavailable");
+  assert.equal(decideBrowserAction({ record, type: "navigate", decide: decide({ decision: "ask", matched: true }) }).decision, "deny");
+  for (const weird of [{ decision: "maybe" }, { decision: "ALLOW" }, "allow", 1, true, {}, [], { matched: true }]) {
+    const result = decideBrowserAction({ record, type: "click", decide: decide(weird) });
+    assert.equal(result.decision, "deny", JSON.stringify(weird));
+    assert.equal(result.code, "policy_invalid", JSON.stringify(weird));
+  }
+  const thrown = decideBrowserAction({ record, type: "click", decide: decide(() => { throw new Error("policy file broken"); }) });
+  assert.equal(thrown.decision, "deny");
+  assert.equal(thrown.code, "policy_error");
+  // Only an explicit no-match falls back to the defaults.
+  assert.equal(decideBrowserAction({ record, type: "click", decide: decide({ decision: "ask", matched: false }) }).decision, "allow");
+  assert.equal(decideBrowserAction({ record, type: "click", decide: decide(null) }).decision, "allow");
+  assert.equal(decideBrowserAction({ record, type: "click", decide: decide({ decision: "allow" }) }).decision, "allow");
+});
+
+test("#705 revoking an agent token tells the browser manager which owner lost access", async () => {
+  const tokens = createBrowserAgentTokens();
+  const calls = [];
+  bindBrowserAgentRevocation(tokens, () => ({ revokeAgent: input => { calls.push(input); return Promise.resolve(); } }));
+  const run = tokens.issue({ projectId: "p1", capabilities: ["browser.read"], runId: "r1" });
+  const manual = tokens.issue({ projectId: "p2", capabilities: ["browser.act"], deviceId: "dev-a" });
+  tokens.revokeRun("r1");
+  tokens.revoke(manual.record.id);
+  assert.deepEqual(calls, [
+    { projectId: "p1", agentId: "agent:r1", deviceId: null, tokenId: run.record.id },
+    { projectId: "p2", agentId: null, deviceId: "dev-a", tokenId: manual.record.id }
+  ]);
 });
