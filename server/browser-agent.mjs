@@ -390,10 +390,11 @@ export async function handleBrowserAgentRequest(req, res, url, { manager, tokens
     if (path === BROWSER_AGENT_PATH + "/close") {
       const { session } = current();
       let stopped = false;
-      if (session && record.startedSessionId === session.id && session.driver.holder === "agent" && record.generation === session.driver.generation) {
+      const ownsDriver = session && session.driver.holder === "agent" && record.generation === session.driver.generation;
+      if (session && record.startedSessionId === session.id && (ownsDriver || session.driver.holder === null)) {
         await manager.stop(session.id, "agent_closed", { deviceId });
         stopped = true;
-      } else if (session && session.driver.holder === "agent" && record.generation === session.driver.generation) {
+      } else if (ownsDriver) {
         manager.releaseDriver(session.id, { holder: "agent", generation: record.generation, deviceId });
       }
       log({ ...base, event: "close", sessionId: session?.id, ok: true, reason: stopped ? "stopped" : "released" });
