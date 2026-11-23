@@ -589,6 +589,9 @@ fn expr_is_volatile(expr: &Expr, registry: &dyn FunctionRegistry) -> bool {
             registry.is_volatile(name) || args.iter().any(|a| expr_is_volatile(a, registry))
         }
         Expr::ArrayLiteral(rows) => rows.iter().flatten().any(|a| expr_is_volatile(a, registry)),
+        Expr::Invoke { callee, args } => {
+            expr_is_volatile(callee, registry) || args.iter().any(|a| expr_is_volatile(a, registry))
+        }
     }
 }
 
