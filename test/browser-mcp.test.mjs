@@ -460,12 +460,13 @@ test("a Run cancelled while its browser token is being checked gets no token", a
   });
   t.after(() => service.dispose());
 
-  await service.spawn({
+  const run = await service.spawn({
     backend: "codex", parentSessionId: "p", task: "Cancelled early",
     context: { projectId: "project-1", browser: "act", browserDeviceId: "dev-1" },
     capabilityPolicy: { allow: ["read", "files", "commands"], mutationPolicy: "approval-required" }
-  }).catch(() => {});
+  });
   await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal((await service.getRun(run.id)).state, "cancelled");
   assert.deepEqual(tokens.list(), []);
   assert.equal(codex.calls.some(call => call.method === "thread/start"), false);
 });
