@@ -309,6 +309,11 @@ export async function handleBrowserAgentRequest(req, res, url, { manager, tokens
       return true;
     }
     const payload = await readJson(req);
+    // The token may have been revoked while the body was arriving.
+    if (!tokens.verify(bearerToken(req))) {
+      sendJson(res, 401, { error: "A valid browser agent token is required", code: "agent_token_invalid" });
+      return true;
+    }
 
     if (path === BROWSER_AGENT_PATH + "/open") {
       const decision = decideBrowserAction({ record, type: "navigate", decide });
