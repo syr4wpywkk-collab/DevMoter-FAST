@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -25,13 +25,15 @@ test('one task at a time holds the lock, and it is gone afterwards', () =>
       Array.from({ length: 20 }, () =>
         withFileLock(file, async () => {
           most = Math.max(most, (inside += 1));
+          // The lock names its owner from the moment it exists: it is never there unsigned.
+          assert.equal(JSON.parse(readFileSync(`${file}.lock`, 'utf8')).pid, process.pid);
           await new Promise((resolve) => setTimeout(resolve, 2));
           inside -= 1;
         }),
       ),
     );
     assert.equal(most, 1);
-    assert.throws(() => statSync(`${file}.lock`));
+    assert.deepEqual(readdirSync(path.dirname(file)), []);
     await assert.rejects(withFileLock(file, () => Promise.reject(new Error('task failed'))), /task failed/);
     assert.throws(() => statSync(`${file}.lock`));
   }));
