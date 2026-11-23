@@ -224,6 +224,130 @@ pub fn scalar_number(
     Ok(ctx.eval(arg)?.to_number())
 }
 
+/// A-family number collection (`STDEVA`/`VARA`/`STDEVPA`/`VARPA`):
+/// range members coerce to numbers — `TRUE` = 1; `FALSE`, text and
+/// blanks = 0 — so a range contributes one value per cell. Direct
+/// scalars follow the usual [`Value::to_number`] coercion (non-numeric
+/// text is `#VALUE!`). Error cells/args propagate.
+pub fn collect_numbers_a(
+    ctx: &mut EvalContext<'_>,
+    args: &[Expr],
+) -> Result<Result<Vec<f64>, CalcError>, EvalError> {
+    let flat = crate::common::coercion::flatten_args(ctx, args)?;
+    let mut out = Vec::new();
+    for (v, ranged) in flat {
+        if ranged {
+            match v {
+                Value::Number(n) => out.push(n),
+                Value::Boolean(b) => out.push(if b { 1.0 } else { 0.0 }),
+                Value::Error(e) => return Ok(Err(e)),
+                _ => out.push(0.0), // text and blank count as 0
+            }
+        } else {
+            match v.to_number() {
+                Ok(n) => out.push(n),
+                Err(e) => return Ok(Err(e)),
+            }
+        }
+    }
+    Ok(Ok(out))
+}
+
+/// Two-pass population variance `Σ(x - x̄)² / n`.
+///
+/// Same stability argument as [`sample_variance`]. `None` when the
+/// slice is empty (callers map to `#DIV/0!`); a single value gives `0`.
+pub fn population_variance(nums: &[f64]) -> Option<f64> {
+    if nums.is_empty() {
+        return None;
+    }
+    let mean = nums.iter().sum::<f64>() / nums.len() as f64;
+    let ss = nums
+        .iter()
+        .map(|x| {
+            let d = x - mean;
+            d * d
+        })
+        .sum::<f64>();
+    Some(ss / nums.len() as f64)
+}
+
+/// Exclusive-percentile (`PERCENTILE.EXC`) interpolation over an
+/// ascending-sorted, non-empty slice.
+///
+/// Rank `r = k·(n+1)` is 1-based: `r` in `[1, n]` interpolates between
+/// elements `⌊r⌋` and `⌊r⌋+1`; `k` outside `[1/(n+1), n/(n+1)]` is not
+/// representable and yields `None` (callers map to `#NUM!` — this is
+/// why small arrays fail where `.INC` succeeds).
+pub fn percentile_exc_sorted(sorted: &[f64], k: f64) -> Option<f64> {
+    let n = sorted.len();
+    let r = k * (n + 1) as f64;
+    if !(1.0..=n as f64).contains(&r) {
+        return None;
+    }
+    let pos = r - 1.0; // 0-based position
+    let lo = pos.floor() as usize;
+    if lo >= n - 1 {
+        return Some(sorted[n - 1]);
+    }
+    let frac = pos - lo as f64;
+    Some(sorted[lo] + (sorted[lo + 1] - sorted[lo]) * frac)
+}
+
+/// Least-squares fit `y ≈ x·β` shared by `TREND` (and later `LINEST`):
+/// solves the normal equations `(XᵀX)β = Xᵀy` for the design matrix
+/// `design` (one row per observation, already including the intercept
+/// column when the caller wants one).
+///
+/// Gaussian elimination with partial pivoting on the (small) normal
+/// matrix; returns `None` when it is numerically singular — Excel's
+/// `LINEST` drops collinear columns instead, which is recorded as a
+/// SPEC-OPEN gap in `docs/functions/TREND.md`.
+pub fn solve_normal_equations(design: &[Vec<f64>], y: &[f64]) -> Option<Vec<f64>> {
+    let p = design.first()?.len();
+    let mut ata = vec![vec![0.0f64; p]; p];
+    let mut aty = vec![0.0f64; p];
+    for (row, &yi) in design.iter().zip(y.iter()) {
+        for i in 0..p {
+            aty[i] += row[i] * yi;
+            for j in 0..p {
+                ata[i][j] += row[i] * row[j];
+            }
+        }
+    }
+    // Elimination with partial pivoting.
+    for col in 0..p {
+        let mut piv = col;
+        for r in col + 1..p {
+            if ata[r][col].abs() > ata[piv][col].abs() {
+                piv = r;
+            }
+        }
+        if ata[piv][col].abs() <= 1e-12 {
+            return None; // singular / collinear
+        }
+        ata.swap(col, piv);
+        aty.swap(col, piv);
+        for r in col + 1..p {
+            let f = ata[r][col] / ata[col][col];
+            ata[r][col] = 0.0;
+            for c in col + 1..p {
+                ata[r][c] -= f * ata[col][c];
+            }
+            aty[r] -= f * aty[col];
+        }
+    }
+    let mut beta = vec![0.0; p];
+    for i in (0..p).rev() {
+        let mut s = aty[i];
+        for j in i + 1..p {
+            s -= ata[i][j] * beta[j];
+        }
+        beta[i] = s / ata[i][i];
+    }
+    Some(beta)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
