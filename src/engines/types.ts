@@ -26,11 +26,38 @@ export interface QueryOptions {
   signal?: AbortSignal;
 }
 
+export interface EngineHealth {
+  status: 'ok' | 'unavailable';
+  /** The engine's own version string, when it answered. */
+  version?: string;
+  latencyMs: number;
+  /** Why the engine is unavailable. */
+  message?: string;
+}
+
 export interface SqlAdapter {
   readonly engine: EngineName;
   readonly kind: 'sql';
   query(sql: string, params: readonly QueryParam[], options?: QueryOptions): Promise<QueryResult>;
+  /** Asks the engine a trivial question through the same path queries take. Never throws. */
+  health(): Promise<EngineHealth>;
   close(): Promise<void>;
+}
+
+export const HEALTH_TIMEOUT_MS = 5_000;
+
+/** Health check for SQL engines: `versionSql` must return one row with a `version` column. */
+export async function sqlHealth(adapter: Pick<SqlAdapter, 'query'>, versionSql: string): Promise<EngineHealth> {
+  const started = performance.now();
+  const latency = () => Math.round(performance.now() - started);
+  try {
+    const { results } = await adapter.query(versionSql, [], { timeoutMs: HEALTH_TIMEOUT_MS });
+    const version = results[0]?.rows[0]?.version;
+    if (typeof version !== 'string' || version === '') return { status: 'unavailable', latencyMs: latency(), message: 'the engine did not report its version' };
+    return { status: 'ok', version, latencyMs: latency() };
+  } catch (error) {
+    return { status: 'unavailable', latencyMs: latency(), message: error instanceof EngineError ? error.message : 'the health check failed' };
+  }
 }
 
 export type Adapter = SqlAdapter;

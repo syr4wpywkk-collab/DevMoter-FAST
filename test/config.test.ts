@@ -17,6 +17,7 @@ test('resolves database files against the configuration directory', () => {
       databases: [
         { name: 'app', engine: 'sqlite', file: 'data/app.sqlite' },
         { name: 'archive-2026', engine: 'sqlite', file: '/var/lib/dmb/archive.sqlite', readOnly: true },
+        { name: 'analytics', engine: 'duckdb', file: 'analytics.duckdb' },
       ],
     },
     '/etc/dmb',
@@ -26,6 +27,7 @@ test('resolves database files against the configuration directory', () => {
     databases: [
       { name: 'app', engine: 'sqlite', file: '/etc/dmb/data/app.sqlite', readOnly: false },
       { name: 'archive-2026', engine: 'sqlite', file: '/var/lib/dmb/archive.sqlite', readOnly: true },
+      { name: 'analytics', engine: 'duckdb', file: '/etc/dmb/analytics.duckdb', readOnly: false },
     ],
   });
 });

@@ -2,6 +2,7 @@
   "server": { "host": "127.0.0.1", "port": 8787 },
   "databases": [
     { "name": "app", "engine": "sqlite", "file": "data/app.sqlite" },
-    { "name": "app-readonly", "engine": "sqlite", "file": "data/app.sqlite", "readOnly": true }
+    { "name": "app-readonly", "engine": "sqlite", "file": "data/app.sqlite", "readOnly": true },
+    { "name": "analytics", "engine": "duckdb", "file": "data/analytics.duckdb" }
   ]
 }
