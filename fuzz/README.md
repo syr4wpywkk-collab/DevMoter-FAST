@@ -15,9 +15,9 @@ cargo +nightly fuzz run parser_fuzz
 
 ## Targets
 
-| Target          | Entry point (once implemented)        | Status      |
+| Target          | Entry point                           | Status      |
 |-----------------|---------------------------------------|-------------|
-| `parser_fuzz`   | `calc_core::parse`                    | pass-through stub |
+| `parser_fuzz`   | `calc_core::parse`                    | live        |
 
 ## Input limits (docs/IMPLEMENTATION_PLAN.md §10.4)
 
@@ -37,8 +37,17 @@ loop, memory exhaustion, or exponential expansion is a bug — file it per
 
 ## Corpus policy
 
-- Seed corpus lives in `fuzz/corpus/<target>/` (created on first run).
-- Commit interesting seeds (invalid syntax, limit-boundary inputs,
+- Seed corpus lives in `fuzz/corpus/<target>/` and is committed.
+- `parser_fuzz` seeds come from two sources:
+  - `gen-*.txt`, ... — every distinct `formula` string in
+    `tests/fixtures/golden-phase1.json`, one file per case named after
+    the case id. These are the compatibility-relevant inputs and should
+    be regenerated when the fixture grows.
+  - `adv-*.txt` — hand-written adversarial seeds probing the §10.4
+    limits and lexer edge cases: deep paren/function nesting, huge
+    numeric literals, unterminated strings, stray/trailing operators,
+    comma spam, max-size range references, and long sheet names.
+- Commit interesting new seeds (invalid syntax, limit-boundary inputs,
   compatibility fixtures reduced to minimal form); do not commit large
-  generated corpora.
+  generated corpora produced by long fuzz runs.
 - Reproductions of past crashes go into `tests/fixtures/` as regression cases.
