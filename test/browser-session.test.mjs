@@ -20,7 +20,7 @@ function probe(command) {
   return { status: 127, stdout: "" };
 }
 
-function fakeChrome({ history, results: extraResults } = {}) {
+function fakeChrome({ history, results: extraResults, gate } = {}) {
   const toBrowser = new PassThrough();
   const fromBrowser = new PassThrough();
   const child = new EventEmitter();
@@ -58,9 +58,14 @@ function fakeChrome({ history, results: extraResults } = {}) {
       const message = JSON.parse(buffer.slice(0, index));
       buffer = buffer.slice(index + 1);
       child.calls.push(message);
-      const result = results[message.method]?.(message.params || {}) || {};
-      fromBrowser.write(JSON.stringify({ id: message.id, result }) + "\0");
-      if (message.method === "Browser.close") child.kill();
+      const reply = () => {
+        const result = results[message.method]?.(message.params || {}) || {};
+        fromBrowser.write(JSON.stringify({ id: message.id, result }) + "\0");
+        if (message.method === "Browser.close") child.kill();
+      };
+      const held = gate?.(message);
+      if (held) void held.then(reply);
+      else reply();
     }
   });
   return child;
@@ -363,7 +368,7 @@ test("device revocation and browser exit stop the session", async t => {
   assert.throws(() => manager.get(b.id), error => error.statusCode === 404);
 });
 
-async function callApi(manager, method, path, body, deviceId = "dev-a", { headers = {}, tickets } = {}) {
+async function callApi(manager, method, path, body, deviceId = "dev-a", { headers = {}, tickets, authenticateDevice } = {}) {
   const req = Readable.from(body === undefined ? [] : [Buffer.from(typeof body === "string" ? body : JSON.stringify(body))]);
   req.method = method;
   req.headers = headers;
@@ -372,7 +377,7 @@ async function callApi(manager, method, path, body, deviceId = "dev-a", { header
   res.end = data => { res.body = data; };
   const url = new URL("http://127.0.0.1" + path);
   const handled = await handleBrowserApiRequest(req, res, url, manager, {
-    authenticateDevice: async () => deviceId ? { id: deviceId } : null,
+    authenticateDevice: authenticateDevice || (async () => deviceId ? { id: deviceId } : null),
     tickets
   });
   assert.equal(handled, true);
@@ -604,4 +609,168 @@ test("scroll dispatches the wheel at the given point and agent actions reach vie
   const agent = manager.acquireDriver(session.id, { holder: "agent" });
   await manager.act(session.id, { type: "click", x: 10, y: 20 }, { holder: "agent", generation: agent.generation });
   assert.deepEqual(events.filter(event => event.t === "action"), [{ t: "action", source: "agent", type: "click", x: 10, y: 20 }]);
+});
+
+function deferred() {
+  let resolve;
+  const promise = new Promise(done => { resolve = done; });
+  return { promise, resolve };
+}
+
+function gateOn(predicate) {
+  const state = { held: null, release: null, reached: deferred(), enabled: true };
+  state.gate = message => {
+    if (!state.enabled || !predicate(message)) return null;
+    state.enabled = false;
+    const wait = deferred();
+    state.release = wait.resolve;
+    state.reached.resolve(message);
+    return wait.promise;
+  };
+  return state;
+}
+
+test("#700 a session without a device owner is never shared with trusted devices", async t => {
+  const { manager } = await setup(t);
+  await assert.rejects(() => manager.start("p1"), error => error.code === "owner_required");
+  await assert.rejects(() => manager.start("p1", { deviceId: null }), error => error.code === "owner_required");
+  const { session } = await manager.start("p1", { deviceId: null, agentId: "agent:run-1", driver: "agent" });
+  assert.equal(session.driver.holder, "agent");
+  const device = { deviceId: "dev-a" };
+  assert.equal(manager.status("p1", device).session, null);
+  assert.equal(manager.status("p1", device).otherDeviceSession, true);
+  assert.throws(() => manager.get(session.id, device), error => error.code === "session_forbidden");
+  assert.throws(() => manager.acquireDriver(session.id, { holder: "user", ...device }), error => error.code === "session_forbidden");
+  await assert.rejects(() => manager.act(session.id, { type: "screenshot" }, device), error => error.code === "session_forbidden");
+  await assert.rejects(() => manager.act(session.id, { type: "reload" }, { holder: "user", generation: 1, ...device }), error => error.code === "session_forbidden");
+  assert.throws(() => manager.attachViewer(session.id, { event() {}, frame() {}, close() {} }, device), error => error.code === "session_forbidden");
+  await assert.rejects(() => manager.stop(session.id, "x", device), error => error.code === "session_forbidden");
+  // A null device id is not a wildcard either, and another agent is another owner.
+  assert.throws(() => manager.get(session.id, { deviceId: null }), error => error.code === "session_forbidden");
+  assert.throws(() => manager.get(session.id, { deviceId: null, agentId: "agent:run-2" }), error => error.code === "session_forbidden");
+  await assert.rejects(() => manager.start("p1", device), error => error.code === "session_owned_by_other_device");
+  const denied = await callApi(manager, "GET", `/api/browser/sessions/${session.id}`);
+  assert.equal(denied.status, 403);
+  assert.equal(JSON.stringify(denied.json).includes("run-1"), false);
+  const status = await callApi(manager, "GET", "/api/browser?projectId=p1");
+  assert.equal(status.json.session, null);
+  const owner = { deviceId: null, agentId: "agent:run-1" };
+  assert.equal(manager.get(session.id, owner).id, session.id);
+  assert.equal((await manager.act(session.id, { type: "reload" }, { holder: "agent", generation: 1, ...owner })).ok, true);
+  assert.equal(manager.status("p1", owner).session.id, session.id);
+});
+
+test("#701 a takeover between two CDP input events stops the old driver's action", async t => {
+  const pressed = gateOn(message => message.method === "Input.dispatchMouseEvent" && message.params?.type === "mousePressed");
+  const { manager, spawns } = await setup(t, { chrome: { gate: message => pressed.gate(message) } });
+  const { session } = await manager.start("p1", { deviceId: "dev-a" });
+  manager.releaseDriver(session.id, { generation: 1, deviceId: "dev-a" });
+  const agent = manager.acquireDriver(session.id, { holder: "agent" });
+  const click = manager.act(session.id, { type: "click", x: 5, y: 5 }, { holder: "agent", generation: agent.generation });
+  await pressed.reached.promise;
+  manager.acquireDriver(session.id, { holder: "user", deviceId: "dev-a" });
+  pressed.release();
+  await assert.rejects(click, error => error.code === "driver_stale");
+  const mouse = spawns[0].child.calls.filter(call => call.method === "Input.dispatchMouseEvent").map(call => call.params.type);
+  assert.deepEqual(mouse, ["mouseMoved", "mousePressed"], "mouseReleased from the old driver is never sent");
+});
+
+test("#701 actions run one at a time, queued actions re-check the driver and the queue is bounded", async t => {
+  const first = gateOn(message => message.method === "Input.dispatchMouseEvent");
+  const { manager, spawns } = await setup(t, { chrome: { gate: message => first.gate(message) }, limits: { maxQueuedActions: 3 } });
+  const { session } = await manager.start("p1", { deviceId: "dev-a" });
+  const running = manager.act(session.id, { type: "click", x: 1, y: 1 }, { generation: 1, deviceId: "dev-a" });
+  await first.reached.promise;
+  const queued = manager.act(session.id, { type: "type", text: "queued" }, { generation: 1, deviceId: "dev-a" });
+  const third = manager.act(session.id, { type: "reload" }, { generation: 1, deviceId: "dev-a" });
+  await assert.rejects(() => manager.act(session.id, { type: "reload" }, { generation: 1, deviceId: "dev-a" }), error => error.statusCode === 429 && error.code === "browser_busy");
+  assert.equal(spawns[0].child.calls.some(call => call.method === "Input.insertText"), false, "the queued action waits");
+  manager.releaseDriver(session.id, { generation: 1, deviceId: "dev-a" });
+  first.release();
+  await assert.rejects(running, error => error.code === "driver_stale");
+  await assert.rejects(queued, error => error.code === "driver_stale");
+  await assert.rejects(third, error => error.code === "driver_stale");
+  assert.equal(spawns[0].child.calls.some(call => call.method === "Input.insertText"), false);
+});
+
+test("#702 stopping or replacing a preview cancels a browser start in flight", async t => {
+  const navigate = gateOn(message => message.method === "Page.navigate");
+  const { manager, previews } = await setup(t, { chrome: { gate: message => navigate.gate(message) } });
+  const pending = manager.start("p1", { deviceId: "dev-a" });
+  await navigate.reached.promise;
+  await manager.stopProject("p1");
+  navigate.release();
+  await assert.rejects(pending, error => error.code === "preview_changed");
+  assert.equal(manager.status("p1", { deviceId: "dev-a" }).session, null);
+
+  const again = gateOn(message => message.method === "Page.navigate");
+  const second = await setup(t, { chrome: { gate: message => again.gate(message) } });
+  const replaced = second.manager.start("p1", { deviceId: "dev-a" });
+  await again.reached.promise;
+  second.previews.set("p1", { projectId: "p1", host: "127.0.0.1", port: 3000, token: "rotated" });
+  again.release();
+  await assert.rejects(replaced, error => error.code === "preview_changed");
+  assert.equal(second.manager.status("p1", { deviceId: "dev-a" }).session, null);
+  assert.ok(previews);
+});
+
+test("#705 device and agent revocation end in-flight work, sessions and REST requests", async t => {
+  const pressed = gateOn(message => message.method === "Input.dispatchMouseEvent" && message.params?.type === "mousePressed");
+  const { manager, spawns } = await setup(t, { chrome: { gate: message => pressed.gate(message) } });
+  const { session } = await manager.start("p1", { deviceId: "dev-a" });
+  const click = manager.act(session.id, { type: "click", x: 5, y: 5 }, { generation: 1, deviceId: "dev-a" });
+  await pressed.reached.promise;
+  const clickFailed = assert.rejects(click);
+  const stopping = manager.stopDevice("dev-a");
+  pressed.release();
+  await stopping;
+  await clickFailed;
+  assert.equal(spawns[0].child.calls.some(call => call.params?.type === "mouseReleased"), false);
+
+  const agentOwned = (await manager.start("p2", { agentId: "agent:run-9", driver: "agent" })).session;
+  const shared = (await manager.start("p1", { deviceId: "dev-b" })).session;
+  manager.releaseDriver(shared.id, { generation: 1, deviceId: "dev-b" });
+  const agentDriver = manager.acquireDriver(shared.id, { holder: "agent" });
+  await manager.revokeAgent({ projectId: "p1", agentId: null, deviceId: "dev-b" });
+  await assert.rejects(() => manager.act(shared.id, { type: "reload" }, { holder: "agent", generation: agentDriver.generation }), error => error.code === "driver_stale");
+  await manager.revokeAgent({ projectId: "p2", agentId: "agent:run-9" });
+  assert.throws(() => manager.get(agentOwned.id), error => error.code === "session_not_found");
+
+  // A device revoked while the request body was arriving gets a 403 and nothing runs.
+  let calls = 0;
+  const revokedMidBody = await callApi(manager, "POST", `/api/browser/sessions/${shared.id}/actions`, { generation: 99, action: { type: "reload" } }, "dev-b", {
+    authenticateDevice: async () => (calls++ === 0 ? { id: "dev-b" } : null)
+  });
+  assert.equal(revokedMidBody.status, 403);
+});
+
+test("#706 #707 the remote browser sandbox has no project mount, no host network and its own PID namespace", async t => {
+  const { manager, spawns } = await setup(t);
+  await manager.start("p1", { deviceId: "dev-a" });
+  const { command, args, options } = spawns[0];
+  assert.equal(command, "bwrap");
+  const head = args.slice(0, args.indexOf("--"));
+  assert.ok(head.includes("--unshare-net"));
+  assert.ok(head.includes("--unshare-pid"));
+  assert.equal(head.includes("/tmp/devmoter-project"), false, "the project is not mounted at all");
+  assert.notEqual(options.cwd, "/tmp/devmoter-project");
+  const tail = args.slice(args.indexOf("--") + 1);
+  assert.equal(tail[0], process.execPath);
+  assert.match(tail[1], /browser-netns-relay\.mjs$/);
+  assert.deepEqual(tail.slice(2, 6), ["--host", "127.0.0.1", "--port", "3000"]);
+  assert.ok(tail.includes("chromium"));
+});
+
+test("#708 a different process on the same preview port is not the approved preview", async t => {
+  const { manager, listeners, previews } = await setup(t);
+  const { session } = await manager.start("p1", { deviceId: "dev-a" });
+  listeners.set(3000, "socket:999");
+  await assert.rejects(() => manager.act(session.id, { type: "screenshot" }, { deviceId: "dev-a" }), error => error.code === "preview_changed");
+  assert.throws(() => manager.get(session.id, { deviceId: "dev-a" }), error => error.statusCode === 404);
+  // The preview was registered for socket:1; a start against another listener fails closed.
+  previews.set("p1", { ...previews.get("p1"), listener: "socket:1" });
+  await assert.rejects(() => manager.start("p1", { deviceId: "dev-a" }), error => error.code === "preview_changed");
+  listeners.delete(3000);
+  previews.set("p1", { projectId: "p1", host: "127.0.0.1", port: 3000, token: "tok1" });
+  await assert.rejects(() => manager.start("p1", { deviceId: "dev-a" }), error => error.code === "preview_changed");
 });

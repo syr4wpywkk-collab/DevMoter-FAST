@@ -882,7 +882,11 @@ export function createBrowserSessionManager({
         const first = await session.cdp.send("Page.navigate", { url: policy.origin + "/" }, { sessionId: session.cdpSessionId });
         if (first?.errorText) throw new Error("Preview did not load: " + first.errorText);
         assertStartCurrent(startTicket, preview);
-      } catch (error) {
+      } catch (caught) {
+        // A start cancelled mid-way (its preview stopped, its owner revoked)
+        // reports why, not the CDP failure the cancellation caused.
+        let error = caught;
+        try { assertStartCurrent(startTicket, preview); } catch (stale) { error = stale; }
         if (["device_revoked", "preview_changed", "agent_revoked"].includes(error?.code)) {
           await stopSession(session, error.code);
           throw error;
