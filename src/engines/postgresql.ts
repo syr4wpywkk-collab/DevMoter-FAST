@@ -10,7 +10,6 @@
 
 import pg from 'pg';
 
-import { exactNumbers } from './json-results.ts';
 import { EngineError, resolveTimeout, sqlHealth, type QueryOptions, type QueryParam, type QueryResult, type ResultSet, type SqlAdapter } from './types.ts';
 
 export const MAX_SQL_BYTES = 1024 * 1024;
@@ -71,6 +70,28 @@ const float = (text: string): number | string => {
 };
 const asText = (text: string): string => text;
 
+/** A decimal literal as sign, significant digits and power of ten, so that equal values compare equal. */
+function decimal(source: string): string | undefined {
+  const match = /^(-?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/.exec(source);
+  if (!match) return undefined;
+  const fraction = match[3] ?? '';
+  const digits = `${match[2]}${fraction}`.replace(/^0+/, '');
+  const significant = digits.replace(/0+$/, '');
+  if (significant === '') return '0';
+  return `${match[1]}${significant}e${Number(match[4] ?? 0) - fraction.length + (digits.length - significant.length)}`;
+}
+
+/**
+ * Reviver for json and jsonb values: a number stays a number only when JavaScript holds exactly the value
+ * that was written; otherwise (more digits than a double has, or out of its range) it is returned as the text PostgreSQL sent.
+ */
+export function exactJsonNumbers(_key: string, value: unknown, context?: { source?: string }): unknown {
+  if (typeof value !== 'number' || context?.source === undefined) return value;
+  const { source } = context;
+  if (Number.isInteger(value) && !Number.isSafeInteger(value)) return source;
+  return Number.isFinite(value) && decimal(source) === decimal(String(value)) ? value : source;
+}
+
 /**
  * How column values become JSON. Only types that JSON can hold exactly are
  * converted; everything else (bigint, numeric, dates, arrays, bytea, ...) stays
@@ -90,7 +111,7 @@ export const postgresqlTypes = {
         return float;
       case OID.json:
       case OID.jsonb:
-        return (text) => JSON.parse(text, exactNumbers);
+        return (text) => (JSON.parse as (text: string, reviver: typeof exactJsonNumbers) => unknown)(text, exactJsonNumbers);
       default:
         return asText;
     }
