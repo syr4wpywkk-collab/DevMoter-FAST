@@ -25,17 +25,31 @@ mod mid;
 mod midb;
 mod numbervalue;
 mod proper;
+mod regexextract;
+mod regexreplace;
+mod regextest;
 mod replace;
+mod replaceb;
+mod rept;
 mod right;
+mod rightb;
 mod search;
+mod searchb;
 mod substitute;
+mod t;
 // File name fixed by v2 §1 (`text/text.rs` implements TEXT).
 #[allow(clippy::module_inception)]
 mod text;
+mod textafter;
+mod textbefore;
 mod textjoin;
+mod textsplit;
 mod trim;
+mod unichar;
+mod unicode;
 mod upper;
 mod value;
+mod valuetotext;
 
 /// `(name, implementation)` pairs contributed by this category,
 /// consumed by [`crate::registry`].
@@ -57,6 +71,20 @@ pub const FUNCTIONS: &[(&str, Function)] = &[
     ("TEXTJOIN", textjoin::call),
     ("TEXT", text::call),
     ("VALUE", value::call),
+    ("REPT", rept::call),
+    ("T", t::call),
+    ("UNICHAR", unichar::call),
+    ("UNICODE", unicode::call),
+    ("VALUETOTEXT", valuetotext::call),
+    ("TEXTBEFORE", textbefore::call),
+    ("TEXTAFTER", textafter::call),
+    ("TEXTSPLIT", textsplit::call),
+    ("RIGHTB", rightb::call),
+    ("REPLACEB", replaceb::call),
+    ("SEARCHB", searchb::call),
+    ("REGEXTEST", regextest::call),
+    ("REGEXEXTRACT", regexextract::call),
+    ("REGEXREPLACE", regexreplace::call),
     ("ARRAYTOTEXT", arraytotext::call),
     ("ASC", asc::call),
     ("BAHTTEXT", bahttext::call),

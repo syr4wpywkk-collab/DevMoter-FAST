@@ -21,5 +21,7 @@ pub mod lookup;
 pub mod number;
 pub mod numerics;
 pub mod random;
+pub mod regexes;
 pub mod statistics;
+pub mod text_bytes;
 pub mod text_index;

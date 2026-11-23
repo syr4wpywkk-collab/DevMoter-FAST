@@ -1,0 +1,3167 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-24",
+  "referenceDefaults": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+  },
+  "cases": [
+    {
+      "id": "I17-REPT-001",
+      "formula": "=REPT(\"ab\",3)",
+      "inputs": {},
+      "expected": {
+        "text": "ababab"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPT-002",
+      "formula": "=REPT(\"*\",5)",
+      "inputs": {},
+      "expected": {
+        "text": "*****"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPT-003",
+      "formula": "=REPT(\"x\",0)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPT-004",
+      "formula": "=REPT(\"x\",2.9)",
+      "inputs": {},
+      "expected": {
+        "text": "xx"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPT-005",
+      "formula": "=REPT(\"x\",-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPT-006",
+      "formula": "=REPT(\"\",7)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPT-007",
+      "formula": "=REPT(7,3)",
+      "inputs": {},
+      "expected": {
+        "text": "777"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPT-008",
+      "formula": "=REPT(TRUE,2)",
+      "inputs": {},
+      "expected": {
+        "text": "TRUETRUE"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPT-009",
+      "formula": "=REPT(\"x\",1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPT-010",
+      "formula": "=REPT(\"ab\",20000)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPT-011",
+      "formula": "=REPT(\"x\",0.9)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPT-012",
+      "formula": "=REPT(\"abc\",1)",
+      "inputs": {},
+      "expected": {
+        "text": "abc"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPT-013",
+      "formula": "=REPT(A1,3)",
+      "inputs": {
+        "A1": ""
+      },
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "empty text input"
+    },
+    {
+      "id": "I17-T-001",
+      "formula": "=T(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "text": "abc"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-T-002",
+      "formula": "=T(123)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-T-003",
+      "formula": "=T(TRUE)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-T-004",
+      "formula": "=T(\"\")",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-T-005",
+      "formula": "=T(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-T-006",
+      "formula": "=T(#N/A)",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-T-007",
+      "formula": "=T(\"a\"&\"b\")",
+      "inputs": {},
+      "expected": {
+        "text": "ab"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-T-008",
+      "formula": "=T(\"123\")",
+      "inputs": {},
+      "expected": {
+        "text": "123"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-T-009",
+      "formula": "=T(-2.5)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-T-010",
+      "formula": "=T(FALSE)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-T-011",
+      "formula": "=T(A1)",
+      "inputs": {
+        "A1": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-T-012",
+      "formula": "=T(A1)",
+      "inputs": {
+        "A1": "hi"
+      },
+      "expected": {
+        "text": "hi"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-T-013",
+      "formula": "=T(A1:A2)",
+      "inputs": {
+        "A1": "x",
+        "A2": 5
+      },
+      "expected": {
+        "array": [
+          [
+            "x"
+          ],
+          [
+            ""
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Array/range broadcast under dynamic arrays is unconfirmed in the spec doc"
+    },
+    {
+      "id": "I17-UNICHAR-001",
+      "formula": "=UNICHAR(65)",
+      "inputs": {},
+      "expected": {
+        "text": "A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICHAR-002",
+      "formula": "=UNICHAR(960)",
+      "inputs": {},
+      "expected": {
+        "text": "π"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICHAR-003",
+      "formula": "=UNICHAR(128512)",
+      "inputs": {},
+      "expected": {
+        "text": "😀"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICHAR-004",
+      "formula": "=UNICHAR(10)",
+      "inputs": {},
+      "expected": {
+        "text": "\n"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICHAR-005",
+      "formula": "=UNICHAR(65.9)",
+      "inputs": {},
+      "expected": {
+        "text": "A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICHAR-006",
+      "formula": "=UNICHAR(0)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICHAR-007",
+      "formula": "=UNICHAR(-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICHAR-008",
+      "formula": "=UNICHAR(55296)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICHAR-009",
+      "formula": "=UNICHAR(1114112)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICHAR-010",
+      "formula": "=UNICHAR(\"66\")",
+      "inputs": {},
+      "expected": {
+        "text": "B"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICHAR-011",
+      "formula": "=UNICHAR(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICHAR-012",
+      "formula": "=UNICHAR(26481)",
+      "inputs": {},
+      "expected": {
+        "text": "東"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICODE-001",
+      "formula": "=UNICODE(\"A\")",
+      "inputs": {},
+      "expected": {
+        "number": 65
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICODE-002",
+      "formula": "=UNICODE(\"Alphabet\")",
+      "inputs": {},
+      "expected": {
+        "number": 65
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICODE-003",
+      "formula": "=UNICODE(\"π\")",
+      "inputs": {},
+      "expected": {
+        "number": 960
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICODE-004",
+      "formula": "=UNICODE(\"😀x\")",
+      "inputs": {},
+      "expected": {
+        "number": 128512
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICODE-005",
+      "formula": "=UNICODE(\"\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICODE-006",
+      "formula": "=UNICODE(123)",
+      "inputs": {},
+      "expected": {
+        "number": 49
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICODE-007",
+      "formula": "=UNICODE(TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 84
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICODE-008",
+      "formula": "=UNICODE(UNICHAR(128512))",
+      "inputs": {},
+      "expected": {
+        "number": 128512
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICODE-009",
+      "formula": "=UNICODE(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICODE-010",
+      "formula": "=UNICODE(\"東京\")",
+      "inputs": {},
+      "expected": {
+        "number": 26481
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-UNICODE-011",
+      "formula": "=UNICODE(A1)",
+      "inputs": {
+        "A1": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-VALUETOTEXT-001",
+      "formula": "=VALUETOTEXT(\"hello\")",
+      "inputs": {},
+      "expected": {
+        "text": "hello"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-VALUETOTEXT-002",
+      "formula": "=VALUETOTEXT(\"hello\",1)",
+      "inputs": {},
+      "expected": {
+        "text": "\"hello\""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-VALUETOTEXT-003",
+      "formula": "=VALUETOTEXT(123.5)",
+      "inputs": {},
+      "expected": {
+        "text": "123.5"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-VALUETOTEXT-004",
+      "formula": "=VALUETOTEXT(TRUE)",
+      "inputs": {},
+      "expected": {
+        "text": "TRUE"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-VALUETOTEXT-005",
+      "formula": "=VALUETOTEXT(TRUE,1)",
+      "inputs": {},
+      "expected": {
+        "text": "TRUE"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-VALUETOTEXT-006",
+      "formula": "=VALUETOTEXT(\"x\",2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-VALUETOTEXT-007",
+      "formula": "=VALUETOTEXT(\"\")",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-VALUETOTEXT-008",
+      "formula": "=VALUETOTEXT(\"\",1)",
+      "inputs": {},
+      "expected": {
+        "text": "\"\""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-VALUETOTEXT-009",
+      "formula": "=VALUETOTEXT(7)",
+      "inputs": {},
+      "expected": {
+        "text": "7"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-VALUETOTEXT-010",
+      "formula": "=VALUETOTEXT(-0.25,1)",
+      "inputs": {},
+      "expected": {
+        "text": "-0.25"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-VALUETOTEXT-011",
+      "formula": "=VALUETOTEXT(\"x\",-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-VALUETOTEXT-012",
+      "formula": "=VALUETOTEXT(A1)",
+      "inputs": {
+        "A1": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-VALUETOTEXT-013",
+      "formula": "=VALUETOTEXT(#N/A)",
+      "inputs": {},
+      "expected": {
+        "text": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether error values render as their code text or propagate is unconfirmed in the spec doc"
+    },
+    {
+      "id": "I17-VALUETOTEXT-014",
+      "formula": "=VALUETOTEXT(1/0)",
+      "inputs": {},
+      "expected": {
+        "text": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether error values render as their code text or propagate is unconfirmed in the spec doc"
+    },
+    {
+      "id": "I17-TEXTBEFORE-001",
+      "formula": "=TEXTBEFORE(\"Red fox jumps\",\" \")",
+      "inputs": {},
+      "expected": {
+        "text": "Red"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTBEFORE-002",
+      "formula": "=TEXTBEFORE(\"a-b-c\",\"-\",2)",
+      "inputs": {},
+      "expected": {
+        "text": "a-b"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTBEFORE-003",
+      "formula": "=TEXTBEFORE(\"a-b-c\",\"-\",-1)",
+      "inputs": {},
+      "expected": {
+        "text": "a-b"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTBEFORE-004",
+      "formula": "=TEXTBEFORE(\"abc\",\"b\")",
+      "inputs": {},
+      "expected": {
+        "text": "a"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTBEFORE-005",
+      "formula": "=TEXTBEFORE(\"abc\",\"z\",1,0,0,\"none\")",
+      "inputs": {},
+      "expected": {
+        "text": "none"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTBEFORE-006",
+      "formula": "=TEXTBEFORE(\"ABC\",\"abc\",1,1)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTBEFORE-007",
+      "formula": "=TEXTBEFORE(\"abc\",\"z\")",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTBEFORE-008",
+      "formula": "=TEXTBEFORE(\"a-b\",\"-\",0)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTBEFORE-009",
+      "formula": "=TEXTBEFORE(\"a-b\",\"-\",2)",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTBEFORE-010",
+      "formula": "=TEXTBEFORE(\"abc\",\"z\",1,0,1)",
+      "inputs": {},
+      "expected": {
+        "text": "abc"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTBEFORE-011",
+      "formula": "=TEXTBEFORE(\"a-b-c\",\"-\",-2)",
+      "inputs": {},
+      "expected": {
+        "text": "a"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTBEFORE-012",
+      "formula": "=TEXTBEFORE(\"a<->b<->c\",\"<->\",-1)",
+      "inputs": {},
+      "expected": {
+        "text": "a<->b"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTBEFORE-013",
+      "formula": "=TEXTBEFORE(\"a-b\",\"-\",9)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTBEFORE-014",
+      "formula": "=TEXTBEFORE(\"abc\",\"\")",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Microsoft documents empty delimiter 'matches immediately'"
+    },
+    {
+      "id": "I17-TEXTBEFORE-015",
+      "formula": "=TEXTBEFORE(\"abc\",\"\",-1)",
+      "inputs": {},
+      "expected": {
+        "text": "abc"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTAFTER-001",
+      "formula": "=TEXTAFTER(\"Red fox jumps\",\" \")",
+      "inputs": {},
+      "expected": {
+        "text": "fox jumps"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTAFTER-002",
+      "formula": "=TEXTAFTER(\"a-b-c\",\"-\",2)",
+      "inputs": {},
+      "expected": {
+        "text": "c"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTAFTER-003",
+      "formula": "=TEXTAFTER(\"a-b-c\",\"-\",-1)",
+      "inputs": {},
+      "expected": {
+        "text": "c"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTAFTER-004",
+      "formula": "=TEXTAFTER(\"ABC\",\"abc\")",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTAFTER-005",
+      "formula": "=TEXTAFTER(\"ABC\",\"abc\",1,1)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTAFTER-006",
+      "formula": "=TEXTAFTER(\"abc\",\"z\",1,0,0,\"none\")",
+      "inputs": {},
+      "expected": {
+        "text": "none"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTAFTER-007",
+      "formula": "=TEXTAFTER(\"abc\",\"z\",-1,0,1)",
+      "inputs": {},
+      "expected": {
+        "text": "abc"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTAFTER-008",
+      "formula": "=TEXTAFTER(\"abc\",\"c\")",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTAFTER-009",
+      "formula": "=TEXTAFTER(\"a-b-c\",\"-\",-2)",
+      "inputs": {},
+      "expected": {
+        "text": "b-c"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTAFTER-010",
+      "formula": "=TEXTAFTER(\"abc\",\"z\",1,0,1)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTAFTER-011",
+      "formula": "=TEXTAFTER(\"a<->b<->c\",\"<->\")",
+      "inputs": {},
+      "expected": {
+        "text": "b<->c"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTAFTER-012",
+      "formula": "=TEXTAFTER(\"a-b\",\"-\",0)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTAFTER-013",
+      "formula": "=TEXTAFTER(\"a-b\",\"-\",1,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTAFTER-014",
+      "formula": "=TEXTAFTER(\"a-b\",\"-\",2)",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTAFTER-015",
+      "formula": "=TEXTAFTER(\"abc\",\"\")",
+      "inputs": {},
+      "expected": {
+        "text": "abc"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Microsoft documents empty delimiter 'matches immediately'"
+    },
+    {
+      "id": "I17-TEXTAFTER-016",
+      "formula": "=TEXTAFTER(\"abc\",\"\",-1)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTSPLIT-001",
+      "formula": "=TEXTSPLIT(\"a,b,c\",\",\")",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a",
+            "b",
+            "c"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTSPLIT-002",
+      "formula": "=TEXTSPLIT(\"a,b;c,d\",\",\",\";\")",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a",
+            "b"
+          ],
+          [
+            "c",
+            "d"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTSPLIT-003",
+      "formula": "=TEXTSPLIT(\"a;;b\",\";\",,TRUE)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a",
+            "b"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTSPLIT-004",
+      "formula": "=TEXTSPLIT(\"a,b;c\",\";\")",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a,b",
+            "c"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTSPLIT-005",
+      "formula": "=TEXTSPLIT(\"a,b;c\",\",\",\";\")",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a",
+            "b"
+          ],
+          [
+            "c",
+            {
+              "error": "#N/A"
+            }
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTSPLIT-006",
+      "formula": "=TEXTSPLIT(\"a,b;c\",\",\",\";\",,0,\"-\")",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a",
+            "b"
+          ],
+          [
+            "c",
+            "-"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTSPLIT-007",
+      "formula": "=TEXTSPLIT(\"abc\",\"\")",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a",
+            "b",
+            "c"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTSPLIT-008",
+      "formula": "=TEXTSPLIT(\"aXb\",\"x\",,,1)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a",
+            "b"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTSPLIT-009",
+      "formula": "=TEXTSPLIT(\"aXb\",\"x\")",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "aXb"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTSPLIT-010",
+      "formula": "=TEXTSPLIT(\"a;b\",,\";\")",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a"
+          ],
+          [
+            "b"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTSPLIT-011",
+      "formula": "=TEXTSPLIT(\"a;;b\",\";\")",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a",
+            "",
+            "b"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTSPLIT-012",
+      "formula": "=TEXTSPLIT(\"a,b\",\",\",,,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTSPLIT-013",
+      "formula": "=TEXTSPLIT(1/0,\",\")",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTSPLIT-014",
+      "formula": "=TEXTSPLIT(\"a-b,c\",{\"-\",\",\"})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a",
+            "b",
+            "c"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Delimiter-array alternatives: engine splits on any element; Excel ordering confirmed but precedence with overlapping delimiters is not"
+    },
+    {
+      "id": "I17-TEXTSPLIT-015",
+      "formula": "=TEXTSPLIT(\"a-b,c\",{\",\",\"-\"})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a",
+            "b",
+            "c"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-TEXTSPLIT-016",
+      "formula": "=TEXTSPLIT(\"a,b;c\",\",\",\";\",TRUE)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a",
+            "b"
+          ],
+          [
+            "c",
+            {
+              "error": "#N/A"
+            }
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "ignore_empty interaction with ragged rows/pad_with is undocumented"
+    },
+    {
+      "id": "I17-RIGHTB-001",
+      "formula": "=RIGHTB(\"東京都\",4)",
+      "inputs": {},
+      "expected": {
+        "text": "京都"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-RIGHTB-002",
+      "formula": "=RIGHTB(\"東京都\",3)",
+      "inputs": {},
+      "expected": {
+        "text": "都"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-RIGHTB-003",
+      "formula": "=RIGHTB(\"abc\",2)",
+      "inputs": {},
+      "expected": {
+        "text": "bc"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-RIGHTB-004",
+      "formula": "=RIGHTB(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "text": "c"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-RIGHTB-005",
+      "formula": "=RIGHTB(\"abc\",-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-RIGHTB-006",
+      "formula": "=RIGHTB(\"東京都\",2)",
+      "inputs": {},
+      "expected": {
+        "text": "都"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-RIGHTB-007",
+      "formula": "=RIGHTB(\"東京都\",99)",
+      "inputs": {},
+      "expected": {
+        "text": "東京都"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-RIGHTB-008",
+      "formula": "=RIGHTB(\"abc\",0)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-RIGHTB-009",
+      "formula": "=RIGHTB(\"ab東\",3)",
+      "inputs": {},
+      "expected": {
+        "text": "b東"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-RIGHTB-010",
+      "formula": "=RIGHTB(\"abcd\",2.9)",
+      "inputs": {},
+      "expected": {
+        "text": "cd"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-RIGHTB-011",
+      "formula": "=RIGHTB(1234,2)",
+      "inputs": {},
+      "expected": {
+        "text": "34"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-RIGHTB-012",
+      "formula": "=RIGHTB(\"東京都\",1)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPLACEB-001",
+      "formula": "=REPLACEB(\"東京都\",3,2,\"市\")",
+      "inputs": {},
+      "expected": {
+        "text": "東市都"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPLACEB-002",
+      "formula": "=REPLACEB(\"abcdef\",2,3,\"X\")",
+      "inputs": {},
+      "expected": {
+        "text": "aXef"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPLACEB-003",
+      "formula": "=REPLACEB(\"abc\",4,1,\"d\")",
+      "inputs": {},
+      "expected": {
+        "text": "abcd"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPLACEB-004",
+      "formula": "=REPLACEB(\"abc\",1,0,\"X\")",
+      "inputs": {},
+      "expected": {
+        "text": "Xabc"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPLACEB-005",
+      "formula": "=REPLACEB(\"abc\",0,1,\"X\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPLACEB-006",
+      "formula": "=REPLACEB(\"abc\",1,-1,\"X\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPLACEB-007",
+      "formula": "=REPLACEB(\"東京都\",9,1,\"x\")",
+      "inputs": {},
+      "expected": {
+        "text": "東京都x"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPLACEB-008",
+      "formula": "=REPLACEB(\"abcdef\",2.9,2.9,\"X\")",
+      "inputs": {},
+      "expected": {
+        "text": "aXdef"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPLACEB-009",
+      "formula": "=REPLACEB(12345,2,3,9)",
+      "inputs": {},
+      "expected": {
+        "text": "195"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPLACEB-010",
+      "formula": "=REPLACEB(\"x\",1,1,1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REPLACEB-011",
+      "formula": "=REPLACEB(\"東京都\",2,2,\"x\")",
+      "inputs": {},
+      "expected": {
+        "text": "x都"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Removal boundary rule when the byte range cuts through a double-byte character is unconfirmed (spec doc open question)"
+    },
+    {
+      "id": "I17-REPLACEB-012",
+      "formula": "=REPLACEB(\"東京都\",3,1,\"x\")",
+      "inputs": {},
+      "expected": {
+        "text": "東x都"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Removal boundary rule when the byte range cuts through a double-byte character is unconfirmed (spec doc open question)"
+    },
+    {
+      "id": "I17-REPLACEB-013",
+      "formula": "=REPLACEB(\"東京都\",2,0,\"市\")",
+      "inputs": {},
+      "expected": {
+        "text": "市京都"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Insertion point inside a double-byte character is undocumented"
+    },
+    {
+      "id": "I17-SEARCHB-001",
+      "formula": "=SEARCHB(\"B\",\"abc\")",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-SEARCHB-002",
+      "formula": "=SEARCHB(\"京\",\"東京都\")",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-SEARCHB-003",
+      "formula": "=SEARCHB(\"b*n\",\"banana\")",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-SEARCHB-004",
+      "formula": "=SEARCHB(\"x\",\"abc\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-SEARCHB-005",
+      "formula": "=SEARCHB(\"都\",\"東京都\")",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-SEARCHB-006",
+      "formula": "=SEARCHB(\"京\",\"東京都\",3)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-SEARCHB-007",
+      "formula": "=SEARCHB(\"b?n\",\"banana\")",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-SEARCHB-008",
+      "formula": "=SEARCHB(\"\",\"東京都\")",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-SEARCHB-009",
+      "formula": "=SEARCHB(\"b\",\"a東b\")",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-SEARCHB-010",
+      "formula": "=SEARCHB(\"a\",\"abc\",4)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-SEARCHB-011",
+      "formula": "=SEARCHB(\"E\",\"Statements\")",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-SEARCHB-012",
+      "formula": "=SEARCHB(\"~?\",\"a?b\")",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-SEARCHB-013",
+      "formula": "=SEARCHB(\"都\",\"東京都\",2)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "start_num landing inside a double-byte character rounds forward to the next character; Excel behavior undocumented"
+    },
+    {
+      "id": "I17-REGEXTEST-001",
+      "formula": "=REGEXTEST(\"Order 1234\",\"\\d+\")",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXTEST-002",
+      "formula": "=REGEXTEST(\"Order\",\"\\d+\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXTEST-003",
+      "formula": "=REGEXTEST(\"ABC\",\"^abc$\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXTEST-004",
+      "formula": "=REGEXTEST(\"ABC\",\"^abc$\",1)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXTEST-005",
+      "formula": "=REGEXTEST(\"x\",\"[\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXTEST-006",
+      "formula": "=REGEXTEST(\"hello\",\"h.llo\")",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXTEST-007",
+      "formula": "=REGEXTEST(\"abc123\",\"\\w+\\d+\")",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXTEST-008",
+      "formula": "=REGEXTEST(\"ABC\",\"abc\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXTEST-009",
+      "formula": "=REGEXTEST(\"x\",\"a\",2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXTEST-010",
+      "formula": "=REGEXTEST(12345,\"\\d\")",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXTEST-011",
+      "formula": "=REGEXTEST(\"a\",1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXTEST-012",
+      "formula": "=REGEXTEST(A1:A2,\"\\d\")",
+      "inputs": {
+        "A1": "a1",
+        "A2": "bc"
+      },
+      "expected": {
+        "array": [
+          [
+            true
+          ],
+          [
+            false
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Array input element-wise broadcast documented but spill layout unconfirmed"
+    },
+    {
+      "id": "I17-REGEXEXTRACT-001",
+      "formula": "=REGEXEXTRACT(\"Order 1234\",\"\\d+\")",
+      "inputs": {},
+      "expected": {
+        "text": "1234"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXEXTRACT-002",
+      "formula": "=REGEXEXTRACT(\"a1b2c3\",\"\\d\",1)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "1",
+            "2",
+            "3"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXEXTRACT-003",
+      "formula": "=REGEXEXTRACT(\"2024-01-15\",\"(\\d+)-(\\d+)-(\\d+)\",2)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "2024",
+            "01",
+            "15"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXEXTRACT-004",
+      "formula": "=REGEXEXTRACT(\"ABC\",\"abc\")",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXEXTRACT-005",
+      "formula": "=REGEXEXTRACT(\"ABC\",\"abc\",0,1)",
+      "inputs": {},
+      "expected": {
+        "text": "ABC"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXEXTRACT-006",
+      "formula": "=REGEXEXTRACT(\"x\",\"[\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXEXTRACT-007",
+      "formula": "=REGEXEXTRACT(\"ab12cd\",\"\\d+\",2)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "12"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXEXTRACT-008",
+      "formula": "=REGEXEXTRACT(\"ABC\",\"\\d\")",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXEXTRACT-009",
+      "formula": "=REGEXEXTRACT(\"x\",\"a\",3)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXEXTRACT-010",
+      "formula": "=REGEXEXTRACT(\"a1b2\",\"\\d\",1)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "1",
+            "2"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXEXTRACT-011",
+      "formula": "=REGEXEXTRACT(\"ab\",\"(a)(x)?\",2)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a",
+            ""
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXEXTRACT-012",
+      "formula": "=REGEXEXTRACT(\"a\",1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXREPLACE-001",
+      "formula": "=REGEXREPLACE(\"a1b2\",\"\\d\",\"#\")",
+      "inputs": {},
+      "expected": {
+        "text": "a#b#"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXREPLACE-002",
+      "formula": "=REGEXREPLACE(\"a1b2\",\"\\d\",\"#\",2)",
+      "inputs": {},
+      "expected": {
+        "text": "a1b#"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXREPLACE-003",
+      "formula": "=REGEXREPLACE(\"2024-01-15\",\"(\\d+)-(\\d+)-(\\d+)\",\"$3/$2/$1\")",
+      "inputs": {},
+      "expected": {
+        "text": "15/01/2024"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXREPLACE-004",
+      "formula": "=REGEXREPLACE(\"ABC\",\"abc\",\"x\",0,1)",
+      "inputs": {},
+      "expected": {
+        "text": "x"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXREPLACE-005",
+      "formula": "=REGEXREPLACE(\"abc\",\"z\",\"#\")",
+      "inputs": {},
+      "expected": {
+        "text": "abc"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXREPLACE-006",
+      "formula": "=REGEXREPLACE(\"a1b2\",\"\\d\",\"#\",3)",
+      "inputs": {},
+      "expected": {
+        "text": "a1b2"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXREPLACE-007",
+      "formula": "=REGEXREPLACE(\"a1b2\",\"\\d\",\"#\",1)",
+      "inputs": {},
+      "expected": {
+        "text": "a#b2"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXREPLACE-008",
+      "formula": "=REGEXREPLACE(\"a1\",\"\\d\",\"$$\")",
+      "inputs": {},
+      "expected": {
+        "text": "a$"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXREPLACE-009",
+      "formula": "=REGEXREPLACE(\"a1\",\"\\d\",\"#\",-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXREPLACE-010",
+      "formula": "=REGEXREPLACE(\"x\",\"[\",\"y\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXREPLACE-011",
+      "formula": "=REGEXREPLACE(\"ABC\",\"abc\",\"x\")",
+      "inputs": {},
+      "expected": {
+        "text": "ABC"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXREPLACE-012",
+      "formula": "=REGEXREPLACE(\"a\",1/0,\"b\")",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I17-REGEXREPLACE-013",
+      "formula": "=REGEXREPLACE(A1:A2,\"\\d\",\"#\")",
+      "inputs": {
+        "A1": "a1",
+        "A2": "b2"
+      },
+      "expected": {
+        "array": [
+          [
+            "a#"
+          ],
+          [
+            "b#"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus Microsoft Learn documentation for TEXTBEFORE/TEXTAFTER/TEXTSPLIT/REGEX*/VALUETOTEXT; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Array input element-wise broadcast documented but spill layout unconfirmed"
+    }
+  ]
+}
