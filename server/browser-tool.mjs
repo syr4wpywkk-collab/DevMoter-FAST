@@ -7,6 +7,34 @@ import { buildBubblewrapCommand } from "./advanced-features.mjs";
 const OUTPUT_LIMIT = 512 * 1024;
 const PROCESS_TIMEOUT_MS = 15000;
 
+const BROWSER_ENV_KEYS = ["PATH", "LANG", "LANGUAGE", "TZ", "FONTCONFIG_PATH", "FONTCONFIG_FILE", "TMPDIR"];
+
+// Chromium handles untrusted page content, so it gets an allowlisted
+// environment instead of the server's (API keys and tokens stay out).
+export function browserProcessEnv(env, profileDir) {
+  const result = {};
+  for (const [key, value] of Object.entries(env || {})) {
+    if (typeof value !== "string") continue;
+    if (BROWSER_ENV_KEYS.includes(key) || key.startsWith("LC_")) result[key] = value;
+  }
+  return {
+    ...result,
+    HOME: profileDir,
+    XDG_CONFIG_HOME: profileDir,
+    XDG_CACHE_HOME: join(profileDir, "cache")
+  };
+}
+
+export function deadProxyArgs(host, port) {
+  const bypassHost = String(host).includes(":") && !String(host).startsWith("[") ? "[" + host + "]" : String(host);
+  return [
+    "--proxy-server=http://127.0.0.1:1",
+    "--proxy-bypass-list=<-loopback>;" + bypassHost + ":" + port,
+    "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
+    "--webrtc-ip-handling-policy=disable_non_proxied_udp"
+  ];
+}
+
 export function loopbackHost(host) {
   return host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "[::1]";
 }
@@ -53,7 +81,7 @@ export function browserAutomationStatus({ env = process.env, spawnSyncImpl = spa
   };
 }
 
-function browserArgs(profileDir, target, { dumpDom = false } = {}) {
+function browserArgs(profileDir, target, { dumpDom = false, preview } = {}) {
   const args = [
     "--headless=new",
     "--disable-gpu",
@@ -65,11 +93,12 @@ function browserArgs(profileDir, target, { dumpDom = false } = {}) {
     "--disable-component-update",
     "--disable-default-apps",
     "--disable-features=OptimizationHints,AutofillServerCommunication,MediaRouter",
-    "--no-proxy-server",
+    ...deadProxyArgs(preview.host, preview.port),
     "--user-data-dir=" + profileDir
   ];
+  // No TCP debugging port: the long-running browser keeps a private CDP pipe.
   if (dumpDom) args.push("--dump-dom");
-  else args.push("--remote-debugging-port=0");
+  else args.push("--remote-debugging-pipe");
   args.push(target);
   return args;
 }
@@ -178,6 +207,7 @@ export function createBrowserAutomation({
       command: ctx.binary,
       args,
       allowNetwork: true,
+      failClosed: true,
       env,
       spawn: spawnSyncImpl
     });
@@ -201,18 +231,12 @@ export function createBrowserAutomation({
     await stop(ctx.project.id);
     await mkdir(profilesDir, { recursive: true, mode: 0o700 });
     const profileDir = join(profilesDir, randomUUID());
-    const args = browserArgs(profileDir, ctx.target);
+    const args = browserArgs(profileDir, ctx.target, { preview: ctx.preview });
     const wrapped = await prepare(profileDir, ctx, args);
-    const browserEnv = {
-      ...process.env,
-      HOME: profileDir,
-      XDG_CONFIG_HOME: profileDir,
-      XDG_CACHE_HOME: join(profileDir, "cache")
-    };
     const child = spawnImpl(wrapped.command, wrapped.args, {
       cwd: ctx.project.path,
-      env: browserEnv,
-      stdio: ["ignore", "ignore", "ignore"],
+      env: browserProcessEnv(process.env, profileDir),
+      stdio: ["ignore", "ignore", "ignore", "pipe", "pipe"],
       windowsHide: true
     });
     const session = {
@@ -246,17 +270,12 @@ export function createBrowserAutomation({
     const active = sessions.get(ctx.project.id);
     if (!active?.active) throw Object.assign(new Error("Start browser automation before inspecting the page"), { statusCode: 409 });
     const profileDir = join(profilesDir, "inspect-" + randomUUID());
-    const args = browserArgs(profileDir, ctx.target, { dumpDom: true });
+    const args = browserArgs(profileDir, ctx.target, { dumpDom: true, preview: ctx.preview });
     const wrapped = await prepare(profileDir, ctx, args);
     try {
       const result = await boundedProcess(spawnImpl, wrapped.command, wrapped.args, {
         cwd: ctx.project.path,
-        env: {
-          ...process.env,
-          HOME: profileDir,
-          XDG_CONFIG_HOME: profileDir,
-          XDG_CACHE_HOME: join(profileDir, "cache")
-        }
+        env: browserProcessEnv(process.env, profileDir)
       });
       return {
         projectId: ctx.project.id,
@@ -284,6 +303,8 @@ export function createBrowserAutomation({
 export const browserAutomationPolicy = Object.freeze({
   optIn: "Browser automation is disabled unless DEVMOTER_BROWSER_AUTOMATION=1.",
   target: "Only a user-started loopback live preview registered for the selected project may be opened.",
+  network: "All traffic except the approved preview host:port goes to a dead proxy; no TCP remote debugging port is opened.",
+  sandbox: "The browser refuses to start without bubblewrap.",
   credentials: "DevMoter uses an ephemeral profile and never mounts the user's personal browser profile or cookies.",
   filesystem: "When sandboxing is enabled, only the registered project and ephemeral profile are mounted into the browser process.",
   stop: "Every active browser session has an explicit stop operation."

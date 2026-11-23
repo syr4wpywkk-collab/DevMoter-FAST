@@ -4,7 +4,7 @@ import { mkdir, rm } from "node:fs/promises";
 import { delimiter, dirname, isAbsolute, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { buildBubblewrapCommand } from "./advanced-features.mjs";
-import { browserAutomationStatus, detectBrowserBinary, loopbackHost } from "./browser-tool.mjs";
+import { browserAutomationStatus, browserProcessEnv, detectBrowserBinary, loopbackHost } from "./browser-tool.mjs";
 import { createCdpPipeConnection } from "./browser-cdp.mjs";
 
 const DEFAULT_LIMITS = Object.freeze({
@@ -251,7 +251,8 @@ export function createBrowserSessionManager({
   };
   const profilesDir = join(configDir, "browser-profiles");
   const sessions = new Map();
-  const starting = new Set();
+  const starting = new Map();
+  const pendingStarts = new Set();
   let sweepTimer = null;
 
   function publicDriver(session) {
@@ -296,7 +297,8 @@ export function createBrowserSessionManager({
   async function sweep() {
     const current = now();
     for (const session of [...sessions.values()]) {
-      if (current - session.startedAt >= limits.maxLifetimeMs) await stopSession(session, "max_lifetime");
+      if (!await resolveProject(session.projectId).then(Boolean, () => false)) await stopSession(session, "project_removed");
+      else if (current - session.startedAt >= limits.maxLifetimeMs) await stopSession(session, "max_lifetime");
       else if (current - session.lastActivityAt >= limits.idleMs) await stopSession(session, "idle");
     }
     if (!sessions.size && sweepTimer) {
@@ -446,6 +448,12 @@ export function createBrowserSessionManager({
       session.blockedRequests += 1;
       void cdp.send("Page.stopLoading", {}, { sessionId }).catch(() => {});
     });
+    cdp.on("Page.navigatedWithinDocument", (params, sessionId) => {
+      if (!ownSession(sessionId) || (params?.frameId && session.mainFrameId && params.frameId !== session.mainFrameId)) return;
+      if (!session.policy.allows(params?.url)) return;
+      session.url = params.url;
+      notify(session, { t: "meta", url: publicUrl(session.url) });
+    });
     cdp.on("Page.frameNavigated", (params, sessionId) => {
       if (!ownSession(sessionId) || params?.frame?.parentId) return;
       if (outsidePreview(params.frame.url)) {
@@ -453,6 +461,7 @@ export function createBrowserSessionManager({
         void cdp.send("Page.navigate", { url: session.policy.origin + "/" }, { sessionId }).catch(() => {});
         return;
       }
+      session.mainFrameId = params.frame.id || session.mainFrameId;
       session.url = params.frame.url || session.url;
       notify(session, { t: "meta", url: publicUrl(session.url) });
     });
@@ -465,18 +474,36 @@ export function createBrowserSessionManager({
     cdp.onClose(reason => { void stopSession(session, "cdp_" + reason); });
   }
 
-  async function start(projectId, { viewport, deviceId = null } = {}) {
+  // A device revoked while its start is in flight is caught after the
+  // browser is registered, so the ticket exists from the first await.
+  async function start(projectId, options = {}) {
+    const startTicket = { deviceId: options.deviceId ?? null, revoked: false };
+    pendingStarts.add(startTicket);
+    try {
+      return await startSession(projectId, options, startTicket);
+    } finally {
+      pendingStarts.delete(startTicket);
+    }
+  }
+
+  async function startSession(projectId, { viewport, deviceId = null } = {}, startTicket) {
     const status = browserAutomationStatus({ env, spawnSyncImpl });
     if (!status.enabled) throw httpError("Browser automation is disabled; set DEVMOTER_BROWSER_AUTOMATION=1 to opt in", 409, "browser_disabled");
     if (!status.available) throw httpError("Browser automation is enabled but no supported Chromium/Chrome binary is available", 503, "browser_unavailable");
     const project = await resolveProject(String(projectId || ""));
     const { preview, policy } = contextFor(project);
     if (starting.has(project.id)) throw httpError("A browser session is already starting for this project", 409, "session_starting");
-    starting.add(project.id);
+    const existing = sessions.get(project.id);
+    if (existing && existing.ownerDeviceId && existing.ownerDeviceId !== deviceId) {
+      throw httpError("Another device is using the browser for this project", 409, "session_owned_by_other_device");
+    }
+    // Starts still in flight count against the limit.
+    if (sessions.size - (existing ? 1 : 0) + starting.size >= limits.maxSessions) {
+      throw httpError("Too many browser sessions are running", 429, "session_limit");
+    }
+    starting.set(project.id, startTicket);
     try {
-      const existing = sessions.get(project.id);
       if (existing) await stopSession(existing, "replaced");
-      if (sessions.size >= limits.maxSessions) throw httpError("Too many browser sessions are running", 429, "session_limit");
       const detected = detectBrowserBinary({ env, spawnSyncImpl });
       await mkdir(profilesDir, { recursive: true, mode: 0o700 });
       const profileDir = join(profilesDir, "remote-" + randomUUID());
@@ -502,12 +529,7 @@ export function createBrowserSessionManager({
       }
       const child = spawnImpl(wrapped.command, wrapped.args, {
         cwd: project.path,
-        env: {
-          ...env,
-          HOME: profileDir,
-          XDG_CONFIG_HOME: profileDir,
-          XDG_CACHE_HOME: join(profileDir, "cache")
-        },
+        env: browserProcessEnv(env, profileDir),
         stdio: ["ignore", "ignore", "ignore", "pipe", "pipe"],
         windowsHide: true
       });
@@ -555,8 +577,14 @@ export function createBrowserSessionManager({
         session.cdp = createCdpPipeConnection({ writable, readable, timeoutMs: limits.commandTimeoutMs });
         installEventHandlers(session);
         await configureBrowser(session);
-        await session.cdp.send("Page.navigate", { url: policy.origin + "/" }, { sessionId: session.cdpSessionId });
+        const first = await session.cdp.send("Page.navigate", { url: policy.origin + "/" }, { sessionId: session.cdpSessionId });
+        if (first?.errorText) throw new Error("Preview did not load: " + first.errorText);
+        if (startTicket.revoked) throw httpError("Device authorization revoked", 403, "device_revoked");
       } catch (error) {
+        if (error?.code === "device_revoked") {
+          await stopSession(session, "device_revoked");
+          throw error;
+        }
         await stopSession(session, "start_failed");
         throw httpError("Chromium could not be prepared: " + String(error?.message || error).slice(0, 300), 502, "browser_start_failed");
       }
@@ -607,14 +635,20 @@ export function createBrowserSessionManager({
     const { nodeId } = await session.cdp.send("DOM.querySelector", { nodeId: root.nodeId, selector }, opts)
       .catch(() => ({ nodeId: 0 }));
     if (!nodeId) throw httpError("No element matches the selector", 404, "selector_not_found");
+    await session.cdp.send("DOM.scrollIntoViewIfNeeded", { nodeId }, opts).catch(() => {});
     const { model } = await session.cdp.send("DOM.getBoxModel", { nodeId }, opts)
       .catch(() => ({ model: null }));
     const quad = model?.content;
     if (!Array.isArray(quad) || quad.length < 8) throw httpError("Element has no visible box", 409, "selector_not_visible");
-    return {
+    const point = {
       x: (quad[0] + quad[2] + quad[4] + quad[6]) / 4,
       y: (quad[1] + quad[3] + quad[5] + quad[7]) / 4
     };
+    const { width, height } = session.viewport;
+    if (point.x < 0 || point.y < 0 || point.x >= width || point.y >= height) {
+      throw httpError("Element is outside the viewport", 409, "selector_not_visible");
+    }
+    return point;
   }
 
   async function historyNavigate(session, offset) {
@@ -736,6 +770,7 @@ export function createBrowserSessionManager({
 
   async function stopDevice(deviceId, reason = "device_revoked") {
     if (!deviceId) return { ok: true, stopped: 0 };
+    for (const ticket of pendingStarts) if (ticket.deviceId === deviceId) ticket.revoked = true;
     const owned = [...sessions.values()].filter(session => session.ownerDeviceId === deviceId);
     await Promise.all(owned.map(session => stopSession(session, reason)));
     return { ok: true, stopped: owned.length };

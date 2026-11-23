@@ -65,7 +65,10 @@ test("browser automation only starts for an approved live preview and exposes st
   assert.equal(started.session.active, true);
   assert.equal(started.session.sandboxed, true);
   assert.equal(spawns[0].command, "bwrap");
-  assert.ok(spawns[0].args.includes("--remote-debugging-port=0"));
+  assert.ok(spawns[0].args.includes("--remote-debugging-pipe"));
+  assert.equal(spawns[0].args.some(arg => arg.startsWith("--remote-debugging-port")), false);
+  assert.ok(spawns[0].args.includes("--proxy-server=http://127.0.0.1:1"));
+  assert.equal(spawns[0].args.includes("--no-proxy-server"), false);
 
   const inspected = await manager.inspect("p1");
   assert.match(inspected.content, /<body>ok<\/body>/);

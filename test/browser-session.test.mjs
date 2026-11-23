@@ -20,7 +20,7 @@ function probe(command) {
   return { status: 127, stdout: "" };
 }
 
-function fakeChrome({ history } = {}) {
+function fakeChrome({ history, results: extraResults } = {}) {
   const toBrowser = new PassThrough();
   const fromBrowser = new PassThrough();
   const child = new EventEmitter();
@@ -47,7 +47,8 @@ function fakeChrome({ history } = {}) {
     "DOM.getDocument": () => ({ root: { nodeId: 1 } }),
     "DOM.querySelector": params => ({ nodeId: params.selector === "#go" ? 7 : 0 }),
     "DOM.getBoxModel": () => ({ model: { content: [10, 20, 30, 20, 30, 40, 10, 40] } }),
-    "DOM.getOuterHTML": () => ({ outerHTML: "<html><body>" + "a".repeat(5000) + "</body></html>" })
+    "DOM.getOuterHTML": () => ({ outerHTML: "<html><body>" + "a".repeat(5000) + "</body></html>" }),
+    ...extraResults
   };
   let buffer = "";
   toBrowser.on("data", chunk => {
@@ -75,22 +76,26 @@ async function setup(t, overrides = {}) {
   ]);
   const spawns = [];
   let clock = 1_000_000;
+  const removed = new Set();
   const manager = createBrowserSessionManager({
     configDir,
-    resolveProject: async id => ({ id, path: "/tmp/devmoter-project", name: id }),
+    resolveProject: async id => {
+      if (removed.has(id)) throw Object.assign(new Error("Unknown project"), { statusCode: 404 });
+      return { id, path: "/tmp/devmoter-project", name: id };
+    },
     getPreview: id => previews.get(id) || null,
-    env: { DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_SANDBOX: "required", PATH: "" },
+    env: { DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_SANDBOX: "required", PATH: "", OPENAI_API_KEY: "sk-secret", LC_ALL: "ja_JP.UTF-8" },
     spawnImpl: (command, args, options) => {
-      const child = fakeChrome();
+      const child = fakeChrome(overrides.chrome);
       spawns.push({ command, args, options, child });
       return child;
     },
     spawnSyncImpl: probe,
     now: () => clock,
-    limits: { sweepMs: 0, commandTimeoutMs: 500, ...overrides }
+    limits: { sweepMs: 0, commandTimeoutMs: 500, ...overrides.limits }
   });
   t.after(() => manager.stopAll());
-  return { manager, spawns, previews, configDir, advance: ms => { clock += ms; } };
+  return { manager, spawns, previews, configDir, removed, advance: ms => { clock += ms; } };
 }
 
 test("navigation policy only admits the approved preview origin", () => {
@@ -312,7 +317,7 @@ test("history navigation refuses entries outside the preview", async t => {
 });
 
 test("session limits, preview changes, idle and lifetime stops", async t => {
-  const { manager, previews, advance } = await setup(t, { idleMs: 1000, maxLifetimeMs: 5000 });
+  const { manager, previews, advance } = await setup(t, { limits: { idleMs: 1000, maxLifetimeMs: 5000 } });
   const a = (await manager.start("p1")).session;
   const b = (await manager.start("p2")).session;
   await assert.rejects(() => manager.start("p3"), error => error.statusCode === 429);
@@ -411,4 +416,59 @@ test("browser HTTP API drives sessions with driver generations", async t => {
   const deleted = await callApi(manager, "DELETE", `/api/browser/sessions/${id}`);
   assert.equal(deleted.json.session.stopReason, "user_stopped");
   assert.equal((await callApi(manager, "GET", `/api/browser/sessions/${id}`)).status, 404);
+});
+
+test("Chromium gets an allowlisted environment and a start cannot steal another device's session", async t => {
+  const { manager, spawns } = await setup(t);
+  const { session } = await manager.start("p1", { deviceId: "dev-a" });
+  const env = spawns[0].options.env;
+  assert.equal(env.OPENAI_API_KEY, undefined);
+  assert.equal(env.DEVMOTER_BROWSER_AUTOMATION, undefined);
+  assert.equal(env.LC_ALL, "ja_JP.UTF-8");
+  assert.ok(env.HOME.includes("browser-profiles"));
+  await assert.rejects(() => manager.start("p1", { deviceId: "dev-b" }), error => error.code === "session_owned_by_other_device");
+  assert.equal(manager.get(session.id).active, true);
+  const replaced = await manager.start("p1", { deviceId: "dev-a" });
+  assert.notEqual(replaced.session.id, session.id);
+});
+
+test("concurrent starts respect the session limit and revocation during start", async t => {
+  const { manager } = await setup(t, { limits: { maxSessions: 1 } });
+  const results = await Promise.allSettled([manager.start("p1", { deviceId: "d" }), manager.start("p2", { deviceId: "d" })]);
+  assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
+  assert.equal(results.find(result => result.status === "rejected").reason.code, "session_limit");
+  await manager.stopAll();
+
+  const pending = manager.start("p3", { deviceId: "dev-r" });
+  await manager.stopDevice("dev-r");
+  await assert.rejects(pending, error => error.code === "device_revoked");
+  assert.equal(manager.status("p3").session, null);
+});
+
+test("start fails when the preview does not load, SPA paths are tracked and removed projects stop", async t => {
+  const broken = await setup(t, { chrome: { results: { "Page.navigate": () => ({ frameId: "F1", errorText: "net::ERR_CONNECTION_REFUSED" }) } } });
+  await assert.rejects(() => broken.manager.start("p1", { deviceId: "d" }), error => error.code === "browser_start_failed");
+  assert.equal(broken.manager.status("p1").session, null);
+
+  const { manager, spawns, removed } = await setup(t);
+  const { session } = await manager.start("p1", { deviceId: "d" });
+  const child = spawns[0].child;
+  child.emitEvent("Page.frameNavigated", { frame: { id: "F1", url: "http://127.0.0.1:3000/" } });
+  child.emitEvent("Page.navigatedWithinDocument", { frameId: "F1", url: "http://127.0.0.1:3000/app/settings" });
+  child.emitEvent("Page.navigatedWithinDocument", { frameId: "F9", url: "http://127.0.0.1:3000/iframe" });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(manager.get(session.id).url, "http://127.0.0.1:3000/app/settings");
+
+  removed.add("p1");
+  await manager.sweep();
+  assert.equal(manager.status("p1").session, null);
+});
+
+test("selector clicks scroll into view and refuse elements outside the viewport", async t => {
+  const { manager, spawns } = await setup(t, { chrome: { results: { "DOM.getBoxModel": () => ({ model: { content: [10, 2000, 30, 2000, 30, 2040, 10, 2040] } }) } } });
+  const { session } = await manager.start("p1", { deviceId: "d" });
+  await assert.rejects(() => manager.act(session.id, { type: "click", selector: "#go" }, { generation: 1, deviceId: "d" }), error => error.code === "selector_not_visible");
+  const methods = spawns[0].child.calls.map(call => call.method);
+  assert.ok(methods.includes("DOM.scrollIntoViewIfNeeded"));
+  assert.equal(methods.includes("Input.dispatchMouseEvent"), false);
 });
