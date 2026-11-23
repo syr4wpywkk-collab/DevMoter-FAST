@@ -72,6 +72,7 @@ Values:
 | `"x"`           | text cell (a literal `""` is an empty string, NOT blank) |
 | `true`/`false`  | boolean cell                                 |
 | `{"blank":true}`| explicitly empty/blank cell                  |
+| `{"formula":"=..."}`| cell holds a formula (typed input), e.g. for `FORMULATEXT` |
 
 Cells not listed are blank. The `{"blank":true}` form exists so fixtures can
 express "the cell participates in the range but is empty" explicitly.
