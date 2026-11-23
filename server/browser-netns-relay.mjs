@@ -7,6 +7,8 @@
 // hosts or ports, no WebRTC/UDP.
 import { spawn } from "node:child_process";
 import { connect, createServer } from "node:net";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export function parseRelayArgs(argv) {
   const split = argv.indexOf("--");
@@ -42,7 +44,7 @@ async function main() {
   child.on("exit", (code, signal) => process.exit(code ?? (signal ? 1 : 0)));
 }
 
-if (import.meta.url === "file://" + process.argv[1]) {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch(error => {
     process.stderr.write("browser relay: " + String(error?.message || error) + "\n");
     process.exit(1);
