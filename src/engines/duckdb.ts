@@ -16,7 +16,7 @@ import path from 'node:path';
 
 import { parseResultSets } from './json-results.ts';
 import { runEngineProcess } from './process.ts';
-import { sqlShape } from './sql-text.ts';
+import { DUCKDB_SQL, sqlShape } from './sql-text.ts';
 import { EngineError, resolveTimeout, sqlHealth, type QueryOptions, type QueryParam, type QueryResult, type SqlAdapter } from './types.ts';
 
 export const MAX_SQL_BYTES = 64 * 1024;
@@ -77,7 +77,7 @@ export function duckdbInvocation(options: DuckdbAdapterOptions, sql: string, par
   if (!Array.isArray(params)) throw new EngineError('invalid_request', 'params must be an array');
   if (params.length > MAX_PARAMS) throw new EngineError('invalid_request', `more than ${MAX_PARAMS} parameters`);
 
-  const shape = sqlShape(sql);
+  const shape = sqlShape(sql, DUCKDB_SQL);
   let text = sql;
   if (params.length > 0) {
     // The statement is prepared, then executed with the values. A second statement would run on its own,
