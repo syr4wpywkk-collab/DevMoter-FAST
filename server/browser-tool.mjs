@@ -29,8 +29,12 @@ function realDir(path) {
 
 // Mounting one of these would cover the sandbox's own /tmp, /proc or /dev, or
 // expose the host's root, temp files or home directories.
-function broadBinaryDirs() {
-  return new Set(["/", "/tmp", "/var/tmp", "/proc", "/dev", "/home", "/root", realDir(tmpdir()), realDir(homedir())]);
+function broadBinaryDirs(env) {
+  const dirs = new Set(["/", "/tmp", "/var/tmp", "/proc", "/dev", "/home", "/root", realDir(tmpdir()), realDir(homedir())]);
+  for (const key of ["TMPDIR", "HOME"]) {
+    if (env?.[key] && isAbsolute(String(env[key]))) dirs.add(realDir(String(env[key])));
+  }
+  return dirs;
 }
 
 // A binary outside the sandbox system mounts (e.g. inside the project) needs
@@ -40,7 +44,7 @@ export function binaryGrant(binary, env) {
   if (!real) return null;
   if (SANDBOX_SYSTEM_MOUNTS.some(root => real === root || real.startsWith(root + "/"))) return null;
   const dir = dirname(real);
-  if (broadBinaryDirs().has(dir)) {
+  if (broadBinaryDirs(env).has(dir)) {
     throw new Error("Browser binary must live in its own directory to be mounted into the sandbox: " + dir);
   }
   return { path: dir, mode: "read-only" };

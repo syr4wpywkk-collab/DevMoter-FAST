@@ -2,8 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { REMOTE_BROWSER_HOST_FEATURES, remoteBrowserHostCapability } from "../server/browser-session.mjs";
 import { createHostAdapter } from "../server/host/adapters.mjs";
-import { realpathSync } from "node:fs";
-import { rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -75,11 +74,14 @@ test("remote browser capability is available with opt-in, browser and bubblewrap
 });
 
 test("remote browser capability is unavailable when the browser binary cannot be mounted into the sandbox", async t => {
-  const loose = join(realpathSync(tmpdir()), "devmoter-capability-chrome-" + process.pid);
-  await writeFile(loose, "#!/bin/sh\n");
-  t.after(() => rm(loose, { force: true }));
-  const { spawn } = fakeSpawn(["bwrap", loose]);
-  assert.deepEqual(remoteBrowserHostCapability({ env: { DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_BROWSER_BIN: loose }, spawnSyncImpl: spawn }), {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-capability-chrome-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const chrome = join(dir, "chrome");
+  await writeFile(chrome, "#!/bin/sh\n");
+  const { spawn } = fakeSpawn(["bwrap", chrome]);
+  const env = { DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_BROWSER_BIN: chrome };
+  assert.equal(remoteBrowserHostCapability({ env, spawnSyncImpl: spawn }).state, "available");
+  assert.deepEqual(remoteBrowserHostCapability({ env: { ...env, TMPDIR: dir }, spawnSyncImpl: spawn }), {
     state: "unavailable",
     reason: "sandbox_unavailable"
   });

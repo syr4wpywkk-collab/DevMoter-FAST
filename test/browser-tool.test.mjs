@@ -133,12 +133,10 @@ test("legacy browser tool mounts a project-local Chromium read-only inside the s
 });
 
 test("a browser binary directly in a temp or home directory is refused, not mounted", async t => {
-  const loose = join(realpathSync(tmpdir()), "devmoter-chrome-" + process.pid);
-  await writeFile(loose, "#!/bin/sh\n");
-  t.after(() => rm(loose, { force: true }));
-  assert.throws(() => binaryGrant(loose, {}), /own directory/);
-  const nested = await mkdtemp(join(tmpdir(), "devmoter-chrome-dir-"));
-  t.after(() => rm(nested, { recursive: true, force: true }));
-  await writeFile(join(nested, "chrome"), "#!/bin/sh\n");
-  assert.deepEqual(binaryGrant(join(nested, "chrome"), {}), { path: realpathSync(nested), mode: "read-only" });
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-chrome-dir-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await writeFile(join(dir, "chrome"), "#!/bin/sh\n");
+  assert.deepEqual(binaryGrant(join(dir, "chrome"), {}), { path: realpathSync(dir), mode: "read-only" });
+  assert.throws(() => binaryGrant(join(dir, "chrome"), { TMPDIR: dir }), /own directory/);
+  assert.throws(() => binaryGrant(join(dir, "chrome"), { HOME: dir }), /own directory/);
 });
