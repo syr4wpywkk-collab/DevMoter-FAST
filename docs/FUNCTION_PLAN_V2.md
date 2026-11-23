@@ -1,6 +1,12 @@
 # DevMoter Calc Engine — 100関数拡張・実装詳細計画書 v2.0
 
-策定日: 2026-11-23 / 状態: 設計案・未実装 / 前提: v1.0の38関数を維持し、追加62関数を実装する。
+策定日: 2026-11-23 / 状態: **関数セット実装完了**（100/100関数、PR01–PR12マージ済み、全ワークスペーステスト緑）/ 前提: v1.0の38関数を維持し、追加62関数を実装した。
+
+> Status note (PR15): the function set of §1 is complete — all 100
+> functions are implemented, registered, and covered by unit + golden
+> fixture tests. Remaining work tracks PR13 (differential recalc /
+> performance), PR14 (WASM integration), and PR15 (release quality);
+> open Excel-compat questions live in `docs/SPEC-OPEN.md`.
 
 ## 0. エグゼクティブ判断
 
