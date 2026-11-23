@@ -49,6 +49,8 @@ fn main() {
     set(&mut e, "H2", "=H1*0.9"); // 10% discount
 
     e.recalculate().unwrap();
+    assert_eq!(get(&mut e, "H1"), Value::Number(30.0));
+    assert_eq!(get(&mut e, "H2"), Value::Number(27.0));
     println!(
         "ids spilled from C1: {} {} {} {}",
         get(&mut e, "C1"),
@@ -72,8 +74,11 @@ fn main() {
     // Differential recalc: changing B3 re-evaluates only H1 and H2.
     set_num(&mut e, "B3", 35.0);
     let report = e.recalculate().unwrap();
-    let touched: Vec<String> = report.evaluated.iter().map(|c| c.to_a1()).collect();
-    assert_eq!(touched.len(), 2, "only the lookup chain re-evaluates");
+    let mut touched: Vec<String> = report.evaluated.iter().map(|c| c.to_a1()).collect();
+    touched.sort_unstable();
+    assert_eq!(touched, ["H1", "H2"]);
+    assert_eq!(get(&mut e, "H1"), Value::Number(35.0));
+    assert_eq!(get(&mut e, "H2"), Value::Number(31.5));
     println!(
         "after restock (price 103 -> 35): discount = {}",
         get(&mut e, "H2")
