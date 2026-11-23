@@ -340,7 +340,6 @@ impl<'a> Parser<'a> {
         let t = self.bump();
         let offset = t.offset;
         match &t.kind {
-            TokenKind::LBrace => self.parse_array_literal(),
             TokenKind::Number(n) => self.make(Expr::Literal(Literal::Number(*n))),
             TokenKind::Str(s) => self.make(Expr::Literal(Literal::Text(s.clone()))),
             TokenKind::ErrorLit(e) => self.make(Expr::Literal(Literal::Error(*e))),
@@ -488,58 +487,6 @@ impl<'a> Parser<'a> {
         self.make(Expr::Name(w.to_string()))
     }
 
-    /// `{ r1c1, r1c2 ; r2c1, r2c2 }` — array literal. `,` separates
-    /// columns, `;` separates rows. Rows must be non-empty and all the
-    /// same length (Excel rejects ragged literals at entry).
-    fn parse_array_literal(&mut self) -> Result<Expr, ParseError> {
-        self.enter()?;
-        let r = (|| {
-            let mut rows: Vec<Vec<Expr>> = Vec::new();
-            let mut width = 0usize;
-            loop {
-                let mut row = vec![self.parse_comparison()?];
-                while self.at(&TokenKind::Comma) {
-                    self.bump();
-                    row.push(self.parse_comparison()?);
-                }
-                if rows.is_empty() {
-                    width = row.len();
-                } else if row.len() != width {
-                    return Err(ParseError::new(
-                        ParseErrorKind::NonRectangularArray,
-                        self.peek().offset,
-                    ));
-                }
-                rows.push(row);
-                match self.peek().kind {
-                    TokenKind::Semicolon => {
-                        self.bump();
-                    }
-                    TokenKind::RBrace => {
-                        self.bump();
-                        break;
-                    }
-                    TokenKind::Eof => {
-                        return Err(ParseError::new(
-                            ParseErrorKind::UnexpectedEof,
-                            self.peek().offset,
-                        ));
-                    }
-                    _ => {
-                        let t = self.peek();
-                        return Err(ParseError::new(
-                            ParseErrorKind::Expected("',' or ';' or '}'"),
-                            t.offset,
-                        ));
-                    }
-                }
-            }
-            self.make(Expr::ArrayLiteral(rows))
-        })();
-        self.leave();
-        r
-    }
-
     /// `name(` — parse the argument list.
     fn parse_call(&mut self, name: &str, offset: usize) -> Result<Expr, ParseError> {
         if !is_valid_fn_name(name) {
@@ -644,6 +591,12 @@ impl<'a> Parser<'a> {
                         ));
                     }
                 }
+            }
+            // Rectangularity is enforced at parse time (Excel rejects
+            // ragged literals at entry).
+            let width = rows.first().map_or(0, Vec::len);
+            if rows.iter().any(|r| r.len() != width) {
+                return Err(ParseError::new(ParseErrorKind::NonRectangularArray, offset));
             }
             self.make(Expr::ArrayLiteral(rows))
         })();

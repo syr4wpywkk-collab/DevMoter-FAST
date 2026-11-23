@@ -85,9 +85,6 @@ pub enum Expr {
         sheet: Option<String>,
         range: RangeRef,
     },
-    /// Array literal `{1,2;3,4}`: `,` separates columns, `;` rows.
-    /// Rectangularity is enforced by the parser.
-    ArrayLiteral(Vec<Vec<Expr>>),
 }
 
 impl Expr {
@@ -108,13 +105,6 @@ impl Expr {
             Expr::Call { args, .. } => 1 + args.iter().map(Expr::node_count).sum::<usize>(),
             Expr::Invoke { callee, args } => {
                 1 + callee.node_count() + args.iter().map(Expr::node_count).sum::<usize>()
-            }
-            Expr::ArrayLiteral(rows) => {
-                1 + rows
-                    .iter()
-                    .flat_map(|r| r.iter())
-                    .map(Expr::node_count)
-                    .sum::<usize>()
             }
         }
     }

@@ -41,12 +41,6 @@ pub enum TokenKind {
     LParen,
     RParen,
     Comma,
-    /// `;` — row separator inside array literals.
-    Semicolon,
-    /// `{` — array literal open.
-    LBrace,
-    /// `}` — array literal close.
-    RBrace,
     Colon,
     Bang,
     /// `{` — array literal open.
@@ -178,18 +172,6 @@ pub fn lex(src: &str, max_tokens: usize) -> Result<Vec<Token>, LexError> {
             }
             b',' => {
                 push!(TokenKind::Comma, at);
-                i += 1;
-            }
-            b';' => {
-                push!(TokenKind::Semicolon, at);
-                i += 1;
-            }
-            b'{' => {
-                push!(TokenKind::LBrace, at);
-                i += 1;
-            }
-            b'}' => {
-                push!(TokenKind::RBrace, at);
                 i += 1;
             }
             b':' => {

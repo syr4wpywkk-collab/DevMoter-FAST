@@ -72,7 +72,8 @@ fn collect(expr: &Expr, wb: &Workbook, current_sheet: u32, out: &mut Vec<Dep>) {
             for a in args {
                 collect(a, wb, current_sheet, out);
             }
-        }        Expr::ArrayLiteral(rows) => {
+        }
+        Expr::ArrayLiteral(rows) => {
             for a in rows.iter().flatten() {
                 collect(a, wb, current_sheet, out);
             }

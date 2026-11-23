@@ -351,7 +351,8 @@ impl CalcEngine {
                     self.mark_dependents_dirty(c);
                 }
                 self.dirty.remove(&id);
-                report.evaluated.push(id);            }
+                report.evaluated.push(id);
+            }
         }
         Ok(report)
     }

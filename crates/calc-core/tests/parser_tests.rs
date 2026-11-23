@@ -176,7 +176,8 @@ fn lex_rejects_bad_input() {
     );
     assert_eq!(
         lex("?", MAX_TOKENS).unwrap_err().kind,
-        LexErrorKind::UnexpectedChar('?')    );
+        LexErrorKind::UnexpectedChar('?')
+    );
     assert_eq!(
         lex("\"abc", MAX_TOKENS).unwrap_err().kind,
         LexErrorKind::UnterminatedString
