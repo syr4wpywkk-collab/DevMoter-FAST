@@ -7,7 +7,7 @@ Run agents and developer tools on your own machine. Operate, coordinate, and rev
 
 **English** · [日本語](./README.ja.md) · [简体中文](./README.zh-CN.md)
 
-> **Product generation:** v3.0.0-alpha  
+> **Product generation:** v3.1.1-alpha  
 > **Release status:** pre-release / active development  
 > **npm package version:** `0.2.0` (private package metadata; independent of the product generation)
 
@@ -20,6 +20,28 @@ This is a new product generation—not simply a remote chat client with more but
 
 > [!WARNING]
 > The current security model is **single-owner and host-local**. Keep the server bound to localhost and use a private network such as Tailscale for remote access. Do not expose DevMoter, agent backends, or host-control endpoints directly to the public internet.
+
+## v3.1.1 — Product vision and implementation status
+
+> 仕事、開発、全てをdevmoterから離れずに
+>
+> スマホさえあればどこまでも
+>
+> 運営はデータを持たない、データを持つのはあなただけ
+
+DevMoter aims to be a single mobile-first workspace for work and software development, with execution and owner-controlled project data on your own host. The third statement expresses the **operator's intended data-ownership principle**, not a guarantee that no data ever leaves the host: when you configure third-party AI APIs, OAuth sign-in, GitHub, or other integrations, information may be transmitted to those providers under their own policies. DevMoter does not claim to operate those external services or control their retention.
+
+### New and evolving capabilities
+
+| Capability | Current status and limitations |
+| --- | --- |
+| Remote browser | **Implemented, experimental, opt-in.** Sandboxed host Chromium streams a registered project's loopback live preview to the mobile UI. Owner taps, scrolls, types and takes control from an agent; a locally configured MCP agent may operate the same session. Requires `DEVMOTER_BROWSER_AUTOMATION=1`, Chromium and bubblewrap. **Not a general internet browser.** ARM64, real mobile devices and real agent integration still need validation. See [remote browser](./docs/REMOTE_BROWSER.md). |
+| Database / project data | **Under development / integration status not established by this README.** DevMoter has host-owned project state and experimental local indexing, but a general-purpose database product or completed DevMoter Base integration must not be inferred from those features. |
+| Office | **Partially implemented, integration still evolving.** The FAST build includes an Office engine bundling step (`npm run build:office`), and Office-related code is present. This does not establish complete Word/Excel/PowerPoint compatibility or that the separate DevMoter Office and Rust Math Engine products are fully integrated. |
+
+### High-risk alpha software — read before use
+
+**Security review and hardening are ongoing. Using this software can expose you to substantial risks**, including unauthorized access to local files, repositories, credentials, host tools and agent actions if the host, session, browser, dependencies or configuration are compromised. Experimental browser, database-related, Office and automation surfaces must not be assumed secure or production-ready. Use only on a trusted single-owner host with disposable/non-sensitive test data where possible; back up your files, keep the server on `127.0.0.1`, and use private HTTPS such as Tailscale Serve for remote access. **Do not expose the server, coding-agent ports or control APIs to the public internet.** Review [Security](./SECURITY.md), [Threat model](./THREAT_MODEL.md) and [Remote browser](./docs/REMOTE_BROWSER.md). No security guarantee is made.
 
 ## The idea
 

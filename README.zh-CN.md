@@ -6,7 +6,7 @@
 
 [English](./README.md) · [日本語](./README.ja.md) · **简体中文**
 
-> **Version track:** v3.0.0-alpha 系列  
+> **Version track:** v3.1.1-alpha 系列  
 > **Status:** active development / pre-release
 
 Alpha 轨道表示产品/发布成熟度。`package.json` 中的 `0.2.0` 是独立的 npm 包版本，不代表 v3 产品轨道或稳定版发布。
@@ -22,6 +22,28 @@ Codex、OpenCode、仓库、凭据、终端、Git 工作流和主机集成继续
 
 > [!WARNING]
 > 当前 DevMoter 面向**单用户私有主机 / 私有网络**。默认保持 localhost；远程使用时推荐 Tailscale Serve 等私有 HTTPS。不要将 DevMoter 或代理后端直接暴露到公网。
+
+## v3.1.1 — 产品理念与实现状态
+
+> 仕事、開発、全てをdevmoterから離れずに
+>
+> スマホさえあればどこまでも
+>
+> 運営はデータを持たない、データを持つのはあなただけ
+
+以上为产品理念原文。DevMoter 致力于将工作和开发整合在移动优先的自托管工作空间中。第三句话是运营方的数据所有权原则，**并非数据永不离开设备的保证**：配置第三方 AI API、OAuth、GitHub 等集成时，信息可能发送至对应服务，并受其政策约束。
+
+### 实现状态
+
+| 功能 | 状态与限制 |
+| --- | --- |
+| 远程浏览器 | **已实现，实验性，默认关闭。** 在隔离的主机 Chromium 中显示项目的 localhost 实时预览，支持手机触控、滚动、输入及从代理接管操作；提供本地 MCP 代理操作路径。需要 `DEVMOTER_BROWSER_AUTOMATION=1`、Chromium、bubblewrap。**不是通用互联网浏览器**；ARM64、真实手机和真实代理联动仍有未验证部分。参见 [文档](./docs/REMOTE_BROWSER.md)。 |
+| 数据库 | **仍需确认具体实现和集成范围。** 已有主机侧项目状态及实验性本地索引，但不能据此宣称通用数据库或 DevMoter Base 已完整集成。 |
+| Office | **部分实现，集成仍在进行。** FAST 的构建包含 `npm run build:office`，但这不意味着完整 Office 格式兼容，也不意味着独立的 DevMoter Office 和 Rust Math Engine 已完全整合。 |
+
+### 安全警告：使用风险较高
+
+**本项目仍在持续安全审查与加固，使用可能带来重大风险。** 主机、浏览器、凭据、依赖或配置受攻击时，本地文件、仓库和代理权限可能受到影响。仅建议在可信的单用户私有主机上使用非敏感测试数据并做好备份；服务保持绑定 localhost，远程访问使用 Tailscale Serve 等私有 HTTPS。**不要直接暴露在公网。** 实验性功能不代表已通过生产安全验证。参见 [安全政策](./SECURITY.md)、[威胁模型](./THREAT_MODEL.md) 和 [远程浏览器](./docs/REMOTE_BROWSER.md)。
 
 ## 为什么是 v3？
 
@@ -258,7 +280,7 @@ DevMoter 当前假设**已认证用户就是主机所有者**。它不是公网 
 
 ### 关于 Alpha
 
-v3.0.0-alpha 系列仍然是 development software。
+v3.1.1-alpha 系列仍然是 development software。
 
 Security / integration audit 仍在持续。Experimental surface 可能发生变化，而 Codex/OpenCode/CLI 等上游行为也可能独立于 DevMoter 演进。
 
