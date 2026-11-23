@@ -68,6 +68,14 @@ impl From<EvalError> for EngineError {
     }
 }
 
+/// Maximum number of dirty-drain passes inside one
+/// [`CalcEngine::recalculate`]. Spill writes can dirty dependents of
+/// interior cells after they were already evaluated; each pass makes
+/// progress or stops, so a small bound suffices against spill feedback
+/// loops (a formula whose spilled value feeds back into its own result).
+/// Cells still dirty at the bound stay dirty.
+pub const MAX_RECALC_PASSES: usize = 128;
+
 /// Outcome of one [`CalcEngine::recalculate`] call.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RecalcReport {
@@ -91,6 +99,12 @@ pub struct CalcEngine {
     values: HashMap<CellId, Value>,
     /// Formula cells needing (re)evaluation.
     dirty: HashSet<CellId>,
+    /// Spill rectangles owned by each anchor formula cell: anchor ->
+    /// (rows, cols) of the region it writes below/right of itself.
+    spills: HashMap<CellId, (u32, u32)>,
+    /// Reverse index: spilled cell -> the anchor that owns it. Entries
+    /// exist only for cells inside a spill rectangle (never the anchor).
+    spilled_by: HashMap<CellId, CellId>,
     clock: Box<dyn Clock>,
     registry: Box<dyn FunctionRegistry>,
 }
@@ -109,6 +123,8 @@ impl CalcEngine {
             deps: HashMap::new(),
             values: HashMap::new(),
             dirty: HashSet::new(),
+            spills: HashMap::new(),
+            spilled_by: HashMap::new(),
             clock: Box::new(SystemClock),
             registry: Box::new(EmptyRegistry),
         }
@@ -164,6 +180,15 @@ impl CalcEngine {
             col: r.col,
         };
 
+        // Typing into a cell covered by another anchor's spill makes it
+        // an obstruction: re-evaluate that anchor so it releases its
+        // spill and reports `#SPILL!`.
+        if let Some(&anchor) = self.spilled_by.get(&id) {
+            if self.parsed.contains_key(&anchor) {
+                self.dirty.insert(anchor);
+            }
+        }
+
         match input {
             CellInput::Formula(text) => {
                 // Parse before mutating anything.
@@ -181,6 +206,10 @@ impl CalcEngine {
                 self.parsed.remove(&id);
                 self.deps.remove(&id);
                 self.dirty.remove(&id);
+                // No longer a formula: release any spill it owned.
+                for c in self.release_spill(id).into_keys() {
+                    self.mark_dependents_dirty(c);
+                }
             }
         }
         self.mark_dirty(id);
@@ -204,6 +233,19 @@ impl CalcEngine {
         self.deps.remove(&id);
         self.values.remove(&id);
         self.dirty.remove(&id);
+        // Clearing inside another anchor's spill: drop the read-through
+        // value and re-evaluate the anchor so the spill is rewritten
+        // (or downgraded to `#SPILL!` if the anchor is now obstructed).
+        if let Some(&anchor) = self.spilled_by.get(&id) {
+            self.spilled_by.remove(&id);
+            if self.parsed.contains_key(&anchor) {
+                self.dirty.insert(anchor);
+            }
+        }
+        // Clearing an anchor releases its whole spill.
+        for c in self.release_spill(id).into_keys() {
+            self.mark_dependents_dirty(c);
+        }
         self.mark_dependents_dirty(id);
         Ok(())
     }
@@ -260,40 +302,168 @@ impl CalcEngine {
     ///
     /// Cycle members get `#CIRC!` immediately; the rest are evaluated in
     /// topological order so referenced values are always current.
+    ///
+    /// A formula whose result is a `Value::Array` *spills*: the array's
+    /// elements are written as read-through values into the rectangle
+    /// below/right of the anchor, and dependents of those cells are
+    /// re-dirtied. Since that may dirty cells already visited this pass,
+    /// evaluation runs in passes until the dirty set drains (bounded by
+    /// [`MAX_RECALC_PASSES`] against pathological spill feedback).
     pub fn recalculate(&mut self) -> Result<RecalcReport, EngineError> {
         let mut report = RecalcReport::default();
-        if self.dirty.is_empty() {
-            return Ok(report);
-        }
-
-        // Cycle detection over the dirty subgraph.
-        let cyclic = graph::cycle_members(&self.dirty, &self.deps);
-        for c in &cyclic {
-            self.values.insert(*c, Value::Error(CalcError::Circ));
-            self.dirty.remove(c);
-            report.cycle_cells.push(*c);
-        }
-
-        // Topological order over the remaining dirty cells (DFS post-order
-        // on dependency edges restricted to the dirty set).
-        let order = self.topo_order();
-
-        for id in order {
-            let expr = self.parsed[&id].clone();
-            let (value, steps) = {
-                let mut ctx = self.make_ctx(id.sheet_id);
-                let v = ctx.eval(&expr)?;
-                (v, ctx.steps())
-            };
-            report.steps += steps;
-            if report.steps > crate::eval::MAX_EVAL_STEPS {
-                return Err(EngineError::Eval(EvalError::StepBudgetExceeded));
+        for _ in 0..MAX_RECALC_PASSES {
+            if self.dirty.is_empty() {
+                return Ok(report);
             }
-            self.values.insert(id, value);
-            self.dirty.remove(&id);
-            report.evaluated.push(id);
+
+            // Cycle detection over the dirty subgraph.
+            let cyclic = graph::cycle_members(&self.dirty, &self.deps);
+            for c in &cyclic {
+                self.values.insert(*c, Value::Error(CalcError::Circ));
+                self.dirty.remove(c);
+                report.cycle_cells.push(*c);
+            }
+
+            // Topological order over the remaining dirty cells (DFS post-order
+            // on dependency edges restricted to the dirty set).
+            let order = self.topo_order();
+
+            for id in order {
+                if !self.dirty.contains(&id) {
+                    continue;
+                }
+                let expr = self.parsed[&id].clone();
+                // Release the old spill *before* evaluating so the
+                // formula sees its own previous output as blank (e.g.
+                // `=SUM(C2:D3)` replacing a spiller must not read its
+                // stale spilled values).
+                let old = self.release_spill(id);
+                let (value, steps) = {
+                    let mut ctx = self.make_ctx(id.sheet_id);
+                    let v = ctx.eval(&expr)?;
+                    (v, ctx.steps())
+                };
+                report.steps += steps;
+                if report.steps > crate::eval::MAX_EVAL_STEPS {
+                    return Err(EngineError::Eval(EvalError::StepBudgetExceeded));
+                }
+                for c in self.apply_result(id, value, old) {
+                    self.mark_dependents_dirty(c);
+                }
+                self.dirty.remove(&id);
+                report.evaluated.push(id);
+            }
         }
         Ok(report)
+    }
+
+    /// Store a formula result for `id`, handling spill bookkeeping.
+    ///
+    /// An array result spills into the `rows x cols` rectangle starting
+    /// at `id`: the anchor keeps the top-left element (matching Excel's
+    /// implicit-intersection view of the anchor) and every other cell
+    /// gets a read-through value. The write is atomic: any stored cell
+    /// or foreign spill inside the rectangle, or a rectangle running off
+    /// the grid, makes the anchor `#SPILL!` and nothing is written.
+    ///
+    /// Returns the *spill-interior* cells whose value changed (compared
+    /// against `old`, captured by [`Self::release_spill`]); their
+    /// dependents must be re-dirtied (they are not reachable through
+    /// `id`'s own dependency edges).
+    fn apply_result(
+        &mut self,
+        id: CellId,
+        value: Value,
+        mut old: HashMap<CellId, Value>,
+    ) -> Vec<CellId> {
+        let Value::Array(a) = value else {
+            self.values.insert(id, value);
+            return old.into_keys().collect();
+        };
+
+        let (rows, cols) = (a.rows(), a.cols());
+        let fits = u64::from(id.row) + u64::from(rows) <= u64::from(crate::cell::MAX_ROWS)
+            && u64::from(id.col) + u64::from(cols) <= u64::from(crate::cell::MAX_COLS);
+        let blocked = (0..rows).any(|dr| {
+            (0..cols).any(|dc| {
+                if dr == 0 && dc == 0 {
+                    return false;
+                }
+                let c = CellId {
+                    sheet_id: id.sheet_id,
+                    row: id.row + dr,
+                    col: id.col + dc,
+                };
+                // A stored cell (value or formula) is an obstruction, as
+                // is territory owned by another anchor's spill.
+                self.workbook.cell(c.sheet_id, c.row, c.col).is_some()
+                    || self.spilled_by.contains_key(&c)
+            })
+        });
+        if !fits || blocked {
+            self.values.insert(id, Value::Error(CalcError::Spill));
+            return old.into_keys().collect();
+        }
+
+        self.spills.insert(id, (rows, cols));
+        self.values
+            .insert(id, a.get(0, 0).cloned().unwrap_or(Value::Blank));
+        let mut changed = Vec::new();
+        for dr in 0..rows {
+            for dc in 0..cols {
+                if dr == 0 && dc == 0 {
+                    continue;
+                }
+                let c = CellId {
+                    sheet_id: id.sheet_id,
+                    row: id.row + dr,
+                    col: id.col + dc,
+                };
+                let v = a.get(dr, dc).cloned().unwrap_or(Value::Blank);
+                if old.remove(&c).unwrap_or(Value::Blank) != v {
+                    changed.push(c);
+                }
+                self.values.insert(c, v);
+                self.spilled_by.insert(c, id);
+            }
+        }
+        // Cells covered by the old spill but not the new one read blank
+        // now; their dependents need re-evaluation too.
+        changed.extend(old.into_keys());
+        changed
+    }
+
+    /// Release the spill owned by `anchor` (if any): clears the
+    /// `spilled_by` index and the read-through values (a covered cell
+    /// that gained a stored input keeps its own value). Returns the
+    /// removed `(cell, old value)` pairs — used by `apply_result` for
+    /// change detection and by `set_cell`/`clear_cell` to find cells
+    /// whose dependents read `Blank` now.
+    fn release_spill(&mut self, anchor: CellId) -> HashMap<CellId, Value> {
+        let mut old = HashMap::new();
+        if let Some((rows, cols)) = self.spills.remove(&anchor) {
+            for dr in 0..rows {
+                for dc in 0..cols {
+                    if dr == 0 && dc == 0 {
+                        continue;
+                    }
+                    let c = CellId {
+                        sheet_id: anchor.sheet_id,
+                        row: anchor.row + dr,
+                        col: anchor.col + dc,
+                    };
+                    if self.spilled_by.remove(&c).is_none()
+                        || self.workbook.cell(c.sheet_id, c.row, c.col).is_some()
+                    {
+                        continue;
+                    }
+                    if let Some(v) = self.values.remove(&c) {
+                        old.insert(c, v);
+                    }
+                }
+            }
+        }
+        old
     }
 
     /// Dirty formula cells in dependency-first order (a cell always sorts
