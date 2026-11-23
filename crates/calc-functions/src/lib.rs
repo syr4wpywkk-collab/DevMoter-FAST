@@ -15,6 +15,7 @@
 pub mod aggregate;
 pub mod array;
 pub mod common;
+pub mod compatibility;
 pub mod datetime;
 pub mod engineering;
 pub mod financial;
