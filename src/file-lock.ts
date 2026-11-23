@@ -3,12 +3,13 @@
 // it back with no other writer in between.
 
 import { randomBytes } from 'node:crypto';
-import { mkdir, readFile, rmdir, stat, unlink, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { mkdir, open, rmdir, unlink, writeFile, type FileHandle } from 'node:fs/promises';
 import os from 'node:os';
 
 const LOCK_WAIT_MS = 5000;
-const EMPTY_LOCK_STALE_MS = 30_000;
 const RETRY_MS = 10;
+const MAX_LOCK_BYTES = 1024;
 
 // Tells this run of the program from an earlier one with the same process ID (a restarted container).
 const INSTANCE = randomBytes(8).toString('hex');
@@ -31,23 +32,29 @@ function isRunning(pid: number): boolean {
   }
 }
 
-/**
- * Whether the lock file was left by a writer that no longer exists. Only a file this
- * module wrote counts: anything else at that path (another file, a directory) is not
- * ours to remove. A writer on another host, or one whose state cannot be told, is
- * taken to be alive.
- */
-async function isAbandoned(lock: string): Promise<boolean> {
-  let text: string;
+/** What the lock file says, when it is a small regular file; undefined for anything else at that path. */
+async function readLock(lock: string): Promise<string | undefined> {
+  let handle: FileHandle | undefined;
   try {
-    text = await readFile(lock, 'utf8');
+    // Without waiting: a named pipe at that path would hold the caller until something wrote to it.
+    handle = await open(lock, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0));
+    const info = await handle.stat();
+    if (!info.isFile() || info.size > MAX_LOCK_BYTES) return undefined;
+    return await handle.readFile('utf8');
   } catch {
-    return false;
+    return undefined;
+  } finally {
+    await handle?.close().catch(() => {});
   }
-  if (text === '') {
-    // Created but not yet signed: the writer is between the two steps, or died there.
-    return stat(lock).then((info) => Date.now() - info.mtimeMs > EMPTY_LOCK_STALE_MS, () => false);
-  }
+}
+
+/**
+ * Whether the lock was written by a writer that no longer exists. Only a lock this
+ * module wrote counts: anything else is not ours to remove. A writer on another
+ * host, or one whose state cannot be told, is taken to be alive.
+ */
+function ownerIsGone(text: string | undefined): text is string {
+  if (text === undefined) return false;
   let owner: Partial<LockOwner>;
   try {
     owner = JSON.parse(text) as Partial<LockOwner>;
@@ -62,7 +69,9 @@ async function isAbandoned(lock: string): Promise<boolean> {
 /**
  * Removes an abandoned lock. One process at a time does this, and it looks again once
  * it is alone: otherwise a second one, acting on what it saw earlier, would remove the
- * lock the first has just taken for itself.
+ * lock the first has just taken for itself. A process that dies in here leaves the
+ * guard behind, and locks are then no longer taken over until it is removed by hand:
+ * taking the guard over as well would let two processes in.
  */
 async function reclaim(lock: string): Promise<void> {
   const guard = `${lock}.reclaim`;
@@ -72,7 +81,12 @@ async function reclaim(lock: string): Promise<void> {
     return;
   }
   try {
-    if (await isAbandoned(lock)) await unlink(lock).catch(() => {});
+    const seen = await readLock(lock);
+    if (!ownerIsGone(seen)) return;
+    // The writer may have been alive when the file was read, and have released the lock and
+    // gone since; the file is then another writer's. One that was already gone cannot release
+    // anything: if the file still says the same, it is the abandoned lock.
+    if ((await readLock(lock)) === seen) await unlink(lock).catch(() => {});
   } finally {
     await rmdir(guard).catch(() => {});
   }
@@ -93,8 +107,8 @@ export async function withFileLock<T>(file: string, task: () => Promise<T>, wait
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
     }
     // A writer that died while holding the lock must not block the file for good.
-    if (await isAbandoned(lock)) await reclaim(lock);
-    if (Date.now() > deadline) throw new Error(`${file} is locked by another writer; if none is running, remove ${lock}`);
+    if (ownerIsGone(await readLock(lock))) await reclaim(lock);
+    if (Date.now() > deadline) throw new Error(`${file} is locked by another writer; if none is running, remove ${lock} and ${lock}.reclaim`);
     await new Promise((resolve) => setTimeout(resolve, RETRY_MS));
   }
   try {
