@@ -215,6 +215,10 @@ export function createPostgresqlAdapter(options: PostgresqlAdapterOptions): SqlA
           bytes += message.length;
           if (bytes > MAX_RESULT_BYTES) stop(new EngineError('result_too_large', `the result is larger than ${MAX_RESULT_BYTES} bytes`));
         });
+        // The client drops COPY data, so COPY ... TO STDOUT would look like a statement that returned nothing.
+        (client as unknown as { connection: { on(event: 'copyOutResponse', listener: () => void): void } }).connection.on('copyOutResponse', () =>
+          stop(new EngineError('query_failed', 'COPY ... TO STDOUT is not available through the API; use SELECT to read the rows')),
+        );
         // Without parameters the simple protocol is used, which accepts several statements.
         const result = await Promise.race([values.length > 0 ? client.query(sql, values) : client.query(sql), stopped]);
         return { results: toResultSets(result as pg.QueryResult | pg.QueryResult[]), durationMs: Math.round(performance.now() - started) };
