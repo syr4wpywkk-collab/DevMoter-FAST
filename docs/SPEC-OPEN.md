@@ -74,6 +74,20 @@ Phase 1 table below.
 | (NOT, no fixture yet) | `NOT("TRUE")`: is text-form boolean coerced? Expected `#VALUE!`. |
 | (ROUND, no fixture yet) | Fractional `num_digits` truncation (`ROUND(1.234,1.9)`); huge `num_digits` clamping. |
 
+## PR 03 (evaluator / dependency graph)
+
+17. **Blank セルと他型の比較** — `=A1=0`（空白）は 0 と等しく、
+    `=A1=""` とも比較されるよう Blank を比較相手の型のゼロ値として扱う
+    暫定規則を採用。Excel の `=A1=""` → TRUE、`=A1=0` → TRUE の両立を
+    フィクスチャで確認する。
+18. **関数の引数数エラー** — arity 違反は暫定的に `#VALUE!` に写像。
+    Excel は入力時点で拒否するため、セルエラーとして報告するか
+    API エラーにするかを確定する。
+19. **範囲引数の上限超過** — `MAX_ARRAY_CELLS` を超える範囲参照は
+    `#VALUE!` を返す（エラー種別は PR 01 の項目 6 と同じく未確定）。
+20. **循環参照の部分再計算** — dirty でない既評価セルは SCC 検査の
+    対象外（既に確定済み値を持つ前提）。履歴のある大規模ブックで
+    この前提が成立するか検証する。
 ## Phase 2 fixtures (Track E)
 
 `specOpen: true` cases in `tests/fixtures/golden-phase2.json` mirror the
