@@ -17,6 +17,7 @@ use std::fmt;
 use crate::ast::Expr;
 use crate::cell::CellId;
 use crate::cell::CellRef;
+use crate::cell::RangeRef;
 use crate::error::CalcError;
 use crate::eval::{Clock, EvalContext, EvalError, RngSource, SplitMix64, SystemClock};
 use crate::graph::{self, Dep};
@@ -105,6 +106,20 @@ pub struct CalcEngine {
     /// Reverse index: spilled cell -> the anchor that owns it. Entries
     /// exist only for cells inside a spill rectangle (never the anchor).
     spilled_by: HashMap<CellId, CellId>,
+    /// Reverse dependency index for `Dep::Cell` edges: referenced cell ->
+    /// the formula cells that read it. Lets `mark_dependents_dirty` find
+    /// direct dependents in O(out-degree) instead of scanning `deps`.
+    rev_cells: HashMap<CellId, HashSet<CellId>>,
+    /// Formulas holding `Dep::Range` edges, indexed by the *referenced*
+    /// sheet: watcher -> normalized ranges. Dirty propagation scans the
+    /// watchers of the changed cell's sheet only — proportional to the
+    /// range-dep count, not the total formula count.
+    range_watchers: HashMap<u32, HashMap<CellId, Vec<RangeRef>>>,
+    /// Formula cells whose AST contains a volatile call (per
+    /// [`FunctionRegistry::is_volatile`]). Maintained incrementally by
+    /// `set_cell`/`clear_cell`/`set_registry` so each `recalculate()`
+    /// pass needn't rescan every parsed formula.
+    volatile: HashSet<CellId>,
     clock: Box<dyn Clock>,
     rng: Box<dyn RngSource>,
     registry: Box<dyn FunctionRegistry>,
@@ -128,6 +143,9 @@ impl CalcEngine {
             dirty: HashSet::new(),
             spills: HashMap::new(),
             spilled_by: HashMap::new(),
+            rev_cells: HashMap::new(),
+            range_watchers: HashMap::new(),
+            volatile: HashSet::new(),
             clock: Box::new(SystemClock),
             rng,
             registry: Box::new(EmptyRegistry),
@@ -150,7 +168,15 @@ impl CalcEngine {
     /// (v2 plan §3). Replaces the default [`EmptyRegistry`], under which
     /// every function call evaluates to `#NAME?`. `calc-cli` and
     /// `calc-wasm` install `calc_functions::default_registry()` here.
+    ///
+    /// Volatility is a registry property, so the volatile-cell set is
+    /// rebuilt here (a one-off O(#formulas) pass).
     pub fn set_registry(&mut self, registry: Box<dyn FunctionRegistry>) {
+        self.volatile = self
+            .parsed
+            .iter()
+            .filter_map(|(id, expr)| expr_is_volatile(expr, registry.as_ref()).then_some(*id))
+            .collect();
         self.registry = registry;
     }
 
@@ -206,15 +232,23 @@ impl CalcEngine {
                 let deps = graph::extract_deps(&expr, &self.workbook, sheet_id);
                 self.workbook
                     .set_cell(sheet_id, r.row, r.col, CellInput::Formula(text))?;
+                self.deindex_deps(id);
+                if expr_is_volatile(&expr, self.registry.as_ref()) {
+                    self.volatile.insert(id);
+                } else {
+                    self.volatile.remove(&id);
+                }
                 self.parsed.insert(id, expr);
                 self.deps.insert(id, deps);
+                self.index_deps(id);
             }
             CellInput::Value(v) => {
                 self.values.insert(id, v.clone());
                 self.workbook
                     .set_cell(sheet_id, r.row, r.col, CellInput::Value(v))?;
                 self.parsed.remove(&id);
-                self.deps.remove(&id);
+                self.deindex_deps(id);
+                self.volatile.remove(&id);
                 self.dirty.remove(&id);
                 // No longer a formula: release any spill it owned.
                 for c in self.release_spill(id).into_keys() {
@@ -240,7 +274,8 @@ impl CalcEngine {
         };
         self.workbook.clear_cell(sheet_id, r.row, r.col)?;
         self.parsed.remove(&id);
-        self.deps.remove(&id);
+        self.deindex_deps(id);
+        self.volatile.remove(&id);
         self.values.remove(&id);
         self.dirty.remove(&id);
         // Clearing inside another anchor's spill: drop the read-through
@@ -484,7 +519,10 @@ impl CalcEngine {
     /// restricted to the dirty set.
     fn topo_order(&self) -> Vec<CellId> {
         let dirty = &self.dirty;
-        // Adjacency within the dirty set (same expansion as the SCC pass).
+        // Adjacency within the dirty set (same expansion as the SCC pass):
+        // range edges resolve through a sorted member index instead of
+        // scanning the whole dirty set per edge.
+        let by_sheet = graph::sorted_by_sheet(dirty);
         let mut adj: HashMap<CellId, Vec<CellId>> = HashMap::with_capacity(dirty.len());
         for &c in dirty {
             let mut edges = Vec::new();
@@ -492,10 +530,8 @@ impl CalcEngine {
                 match dep {
                     Dep::Cell(t) if dirty.contains(t) => edges.push(*t),
                     Dep::Range { sheet_id, range } => {
-                        for m in dirty {
-                            if m.sheet_id == *sheet_id && range.contains(m.row, m.col) {
-                                edges.push(*m);
-                            }
+                        if let Some(sorted) = by_sheet.get(sheet_id) {
+                            edges.extend(graph::members_in_range(sorted, range));
                         }
                     }
                     _ => {}
@@ -529,12 +565,62 @@ impl CalcEngine {
         order
     }
 
-    /// Dirty every formula cell whose AST contains a volatile call
-    /// (per `FunctionRegistry::is_volatile`), anywhere in the tree.
+    /// Dirty every volatile formula cell (per
+    /// `FunctionRegistry::is_volatile`, maintained in `self.volatile`)
+    /// plus its transitive dependents — a fresh `RAND()` is a value
+    /// change like any other, so downstream formulas must re-run too.
     fn mark_volatile_dirty(&mut self) {
-        for (id, expr) in &self.parsed {
-            if expr_is_volatile(expr, self.registry.as_ref()) {
-                self.dirty.insert(*id);
+        let volatile: Vec<CellId> = self.volatile.iter().copied().collect();
+        for id in volatile {
+            if self.parsed.contains_key(&id) {
+                self.dirty.insert(id);
+            }
+            self.mark_dependents_dirty(id);
+        }
+    }
+
+    /// Add `id`'s current dep edges to the reverse indexes.
+    fn index_deps(&mut self, id: CellId) {
+        for dep in self.deps.get(&id).into_iter().flatten() {
+            match dep {
+                Dep::Cell(t) => {
+                    self.rev_cells.entry(*t).or_default().insert(id);
+                }
+                Dep::Range { sheet_id, range } => {
+                    self.range_watchers
+                        .entry(*sheet_id)
+                        .or_default()
+                        .entry(id)
+                        .or_default()
+                        .push(*range);
+                }
+            }
+        }
+    }
+
+    /// Remove `id`'s dep edges from `deps` and both reverse indexes.
+    fn deindex_deps(&mut self, id: CellId) {
+        let Some(deps) = self.deps.remove(&id) else {
+            return;
+        };
+        for dep in deps {
+            match dep {
+                Dep::Cell(t) => {
+                    if let Some(set) = self.rev_cells.get_mut(&t) {
+                        set.remove(&id);
+                        if set.is_empty() {
+                            self.rev_cells.remove(&t);
+                        }
+                    }
+                }
+                Dep::Range { sheet_id, .. } => {
+                    if let Some(watchers) = self.range_watchers.get_mut(&sheet_id) {
+                        watchers.remove(&id);
+                        if watchers.is_empty() {
+                            self.range_watchers.remove(&sheet_id);
+                        }
+                    }
+                }
             }
         }
     }
@@ -559,14 +645,28 @@ impl CalcEngine {
     }
 
     /// BFS over reverse dependency edges, dirtying everything downstream.
+    /// Direct dependents come from `rev_cells` (O(out-degree)); range-dep
+    /// formulas are found by scanning `range_watchers` on the changed
+    /// cell's sheet — proportional to the number of range-dep formulas,
+    /// not the total formula count.
     fn mark_dependents_dirty(&mut self, changed: CellId) {
         let mut queue = vec![changed];
         let mut seen: HashSet<CellId> = HashSet::from([changed]);
         while let Some(c) = queue.pop() {
-            for dep_cell in graph::dependents_of(&c, &self.deps) {
-                if seen.insert(dep_cell) {
-                    self.dirty.insert(dep_cell);
-                    queue.push(dep_cell);
+            if let Some(set) = self.rev_cells.get(&c) {
+                for &dep_cell in set {
+                    if seen.insert(dep_cell) {
+                        self.dirty.insert(dep_cell);
+                        queue.push(dep_cell);
+                    }
+                }
+            }
+            if let Some(watchers) = self.range_watchers.get(&c.sheet_id) {
+                for (watcher, ranges) in watchers {
+                    if ranges.iter().any(|r| r.contains(c.row, c.col)) && seen.insert(*watcher) {
+                        self.dirty.insert(*watcher);
+                        queue.push(*watcher);
+                    }
                 }
             }
         }

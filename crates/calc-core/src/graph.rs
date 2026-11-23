@@ -99,9 +99,43 @@ fn collect(expr: &Expr, wb: &Workbook, current_sheet: u32, out: &mut Vec<Dep>) {
 }
 
 /// Every formula cell in `deps` whose dep list contains `changed`.
+///
+/// This is the O(#formula cells) scan used when no reverse index is
+/// available. The engine maintains a reverse index
+/// (`CalcEngine::mark_dependents_dirty`) for the hot path; this helper
+/// remains for small ad-hoc queries and tests.
 pub fn dependents_of(changed: &CellId, deps: &HashMap<CellId, Vec<Dep>>) -> Vec<CellId> {
     deps.iter()
         .filter_map(|(cell, targets)| targets.iter().any(|d| d.contains(changed)).then_some(*cell))
+        .collect()
+}
+
+/// Group `cells` by sheet into vecs sorted by `(row, col)` — the index
+/// [`members_in_range`] binary-searches to resolve `Dep::Range` edges
+/// without scanning the whole member set per edge.
+pub(crate) fn sorted_by_sheet(cells: &HashSet<CellId>) -> HashMap<u32, Vec<CellId>> {
+    let mut by_sheet: HashMap<u32, Vec<CellId>> = HashMap::new();
+    for &c in cells {
+        by_sheet.entry(c.sheet_id).or_default().push(c);
+    }
+    for v in by_sheet.values_mut() {
+        v.sort_by_key(|c| (c.row, c.col));
+    }
+    by_sheet
+}
+
+/// Members of `sorted` — produced by [`sorted_by_sheet`], all on one
+/// sheet — that fall inside `range`. Cells in the range's row band are
+/// contiguous under `(row, col)` order, so two binary searches bound the
+/// scan; the column filter runs only over that band.
+pub(crate) fn members_in_range(sorted: &[CellId], range: &RangeRef) -> Vec<CellId> {
+    let r = range.normalized();
+    let lo = sorted.partition_point(|c| c.row < r.start.row);
+    let hi = sorted.partition_point(|c| c.row <= r.end.row);
+    sorted[lo..hi]
+        .iter()
+        .filter(|c| (r.start.col..=r.end.col).contains(&c.col))
+        .copied()
         .collect()
 }
 
@@ -116,8 +150,9 @@ pub fn dependents_of(changed: &CellId, deps: &HashMap<CellId, Vec<Dep>>) -> Vec<
 /// up [`crate::error::CalcError::Circ`] through ordinary error propagation.
 pub fn cycle_members(cells: &HashSet<CellId>, deps: &HashMap<CellId, Vec<Dep>>) -> HashSet<CellId> {
     // Adjacency restricted to edges between member cells. Range deps are
-    // resolved by containment against the member set, which keeps the cost
-    // proportional to the member count rather than the range size.
+    // resolved through a sorted member index, so each range edge costs
+    // O(log n + hits) instead of a full member-set scan.
+    let by_sheet = sorted_by_sheet(cells);
     let mut adj: HashMap<CellId, Vec<CellId>> = HashMap::with_capacity(cells.len());
     for &cell in cells {
         let mut edges = Vec::new();
@@ -130,10 +165,8 @@ pub fn cycle_members(cells: &HashSet<CellId>, deps: &HashMap<CellId, Vec<Dep>>) 
                         }
                     }
                     Dep::Range { sheet_id, range } => {
-                        for m in cells {
-                            if m.sheet_id == *sheet_id && range.contains(m.row, m.col) {
-                                edges.push(*m);
-                            }
+                        if let Some(sorted) = by_sheet.get(sheet_id) {
+                            edges.extend(members_in_range(sorted, range));
                         }
                     }
                 }
