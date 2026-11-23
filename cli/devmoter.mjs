@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { runBrowserMcp } from "./browser-mcp.mjs";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -28,6 +29,7 @@ function usage() {
     "  devmoter open <project> [--browser] [--json]",
     "  devmoter sessions [--project <id|name>] [--agent <name>] [--status <state>] [--backend <name>] [--json]",
     '  devmoter task --project <id|name> --agent <name> --task <text> [--backend opencode|codex] [--model <id>] [--json|--stream-json]',
+    "  devmoter browser-mcp [--url http://127.0.0.1:<port>] [--token-file <path>]   (MCP stdio server; token from --token-file or DEVMOTER_BROWSER_TOKEN)",
     "",
     "Global:",
     "  --url <url>             DevMoter server (or DEVMOTER_URL)",
@@ -241,6 +243,23 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
   if (options.help || !command) {
     stdout.write(usage() + "\n");
     return options.help ? EXIT.OK : EXIT.USAGE;
+  }
+
+  if (command === "browser-mcp") {
+    try {
+      await runBrowserMcp({
+        baseUrl: options.url || env.DEVMOTER_URL || "http://127.0.0.1:" + (env.POCKET_PORT || 8787),
+        tokenFile: options["token-file"],
+        env,
+        stdin: deps.stdin || process.stdin,
+        stdout,
+        fetchImpl: deps.fetchImpl
+      });
+      return EXIT.OK;
+    } catch (error) {
+      stderr.write((error instanceof Error ? error.message : String(error)) + "\n");
+      return EXIT.USAGE;
+    }
   }
 
   let auth;

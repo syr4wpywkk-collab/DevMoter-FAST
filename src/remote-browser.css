@@ -1,0 +1,164 @@
+/*
+ * Remote browser sheet: a full-height surface under the workspace menu
+ * clearance. The page image is the content; chrome stays one quiet row.
+ */
+.rb-panel {
+  position: fixed;
+  z-index: 85;
+  inset: var(--dw-top-height, calc(56px + env(safe-area-inset-top))) 0 var(--dm-keyboard-inset, 0px);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  border-top: 1px solid var(--border-hairline);
+}
+.rb-panel[hidden] { display: none; }
+.rb-panel :where(button) {
+  font: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.rb-panel button:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+.rb-bar,
+.rb-driver {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+.rb-bar { border-bottom: 1px solid var(--border-hairline); }
+.rb-nav { display: flex; gap: var(--space-1); }
+.rb-nav button,
+.rb-close {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+}
+.rb-nav button:hover:not(:disabled),
+.rb-close:hover,
+.rb-text-button:hover:not(:disabled) { background: var(--surface-hover); }
+.rb-panel :where(button:disabled) { color: var(--text-dim); cursor: default; }
+.rb-url {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.rb-url:empty { visibility: hidden; }
+.rb-driver {
+  padding-block: var(--space-1);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.rb-driver[hidden] { display: none; }
+.rb-driver-label[data-holder="agent"] { color: var(--status-warning); }
+.rb-driver-label[data-holder="user"] { color: var(--text-primary); }
+.rb-spacer { flex: 1; }
+.rb-text-button {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-control);
+  background: transparent;
+  font-size: 13px;
+}
+.rb-text-button[hidden] { display: none; }
+.rb-text-button[aria-pressed="true"] {
+  background: var(--surface-card);
+  border-color: var(--border-subtle);
+}
+.rb-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--surface-overlay);
+}
+.rb-canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.rb-canvas[hidden],
+.rb-empty[hidden] { display: none; }
+.rb-empty {
+  max-width: 32rem;
+  padding: var(--space-6);
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.6;
+}
+.rb-empty p { margin: 0 0 var(--space-4); }
+.rb-primary {
+  min-height: 44px;
+  padding: 0 var(--space-6);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--text-primary);
+  color: var(--surface-panel);
+  font-weight: 600;
+}
+.rb-primary[hidden] { display: none; }
+.rb-status {
+  min-height: 0;
+  margin: 0;
+  padding: 0 var(--space-3);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.rb-status:not(:empty) { padding-block: var(--space-2); border-top: 1px solid var(--border-hairline); }
+.rb-ripple {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border: 2px solid var(--status-warning);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: rb-ripple 600ms ease-out forwards;
+}
+@keyframes rb-ripple {
+  from { opacity: 1; transform: scale(.6); }
+  to { opacity: 0; transform: scale(1.6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-ripple { animation: none; opacity: .8; }
+}
+/* Off-screen but focusable, so the soft keyboard and IME open on demand. 16px avoids iOS zoom. */
+.rb-ime {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  font-size: 16px;
+  resize: none;
+  pointer-events: none;
+}

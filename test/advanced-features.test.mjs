@@ -555,3 +555,20 @@ test("/api/projects/:id/files and /api/projects/:id/preview apply strict contain
   const secretDir = await requestApi("/api/projects/p1/files?path=.git");
   assert.equal(secretDir.statusCode, 403);
 });
+
+test("#706 sandbox project mount can be read-only or absent", () => {
+  const spawn = () => ({ status: 0, stdout: "bubblewrap 0.10.0" });
+  const base = { projectPath: "/work", command: "chromium", env: { DEVMOTER_SANDBOX: "required" }, spawn, failClosed: true };
+  const readWrite = buildBubblewrapCommand(base).args;
+  assert.deepEqual(readWrite.slice(readWrite.indexOf("/work") - 1, readWrite.indexOf("/work") + 2), ["--bind", "/work", "/work"]);
+  const readOnly = buildBubblewrapCommand({ ...base, projectMount: "read-only" }).args;
+  assert.equal(readOnly.includes("--bind"), false);
+  assert.ok(readOnly.join(" ").includes("--ro-bind /work /work"));
+  const none = buildBubblewrapCommand({ ...base, projectMount: "none", unsharePid: true, grants: [{ path: "/profile", mode: "read-write" }] }).args;
+  const head = none.slice(0, none.indexOf("--"));
+  assert.equal(head.includes("/work"), false);
+  assert.ok(head.includes("--unshare-pid"));
+  assert.ok(head.includes("--unshare-net"));
+  assert.ok(head.join(" ").includes("--bind /profile /profile"));
+  assert.throws(() => buildBubblewrapCommand({ ...base, projectMount: "rw" }), /Unknown sandbox project mount/);
+});

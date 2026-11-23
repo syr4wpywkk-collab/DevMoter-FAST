@@ -2,6 +2,8 @@
 
 DevMoter's browser automation is an **opt-in local testing tool**, not a general-purpose browser remote control feature.
 
+This page covers the original Start / Inspect DOM / Stop tool (`/api/advanced/browser*`). The streamed, user- and agent-driven remote browser (`/api/browser*`) uses the same opt-in and preview-only target but has its own, stricter boundary (always bubblewrap, CDP over a private pipe, external subresources blocked); see [Remote browser](./REMOTE_BROWSER.md).
+
 ## Browser automation
 
 Enable it explicitly:

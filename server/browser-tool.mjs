@@ -1,17 +1,99 @@
 import { spawn, spawnSync } from "node:child_process";
+import { accessSync, constants as fsConstants, realpathSync, statSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { delimiter, dirname, isAbsolute, join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { homedir, tmpdir } from "node:os";
 import { buildBubblewrapCommand } from "./advanced-features.mjs";
+
+export const SANDBOX_SYSTEM_MOUNTS = Object.freeze(["/usr", "/bin", "/lib", "/lib64", "/etc", "/run"]);
+
+export function resolveExecutable(binary, env) {
+  if (!binary) return null;
+  const candidates = isAbsolute(binary)
+    ? [binary]
+    : String(env.PATH || "").split(delimiter).filter(Boolean).map(dir => join(dir, binary));
+  for (const candidate of candidates) {
+    try {
+      // Match execvp: skip PATH entries that are not executable files.
+      accessSync(candidate, fsConstants.X_OK);
+      if (statSync(candidate).isFile()) return realpathSync(candidate);
+    } catch {
+      // Keep searching PATH entries.
+    }
+  }
+  return null;
+}
+
+function realDir(path) {
+  try { return realpathSync(path); } catch { return path; }
+}
+
+// Mounting one of these would cover the sandbox's own /tmp, /proc or /dev, or
+// expose the host's root, temp files or home directories.
+function broadBinaryDirs(env) {
+  const dirs = new Set(["/", "/tmp", "/var/tmp", "/proc", "/dev", "/home", "/root", realDir(tmpdir()), realDir(homedir())]);
+  for (const key of ["TMPDIR", "HOME"]) {
+    if (env?.[key] && isAbsolute(String(env[key]))) dirs.add(realDir(String(env[key])));
+  }
+  return dirs;
+}
+
+// A binary outside the sandbox system mounts (e.g. inside the project) needs
+// its directory mounted read-only to be runnable.
+export function binaryGrant(binary, env) {
+  const real = resolveExecutable(binary, env);
+  if (!real) return null;
+  if (SANDBOX_SYSTEM_MOUNTS.some(root => real === root || real.startsWith(root + "/"))) return null;
+  const dir = dirname(real);
+  if (broadBinaryDirs(env).has(dir)) {
+    throw new Error("Browser binary must live in its own directory to be mounted into the sandbox: " + dir);
+  }
+  return { path: dir, mode: "read-only" };
+}
+
+// The path to run inside the sandbox: a binary mounted by binaryGrant is only
+// visible at its real path, not through a symlink outside the mount.
+export function sandboxedBinaryPath(binary, env) {
+  return binaryGrant(binary, env) ? resolveExecutable(binary, env) : binary;
+}
 
 const OUTPUT_LIMIT = 512 * 1024;
 const PROCESS_TIMEOUT_MS = 15000;
 
-function loopbackHost(host) {
+const BROWSER_ENV_KEYS = ["PATH", "LANG", "LANGUAGE", "TZ", "FONTCONFIG_PATH", "FONTCONFIG_FILE", "TMPDIR"];
+
+// Chromium handles untrusted page content, so it gets an allowlisted
+// environment instead of the server's (API keys and tokens stay out).
+export function browserProcessEnv(env, profileDir) {
+  const result = {};
+  for (const [key, value] of Object.entries(env || {})) {
+    if (typeof value !== "string") continue;
+    if (BROWSER_ENV_KEYS.includes(key) || key.startsWith("LC_")) result[key] = value;
+  }
+  return {
+    ...result,
+    HOME: profileDir,
+    XDG_CONFIG_HOME: profileDir,
+    XDG_CACHE_HOME: join(profileDir, "cache")
+  };
+}
+
+export function deadProxyArgs(host, port) {
+  const bypassHost = String(host).includes(":") && !String(host).startsWith("[") ? "[" + host + "]" : String(host);
+  return [
+    "--proxy-server=http://127.0.0.1:1",
+    "--proxy-bypass-list=<-loopback>;" + bypassHost + ":" + port,
+    "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
+    "--webrtc-ip-handling-policy=disable_non_proxied_udp"
+  ];
+}
+
+export function loopbackHost(host) {
   return host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "[::1]";
 }
 
-function browserCandidates(env = process.env) {
+export function browserCandidates(env = process.env) {
   return [
     String(env.DEVMOTER_BROWSER_BIN || "").trim(),
     "chromium",
@@ -21,7 +103,7 @@ function browserCandidates(env = process.env) {
   ].filter(Boolean);
 }
 
-function detectBrowserBinary({ env = process.env, spawnSyncImpl = spawnSync } = {}) {
+export function detectBrowserBinary({ env = process.env, spawnSyncImpl = spawnSync } = {}) {
   if (String(env.DEVMOTER_BROWSER_AUTOMATION || "") !== "1") return { binary: null, version: null };
   for (const candidate of browserCandidates(env)) {
     try {
@@ -53,7 +135,7 @@ export function browserAutomationStatus({ env = process.env, spawnSyncImpl = spa
   };
 }
 
-function browserArgs(profileDir, target, { dumpDom = false } = {}) {
+function browserArgs(profileDir, target, { dumpDom = false, preview } = {}) {
   const args = [
     "--headless=new",
     "--disable-gpu",
@@ -65,13 +147,41 @@ function browserArgs(profileDir, target, { dumpDom = false } = {}) {
     "--disable-component-update",
     "--disable-default-apps",
     "--disable-features=OptimizationHints,AutofillServerCommunication,MediaRouter",
-    "--no-proxy-server",
+    ...deadProxyArgs(preview.host, preview.port),
     "--user-data-dir=" + profileDir
   ];
+  // No TCP debugging port: the long-running browser keeps a private CDP pipe.
   if (dumpDom) args.push("--dump-dom");
-  else args.push("--remote-debugging-port=0");
+  else args.push("--remote-debugging-pipe");
   args.push(target);
   return args;
+}
+
+function watchExit(child) {
+  let done = false;
+  const exited = new Promise(resolve => {
+    const finish = () => { done = true; resolve(); };
+    child?.once?.("exit", finish);
+    child?.once?.("error", finish);
+  });
+  return { exited, get done() { return done; } };
+}
+
+function waitWithin(promise, timeoutMs) {
+  let timer;
+  return Promise.race([
+    promise.then(() => true),
+    new Promise(resolve => { timer = setTimeout(() => resolve(false), timeoutMs); })
+  ]).finally(() => clearTimeout(timer));
+}
+
+// SIGTERM, then SIGKILL; resolves true only once the process has exited.
+export async function terminateProcess(child, watcher, { termMs = 3000, killMs = 2000 } = {}) {
+  if (!child || watcher.done) return true;
+  try { child.kill?.("SIGTERM"); } catch { /* Already gone. */ }
+  if (await waitWithin(watcher.exited, termMs)) return true;
+  try { child.kill?.("SIGKILL"); } catch { /* Already gone. */ }
+  return waitWithin(watcher.exited, killMs);
 }
 
 function boundedProcess(spawnImpl, command, args, options = {}) {
@@ -86,11 +196,13 @@ function boundedProcess(spawnImpl, command, args, options = {}) {
     let stderr = "";
     let settled = false;
     let truncated = false;
-    const timer = setTimeout(() => {
+    const watcher = watchExit(child);
+    const timer = setTimeout(async () => {
       if (settled) return;
-      child.kill?.("SIGTERM");
       settled = true;
-      reject(new Error("Browser inspection timed out"));
+      // The caller deletes the profile after rejection, so wait for exit first.
+      const exited = await terminateProcess(child, watcher, options.termination);
+      reject(Object.assign(new Error("Browser inspection timed out"), { exited }));
     }, options.timeoutMs || PROCESS_TIMEOUT_MS);
     timer.unref?.();
 
@@ -129,7 +241,9 @@ export function createBrowserAutomation({
   getPreview,
   env = process.env,
   spawnImpl = spawn,
-  spawnSyncImpl = spawnSync
+  spawnSyncImpl = spawnSync,
+  inspectTimeoutMs = PROCESS_TIMEOUT_MS,
+  termination = { termMs: 3000, killMs: 2000 }
 }) {
   if (typeof resolveProject !== "function" || typeof getPreview !== "function") {
     throw new Error("Browser automation requires project and preview resolvers");
@@ -172,47 +286,78 @@ export function createBrowserAutomation({
 
   async function prepare(profileDir, ctx, args) {
     await mkdir(profileDir, { recursive: true, mode: 0o700 });
-    const wrapped = buildBubblewrapCommand({
-      projectPath: ctx.project.path,
-      grants: [{ path: profileDir, mode: "read-write" }],
-      command: ctx.binary,
-      args,
-      allowNetwork: true,
-      env,
-      spawn: spawnSyncImpl
-    });
-    return wrapped;
+    try {
+      return buildBubblewrapCommand({
+        projectPath: ctx.project.path,
+        grants: [{ path: profileDir, mode: "read-write" }, binaryGrant(ctx.binary, env)].filter(Boolean),
+        projectMount: "none",
+        command: sandboxedBinaryPath(ctx.binary, env),
+        args,
+        allowNetwork: true,
+        failClosed: true,
+        env,
+        spawn: spawnSyncImpl
+      });
+    } catch (error) {
+      await rm(profileDir, { recursive: true, force: true }).catch(() => {});
+      throw error;
+    }
   }
 
-  async function stop(projectId) {
+  // start/stop for one project run one at a time so a stop cannot race a
+  // half-started browser and a start cannot reuse a profile being deleted.
+  const locks = new Map();
+  function serialized(projectId, task) {
     const key = String(projectId || "");
+    const previous = locks.get(key) || Promise.resolve();
+    const next = previous.catch(() => {}).then(task);
+    const tail = next.catch(() => {});
+    locks.set(key, tail);
+    tail.then(() => { if (locks.get(key) === tail) locks.delete(key); });
+    return next;
+  }
+
+  async function stopUnlocked(key) {
     const session = sessions.get(key);
     if (!session) return { ok: true, session: null };
     session.active = false;
+    session.stoppedByUser = true;
     session.stoppedAt = Date.now();
-    try { session.child?.kill?.("SIGTERM"); } catch {}
-    sessions.delete(key);
+    const exited = await terminateProcess(session.child, session.watcher, termination);
+    if (!exited) {
+      // Chromium is still writing to the profile; keep it and the session so a
+      // later stop or start retries, and let the exit handler delete it.
+      session.stopFailed = true;
+      return { ok: false, cleanup: "process_alive", session: publicSession(session) };
+    }
+    if (sessions.get(key) === session) sessions.delete(key);
     await rm(session.profileDir, { recursive: true, force: true }).catch(() => {});
     return { ok: true, session: publicSession(session) };
   }
 
+  function stop(projectId) {
+    const key = String(projectId || "");
+    return serialized(key, () => stopUnlocked(key));
+  }
+
   async function start(projectId) {
     const ctx = await contextFor(projectId);
-    await stop(ctx.project.id);
+    return serialized(ctx.project.id, () => startUnlocked(ctx));
+  }
+
+  async function startUnlocked(ctx) {
+    const stopped = await stopUnlocked(ctx.project.id);
+    if (stopped.ok === false) {
+      throw Object.assign(new Error("The previous browser process did not exit"), { statusCode: 409, code: "process_alive" });
+    }
     await mkdir(profilesDir, { recursive: true, mode: 0o700 });
     const profileDir = join(profilesDir, randomUUID());
-    const args = browserArgs(profileDir, ctx.target);
+    const args = browserArgs(profileDir, ctx.target, { preview: ctx.preview });
     const wrapped = await prepare(profileDir, ctx, args);
-    const browserEnv = {
-      ...process.env,
-      HOME: profileDir,
-      XDG_CONFIG_HOME: profileDir,
-      XDG_CACHE_HOME: join(profileDir, "cache")
-    };
     const child = spawnImpl(wrapped.command, wrapped.args, {
       cwd: ctx.project.path,
-      env: browserEnv,
-      stdio: ["ignore", "ignore", "ignore"],
+      env: browserProcessEnv(process.env, profileDir),
+      stdio: ["ignore", "ignore", "ignore", "pipe", "pipe"],
       windowsHide: true
     });
     const session = {
@@ -224,6 +369,7 @@ export function createBrowserAutomation({
       exitCode: null,
       sandboxed: wrapped.sandboxed === true,
       child,
+      watcher: watchExit(child),
       profileDir
     };
     sessions.set(ctx.project.id, session);
@@ -236,7 +382,7 @@ export function createBrowserAutomation({
       session.exitCode = code;
       session.stoppedAt = Date.now();
       if (sessions.get(ctx.project.id) === session) sessions.delete(ctx.project.id);
-      void rm(profileDir, { recursive: true, force: true }).catch(() => {});
+      if (!session.stoppedByUser || session.stopFailed) void rm(profileDir, { recursive: true, force: true }).catch(() => {});
     });
     return { session: publicSession(session), status: ctx.status };
   }
@@ -246,17 +392,18 @@ export function createBrowserAutomation({
     const active = sessions.get(ctx.project.id);
     if (!active?.active) throw Object.assign(new Error("Start browser automation before inspecting the page"), { statusCode: 409 });
     const profileDir = join(profilesDir, "inspect-" + randomUUID());
-    const args = browserArgs(profileDir, ctx.target, { dumpDom: true });
+    const args = browserArgs(profileDir, ctx.target, { dumpDom: true, preview: ctx.preview });
     const wrapped = await prepare(profileDir, ctx, args);
+    let keepProfile = false;
     try {
       const result = await boundedProcess(spawnImpl, wrapped.command, wrapped.args, {
         cwd: ctx.project.path,
-        env: {
-          ...process.env,
-          HOME: profileDir,
-          XDG_CONFIG_HOME: profileDir,
-          XDG_CACHE_HOME: join(profileDir, "cache")
-        }
+        env: browserProcessEnv(process.env, profileDir),
+        timeoutMs: inspectTimeoutMs,
+        termination
+      }).catch(error => {
+        if (error.exited === false) keepProfile = true;
+        throw error;
       });
       return {
         projectId: ctx.project.id,
@@ -267,7 +414,7 @@ export function createBrowserAutomation({
         source: "approved-live-preview"
       };
     } finally {
-      await rm(profileDir, { recursive: true, force: true }).catch(() => {});
+      if (!keepProfile) await rm(profileDir, { recursive: true, force: true }).catch(() => {});
     }
   }
 
@@ -284,6 +431,8 @@ export function createBrowserAutomation({
 export const browserAutomationPolicy = Object.freeze({
   optIn: "Browser automation is disabled unless DEVMOTER_BROWSER_AUTOMATION=1.",
   target: "Only a user-started loopback live preview registered for the selected project may be opened.",
+  network: "All traffic except the approved preview host:port goes to a dead proxy; no TCP remote debugging port is opened.",
+  sandbox: "The browser refuses to start without bubblewrap.",
   credentials: "DevMoter uses an ephemeral profile and never mounts the user's personal browser profile or cookies.",
   filesystem: "When sandboxing is enabled, only the registered project and ephemeral profile are mounted into the browser process.",
   stop: "Every active browser session has an explicit stop operation."

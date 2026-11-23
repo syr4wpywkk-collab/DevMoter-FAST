@@ -87,7 +87,8 @@ export function createAgentRunService({
   resolveProject,
   assertExecutionAllowed = () => {},
   maxRunMs = DEFAULT_MAX_RUN_MS,
-  policy = { maxDepth: 3, tokenBudget: 12000, turnBudget: 8 }
+  policy = { maxDepth: 3, tokenBudget: 12000, turnBudget: 8 },
+  browserAgent = null
 } = {}) {
   if (!filePath || !codex) throw new Error("Agent run service dependencies are required");
   if (typeof resolveProject !== "function") throw new Error("Agent run service requires a project resolver");
@@ -115,6 +116,18 @@ export function createAgentRunService({
 
       const threadParams = { cwd, ...codexExecutionSettingsFor(run.capabilityPolicy) };
       if (run.model) threadParams.model = run.model;
+      const browserAccess = browserAgent ? browserAccessFor(run) : null;
+      if (browserAccess) {
+        if (TERMINAL_STATES.has(runtime.getRun(run.id)?.state)) throw new Error("Agent run ended before it started");
+        const browser = await browserAgent.forRun({
+          runId: run.id,
+          projectId,
+          access: browserAccess,
+          deviceId: run.context?.browserDeviceId ? String(run.context.browserDeviceId) : null,
+          ttlMs: runDeadlineMs
+        });
+        if (browser) threadParams.config = { ...browser.config };
+      }
       const startedThread = await codex.request("thread/start", threadParams);
       const thread = startedThread?.thread;
       if (!thread?.id) throw new Error("Codex subagent did not return a thread id");
@@ -255,7 +268,26 @@ export function createAgentRunService({
     deadlines.set(run.id, timer);
   }
 
+  // Browser access is opt-in per run (context.browser = "read" | "act"), never
+  // wider than the run's own read/mutation policy or its parent run's access.
+  function browserAccessFor(run, depth = 0) {
+    const requested = run?.context?.browser;
+    let access = requested === "act" ? "act" : requested === "read" ? "read" : null;
+    if (!access || depth > 8) return null;
+    const effective = normalizeCapabilityPolicy(run.capabilityPolicy);
+    if (!effective.allow.includes("read")) return null;
+    // A run Codex sandboxes read-only must not mutate the preview through the browser either.
+    if (codexExecutionSettingsFor(run.capabilityPolicy).sandbox === "read-only") access = "read";
+    if (run.parentRunId) {
+      const parentAccess = browserAccessFor(runtime.getRun(run.parentRunId), depth + 1);
+      if (!parentAccess) return null;
+      if (parentAccess === "read") access = "read";
+    }
+    return access;
+  }
+
   runtime.subscribe(run => {
+    if (run && TERMINAL_STATES.has(run.state)) browserAgent?.revokeRun(run.id);
     if (!disposed) trackDeadline(run);
     schedulePersistAndBroadcast(run);
   });
@@ -457,6 +489,7 @@ export function createAgentRunService({
 
     async dispose() {
       disposed = true;
+      browserAgent?.revokeAllRuns?.();
       for (const runId of [...deadlines.keys()]) clearDeadline(runId);
       await persistNow();
       await persistChain.catch(() => {});

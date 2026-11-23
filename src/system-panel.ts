@@ -94,7 +94,7 @@ export function mountSystemPanel() {
     };
     const rows = capabilities.map(([id, capability]) => `
       <span>${escapeHtml(names[id] || id)}</span>
-      <b>${escapeHtml(capability?.state || t("common.unknown"))}</b>
+      <b>${escapeHtml(capability?.state || t("common.unknown"))}${capability?.reason ? ` <small>${escapeHtml(String(capability.reason))}</small>` : ""}</b>
     `).join("");
     return `
       <div class="devmoter-diagnostics-grid">
