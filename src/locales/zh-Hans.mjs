@@ -311,6 +311,8 @@ export const zhHans = {
   "remoteBrowser.starting": "正在启动浏览器…",
   "remoteBrowser.startFailed": "无法启动浏览器：{error}",
   "remoteBrowser.stopped": "浏览器已停止。",
+  "remoteBrowser.stopFailed": "无法停止浏览器，它可能仍在运行（{error}）。",
+  "remoteBrowser.retry": "重试",
   "remoteBrowser.reconnecting": "连接已断开，正在重新连接…",
   "remoteBrowser.ended": "浏览器会话已结束。请重新启动以继续。",
   "remoteBrowser.agentTookOver": "智能体已接管操作。收回操作权即可继续。",

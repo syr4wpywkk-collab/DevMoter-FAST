@@ -35,7 +35,7 @@ export function capabilitiesForAccess(access) {
 
 /** The policy class of a browser action type: browser.read, browser.act or browser.evaluate (always denied). */
 export function browserActionClass(type) {
-  return ACTION_CLASS.get(String(type || "")) || "browser.evaluate";
+  return ACTION_CLASS.get(typeof type === "string" ? type : "") || "browser.evaluate";
 }
 
 /**
@@ -154,10 +154,16 @@ export function createBrowserAgentTokens({ now = Date.now, maxLive = MAX_LIVE_TO
   };
 }
 
+// Paths can carry tokens (/reset/<token>, /s/<signed-id>), so the audit keeps
+// only their shape: segment count and whether a query or fragment was present.
 function safePath(url) {
   try {
-    const parsed = new URL(String(url || ""), "http://preview.invalid");
-    return parsed.pathname.slice(0, 200);
+    const parsed = new URL(typeof url === "string" ? url : "", "http://preview.invalid");
+    return {
+      segments: parsed.pathname.split("/").filter(Boolean).length,
+      query: parsed.search.length > 1,
+      fragment: parsed.hash.length > 1
+    };
   } catch {
     return null;
   }
@@ -170,12 +176,12 @@ function safePath(url) {
  */
 export function auditActionDetail(action) {
   if (!action || typeof action !== "object") return {};
-  const type = String(action.type || "").slice(0, 40);
+  const type = typeof action.type === "string" ? action.type.slice(0, 40) : "invalid";
   switch (type) {
-    case "navigate": return { type, path: safePath(action.url) };
+    case "navigate": return { type, target: safePath(action.url) };
     case "click": return { type, by: action.selector ? "selector" : "point" };
     case "type": return { type, length: typeof action.text === "string" ? action.text.length : 0 };
-    case "press": return { type, key: /^[A-Za-z]{1,20}$/.test(String(action.key || "")) ? String(action.key) : "other" };
+    case "press": return { type, key: typeof action.key === "string" && /^[A-Za-z]{1,20}$/.test(action.key) ? action.key : "other" };
     case "scroll": return { type };
     default: return { type };
   }

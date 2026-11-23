@@ -15,7 +15,10 @@ function fakeChild({ output = "", close = false } = {}) {
   const child = new EventEmitter();
   child.stdout = new PassThrough();
   child.stderr = new PassThrough();
-  child.kill = () => true;
+  child.kill = () => {
+    process.nextTick(() => { child.emit("exit", null, "SIGTERM"); child.emit("close", null, "SIGTERM"); });
+    return true;
+  };
   if (close) {
     process.nextTick(() => {
       if (output) child.stdout.write(output);

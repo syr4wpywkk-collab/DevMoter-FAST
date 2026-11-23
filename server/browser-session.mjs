@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, realpathSync } from "node:fs";
-import { chmod, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
+import { chmod, mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { connect as connectTcp, createServer as createNetServer } from "node:net";
 import { fileURLToPath } from "node:url";
@@ -87,6 +87,48 @@ const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
 
 function httpError(message, statusCode, code) {
   return Object.assign(new Error(message), { statusCode, code });
+}
+
+// Hostile JSON such as {"toString": 1} must not turn validation into a TypeError.
+function stringField(value) {
+  return typeof value === "string" ? value : "";
+}
+
+function readProcessTable() {
+  const table = [];
+  let entries = [];
+  try { entries = readdirSync("/proc"); } catch { return null; }
+  for (const name of entries) {
+    if (!/^\d+$/.test(name)) continue;
+    try {
+      const stat = readFileSync("/proc/" + name + "/stat", "utf8");
+      const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+      const cmdline = readFileSync("/proc/" + name + "/cmdline", "utf8");
+      table.push({ pid: Number(name), ppid: Number(fields[1]), startTime: fields[19], cmdline });
+    } catch {
+      // The process exited while the table was being read.
+    }
+  }
+  return table;
+}
+
+/** Every descendant of `rootPid` (pid + start time, so a reused pid is never killed). */
+export function processDescendants(rootPid, table) {
+  if (!Number.isSafeInteger(rootPid) || !Array.isArray(table)) return [];
+  const children = new Map();
+  for (const entry of table) {
+    if (!children.has(entry.ppid)) children.set(entry.ppid, []);
+    children.get(entry.ppid).push(entry);
+  }
+  const result = [];
+  const queue = [rootPid];
+  while (queue.length) {
+    for (const entry of children.get(queue.shift()) || []) {
+      result.push({ pid: entry.pid, startTime: entry.startTime });
+      queue.push(entry.pid);
+    }
+  }
+  return result;
 }
 
 function positiveInt(value, fallback) {
@@ -179,7 +221,7 @@ export function remoteBrowserArgs(profileDir, policy) {
 /** Validates an action against the fixed schema; free-form commands are never accepted. */
 export function normalizeBrowserAction(input, { maxTextLength = DEFAULT_LIMITS.maxTextLength, maxDomBytes = DEFAULT_LIMITS.maxDomBytes } = {}) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw httpError("Browser action must be an object", 400, "invalid_action");
-  const type = String(input.type || "");
+  const type = stringField(input.type);
   switch (type) {
     case "navigate": {
       if (typeof input.url !== "string") throw httpError("navigate requires url", 400, "invalid_action");
@@ -187,7 +229,7 @@ export function normalizeBrowserAction(input, { maxTextLength = DEFAULT_LIMITS.m
     }
     case "click": {
       if (input.selector !== undefined) {
-        const selector = String(input.selector);
+        const selector = stringField(input.selector);
         if (!selector || selector.length > 512 || CONTROL_CHARS.test(selector)) throw httpError("click selector is invalid", 400, "invalid_action");
         return { type, selector };
       }
@@ -199,7 +241,7 @@ export function normalizeBrowserAction(input, { maxTextLength = DEFAULT_LIMITS.m
       return { type, text: input.text };
     }
     case "press": {
-      const key = String(input.key || "");
+      const key = stringField(input.key);
       if (!Object.hasOwn(KEY_DEFINITIONS, key)) throw httpError("press key is not allowed", 400, "invalid_action");
       return { type, key };
     }
@@ -320,6 +362,8 @@ export function createBrowserSessionManager({
   now = Date.now,
   readPreviewListener = readListenerIdentity,
   resolvePreviewHost = listenerConnectHost,
+  listProcesses = readProcessTable,
+  killProcess = (pid, signal) => process.kill(pid, signal),
   limits: limitOverrides = {}
 }) {
   if (typeof resolveProject !== "function" || typeof getPreview !== "function") {
@@ -334,6 +378,8 @@ export function createBrowserSessionManager({
   const sessions = new Map();
   const starting = new Map();
   const pendingStarts = new Set();
+  // Profiles kept because their Chromium could not be confirmed dead.
+  const retainedProfiles = new Map();
   let sweepTimer = null;
 
   function publicDriver(session) {
@@ -350,6 +396,7 @@ export function createBrowserSessionManager({
       lastActivityAt: session.lastActivityAt,
       stoppedAt: session.stoppedAt,
       stopReason: session.stopReason,
+      ...(session.cleanup ? { cleanup: session.cleanup } : {}),
       url: publicUrl(session.url),
       title: session.title ? String(session.title).slice(0, 300) : "",
       viewport: { ...session.viewport },
@@ -425,14 +472,14 @@ export function createBrowserSessionManager({
     const seq = screencast.seq;
     screencast.refreshTimer = setTimeout(async () => {
       screencast.refreshTimer = null;
-      if (!screencast.running || screencast.seq !== seq || !session.cdp || session.cdp.closed) return;
+      if (!session.active || !screencast.running || screencast.seq !== seq || !session.cdp || session.cdp.closed) return;
       const { data = "" } = await session.cdp.send("Page.captureScreenshot", {
         format: "jpeg",
         quality: limits.screencastQuality,
         captureBeyondViewport: false
       }, { sessionId: session.cdpSessionId }).catch(() => ({}));
       const bytes = Buffer.from(String(data), "base64");
-      if (!screencast.running || screencast.seq !== seq || !bytes.length || bytes.length > limits.maxFrameBytes) return;
+      if (!session.active || !screencast.running || screencast.seq !== seq || !bytes.length || bytes.length > limits.maxFrameBytes) return;
       screencast.latest = { seq: screencast.seq += 1, data: bytes, width: session.viewport.width, height: session.viewport.height };
       deliverFrame(session);
     }, SCREENCAST_REFRESH_MS);
@@ -441,7 +488,7 @@ export function createBrowserSessionManager({
 
   function deliverFrame(session) {
     const frame = session.screencast.latest;
-    if (frame) {
+    if (frame && session.active) {
       for (const viewer of [...session.viewers]) {
         if (viewer.inflight !== null || viewer.lastSeq >= frame.seq) continue;
         viewer.inflight = frame.seq;
@@ -506,6 +553,7 @@ export function createBrowserSessionManager({
   }
 
   async function sweep() {
+    await retryRetainedProfiles();
     const current = now();
     for (const session of [...sessions.values()]) {
       sweepViewers(session, current);
@@ -513,7 +561,7 @@ export function createBrowserSessionManager({
       else if (current - session.startedAt >= limits.maxLifetimeMs) await stopSession(session, "max_lifetime");
       else if (current - session.lastActivityAt >= limits.idleMs) await stopSession(session, "idle");
     }
-    if (!sessions.size && sweepTimer) {
+    if (!sessions.size && !retainedProfiles.size && sweepTimer) {
       clearInterval(sweepTimer);
       sweepTimer = null;
     }
@@ -532,6 +580,7 @@ export function createBrowserSessionManager({
     session.stopping = (async () => {
       const wasActive = session.active;
       session.active = false;
+      session.cdp?.drain?.(["Browser.close", "Page.stopScreencast", "Page.screencastFrameAck"]);
       session.stoppedAt = session.stoppedAt || now();
       session.stopReason = session.stopReason || reason;
       if (sessions.get(session.projectId) === session) sessions.delete(session.projectId);
@@ -539,25 +588,96 @@ export function createBrowserSessionManager({
         try { viewer.sink.event({ t: "closed", reason: session.stopReason }); } catch { /* Socket may already be closed. */ }
         detachViewer(session, viewer, { code: 4001, reason: session.stopReason });
       }
+      // Chromium keeps writing to its profile until every process in its
+      // tree exits, so the profile is deleted only after that is confirmed.
+      // The tree is captured before Browser.close: once the browser exits its
+      // children are reparented and can no longer be found from its pid.
+      const tree = processDescendants(session.child?.pid, listProcesses());
       if (session.cdp && !session.cdp.closed) {
         await session.cdp.send("Browser.close", {}, { timeout: 2000 }).catch(() => {});
         session.cdp.close(reason);
       }
-      // Chromium keeps writing to its profile until it exits, so delete only after exit.
-      if (!await waitForExit(session, 2000)) {
+      let exited = await waitForExit(session, 2000);
+      if (!exited) {
         try { session.child?.kill?.("SIGTERM"); } catch { /* Process may already be gone. */ }
-        if (!await waitForExit(session, 3000)) {
+        exited = await waitForExit(session, 3000);
+        if (!exited) {
           try { session.child?.kill?.("SIGKILL"); } catch { /* Process may already be gone. */ }
-          await waitForExit(session, 2000);
+          exited = await waitForExit(session, 2000);
         }
       }
-      await rm(session.profileDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }).catch(() => {});
+      const survivors = await killSurvivors(tree);
+      session.cleanup = exited && !survivors.length ? "complete" : "process_alive";
+      if (session.cleanup === "complete") {
+        await rm(session.profileDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }).catch(() => {});
+      } else {
+        const retained = { child: session.child, exited, tree: survivors };
+        if (!exited) session.exited?.then(() => { retained.exited = true; });
+        retainedProfiles.set(session.profileDir, retained);
+      }
       if (wasActive) notify(session, { t: "closed", reason: session.stopReason });
       session.listeners.clear();
       return publicSession(session);
     })();
     return session.stopping;
   }
+
+  function alive({ pid, startTime }) {
+    const table = listProcesses();
+    if (!table) return false;
+    return table.some(entry => entry.pid === pid && entry.startTime === startTime);
+  }
+
+  // Renderer and zygote processes can outlive the browser process, so the
+  // tree captured before shutdown is killed and checked again.
+  async function killSurvivors(tree) {
+    let survivors = tree.filter(alive);
+    if (!survivors.length) return [];
+    for (const entry of survivors) {
+      try { killProcess(entry.pid, "SIGKILL"); } catch { /* Already gone. */ }
+    }
+    for (let attempt = 0; attempt < 10 && survivors.length; attempt += 1) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+      survivors = survivors.filter(alive);
+    }
+    return survivors;
+  }
+
+  // Retries deletion of profiles whose Chromium was still alive at stop.
+  async function retryRetainedProfiles() {
+    for (const [profileDir, retained] of [...retainedProfiles]) {
+      if (!retained.exited) {
+        try { retained.child?.kill?.("SIGKILL"); } catch { /* Already gone. */ }
+        continue;
+      }
+      retained.tree = await killSurvivors(retained.tree);
+      if (retained.tree.length) continue;
+      await rm(profileDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }).catch(() => {});
+      retainedProfiles.delete(profileDir);
+    }
+  }
+
+  // A previous server instance may have left Chromium processes and profiles
+  // behind (crash, SIGKILL). They are killed and deleted before any start.
+  async function reclaimOrphans() {
+    const marker = "--user-data-dir=" + join(profilesDir, "remote-");
+    const table = listProcesses() || [];
+    const orphans = table.filter(entry => String(entry.cmdline || "").split("\0").some(arg => arg.startsWith(marker)));
+    const survivors = await killSurvivors(orphans.map(({ pid, startTime }) => ({ pid, startTime })));
+    let names = [];
+    try { names = await readdir(profilesDir); } catch { /* No profiles yet. */ }
+    const busy = new Set(survivors.map(entry => table.find(row => row.pid === entry.pid)?.cmdline || ""));
+    let removed = 0;
+    for (const name of names) {
+      if (!name.startsWith("remote-")) continue;
+      const dir = join(profilesDir, name);
+      if ([...busy].some(cmdline => cmdline.includes("--user-data-dir=" + dir))) continue;
+      await rm(dir, { recursive: true, force: true }).catch(() => {});
+      removed += 1;
+    }
+    return { killed: orphans.length - survivors.length, survivors: survivors.length, removedProfiles: removed };
+  }
+  const reclaimed = reclaimOrphans().catch(() => ({ killed: 0, survivors: 0, removedProfiles: 0 }));
 
   function contextFor(project) {
     const preview = getPreview(project.id);
@@ -759,6 +879,7 @@ export function createBrowserSessionManager({
   }
 
   async function startSession(projectId, { viewport, deviceId = null, driver: initialDriver = "user", tokenId = null } = {}, startTicket) {
+    await reclaimed;
     const agentId = startTicket.agentId;
     if (!deviceId && !agentId) throw httpError("A browser session needs a trusted device or an agent owner", 403, "owner_required");
     const status = browserAutomationStatus({ env, spawnSyncImpl });
@@ -868,6 +989,7 @@ export function createBrowserSessionManager({
         viewers: new Set(),
         screencast: { running: false, latest: null, seq: 0, pendingAcks: [], refreshTimer: null },
         exited: null,
+        cleanup: null,
         actionChain: Promise.resolve(),
         queuedActions: 0
       };

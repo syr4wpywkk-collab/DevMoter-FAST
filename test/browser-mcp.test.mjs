@@ -212,7 +212,7 @@ test("agent tokens are hashed, scoped, expire and revoke by run, device and id",
 
 test("audit detail never carries typed text, selectors, queries or fragments", () => {
   assert.deepEqual(auditActionDetail({ type: "type", text: typedSecret }), { type: "type", length: typedSecret.length });
-  assert.deepEqual(auditActionDetail({ type: "navigate", url: `/login?key=${querySecret}#${querySecret}` }), { type: "navigate", path: "/login" });
+  assert.deepEqual(auditActionDetail({ type: "navigate", url: `/login?key=${querySecret}#${querySecret}` }), { type: "navigate", target: { segments: 1, query: true, fragment: true } });
   assert.deepEqual(auditActionDetail({ type: "click", selector: `input[value="${typedSecret}"]` }), { type: "click", by: "selector" });
   assert.deepEqual(auditActionDetail({ type: "press", key: "Enter" }), { type: "press", key: "Enter" });
 });

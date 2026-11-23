@@ -103,6 +103,33 @@ function browserArgs(profileDir, target, { dumpDom = false, preview } = {}) {
   return args;
 }
 
+function watchExit(child) {
+  let done = false;
+  const exited = new Promise(resolve => {
+    const finish = () => { done = true; resolve(); };
+    child?.once?.("exit", finish);
+    child?.once?.("error", finish);
+  });
+  return { exited, get done() { return done; } };
+}
+
+function waitWithin(promise, timeoutMs) {
+  let timer;
+  return Promise.race([
+    promise.then(() => true),
+    new Promise(resolve => { timer = setTimeout(() => resolve(false), timeoutMs); })
+  ]).finally(() => clearTimeout(timer));
+}
+
+// SIGTERM, then SIGKILL; resolves true only once the process has exited.
+export async function terminateProcess(child, watcher, { termMs = 3000, killMs = 2000 } = {}) {
+  if (!child || watcher.done) return true;
+  try { child.kill?.("SIGTERM"); } catch { /* Already gone. */ }
+  if (await waitWithin(watcher.exited, termMs)) return true;
+  try { child.kill?.("SIGKILL"); } catch { /* Already gone. */ }
+  return waitWithin(watcher.exited, killMs);
+}
+
 function boundedProcess(spawnImpl, command, args, options = {}) {
   return new Promise((resolve, reject) => {
     const child = spawnImpl(command, args, {
@@ -115,11 +142,13 @@ function boundedProcess(spawnImpl, command, args, options = {}) {
     let stderr = "";
     let settled = false;
     let truncated = false;
-    const timer = setTimeout(() => {
+    const watcher = watchExit(child);
+    const timer = setTimeout(async () => {
       if (settled) return;
-      child.kill?.("SIGTERM");
       settled = true;
-      reject(new Error("Browser inspection timed out"));
+      // The caller deletes the profile after rejection, so wait for exit first.
+      const exited = await terminateProcess(child, watcher, options.termination);
+      reject(Object.assign(new Error("Browser inspection timed out"), { exited }));
     }, options.timeoutMs || PROCESS_TIMEOUT_MS);
     timer.unref?.();
 
@@ -158,7 +187,9 @@ export function createBrowserAutomation({
   getPreview,
   env = process.env,
   spawnImpl = spawn,
-  spawnSyncImpl = spawnSync
+  spawnSyncImpl = spawnSync,
+  inspectTimeoutMs = PROCESS_TIMEOUT_MS,
+  termination = { termMs: 3000, killMs: 2000 }
 }) {
   if (typeof resolveProject !== "function" || typeof getPreview !== "function") {
     throw new Error("Browser automation requires project and preview resolvers");
@@ -219,21 +250,52 @@ export function createBrowserAutomation({
     }
   }
 
-  async function stop(projectId) {
+  // start/stop for one project run one at a time so a stop cannot race a
+  // half-started browser and a start cannot reuse a profile being deleted.
+  const locks = new Map();
+  function serialized(projectId, task) {
     const key = String(projectId || "");
+    const previous = locks.get(key) || Promise.resolve();
+    const next = previous.catch(() => {}).then(task);
+    const tail = next.catch(() => {});
+    locks.set(key, tail);
+    tail.then(() => { if (locks.get(key) === tail) locks.delete(key); });
+    return next;
+  }
+
+  async function stopUnlocked(key) {
     const session = sessions.get(key);
     if (!session) return { ok: true, session: null };
     session.active = false;
+    session.stoppedByUser = true;
     session.stoppedAt = Date.now();
-    try { session.child?.kill?.("SIGTERM"); } catch {}
-    sessions.delete(key);
+    const exited = await terminateProcess(session.child, session.watcher, termination);
+    if (!exited) {
+      // Chromium is still writing to the profile; keep it and the session so a
+      // later stop or start retries, and let the exit handler delete it.
+      session.stopFailed = true;
+      return { ok: false, cleanup: "process_alive", session: publicSession(session) };
+    }
+    if (sessions.get(key) === session) sessions.delete(key);
     await rm(session.profileDir, { recursive: true, force: true }).catch(() => {});
     return { ok: true, session: publicSession(session) };
   }
 
+  function stop(projectId) {
+    const key = String(projectId || "");
+    return serialized(key, () => stopUnlocked(key));
+  }
+
   async function start(projectId) {
     const ctx = await contextFor(projectId);
-    await stop(ctx.project.id);
+    return serialized(ctx.project.id, () => startUnlocked(ctx));
+  }
+
+  async function startUnlocked(ctx) {
+    const stopped = await stopUnlocked(ctx.project.id);
+    if (stopped.ok === false) {
+      throw Object.assign(new Error("The previous browser process did not exit"), { statusCode: 409, code: "process_alive" });
+    }
     await mkdir(profilesDir, { recursive: true, mode: 0o700 });
     const profileDir = join(profilesDir, randomUUID());
     const args = browserArgs(profileDir, ctx.target, { preview: ctx.preview });
@@ -253,6 +315,7 @@ export function createBrowserAutomation({
       exitCode: null,
       sandboxed: wrapped.sandboxed === true,
       child,
+      watcher: watchExit(child),
       profileDir
     };
     sessions.set(ctx.project.id, session);
@@ -265,7 +328,7 @@ export function createBrowserAutomation({
       session.exitCode = code;
       session.stoppedAt = Date.now();
       if (sessions.get(ctx.project.id) === session) sessions.delete(ctx.project.id);
-      void rm(profileDir, { recursive: true, force: true }).catch(() => {});
+      if (!session.stoppedByUser || session.stopFailed) void rm(profileDir, { recursive: true, force: true }).catch(() => {});
     });
     return { session: publicSession(session), status: ctx.status };
   }
@@ -277,10 +340,16 @@ export function createBrowserAutomation({
     const profileDir = join(profilesDir, "inspect-" + randomUUID());
     const args = browserArgs(profileDir, ctx.target, { dumpDom: true, preview: ctx.preview });
     const wrapped = await prepare(profileDir, ctx, args);
+    let keepProfile = false;
     try {
       const result = await boundedProcess(spawnImpl, wrapped.command, wrapped.args, {
         cwd: ctx.project.path,
-        env: browserProcessEnv(process.env, profileDir)
+        env: browserProcessEnv(process.env, profileDir),
+        timeoutMs: inspectTimeoutMs,
+        termination
+      }).catch(error => {
+        if (error.exited === false) keepProfile = true;
+        throw error;
       });
       return {
         projectId: ctx.project.id,
@@ -291,7 +360,7 @@ export function createBrowserAutomation({
         source: "approved-live-preview"
       };
     } finally {
-      await rm(profileDir, { recursive: true, force: true }).catch(() => {});
+      if (!keepProfile) await rm(profileDir, { recursive: true, force: true }).catch(() => {});
     }
   }
 
