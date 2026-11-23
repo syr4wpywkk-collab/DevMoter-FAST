@@ -40,13 +40,24 @@ impl Dep {
 /// Collect all reference targets of `expr`, resolving sheet names against
 /// `workbook`. References on unresolvable sheets are dropped — they
 /// evaluate to `#REF!` and can never change.
-pub fn extract_deps(expr: &Expr, workbook: &Workbook, current_sheet: u32) -> Vec<Dep> {
+pub fn extract_deps(
+    expr: &Expr,
+    workbook: &Workbook,
+    current_sheet: u32,
+    registry: &dyn crate::registry::FunctionRegistry,
+) -> Vec<Dep> {
     let mut out = Vec::new();
-    collect(expr, workbook, current_sheet, &mut out);
+    collect(expr, workbook, current_sheet, registry, &mut out);
     out
 }
 
-fn collect(expr: &Expr, wb: &Workbook, current_sheet: u32, out: &mut Vec<Dep>) {
+fn collect(
+    expr: &Expr,
+    wb: &Workbook,
+    current_sheet: u32,
+    registry: &dyn crate::registry::FunctionRegistry,
+    out: &mut Vec<Dep>,
+) {
     let resolve = |sheet: &Option<String>| -> Option<u32> {
         match sheet {
             None => Some(current_sheet),
@@ -56,26 +67,30 @@ fn collect(expr: &Expr, wb: &Workbook, current_sheet: u32, out: &mut Vec<Dep>) {
     match expr {
         Expr::Literal(_) | Expr::Missing | Expr::Name(_) => {}
         Expr::Unary { operand, .. } | Expr::Percent(operand) => {
-            collect(operand, wb, current_sheet, out)
+            collect(operand, wb, current_sheet, registry, out)
         }
         Expr::Binary { left, right, .. } => {
-            collect(left, wb, current_sheet, out);
-            collect(right, wb, current_sheet, out);
+            collect(left, wb, current_sheet, registry, out);
+            collect(right, wb, current_sheet, registry, out);
         }
-        Expr::Call { args, .. } => {
+        // Dep-opaque calls (e.g. `FORMULATEXT`) inspect their argument's
+        // formula text rather than consuming its value: references
+        // inside them create no dependency edges.
+        Expr::Call { name, args } if !registry.is_dep_opaque(name) => {
             for a in args {
-                collect(a, wb, current_sheet, out);
+                collect(a, wb, current_sheet, registry, out);
             }
         }
+        Expr::Call { .. } => {}
         Expr::Invoke { callee, args } => {
-            collect(callee, wb, current_sheet, out);
+            collect(callee, wb, current_sheet, registry, out);
             for a in args {
-                collect(a, wb, current_sheet, out);
+                collect(a, wb, current_sheet, registry, out);
             }
         }
         Expr::ArrayLiteral(rows) => {
             for a in rows.iter().flatten() {
-                collect(a, wb, current_sheet, out);
+                collect(a, wb, current_sheet, registry, out);
             }
         }
         Expr::CellRef { sheet, cell } => {

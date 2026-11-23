@@ -52,6 +52,15 @@ pub trait FunctionRegistry {
     fn is_volatile(&self, _name: &str) -> bool {
         false
     }
+
+    /// Whether a call to `name` creates no dependency edges from its
+    /// arguments: such functions inspect formula text/metadata rather
+    /// than consuming cell values (`FORMULATEXT`), so references inside
+    /// their arguments — including self-references — are not value
+    /// dependencies. Default: every call's arguments are dependencies.
+    fn is_dep_opaque(&self, _name: &str) -> bool {
+        false
+    }
 }
 
 /// Registry with no functions: every call evaluates to `#NAME?`.

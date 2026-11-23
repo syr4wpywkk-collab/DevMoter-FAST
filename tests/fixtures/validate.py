@@ -31,6 +31,12 @@ def check_value(v, where, errors):
             return
         if set(v.keys()) == {"error"} and v["error"] in ERROR_CODES:
             return
+        if (
+            set(v.keys()) == {"formula"}
+            and isinstance(v["formula"], str)
+            and v["formula"].startswith("=")
+        ):
+            return
     fail(errors, where, f"invalid value {v!r}")
 
 
