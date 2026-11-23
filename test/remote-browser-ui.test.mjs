@@ -356,6 +356,7 @@ test("#712 reconnect keeps retrying after failed refreshes, then offers a manual
     assert.equal(refreshes, 8, "attempts are bounded");
     assert.deepEqual(timers.filter(ms => ms >= 500), [500, 1000, 2000, 4000, 8000, 8000, 8000, 8000]);
     assert.equal(doc.querySelector("[data-rb-retry]").hidden, false);
+    assert.doesNotMatch(doc.querySelector("[data-rb-status]").textContent, /再接続/, "no reconnecting status once automatic retries stop");
     env.dom.window.setTimeout = realSetTimeout;
     backend.override = null;
     doc.querySelector("[data-rb-retry]").click();

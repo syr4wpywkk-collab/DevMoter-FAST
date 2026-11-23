@@ -256,6 +256,7 @@ function createRemoteBrowser() {
         scheduleReconnect(socketGeneration);
         return;
       }
+      setStatus("");
       showEmpty(t("remoteBrowser.loadFailed", { error: errorText(error) }), false, true);
     }
   }
