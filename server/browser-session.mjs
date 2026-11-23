@@ -1314,6 +1314,11 @@ export function remoteBrowserHostCapability({ env = process.env, spawnSyncImpl =
   const sandbox = sandboxStatus({ env, spawn: spawnSyncImpl });
   if (sandbox.mode === "off") return { state: "unavailable", reason: "sandbox_disabled" };
   if (!sandbox.available || !bubblewrapCanStart(spawnSyncImpl)) return { state: "unavailable", reason: "sandbox_unavailable" };
+  try {
+    binaryGrant(detectBrowserBinary({ env, spawnSyncImpl }).binary, env);
+  } catch {
+    return { state: "unavailable", reason: "sandbox_unavailable" };
+  }
   return { state: "available", features: [...REMOTE_BROWSER_HOST_FEATURES] };
 }
 
