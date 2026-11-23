@@ -837,8 +837,18 @@ export function createBrowserSessionManager({
         return { ok: true, mime: action.format === "png" ? "image/png" : "image/jpeg", data: bytes };
       }
       case "dom": {
-        const { root } = await send("DOM.getDocument", { depth: 0 });
-        const { outerHTML = "" } = await send("DOM.getOuterHTML", { nodeId: root.nodeId });
+        // A navigation between the two calls invalidates the root node id.
+        let outerHTML = "";
+        for (let attempt = 1; ; attempt += 1) {
+          try {
+            const { root } = await send("DOM.getDocument", { depth: 0 });
+            ({ outerHTML = "" } = await send("DOM.getOuterHTML", { nodeId: root.nodeId }));
+            break;
+          } catch (error) {
+            if (attempt >= 3 || error?.code !== "cdp_command_failed") throw error;
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
         const buffer = Buffer.from(String(outerHTML), "utf8");
         const truncated = buffer.length > action.maxBytes;
         return {
