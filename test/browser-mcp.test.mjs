@@ -131,13 +131,13 @@ async function mcpClient(t, { baseUrl, tokenFile }) {
     waiting.delete(message.id);
   });
   let nextId = 1;
-  const request = (method, params) => new Promise((resolve, reject) => {
+  const request = (method, params, timeoutMs = 5000) => new Promise((resolve, reject) => {
     const id = nextId++;
-    const timer = setTimeout(() => reject(new Error(`MCP ${method} timed out: ${stderr}`)), 5000);
+    const timer = setTimeout(() => reject(new Error(`MCP ${method} timed out: ${stderr}`)), timeoutMs);
     waiting.set(id, message => { clearTimeout(timer); resolve(message); });
     child.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n");
   });
-  const callTool = async (name, args = {}) => (await request("tools/call", { name, arguments: args })).result;
+  const callTool = async (name, args = {}, timeoutMs) => (await request("tools/call", { name, arguments: args }, timeoutMs)).result;
   return { child, request, callTool, notify: (method, params) => child.stdin.write(JSON.stringify({ jsonrpc: "2.0", method, params }) + "\n") };
 }
 
@@ -494,7 +494,13 @@ test("real Chromium driven through devmoter browser-mcp, with user takeover and 
   const mcp = await mcpClient(t, { baseUrl: `http://127.0.0.1:${server.address().port}`, tokenFile: await tokenFileFor(configDir, token) });
   await mcp.request("initialize", { protocolVersion: "2025-06-18" });
 
-  const opened = await mcp.callTool("browser_open");
+  const opened = await mcp.callTool("browser_open", {}, 60_000);
+  // Hosts without unprivileged user namespaces (e.g. AppArmor-restricted CI
+  // runners) cannot run bwrap+Chromium; the manager fails closed there.
+  if (opened.isError && process.env.DEVMOTER_TEST_CHROMIUM_REQUIRED !== "1" && /^(browser_start_failed|sandbox_required):/.test(opened.content[0].text)) {
+    t.skip("Chromium could not start in this sandbox: " + opened.content[0].text.slice(0, 160));
+    return;
+  }
   assert.equal(opened.isError, undefined, opened.content[0].text);
   assert.equal((await mcp.callTool("browser_navigate", { url: `/form?session=${querySecret}` })).isError, undefined);
   assert.equal((await mcp.callTool("browser_click", { selector: "#pw" })).isError, undefined);

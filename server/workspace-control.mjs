@@ -80,7 +80,8 @@ export function createPolicyEngine(initialRules = []) {
       return {
         decision: selected?.effect || "ask",
         reason: selected?.reason || (selected ? `matched policy ${selected.id || "rule"}` : "no matching rule"),
-        ruleId: selected?.id || null
+        ruleId: selected?.id || null,
+        matched: Boolean(selected)
       };
     }
   };

@@ -200,7 +200,7 @@ export function decideBrowserAction({ record, type, decide }) {
     return { capability, decision: "deny", code: "capability_denied", reason: `This agent token does not grant ${capability}` };
   }
   const policy = typeof decide === "function" ? decide({ tool: "browser", action: capability, mode: "agent" }) : null;
-  if (policy?.ruleId) {
+  if (policy?.matched || policy?.ruleId) {
     if (policy.decision === "allow") return { capability, decision: "allow", ruleId: policy.ruleId };
     return {
       capability,
