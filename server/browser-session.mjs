@@ -15,7 +15,11 @@ const DEFAULT_LIMITS = Object.freeze({
   commandTimeoutMs: 15000,
   maxTextLength: 2000,
   maxDomBytes: 512 * 1024,
-  maxScreenshotBytes: 8 * 1024 * 1024
+  maxScreenshotBytes: 8 * 1024 * 1024,
+  maxViewers: 2,
+  maxFrameBytes: 2 * 1024 * 1024,
+  frameAckTimeoutMs: 10 * 1000,
+  screencastQuality: 60
 });
 
 const SYSTEM_MOUNTS = ["/usr", "/bin", "/lib", "/lib64", "/etc", "/run"];
@@ -286,6 +290,103 @@ export function createBrowserSessionManager({
     for (const listener of [...session.listeners]) {
       try { listener(event); } catch { /* Subscribers must not break the session. */ }
     }
+    for (const viewer of [...session.viewers]) {
+      try { viewer.sink.event(event); } catch { detachViewer(session, viewer); }
+    }
+  }
+
+  // Frame flow control: Chromium sends the next screencast frame only after
+  // its ack, and DevMoter acks only once every viewer has acked the frame it
+  // was sent. A slow viewer therefore pauses capture instead of queueing frames.
+  async function startScreencast(session) {
+    const screencast = session.screencast;
+    if (screencast.running || !session.active || !session.cdp) return;
+    screencast.running = true;
+    try {
+      await session.cdp.send("Page.startScreencast", {
+        format: "jpeg",
+        quality: limits.screencastQuality,
+        maxWidth: session.viewport.width,
+        maxHeight: session.viewport.height,
+        everyNthFrame: 1
+      }, { sessionId: session.cdpSessionId });
+    } catch {
+      screencast.running = false;
+    }
+  }
+
+  function stopScreencast(session) {
+    const screencast = session.screencast;
+    if (!screencast.running) return;
+    screencast.running = false;
+    screencast.pendingAck = null;
+    if (session.cdp && !session.cdp.closed) {
+      void session.cdp.send("Page.stopScreencast", {}, { sessionId: session.cdpSessionId }).catch(() => {});
+    }
+  }
+
+  function ackChromiumWhenDrained(session) {
+    const screencast = session.screencast;
+    if (screencast.pendingAck === null) return;
+    for (const viewer of session.viewers) if (viewer.inflight !== null) return;
+    const ackId = screencast.pendingAck;
+    screencast.pendingAck = null;
+    if (session.cdp && !session.cdp.closed) {
+      void session.cdp.send("Page.screencastFrameAck", { sessionId: ackId }, { sessionId: session.cdpSessionId }).catch(() => {});
+    }
+  }
+
+  function deliverFrame(session) {
+    const frame = session.screencast.latest;
+    if (frame) {
+      for (const viewer of [...session.viewers]) {
+        if (viewer.inflight !== null || viewer.lastSeq >= frame.seq) continue;
+        viewer.inflight = frame.seq;
+        viewer.lastSeq = frame.seq;
+        viewer.sentAt = now();
+        try { viewer.sink.frame(frame); } catch { detachViewer(session, viewer); }
+      }
+    }
+    ackChromiumWhenDrained(session);
+  }
+
+  function detachViewer(session, viewer, { code, reason } = {}) {
+    if (!session.viewers.delete(viewer)) return;
+    if (code) {
+      try { viewer.sink.close(code, reason); } catch { /* Socket may already be closed. */ }
+    }
+    if (!session.viewers.size) stopScreencast(session);
+    else ackChromiumWhenDrained(session);
+  }
+
+  function attachViewer(sessionId, sink, { deviceId } = {}) {
+    const session = requireSession(sessionId, deviceId);
+    if (session.viewers.size >= limits.maxViewers) {
+      throw httpError("Too many viewers for this browser session", 429, "viewer_limit");
+    }
+    const viewer = { sink, inflight: null, lastSeq: 0, sentAt: 0 };
+    session.viewers.add(viewer);
+    session.lastActivityAt = now();
+    sink.event({ t: "hello", session: publicSession(session) });
+    void startScreencast(session);
+    deliverFrame(session);
+    return {
+      ack(seq) {
+        if (!session.viewers.has(viewer) || viewer.inflight !== seq) return false;
+        viewer.inflight = null;
+        deliverFrame(session);
+        return true;
+      },
+      detach() { detachViewer(session, viewer); }
+    };
+  }
+
+  function sweepViewers(session, current) {
+    for (const viewer of [...session.viewers]) {
+      if (viewer.inflight !== null && current - viewer.sentAt >= limits.frameAckTimeoutMs) {
+        detachViewer(session, viewer, { code: 4008, reason: "slow_consumer" });
+      }
+    }
   }
 
   function ensureSweep() {
@@ -297,6 +398,7 @@ export function createBrowserSessionManager({
   async function sweep() {
     const current = now();
     for (const session of [...sessions.values()]) {
+      sweepViewers(session, current);
       if (!await resolveProject(session.projectId).then(Boolean, () => false)) await stopSession(session, "project_removed");
       else if (current - session.startedAt >= limits.maxLifetimeMs) await stopSession(session, "max_lifetime");
       else if (current - session.lastActivityAt >= limits.idleMs) await stopSession(session, "idle");
@@ -323,6 +425,10 @@ export function createBrowserSessionManager({
       session.stoppedAt = session.stoppedAt || now();
       session.stopReason = session.stopReason || reason;
       if (sessions.get(session.projectId) === session) sessions.delete(session.projectId);
+      for (const viewer of [...session.viewers]) {
+        try { viewer.sink.event({ t: "closed", reason: session.stopReason }); } catch { /* Socket may already be closed. */ }
+        detachViewer(session, viewer, { code: 4001, reason: session.stopReason });
+      }
       if (session.cdp && !session.cdp.closed) {
         await session.cdp.send("Browser.close", {}, { timeout: 2000 }).catch(() => {});
         session.cdp.close(reason);
@@ -443,6 +549,24 @@ export function createBrowserSessionManager({
       const text = String(url || "");
       return !session.policy.allows(text) && text !== "about:blank" && !text.startsWith("chrome-error://");
     };
+    cdp.on("Page.screencastFrame", (params, sessionId) => {
+      if (!ownSession(sessionId)) return;
+      const screencast = session.screencast;
+      if (!screencast.running || !Number.isSafeInteger(params?.sessionId)) return;
+      const data = Buffer.from(String(params.data || ""), "base64");
+      screencast.pendingAck = params.sessionId;
+      if (!data.length || data.length > limits.maxFrameBytes) {
+        ackChromiumWhenDrained(session);
+        return;
+      }
+      screencast.latest = {
+        seq: screencast.seq += 1,
+        data,
+        width: Math.round(Number(params.metadata?.deviceWidth) || session.viewport.width),
+        height: Math.round(Number(params.metadata?.deviceHeight) || session.viewport.height)
+      };
+      deliverFrame(session);
+    });
     cdp.on("Page.frameRequestedNavigation", (params, sessionId) => {
       if (!ownSession(sessionId) || !outsidePreview(params?.url)) return;
       session.blockedRequests += 1;
@@ -560,6 +684,8 @@ export function createBrowserSessionManager({
         cdpSessionId: null,
         targetId: null,
         listeners: new Set(),
+        viewers: new Set(),
+        screencast: { running: false, latest: null, seq: 0, pendingAck: null },
         exited: null
       };
       sessions.set(project.id, session);
@@ -787,7 +913,7 @@ export function createBrowserSessionManager({
     return () => session.listeners.delete(listener);
   }
 
-  return { start, stop, stopProject, stopDevice, stopAll, get, status, act, acquireDriver, releaseDriver, subscribe, sweep };
+  return { start, stop, stopProject, stopDevice, stopAll, get, status, act, acquireDriver, releaseDriver, subscribe, attachViewer, sweep };
 }
 
 export const remoteBrowserPolicy = Object.freeze({
@@ -799,5 +925,6 @@ export const remoteBrowserPolicy = Object.freeze({
   sandbox: "Remote browser sessions always run under bubblewrap and refuse to start without it; Chromium's own sandbox is never disabled.",
   device: "A session is bound to the trusted device that started it; other devices cannot read, drive or stop it.",
   driver: "Mutating actions require the current driver generation; a takeover invalidates every older generation.",
-  downloads: "Downloads, popups, JavaScript dialogs and permission prompts are denied."
+  downloads: "Downloads, popups, JavaScript dialogs and permission prompts are denied.",
+  stream: "Screen frames go only over a WebSocket opened with a one-time 20-second ticket bound to the session, device, Origin and driver generation; frames are paced by viewer ACKs."
 });

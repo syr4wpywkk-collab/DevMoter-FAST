@@ -104,6 +104,15 @@ fetch('https://example.com/').catch(() => {});
   assert.equal(shot.data[0], 0xff);
   assert.equal(shot.data[1], 0xd8);
 
+  const frames = [];
+  const viewer = manager.attachViewer(session.id, { event() {}, frame: frame => frames.push(frame), close() {} }, { deviceId: "dev" });
+  await waitFor(() => frames.length >= 1);
+  assert.equal(frames[0].data[0], 0xff);
+  assert.equal(frames[0].data[1], 0xd8);
+  assert.ok(frames[0].width > 0 && frames[0].height > 0);
+  viewer.ack(frames[0].seq);
+  viewer.detach();
+
   const opts = { generation: 1, deviceId: "dev" };
   await manager.act(session.id, { type: "click", selector: "#name" }, opts);
   await manager.act(session.id, { type: "type", text: "日本語入力" }, opts);

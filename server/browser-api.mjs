@@ -1,7 +1,7 @@
 import { remoteBrowserPolicy } from "./browser-session.mjs";
 
 const MAX_BODY_BYTES = 64 * 1024;
-const SESSION_PATH = /^\/api\/browser\/sessions\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/(actions|driver|screenshot))?$/;
+const SESSION_PATH = /^\/api\/browser\/sessions\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/(actions|driver|screenshot|ticket))?$/;
 
 function sendJson(res, status, value) {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -35,7 +35,7 @@ function errorBody(error) {
  * workspace control); the composition root has already enforced owner auth,
  * same-origin mutation checks and operation-id de-duplication.
  */
-export async function handleBrowserApiRequest(req, res, url, manager, { authenticateDevice } = {}) {
+export async function handleBrowserApiRequest(req, res, url, manager, { authenticateDevice, tickets } = {}) {
   const path = url.pathname;
   if (path !== "/api/browser" && !path.startsWith("/api/browser/")) return false;
   try {
@@ -92,6 +92,16 @@ export async function handleBrowserApiRequest(req, res, url, manager, { authenti
       });
       if (Buffer.isBuffer(result.data)) result.data = result.data.toString("base64");
       sendJson(res, 200, result);
+      return true;
+    }
+    if (sub === "ticket" && req.method === "POST") {
+      const origin = String(req.headers.origin || "");
+      if (!origin || !tickets) {
+        sendJson(res, 403, { error: "Browser socket Origin is required" });
+        return true;
+      }
+      const session = manager.get(sessionId, { deviceId: device.id });
+      sendJson(res, 201, tickets.issue({ sessionId, deviceId: device.id, origin, generation: session.driver.generation }));
       return true;
     }
     if (sub === "screenshot" && req.method === "GET") {

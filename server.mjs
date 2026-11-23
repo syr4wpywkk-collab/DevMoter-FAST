@@ -39,6 +39,7 @@ import { createUploadRegistry } from "./server/upload-registry.mjs";
 import { ControlPlane } from "./server/control-plane.mjs";
 import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/workspace-control.mjs";
 import { handleBrowserApiRequest } from "./server/browser-api.mjs";
+import { createBrowserSocketTickets, installBrowserWebSocketEndpoint } from "./server/browser-websocket.mjs";
 import { PasskeyAuth } from "./server/passkey-auth.mjs";
 import { normalizeProxyRoutePath } from "./server/opencode-proxy-path.mjs";
 import { createSessionModeMap, isAdapterOwnedRoute, isDirectMutationRoute, isReadOnlyMode, isSessionAgentRoute, isSessionCreateRoute, modeFromAgent, parseAgentMode, readOnlyToolsFor, resolveEffectiveAgentMode, sessionIdFromOpenCodePath } from "./server/agent-mode-policy.mjs";
@@ -295,6 +296,7 @@ const hostRuntime = createHostAdapter({
     secrets: { state: "available", features: ["encrypted-at-rest", "project-bindings", "metadata-api"] }
   }
 });
+const browserSocketTickets = createBrowserSocketTickets();
 const systemFeatures = createSystemFeatures({
   stateDir: PROJECT_CONFIG_DIR,
   appRoot: process.cwd(),
@@ -309,6 +311,7 @@ const systemFeatures = createSystemFeatures({
   trustedProxies: DEVMOTER_TRUSTED_PROXIES,
   onDeviceRevoked: deviceId => {
     terminal.revokeDeviceSessions(deviceId);
+    browserSocketTickets.revokeDevice(deviceId);
     void advancedApi.remoteBrowser.stopDevice(deviceId);
   }
 });
@@ -3394,6 +3397,7 @@ const server = http.createServer(async (req, res) => {
         !claimOperation(req, res, `${req.method}:${url.pathname}`)
       ) return;
       if (await handleBrowserApiRequest(req, res, url, advancedApi.remoteBrowser, {
+        tickets: browserSocketTickets,
         authenticateDevice: request => systemFeatures.authenticate(request)
       })) return;
     }
@@ -4270,6 +4274,11 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+const browserSockets = installBrowserWebSocketEndpoint(server, advancedApi.remoteBrowser, browserSocketTickets, {
+  publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
+  trustedProxies: DEVMOTER_TRUSTED_PROXIES,
+  isDeviceActive: deviceId => systemFeatures.isDeviceActive(deviceId)
+});
 const terminalSockets = installTerminalWebSocketEndpoint(server, terminal, {
   publicOrigin: DEVMOTER_PUBLIC_ORIGIN,
   trustedProxies: DEVMOTER_TRUSTED_PROXIES
@@ -4280,6 +4289,7 @@ server.on("close", () => {
   terminal.shutdown();
   void agentRunService.dispose();
   terminalSockets.close();
+  browserSockets.close();
 });
 
 server.listen(PORT, HOST, () => {

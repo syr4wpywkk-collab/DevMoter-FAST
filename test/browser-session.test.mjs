@@ -355,15 +355,17 @@ test("device revocation and browser exit stop the session", async t => {
   assert.throws(() => manager.get(b.id), error => error.statusCode === 404);
 });
 
-async function callApi(manager, method, path, body, deviceId = "dev-a") {
+async function callApi(manager, method, path, body, deviceId = "dev-a", { headers = {}, tickets } = {}) {
   const req = Readable.from(body === undefined ? [] : [Buffer.from(typeof body === "string" ? body : JSON.stringify(body))]);
   req.method = method;
+  req.headers = headers;
   const res = { status: 0, headers: {}, body: null };
   res.writeHead = (status, headers) => { res.status = status; res.headers = headers; };
   res.end = data => { res.body = data; };
   const url = new URL("http://127.0.0.1" + path);
   const handled = await handleBrowserApiRequest(req, res, url, manager, {
-    authenticateDevice: async () => deviceId ? { id: deviceId } : null
+    authenticateDevice: async () => deviceId ? { id: deviceId } : null,
+    tickets
   });
   assert.equal(handled, true);
   const isJson = String(res.headers["content-type"] || "").startsWith("application/json");
@@ -409,6 +411,15 @@ test("browser HTTP API drives sessions with driver generations", async t => {
   assert.equal(shot.headers["content-type"], "image/jpeg");
   assert.equal(shot.headers["cache-control"], "no-store");
   assert.equal(shot.raw.toString(), "jpeg-bytes");
+
+  const issued = [];
+  const tickets = { issue: grant => { issued.push(grant); return { ticket: "f".repeat(64), expiresInMs: 20000 }; } };
+  const origin = { headers: { origin: "http://127.0.0.1:8787" }, tickets };
+  assert.equal((await callApi(manager, "POST", `/api/browser/sessions/${id}/ticket`, undefined, "dev-a", { tickets })).status, 403);
+  assert.equal((await callApi(manager, "POST", `/api/browser/sessions/${id}/ticket`, undefined, "dev-b", origin)).status, 403);
+  const ticket = await callApi(manager, "POST", `/api/browser/sessions/${id}/ticket`, undefined, "dev-a", origin);
+  assert.equal(ticket.status, 201);
+  assert.deepEqual(issued, [{ sessionId: id, deviceId: "dev-a", origin: "http://127.0.0.1:8787", generation: 3 }]);
 
   assert.equal((await callApi(manager, "PUT", `/api/browser/sessions/${id}`)).status, 405);
   assert.equal((await callApi(manager, "GET", "/api/browser/sessions/xyz")).status, 404);
@@ -475,4 +486,49 @@ test("selector clicks scroll into view and refuse elements outside the viewport"
   const methods = spawns[0].child.calls.map(call => call.method);
   assert.ok(methods.includes("DOM.scrollIntoViewIfNeeded"));
   assert.equal(methods.includes("Input.dispatchMouseEvent"), false);
+});
+
+test("screencast frames are paced by viewer ACKs and slow viewers are dropped", async t => {
+  const { manager, spawns, advance } = await setup(t, { limits: { maxViewers: 2, frameAckTimeoutMs: 1000 } });
+  const { session } = await manager.start("p1", { deviceId: "d" });
+  const child = spawns[0].child;
+  const frames = [[], []];
+  const closed = [];
+  const sink = index => ({ event() {}, frame: frame => frames[index].push(frame), close: (code, reason) => closed.push([index, code, reason]) });
+  const a = manager.attachViewer(session.id, sink(0), { deviceId: "d" });
+  const b = manager.attachViewer(session.id, sink(1), { deviceId: "d" });
+  assert.throws(() => manager.attachViewer(session.id, sink(0), { deviceId: "d" }), error => error.code === "viewer_limit");
+  assert.throws(() => manager.attachViewer(session.id, sink(0), { deviceId: "other" }), error => error.statusCode === 404 || error.statusCode === 403);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.ok(child.calls.some(call => call.method === "Page.startScreencast"));
+
+  const jpeg = Buffer.from([0xff, 0xd8, 1, 2]).toString("base64");
+  const acks = () => child.calls.filter(call => call.method === "Page.screencastFrameAck").length;
+  const flush = () => new Promise(resolve => setTimeout(resolve, 20));
+  child.emitEvent("Page.screencastFrame", { data: jpeg, sessionId: 1, metadata: { deviceWidth: 390, deviceHeight: 700 } });
+  await flush();
+  assert.equal(frames[0].length, 1);
+  assert.equal(frames[1].length, 1);
+  assert.equal(frames[0][0].width, 390);
+  assert.equal(acks(), 0);
+  a.ack(frames[0][0].seq);
+  await flush();
+  assert.equal(acks(), 0, "Chromium is acked only when every viewer has acked");
+  b.ack(frames[1][0].seq);
+  await flush();
+  assert.equal(acks(), 1);
+
+  child.emitEvent("Page.screencastFrame", { data: jpeg, sessionId: 2 });
+  await flush();
+  a.ack(frames[0][1].seq);
+  advance(1500);
+  await manager.sweep();
+  assert.deepEqual(closed, [[1, 4008, "slow_consumer"]]);
+  await flush();
+  assert.equal(acks(), 2, "dropping the slow viewer releases the next frame");
+
+  assert.equal(a.ack(999), false);
+  a.detach();
+  await flush();
+  assert.ok(child.calls.some(call => call.method === "Page.stopScreencast"));
 });
