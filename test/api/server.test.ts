@@ -119,6 +119,9 @@ describe('REST API', () => {
       ['POST', '/v1/databases/app/query', { headers: { 'Content-Type': 'text/plain' }, body: '{"sql":"SELECT 1"}' }, 415, 'unsupported_media_type'],
       ['POST', '/v1/databases/app/query', { headers: { 'Content-Type': 'application/json' }, body: '{oops' }, 400, 'invalid_json'],
       ['POST', '/v1/databases/app/query', json(['SELECT 1']), 400, 'invalid_request'],
+      // 2^53 + 1 would reach the engine as 2^53: refused, not rounded.
+      ['POST', '/v1/databases/app/query', { headers: { 'Content-Type': 'application/json' }, body: '{"sql":"SELECT ?1","params":[9007199254740993]}' }, 400, 'invalid_request'],
+      ['POST', '/v1/databases/app/query', { headers: { 'Content-Type': 'application/json' }, body: '{"sql":"SELECT ?1","params":[-9223372036854775808]}' }, 400, 'invalid_request'],
       ['POST', '/v1/databases/app/query', json({ sql: 1 }), 400, 'invalid_request'],
       ['POST', '/v1/databases/app/query', json({ sql: 'SELECT 1', params: {} }), 400, 'invalid_request'],
       ['POST', '/v1/databases/app/query', json({ sql: 'SELECT 1', timeoutMs: '5' }), 400, 'invalid_request'],

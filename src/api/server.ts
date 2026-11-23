@@ -66,6 +66,17 @@ function describe(database: Database): Record<string, unknown> {
   return { name: database.name, engine: database.engine, kind: database.adapter.kind, readOnly: database.readOnly };
 }
 
+/**
+ * A JSON number is read as a double, so an integer beyond 2^53 would silently become a
+ * neighbouring value before it reaches the engine. Such a request is refused instead.
+ */
+function exactIntegersOnly(_key: string, value: unknown, context?: { source?: string }): unknown {
+  if (typeof value === 'number' && !Number.isSafeInteger(value) && context?.source !== undefined && /^-?\d+$/.test(context.source)) {
+    throw new HttpError(400, 'invalid_request', `the integer ${context.source.slice(0, 40)} cannot be read exactly as a JSON number; send it as a string`);
+  }
+  return value;
+}
+
 async function readJsonBody(request: http.IncomingMessage, maxBytes: number): Promise<unknown> {
   const type = (request.headers['content-type'] ?? '').split(';')[0]?.trim().toLowerCase();
   if (type !== 'application/json') throw new HttpError(415, 'unsupported_media_type', 'the request body must be application/json');
@@ -78,8 +89,9 @@ async function readJsonBody(request: http.IncomingMessage, maxBytes: number): Pr
     chunks.push(chunk);
   }
   try {
-    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks)));
-  } catch {
+    return (JSON.parse as (text: string, reviver: typeof exactIntegersOnly) => unknown)(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks)), exactIntegersOnly);
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
     throw new HttpError(400, 'invalid_json', 'the request body is not valid JSON');
   }
 }
