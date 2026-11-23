@@ -482,7 +482,7 @@ mod tests {
     #[test]
     fn function_names_sorted_and_nonempty() {
         let names = function_names();
-        assert_eq!(names.len(), 119);
+        assert_eq!(names.len(), 274);
         let mut sorted = names.clone();
         sorted.sort_unstable();
         assert_eq!(names, sorted);
