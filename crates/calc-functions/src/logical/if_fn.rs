@@ -4,10 +4,10 @@
 //! Only the selected branch is evaluated (plan §5): an error in the
 //! untaken branch never surfaces.
 
-use crate::ast::Expr;
-use crate::eval::{EvalContext, EvalError};
-use crate::functions::check_arity;
-use crate::value::Value;
+use calc_core::ast::Expr;
+use calc_core::eval::{EvalContext, EvalError};
+use calc_core::registry::check_arity;
+use calc_core::value::Value;
 
 pub fn call(ctx: &mut EvalContext<'_>, args: &[Expr]) -> Result<Value, EvalError> {
     if let Err(e) = check_arity(args, 2, 3) {
@@ -32,8 +32,8 @@ pub fn call(ctx: &mut EvalContext<'_>, args: &[Expr]) -> Result<Value, EvalError
 
 #[cfg(test)]
 mod tests {
-    use super::super::helpers::test_support::*;
-    use crate::{CalcError, Value};
+    use crate::common::coercion::test_support::*;
+    use calc_core::{CalcError, Value};
 
     fn n(v: &Value) -> f64 {
         match v {

@@ -1,7 +1,8 @@
 //! Tree-walking expression evaluator (plan §5).
 //!
 //! [`EvalContext`] evaluates one [`Expr`] against a snapshot of cell
-//! values. Function calls are dispatched through [`crate::functions`] with
+//! values. Function calls are dispatched through a caller-supplied
+//! [`FunctionRegistry`](crate::registry::FunctionRegistry) with
 //! *unevaluated* argument expressions, so special forms (`IF`, `IFERROR`)
 //! can evaluate arguments on demand.
 //!
@@ -122,6 +123,7 @@ pub struct EvalContext<'a> {
     workbook: &'a Workbook,
     values: &'a HashMap<CellId, Value>,
     clock: &'a dyn Clock,
+    registry: &'a dyn crate::registry::FunctionRegistry,
     /// Sheet the evaluated formula lives on (for unqualified references).
     current_sheet: u32,
     max_steps: usize,
@@ -134,12 +136,14 @@ impl<'a> EvalContext<'a> {
         workbook: &'a Workbook,
         values: &'a HashMap<CellId, Value>,
         clock: &'a dyn Clock,
+        registry: &'a dyn crate::registry::FunctionRegistry,
         current_sheet: u32,
     ) -> EvalContext<'a> {
         EvalContext {
             workbook,
             values,
             clock,
+            registry,
             current_sheet,
             max_steps: MAX_EVAL_STEPS,
             steps: 0,
@@ -215,7 +219,7 @@ impl<'a> EvalContext<'a> {
                 }
                 Ok(ArgValue::Scalar(binary_op(*op, &l, &r)))
             }
-            Expr::Call { name, args } => match crate::functions::dispatch(name, self, args) {
+            Expr::Call { name, args } => match self.registry.dispatch(name, self, args) {
                 Some(result) => result.map(ArgValue::Scalar),
                 None => Ok(ArgValue::Scalar(Value::Error(CalcError::Name))),
             },

@@ -136,7 +136,7 @@ impl Value {
 /// direct arguments: surrounding whitespace is ignored, a leading `+`/`-` is
 /// allowed, and decimal/exponent forms are accepted. A trailing `%` divides
 /// by 100 (Excel allows `="5%"+0`). Empty/whitespace-only text is rejected.
-pub(crate) fn parse_number_text(s: &str) -> Option<f64> {
+pub fn parse_number_text(s: &str) -> Option<f64> {
     let t = s.trim();
     if t.is_empty() {
         return None;

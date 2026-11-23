@@ -40,13 +40,22 @@ name = "calc-cli"
 version = "0.1.0"
 dependencies = [
  "calc-core",
+ "calc-functions",
 ]
 
 [[package]]
 name = "calc-core"
 version = "0.1.0"
 dependencies = [
+ "calc-functions",
  "criterion",
+]
+
+[[package]]
+name = "calc-functions"
+version = "0.1.0"
+dependencies = [
+ "calc-core",
 ]
 
 [[package]]

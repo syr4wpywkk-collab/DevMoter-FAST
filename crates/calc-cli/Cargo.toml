@@ -8,3 +8,4 @@ description = "Development CLI for evaluating formulas and running compatibility
 
 [dependencies]
 calc-core = { path = "../calc-core" }
+calc-functions = { path = "../calc-functions" }

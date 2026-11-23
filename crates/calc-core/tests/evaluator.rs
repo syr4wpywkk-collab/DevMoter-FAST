@@ -13,6 +13,7 @@ use calc_core::{CalcEngine, CalcError, CellInput, Value, Workbook};
 
 fn engine() -> CalcEngine {
     let mut e = CalcEngine::new();
+    e.set_registry(Box::new(calc_functions::default_registry()));
     e.add_sheet("Sheet1").unwrap();
     e
 }
@@ -690,7 +691,8 @@ fn step_budget_enforced() {
     let wb = Workbook::new();
     let values = HashMap::new();
     let clock = FixedClock(0);
-    let mut ctx = EvalContext::new(&wb, &values, &clock, 0);
+    let registry = calc_core::EmptyRegistry;
+    let mut ctx = EvalContext::new(&wb, &values, &clock, &registry, 0);
     ctx.set_max_steps(10);
     let expr = parse("1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1").unwrap();
     assert_eq!(ctx.eval(&expr), Err(EvalError::StepBudgetExceeded));
@@ -702,7 +704,8 @@ fn step_budget_counts_range_cells() {
     wb.add_sheet("Sheet1").unwrap();
     let values = HashMap::new();
     let clock = FixedClock(0);
-    let mut ctx = EvalContext::new(&wb, &values, &clock, 0);
+    let registry = calc_core::EmptyRegistry;
+    let mut ctx = EvalContext::new(&wb, &values, &clock, &registry, 0);
     ctx.set_max_steps(5);
     let expr = parse("A1:Z100").unwrap();
     assert_eq!(ctx.eval(&expr), Err(EvalError::StepBudgetExceeded));
@@ -716,7 +719,8 @@ fn deep_recursion_bounded() {
     let wb = Workbook::new();
     let values = HashMap::new();
     let clock = FixedClock(0);
-    let mut ctx = EvalContext::new(&wb, &values, &clock, 0);
+    let registry = calc_core::EmptyRegistry;
+    let mut ctx = EvalContext::new(&wb, &values, &clock, &registry, 0);
     let mut expr = Expr::Literal(Literal::Number(1.0));
     for _ in 0..calc_core::eval::MAX_EVAL_DEPTH + 1 {
         expr = Expr::Unary {
@@ -739,7 +743,8 @@ fn fixed_clock_injected() {
     let wb = Workbook::new();
     let values = HashMap::new();
     let clock = FixedClock(1234);
-    let ctx = EvalContext::new(&wb, &values, &clock, 0);
+    let registry = calc_core::EmptyRegistry;
+    let ctx = EvalContext::new(&wb, &values, &clock, &registry, 0);
     assert_eq!(ctx.clock().unix_seconds(), 1234);
 }
 

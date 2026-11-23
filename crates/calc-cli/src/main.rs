@@ -1,10 +1,11 @@
 //! calc-cli: development CLI for evaluating formulas.
 //!
-//! Only the `eval` subcommand's argument surface exists so far; the parser and
-//! evaluator in calc-core are not implemented yet, so `eval` reports that
-//! explicitly instead of pretending to compute something.
+//! Composes `calc-core` (engine) with `calc-functions` (standard
+//! registry) — the composition root for the library crates (v2 §3).
 
 use std::process::ExitCode;
+
+use calc_core::CalcEngine;
 
 const USAGE: &str = "\
 calc-cli — development CLI for the calc engine
@@ -13,7 +14,7 @@ USAGE:
     calc-cli <COMMAND>
 
 COMMANDS:
-    eval <FORMULA>   Evaluate a formula string (not yet implemented)
+    eval <FORMULA>   Evaluate a formula on an empty Sheet1 (with or without '=')
     help             Print this message
 ";
 
@@ -25,6 +26,15 @@ enum Outcome {
     Err(u8, String),
 }
 
+/// Engine with the standard function registry installed — the point
+/// where calc-core and calc-functions are composed.
+fn engine() -> CalcEngine {
+    let mut e = CalcEngine::new();
+    e.set_registry(Box::new(calc_functions::default_registry()));
+    e.add_sheet("Sheet1").expect("fresh engine");
+    e
+}
+
 fn run(args: &[String]) -> Outcome {
     match args.first().map(String::as_str) {
         None | Some("help") | Some("--help") | Some("-h") => Outcome::Ok(USAGE.to_string()),
@@ -33,14 +43,10 @@ fn run(args: &[String]) -> Outcome {
                 2,
                 "error: `eval` requires a <FORMULA> argument\n".to_string(),
             ),
-            Some(_formula) => Outcome::Err(
-                3,
-                format!(
-                    "error: `{}` formula evaluation is not implemented yet \
-                     (parser/evaluator land in PR-02/PR-03)\n",
-                    calc_core::engine_name()
-                ),
-            ),
+            Some(formula) => match engine().eval_formula("Sheet1", formula) {
+                Ok(v) => Outcome::Ok(format!("{v}\n")),
+                Err(e) => Outcome::Err(3, format!("error: {e}\n")),
+            },
         },
         Some(other) => Outcome::Err(2, format!("error: unknown command `{other}`\n\n{USAGE}")),
     }
@@ -85,10 +91,18 @@ mod tests {
     }
 
     #[test]
-    fn eval_reports_not_implemented() {
-        match run(&args(&["eval", "=1+1"])) {
-            Outcome::Err(3, msg) => assert!(msg.contains("not implemented")),
-            _ => panic!("expected not-implemented error"),
+    fn eval_computes_with_standard_registry() {
+        match run(&args(&["eval", "=SUM(1,2,3)+1"])) {
+            Outcome::Ok(msg) => assert_eq!(msg, "7\n"),
+            Outcome::Err(..) => panic!("expected evaluated result"),
+        }
+    }
+
+    #[test]
+    fn eval_error_is_reported() {
+        match run(&args(&["eval", "=NOSUCHFN(1)"])) {
+            Outcome::Ok(msg) => assert!(msg.contains("#NAME?")),
+            Outcome::Err(..) => panic!("expected #NAME? value"),
         }
     }
 

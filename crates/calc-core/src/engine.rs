@@ -21,6 +21,7 @@ use crate::error::CalcError;
 use crate::eval::{Clock, EvalContext, EvalError, SystemClock};
 use crate::graph::{self, Dep};
 use crate::parser::{ParseError, parse};
+use crate::registry::{EmptyRegistry, FunctionRegistry};
 use crate::value::Value;
 use crate::workbook::{CellInput, Workbook, WorkbookError};
 
@@ -91,6 +92,7 @@ pub struct CalcEngine {
     /// Formula cells needing (re)evaluation.
     dirty: HashSet<CellId>,
     clock: Box<dyn Clock>,
+    registry: Box<dyn FunctionRegistry>,
 }
 
 impl CalcEngine {
@@ -108,6 +110,7 @@ impl CalcEngine {
             values: HashMap::new(),
             dirty: HashSet::new(),
             clock: Box::new(SystemClock),
+            registry: Box::new(EmptyRegistry),
         }
     }
 
@@ -115,6 +118,14 @@ impl CalcEngine {
     /// default [`SystemClock`].
     pub fn set_clock(&mut self, clock: Box<dyn Clock>) {
         self.clock = clock;
+    }
+
+    /// Inject the function registry used to dispatch `Expr::Call` nodes
+    /// (v2 plan §3). Replaces the default [`EmptyRegistry`], under which
+    /// every function call evaluates to `#NAME?`. `calc-cli` and
+    /// `calc-wasm` install `calc_functions::default_registry()` here.
+    pub fn set_registry(&mut self, registry: Box<dyn FunctionRegistry>) {
+        self.registry = registry;
     }
 
     pub fn workbook(&self) -> &Workbook {
@@ -336,7 +347,13 @@ impl CalcEngine {
     }
 
     fn make_ctx<'a>(&'a self, sheet_id: u32) -> EvalContext<'a> {
-        EvalContext::new(&self.workbook, &self.values, self.clock.as_ref(), sheet_id)
+        EvalContext::new(
+            &self.workbook,
+            &self.values,
+            self.clock.as_ref(),
+            self.registry.as_ref(),
+            sheet_id,
+        )
     }
 
     /// Mark `id` dirty (when a formula) plus every transitive dependent.
