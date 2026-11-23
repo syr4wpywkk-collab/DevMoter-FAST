@@ -12,6 +12,7 @@
 //   build/<arch>/<engine>/install   installed binaries, libraries, headers
 //   build/<arch>/<engine>/build.log full build output
 //   build/<arch>/<engine>/BUILD_INFO.json  what was built, from which commit, with which compiler
+//   build/<arch>/<engine>/BUILD_PATH  where the build tree was made (a tree made elsewhere is rebuilt)
 //
 // DEVMOTER_BASE_BUILD_DIR overrides the build/ location.
 
@@ -132,6 +133,23 @@ async function exists(file: string): Promise<boolean> {
   );
 }
 
+/**
+ * Build trees record absolute paths (CMake cache, configure output), and the same build
+ * directory has another path on the host than in the container (`/out`). A tree made at
+ * another path cannot be reused, so it is removed and the engine builds from scratch.
+ */
+export async function resetMovedBuildTree(paths: EnginePaths): Promise<boolean> {
+  const stamp = path.join(paths.root, 'BUILD_PATH');
+  const previous = await readFile(stamp, 'utf8').catch(() => undefined);
+  const moved = previous === undefined ? await exists(paths.work) : previous !== paths.root;
+  if (moved) {
+    // Valkey builds inside the exported source, so that goes too.
+    for (const stale of [paths.work, paths.src, path.join(paths.root, 'SOURCE_TREE')]) await rm(stale, { recursive: true, force: true });
+  }
+  await writeFile(stamp, paths.root);
+  return moved;
+}
+
 /** Extracts the pinned tree into `paths.src`; skipped when that tree is already there. */
 async function exportSource(repo: string, pin: EnginePin, paths: EnginePaths): Promise<void> {
   const stamp = path.join(paths.root, 'SOURCE_TREE');
@@ -173,6 +191,7 @@ async function buildEngine(repo: string, buildRoot: string, pin: EnginePin, opti
   const env = scriptEnv(process.env, pin, paths, options.jobs, tmp);
   try {
     if (options.build) {
+      if (await resetMovedBuildTree(paths)) say('the build tree was made at another path (host or container); rebuilding from scratch');
       say(`exporting ${pin.repository} @ ${pin.commit.slice(0, 12)}`);
       await exportSource(repo, pin, paths);
       await mkdir(paths.work, { recursive: true });

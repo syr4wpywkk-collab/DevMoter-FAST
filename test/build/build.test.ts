@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { accessSync, constants, readFileSync } from 'node:fs';
+import { accessSync, constants, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { enginePaths, parseArgs, scriptEnv } from '../../scripts/build/build.ts';
+import { enginePaths, parseArgs, resetMovedBuildTree, scriptEnv } from '../../scripts/build/build.ts';
 import { parseManifest, type EnginePin } from '../../scripts/upstream/verify.ts';
 
 const KNOWN = ['postgresql', 'sqlite', 'duckdb', 'valkey'];
@@ -75,6 +77,35 @@ test('engine scripts get a fixed environment and none of the caller secrets', ()
     DMB_JOBS: '3',
     DMB_TMP: '/tmp/x',
   });
+});
+
+test('a build tree made at another path (host vs container) is rebuilt from scratch, a tree made here is kept', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'dmb-build-test-'));
+  try {
+    const paths = enginePaths(dir, 'x86_64', 'duckdb');
+    const seed = () => {
+      mkdirSync(paths.work, { recursive: true });
+      mkdirSync(paths.src, { recursive: true });
+      writeFileSync(path.join(paths.work, 'CMakeCache.txt'), 'CMAKE_HOME_DIRECTORY:INTERNAL=/out/x86_64/duckdb/src');
+      writeFileSync(path.join(paths.root, 'SOURCE_TREE'), 'tree');
+    };
+    const remains = () => [paths.work, paths.src, path.join(paths.root, 'SOURCE_TREE')].map((file) => existsSync(file));
+
+    seed(); // made before the path was recorded: its origin is unknown
+    assert.equal(await resetMovedBuildTree(paths), true);
+    assert.deepEqual(remains(), [false, false, false]);
+
+    seed();
+    assert.equal(await resetMovedBuildTree(paths), false);
+    assert.deepEqual(remains(), [true, true, true]);
+
+    writeFileSync(path.join(paths.root, 'BUILD_PATH'), '/out/x86_64/duckdb');
+    assert.equal(await resetMovedBuildTree(paths), true);
+    assert.deepEqual(remains(), [false, false, false]);
+    assert.equal(readFileSync(path.join(paths.root, 'BUILD_PATH'), 'utf8'), paths.root);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('every pinned engine has an executable build script with build and smoke commands', () => {
