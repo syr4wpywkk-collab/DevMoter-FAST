@@ -174,3 +174,28 @@ table below; code comments at each call site say `SPEC-OPEN`.
 | MAXA/MINA direct text | `MAXA("x")` returns `#VALUE!`; spec docs mark the 0-vs-error question open. |
 | Truncation fixtures | Non-integer args for NEGBINOM.DIST/PERMUT/PERMUTATIONA/POISSON.DIST are truncated; specOpen fixtures document each. |
 | Paired-array cell-count rule | `numeric_pairs` compares raw member counts (pre-filter) for `#N/A`; Excel may compare post-filter counts. |
+
+## Track i18 (v3 information functions)
+
+`specOpen: true` cases in `crates/calc-functions/tests/fixtures/golden-i18.json`
+mirror the table below; code comments at each call site say `SPEC-OPEN`.
+
+| Item | Question |
+|---|---|
+| CELL unsupported info_types | `color`/`coord`/`format`/`parentheses`/`prefix`/`protect`/`width` need formatting/metadata layers the engine does not model; they return `#N/A` (vs `#VALUE!` — unconfirmed). |
+| CELL omitted `reference` | Excel defaults to the "last cell changed" (interactive concept); headless we use the calling cell. |
+| CELL `"filename"` | No persistence layer; returns `""` — confirm vs Excel's unsaved-workbook result. |
+| CELL `"address"` cross-sheet | Sheet-qualified as `'Name'!$A$1` only when the reference is on another sheet; Excel's exact form (workbook prefix, quoting) unconfirmed. |
+| ERROR.TYPE post-2007 errors | `#SPILL!`/`#CALC!`/`#CIRC!` have no documented codes; treated as "not in table" -> `#N/A`. |
+| INFO return constants | All supported type_texts return engine-fixed documented constants (`numfile`=1, `recalc`="Automatic", `directory`="", `origin`="$A:$A$1", `system`=OS family, `osversion`=OS name, `release`=crate version). Unknown type_text -> `#N/A` (some references say `#VALUE!`). |
+| ISBLANK/ISNONTEXT/ISLOGICAL error args | Follow the ISNUMBER precedent: errors propagate. Confirm shared family convention. |
+| ISBLANK/ISEVEN/ISODD blank args | Blank coerces to 0 (ISEVEN -> TRUE, ISODD -> FALSE), matching Excel's documented blank-as-0; confirm. |
+| ISERR newer errors | `#SPILL!`/`#CALC!`/`#CIRC!` count as errors (only `#N/A` excluded) — confirm against modern Excel. |
+| ISFORMULA range arg | Multi-cell range checks the top-left cell (legacy behavior); spill semantics open. |
+| ISOMITTED engine gap | `LAMBDA` has no `[param]` optional-parameter syntax and `call_lambda` enforces exact arity, so a parameter is "omitted" only via an explicit empty argument slot (`LAMBDA(x,y,...)(5,)` -> `y`=Blank). `ISOMITTED(name)` reports whether the name is bound to `Blank`; unbound name -> `#NAME?`, non-name arg -> `#VALUE!` (both error types unconfirmed). |
+| ISREF `#REF!` args | A `#REF!` value argument propagates the error (consistent with other errors); Excel may return TRUE instead. |
+| N array argument | Arrays/ranges convert element-wise; legacy implicit-intersection semantics open. |
+| SHEET text/name arg | `SHEET("Sheet2")` accepted per Microsoft docs wording; unknown name -> `#REF!` (exact code unconfirmed). Non-reference scalars -> `#VALUE!`. |
+| SHEETS 3-D refs | `Sheet1:Sheet3!A1` sheet-span references unsupported by the parser; ordinary references return 1. Exact error for non-reference scalars (`#VALUE!` chosen) unconfirmed. |
+| STOCKHISTORY | NOT IMPLEMENTABLE OFFLINE — registered stub returns `#N/A` (arity errors -> `#VALUE!`); no fabricated prices. |
+| TYPE blank/lambda | Blank -> 1 (per spec expectation); Lambda/Reference -> 128 ("other") — both unconfirmed. |

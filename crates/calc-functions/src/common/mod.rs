@@ -8,6 +8,7 @@
 
 pub mod coercion;
 pub mod complex;
+pub mod dbcs;
 
 // Declared per v2 §3. Modules with no code yet carry a doc comment
 // stating their intended role — no stub implementations.
@@ -21,5 +22,7 @@ pub mod lookup;
 pub mod number;
 pub mod numerics;
 pub mod random;
+pub mod regexes;
 pub mod statistics;
+pub mod text_bytes;
 pub mod text_index;
