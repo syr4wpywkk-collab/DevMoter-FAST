@@ -4,6 +4,11 @@
 //! [`crate::common::number`] (base conversion and `BIT*` operand
 //! helpers) and [`crate::common::complex`] (complex parse/format and
 //! `IM*` arithmetic).
+//! Engineering functions (v3 tracks I11+I12): `engineering/*.rs`, one
+//! file per function. Shared numerics live in [`crate::common::numerics`]
+//! (Bessel kernels, `erf`/`erfc`), [`crate::common::number`] (base
+//! conversion and `BIT*` operand helpers) and [`crate::common::complex`]
+//! (`COMPLEX` output format and `IM*` arithmetic).
 
 use calc_core::registry::Function;
 
@@ -25,6 +30,24 @@ mod dec2bin;
 mod dec2hex;
 mod dec2oct;
 mod delta;
+mod erf;
+mod erf_precise;
+mod erfc;
+mod erfc_precise;
+mod gestep;
+mod hex2bin;
+mod hex2dec;
+mod hex2oct;
+mod imabs;
+mod imaginary;
+mod imargument;
+mod imconjugate;
+mod imcos;
+mod imcosh;
+mod imcot;
+mod imcsc;
+mod imcsch;
+mod imdiv;
 mod imexp;
 mod imln;
 mod imlog10;
@@ -83,4 +106,22 @@ pub const FUNCTIONS: &[(&str, Function)] = &[
     ("OCT2BIN", oct2bin::call),
     ("OCT2DEC", oct2dec::call),
     ("OCT2HEX", oct2hex::call),
+    ("ERF", erf::call),
+    ("ERF.PRECISE", erf_precise::call),
+    ("ERFC", erfc::call),
+    ("ERFC.PRECISE", erfc_precise::call),
+    ("GESTEP", gestep::call),
+    ("HEX2BIN", hex2bin::call),
+    ("HEX2DEC", hex2dec::call),
+    ("HEX2OCT", hex2oct::call),
+    ("IMABS", imabs::call),
+    ("IMAGINARY", imaginary::call),
+    ("IMARGUMENT", imargument::call),
+    ("IMCONJUGATE", imconjugate::call),
+    ("IMCOS", imcos::call),
+    ("IMCOSH", imcosh::call),
+    ("IMCOT", imcot::call),
+    ("IMCSC", imcsc::call),
+    ("IMCSCH", imcsch::call),
+    ("IMDIV", imdiv::call),
 ];
