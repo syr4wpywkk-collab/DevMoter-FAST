@@ -10,7 +10,7 @@
 // of the SQL (SELECT, INSERT, ...) or the Valkey command name.
 
 import { createHash } from 'node:crypto';
-import { chmod, mkdir, open, readFile, rmdir, stat } from 'node:fs/promises';
+import { mkdir, open, readFile, rmdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 export interface AuditEvent {
@@ -99,7 +99,8 @@ export function createAuditLog(file: string, now: () => Date = () => new Date())
       const handle = await open(file, 'a+', 0o600);
       try {
         const { size } = await handle.stat();
-        if (size === 0) await chmod(file, 0o600);
+        // Also for a file that already has records: it may have been created by hand, readable by others.
+        await handle.chmod(0o600);
         if (last?.size !== size) {
           const length = Math.min(size, TAIL_BYTES);
           const tail = Buffer.alloc(length);
