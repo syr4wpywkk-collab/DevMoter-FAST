@@ -181,7 +181,9 @@ export async function handleBrowserApiRequest(req, res, url, manager, { authenti
     return true;
   } catch (error) {
     const status = Number(error?.statusCode || error?.status || 500);
-    sendJson(res, status >= 400 && status < 600 ? status : 500, errorBody(error));
+    const safeStatus = status >= 400 && status < 600 ? status : 500;
+    // Unexpected failures may carry internal details; only deliberate HTTP errors are echoed.
+    sendJson(res, safeStatus, safeStatus >= 500 && !error?.code ? { error: "Browser request failed" } : errorBody(error));
     return true;
   }
 }
