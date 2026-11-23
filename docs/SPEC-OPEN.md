@@ -126,3 +126,16 @@ table below. Shared criteria-grammar questions are flagged per fixture.
 | (docs only) | Even argument count to `SUMIFS`/`COUNTIFS` (missing criteria) — Excel arity error code mapping (likely `#VALUE!`). |
 | (docs only) | Wildcards under `match_type ±1`: expected literal characters — confirm. |
 | (docs only) | Error cell inside `MATCH` lookup_array during scan: propagate vs skip. |
+
+## Resolved (PR15 review)
+
+Items the implementation has since settled, kept here for auditability.
+Everything not listed below remains genuinely open (mostly empirical
+Excel/LibreOffice questions that still need recorded fixtures).
+
+| Item | Resolution |
+|---|---|
+| #7 暗黙型変換の確定版 | Range-side coercion rules are now defined in `calc-functions::common::coercion` and per-function docs (`docs/functions/*.md`); aggregate functions ignore range text/booleans per the documented rule set. |
+| #10 `^` の結合性 | Excel left-associativity is implemented and locked by tests (`2^3^2` = 64 in `parser_tests.rs` / `evaluator.rs`). |
+| #11 配列リテラル `{1,2;3,4}` | Implemented: lexer/parser produce `Expr::ArrayLiteral`, rectangularity enforced at parse time (`NonRectangularArray`). Landed with the dynamic-array PRs (feat/array-core, merged via PR #21). |
+| #14 `Missing` 引数ノードの意味論 | Settled per function: each `docs/functions/<NAME>.md` defines its omitted-argument defaults; `Expr::Missing` is preserved in the AST so functions can distinguish omitted vs blank. |
