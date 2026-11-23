@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
@@ -13,11 +13,22 @@ test('an operation is described by its kind only', () => {
   assert.equal(sqlOperation("'password=hunter2'"), 'OTHER');
   assert.equal(sqlOperation('hunter2hunter2hunter2 x'), 'OTHER');
   assert.equal(sqlOperation(''), 'OTHER');
+  // A word that is not an SQL statement keyword is part of the request, not its kind.
+  assert.equal(sqlOperation('hunter x'), 'OTHER');
+  assert.equal(sqlOperation('swordfish'), 'OTHER');
+  assert.equal(sqlOperation('/* a */ -- b\n explain select 1'), 'EXPLAIN');
   assert.equal(commandOperation(['set', 'private-key', 'v']), 'SET');
   assert.equal(commandOperation(['CLIENT', 'LIST']), 'CLIENT');
   assert.equal(commandOperation([{ $base64: 'AA==' }]), 'OTHER');
   assert.equal(commandOperation(['SET\r\nFLUSHALL']), 'OTHER');
   assert.equal(commandOperation([]), 'OTHER');
+});
+
+test('the kind of a request made of many comments is found at once', () => {
+  const started = performance.now();
+  assert.equal(sqlOperation(`${'/**/'.repeat(5000)}1`), 'OTHER');
+  assert.equal(sqlOperation(`${'/**/'.repeat(5000)}select 1`), 'SELECT');
+  assert.ok(performance.now() - started < 1000);
 });
 
 describe('audit log', () => {
@@ -41,6 +52,16 @@ describe('audit log', () => {
     assert.match(written[1]?.prev as string, /^[0-9a-f]{64}$/);
     assert.equal((await stat(file)).mode & 0o777, 0o600);
     assert.deepEqual(await verifyAuditLog(file), { ok: true, records: 3 });
+  });
+
+  test('a log file that others could read is made private before a record is added', async () => {
+    const shared = path.join(dir, 'shared.log');
+    const first = JSON.stringify({ time: '2026-11-23T00:00:00.000Z', event: 'server.started', prev: '0'.repeat(64) });
+    await writeFile(shared, `${first}\n`, { mode: 0o644 });
+    await chmod(shared, 0o644);
+    await createAuditLog(shared, now).record({ event: 'api.request', requestId: 'r1' });
+    assert.equal((await stat(shared)).mode & 0o777, 0o600);
+    assert.deepEqual(await verifyAuditLog(shared), { ok: true, records: 2 });
   });
 
   test('several writers keep one chain', async () => {

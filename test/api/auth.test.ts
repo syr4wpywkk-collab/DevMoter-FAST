@@ -137,6 +137,19 @@ describe('REST API with API keys and the audit log', () => {
     ]);
   });
 
+  test('reading one database or its health is audited with the database', async () => {
+    const detail = await call(port, 'GET', '/v1/databases/app', bearer());
+    const health = await call(port, 'GET', '/v1/databases/cache/health', bearer());
+    const missing = await call(port, 'GET', '/v1/databases/nope', bearer());
+    assert.deepEqual([detail.status, missing.status], [200, 404]);
+    const records = (await audit()).slice(-3).map(({ route, database, engine, status }) => ({ route, database, engine, status }));
+    assert.deepEqual(records, [
+      { route: 'databases.get', database: 'app', engine: 'sqlite', status: 200 },
+      { route: 'databases.health', database: 'cache', engine: 'valkey', status: health.status },
+      { route: 'databases.get', database: undefined, engine: undefined, status: 404 },
+    ]);
+  });
+
   test('a revoked key is refused at once', async () => {
     const before = ran;
     await store.revoke(keyId);

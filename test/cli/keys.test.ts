@@ -52,6 +52,16 @@ describe('key command line tool', () => {
     assert.deepEqual(await verifyAuditLog(auditFile), { ok: true, records: 2 });
   });
 
+  test('a key whose creation cannot be recorded is not left active', async () => {
+    const store = createKeyStore(path.join(dir, 'unrecorded.json'));
+    const out: string[] = [];
+    const failing = { record: () => Promise.reject(new Error('disk full')) };
+    assert.equal(await runKeysCommand(['create', 'lost'], store, failing, (line) => out.push(line)), 1);
+    assert.match(out.join('\n'), /audit record could not be written/);
+    assert.ok(!/dmb_[0-9a-f]{12}_/.test(out.join('\n')));
+    assert.deepEqual((await store.list()).map((key) => key.revokedAt === null), [false]);
+  });
+
   test('unknown ids and wrong usage are reported', async () => {
     assert.deepEqual(await run('revoke', 'ffffffffffff'), { code: 1, out: ['No key with the id ffffffffffff.'] });
     for (const args of [[], ['create'], ['revoke'], ['list', 'x'], ['create', 'a', 'b'], ['delete', 'x']]) {

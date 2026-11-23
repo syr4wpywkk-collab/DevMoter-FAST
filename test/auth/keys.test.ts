@@ -72,6 +72,24 @@ describe('API keys', () => {
     assert.equal((await server.list()).filter((entry) => entry.revokedAt === null).length, 2);
   });
 
+  test('changes made at the same time through several stores are all kept', async () => {
+    const shared = path.join(dir, 'shared.json');
+    const stores = [createKeyStore(shared, now), createKeyStore(shared, now), createKeyStore(shared, now)];
+    const first = await (stores[0] as ReturnType<typeof createKeyStore>).create('first');
+    for (const store of stores) await store.list();
+
+    const [, ...created] = await Promise.all([
+      (stores[1] as ReturnType<typeof createKeyStore>).revoke(first.info.id),
+      ...Array.from({ length: 12 }, (_, n) => (stores[n % 3] as ReturnType<typeof createKeyStore>).create(`key ${n}`)),
+    ]);
+
+    const fresh = createKeyStore(shared, now);
+    assert.deepEqual(await fresh.verify(first.key), { ok: false, reason: 'revoked', keyId: first.info.id });
+    assert.equal((await fresh.list()).length, 13);
+    for (const { key } of created) assert.equal((await fresh.verify(key)).ok, true);
+    assert.equal((await stat(shared)).mode & 0o777, 0o600);
+  });
+
   test('key names are checked', async () => {
     const store = createKeyStore(file, now);
     for (const name of ['', ' x', 'a\nb', 'x'.repeat(65), '<script>', 5 as unknown as string]) {
