@@ -46,6 +46,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run deps:check
+      - run: npm run stats:check
       - name: Vendored engines match their pinned upstream commits
         run: npm run upstream:verify -- --online
         env:
