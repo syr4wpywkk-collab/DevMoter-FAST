@@ -55,6 +55,16 @@ test('a locked version that differs from the pinned one is reported', () => {
   assert.deepEqual(rules(checkLockfile(goodPkg, lock)), ['lockfile-sync']);
 });
 
+test('build metadata in a pinned version does not count as lockfile drift', () => {
+  const lock = goodLock();
+  const pkg: PackageJson = { dependencies: { pg: '8.23.1+build.7' }, devDependencies: { typescript: '5.9.3' } };
+  lock.packages![''] = { ...pkg };
+  assert.deepEqual(checkManifest(pkg), []);
+  assert.deepEqual(checkLockfile(pkg, lock), []);
+  lock.packages!['node_modules/pg']!.version = '8.23.2';
+  assert.deepEqual(rules(checkLockfile(pkg, lock)), ['lockfile-sync']);
+});
+
 test('transitive dependencies must resolve inside the lockfile', () => {
   const lock = goodLock();
   lock.packages!['node_modules/pg']!.dependencies = { 'pg-pool': '^3.0.0' };

@@ -104,6 +104,11 @@ export function licenseAllowed(expression: string | undefined, allowed: readonly
   return result === true && position === tokens.length;
 }
 
+/** Semver build metadata (`1.2.3+build.1`) does not identify a version; npm drops it in the lockfile. */
+function withoutBuildMetadata(version: string | undefined): string | undefined {
+  return version?.split('+')[0];
+}
+
 /** Node's lookup: the nearest `node_modules/<name>` at or above the requiring package. */
 function resolvesFrom(packages: Record<string, LockPackage>, fromPath: string, name: string): boolean {
   let base = fromPath;
@@ -154,7 +159,7 @@ export function checkLockfile(pkg: PackageJson, lock: PackageLock, policy: Polic
       const entry = packages[`node_modules/${name}`];
       if (!entry) {
         findings.push({ rule: 'lockfile-sync', package: name, message: `declared in ${field} but has no entry in package-lock.json; run npm install` });
-      } else if (!entry.link && entry.version !== spec) {
+      } else if (!entry.link && withoutBuildMetadata(entry.version) !== withoutBuildMetadata(spec)) {
         findings.push({ rule: 'lockfile-sync', package: name, message: `package-lock.json has ${entry.version ?? '(no version)'}, package.json wants ${spec}; run npm install` });
       }
     }
