@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased] / 0.1.0
 
+- License changed from MIT (planned `MIT OR Apache-2.0`) to **All Rights Reserved** (proprietary, no permissions granted).
+
 First development line: the v1 core plus the full v2 function set
 (100 functions, `docs/FUNCTION_PLAN_V2.md`).
 
