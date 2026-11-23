@@ -9,8 +9,8 @@
 use calc_core::registry::{Function, FunctionRegistry};
 
 use crate::{
-    aggregate, array, compatibility, datetime, engineering, financial, functional, information,
-    logical, lookup, math, statistics, text,
+    aggregate, array, compatibility, database, datetime, engineering, financial, functional,
+    information, logical, lookup, math, statistics, text,
 };
 
 /// Aggregation point — exactly one entry per v2 §3 category, in the
@@ -29,6 +29,7 @@ const CATEGORIES: &[&[(&str, Function)]] = &[
     engineering::FUNCTIONS,
     financial::FUNCTIONS,
     compatibility::FUNCTIONS,
+    database::FUNCTIONS,
     information::FUNCTIONS,
 ];
 
@@ -202,11 +203,14 @@ mod tests {
                 "DATE",
                 "DATEDIF",
                 "DATEVALUE",
+                "DAVERAGE",
                 "DAY",
                 "DAYS",
                 "DAYS360",
                 "DB",
                 "DBCS",
+                "DCOUNT",
+                "DCOUNTA",
                 "DDB",
                 "DEC2BIN",
                 "DEC2HEX",
@@ -215,12 +219,21 @@ mod tests {
                 "DEGREES",
                 "DELTA",
                 "DEVSQ",
+                "DGET",
                 "DISC",
+                "DMAX",
+                "DMIN",
                 "DOLLAR",
                 "DOLLARDE",
                 "DOLLARFR",
+                "DPRODUCT",
                 "DROP",
+                "DSTDEV",
+                "DSTDEVP",
+                "DSUM",
                 "DURATION",
+                "DVAR",
+                "DVARP",
                 "EDATE",
                 "EFFECT",
                 "EOMONTH",

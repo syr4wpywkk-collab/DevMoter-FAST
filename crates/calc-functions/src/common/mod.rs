@@ -14,6 +14,7 @@ pub mod dbcs;
 // stating their intended role — no stub implementations.
 pub mod compare;
 pub mod criteria;
+pub mod database;
 pub mod date_serial;
 pub mod date_text;
 pub mod ets;
