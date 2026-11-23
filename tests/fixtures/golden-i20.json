@@ -1,0 +1,2426 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-24",
+  "referenceDefaults": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+  },
+  "cases": [
+    {
+      "id": "I20-DATEDIF-001",
+      "formula": "=DATEDIF(44197,45292,\"Y\")",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DATEDIF-002",
+      "formula": "=DATEDIF(44197,45291,\"M\")",
+      "inputs": {},
+      "expected": {
+        "number": 35
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DATEDIF-003",
+      "formula": "=DATEDIF(44197,45291,\"D\")",
+      "inputs": {},
+      "expected": {
+        "number": 1094
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DATEDIF-004",
+      "formula": "=DATEDIF(44197,45291,\"YM\")",
+      "inputs": {},
+      "expected": {
+        "number": 11
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DATEDIF-005",
+      "formula": "=DATEDIF(44197,45291,\"YD\")",
+      "inputs": {},
+      "expected": {
+        "number": 364
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DATEDIF-006",
+      "formula": "=DATEDIF(44197,45291,\"MD\")",
+      "inputs": {},
+      "expected": {
+        "number": 30
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine returns the mathematically intended 30 (end minus complete-month anchor). Excel's MD unit has a documented borrow bug that can return different (even negative) values; replicate-or-fix is a policy decision."
+    },
+    {
+      "id": "I20-DATEDIF-007",
+      "formula": "=DATEDIF(45107,45472,\"Y\")",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "2023-06-30 -> 2024-06-29, one day short of a year"
+    },
+    {
+      "id": "I20-DATEDIF-008",
+      "formula": "=DATEDIF(45292,44197,\"Y\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DATEDIF-009",
+      "formula": "=DATEDIF(44197,45292,\"X\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DATEDIF-010",
+      "formula": "=DATEDIF(44197,45291,\"y\")",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DATEDIF-011",
+      "formula": "=DATEDIF(\"2021-01-01\",\"2023-12-31\",\"D\")",
+      "inputs": {},
+      "expected": {
+        "number": 1094
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DATEDIF-012",
+      "formula": "=DATEDIF(45000,45000,\"MD\")",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DATEVALUE-001",
+      "formula": "=DATEVALUE(\"2026-01-01\")",
+      "inputs": {},
+      "expected": {
+        "number": 46023
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DATEVALUE-002",
+      "formula": "=DATEVALUE(\"1/1/2026\")",
+      "inputs": {},
+      "expected": {
+        "number": 46023
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DATEVALUE-003",
+      "formula": "=DATEVALUE(\"01/01/26\")",
+      "inputs": {},
+      "expected": {
+        "number": 46023
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "2-digit year 26 -> 2026 per fixed 2029/2030 pivot"
+    },
+    {
+      "id": "I20-DATEVALUE-004",
+      "formula": "=DATEVALUE(\"12/31/30\")",
+      "inputs": {},
+      "expected": {
+        "number": 11323
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "2-digit year 30 -> 1930 per pivot"
+    },
+    {
+      "id": "I20-DATEVALUE-005",
+      "formula": "=DATEVALUE(\"31-Dec-2025\")",
+      "inputs": {},
+      "expected": {
+        "number": 46022
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DATEVALUE-006",
+      "formula": "=DATEVALUE(\"December 31, 2025\")",
+      "inputs": {},
+      "expected": {
+        "number": 46022
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DATEVALUE-007",
+      "formula": "=DATEVALUE(\"2026-01-01 15:00\")",
+      "inputs": {},
+      "expected": {
+        "number": 46023
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "trailing time discarded"
+    },
+    {
+      "id": "I20-DATEVALUE-008",
+      "formula": "=DATEVALUE(\"2/30/2026\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DATEVALUE-009",
+      "formula": "=DATEVALUE(\"nonsense\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DATEVALUE-010",
+      "formula": "=DATEVALUE(\"45000\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "numeric text rejected"
+    },
+    {
+      "id": "I20-DATEVALUE-011",
+      "formula": "=DATEVALUE(45000)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "non-text argument"
+    },
+    {
+      "id": "I20-DATEVALUE-012",
+      "formula": "=DATEVALUE(\"2023-02-29\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DAYS-001",
+      "formula": "=DAYS(45292,44197)",
+      "inputs": {},
+      "expected": {
+        "number": 1095
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DAYS-002",
+      "formula": "=DAYS(44197,45292)",
+      "inputs": {},
+      "expected": {
+        "number": -1095
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DAYS-003",
+      "formula": "=DAYS(45000,45000)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DAYS-004",
+      "formula": "=DAYS(\"2024-01-01\",\"2021-01-01\")",
+      "inputs": {},
+      "expected": {
+        "number": 1095
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DAYS-005",
+      "formula": "=DAYS(\"garbage\",45000)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DAYS-006",
+      "formula": "=DAYS(45000.9,45000.1)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "fractional serials truncate before subtracting"
+    },
+    {
+      "id": "I20-DAYS-007",
+      "formula": "=DAYS(-1,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DAYS-008",
+      "formula": "=DAYS(TRUE,45000)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DAYS-009",
+      "formula": "=DAYS(A1,A2)",
+      "inputs": {
+        "A1": 45292,
+        "A2": "2021-01-01"
+      },
+      "expected": {
+        "number": 1095
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DAYS-010",
+      "formula": "=DAYS(1,61)",
+      "inputs": {},
+      "expected": {
+        "number": -60
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "spans the fictitious 1900-02-29 slot"
+    },
+    {
+      "id": "I20-DAYS360-001",
+      "formula": "=DAYS360(44197,45292)",
+      "inputs": {},
+      "expected": {
+        "number": 1080
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DAYS360-002",
+      "formula": "=DAYS360(44197,45292,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 1080
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DAYS360-003",
+      "formula": "=DAYS360(45000,45000)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DAYS360-004",
+      "formula": "=DAYS360(45000,44900)",
+      "inputs": {},
+      "expected": {
+        "number": -100
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DAYS360-005",
+      "formula": "=DAYS360(DATE(2008,1,30),DATE(2008,2,1))",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DAYS360-006",
+      "formula": "=DAYS360(DATE(2024,1,29),DATE(2024,1,31))",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "US: start<30 rolls end 31st to next month's 1st"
+    },
+    {
+      "id": "I20-DAYS360-007",
+      "formula": "=DAYS360(DATE(2024,1,29),DATE(2024,1,31),TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "EU clamps end to 30"
+    },
+    {
+      "id": "I20-DAYS360-008",
+      "formula": "=DAYS360(DATE(2024,1,31),DATE(2024,3,31))",
+      "inputs": {},
+      "expected": {
+        "number": 60
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DAYS360-009",
+      "formula": "=DAYS360(DATE(2023,2,28),DATE(2023,3,1))",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "US Feb-end start counts as 30"
+    },
+    {
+      "id": "I20-DAYS360-010",
+      "formula": "=DAYS360(\"x\",45000)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-DAYS360-011",
+      "formula": "=DAYS360(-1,45000)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-ISOWEEKNUM-001",
+      "formula": "=ISOWEEKNUM(45291)",
+      "inputs": {},
+      "expected": {
+        "number": 52
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-ISOWEEKNUM-002",
+      "formula": "=ISOWEEKNUM(45292)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-ISOWEEKNUM-003",
+      "formula": "=ISOWEEKNUM(44197)",
+      "inputs": {},
+      "expected": {
+        "number": 53
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-ISOWEEKNUM-004",
+      "formula": "=ISOWEEKNUM(45658)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-ISOWEEKNUM-005",
+      "formula": "=ISOWEEKNUM(43829)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "2019-12-30 is ISO week 1 of 2020"
+    },
+    {
+      "id": "I20-ISOWEEKNUM-006",
+      "formula": "=ISOWEEKNUM(44200)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "2021-01-04 is ISO week 1 of 2021"
+    },
+    {
+      "id": "I20-ISOWEEKNUM-007",
+      "formula": "=ISOWEEKNUM(-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-ISOWEEKNUM-008",
+      "formula": "=ISOWEEKNUM(\"2024-01-01\")",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-ISOWEEKNUM-009",
+      "formula": "=ISOWEEKNUM(\"nope\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-ISOWEEKNUM-010",
+      "formula": "=ISOWEEKNUM(45292.9)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "fractional part truncated"
+    },
+    {
+      "id": "I20-ISOWEEKNUM-011",
+      "formula": "=ISOWEEKNUM(60)",
+      "inputs": {},
+      "expected": {
+        "number": 9
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Serial 60 is the fictitious 1900-02-29; engine computes the ISO week of the bug-compat calendar date. Excel's result for the fictitious day is unverified."
+    },
+    {
+      "id": "I20-NETWORKDAYS-001",
+      "formula": "=NETWORKDAYS(45288,45294)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-NETWORKDAYS-002",
+      "formula": "=NETWORKDAYS(45288,45294,45292)",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-NETWORKDAYS-003",
+      "formula": "=NETWORKDAYS(45294,45288)",
+      "inputs": {},
+      "expected": {
+        "number": -5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-NETWORKDAYS-004",
+      "formula": "=NETWORKDAYS(45292,45298)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Mon..Sun span"
+    },
+    {
+      "id": "I20-NETWORKDAYS-005",
+      "formula": "=NETWORKDAYS(45297,45297)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "single Saturday"
+    },
+    {
+      "id": "I20-NETWORKDAYS-006",
+      "formula": "=NETWORKDAYS(45296,45296)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-NETWORKDAYS-007",
+      "formula": "=NETWORKDAYS(45288,45294,45291)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "weekend holiday ignored"
+    },
+    {
+      "id": "I20-NETWORKDAYS-008",
+      "formula": "=NETWORKDAYS(45288,45294,A1:A3)",
+      "inputs": {
+        "A1": 45292,
+        "A2": "text",
+        "A3": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-NETWORKDAYS-009",
+      "formula": "=NETWORKDAYS(\"2023-12-28\",\"2024-01-03\")",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-NETWORKDAYS-010",
+      "formula": "=NETWORKDAYS(\"x\",45294)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-NETWORKDAYS-011",
+      "formula": "=NETWORKDAYS(-1,45294)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-NETWORKDAYS.INTL-001",
+      "formula": "=NETWORKDAYS.INTL(45288,45294)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-NETWORKDAYS.INTL-002",
+      "formula": "=NETWORKDAYS.INTL(45288,45294,7)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Fri+Sat weekend: Dec 29-30 off"
+    },
+    {
+      "id": "I20-NETWORKDAYS.INTL-003",
+      "formula": "=NETWORKDAYS.INTL(45288,45294,\"0000110\")",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-NETWORKDAYS.INTL-004",
+      "formula": "=NETWORKDAYS.INTL(45288,45294,11)",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Sunday-only weekend"
+    },
+    {
+      "id": "I20-NETWORKDAYS.INTL-005",
+      "formula": "=NETWORKDAYS.INTL(45288,45294,1,45292)",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-NETWORKDAYS.INTL-006",
+      "formula": "=NETWORKDAYS.INTL(45294,45288,1)",
+      "inputs": {},
+      "expected": {
+        "number": -5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-NETWORKDAYS.INTL-007",
+      "formula": "=NETWORKDAYS.INTL(45292,45298,12)",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Monday-only weekend"
+    },
+    {
+      "id": "I20-NETWORKDAYS.INTL-008",
+      "formula": "=NETWORKDAYS.INTL(45288,45294,99)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-NETWORKDAYS.INTL-009",
+      "formula": "=NETWORKDAYS.INTL(45288,45294,\"00000\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-NETWORKDAYS.INTL-010",
+      "formula": "=NETWORKDAYS.INTL(45288,45294,\"1111111\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "All-weekend mask: engine errors with #VALUE!; whether Excel errors or returns 0 is unconfirmed."
+    },
+    {
+      "id": "I20-NETWORKDAYS.INTL-011",
+      "formula": "=NETWORKDAYS.INTL(-1,45294)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-TIMEVALUE-001",
+      "formula": "=TIMEVALUE(\"12:00 PM\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-TIMEVALUE-002",
+      "formula": "=TIMEVALUE(\"14:30\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.604166666666667,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-TIMEVALUE-003",
+      "formula": "=TIMEVALUE(\"2:24 AM\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.1,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-TIMEVALUE-004",
+      "formula": "=TIMEVALUE(\"2026-01-01 18:00\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.75
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "date part discarded"
+    },
+    {
+      "id": "I20-TIMEVALUE-005",
+      "formula": "=TIMEVALUE(\"23:59:59\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.999988425925926,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-TIMEVALUE-006",
+      "formula": "=TIMEVALUE(\"noon-ish\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-TIMEVALUE-007",
+      "formula": "=TIMEVALUE(0.5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-TIMEVALUE-008",
+      "formula": "=TIMEVALUE(\"12:00 AM\")",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-TIMEVALUE-009",
+      "formula": "=TIMEVALUE(\"10:60\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-TIMEVALUE-010",
+      "formula": "=TIMEVALUE(\"13:00 PM\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-TIMEVALUE-011",
+      "formula": "=TIMEVALUE(\"25:00\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.0416666666666667,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Hours >= 24 wrap modulo 24 (Excel reads 25:00 as 1:00 next day). Chosen wrap-over-error is unconfirmed."
+    },
+    {
+      "id": "I20-WEEKDAY-001",
+      "formula": "=WEEKDAY(45292)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKDAY-002",
+      "formula": "=WEEKDAY(45292,2)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKDAY-003",
+      "formula": "=WEEKDAY(45292,3)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKDAY-004",
+      "formula": "=WEEKDAY(45298,1)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKDAY-005",
+      "formula": "=WEEKDAY(45292,11)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKDAY-006",
+      "formula": "=WEEKDAY(45292,14)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKDAY-007",
+      "formula": "=WEEKDAY(45292,17)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKDAY-008",
+      "formula": "=WEEKDAY(45292,99)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKDAY-009",
+      "formula": "=WEEKDAY(-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKDAY-010",
+      "formula": "=WEEKDAY(\"2024-01-01\")",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKDAY-011",
+      "formula": "=WEEKDAY(1)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "serial 1 is Sunday in Excel's internal calendar"
+    },
+    {
+      "id": "I20-WEEKDAY-012",
+      "formula": "=WEEKDAY(60,2)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Weekday of the fictitious 1900-02-29 (engine: Wednesday by linear serial counting). Excel result unverified."
+    },
+    {
+      "id": "I20-WEEKNUM-001",
+      "formula": "=WEEKNUM(45292,1)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKNUM-002",
+      "formula": "=WEEKNUM(45298,1)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKNUM-003",
+      "formula": "=WEEKNUM(45292,21)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKNUM-004",
+      "formula": "=WEEKNUM(44197,21)",
+      "inputs": {},
+      "expected": {
+        "number": 53
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKNUM-005",
+      "formula": "=WEEKNUM(45291,2)",
+      "inputs": {},
+      "expected": {
+        "number": 53
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKNUM-006",
+      "formula": "=WEEKNUM(45298)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "default type 1"
+    },
+    {
+      "id": "I20-WEEKNUM-007",
+      "formula": "=WEEKNUM(45293,12)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Tuesday week-start"
+    },
+    {
+      "id": "I20-WEEKNUM-008",
+      "formula": "=WEEKNUM(45292,3)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKNUM-009",
+      "formula": "=WEEKNUM(-5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKNUM-010",
+      "formula": "=WEEKNUM(\"2024-01-07\")",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WEEKNUM-011",
+      "formula": "=WEEKNUM(45658,21)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "2025-01-01 ISO week 1"
+    },
+    {
+      "id": "I20-WORKDAY-001",
+      "formula": "=WORKDAY(45288,5)",
+      "inputs": {},
+      "expected": {
+        "number": 45295
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Thu 2023-12-28 +5 workdays -> Thu 2024-01-04"
+    },
+    {
+      "id": "I20-WORKDAY-002",
+      "formula": "=WORKDAY(45294,-3)",
+      "inputs": {},
+      "expected": {
+        "number": 45289
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WORKDAY-003",
+      "formula": "=WORKDAY(45288,0)",
+      "inputs": {},
+      "expected": {
+        "number": 45288
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "days=0 returns the start date unchanged; Excel's behavior when the start is not a workday is unverified."
+    },
+    {
+      "id": "I20-WORKDAY-004",
+      "formula": "=WORKDAY(45288,5,45293)",
+      "inputs": {},
+      "expected": {
+        "number": 45296
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Jan 2 holiday pushes to Jan 5"
+    },
+    {
+      "id": "I20-WORKDAY-005",
+      "formula": "=WORKDAY(45288,5,45291)",
+      "inputs": {},
+      "expected": {
+        "number": 45295
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "weekend holiday irrelevant"
+    },
+    {
+      "id": "I20-WORKDAY-006",
+      "formula": "=WORKDAY(DATE(2008,10,1),151,A1:A3)-DATE(2009,5,5)",
+      "inputs": {
+        "A1": 39778,
+        "A2": 39786,
+        "A3": 39833
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Microsoft doc example -> 2009-05-05"
+    },
+    {
+      "id": "I20-WORKDAY-007",
+      "formula": "=WORKDAY(45288,5.9)",
+      "inputs": {},
+      "expected": {
+        "number": 45295
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "days truncates toward zero"
+    },
+    {
+      "id": "I20-WORKDAY-008",
+      "formula": "=WORKDAY(\"2023-12-27\",5)",
+      "inputs": {},
+      "expected": {
+        "number": 45294
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WORKDAY-009",
+      "formula": "=WORKDAY(\"x\",5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WORKDAY-010",
+      "formula": "=WORKDAY(-1,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WORKDAY-011",
+      "formula": "=WORKDAY(2958465,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "steps past end of calendar"
+    },
+    {
+      "id": "I20-WORKDAY.INTL-001",
+      "formula": "=WORKDAY.INTL(45288,5)",
+      "inputs": {},
+      "expected": {
+        "number": 45295
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WORKDAY.INTL-002",
+      "formula": "=WORKDAY.INTL(45288,5,7)",
+      "inputs": {},
+      "expected": {
+        "number": 45295
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Fri+Sat weekend"
+    },
+    {
+      "id": "I20-WORKDAY.INTL-003",
+      "formula": "=WORKDAY.INTL(45288,3,\"0000110\")",
+      "inputs": {},
+      "expected": {
+        "number": 45293
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WORKDAY.INTL-004",
+      "formula": "=WORKDAY.INTL(45288,5,11)",
+      "inputs": {},
+      "expected": {
+        "number": 45294
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Sunday-only weekend"
+    },
+    {
+      "id": "I20-WORKDAY.INTL-005",
+      "formula": "=WORKDAY.INTL(45294,-3,7)",
+      "inputs": {},
+      "expected": {
+        "number": 45291
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WORKDAY.INTL-006",
+      "formula": "=WORKDAY.INTL(45288,5,1,45293)",
+      "inputs": {},
+      "expected": {
+        "number": 45296
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WORKDAY.INTL-007",
+      "formula": "=WORKDAY.INTL(45288,5,99)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WORKDAY.INTL-008",
+      "formula": "=WORKDAY.INTL(45288,5,\"00000\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-WORKDAY.INTL-009",
+      "formula": "=WORKDAY.INTL(45288,5,\"1111111\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "All-weekend mask can never step onto a workday; engine reports #NUM!. Excel's exact error class is unconfirmed (hang prevention is the engine requirement)."
+    },
+    {
+      "id": "I20-WORKDAY.INTL-010",
+      "formula": "=WORKDAY.INTL(45297,0,7)",
+      "inputs": {},
+      "expected": {
+        "number": 45297
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "days=0 returns the start date unchanged even on a weekend day; Excel's behavior unverified."
+    },
+    {
+      "id": "I20-WORKDAY.INTL-011",
+      "formula": "=WORKDAY.INTL(-1,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-YEARFRAC-001",
+      "formula": "=YEARFRAC(44927,45292,0)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-YEARFRAC-002",
+      "formula": "=YEARFRAC(44927,45292)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "default basis 0"
+    },
+    {
+      "id": "I20-YEARFRAC-003",
+      "formula": "=YEARFRAC(44927,45292,2)",
+      "inputs": {},
+      "expected": {
+        "number": 1.01388888888889,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-YEARFRAC-004",
+      "formula": "=YEARFRAC(44927,45292,3)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-YEARFRAC-005",
+      "formula": "=YEARFRAC(44927,45292,4)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-YEARFRAC-006",
+      "formula": "=YEARFRAC(44927,45107,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.493150684931507,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "180/365 act/act same year"
+    },
+    {
+      "id": "I20-YEARFRAC-007",
+      "formula": "=YEARFRAC(45000,45000)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-YEARFRAC-008",
+      "formula": "=YEARFRAC(45000,44900,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.277777777777778,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "start>end exchanges the dates (documented)"
+    },
+    {
+      "id": "I20-YEARFRAC-009",
+      "formula": "=YEARFRAC(44927,45292,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-YEARFRAC-010",
+      "formula": "=YEARFRAC(\"2023-01-01\",\"2024-01-01\",0)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-YEARFRAC-011",
+      "formula": "=YEARFRAC(\"x\",45000)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I20-YEARFRAC-012",
+      "formula": "=YEARFRAC(44927,45658,1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.9972677595628416,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel general specification / docs.functions spec doc; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Multi-year act/act denominator: engine divides by 366 when a Feb 29 lies inside the interval (here 2024-02-29), giving 731/366. Excel's exact multi-year act/act rule is a documented ambiguity (no ISDA split-year sum).",
+      "notes": "2023-01-01 -> 2025-01-01 = 731 actual days"
+    }
+  ]
+}

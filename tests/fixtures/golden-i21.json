@@ -1,0 +1,4718 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-24",
+  "referenceDefaults": {},
+  "cases": [
+    {
+      "id": "I21-DAVERAGE-001",
+      "formula": "=DAVERAGE(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DAVERAGE-002",
+      "formula": "=DAVERAGE(A1:C5,\"Age\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 17.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DAVERAGE-003",
+      "formula": "=DAVERAGE(A1:C5,3,G1:G2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DAVERAGE-004",
+      "formula": "=DAVERAGE(A1:C5,\"Bad\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DAVERAGE-005",
+      "formula": "=DAVERAGE(A1:C5,3,E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DAVERAGE-006",
+      "formula": "=DAVERAGE(A1:C5,\"Tree\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DAVERAGE-007",
+      "formula": "=DAVERAGE(A1:C5,2,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DAVERAGE-008",
+      "formula": "=DAVERAGE(A1:C5,2,H1:H2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Height",
+        "H2": ">12"
+      },
+      "expected": {
+        "number": 15.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DAVERAGE-009",
+      "formula": "=DAVERAGE(A1:C5,2,H1:H3)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Tree",
+        "H2": "Pear",
+        "H3": "Cherry"
+      },
+      "expected": {
+        "number": 12.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DAVERAGE-010",
+      "formula": "=DAVERAGE(A1:C5,2,H1:H2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Nope",
+        "H2": "Apple"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNT-001",
+      "formula": "=DCOUNT(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNT-002",
+      "formula": "=DCOUNT(A1:C5,\"Age\",E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNT-003",
+      "formula": "=DCOUNT(A1:C5,\"Tree\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNT-004",
+      "formula": "=DCOUNT(A1:C5,1,G1:G2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNT-005",
+      "formula": "=DCOUNT(A1:C5,2,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNT-006",
+      "formula": "=DCOUNT(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": "x",
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNT-007",
+      "formula": "=DCOUNT(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": {
+          "blank": true
+        },
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNT-008",
+      "formula": "=DCOUNT(A1:C5,\"Bad\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNT-009",
+      "formula": "=DCOUNT(A1:C5,9,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNT-010",
+      "formula": "=DCOUNT(A1:C5,2,H1:H3)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Tree",
+        "H2": "Pear",
+        "H3": "Cherry"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNTA-001",
+      "formula": "=DCOUNTA(A1:C5,\"Tree\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNTA-002",
+      "formula": "=DCOUNTA(A1:C5,\"Height\",E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNTA-003",
+      "formula": "=DCOUNTA(A1:C5,2,G1:G2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNTA-004",
+      "formula": "=DCOUNTA(A1:C5,\"Bad\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNTA-005",
+      "formula": "=DCOUNTA(A1:C5,1,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNTA-006",
+      "formula": "=DCOUNTA(A1:C5,1,H1:H2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Height",
+        "H2": "<11"
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNTA-007",
+      "formula": "=DCOUNTA(A1:C5,1,H1:H2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": {
+          "blank": true
+        },
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Height",
+        "H2": "<11"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNTA-008",
+      "formula": "=DCOUNTA(A1:C5,2,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": {
+          "error": "#NUM!"
+        },
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNTA-009",
+      "formula": "=DCOUNTA(A1:C5,0,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DCOUNTA-010",
+      "formula": "=DCOUNTA(A1:C5,1,H1:H2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Nope",
+        "H2": "Apple"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DGET-001",
+      "formula": "=DGET(A1:C5,\"Age\",E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DGET-002",
+      "formula": "=DGET(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DGET-003",
+      "formula": "=DGET(A1:C5,\"Height\",G1:G2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DGET-004",
+      "formula": "=DGET(A1:C5,\"Tree\",E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "text": "Apple"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DGET-005",
+      "formula": "=DGET(A1:C5,3,E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DGET-006",
+      "formula": "=DGET(A1:C5,\"Bad\",E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DGET-007",
+      "formula": "=DGET(A1:C5,4,E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DGET-008",
+      "formula": "=DGET(A1:C5,\"Age\",E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": {
+          "error": "#DIV/0!"
+        },
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DGET-009",
+      "formula": "=DGET(A1:C5,2,H1:H2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Nope",
+        "H2": "Apple"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DGET-010",
+      "formula": "=DGET(A1:C5,\"Height\",H1:H2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Tree",
+        "H2": "Pear"
+      },
+      "expected": {
+        "number": 12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMAX-001",
+      "formula": "=DMAX(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 18
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMAX-002",
+      "formula": "=DMAX(A1:C5,\"Age\",E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMAX-003",
+      "formula": "=DMAX(A1:C5,2,G1:G2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMAX-004",
+      "formula": "=DMAX(A1:C5,\"Tree\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMAX-005",
+      "formula": "=DMAX(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": -5,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": -2,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": -2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMAX-006",
+      "formula": "=DMAX(A1:C5,2,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 18
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMAX-007",
+      "formula": "=DMAX(A1:C5,2,H1:H2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Height",
+        "H2": ">12"
+      },
+      "expected": {
+        "number": 18
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMAX-008",
+      "formula": "=DMAX(A1:C5,\"Bad\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMAX-009",
+      "formula": "=DMAX(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": {
+          "error": "#N/A"
+        },
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMAX-010",
+      "formula": "=DMAX(A1:C5,0,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMIN-001",
+      "formula": "=DMIN(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMIN-002",
+      "formula": "=DMIN(A1:C5,\"Age\",E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMIN-003",
+      "formula": "=DMIN(A1:C5,2,G1:G2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMIN-004",
+      "formula": "=DMIN(A1:C5,\"Bad\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMIN-005",
+      "formula": "=DMIN(A1:C5,\"Tree\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMIN-006",
+      "formula": "=DMIN(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": -5,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": -2,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": -5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMIN-007",
+      "formula": "=DMIN(A1:C5,2,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMIN-008",
+      "formula": "=DMIN(A1:C5,2,H1:H3)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Tree",
+        "H2": "Pear",
+        "H3": "Cherry"
+      },
+      "expected": {
+        "number": 12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMIN-009",
+      "formula": "=DMIN(A1:C5,4,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DMIN-010",
+      "formula": "=DMIN(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": {
+          "error": "#REF!"
+        },
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DPRODUCT-001",
+      "formula": "=DPRODUCT(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 180
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DPRODUCT-002",
+      "formula": "=DPRODUCT(A1:C5,\"Age\",E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DPRODUCT-003",
+      "formula": "=DPRODUCT(A1:C5,2,G1:G2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DPRODUCT-004",
+      "formula": "=DPRODUCT(A1:C5,\"Bad\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DPRODUCT-005",
+      "formula": "=DPRODUCT(A1:C5,\"Tree\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DPRODUCT-006",
+      "formula": "=DPRODUCT(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": -2,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": -36
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DPRODUCT-007",
+      "formula": "=DPRODUCT(A1:C5,2,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 180
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DPRODUCT-008",
+      "formula": "=DPRODUCT(A1:C5,2,H1:H3)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Tree",
+        "H2": "Pear",
+        "H3": "Cherry"
+      },
+      "expected": {
+        "number": 156
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DPRODUCT-009",
+      "formula": "=DPRODUCT(A1:C5,9,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DPRODUCT-010",
+      "formula": "=DPRODUCT(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": {
+          "error": "#NUM!"
+        },
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEV-001",
+      "formula": "=DSTDEV(A1:C5,\"Age\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 3.53553390593274,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEV-002",
+      "formula": "=DSTDEV(A1:C5,\"Age\",E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEV-003",
+      "formula": "=DSTDEV(A1:C5,2,G1:G2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEV-004",
+      "formula": "=DSTDEV(A1:C5,\"Bad\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEV-005",
+      "formula": "=DSTDEV(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 5.65685424949238,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEV-006",
+      "formula": "=DSTDEV(A1:C5,3,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 3.53553390593274,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEV-007",
+      "formula": "=DSTDEV(A1:C5,2,H1:H3)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Tree",
+        "H2": "Pear",
+        "H3": "Cherry"
+      },
+      "expected": {
+        "number": 0.707106781186548,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEV-008",
+      "formula": "=DSTDEV(A1:C5,\"Tree\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEV-009",
+      "formula": "=DSTDEV(A1:C5,0,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEV-010",
+      "formula": "=DSTDEV(A1:C5,\"Age\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": {
+          "error": "#VALUE!"
+        },
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEVP-001",
+      "formula": "=DSTDEVP(A1:C5,\"Age\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 2.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEVP-002",
+      "formula": "=DSTDEVP(A1:C5,\"Age\",E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEVP-003",
+      "formula": "=DSTDEVP(A1:C5,2,G1:G2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEVP-004",
+      "formula": "=DSTDEVP(A1:C5,\"Bad\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEVP-005",
+      "formula": "=DSTDEVP(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEVP-006",
+      "formula": "=DSTDEVP(A1:C5,3,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 2.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEVP-007",
+      "formula": "=DSTDEVP(A1:C5,2,H1:H3)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Tree",
+        "H2": "Pear",
+        "H3": "Cherry"
+      },
+      "expected": {
+        "number": 0.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEVP-008",
+      "formula": "=DSTDEVP(A1:C5,\"Tree\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEVP-009",
+      "formula": "=DSTDEVP(A1:C5,4,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSTDEVP-010",
+      "formula": "=DSTDEVP(A1:C5,\"Age\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": {
+          "error": "#N/A"
+        },
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSUM-001",
+      "formula": "=DSUM(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 28
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSUM-002",
+      "formula": "=DSUM(A1:C5,\"Age\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 35
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSUM-003",
+      "formula": "=DSUM(A1:C5,2,G1:G2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSUM-004",
+      "formula": "=DSUM(A1:C5,\"Tree\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSUM-005",
+      "formula": "=DSUM(A1:C5,3,E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSUM-006",
+      "formula": "=DSUM(A1:C5,2,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 28
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSUM-007",
+      "formula": "=DSUM(A1:C5,\"height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 28
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSUM-008",
+      "formula": "=DSUM(A1:C5,2,H1:H2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Height",
+        "H2": ">12"
+      },
+      "expected": {
+        "number": 31
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSUM-009",
+      "formula": "=DSUM(A1:C5,2,H1:H3)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Tree",
+        "H2": "Pear",
+        "H3": "Cherry"
+      },
+      "expected": {
+        "number": 25
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSUM-010",
+      "formula": "=DSUM(A1:C5,\"Bad\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSUM-011",
+      "formula": "=DSUM(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": {
+          "error": "#DIV/0!"
+        },
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DSUM-012",
+      "formula": "=DSUM(A1:C5,2,H1:H2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Nope",
+        "H2": "Apple"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVAR-001",
+      "formula": "=DVAR(A1:C5,\"Age\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 12.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVAR-002",
+      "formula": "=DVAR(A1:C5,\"Age\",E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVAR-003",
+      "formula": "=DVAR(A1:C5,2,G1:G2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVAR-004",
+      "formula": "=DVAR(A1:C5,\"Bad\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVAR-005",
+      "formula": "=DVAR(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 32
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVAR-006",
+      "formula": "=DVAR(A1:C5,3,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 12.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVAR-007",
+      "formula": "=DVAR(A1:C5,2,H1:H3)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Tree",
+        "H2": "Pear",
+        "H3": "Cherry"
+      },
+      "expected": {
+        "number": 0.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVAR-008",
+      "formula": "=DVAR(A1:C5,\"Tree\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVAR-009",
+      "formula": "=DVAR(A1:C5,0,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVAR-010",
+      "formula": "=DVAR(A1:C5,\"Age\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": {
+          "error": "#DIV/0!"
+        },
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVARP-001",
+      "formula": "=DVARP(A1:C5,\"Age\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 6.25
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVARP-002",
+      "formula": "=DVARP(A1:C5,\"Age\",E1:F2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVARP-003",
+      "formula": "=DVARP(A1:C5,2,G1:G2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVARP-004",
+      "formula": "=DVARP(A1:C5,\"Bad\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVARP-005",
+      "formula": "=DVARP(A1:C5,\"Height\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 16
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVARP-006",
+      "formula": "=DVARP(A1:C5,3,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "number": 6.25
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVARP-007",
+      "formula": "=DVARP(A1:C5,2,H1:H3)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig",
+        "H1": "Tree",
+        "H2": "Pear",
+        "H3": "Cherry"
+      },
+      "expected": {
+        "number": 0.25
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVARP-008",
+      "formula": "=DVARP(A1:C5,\"Tree\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVARP-009",
+      "formula": "=DVARP(A1:C5,9,E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": 15,
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I21-DVARP-010",
+      "formula": "=DVARP(A1:C5,\"Age\",E1:E2)",
+      "inputs": {
+        "A1": "Tree",
+        "B1": "Height",
+        "C1": "Age",
+        "A2": "Apple",
+        "B2": 18,
+        "C2": 20,
+        "A3": "Pear",
+        "B3": 12,
+        "C3": 12,
+        "A4": "Cherry",
+        "B4": 13,
+        "C4": 14,
+        "A5": "Apple",
+        "B5": 10,
+        "C5": {
+          "error": "#REF!"
+        },
+        "E1": "Tree",
+        "E2": "Apple",
+        "F1": "Height",
+        "F2": 18,
+        "G1": "Tree",
+        "G2": "Fig"
+      },
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    }
+  ]
+}

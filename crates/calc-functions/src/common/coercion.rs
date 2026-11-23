@@ -119,6 +119,43 @@ pub fn eval_number(
     Ok(ctx.eval(arg)?.to_number())
 }
 
+/// Evaluate `arg` and apply `f` to the text coercion of its scalar
+/// result, mapping arrays/ranges element-wise into a same-shape array
+/// (the Microsoft 365 "maps element-wise and spills" contract shared by
+/// `REGEX*`/`TEXTBEFORE`/`TEXTAFTER`). Per-element coercion failures and
+/// `f` failures land in that element's cell as a `Value::Error`.
+pub fn map_text<F>(
+    ctx: &mut EvalContext<'_>,
+    arg: &Expr,
+    f: F,
+) -> Result<Result<Value, CalcError>, EvalError>
+where
+    F: Fn(&str) -> Result<Value, CalcError>,
+{
+    fn apply<F2>(v: &Value, f: &F2) -> Value
+    where
+        F2: Fn(&str) -> Result<Value, CalcError>,
+    {
+        match v.to_text() {
+            Ok(s) => match f(&s) {
+                Ok(r) => r,
+                Err(e) => Value::Error(e),
+            },
+            Err(e) => Value::Error(e),
+        }
+    }
+    Ok(match ctx.eval_arg(arg)?.into_value() {
+        Value::Array(a) => {
+            let cells: Vec<Value> = a.cells().iter().map(|c| apply(c, &f)).collect();
+            ArrayValue::new(a.rows(), a.cols(), cells).map(Value::Array)
+        }
+        v => match v.to_text() {
+            Ok(s) => f(&s),
+            Err(e) => Err(e),
+        },
+    })
+}
+
 /// Evaluate `arg` as an array for the dynamic-array functions: ranges
 /// and `Value::Array` results pass through; any other scalar (including
 /// a cell ref) wraps into a 1x1 array. Error inputs propagate.

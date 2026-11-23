@@ -1,0 +1,2969 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-24",
+  "referenceDefaults": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "locale": "en-US",
+    "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+  },
+  "cases": [
+    {
+      "id": "I12-ERF-001",
+      "formula": "=ERF(0.745)",
+      "inputs": {},
+      "expected": {
+        "number": 0.7079289200957379,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERF-002",
+      "formula": "=ERF(1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.8427007929497149,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERF-003",
+      "formula": "=ERF(0,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.8427007929497149,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERF-004",
+      "formula": "=ERF(1,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.15262147206923726,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERF-005",
+      "formula": "=ERF(-1)",
+      "inputs": {},
+      "expected": {
+        "number": -0.8427007929497149,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERF-006",
+      "formula": "=ERF(0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERF-007",
+      "formula": "=ERF(2,1)",
+      "inputs": {},
+      "expected": {
+        "number": -0.15262147206923726,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERF-008",
+      "formula": "=ERF(-1,1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.6854015858994298,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERF-009",
+      "formula": "=ERF(3,3)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERF-010",
+      "formula": "=ERF(\"1\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.8427007929497149,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERF-011",
+      "formula": "=ERF(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERF-012",
+      "formula": "=ERF(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFP-001",
+      "formula": "=ERF.PRECISE(0.745)",
+      "inputs": {},
+      "expected": {
+        "number": 0.7079289200957379,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFP-002",
+      "formula": "=ERF.PRECISE(1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.8427007929497149,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFP-003",
+      "formula": "=ERF.PRECISE(0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFP-004",
+      "formula": "=ERF.PRECISE(-0.5)",
+      "inputs": {},
+      "expected": {
+        "number": -0.5204998778130465,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFP-005",
+      "formula": "=ERF.PRECISE(2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.9953222650189527,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFP-006",
+      "formula": "=ERF.PRECISE(10)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFP-007",
+      "formula": "=ERF.PRECISE(-10)",
+      "inputs": {},
+      "expected": {
+        "number": -1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFP-008",
+      "formula": "=ERF.PRECISE(\"1\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.8427007929497149,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFP-009",
+      "formula": "=ERF.PRECISE(TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.8427007929497149,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "SPEC-OPEN: boolean coercion of inumber/x arg follows standard rules; confirm"
+    },
+    {
+      "id": "I12-ERFP-010",
+      "formula": "=ERF.PRECISE(A1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFP-011",
+      "formula": "=ERF.PRECISE(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFC-001",
+      "formula": "=ERFC(1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.15729920705028516,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFC-002",
+      "formula": "=ERFC(0)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFC-003",
+      "formula": "=ERFC(0.5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.4795001221869535,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFC-004",
+      "formula": "=ERFC(-1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.8427007929497148,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFC-005",
+      "formula": "=ERFC(2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.004677734981047268,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFC-006",
+      "formula": "=ERFC(-10)",
+      "inputs": {},
+      "expected": {
+        "number": 2.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFC-007",
+      "formula": "=ERFC(\"1\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.15729920705028516,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFC-008",
+      "formula": "=ERFC(A1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFC-009",
+      "formula": "=ERFC(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFC-010",
+      "formula": "=ERFC(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFCP-001",
+      "formula": "=ERFC.PRECISE(1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.15729920705028516,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFCP-002",
+      "formula": "=ERFC.PRECISE(0)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFCP-003",
+      "formula": "=ERFC.PRECISE(2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.004677734981047268,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFCP-004",
+      "formula": "=ERFC.PRECISE(-1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.8427007929497148,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFCP-005",
+      "formula": "=ERFC.PRECISE(0.5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.4795001221869535,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFCP-006",
+      "formula": "=ERFC.PRECISE(\"0.5\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.4795001221869535,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFCP-007",
+      "formula": "=ERFC.PRECISE(A1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFCP-008",
+      "formula": "=ERFC.PRECISE(-10)",
+      "inputs": {},
+      "expected": {
+        "number": 2.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFCP-009",
+      "formula": "=ERFC.PRECISE(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-ERFCP-010",
+      "formula": "=ERFC.PRECISE(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-GESTEP-001",
+      "formula": "=GESTEP(5,4)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-GESTEP-002",
+      "formula": "=GESTEP(5,5)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-GESTEP-003",
+      "formula": "=GESTEP(-4,-5)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-GESTEP-004",
+      "formula": "=GESTEP(-1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-GESTEP-005",
+      "formula": "=GESTEP(3,4)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-GESTEP-006",
+      "formula": "=GESTEP(0)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-GESTEP-007",
+      "formula": "=GESTEP(\"5\",\"4\")",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-GESTEP-008",
+      "formula": "=GESTEP(0.5,0.25)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-GESTEP-009",
+      "formula": "=GESTEP(0.25,0.5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-GESTEP-010",
+      "formula": "=GESTEP(\"x\",1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-GESTEP-011",
+      "formula": "=GESTEP(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2BIN-001",
+      "formula": "=HEX2BIN(\"F\",8)",
+      "inputs": {},
+      "expected": {
+        "text": "00001111"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2BIN-002",
+      "formula": "=HEX2BIN(\"B7\")",
+      "inputs": {},
+      "expected": {
+        "text": "10110111"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2BIN-003",
+      "formula": "=HEX2BIN(\"FFFFFFFFFF\")",
+      "inputs": {},
+      "expected": {
+        "text": "1111111111"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2BIN-004",
+      "formula": "=HEX2BIN(\"1FF\")",
+      "inputs": {},
+      "expected": {
+        "text": "111111111"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2BIN-005",
+      "formula": "=HEX2BIN(\"b7\")",
+      "inputs": {},
+      "expected": {
+        "text": "10110111"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2BIN-006",
+      "formula": "=HEX2BIN(9)",
+      "inputs": {},
+      "expected": {
+        "text": "1001"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "SPEC-OPEN (HEX2BIN.md/HEX2DEC.md): numeric arg reinterpreted as hex digits unconfirmed"
+    },
+    {
+      "id": "I12-HEX2BIN-007",
+      "formula": "=HEX2BIN(\"FFFFFFFFE0\")",
+      "inputs": {},
+      "expected": {
+        "text": "1111100000"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2BIN-008",
+      "formula": "=HEX2BIN(\"3DA408B9\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2BIN-009",
+      "formula": "=HEX2BIN(\"1ZZ\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2BIN-010",
+      "formula": "=HEX2BIN(\"0000000200\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2BIN-011",
+      "formula": "=HEX2BIN(\"1FF\",2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2DEC-001",
+      "formula": "=HEX2DEC(\"A5\")",
+      "inputs": {},
+      "expected": {
+        "number": 165.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2DEC-002",
+      "formula": "=HEX2DEC(\"FFFFFFFF5B\")",
+      "inputs": {},
+      "expected": {
+        "number": -165.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2DEC-003",
+      "formula": "=HEX2DEC(\"3DA408B9\")",
+      "inputs": {},
+      "expected": {
+        "number": 1034160313.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2DEC-004",
+      "formula": "=HEX2DEC(\"FFFFFFFFFF\")",
+      "inputs": {},
+      "expected": {
+        "number": -1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2DEC-005",
+      "formula": "=HEX2DEC(\"8000000000\")",
+      "inputs": {},
+      "expected": {
+        "number": -549755813888.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2DEC-006",
+      "formula": "=HEX2DEC(\"7FFFFFFFFF\")",
+      "inputs": {},
+      "expected": {
+        "number": 549755813887.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2DEC-007",
+      "formula": "=HEX2DEC(\"ff\")",
+      "inputs": {},
+      "expected": {
+        "number": 255.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2DEC-008",
+      "formula": "=HEX2DEC(10)",
+      "inputs": {},
+      "expected": {
+        "number": 16.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "SPEC-OPEN (HEX2DEC.md): numeric arg reinterpreted as hex digits unconfirmed"
+    },
+    {
+      "id": "I12-HEX2DEC-009",
+      "formula": "=HEX2DEC(A1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2DEC-010",
+      "formula": "=HEX2DEC(\"G1\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2DEC-011",
+      "formula": "=HEX2DEC(\"12345678901\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2OCT-001",
+      "formula": "=HEX2OCT(\"F\",3)",
+      "inputs": {},
+      "expected": {
+        "text": "017"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2OCT-002",
+      "formula": "=HEX2OCT(\"3B4E\")",
+      "inputs": {},
+      "expected": {
+        "text": "35516"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2OCT-003",
+      "formula": "=HEX2OCT(\"FFFFFFFF00\")",
+      "inputs": {},
+      "expected": {
+        "text": "7777777400"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2OCT-004",
+      "formula": "=HEX2OCT(\"FFE0000000\")",
+      "inputs": {},
+      "expected": {
+        "text": "4000000000"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2OCT-005",
+      "formula": "=HEX2OCT(\"3b4e\")",
+      "inputs": {},
+      "expected": {
+        "text": "35516"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2OCT-006",
+      "formula": "=HEX2OCT(9)",
+      "inputs": {},
+      "expected": {
+        "text": "11"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "SPEC-OPEN (HEX2OCT.md/HEX2DEC.md): numeric arg reinterpreted as hex digits unconfirmed"
+    },
+    {
+      "id": "I12-HEX2OCT-007",
+      "formula": "=HEX2OCT(\"1FFFFFFF\")",
+      "inputs": {},
+      "expected": {
+        "text": "3777777777"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2OCT-008",
+      "formula": "=HEX2OCT(\"1ZZ\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2OCT-009",
+      "formula": "=HEX2OCT(\"20000000\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2OCT-010",
+      "formula": "=HEX2OCT(\"FFDFFFFFFF\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-HEX2OCT-011",
+      "formula": "=HEX2OCT(\"1\",\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMABS-001",
+      "formula": "=IMABS(\"5+12i\")",
+      "inputs": {},
+      "expected": {
+        "number": 13.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMABS-002",
+      "formula": "=IMABS(\"3-4j\")",
+      "inputs": {},
+      "expected": {
+        "number": 5.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMABS-003",
+      "formula": "=IMABS(-6)",
+      "inputs": {},
+      "expected": {
+        "number": 6.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMABS-004",
+      "formula": "=IMABS(\"4i\")",
+      "inputs": {},
+      "expected": {
+        "number": 4.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMABS-005",
+      "formula": "=IMABS(\"i\")",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMABS-006",
+      "formula": "=IMABS(\"0\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMABS-007",
+      "formula": "=IMABS(\"0.3+0.4i\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMABS-008",
+      "formula": "=IMABS(\"-6\")",
+      "inputs": {},
+      "expected": {
+        "number": 6.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMABS-009",
+      "formula": "=IMABS(0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMABS-010",
+      "formula": "=IMABS(\"2+ii\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMABS-011",
+      "formula": "=IMABS(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMAGINARY-001",
+      "formula": "=IMAGINARY(\"3+4i\")",
+      "inputs": {},
+      "expected": {
+        "number": 4.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMAGINARY-002",
+      "formula": "=IMAGINARY(\"5-2j\")",
+      "inputs": {},
+      "expected": {
+        "number": -2.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMAGINARY-003",
+      "formula": "=IMAGINARY(\"7\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMAGINARY-004",
+      "formula": "=IMAGINARY(\"-i\")",
+      "inputs": {},
+      "expected": {
+        "number": -1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMAGINARY-005",
+      "formula": "=IMAGINARY(5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMAGINARY-006",
+      "formula": "=IMAGINARY(\"4j\")",
+      "inputs": {},
+      "expected": {
+        "number": 4.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMAGINARY-007",
+      "formula": "=IMAGINARY(\"-2-3.5i\")",
+      "inputs": {},
+      "expected": {
+        "number": -3.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMAGINARY-008",
+      "formula": "=IMAGINARY(\"1e2+2.5e-1i\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.25,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMAGINARY-009",
+      "formula": "=IMAGINARY(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMAGINARY-010",
+      "formula": "=IMAGINARY(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMAGINARY-011",
+      "formula": "=IMAGINARY(\"3+4I\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "SPEC-OPEN (IMAGINARY.md): uppercase I/J suffix acceptance unconfirmed"
+    },
+    {
+      "id": "I12-IMARGUMENT-001",
+      "formula": "=IMARGUMENT(\"0+1i\")",
+      "inputs": {},
+      "expected": {
+        "number": 1.5707963267948966,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMARGUMENT-002",
+      "formula": "=IMARGUMENT(\"3+4i\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.9272952180016122,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMARGUMENT-003",
+      "formula": "=IMARGUMENT(\"-1\")",
+      "inputs": {},
+      "expected": {
+        "number": 3.141592653589793,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMARGUMENT-004",
+      "formula": "=IMARGUMENT(\"0-1i\")",
+      "inputs": {},
+      "expected": {
+        "number": -1.5707963267948966,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMARGUMENT-005",
+      "formula": "=IMARGUMENT(\"5\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMARGUMENT-006",
+      "formula": "=IMARGUMENT(-4)",
+      "inputs": {},
+      "expected": {
+        "number": 3.141592653589793,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMARGUMENT-007",
+      "formula": "=IMARGUMENT(\"1+i\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.7853981633974483,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMARGUMENT-008",
+      "formula": "=IMARGUMENT(\"0\")",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMARGUMENT-009",
+      "formula": "=IMARGUMENT(\"oops\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMARGUMENT-010",
+      "formula": "=IMARGUMENT(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCONJUGATE-001",
+      "formula": "=IMCONJUGATE(\"3+4i\")",
+      "inputs": {},
+      "expected": {
+        "text": "3-4i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCONJUGATE-002",
+      "formula": "=IMCONJUGATE(\"3-4i\")",
+      "inputs": {},
+      "expected": {
+        "text": "3+4i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCONJUGATE-003",
+      "formula": "=IMCONJUGATE(\"5\")",
+      "inputs": {},
+      "expected": {
+        "text": "5"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCONJUGATE-004",
+      "formula": "=IMCONJUGATE(\"2j\")",
+      "inputs": {},
+      "expected": {
+        "text": "-2j"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCONJUGATE-005",
+      "formula": "=IMCONJUGATE(\"3+4j\")",
+      "inputs": {},
+      "expected": {
+        "text": "3-4j"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCONJUGATE-006",
+      "formula": "=IMCONJUGATE(\"i\")",
+      "inputs": {},
+      "expected": {
+        "text": "-i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCONJUGATE-007",
+      "formula": "=IMCONJUGATE(-2.5)",
+      "inputs": {},
+      "expected": {
+        "text": "-2.5"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCONJUGATE-008",
+      "formula": "=IMCONJUGATE(\"1.5+2.5i\")",
+      "inputs": {},
+      "expected": {
+        "text": "1.5-2.5i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCONJUGATE-009",
+      "formula": "=IMCONJUGATE(\"xx\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCONJUGATE-010",
+      "formula": "=IMCONJUGATE(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOS-001",
+      "formula": "=IMCOS(\"1+i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.8337300251311491-0.9888977057628651i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOS-002",
+      "formula": "=IMCOS(\"0\")",
+      "inputs": {},
+      "expected": {
+        "text": "1"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOS-003",
+      "formula": "=IMCOS(3.14159265358979)",
+      "inputs": {},
+      "expected": {
+        "text": "-1"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOS-004",
+      "formula": "=IMCOS(\"i\")",
+      "inputs": {},
+      "expected": {
+        "text": "1.5430806348152437"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOS-005",
+      "formula": "=IMCOS(\"1\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.5403023058681398"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOS-006",
+      "formula": "=IMCOS(\"2i\")",
+      "inputs": {},
+      "expected": {
+        "text": "3.7621956910836314"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOS-007",
+      "formula": "=IMCOS(\"1+1j\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.8337300251311491-0.9888977057628651j"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOS-008",
+      "formula": "=IMCOS(\"bad\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOS-009",
+      "formula": "=IMCOS(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOS-010",
+      "formula": "=IMCOS(\"1+1e300i\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOSH-001",
+      "formula": "=IMCOSH(\"1+i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.8337300251311491+0.9888977057628651i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOSH-002",
+      "formula": "=IMCOSH(\"0\")",
+      "inputs": {},
+      "expected": {
+        "text": "1"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOSH-003",
+      "formula": "=IMCOSH(\"1\")",
+      "inputs": {},
+      "expected": {
+        "text": "1.5430806348152437"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOSH-004",
+      "formula": "=IMCOSH(\"i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.5403023058681398"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOSH-005",
+      "formula": "=IMCOSH(\"2i\")",
+      "inputs": {},
+      "expected": {
+        "text": "-0.4161468365471424"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOSH-006",
+      "formula": "=IMCOSH(\"-1\")",
+      "inputs": {},
+      "expected": {
+        "text": "1.5430806348152437"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOSH-007",
+      "formula": "=IMCOSH(\"bad\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOSH-008",
+      "formula": "=IMCOSH(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOSH-009",
+      "formula": "=IMCOSH(\"1e300\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOSH-010",
+      "formula": "=IMCOSH(\"1-1i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.8337300251311491-0.9888977057628651i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOT-001",
+      "formula": "=IMCOT(\"1+i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.21762156185440273-0.8680141428959249i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOT-002",
+      "formula": "=IMCOT(0.785398163397448)",
+      "inputs": {},
+      "expected": {
+        "text": "1.0000000000000009"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOT-003",
+      "formula": "=IMCOT(\"i\")",
+      "inputs": {},
+      "expected": {
+        "text": "-1.3130352854993312i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOT-004",
+      "formula": "=IMCOT(\"2i\")",
+      "inputs": {},
+      "expected": {
+        "text": "-1.037314720727548i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOT-005",
+      "formula": "=IMCOT(\"bad\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOT-006",
+      "formula": "=IMCOT(\"0\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "SPEC-OPEN (IMCOT.md): z=0 -> #NUM! vs #DIV/0! unconfirmed"
+    },
+    {
+      "id": "I12-IMCOT-007",
+      "formula": "=IMCOT(0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "SPEC-OPEN (IMCOT.md): z=0 -> #NUM! vs #DIV/0! unconfirmed"
+    },
+    {
+      "id": "I12-IMCOT-008",
+      "formula": "=IMCOT(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOT-009",
+      "formula": "=IMCOT(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCOT-010",
+      "formula": "=IMCOT(\"3+4I\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "SPEC-OPEN (IMAGINARY.md): uppercase I/J suffix acceptance unconfirmed"
+    },
+    {
+      "id": "I12-IMCSC-001",
+      "formula": "=IMCSC(\"1+i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.6215180171704284-0.30393100162842646i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCSC-002",
+      "formula": "=IMCSC(1.5707963267949)",
+      "inputs": {},
+      "expected": {
+        "text": "1"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCSC-003",
+      "formula": "=IMCSC(\"i\")",
+      "inputs": {},
+      "expected": {
+        "text": "-0.8509181282393216i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCSC-004",
+      "formula": "=IMCSC(\"2i\")",
+      "inputs": {},
+      "expected": {
+        "text": "-0.2757205647717832i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCSC-005",
+      "formula": "=IMCSC(\"-1\")",
+      "inputs": {},
+      "expected": {
+        "text": "-1.1883951057781212"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCSC-006",
+      "formula": "=IMCSC(\"bad\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCSC-007",
+      "formula": "=IMCSC(\"0\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "SPEC-OPEN (IMCSC.md): sin(z)=0 -> #NUM! vs #DIV/0! unconfirmed"
+    },
+    {
+      "id": "I12-IMCSC-008",
+      "formula": "=IMCSC(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCSC-009",
+      "formula": "=IMCSC(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCSC-010",
+      "formula": "=IMCSC(\"3+4I\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "SPEC-OPEN (IMAGINARY.md): uppercase I/J suffix acceptance unconfirmed"
+    },
+    {
+      "id": "I12-IMCSCH-001",
+      "formula": "=IMCSCH(\"1+i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.30393100162842646-0.6215180171704284i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCSCH-002",
+      "formula": "=IMCSCH(\"1\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.8509181282393216"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCSCH-003",
+      "formula": "=IMCSCH(\"-1\")",
+      "inputs": {},
+      "expected": {
+        "text": "-0.8509181282393216"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCSCH-004",
+      "formula": "=IMCSCH(\"i\")",
+      "inputs": {},
+      "expected": {
+        "text": "-1.1883951057781212i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCSCH-005",
+      "formula": "=IMCSCH(\"2i\")",
+      "inputs": {},
+      "expected": {
+        "text": "-1.0997501702946164i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCSCH-006",
+      "formula": "=IMCSCH(\"bad\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCSCH-007",
+      "formula": "=IMCSCH(\"0\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "SPEC-OPEN (IMCSCH.md): sinh(z)=0 -> #NUM! vs #DIV/0! unconfirmed"
+    },
+    {
+      "id": "I12-IMCSCH-008",
+      "formula": "=IMCSCH(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCSCH-009",
+      "formula": "=IMCSCH(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMCSCH-010",
+      "formula": "=IMCSCH(\"3+4I\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "SPEC-OPEN (IMAGINARY.md): uppercase I/J suffix acceptance unconfirmed"
+    },
+    {
+      "id": "I12-IMDIV-001",
+      "formula": "=IMDIV(\"1+2i\",\"3+4i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.44+0.08i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMDIV-002",
+      "formula": "=IMDIV(\"-238+240i\",\"10+24i\")",
+      "inputs": {},
+      "expected": {
+        "text": "4.999999999999999+12i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMDIV-003",
+      "formula": "=IMDIV(\"6\",\"3\")",
+      "inputs": {},
+      "expected": {
+        "text": "2"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMDIV-004",
+      "formula": "=IMDIV(7,2)",
+      "inputs": {},
+      "expected": {
+        "text": "3.5"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMDIV-005",
+      "formula": "=IMDIV(\"1+i\",\"1+1j\")",
+      "inputs": {},
+      "expected": {
+        "text": "1"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMDIV-006",
+      "formula": "=IMDIV(\"1+2j\",\"1+j\")",
+      "inputs": {},
+      "expected": {
+        "text": "1.5+0.5j"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMDIV-007",
+      "formula": "=IMDIV(\"i\",\"i\")",
+      "inputs": {},
+      "expected": {
+        "text": "1"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMDIV-008",
+      "formula": "=IMDIV(\"1\",\"0\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "SPEC-OPEN (IMDIV.md): divisor 0 -> #NUM! (MS docs) vs #DIV/0! unconfirmed"
+    },
+    {
+      "id": "I12-IMDIV-009",
+      "formula": "=IMDIV(\"x\",\"1\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMDIV-010",
+      "formula": "=IMDIV(TRUE,\"1\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I12-IMDIV-011",
+      "formula": "=IMDIV(\"1\",A1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/MS-docs behavior and spec-doc worked examples (docs/functions/<NAME>.md); to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "SPEC-OPEN (IMAGINARY.md): blank inumber -> #NUM! vs 0+0i unconfirmed"
+    }
+  ]
+}
