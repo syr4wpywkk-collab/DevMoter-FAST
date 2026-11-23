@@ -297,14 +297,31 @@ impl<'a> Parser<'a> {
         r
     }
 
-    // postfix := primary '%'*
+    // postfix := primary ('%' | '(' args ')')*
+    //
+    // A `(` after any expression is a lambda invocation (`Expr::Invoke`)
+    // covering `LAMBDA(x,x+1)(5)`; named calls `F(..)` still parse as
+    // `Expr::Call` inside primary.
     fn parse_postfix(&mut self) -> Result<Expr, ParseError> {
         let mut e = self.parse_primary()?;
-        while self.at(&TokenKind::Percent) {
-            self.bump();
-            e = self.make(Expr::Percent(Box::new(e)))?;
+        loop {
+            if self.at(&TokenKind::Percent) {
+                self.bump();
+                e = self.make(Expr::Percent(Box::new(e)))?;
+            } else if self.at(&TokenKind::LParen) {
+                self.bump(); // '('
+                self.enter()?;
+                let args = self.parse_args();
+                self.leave();
+                let args = args?;
+                e = self.make(Expr::Invoke {
+                    callee: Box::new(e),
+                    args,
+                })?;
+            } else {
+                return Ok(e);
+            }
         }
-        Ok(e)
     }
 
     fn parse_primary(&mut self) -> Result<Expr, ParseError> {
@@ -337,6 +354,7 @@ impl<'a> Parser<'a> {
                 // A parenthesized expression: no extra node kind needed.
                 Ok(inner)
             }
+            TokenKind::LBrace => self.parse_array_literal(offset),
             TokenKind::QuotedName(name) => {
                 let name = name.clone();
                 if !self.at(&TokenKind::Bang) {
@@ -471,27 +489,86 @@ impl<'a> Parser<'a> {
         }
         self.bump(); // '('
         self.enter()?;
-        let r = (|| {
-            let mut args = Vec::new();
-            if self.at(&TokenKind::RParen) {
-                self.bump();
-                return self.make(Expr::Call {
-                    name: name.to_string(),
-                    args,
-                });
+        let args = self.parse_args();
+        self.leave();
+        let args = args?;
+        self.make(Expr::Call {
+            name: name.to_string(),
+            args,
+        })
+    }
+
+    /// Parse a comma-separated argument list up to and including the
+    /// closing `)`; the opening `(` must already be consumed. Empty
+    /// positions become [`Expr::Missing`]. Assumes the caller has done
+    /// [`Parser::enter`] for the list's depth accounting.
+    fn parse_args(&mut self) -> Result<Vec<Expr>, ParseError> {
+        let mut args = Vec::new();
+        if self.at(&TokenKind::RParen) {
+            self.bump();
+            return Ok(args);
+        }
+        loop {
+            // Omitted argument: `F(,x)` / `F(x,)`.
+            if self.at(&TokenKind::Comma) || self.at(&TokenKind::RParen) {
+                args.push(self.make(Expr::Missing)?);
+            } else {
+                args.push(self.parse_comparison()?);
             }
+            match self.peek().kind {
+                TokenKind::Comma => {
+                    self.bump();
+                }
+                TokenKind::RParen => {
+                    self.bump();
+                    break;
+                }
+                TokenKind::Eof => {
+                    return Err(ParseError::new(
+                        ParseErrorKind::UnexpectedEof,
+                        self.peek().offset,
+                    ));
+                }
+                _ => {
+                    let t = self.peek();
+                    return Err(ParseError::new(
+                        ParseErrorKind::Expected("',' or ')'"),
+                        t.offset,
+                    ));
+                }
+            }
+        }
+        Ok(args)
+    }
+
+    /// `{expr,expr;expr,expr}` — array literal: `,` separates columns,
+    /// `;` separates rows. Rows must all have the same width (enforced at
+    /// evaluation, where it becomes `#VALUE!`).
+    fn parse_array_literal(&mut self, offset: usize) -> Result<Expr, ParseError> {
+        self.enter()?;
+        let r = (|| {
+            let mut rows: Vec<Vec<Expr>> = vec![Vec::new()];
             loop {
-                // Omitted argument: `F(,x)` / `F(x,)`.
-                if self.at(&TokenKind::Comma) || self.at(&TokenKind::RParen) {
-                    args.push(self.make(Expr::Missing)?);
-                } else {
-                    args.push(self.parse_comparison()?);
+                let t = self.peek();
+                match t.kind {
+                    TokenKind::Eof => {
+                        return Err(ParseError::new(ParseErrorKind::UnexpectedEof, t.offset));
+                    }
+                    TokenKind::RBrace if rows.len() == 1 && rows[0].is_empty() => {
+                        self.bump();
+                        return Err(ParseError::new(ParseErrorKind::UnexpectedToken, offset));
+                    }
+                    _ => rows.last_mut().unwrap().push(self.parse_comparison()?),
                 }
                 match self.peek().kind {
                     TokenKind::Comma => {
                         self.bump();
                     }
-                    TokenKind::RParen => {
+                    TokenKind::Semi => {
+                        self.bump();
+                        rows.push(Vec::new());
+                    }
+                    TokenKind::RBrace => {
                         self.bump();
                         break;
                     }
@@ -504,16 +581,13 @@ impl<'a> Parser<'a> {
                     _ => {
                         let t = self.peek();
                         return Err(ParseError::new(
-                            ParseErrorKind::Expected("',' or ')'"),
+                            ParseErrorKind::Expected("',', ';' or '}'"),
                             t.offset,
                         ));
                     }
                 }
             }
-            self.make(Expr::Call {
-                name: name.to_string(),
-                args,
-            })
+            self.make(Expr::ArrayLiteral(rows))
         })();
         self.leave();
         r

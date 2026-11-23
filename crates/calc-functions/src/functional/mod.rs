@@ -1,8 +1,16 @@
-//! functional functions (v2 §1). No functions implemented yet — later PRs
-//! add one file per function here and one line to [FUNCTIONS].
+//! Functional functions (v2 §1): `functional/*.rs`, one file per
+//! function.
+//!
+//! `LET` and `LAMBDA` are evaluator special forms (lazy/scope-aware) like
+//! `IF`; `MAP` and `REDUCE` invoke `Value::Lambda` through
+//! [`calc_core::eval::EvalContext::call_lambda`]. The LET file is
+//! `let_fn.rs` (`let` is a Rust keyword).
 
 use calc_core::registry::Function;
 
-/// (name, implementation) pairs contributed by this category,
-/// consumed by [crate::registry].
-pub const FUNCTIONS: &[(&str, Function)] = &[];
+mod lambda;
+mod let_fn;
+
+/// `(name, implementation)` pairs contributed by this category,
+/// consumed by [`crate::registry`].
+pub const FUNCTIONS: &[(&str, Function)] = &[("LAMBDA", lambda::call), ("LET", let_fn::call)];

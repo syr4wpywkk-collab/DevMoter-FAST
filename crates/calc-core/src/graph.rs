@@ -67,6 +67,17 @@ fn collect(expr: &Expr, wb: &Workbook, current_sheet: u32, out: &mut Vec<Dep>) {
                 collect(a, wb, current_sheet, out);
             }
         }
+        Expr::Invoke { callee, args } => {
+            collect(callee, wb, current_sheet, out);
+            for a in args {
+                collect(a, wb, current_sheet, out);
+            }
+        }
+        Expr::ArrayLiteral(rows) => {
+            for a in rows.iter().flatten() {
+                collect(a, wb, current_sheet, out);
+            }
+        }
         Expr::CellRef { sheet, cell } => {
             if let Some(sheet_id) = resolve(sheet) {
                 out.push(Dep::Cell(CellId {
