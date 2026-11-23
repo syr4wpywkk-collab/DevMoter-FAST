@@ -92,8 +92,13 @@ impl Clock for FixedClock {
 /// of a range collapses to [`Value::Array`].
 #[derive(Debug, Clone, PartialEq)]
 pub enum ArgValue {
-    /// A scalar argument (literal, cell ref, sub-expression result).
+    /// A scalar argument (literal or sub-expression result); direct
+    /// argument coercion rules apply.
     Scalar(Value),
+    /// A value coming through a single cell reference. Excel applies
+    /// range-side rules to references: aggregations ignore text, boolean
+    /// and blank cells even when reached via `A1` rather than `A1:A3`.
+    Ref(Value),
     /// A range argument: row-major matrix of the referenced cells' values.
     Range(ArrayValue),
 }
@@ -102,7 +107,7 @@ impl ArgValue {
     /// Collapse to a scalar [`Value`] (ranges become `Value::Array`).
     pub fn into_value(self) -> Value {
         match self {
-            ArgValue::Scalar(v) => v,
+            ArgValue::Scalar(v) | ArgValue::Ref(v) => v,
             ArgValue::Range(a) => Value::Array(a),
         }
     }
@@ -214,7 +219,7 @@ impl<'a> EvalContext<'a> {
                 Some(result) => result.map(ArgValue::Scalar),
                 None => Ok(ArgValue::Scalar(Value::Error(CalcError::Name))),
             },
-            Expr::CellRef { sheet, cell } => Ok(ArgValue::Scalar(self.cell_value(sheet, cell))),
+            Expr::CellRef { sheet, cell } => Ok(ArgValue::Ref(self.cell_value(sheet, cell))),
             Expr::RangeRef { sheet, range } => self.range_values(sheet.as_deref(), range),
         }
     }
