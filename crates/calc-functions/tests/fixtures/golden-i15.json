@@ -1,0 +1,3734 @@
+{
+ "formatVersion": 1,
+ "generated": "2026-11-24 track i15",
+ "referenceDefaults": {
+  "implementation": "Microsoft Excel",
+  "version": "general documented behavior (not empirically recorded)",
+  "dateSystem": "1900",
+  "os": "any",
+  "locale": "en-US",
+  "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+ },
+ "cases": [
+  {
+   "id": "I15-NEGBINOMDIST-001",
+   "formula": "=NEGBINOMDIST(10,5,0.25)",
+   "inputs": {},
+   "expected": {
+    "number": 0.05504866037517788,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NEGBINOMDIST-002",
+   "formula": "=NEGBINOMDIST(0,1,0.5)",
+   "inputs": {},
+   "expected": {
+    "number": 0.4999999999999998,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NEGBINOMDIST-003",
+   "formula": "=NEGBINOMDIST(0,5,1)",
+   "inputs": {},
+   "expected": {
+    "number": 1.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NEGBINOMDIST-004",
+   "formula": "=NEGBINOMDIST(3,2,1)",
+   "inputs": {},
+   "expected": {
+    "number": 0.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NEGBINOMDIST-005",
+   "formula": "=NEGBINOMDIST(10.9,5.7,0.25)",
+   "inputs": {},
+   "expected": {
+    "number": 0.05504866037517788,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NEGBINOMDIST-006",
+   "formula": "=NEGBINOMDIST(7,3,0.4)",
+   "inputs": {},
+   "expected": {
+    "number": 0.06449725440000001,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NEGBINOMDIST-007",
+   "formula": "=NEGBINOMDIST(-1,5,0.5)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NEGBINOMDIST-008",
+   "formula": "=NEGBINOMDIST(5,0.9,0.5)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NEGBINOMDIST-009",
+   "formula": "=NEGBINOMDIST(5,2,1.5)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NEGBINOMDIST-010",
+   "formula": "=NEGBINOMDIST(\"x\",2,0.5)",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NEGBINOMDIST-011",
+   "formula": "=NEGBINOMDIST(0,1,0)",
+   "inputs": {},
+   "expected": {
+    "number": 0.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   },
+   "specOpen": true,
+   "specOpenReason": "probability_s=0 with number_f=0 is a 0^0 boundary; spec doc lists it as an open question (implemented as 0)."
+  },
+  {
+   "id": "I15-NEGBINOMDIST-012",
+   "formula": "=NEGBINOMDIST(A1,2,0.5)",
+   "inputs": {
+    "A1": 4
+   },
+   "expected": {
+    "number": 0.07812499999999999,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMDIST-001",
+   "formula": "=NORMDIST(42,40,1.5,TRUE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.9087887802741321,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMDIST-002",
+   "formula": "=NORMDIST(42,40,1.5,FALSE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.10934004978399577,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMDIST-003",
+   "formula": "=NORMDIST(40,40,1.5,TRUE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.5,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMDIST-004",
+   "formula": "=NORMDIST(1.96,0,1,TRUE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.9750021048517795,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMDIST-005",
+   "formula": "=NORMDIST(0,0,1,FALSE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.3989422804014327,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMDIST-006",
+   "formula": "=NORMDIST(-3,1,2,TRUE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.022750131948179195,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMDIST-007",
+   "formula": "=NORMDIST(0,0,-1,TRUE)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMDIST-008",
+   "formula": "=NORMDIST(0,0,0,TRUE)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMDIST-009",
+   "formula": "=NORMDIST(\"x\",0,1,TRUE)",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMDIST-010",
+   "formula": "=NORMDIST(\"2\",0,1,FALSE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.05399096651318805,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMDIST-011",
+   "formula": "=NORMDIST(A1,10,2,TRUE)",
+   "inputs": {
+    "A1": 12
+   },
+   "expected": {
+    "number": 0.8413447460685429,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMINV-001",
+   "formula": "=NORMINV(0.908789,40,1.5)",
+   "inputs": {},
+   "expected": {
+    "number": 42.00000200956616,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMINV-002",
+   "formula": "=NORMINV(0.5,40,1.5)",
+   "inputs": {},
+   "expected": {
+    "number": 40.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMINV-003",
+   "formula": "=NORMINV(0.975,0,1)",
+   "inputs": {},
+   "expected": {
+    "number": 1.959963984540054,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMINV-004",
+   "formula": "=NORMINV(0.025,0,1)",
+   "inputs": {},
+   "expected": {
+    "number": -1.9599639845400545,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMINV-005",
+   "formula": "=NORMINV(0.9,100,15)",
+   "inputs": {},
+   "expected": {
+    "number": 119.22327348316901,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMINV-006",
+   "formula": "=NORMINV(0,40,1.5)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMINV-007",
+   "formula": "=NORMINV(1,40,1.5)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMINV-008",
+   "formula": "=NORMINV(1.5,0,1)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMINV-009",
+   "formula": "=NORMINV(0.5,0,0)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMINV-010",
+   "formula": "=NORMINV(0.5,0,-1)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMINV-011",
+   "formula": "=NORMINV(\"x\",0,1)",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMINV-012",
+   "formula": "=NORMINV(A1,0,1)",
+   "inputs": {
+    "A1": 0.5
+   },
+   "expected": {
+    "number": 0.0,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSDIST-001",
+   "formula": "=NORMSDIST(1.333333)",
+   "inputs": {},
+   "expected": {
+    "number": 0.9087887256040952,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSDIST-002",
+   "formula": "=NORMSDIST(0)",
+   "inputs": {},
+   "expected": {
+    "number": 0.5,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSDIST-003",
+   "formula": "=NORMSDIST(-1.96)",
+   "inputs": {},
+   "expected": {
+    "number": 0.024997895148220435,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSDIST-004",
+   "formula": "=NORMSDIST(3.5)",
+   "inputs": {},
+   "expected": {
+    "number": 0.9997673709209645,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSDIST-005",
+   "formula": "=NORMSDIST(-3.5)",
+   "inputs": {},
+   "expected": {
+    "number": 0.00023262907903552502,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSDIST-006",
+   "formula": "=NORMSDIST(50)",
+   "inputs": {},
+   "expected": {
+    "number": 1.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSDIST-007",
+   "formula": "=NORMSDIST(-50)",
+   "inputs": {},
+   "expected": {
+    "number": 0.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSDIST-008",
+   "formula": "=NORMSDIST(\"abc\")",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSDIST-009",
+   "formula": "=NORMSDIST(\"1.96\")",
+   "inputs": {},
+   "expected": {
+    "number": 0.9750021048517795,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSDIST-010",
+   "formula": "=NORMSDIST(TRUE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.8413447460685429,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSDIST-011",
+   "formula": "=NORMSDIST(A1)",
+   "inputs": {
+    "A1": 0.75
+   },
+   "expected": {
+    "number": 0.7733726476231317,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSINV-001",
+   "formula": "=NORMSINV(0.908789)",
+   "inputs": {},
+   "expected": {
+    "number": 1.3333346730441076,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSINV-002",
+   "formula": "=NORMSINV(0.5)",
+   "inputs": {},
+   "expected": {
+    "number": 0.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSINV-003",
+   "formula": "=NORMSINV(0.975)",
+   "inputs": {},
+   "expected": {
+    "number": 1.959963984540054,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSINV-004",
+   "formula": "=NORMSINV(0.001)",
+   "inputs": {},
+   "expected": {
+    "number": -3.090232306167813,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSINV-005",
+   "formula": "=NORMSINV(0.999)",
+   "inputs": {},
+   "expected": {
+    "number": 3.090232306167813,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSINV-006",
+   "formula": "=NORMSINV(0)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSINV-007",
+   "formula": "=NORMSINV(1)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSINV-008",
+   "formula": "=NORMSINV(-0.5)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSINV-009",
+   "formula": "=NORMSINV(1.5)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSINV-010",
+   "formula": "=NORMSINV(\"abc\")",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-NORMSINV-011",
+   "formula": "=NORMSINV(A1)",
+   "inputs": {
+    "A1": 0.975
+   },
+   "expected": {
+    "number": 1.959963984540054,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTILE-001",
+   "formula": "=PERCENTILE({1,3,2,4},0.3)",
+   "inputs": {},
+   "expected": {
+    "number": 1.9,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTILE-002",
+   "formula": "=PERCENTILE({1,2,3,4,5},0.5)",
+   "inputs": {},
+   "expected": {
+    "number": 3.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTILE-003",
+   "formula": "=PERCENTILE({1,2,3,4,5},0)",
+   "inputs": {},
+   "expected": {
+    "number": 1.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTILE-004",
+   "formula": "=PERCENTILE({1,2,3,4,5},1)",
+   "inputs": {},
+   "expected": {
+    "number": 5.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTILE-005",
+   "formula": "=PERCENTILE({4,1,9,2},0.25)",
+   "inputs": {},
+   "expected": {
+    "number": 1.75,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTILE-006",
+   "formula": "=PERCENTILE({1,2,3},1.5)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTILE-007",
+   "formula": "=PERCENTILE({1,2,3},-0.1)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTILE-008",
+   "formula": "=PERCENTILE({1,2,3},\"x\")",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTILE-009",
+   "formula": "=PERCENTILE(A1:A4,0.75)",
+   "inputs": {
+    "A1": 10,
+    "A2": 20,
+    "A3": 30,
+    "A4": 40
+   },
+   "expected": {
+    "number": 32.5,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTILE-010",
+   "formula": "=PERCENTILE(A1:A4,0.5)",
+   "inputs": {
+    "A1": 10,
+    "A2": "text",
+    "A3": 30,
+    "A4": 40,
+    "B1": {
+     "blank": true
+    }
+   },
+   "expected": {
+    "number": 30.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTILE-011",
+   "formula": "=PERCENTILE(A1:A3,0.5)",
+   "inputs": {
+    "A1": "x",
+    "A2": "y",
+    "A3": {
+     "blank": true
+    }
+   },
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTRANK-001",
+   "formula": "=PERCENTRANK({13,12,11,8,4,3,2,1,1,1},2,3)",
+   "inputs": {},
+   "expected": {
+    "number": 0.333,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTRANK-002",
+   "formula": "=PERCENTRANK({1,2,3,4},2.5)",
+   "inputs": {},
+   "expected": {
+    "number": 0.5,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTRANK-003",
+   "formula": "=PERCENTRANK({1,2,3,4},1)",
+   "inputs": {},
+   "expected": {
+    "number": 0.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTRANK-004",
+   "formula": "=PERCENTRANK({1,2,3,4},4)",
+   "inputs": {},
+   "expected": {
+    "number": 1.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTRANK-005",
+   "formula": "=PERCENTRANK({13,12,11,8,4,3,2,1,1,1},4,2)",
+   "inputs": {},
+   "expected": {
+    "number": 0.55,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTRANK-006",
+   "formula": "=PERCENTRANK({1,2,3,4},5)",
+   "inputs": {},
+   "expected": {
+    "error": "#N/A"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTRANK-007",
+   "formula": "=PERCENTRANK({1,2,3,4},0)",
+   "inputs": {},
+   "expected": {
+    "error": "#N/A"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTRANK-008",
+   "formula": "=PERCENTRANK({1,2,3,4},2,0)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTRANK-009",
+   "formula": "=PERCENTRANK(A1:A5,3)",
+   "inputs": {
+    "A1": 1,
+    "A2": 2,
+    "A3": 3,
+    "A4": 4,
+    "A5": 5
+   },
+   "expected": {
+    "number": 0.5,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTRANK-010",
+   "formula": "=PERCENTRANK(A1:A3,2)",
+   "inputs": {
+    "A1": "x",
+    "A2": "y",
+    "A3": {
+     "blank": true
+    }
+   },
+   "expected": {
+    "error": "#N/A"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-PERCENTRANK-011",
+   "formula": "=PERCENTRANK({1,2,3,4},\"x\")",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-POISSON-001",
+   "formula": "=POISSON(2,5,FALSE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.08422433748856832,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-POISSON-002",
+   "formula": "=POISSON(2,5,TRUE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.12465201948308108,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-POISSON-003",
+   "formula": "=POISSON(0,5,FALSE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.006737946999085467,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-POISSON-004",
+   "formula": "=POISSON(10,5,TRUE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.9863047314016171,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-POISSON-005",
+   "formula": "=POISSON(2.9,5,FALSE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.08422433748856832,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-POISSON-006",
+   "formula": "=POISSON(100,100,FALSE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.03986099680914883,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-POISSON-007",
+   "formula": "=POISSON(-1,5,FALSE)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-POISSON-008",
+   "formula": "=POISSON(2,-1,FALSE)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-POISSON-009",
+   "formula": "=POISSON(2,0,FALSE)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   },
+   "specOpen": true,
+   "specOpenReason": "mean=0 boundary result is an open question in the spec doc (implemented as #NUM!)."
+  },
+  {
+   "id": "I15-POISSON-010",
+   "formula": "=POISSON(\"x\",5,FALSE)",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-POISSON-011",
+   "formula": "=POISSON(A1,5,TRUE)",
+   "inputs": {
+    "A1": 3
+   },
+   "expected": {
+    "number": 0.2650259152973616,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-QUARTILE-001",
+   "formula": "=QUARTILE({1,2,4,7,8,9,10,12},1)",
+   "inputs": {},
+   "expected": {
+    "number": 3.5,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-QUARTILE-002",
+   "formula": "=QUARTILE({1,2,4,7,8,9,10,12},2)",
+   "inputs": {},
+   "expected": {
+    "number": 7.5,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-QUARTILE-003",
+   "formula": "=QUARTILE({1,2,4,7,8,9,10,12},3)",
+   "inputs": {},
+   "expected": {
+    "number": 9.25,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-QUARTILE-004",
+   "formula": "=QUARTILE({1,2,4,7,8,9,10,12},0)",
+   "inputs": {},
+   "expected": {
+    "number": 1.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-QUARTILE-005",
+   "formula": "=QUARTILE({1,2,4,7,8,9,10,12},4)",
+   "inputs": {},
+   "expected": {
+    "number": 12.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-QUARTILE-006",
+   "formula": "=QUARTILE({1,2,3},5)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-QUARTILE-007",
+   "formula": "=QUARTILE({1,2,3},-1)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-QUARTILE-008",
+   "formula": "=QUARTILE({1,2,3,4},1.9)",
+   "inputs": {},
+   "expected": {
+    "number": 1.75,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-QUARTILE-009",
+   "formula": "=QUARTILE(A1:A4,2)",
+   "inputs": {
+    "A1": 10,
+    "A2": 20,
+    "A3": 30,
+    "A4": 40
+   },
+   "expected": {
+    "number": 25.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-QUARTILE-010",
+   "formula": "=QUARTILE(A1:A3,2)",
+   "inputs": {
+    "A1": "x",
+    "A2": "y",
+    "A3": {
+     "blank": true
+    }
+   },
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-QUARTILE-011",
+   "formula": "=QUARTILE({1,2,3},\"x\")",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-RANK-001",
+   "formula": "=RANK(7,{7,3.5,3.5,1,2},1)",
+   "inputs": {},
+   "expected": {
+    "number": 5.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-RANK-002",
+   "formula": "=RANK(2,{7,3.5,3.5,1,2},0)",
+   "inputs": {},
+   "expected": {
+    "number": 4.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-RANK-003",
+   "formula": "=RANK(3.5,{7,3.5,3.5,1,2},0)",
+   "inputs": {},
+   "expected": {
+    "number": 2.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-RANK-004",
+   "formula": "=RANK(7,{7,3.5,3.5,1,2})",
+   "inputs": {},
+   "expected": {
+    "number": 1.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-RANK-005",
+   "formula": "=RANK(1,{7,3.5,3.5,1,2},2)",
+   "inputs": {},
+   "expected": {
+    "number": 1.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-RANK-006",
+   "formula": "=RANK(6,{1,2,3})",
+   "inputs": {},
+   "expected": {
+    "error": "#N/A"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-RANK-007",
+   "formula": "=RANK(\"x\",{1,2,3})",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-RANK-008",
+   "formula": "=RANK(\"2\",{1,2,3},1)",
+   "inputs": {},
+   "expected": {
+    "number": 2.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-RANK-009",
+   "formula": "=RANK(A4,A1:A5,0)",
+   "inputs": {
+    "A1": 10,
+    "A2": 30,
+    "A3": 40,
+    "A4": 30,
+    "A5": 50
+   },
+   "expected": {
+    "number": 3.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-RANK-010",
+   "formula": "=RANK(4,{4})",
+   "inputs": {},
+   "expected": {
+    "number": 1.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-RANK-011",
+   "formula": "=RANK(A1,A2:A5)",
+   "inputs": {
+    "A1": 99,
+    "A2": 1,
+    "A3": 2,
+    "A4": 3,
+    "A5": "x"
+   },
+   "expected": {
+    "error": "#N/A"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEV-001",
+   "formula": "=STDEV(1345,1301,1368,1322,1310,1370,1318,1350,1303,1299)",
+   "inputs": {},
+   "expected": {
+    "number": 27.46391572,
+    "tolerance": 1e-07
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEV-002",
+   "formula": "=STDEV(1,2,3)",
+   "inputs": {},
+   "expected": {
+    "number": 1.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEV-003",
+   "formula": "=STDEV(1,3)",
+   "inputs": {},
+   "expected": {
+    "number": 1.4142135623730951,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEV-004",
+   "formula": "=STDEV(5)",
+   "inputs": {},
+   "expected": {
+    "error": "#DIV/0!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEV-005",
+   "formula": "=STDEV(\"abc\")",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEV-006",
+   "formula": "=STDEV(TRUE,\"4\")",
+   "inputs": {},
+   "expected": {
+    "number": 2.1213203435596424,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEV-007",
+   "formula": "=STDEV(7,7,7)",
+   "inputs": {},
+   "expected": {
+    "number": 0.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEV-008",
+   "formula": "=STDEV(A1:A5)",
+   "inputs": {
+    "A1": 2,
+    "A2": 4,
+    "A3": 4,
+    "A4": 5,
+    "A5": 9
+   },
+   "expected": {
+    "number": 2.588435821108957,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEV-009",
+   "formula": "=STDEV(A1:A3)",
+   "inputs": {
+    "A1": 1,
+    "A2": "x",
+    "A3": 3
+   },
+   "expected": {
+    "number": 1.4142135623730951,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEV-010",
+   "formula": "=STDEV(A1:A2)",
+   "inputs": {
+    "A1": "x",
+    "A2": {
+     "blank": true
+    }
+   },
+   "expected": {
+    "error": "#DIV/0!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEV-011",
+   "formula": "=STDEV(1,A1:A2)",
+   "inputs": {
+    "A1": 2,
+    "A2": 3
+   },
+   "expected": {
+    "number": 1.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEVP-001",
+   "formula": "=STDEVP(1345,1301,1368,1322,1310,1370,1318,1350,1303,1299)",
+   "inputs": {},
+   "expected": {
+    "number": 26.05455814,
+    "tolerance": 1e-07
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEVP-002",
+   "formula": "=STDEVP(1,2,3)",
+   "inputs": {},
+   "expected": {
+    "number": 0.816496580927726,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEVP-003",
+   "formula": "=STDEVP(5)",
+   "inputs": {},
+   "expected": {
+    "number": 0.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEVP-004",
+   "formula": "=STDEVP(TRUE,\"4\")",
+   "inputs": {},
+   "expected": {
+    "number": 1.5,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEVP-005",
+   "formula": "=STDEVP(\"abc\")",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEVP-006",
+   "formula": "=STDEVP(7,7,7)",
+   "inputs": {},
+   "expected": {
+    "number": 0.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEVP-007",
+   "formula": "=STDEVP(A1:A5)",
+   "inputs": {
+    "A1": 2,
+    "A2": 4,
+    "A3": 4,
+    "A4": 5,
+    "A5": 9
+   },
+   "expected": {
+    "number": 2.315167380558045,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEVP-008",
+   "formula": "=STDEVP(A1:A3)",
+   "inputs": {
+    "A1": 1,
+    "A2": "x",
+    "A3": 3
+   },
+   "expected": {
+    "number": 1.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEVP-009",
+   "formula": "=STDEVP(A1:A2)",
+   "inputs": {
+    "A1": "x",
+    "A2": {
+     "blank": true
+    }
+   },
+   "expected": {
+    "error": "#DIV/0!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEVP-010",
+   "formula": "=STDEVP(1,2,3,4,5)",
+   "inputs": {},
+   "expected": {
+    "number": 1.4142135623730951,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-STDEVP-011",
+   "formula": "=STDEVP()",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TDIST-001",
+   "formula": "=TDIST(1.959999998,60,2)",
+   "inputs": {},
+   "expected": {
+    "number": 0.05464492997592086,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TDIST-002",
+   "formula": "=TDIST(1.959999998,60,1)",
+   "inputs": {},
+   "expected": {
+    "number": 0.02732246498796043,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TDIST-003",
+   "formula": "=TDIST(0,10,2)",
+   "inputs": {},
+   "expected": {
+    "number": 1.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TDIST-004",
+   "formula": "=TDIST(2,10,2)",
+   "inputs": {},
+   "expected": {
+    "number": 0.07338803477074039,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TDIST-005",
+   "formula": "=TDIST(2,10,1)",
+   "inputs": {},
+   "expected": {
+    "number": 0.036694017385370196,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TDIST-006",
+   "formula": "=TDIST(1,10.9,2)",
+   "inputs": {},
+   "expected": {
+    "number": 0.3408931323020601,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TDIST-007",
+   "formula": "=TDIST(1,10,1.9)",
+   "inputs": {},
+   "expected": {
+    "number": 0.17044656615103004,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TDIST-008",
+   "formula": "=TDIST(-1,10,2)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TDIST-009",
+   "formula": "=TDIST(1,0.9,2)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TDIST-010",
+   "formula": "=TDIST(1,10,3)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TDIST-011",
+   "formula": "=TDIST(1,10,0)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TDIST-012",
+   "formula": "=TDIST(\"x\",10,2)",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TINV-001",
+   "formula": "=TINV(0.05,10)",
+   "inputs": {},
+   "expected": {
+    "number": 2.2281388519649385,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TINV-002",
+   "formula": "=TINV(0.054645,60)",
+   "inputs": {},
+   "expected": {
+    "number": 1.9599994121719833,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TINV-003",
+   "formula": "=TINV(1,10)",
+   "inputs": {},
+   "expected": {
+    "number": 0.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TINV-004",
+   "formula": "=TINV(0.1,25)",
+   "inputs": {},
+   "expected": {
+    "number": 1.7081407612518986,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TINV-005",
+   "formula": "=TINV(0.05,10.9)",
+   "inputs": {},
+   "expected": {
+    "number": 2.2281388519649385,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TINV-006",
+   "formula": "=TINV(0,10)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TINV-007",
+   "formula": "=TINV(-0.1,10)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TINV-008",
+   "formula": "=TINV(1.5,10)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TINV-009",
+   "formula": "=TINV(0.05,0.9)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TINV-010",
+   "formula": "=TINV(\"x\",10)",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TINV-011",
+   "formula": "=TINV(A1,15)",
+   "inputs": {
+    "A1": 0.2
+   },
+   "expected": {
+    "number": 1.3406056078504547,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TTEST-001",
+   "formula": "=TTEST({3;4;5;8;9;1;2;4;5},{6;19;3;2;14;4;5;17;1},2,1)",
+   "inputs": {},
+   "expected": {
+    "number": 0.19601578492528215,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TTEST-002",
+   "formula": "=TTEST({3;4;5;8;9;1;2;4;5},{6;19;3;2;14;4;5;17;1},1,1)",
+   "inputs": {},
+   "expected": {
+    "number": 0.09800789246264108,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TTEST-003",
+   "formula": "=TTEST({3;4;5;8;9;1;2;4;5},{6;19;3;2;14;4;5;17;1},2,2)",
+   "inputs": {},
+   "expected": {
+    "number": 0.19199588676039628,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TTEST-004",
+   "formula": "=TTEST({3;4;5;8;9;1;2;4;5},{6;19;3;2;14;4;5;17;1},2,3)",
+   "inputs": {},
+   "expected": {
+    "number": 0.2022939233686779,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TTEST-005",
+   "formula": "=TTEST({1,2,3},{1,2,3,4},2,1)",
+   "inputs": {},
+   "expected": {
+    "error": "#N/A"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TTEST-006",
+   "formula": "=TTEST({1,2,3},{1,2,3},2,4)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TTEST-007",
+   "formula": "=TTEST({1,2,3},{1,2,3},2,1)",
+   "inputs": {},
+   "expected": {
+    "error": "#DIV/0!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TTEST-008",
+   "formula": "=TTEST({1},{2},2,2)",
+   "inputs": {},
+   "expected": {
+    "error": "#DIV/0!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TTEST-009",
+   "formula": "=TTEST({1,2,3},{2,3,5},3,1)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-TTEST-010",
+   "formula": "=TTEST({6,7,9,15,21},{20,28,31,38,40},2,1)",
+   "inputs": {},
+   "expected": {
+    "number": 0.196016,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   },
+   "specOpen": true,
+   "specOpenReason": "The spec doc's stated value 0.196016 for these arrays does not match a t-test on them (it is Microsoft's value for different example arrays); awaiting spec clarification."
+  },
+  {
+   "id": "I15-TTEST-011",
+   "formula": "=TTEST(A1:A3,B1:B3,2,2)",
+   "inputs": {
+    "A1": 1,
+    "A2": 2,
+    "A3": 3,
+    "B1": 4,
+    "B2": 5,
+    "B3": 6
+   },
+   "expected": {
+    "number": 0.021311641128756727,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VAR-001",
+   "formula": "=VAR(1345,1301,1368,1322,1310,1370,1318,1350,1303,1299)",
+   "inputs": {},
+   "expected": {
+    "number": 754.2666667,
+    "tolerance": 1e-06
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VAR-002",
+   "formula": "=VAR(1,2,3)",
+   "inputs": {},
+   "expected": {
+    "number": 1.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VAR-003",
+   "formula": "=VAR(1,3)",
+   "inputs": {},
+   "expected": {
+    "number": 2.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VAR-004",
+   "formula": "=VAR(5)",
+   "inputs": {},
+   "expected": {
+    "error": "#DIV/0!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VAR-005",
+   "formula": "=VAR(\"x\",1,2)",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VAR-006",
+   "formula": "=VAR(TRUE,\"4\")",
+   "inputs": {},
+   "expected": {
+    "number": 4.5,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VAR-007",
+   "formula": "=VAR(7,7,7)",
+   "inputs": {},
+   "expected": {
+    "number": 0.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VAR-008",
+   "formula": "=VAR(A1:A5)",
+   "inputs": {
+    "A1": 2,
+    "A2": 4,
+    "A3": 4,
+    "A4": 5,
+    "A5": 9
+   },
+   "expected": {
+    "number": 6.699999999999999,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VAR-009",
+   "formula": "=VAR(A1:A3)",
+   "inputs": {
+    "A1": 1,
+    "A2": "x",
+    "A3": 3
+   },
+   "expected": {
+    "number": 2.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VAR-010",
+   "formula": "=VAR(A1:A2)",
+   "inputs": {
+    "A1": "x",
+    "A2": {
+     "blank": true
+    }
+   },
+   "expected": {
+    "error": "#DIV/0!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VAR-011",
+   "formula": "=VAR(1,2,3,4,5)",
+   "inputs": {},
+   "expected": {
+    "number": 2.5,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VARP-001",
+   "formula": "=VARP(1345,1301,1368,1322,1310,1370,1318,1350,1303,1299)",
+   "inputs": {},
+   "expected": {
+    "number": 678.84,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VARP-002",
+   "formula": "=VARP(1,2,3)",
+   "inputs": {},
+   "expected": {
+    "number": 0.6666666666666666,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VARP-003",
+   "formula": "=VARP(5)",
+   "inputs": {},
+   "expected": {
+    "number": 0.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VARP-004",
+   "formula": "=VARP(TRUE,\"4\")",
+   "inputs": {},
+   "expected": {
+    "number": 2.25,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VARP-005",
+   "formula": "=VARP(\"x\",1,2)",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VARP-006",
+   "formula": "=VARP(7,7,7)",
+   "inputs": {},
+   "expected": {
+    "number": 0.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VARP-007",
+   "formula": "=VARP(A1:A5)",
+   "inputs": {
+    "A1": 2,
+    "A2": 4,
+    "A3": 4,
+    "A4": 5,
+    "A5": 9
+   },
+   "expected": {
+    "number": 5.359999999999999,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VARP-008",
+   "formula": "=VARP(A1:A3)",
+   "inputs": {
+    "A1": 1,
+    "A2": "x",
+    "A3": 3
+   },
+   "expected": {
+    "number": 1.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VARP-009",
+   "formula": "=VARP(A1:A2)",
+   "inputs": {
+    "A1": "x",
+    "A2": {
+     "blank": true
+    }
+   },
+   "expected": {
+    "error": "#DIV/0!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VARP-010",
+   "formula": "=VARP(1,2,3,4,5)",
+   "inputs": {},
+   "expected": {
+    "number": 2.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-VARP-011",
+   "formula": "=VARP()",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-WEIBULL-001",
+   "formula": "=WEIBULL(105,20,100,TRUE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.9295813900692769,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-WEIBULL-002",
+   "formula": "=WEIBULL(105,20,100,FALSE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.035588864024504334,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-WEIBULL-003",
+   "formula": "=WEIBULL(100,1,100,TRUE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.6321205588285577,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-WEIBULL-004",
+   "formula": "=WEIBULL(50,2,80,FALSE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.010572403846277015,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-WEIBULL-005",
+   "formula": "=WEIBULL(0,2,100,TRUE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.0,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-WEIBULL-006",
+   "formula": "=WEIBULL(0,1,100,FALSE)",
+   "inputs": {},
+   "expected": {
+    "number": 0.01,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-WEIBULL-007",
+   "formula": "=WEIBULL(-1,20,100,TRUE)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-WEIBULL-008",
+   "formula": "=WEIBULL(5,0,100,TRUE)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-WEIBULL-009",
+   "formula": "=WEIBULL(5,2,0,TRUE)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-WEIBULL-010",
+   "formula": "=WEIBULL(\"x\",2,100,TRUE)",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-WEIBULL-011",
+   "formula": "=WEIBULL(0,0.5,100,FALSE)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   },
+   "specOpen": true,
+   "specOpenReason": "x=0 with alpha<1 gives an infinite PDF; Excel's result is an open question in the spec doc (implemented as #NUM!)."
+  },
+  {
+   "id": "I15-WEIBULL-012",
+   "formula": "=WEIBULL(A1,1.5,80,TRUE)",
+   "inputs": {
+    "A1": 30
+   },
+   "expected": {
+    "number": 0.20518004636026843,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-ZTEST-001",
+   "formula": "=ZTEST({3,6,7,8,6,5,4,2,1,9},4)",
+   "inputs": {},
+   "expected": {
+    "number": 0.09057419685136386,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-ZTEST-002",
+   "formula": "=ZTEST({3,6,7,8,6,5,4,2,1,9},6)",
+   "inputs": {},
+   "expected": {
+    "number": 0.8630433891295299,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-ZTEST-003",
+   "formula": "=ZTEST({3,6,7,8,6,5,4,2,1,9},4,2)",
+   "inputs": {},
+   "expected": {
+    "number": 0.04099516050019152,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-ZTEST-004",
+   "formula": "=ZTEST({3,6,7,8,6,5,4,2,1,9},5.1,2)",
+   "inputs": {},
+   "expected": {
+    "number": 0.5,
+    "tolerance": 1e-09
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-ZTEST-005",
+   "formula": "=ZTEST({5,5,5},4)",
+   "inputs": {},
+   "expected": {
+    "error": "#DIV/0!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-ZTEST-006",
+   "formula": "=ZTEST({5},4)",
+   "inputs": {},
+   "expected": {
+    "error": "#DIV/0!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-ZTEST-007",
+   "formula": "=ZTEST({5},4,2)",
+   "inputs": {},
+   "expected": {
+    "number": 0.3085375387259869,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-ZTEST-008",
+   "formula": "=ZTEST({3,6,7,8,6,5,4,2,1,9},4,0)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-ZTEST-009",
+   "formula": "=ZTEST({3,6,7,8,6,5,4,2,1,9},4,-1)",
+   "inputs": {},
+   "expected": {
+    "error": "#NUM!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-ZTEST-010",
+   "formula": "=ZTEST({3,6,7,8,6,5,4,2,1,9},\"x\")",
+   "inputs": {},
+   "expected": {
+    "error": "#VALUE!"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-ZTEST-011",
+   "formula": "=ZTEST(A1:A4,4,1)",
+   "inputs": {
+    "A1": 1,
+    "A2": 2,
+    "A3": 3,
+    "A4": 4
+   },
+   "expected": {
+    "number": 0.9986501019683699,
+    "tolerance": 1e-12
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  },
+  {
+   "id": "I15-ZTEST-012",
+   "formula": "=ZTEST(A1:A3,4)",
+   "inputs": {
+    "A1": "x",
+    "A2": "y",
+    "A3": {
+     "blank": true
+    }
+   },
+   "expected": {
+    "error": "#N/A"
+   },
+   "reference": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (scipy.stats: norm, t, poisson, nbinom, weibull_min, percentileofscore-style INC interpolation, ttest_ind/rel); to be re-recorded empirically per plan section 10.5"
+   }
+  }
+ ]
+}

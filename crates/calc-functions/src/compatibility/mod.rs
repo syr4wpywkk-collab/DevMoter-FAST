@@ -29,6 +29,25 @@ mod hypgeomdist;
 mod loginv;
 mod lognormdist;
 mod mode;
+mod negbinomdist;
+mod normdist;
+mod norminv;
+mod normsdist;
+mod normsinv;
+mod percentile;
+mod percentrank;
+mod poisson;
+mod quartile;
+mod rank;
+mod stdev;
+mod stdevp;
+mod tdist;
+mod tinv;
+mod ttest;
+mod var;
+mod varp;
+mod weibull;
+mod ztest;
 
 /// `(name, implementation)` pairs contributed by this category,
 /// consumed by [`crate::registry`].
@@ -52,4 +71,23 @@ pub const FUNCTIONS: &[(&str, Function)] = &[
     ("LOGINV", loginv::call),
     ("LOGNORMDIST", lognormdist::call),
     ("MODE", mode::call),
+    ("NEGBINOMDIST", negbinomdist::call),
+    ("NORMDIST", normdist::call),
+    ("NORMINV", norminv::call),
+    ("NORMSDIST", normsdist::call),
+    ("NORMSINV", normsinv::call),
+    ("PERCENTILE", percentile::call),
+    ("PERCENTRANK", percentrank::call),
+    ("POISSON", poisson::call),
+    ("QUARTILE", quartile::call),
+    ("RANK", rank::call),
+    ("STDEV", stdev::call),
+    ("STDEVP", stdevp::call),
+    ("TDIST", tdist::call),
+    ("TINV", tinv::call),
+    ("TTEST", ttest::call),
+    ("VAR", var::call),
+    ("VARP", varp::call),
+    ("WEIBULL", weibull::call),
+    ("ZTEST", ztest::call),
 ];
