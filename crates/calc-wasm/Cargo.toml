@@ -1,0 +1,14 @@
+[package]
+name = "calc-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "WASM bindings for calc-core (batch-oriented API)"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+calc-core = { path = "../calc-core" }
+wasm-bindgen = "0.2"
