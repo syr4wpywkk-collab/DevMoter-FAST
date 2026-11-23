@@ -322,6 +322,45 @@ pub fn eval_criterion(
     Ok(Criterion::from_value(&v))
 }
 
+/// Evaluate `(criteria_range, criteria)` argument pairs starting at
+/// `start`, enforcing `rows`x`cols` dimensions on every criteria range
+/// (the `SUMIFS`/`AVERAGEIFS` no-resizing rule: mismatched shapes are
+/// `#VALUE!`). `Err(CalcError)` is the function result on a bad pair.
+///
+/// Mirrors `aggregate::sumifs::eval_pairs`; lives here so categories
+/// other than `aggregate` can share it.
+pub fn eval_pairs(
+    ctx: &mut EvalContext<'_>,
+    args: &[calc_core::ast::Expr],
+    start: usize,
+    rows: u32,
+    cols: u32,
+) -> Result<Result<Vec<(ArrayValue, Criterion)>, CalcError>, EvalError> {
+    let mut pairs = Vec::new();
+    let mut i = start;
+    while i + 1 < args.len() {
+        let cells = match eval_cells(ctx, &args[i])? {
+            Err(e) => return Ok(Err(e)),
+            Ok(a) => a,
+        };
+        if cells.rows() != rows || cells.cols() != cols {
+            return Ok(Err(CalcError::Value));
+        }
+        let crit = match eval_criterion(ctx, &args[i + 1])? {
+            Err(e) => return Ok(Err(e)),
+            Ok(c) => c,
+        };
+        pairs.push((cells, crit));
+        i += 2;
+    }
+    Ok(Ok(pairs))
+}
+
+/// All pairs match position `i`.
+pub fn all_match(pairs: &[(ArrayValue, Criterion)], i: usize) -> bool {
+    pairs.iter().all(|(cells, c)| c.matches(&cells.cells()[i]))
+}
+
 /// Evaluate `SUMIF`'s `sum_range`: resized to `rows`x`cols` anchored at
 /// the expression's own top-left reference (Excel's documented rule).
 /// Non-reference expressions evaluate to a 1x1 matrix.
