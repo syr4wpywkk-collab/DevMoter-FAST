@@ -38,6 +38,13 @@ test('one task at a time holds the lock, and it is gone afterwards', () =>
     assert.throws(() => statSync(`${file}.lock`));
   }));
 
+test('a file whose lock name is as long as a name may be can still be locked', () =>
+  inTempDir(async (file) => {
+    const long = path.join(path.dirname(file), 'a'.repeat(255 - '.lock'.length));
+    assert.equal(await withFileLock(long, async () => 'ran', 500), 'ran');
+    assert.deepEqual(readdirSync(path.dirname(file)), []);
+  }));
+
 test('a lock left by a writer that no longer exists is taken over', () =>
   inTempDir(async (file) => {
     const dead = spawnSync(process.execPath, ['-e', '']).pid;
