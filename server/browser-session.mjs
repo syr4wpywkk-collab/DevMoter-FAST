@@ -498,7 +498,8 @@ export function createBrowserSessionManager({
       throw httpError("Another device is using the browser for this project", 409, "session_owned_by_other_device");
     }
     // Starts still in flight count against the limit.
-    if (sessions.size - (existing ? 1 : 0) + starting.size >= limits.maxSessions) {
+    const inFlight = [...starting.keys()].filter(id => !sessions.has(id)).length;
+    if (sessions.size - (existing ? 1 : 0) + inFlight >= limits.maxSessions) {
       throw httpError("Too many browser sessions are running", 429, "session_limit");
     }
     starting.set(project.id, startTicket);

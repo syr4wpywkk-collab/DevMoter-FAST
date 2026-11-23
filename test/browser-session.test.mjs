@@ -439,6 +439,10 @@ test("concurrent starts respect the session limit and revocation during start", 
   assert.equal(results.find(result => result.status === "rejected").reason.code, "session_limit");
   await manager.stopAll();
 
+  const two = await setup(t, { limits: { maxSessions: 2 } });
+  const both = await Promise.allSettled([two.manager.start("p1", { deviceId: "d" }), two.manager.start("p2", { deviceId: "d" })]);
+  assert.deepEqual(both.map(result => result.status), ["fulfilled", "fulfilled"]);
+
   const pending = manager.start("p3", { deviceId: "dev-r" });
   await manager.stopDevice("dev-r");
   await assert.rejects(pending, error => error.code === "device_revoked");
