@@ -509,6 +509,244 @@ pub fn annuity_pv(rate: f64, nper: f64, pmt: f64, fv: f64, typ: f64) -> f64 {
     }
 }
 
+// -------------------------------------------------------------------
+// Bond pricing / duration kernels (PRICE, DURATION, MDURATION)
+// -------------------------------------------------------------------
+
+/// Parameters of a coupon-bearing bond priced per 100 face.
+pub struct BondArgs {
+    pub settlement: i64,
+    pub maturity: i64,
+    pub rate: f64,
+    pub yld: f64,
+    pub redemption: f64,
+    pub frequency: i64,
+    pub basis: DayCountBasis,
+}
+
+/// `PRICE` kernel — dirty price per 100 face of a periodic-interest
+/// security. `N` remaining coupons, `DSC/E` fractional first period,
+/// `A/E` accrued fraction; all day counts under `basis`.
+/// Returns `None` for `settlement >= maturity` or bad `frequency`
+/// (callers map to `#NUM!`).
+pub fn bond_price(b: &BondArgs, system: DateSystem) -> Option<f64> {
+    let f = b.frequency as f64;
+    let sched = coupon_schedule(b.settlement, b.maturity, b.frequency, system)?;
+    let n = sched.remaining;
+    let e = coupon_period_days(b.basis, b.frequency, sched.pcd, sched.ncd, system)?;
+    let dsc = days_between(b.settlement, sched.ncd, b.basis, system)? as f64 / e;
+    let a = days_between(sched.pcd, b.settlement, b.basis, system)? as f64 / e;
+    let cpt = 100.0 * b.rate / f;
+    let per_yield = b.yld / f;
+    if n == 1 {
+        // Final period only: simple-interest discounting per the
+        // documented single-period form.
+        return Some((b.redemption + cpt) / (1.0 + dsc * per_yield) - a * cpt);
+    }
+    let df = 1.0 + per_yield;
+    let mut price = b.redemption / df.powf(n as f64 - 1.0 + dsc) - a * cpt;
+    for k in 0..n {
+        price += cpt / df.powf(k as f64 + dsc);
+    }
+    Some(price)
+}
+
+/// `DURATION` kernel — Macaulay duration in years (per 100 face).
+/// Time to each coupon in coupon periods is `min(1, DSC/E) + k`
+/// (`k = 0..N-1`); the settlement-on-coupon-date case collapses the
+/// fractional part to 1. Returns `None` on the same domain failures
+/// as [`bond_price`].
+pub fn macaulay_duration(
+    settlement: i64,
+    maturity: i64,
+    coupon: f64,
+    yld: f64,
+    frequency: i64,
+    basis: DayCountBasis,
+    system: DateSystem,
+) -> Option<f64> {
+    let f = frequency as f64;
+    let sched = coupon_schedule(settlement, maturity, frequency, system)?;
+    let n = sched.remaining;
+    let e = coupon_period_days(basis, frequency, sched.pcd, sched.ncd, system)?;
+    let dsc = (days_between(settlement, sched.ncd, basis, system)? as f64 / e).min(1.0);
+    let cpt = 100.0 * coupon / f;
+    let df = 1.0 + yld / f;
+    let (mut dirty, mut weighted) = (0.0, 0.0);
+    for k in 0..n {
+        let t = dsc + k as f64;
+        let cf = if k + 1 == n { cpt + 100.0 } else { cpt };
+        let pv = cf / df.powf(t);
+        dirty += pv;
+        weighted += (t / f) * pv;
+    }
+    (dirty != 0.0).then_some(weighted / dirty)
+}
+
+// -------------------------------------------------------------------
+// Odd-first / odd-last coupon kernels (ODDF*, ODDL*)
+// -------------------------------------------------------------------
+
+/// Coupon dates on the schedule anchored at `anchor`: every coupon
+/// date `> floor` descending, plus the first date `<= floor` — the
+/// `_xcoup` list used by the ODDFPRICE formula.
+fn coupon_list_back(
+    anchor: i64,
+    floor: i64,
+    frequency: i64,
+    system: DateSystem,
+) -> Option<Vec<i64>> {
+    let step = months_per_period(frequency)?;
+    let mut out = Vec::new();
+    for k in 0i64.. {
+        let s = coupon_serial_back(anchor, k, step, system)?;
+        out.push(s);
+        if s <= floor {
+            break;
+        }
+        if k > 4_000_000 {
+            return None;
+        }
+    }
+    Some(out)
+}
+
+/// `ODDFPRICE` kernel — price per 100 face for an odd (short or long)
+/// first coupon period, per the documented Microsoft formula.
+/// `maturity > first_coupon > settlement > issue` must already hold
+/// (caller validates -> `#NUM!`); `None` means a schedule/date
+/// failure (also `#NUM!`).
+#[allow(clippy::too_many_arguments)]
+pub fn oddf_price(
+    settlement: i64,
+    maturity: i64,
+    issue: i64,
+    first_coupon: i64,
+    rate: f64,
+    yld: f64,
+    redemption: f64,
+    frequency: i64,
+    basis: DayCountBasis,
+    system: DateSystem,
+) -> Option<f64> {
+    let f = frequency as f64;
+    let cpt = 100.0 * rate / f;
+    let x = 1.0 + yld / f;
+
+    // Coupon schedule anchored at first_coupon, down to <= settlement.
+    let cps_sf = coupon_list_back(first_coupon, settlement, frequency, system)?;
+    let pcd_sf = *cps_sf.last()?;
+    let ncd_sf = cps_sf[cps_sf.len() - 2];
+    let e = coupon_period_days(basis, frequency, pcd_sf, ncd_sf, system)?;
+
+    let dfc = days_between(issue, first_coupon, basis, system)? as f64;
+
+    if dfc < e {
+        // Short first coupon.
+        let n = coupon_schedule(settlement, maturity, frequency, system)?.remaining;
+        let dsc = days_between(settlement, first_coupon, basis, system)? as f64;
+        let a = days_between(issue, settlement, basis, system)? as f64;
+        let y = dsc / e;
+        let mut res = redemption / x.powf(n as f64 - 1.0 + y) + cpt * dfc / e / x.powf(y);
+        for i in 1..n {
+            res += cpt / x.powf(i as f64 + y);
+        }
+        res -= a / e * cpt;
+        Some(res)
+    } else {
+        // Long first coupon: split into quasi-coupon periods on the
+        // first_coupon-anchored schedule reaching back past `issue`.
+        let cps_if = coupon_list_back(first_coupon, issue, frequency, system)?;
+        let mut dcnl = 0.0;
+        let mut anl = 0.0;
+        // Iterate the quasi periods in ascending date order:
+        // [q0 <= issue, q1, ..., first_coupon].
+        for (index, w) in cps_if
+            .iter()
+            .rev()
+            .collect::<Vec<_>>()
+            .windows(2)
+            .enumerate()
+        {
+            let (start, end) = (*w[0], *w[1]);
+            let nl = if basis == DayCountBasis::ActAct {
+                days_between(start, end, basis, system)? as f64
+            } else {
+                e
+            };
+            let dci = if index == 0 {
+                (days_between(issue, end, basis, system)? as f64).max(0.0)
+            } else {
+                nl
+            };
+            let a = (days_between(issue.max(start), settlement.min(end), basis, system)? as f64)
+                .max(0.0);
+            dcnl += dci / nl;
+            anl += a / nl;
+        }
+        let dsc = if matches!(basis, DayCountBasis::Act360 | DayCountBasis::Act365) {
+            days_between(settlement, ncd_sf, basis, system)? as f64
+        } else {
+            e - days_between(pcd_sf, settlement, basis, system)? as f64
+        };
+        let nq = coupon_schedule(settlement, first_coupon, frequency, system)?.remaining - 1;
+        let n = coupon_schedule(first_coupon, maturity, frequency, system)?.remaining;
+        let y = dsc / e;
+        let mut res = redemption / x.powf((nq + n) as f64 + y) + cpt * dcnl / x.powf(nq as f64 + y);
+        for i in (nq + 1)..=(nq + n) {
+            res += cpt / x.powf(i as f64 + y);
+        }
+        res -= anl * cpt;
+        Some(res)
+    }
+}
+
+/// `ODDLPRICE` kernel — odd last coupon period. The documented closed
+/// form uses the year fractions `DCi` (last_interest->maturity),
+/// `DSCi` (settlement->maturity) and `Ai` (last_interest->settlement)
+/// expressed in coupon periods. `None` on day-count failure.
+#[allow(clippy::too_many_arguments)]
+pub fn oddl_price(
+    settlement: i64,
+    maturity: i64,
+    last_interest: i64,
+    rate: f64,
+    yld: f64,
+    redemption: f64,
+    frequency: i64,
+    basis: DayCountBasis,
+    system: DateSystem,
+) -> Option<f64> {
+    let f = frequency as f64;
+    let dci = year_fraction(last_interest, maturity, basis, system)? * f;
+    let dsci = year_fraction(settlement, maturity, basis, system)? * f;
+    let ai = year_fraction(last_interest, settlement, basis, system)? * f;
+    Some((redemption + dci * 100.0 * rate / f) / (1.0 + dsci * yld / f) - ai * 100.0 * rate / f)
+}
+
+/// `ODDLYIELD` kernel — the documented closed form.
+#[allow(clippy::too_many_arguments)]
+pub fn oddl_yield(
+    settlement: i64,
+    maturity: i64,
+    last_interest: i64,
+    rate: f64,
+    pr: f64,
+    redemption: f64,
+    frequency: i64,
+    basis: DayCountBasis,
+    system: DateSystem,
+) -> Option<f64> {
+    let f = frequency as f64;
+    let dci = year_fraction(last_interest, maturity, basis, system)? * f;
+    let dsci = year_fraction(settlement, maturity, basis, system)? * f;
+    let ai = year_fraction(last_interest, settlement, basis, system)? * f;
+    if dsci == 0.0 {
+        return None;
+    }
+    Some(((redemption + dci * 100.0 * rate / f) / (pr + ai * 100.0 * rate / f) - 1.0) * f / dsci)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

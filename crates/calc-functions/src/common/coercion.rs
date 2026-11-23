@@ -134,6 +134,24 @@ pub fn eval_array(
     })
 }
 
+/// Evaluate an optional scalar argument to a number (direct-argument
+/// rules). `None`/`Expr::Missing`/`Value::Blank` all yield `default`;
+/// coercion failures yield `Err`.
+pub fn eval_opt_number(
+    ctx: &mut EvalContext<'_>,
+    expr: Option<&Expr>,
+    default: f64,
+) -> Result<Result<f64, CalcError>, EvalError> {
+    let v = match expr {
+        Some(Expr::Missing) | None => return Ok(Ok(default)),
+        Some(e) => ctx.eval(e)?,
+    };
+    if v.is_blank() {
+        return Ok(Ok(default));
+    }
+    Ok(v.to_number())
+}
+
 /// Whether a scalar text value parses as a number (COUNT's direct-arg
 /// rule: `"5"` counts, `"x"` does not and does not error).
 pub fn text_is_number(s: &str) -> bool {

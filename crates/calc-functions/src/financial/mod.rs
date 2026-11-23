@@ -38,6 +38,25 @@ mod dollarde;
 mod dollarfr;
 mod duration;
 mod effect;
+mod fv;
+mod fvschedule;
+mod intrate;
+mod ipmt;
+mod irr;
+mod ispmt;
+mod mduration;
+mod mirr;
+mod nominal;
+mod nper;
+mod npv;
+mod oddfprice;
+mod oddfyield;
+mod oddlprice;
+mod oddlyield;
+mod pduration;
+mod pmt;
+mod ppmt;
+mod price;
 
 /// `(name, implementation)` pairs contributed by this category,
 /// consumed by [`crate::registry`].
@@ -61,6 +80,25 @@ pub const FUNCTIONS: &[(&str, Function)] = &[
     ("DOLLARFR", dollarfr::call),
     ("DURATION", duration::call),
     ("EFFECT", effect::call),
+    ("FV", fv::call),
+    ("FVSCHEDULE", fvschedule::call),
+    ("INTRATE", intrate::call),
+    ("IPMT", ipmt::call),
+    ("IRR", irr::call),
+    ("ISPMT", ispmt::call),
+    ("MDURATION", mduration::call),
+    ("MIRR", mirr::call),
+    ("NOMINAL", nominal::call),
+    ("NPER", nper::call),
+    ("NPV", npv::call),
+    ("ODDFPRICE", oddfprice::call),
+    ("ODDFYIELD", oddfyield::call),
+    ("ODDLPRICE", oddlprice::call),
+    ("ODDLYIELD", oddlyield::call),
+    ("PDURATION", pduration::call),
+    ("PMT", pmt::call),
+    ("PPMT", ppmt::call),
+    ("PRICE", price::call),
 ];
 
 /// Result alias used by the argument helpers: `Ok(Ok(v))` a coerced
@@ -349,4 +387,16 @@ pub(crate) fn ipmt(rate: f64, per: i64, pv: f64, pmt: f64, typ: i64) -> f64 {
         pv * g + pmt * (1.0 + rate) * (g - 1.0) / rate
     };
     -rate * balance
+}
+
+/// Shared argument parsing for the bond functions: evaluate a scalar
+/// date argument (truncated to a whole-day serial).
+pub(crate) fn date_arg(
+    ctx: &mut calc_core::eval::EvalContext<'_>,
+    arg: &calc_core::ast::Expr,
+) -> Result<Result<i64, calc_core::error::CalcError>, calc_core::eval::EvalError> {
+    match crate::common::coercion::eval_number(ctx, arg)? {
+        Err(e) => Ok(Err(e)),
+        Ok(n) => Ok(Ok(crate::common::date_serial::trunc_to_i64(n))),
+    }
 }
