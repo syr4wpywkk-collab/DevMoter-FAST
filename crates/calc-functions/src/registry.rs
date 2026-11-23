@@ -8,7 +8,9 @@
 
 use calc_core::registry::{Function, FunctionRegistry};
 
-use crate::{aggregate, array, datetime, functional, logical, lookup, math, statistics, text};
+use crate::{
+    aggregate, array, datetime, financial, functional, logical, lookup, math, statistics, text,
+};
 
 /// Aggregation point — exactly one entry per v2 §3 category, in the
 /// plan's order. Empty categories contribute `&[]` so the structure is
@@ -23,6 +25,7 @@ const CATEGORIES: &[&[(&str, Function)]] = &[
     statistics::FUNCTIONS,
     array::FUNCTIONS,
     functional::FUNCTIONS,
+    financial::FUNCTIONS,
 ];
 
 /// Registry containing every implemented function. Lookup is a linear
@@ -101,6 +104,8 @@ mod tests {
                 "FILTER",
                 "FIND",
                 "FLOOR.MATH",
+                "FV",
+                "FVSCHEDULE",
                 "HLOOKUP",
                 "HOUR",
                 "HSTACK",
@@ -110,7 +115,11 @@ mod tests {
                 "INDEX",
                 "INT",
                 "INTERCEPT",
+                "INTRATE",
+                "IPMT",
+                "IRR",
                 "ISNUMBER",
+                "ISPMT",
                 "ISTEXT",
                 "LAMBDA",
                 "LARGE",
@@ -123,18 +132,31 @@ mod tests {
                 "MAP",
                 "MATCH",
                 "MAX",
+                "MDURATION",
                 "MEDIAN",
                 "MID",
                 "MIN",
                 "MINUTE",
+                "MIRR",
                 "MOD",
                 "MODE.SNGL",
                 "MONTH",
+                "NOMINAL",
                 "NOT",
                 "NOW",
+                "NPER",
+                "NPV",
+                "ODDFPRICE",
+                "ODDFYIELD",
+                "ODDLPRICE",
+                "ODDLYIELD",
                 "OR",
+                "PDURATION",
                 "PERCENTILE.INC",
+                "PMT",
                 "POWER",
+                "PPMT",
+                "PRICE",
                 "PRODUCT",
                 "PROPER",
                 "QUARTILE.INC",
