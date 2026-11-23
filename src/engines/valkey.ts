@@ -85,6 +85,17 @@ export function refusal(name: string, subcommand: string | undefined, info: Comm
   return undefined;
 }
 
+/**
+ * Whether a command names a logical database other than the connection's own: MOVE, and COPY with its DB option.
+ * The other commands that do (SELECT, SWAPDB, MIGRATE, FLUSHALL) are refused by their categories.
+ */
+export function crossesDatabases(encoded: readonly (string | Buffer)[]): boolean {
+  const name = String(encoded[0]).toLowerCase();
+  if (name === 'move') return true;
+  // COPY source destination [DB destination-db] [REPLACE]
+  return name === 'copy' && encoded.slice(3).some((arg) => arg.toString().toLowerCase() === 'db');
+}
+
 /** Validates a command and converts its arguments to what goes on the wire. */
 export function encodeArguments(args: readonly CommandArg[]): (string | Buffer)[] {
   if (!Array.isArray(args) || args.length === 0) throw new EngineError('invalid_request', 'command must be a non-empty array, for example ["GET", "key"]');
@@ -216,6 +227,7 @@ export function createValkeyAdapter(options: ValkeyAdapterOptions): KeyValueAdap
         const subcommand = typeof encoded[1] === 'string' ? encoded[1] : undefined;
         const refused = refusal(encoded[0] as string, subcommand, info, options.readOnly === true);
         if (refused) throw refused;
+        if (crossesDatabases(encoded)) throw new EngineError('command_not_allowed', `"${encoded[0] as string}" is not allowed with another logical database: a database entry reaches only the one it is configured for`);
         const reply = await connection.send(encoded);
         if (reply instanceof RespError) throw new EngineError('query_failed', reply.error);
         return { result: reply, durationMs: Math.round(performance.now() - started) };
