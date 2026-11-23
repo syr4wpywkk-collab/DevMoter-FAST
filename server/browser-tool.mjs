@@ -236,6 +236,7 @@ export function createBrowserAutomation({
       return buildBubblewrapCommand({
         projectPath: ctx.project.path,
         grants: [{ path: profileDir, mode: "read-write" }],
+        projectMount: "none",
         command: ctx.binary,
         args,
         allowNetwork: true,

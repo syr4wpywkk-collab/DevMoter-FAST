@@ -80,6 +80,7 @@ async function setup(t, { chrome = {}, processes = null, preexisting = null } = 
     configDir,
     resolveProject: async id => ({ id, path: "/tmp/devmoter-project", name: id }),
     getPreview: id => ({ projectId: id, host: "127.0.0.1", port: 3000, token: "tok" }),
+    readPreviewListener: () => "socket:1",
     env: { DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_SANDBOX: "required", PATH: "" },
     spawnImpl: () => {
       const child = fakeChrome(chrome);
@@ -104,10 +105,10 @@ const profileOf = session => session && existsSync(session) ? session : null;
 test("#709 descendants that outlive Chromium are killed before the profile is deleted", async t => {
   const env = await setup(t);
   env.table.push({ pid: 100, ppid: 1, startTime: "1" }, { pid: 101, ppid: 100, startTime: "2" }, { pid: 102, ppid: 101, startTime: "3" }, { pid: 200, ppid: 1, startTime: "4" });
-  const { session } = await env.manager.start("p1");
+  const { session } = await env.manager.start("p1", { deviceId: "d" });
   const dirs = (await import("node:fs")).readdirSync(env.profilesDir);
   assert.equal(dirs.length, 1);
-  const stopped = await env.manager.stop(session.id);
+  const stopped = await env.manager.stop(session.id, "stopped", { deviceId: "d" });
   assert.deepEqual(env.killed.map(entry => entry.pid).sort(), [101, 102]);
   assert.equal(stopped.session.cleanup, "complete");
   assert.equal(profileOf(join(env.profilesDir, dirs[0])), null);
@@ -117,13 +118,13 @@ test("#709 descendants that outlive Chromium are killed before the profile is de
 test("#709 descendants reparented when Chromium exits on Browser.close are still killed", async t => {
   const env = await setup(t);
   env.table.push({ pid: 100, ppid: 1, startTime: "1" }, { pid: 101, ppid: 100, startTime: "2" });
-  const { session } = await env.manager.start("p1");
+  const { session } = await env.manager.start("p1", { deviceId: "d" });
   env.spawns[0].stdio[3].on("data", chunk => {
     if (!chunk.toString("utf8").includes("Browser.close")) return;
     env.table.splice(env.table.findIndex(row => row.pid === 100), 1);
     env.table.find(row => row.pid === 101).ppid = 1;
   });
-  const stopped = await env.manager.stop(session.id);
+  const stopped = await env.manager.stop(session.id, "stopped", { deviceId: "d" });
   assert.deepEqual(env.killed.map(entry => entry.pid), [101]);
   assert.equal(stopped.session.cleanup, "complete");
 });
@@ -131,9 +132,9 @@ test("#709 descendants reparented when Chromium exits on Browser.close are still
 test("#709 a profile is kept, not deleted, while any browser process is still alive", async t => {
   const env = await setup(t);
   env.table.push({ pid: 100, ppid: 1, startTime: "1" }, { pid: 101, ppid: 100, startTime: "2", immortal: true });
-  const { session } = await env.manager.start("p1");
+  const { session } = await env.manager.start("p1", { deviceId: "d" });
   const [dir] = (await import("node:fs")).readdirSync(env.profilesDir);
-  const stopped = await env.manager.stop(session.id);
+  const stopped = await env.manager.stop(session.id, "stopped", { deviceId: "d" });
   assert.equal(stopped.session.cleanup, "process_alive");
   assert.ok(existsSync(join(env.profilesDir, dir)), "profile stays while a renderer may still write to it");
   env.table.splice(0);
@@ -143,9 +144,9 @@ test("#709 a profile is kept, not deleted, while any browser process is still al
 
 test("#709 a browser that ignores SIGTERM and SIGKILL keeps its profile and reports it", { timeout: 20000 }, async t => {
   const env = await setup(t, { chrome: { exits: false } });
-  const { session } = await env.manager.start("p1");
+  const { session } = await env.manager.start("p1", { deviceId: "d" });
   const [dir] = (await import("node:fs")).readdirSync(env.profilesDir);
-  const stopped = await env.manager.stop(session.id);
+  const stopped = await env.manager.stop(session.id, "stopped", { deviceId: "d" });
   assert.deepEqual(env.spawns[0].signals, ["SIGTERM", "SIGKILL"]);
   assert.equal(stopped.session.cleanup, "process_alive");
   assert.ok(existsSync(join(env.profilesDir, dir)));
@@ -167,7 +168,7 @@ test("#709 restart reclaims Chromium processes and profiles left by a crashed se
       table.push({ pid: 555, ppid: 1, startTime: "9", cmdline: ["chromium", "--user-data-dir=" + stale].join("\0") });
     }
   });
-  await env.manager.start("p1");
+  await env.manager.start("p1", { deviceId: "d" });
   assert.deepEqual(env.killed, [{ pid: 555, signal: "SIGKILL" }]);
   assert.equal(existsSync(stale), false);
 });
@@ -183,11 +184,11 @@ test("#714 a selector click in flight when stop begins sends no input afterwards
   // The box model answer arrives while Browser.close is still pending, i.e.
   // after stop began but before the CDP pipe is closed.
   const env = await setup(t, { chrome: { delay: { "DOM.getBoxModel": 40, "Browser.close": 120 } } });
-  const { session } = await env.manager.start("p1");
-  const clicking = env.manager.act(session.id, { type: "click", selector: "#go" }, { generation: 1 });
+  const { session } = await env.manager.start("p1", { deviceId: "d" });
+  const clicking = env.manager.act(session.id, { type: "click", selector: "#go" }, { generation: 1, deviceId: "d" });
   await sleep(10);
-  const stopping = env.manager.stop(session.id);
-  await assert.rejects(clicking, error => error.code === "cdp_draining");
+  const stopping = env.manager.stop(session.id, "stopped", { deviceId: "d" });
+  await assert.rejects(clicking, error => ["cdp_draining", "session_not_found"].includes(error.code));
   await stopping;
   assert.equal(env.spawns[0].calls.includes("Input.dispatchMouseEvent"), false);
 });

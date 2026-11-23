@@ -331,7 +331,8 @@
   - `server/agent-run-service.mjs`, `server/agent-run-api.mjs`: Agent Run の `context.browser`（`read` / `act`）による Codex への MCP 注入
   - UI: `src/remote-browser.ts`, `src/remote-browser.css`, `src/unified-workspace-nav.ts`（☰ → ブラウザ）
 - **対応するテストファイル**:
-  - `test/browser-session.test.mjs`, `test/browser-cdp.test.mjs`, `test/browser-api.integration.test.mjs`, `test/browser-websocket.test.mjs`, `test/browser-mcp.test.mjs`, `test/remote-browser-ui.test.mjs`, `test/browser-host-capability.test.mjs`, `test/browser-tool.test.mjs`
+  - `test/browser-session.test.mjs`, `test/browser-cdp.test.mjs`, `test/browser-api.integration.test.mjs`, `test/browser-websocket.test.mjs`, `test/browser-mcp.test.mjs`, `test/remote-browser-ui.test.mjs`, `test/browser-host-capability.test.mjs`, `test/browser-tool.test.mjs`, `test/listener-identity.test.mjs`
+  - 実サンドボックス: `test/browser-sandbox.real.test.mjs`（bubblewrap が使えない環境では skip。プロジェクト非マウント・プレビュー以外への TCP / DNS / UDP 遮断を実コマンドで確認）
   - 実 Chromium: `test/browser-session.chromium.test.mjs`, `e2e/remote-browser.test.mjs`（Chromium が無い・サンドボックスで起動できない環境では skip。`DEVMOTER_TEST_CHROMIUM_REQUIRED=1 DEVMOTER_TEST_SANDBOX=required` で必須化）
 - **未検証範囲**:
   - CI のランナーでは実 Chromium テストが skip されます。実 Chromium での合格確認は x86_64 + Chrome for Testing + bubblewrap のみです。
