@@ -47,7 +47,7 @@ pub fn default_registry() -> StandardRegistry {
     StandardRegistry
 }
 
-/// Names of every registered function (Phase 1: the basic 13).
+/// Names of every registered function.
 pub fn registered_names() -> impl Iterator<Item = &'static str> {
     CATEGORIES
         .iter()
@@ -60,7 +60,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn registers_the_phase1_13() {
+    fn registers_all_implemented_functions() {
         let mut names: Vec<_> = registered_names().collect();
         names.sort_unstable();
         assert_eq!(
@@ -69,22 +69,35 @@ mod tests {
                 "ABS",
                 "AND",
                 "AVERAGE",
+                "CEILING.MATH",
                 "COUNT",
                 "COUNTA",
                 "COUNTIF",
                 "COUNTIFS",
+                "EXP",
+                "FLOOR.MATH",
                 "IF",
                 "IFERROR",
+                "IFS",
+                "INT",
+                "ISNUMBER",
+                "ISTEXT",
+                "LOG",
                 "MAX",
                 "MIN",
+                "MOD",
                 "NOT",
                 "OR",
+                "POWER",
                 "PRODUCT",
                 "ROUND",
+                "SQRT",
                 "SUM",
                 "SUMIF",
                 "SUMIFS",
                 "SUMPRODUCT",
+                "SWITCH",
+                "TRUNC",
             ]
         );
     }

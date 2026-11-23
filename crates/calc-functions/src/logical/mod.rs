@@ -8,8 +8,12 @@ use calc_core::registry::Function;
 mod and;
 mod if_fn;
 mod iferror;
+mod ifs;
+mod isnumber;
+mod istext;
 mod not;
 mod or;
+mod switch;
 
 /// `(name, implementation)` pairs contributed by this category,
 /// consumed by [`crate::registry`].
@@ -17,6 +21,10 @@ pub const FUNCTIONS: &[(&str, Function)] = &[
     ("AND", and::call),
     ("IF", if_fn::call),
     ("IFERROR", iferror::call),
+    ("IFS", ifs::call),
+    ("ISNUMBER", isnumber::call),
+    ("ISTEXT", istext::call),
     ("NOT", not::call),
     ("OR", or::call),
+    ("SWITCH", switch::call),
 ];
