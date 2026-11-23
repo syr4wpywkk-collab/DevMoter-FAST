@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, realpathSync } from "node:fs";
+import { accessSync, constants as fsConstants, realpathSync, statSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { delimiter, dirname, isAbsolute, join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -15,7 +15,9 @@ export function resolveExecutable(binary, env) {
     : String(env.PATH || "").split(delimiter).filter(Boolean).map(dir => join(dir, binary));
   for (const candidate of candidates) {
     try {
-      if (existsSync(candidate)) return realpathSync(candidate);
+      // Match execvp: skip PATH entries that are not executable files.
+      accessSync(candidate, fsConstants.X_OK);
+      if (statSync(candidate).isFile()) return realpathSync(candidate);
     } catch {
       // Keep searching PATH entries.
     }

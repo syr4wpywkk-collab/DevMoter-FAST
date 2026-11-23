@@ -10,6 +10,7 @@ import {
   browserAutomationPolicy,
   binaryGrant,
   sandboxedBinaryPath,
+  resolveExecutable,
   browserAutomationStatus,
   createBrowserAutomation
 } from "../server/browser-tool.mjs";
@@ -164,10 +165,24 @@ test("a browser binary reached through a symlink runs at its mounted real path",
   await manager.stop("p1");
 });
 
+test("a non-executable file earlier on PATH does not shadow the browser", async t => {
+  const root = await mkdtemp(join(tmpdir(), "devmoter-chrome-path-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, "a"));
+  await mkdir(join(root, "b"));
+  await writeFile(join(root, "a", "chromium"), "not a program\n");
+  await writeFile(join(root, "b", "chromium"), "#!/bin/sh\n");
+  await chmod(join(root, "b", "chromium"), 0o755);
+  const env = { PATH: [join(root, "a"), join(root, "b")].join(":") };
+  assert.equal(resolveExecutable("chromium", env), realpathSync(join(root, "b", "chromium")));
+  assert.equal(resolveExecutable("chromium", { PATH: join(root, "a") }), null);
+});
+
 test("a browser binary directly in a temp or home directory is refused, not mounted", async t => {
   const dir = await mkdtemp(join(tmpdir(), "devmoter-chrome-dir-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   await writeFile(join(dir, "chrome"), "#!/bin/sh\n");
+  await chmod(join(dir, "chrome"), 0o755);
   assert.deepEqual(binaryGrant(join(dir, "chrome"), {}), { path: realpathSync(dir), mode: "read-only" });
   assert.throws(() => binaryGrant(join(dir, "chrome"), { TMPDIR: dir }), /own directory/);
   assert.throws(() => binaryGrant(join(dir, "chrome"), { HOME: dir }), /own directory/);
