@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { REMOTE_BROWSER_HOST_FEATURES, remoteBrowserHostCapability } from "../server/browser-session.mjs";
 import { createHostAdapter } from "../server/host/adapters.mjs";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -78,6 +78,7 @@ test("remote browser capability is unavailable when the browser binary cannot be
   t.after(() => rm(dir, { recursive: true, force: true }));
   const chrome = join(dir, "chrome");
   await writeFile(chrome, "#!/bin/sh\n");
+  await chmod(chrome, 0o755);
   const { spawn } = fakeSpawn(["bwrap", chrome]);
   const env = { DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_BROWSER_BIN: chrome };
   assert.equal(remoteBrowserHostCapability({ env, spawnSyncImpl: spawn }).state, "available");
