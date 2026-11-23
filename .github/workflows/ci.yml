@@ -29,11 +29,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          # The vendored engine sources (~790 MB) are not needed by this job.
+          # The vendored engine sources (~790 MB) are not needed by this job;
+          # engines/manifest.json and the engines' git tree ids are.
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             /*
-            !/engines/
+            !/engines/*/
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
