@@ -22,6 +22,7 @@ import { createPolicyEngine } from "../server/workspace-control.mjs";
 import { createAgentRunService } from "../server/agent-run-service.mjs";
 import { browserMcpTools } from "../cli/browser-mcp.mjs";
 import { createBrowserSessionManager } from "../server/browser-session.mjs";
+import { readListenerIdentity } from "../server/listener-identity.mjs";
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const cliPath = join(repoRoot, "cli", "devmoter.mjs");
@@ -491,7 +492,7 @@ test("real Chromium driven through devmoter browser-mcp, with user takeover and 
   const manager = createBrowserSessionManager({
     configDir,
     resolveProject: async id => ({ id, path: configDir, name: id }),
-    getPreview: () => ({ projectId: "real", host: "127.0.0.1", port: preview.address().port, token: "t" }),
+    getPreview: () => ({ projectId: "real", host: "127.0.0.1", port: preview.address().port, token: "t", listener: readListenerIdentity("127.0.0.1", preview.address().port) }),
     env: { ...process.env, DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_BROWSER_BIN: chromium, DEVMOTER_SANDBOX: process.env.DEVMOTER_TEST_SANDBOX || "preferred" },
     limits: { sweepMs: 0 }
   });

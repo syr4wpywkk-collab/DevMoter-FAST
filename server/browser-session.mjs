@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { delimiter, dirname, isAbsolute, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { buildBubblewrapCommand, sandboxStatus } from "./advanced-features.mjs";
-import { browserAutomationStatus, browserProcessEnv, detectBrowserBinary, loopbackHost } from "./browser-tool.mjs";
+import { SANDBOX_SYSTEM_MOUNTS as SYSTEM_MOUNTS, binaryGrant, browserAutomationStatus, browserProcessEnv, detectBrowserBinary, loopbackHost, resolveExecutable } from "./browser-tool.mjs";
 import { createCdpPipeConnection } from "./browser-cdp.mjs";
 import { listenerConnectHost, readListenerIdentity } from "./listener-identity.mjs";
 
@@ -58,7 +58,6 @@ const DEFAULT_LIMITS = Object.freeze({
 
 const SCREENCAST_FRAMES_IN_FLIGHT = 2;
 const SCREENCAST_REFRESH_MS = 250;
-const SYSTEM_MOUNTS = ["/usr", "/bin", "/lib", "/lib64", "/etc", "/run"];
 const DENIED_PERMISSIONS = Object.freeze([
   "geolocation", "notifications", "videoCapture", "audioCapture", "clipboardReadWrite",
   "clipboardSanitizedWrite", "midi", "midiSysex", "sensors", "displayCapture", "idleDetection",
@@ -282,28 +281,6 @@ export function normalizeViewport(input = {}) {
   const height = clamp(Math.round(Number(value.height)) || 844, 240, 2400);
   const deviceScaleFactor = clamp(Number(value.deviceScaleFactor ?? value.dpr) || 2, 1, 3);
   return { width, height, deviceScaleFactor, mobile: value.mobile !== false };
-}
-
-function resolveExecutable(binary, env) {
-  if (!binary) return null;
-  const candidates = isAbsolute(binary)
-    ? [binary]
-    : String(env.PATH || "").split(delimiter).filter(Boolean).map(dir => join(dir, binary));
-  for (const candidate of candidates) {
-    try {
-      if (existsSync(candidate)) return realpathSync(candidate);
-    } catch {
-      // Keep searching PATH entries.
-    }
-  }
-  return null;
-}
-
-function binaryGrant(binary, env) {
-  const real = resolveExecutable(binary, env);
-  if (!real) return null;
-  if (SYSTEM_MOUNTS.some(root => real === root || real.startsWith(root + "/"))) return null;
-  return { path: dirname(real), mode: "read-only" };
 }
 
 function publicUrl(raw) {
@@ -891,7 +868,7 @@ export function createBrowserSessionManager({
     // The session is bound to the process listening on the preview port now,
     // which must be the one the preview was registered for.
     const previewListener = readPreviewListener(preview.host, preview.port);
-    if (!previewListener || (preview.listener && preview.listener !== previewListener)) {
+    if (!previewListener || !preview.listener || preview.listener !== previewListener) {
       throw httpError("The approved live preview changed; start a new browser session", 409, "preview_changed");
     }
     // The relay dials this exact address: for "localhost" it is the family
@@ -1314,7 +1291,8 @@ export const REMOTE_BROWSER_HOST_FEATURES = Object.freeze([
 // `bwrap --version` succeeds even where user namespaces are blocked, so start
 // a trivial sandbox with the same namespace and mount setup sessions use.
 function bubblewrapCanStart(spawnSyncImpl) {
-  const args = ["--die-with-parent", "--new-session", "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp"];
+  // Same namespaces as a real session, so hosts that block them report unavailable.
+  const args = ["--die-with-parent", "--new-session", "--unshare-net", "--unshare-pid", "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp"];
   for (const path of SYSTEM_MOUNTS) args.push("--ro-bind-try", path, path);
   try {
     return spawnSyncImpl("bwrap", [...args, "--", "true"], { encoding: "utf8", timeout: 5000 })?.status === 0;
