@@ -125,6 +125,11 @@ describe('SQLite adapter against the built engine', { skip: sqlite.skip }, () =>
     assert.deepEqual(results[0]?.rows, [{ big: '9223372036854775807', small: 7 }]);
   });
 
+  test('a CRLF inside a string literal is stored as sent', async () => {
+    const { results } = await adapter.query("SELECT hex('a\r\nb') AS crlf, hex('a\rb') AS cr, hex('a\nb') AS lf,\r\n hex(?1) AS param", ['x\r\ny']);
+    assert.deepEqual(results[0]?.rows, [{ crlf: '610D0A62', cr: '610D62', lf: '610A62', param: '780D0A79' }]);
+  });
+
   test('a statement without rows yields no result set', async () => {
     assert.deepEqual((await adapter.query('SELECT * FROM t WHERE 0', [])).results, []);
     // EXPLAIN output is rows like any other result, not the shell's formatted text.

@@ -8,8 +8,18 @@ export interface SqlShape {
   firstKeyword: string;
 }
 
+export interface SqlDialect {
+  /**
+   * The engine reads these characters beyond ASCII as blank space (DuckDB does for the
+   * no-break space and its like); elsewhere they are part of a word.
+   */
+  blanks?: RegExp;
+}
+
+/** What DuckDB's parser turns into a plain space before it reads the text. */
+export const DUCKDB_SQL: SqlDialect = { blanks: /[\u00a0\u2000-\u200b\u202f\u205f\u3000\ufeff]/ };
+
 const WORD_START = /[A-Za-z_\u0080-\uffff]/;
-const WORD = /[A-Za-z0-9_$\u0080-\uffff]*/y;
 const DOLLAR_TAG = /\$(?:[A-Za-z_\u0080-\uffff][A-Za-z0-9_\u0080-\uffff]*)?\$/y;
 
 /** Index just after the quoted text that opens at `start`; the end of the text when it is not closed. */
@@ -41,7 +51,19 @@ function skipBlockComment(sql: string, start: number): number {
   return sql.length;
 }
 
-export function sqlShape(sql: string): SqlShape {
+/** Index just after the word that starts at `start`. */
+function skipWord(sql: string, start: number, blanks: RegExp | undefined): number {
+  let index = start;
+  while (index < sql.length) {
+    const char = sql[index] as string;
+    if (!/[A-Za-z0-9_$\u0080-\uffff]/.test(char) || blanks?.test(char)) break;
+    index += 1;
+  }
+  return index;
+}
+
+export function sqlShape(sql: string, dialect: SqlDialect = {}): SqlShape {
+  const { blanks } = dialect;
   let statements = 0;
   let firstKeyword: string | undefined;
   let open = false; // the current statement has content
@@ -56,7 +78,9 @@ export function sqlShape(sql: string): SqlShape {
     if (char === ';') {
       open = false;
       index += 1;
-    } else if (/\s/.test(char)) {
+    } else if (/\s/.test(char) && char <= ' ') {
+      index += 1;
+    } else if (blanks?.test(char)) {
       index += 1;
     } else if (sql.startsWith('--', index)) {
       const end = sql.indexOf('\n', index);
@@ -72,12 +96,11 @@ export function sqlShape(sql: string): SqlShape {
       const end = sql.indexOf(tag, DOLLAR_TAG.lastIndex);
       index = end === -1 ? sql.length : end + tag.length;
     } else if (WORD_START.test(char)) {
-      WORD.lastIndex = index;
-      WORD.test(sql);
-      const word = sql.slice(index, WORD.lastIndex);
+      const end = skipWord(sql, index, blanks);
+      const word = sql.slice(index, end);
       if (firstKeyword === undefined) firstKeyword = word.toUpperCase();
       content();
-      index = WORD.lastIndex;
+      index = end;
       // E'...' is the one string form in which a backslash escapes the quote.
       if ((word === 'e' || word === 'E') && sql[index] === "'") index = skipQuoted(sql, index, "'", true);
     } else {
