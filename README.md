@@ -42,6 +42,31 @@ CI（GitHub Actions）は Pull Request と main への push ごとに、x86-64 �
 {"time":"2026-11-24T00:00:00.000Z","level":"info","msg":"server started","service":"devmoter-base","port":8765}
 ```
 
+## エンジンのビルド
+
+4エンジンは、固定した上流コミットのソースから `build/<アーキテクチャ>/<エンジン>/` にビルドします。`engines/` には何も書き込みません。
+
+```sh
+# Docker だけあればよい方法（ビルド環境のイメージはダイジェストで固定、ビルド中はネットワークなし）
+npm run build:engines:container                                  # ホストと同じアーキテクチャで4エンジン
+npm run build:engines:container -- --platform linux/arm64        # ARM64（x86-64 ホストでは QEMU エミュレーション。遅い）
+npm run build:engines:container -- --platform linux/arm64 sqlite # エンジンを指定
+
+# ホストに直接ビルドする方法（必要なもの: gcc/g++、make、cmake、ninja、bison、flex、perl、pkg-config、python3、zlib のヘッダ）
+npm run build:engines -- sqlite valkey --jobs 4
+```
+
+ビルド後に各エンジンのスモークテスト（起動して読み書きを確認）を実行し、結果とコミット・コンパイラ・バイナリの SHA-256 を `BUILD_INFO.json` に記録します。スモークテストは unix ソケットだけを使い、TCP ポートを開きません。エンジンごとの手順は [`scripts/build/engines/`](scripts/build/engines/)、検証結果は [`docs/build/verification.md`](docs/build/verification.md) にあります。
+
+| エンジン | ビルド方法 | 構成 |
+|---|---|---|
+| PostgreSQL | `configure` + `make`（ツリー外ビルド） | ICU・readline・TLS なし |
+| SQLite | autosetup `configure` + `make`（ツリー外ビルド） | FTS4/FTS5/R-Tree あり、Tcl なし |
+| DuckDB | CMake + Ninja（Release） | core_functions・parquet・json・icu を静的リンク |
+| Valkey | `make`（書き出したソースの中でビルド） | 同梱 jemalloc、TLS なし |
+
+TLS を外しているのは、初期段階がローカル検証（unix ソケット）に限定されているためです。外部接続を扱う前に見直します。
+
 ## 上流ソースの固定
 
 4エンジンの上流コミットは [`engines/manifest.json`](engines/manifest.json) に固定しています。`npm run upstream:verify` は各ディレクトリの git ツリー ID が固定値と一致することを確認するので、`engines/` 内を1バイトでも変更すると失敗します。経緯と更新手順は [`engines/UPSTREAM.md`](engines/UPSTREAM.md) にあります。

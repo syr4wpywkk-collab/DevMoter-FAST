@@ -9,3 +9,4 @@
 - Root `.gitignore` patterns must stay anchored (`/name/`): unanchored ones also hide files inside `engines/`.
 - Never log secrets; use the logger in `src/logging/` (it redacts), not `console.log`, in `src/`.
 - Update the matching row in `docs/roadmap/features.md` when a feature is implemented or verified.
+- Engines build from the pinned tree into `build/<arch>/<engine>/` via `npm run build:engines` (host toolchain) or `npm run build:engines:container` (Docker, also `--platform linux/arm64`). Engine build steps live in `scripts/build/engines/<name>.sh`; they receive `DMB_SRC`/`DMB_WORK`/`DMB_PREFIX` and must not reference `engines/`.

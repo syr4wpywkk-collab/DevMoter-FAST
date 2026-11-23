@@ -15,6 +15,8 @@
     "stats": "node scripts/stats/code-stats.ts",
     "stats:update": "node scripts/stats/code-stats.ts --write",
     "stats:check": "node scripts/stats/code-stats.ts --check",
+    "build:engines": "node scripts/build/build.ts",
+    "build:engines:container": "scripts/build/container.sh",
     "check": "npm run typecheck && npm test && npm run deps:check && npm run upstream:verify && npm run stats:check"
   },
   "devDependencies": {
