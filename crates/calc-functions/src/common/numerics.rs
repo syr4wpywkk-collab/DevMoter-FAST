@@ -524,26 +524,276 @@ pub fn ln_poisson_pmf(k: f64, lambda: f64) -> f64 {
     k * lambda.ln() - lambda - ln_gamma(k + 1.0)
 }
 
-// ---------- Bessel functions (v3 engineering, track I11) ----------
+/// Student's t CDF `P(T <= x)` for `T ~ t_df` (left tail).
+///
+/// Via the incomplete-beta identity: with `u = df/(df + x²)`,
+/// `P(T <= x) = 1 - ½ I_u(df/2, ½)` for `x > 0` and `½ I_u(df/2, ½)`
+/// for `x <= 0`. Domain: `df >= 1` (any real `x`); `x = 0` gives
+/// `0.5` exactly. Returns `NaN` outside the domain.
+///
+/// See `docs/functions/T.DIST.md`.
+pub fn t_cdf(x: f64, df: f64) -> f64 {
+    if x.is_nan() || df.is_nan() || df < 1.0 {
+        return f64::NAN;
+    }
+    if x == 0.0 {
+        return 0.5;
+    }
+    let u = df / (df + x * x);
+    let ib = regularized_beta(u, df / 2.0, 0.5);
+    if x > 0.0 { 1.0 - 0.5 * ib } else { 0.5 * ib }
+}
 
-// The `BESSEL{I,J,K,Y}` worksheet functions evaluate the four Bessel
-// families at *integer order* `n >= 0`. Implementations are the
-// Numerical Recipes (3rd ed. §6.5-6.6) kernels: rational fits for the
-// order-0/1 functions (split at |x| = 8 for J/Y, |x| = 3.75 for I,
-// x = 2 for K), Miller's downward recurrence for J_n (n > x) and I_n,
-// and upward recurrences for J_n (n < x), Y_n and K_n.
-//
-// Accuracy targets (relative, per NR's fit quality):
-// - `bessel_j` / `bessel_y`: ~1e-13 near unit order, degrading slowly
-//   for large `x` near the functions' zeros.
-// - `bessel_i` / `bessel_k`: ~1e-7 (Abramowitz & Stegun polynomial
-//   fits). Excel's own Bessel results are no more precise; spec
-//   tolerances in `docs/functions/BESSEL*.md` sit at ~1e-6.
-//
-// Domain errors return `NaN` (callers map to `#NUM!`); `n < 0` is
-// rejected by the caller before dispatch. Non-finite overflow (I_n for
-// large `x`, K_n near `x -> 0+`) propagates as `inf`/`NaN` and the
-// caller maps that to `#NUM!` as well.
+/// Student's t survival function `P(T >= x)` (right tail).
+///
+/// Computed as the upper tail of the same incomplete-beta identity so
+/// the far right tail keeps full precision (a literal `1 - t_cdf(x)`
+/// would collapse to 0 for large `x`). `x = 0` gives `0.5`.
+///
+/// See `docs/functions/T.DIST.RT.md`.
+pub fn t_sf(x: f64, df: f64) -> f64 {
+    if x.is_nan() || df.is_nan() || df < 1.0 {
+        return f64::NAN;
+    }
+    if x == 0.0 {
+        return 0.5;
+    }
+    let u = df / (df + x * x);
+    let ib = regularized_beta(u, df / 2.0, 0.5);
+    if x > 0.0 { 0.5 * ib } else { 1.0 - 0.5 * ib }
+}
+
+/// Student's t density at `x` for `df` degrees of freedom:
+/// `Γ((df+1)/2) / (√(df·π) · Γ(df/2)) · (1 + x²/df)^(-(df+1)/2)`,
+/// evaluated in log space. Returns `NaN` for `df < 1` or `NaN` input.
+///
+/// See `docs/functions/T.DIST.md`.
+pub fn t_pdf(x: f64, df: f64) -> f64 {
+    if x.is_nan() || df.is_nan() || df < 1.0 {
+        return f64::NAN;
+    }
+    let ln = ln_gamma((df + 1.0) / 2.0)
+        - ln_gamma(df / 2.0)
+        - 0.5 * (df * std::f64::consts::PI).ln()
+        - (df + 1.0) / 2.0 * (1.0 + x * x / df).ln();
+    ln.exp()
+}
+
+/// Inverse of the Student's t CDF: the `x` with `P(T <= x) = p`.
+///
+/// Symmetry enforced (`p < 0.5` reflects through `-t_inv(1-p)`), then
+/// the generic [`inverse_cdf`] solver on [`t_cdf`]; the upper bracket
+/// doubles from 1 until it covers `p` so far-tail quantiles still
+/// resolve. Returns `NaN` for `p` outside the open `(0, 1)` or
+/// `df < 1`.
+///
+/// See `docs/functions/T.INV.md`.
+pub fn t_inv(p: f64, df: f64) -> f64 {
+    if p.is_nan() || df.is_nan() || df < 1.0 || p <= 0.0 || p >= 1.0 {
+        return f64::NAN;
+    }
+    if p == 0.5 {
+        return 0.0;
+    }
+    if p < 0.5 {
+        return -t_inv(1.0 - p, df);
+    }
+    let cdf = |t: f64| t_cdf(t, df);
+    let mut lo = 0.0;
+    let mut hi = 1.0;
+    while cdf(hi) < p && hi < 1e300 {
+        lo = hi;
+        hi *= 2.0;
+    }
+    inverse_cdf(cdf, p, lo, hi, hi * 1e-13, 1000)
+}
+
+/// Inverse of the regularized lower incomplete gamma: `x` such that
+/// `P(a, x) = p`, for `a > 0` and `0 <= p < 1` (`p = 1` has no finite
+/// answer — returns `NaN`; callers map to `#NUM!`).
+///
+/// Bracketed inversion of [`regularized_gamma_p`] on `[0, hi]` with the
+/// upper bound doubled from `max(1, a)` until it covers `p` (the gamma
+/// CDF is monotone and reaches 1). [`inverse_cdf`]'s safeguarded secant
+/// then converges to ~1e-12 absolute on the bracket.
+///
+/// See `docs/functions/GAMMA.INV.md`.
+pub fn regularized_gamma_inv(a: f64, p: f64) -> f64 {
+    if a.is_nan() || p.is_nan() || a <= 0.0 || !(0.0..1.0).contains(&p) {
+        return f64::NAN;
+    }
+    if p == 0.0 {
+        return 0.0;
+    }
+    let cdf = |x: f64| regularized_gamma_p(a, x);
+    let mut hi = a.max(1.0);
+    while cdf(hi) < p {
+        hi *= 2.0;
+        if !hi.is_finite() {
+            return f64::NAN;
+        }
+    }
+    inverse_cdf(cdf, p, 0.0, hi, hi * 1e-13, 500)
+}
+
+/// Inverse of the regularized incomplete beta: `x` such that
+/// `I_x(a, b) = p`, for `a, b > 0` and `0 <= p <= 1` (the endpoints
+/// return `0` and `1`).
+///
+/// Direct bracketed inversion of [`regularized_beta`] on `[0, 1]` —
+/// the support is bounded so no bracket search is needed.
+///
+/// See `docs/functions/BETA.INV.md` and `docs/functions/F.INV.md`.
+pub fn regularized_beta_inv(p: f64, a: f64, b: f64) -> f64 {
+    if a.is_nan() || b.is_nan() || p.is_nan() || a <= 0.0 || b <= 0.0 || !(0.0..=1.0).contains(&p) {
+        return f64::NAN;
+    }
+    inverse_cdf(|x| regularized_beta(x, a, b), p, 0.0, 1.0, 1e-14, 500)
+}
+
+/// F-distribution CDF: `P(F <= x)` for `F ~ F(d1, d2)`, via the
+/// incomplete-beta identity `F_cdf(x) = I_z(d1/2, d2/2)` with
+/// `z = d1·x / (d1·x + d2)`. Domain: `x >= 0`, `d1, d2 > 0`; returns
+/// `NaN` outside it (`x = 0` gives 0, `x = +inf` gives 1).
+///
+/// See `docs/functions/F.DIST.md`.
+pub fn f_cdf(x: f64, d1: f64, d2: f64) -> f64 {
+    if x.is_nan() || d1.is_nan() || d2.is_nan() || x < 0.0 || d1 <= 0.0 || d2 <= 0.0 {
+        return f64::NAN;
+    }
+    if x == 0.0 {
+        return 0.0;
+    }
+    if x == f64::INFINITY {
+        return 1.0;
+    }
+    // Compute z in the stable form that avoids d1*x overflow.
+    let z = if d1 * x < d2 {
+        let t = d1 * x;
+        t / (t + d2)
+    } else {
+        d1 / (d1 + d2 / x)
+    };
+    regularized_beta(z, d1 / 2.0, d2 / 2.0)
+}
+
+/// Inverse of the F-distribution CDF: `x` such that `F_cdf(x; d1,d2)
+/// = p` for `0 <= p < 1` and `d1, d2 > 0`. `p = 1` is unbounded —
+/// returns `NaN` (callers map to `#NUM!`).
+///
+/// Inverts through the beta identity above: `z = I⁻¹(p; d1/2, d2/2)`,
+/// `x = d2·z / (d1·(1−z))`.
+///
+/// See `docs/functions/F.INV.md`.
+pub fn f_inv(p: f64, d1: f64, d2: f64) -> f64 {
+    if p.is_nan()
+        || d1.is_nan()
+        || d2.is_nan()
+        || !(0.0..1.0).contains(&p)
+        || d1 <= 0.0
+        || d2 <= 0.0
+    {
+        return f64::NAN;
+    }
+    if p == 0.0 {
+        return 0.0;
+    }
+    let z = regularized_beta_inv(p, d1 / 2.0, d2 / 2.0);
+    if !(0.0..1.0).contains(&z) {
+        return f64::NAN;
+    }
+    d2 * z / (d1 * (1.0 - z))
+}
+
+/// I_n(x) for integer `n >= 0`, any real `x`. Overflow returns `inf`.
+pub fn bessel_i(n: i64, x: f64) -> f64 {
+    if n < 0 || x.is_nan() {
+        return f64::NAN;
+    }
+    if n == 0 {
+        return bessel_i0(x);
+    }
+    if n == 1 {
+        return bessel_i1(x);
+    }
+    if x == 0.0 {
+        return 0.0;
+    }
+    let ax = x.abs();
+    let i0 = bessel_i0(ax);
+    if !i0.is_finite() {
+        return f64::INFINITY;
+    }
+    // Downward recurrence normalized by I_0.
+    let tox = 2.0 / ax;
+    let nf = n as f64;
+    let m = 2 * (n + (40.0 * nf).sqrt() as i64);
+    let mut bi = 1.0;
+    let mut bip = 0.0;
+    let mut ans = 0.0;
+    for j in (1..=m).rev() {
+        let bim = bip + j as f64 * tox * bi;
+        bip = bi;
+        bi = bim;
+        if bi.abs() > 1e10 {
+            bi *= 1e-10;
+            bip *= 1e-10;
+            ans *= 1e-10;
+        }
+        if j == n {
+            ans = bip;
+        }
+    }
+    ans *= i0 / bi;
+    if x < 0.0 && n % 2 == 1 { -ans } else { ans }
+}
+
+/// I_0(x): NR bessi0 (A&S 9.8.1/9.8.2 polynomial fits, |err| <~ 2e-7).
+fn bessel_i0(x: f64) -> f64 {
+    let ax = x.abs();
+    if ax < 3.75 {
+        let y = (x / 3.75) * (x / 3.75);
+        1.0 + y
+            * (3.5156229
+                + y * (3.0899424
+                    + y * (1.2067492 + y * (0.2659732 + y * (0.360768e-1 + y * 0.45813e-2)))))
+    } else {
+        let y = 3.75 / ax;
+        (ax.exp() / ax.sqrt())
+            * (0.39894228
+                + y * (0.1328592e-1
+                    + y * (0.225319e-2
+                        + y * (-0.157565e-2
+                            + y * (0.916281e-2
+                                + y * (-0.2057706e-1
+                                    + y * (0.2635537e-1
+                                        + y * (-0.1647633e-1 + y * 0.392377e-2))))))))
+    }
+}
+
+/// I_1(x): NR bessi1.
+fn bessel_i1(x: f64) -> f64 {
+    let ax = x.abs();
+    let ans = if ax < 3.75 {
+        let y = (x / 3.75) * (x / 3.75);
+        ax * (0.5
+            + y * (0.87890594
+                + y * (0.51498869
+                    + y * (0.15084934 + y * (0.2658733e-1 + y * (0.301532e-2 + y * 0.32411e-3))))))
+    } else {
+        let y = 3.75 / ax;
+        (ax.exp() / ax.sqrt())
+            * (0.39894228
+                + y * (-0.3988024e-1
+                    + y * (-0.362018e-2
+                        + y * (0.163801e-2
+                            + y * (-0.1031555e-1
+                                + y * (0.2282967e-1
+                                    + y * (-0.2895312e-1
+                                        + y * (0.1787654e-1 - y * 0.420059e-2))))))))
+    };
+    if x < 0.0 { -ans } else { ans }
+}
 
 /// J_n(x) for integer `n >= 0`, any real `x`.
 pub fn bessel_j(n: i64, x: f64) -> f64 {
@@ -606,95 +856,6 @@ pub fn bessel_j(n: i64, x: f64) -> f64 {
     }
 }
 
-/// Y_n(x) for integer `n >= 0`, `x > 0`. Returns `NaN` for `x <= 0`.
-pub fn bessel_y(n: i64, x: f64) -> f64 {
-    if n < 0 || x.is_nan() || x <= 0.0 {
-        return f64::NAN;
-    }
-    if n == 0 {
-        return bessel_y0(x);
-    }
-    if n == 1 {
-        return bessel_y1(x);
-    }
-    // Upward recurrence is always stable for Y.
-    let tox = 2.0 / x;
-    let mut bym = bessel_y0(x);
-    let mut by = bessel_y1(x);
-    for k in 1..n {
-        let byp = k as f64 * tox * by - bym;
-        bym = by;
-        by = byp;
-    }
-    by
-}
-
-/// I_n(x) for integer `n >= 0`, any real `x`. Overflow returns `inf`.
-pub fn bessel_i(n: i64, x: f64) -> f64 {
-    if n < 0 || x.is_nan() {
-        return f64::NAN;
-    }
-    if n == 0 {
-        return bessel_i0(x);
-    }
-    if n == 1 {
-        return bessel_i1(x);
-    }
-    if x == 0.0 {
-        return 0.0;
-    }
-    let ax = x.abs();
-    let i0 = bessel_i0(ax);
-    if !i0.is_finite() {
-        return f64::INFINITY;
-    }
-    // Downward recurrence normalized by I_0.
-    let tox = 2.0 / ax;
-    let nf = n as f64;
-    let m = 2 * (n + (40.0 * nf).sqrt() as i64);
-    let mut bi = 1.0;
-    let mut bip = 0.0;
-    let mut ans = 0.0;
-    for j in (1..=m).rev() {
-        let bim = bip + j as f64 * tox * bi;
-        bip = bi;
-        bi = bim;
-        if bi.abs() > 1e10 {
-            bi *= 1e-10;
-            bip *= 1e-10;
-            ans *= 1e-10;
-        }
-        if j == n {
-            ans = bip;
-        }
-    }
-    ans *= i0 / bi;
-    if x < 0.0 && n % 2 == 1 { -ans } else { ans }
-}
-
-/// K_n(x) for integer `n >= 0`, `x > 0`. Returns `NaN` for `x <= 0`.
-pub fn bessel_k(n: i64, x: f64) -> f64 {
-    if n < 0 || x.is_nan() || x <= 0.0 {
-        return f64::NAN;
-    }
-    if n == 0 {
-        return bessel_k0(x);
-    }
-    if n == 1 {
-        return bessel_k1(x);
-    }
-    // Upward recurrence is always stable for K.
-    let tox = 2.0 / x;
-    let mut bkm = bessel_k0(x);
-    let mut bk = bessel_k1(x);
-    for k in 1..n {
-        let bkp = bkm + k as f64 * tox * bk;
-        bkm = bk;
-        bk = bkp;
-    }
-    bk
-}
-
 /// J_0(x): rational fit for |x| < 8, asymptotic form beyond (NR bessj0).
 fn bessel_j0(x: f64) -> f64 {
     let ax = x.abs();
@@ -748,6 +909,94 @@ fn bessel_j1(x: f64) -> f64 {
     if x < 0.0 { -ans } else { ans }
 }
 
+/// K_n(x) for integer `n >= 0`, `x > 0`. Returns `NaN` for `x <= 0`.
+pub fn bessel_k(n: i64, x: f64) -> f64 {
+    if n < 0 || x.is_nan() || x <= 0.0 {
+        return f64::NAN;
+    }
+    if n == 0 {
+        return bessel_k0(x);
+    }
+    if n == 1 {
+        return bessel_k1(x);
+    }
+    // Upward recurrence is always stable for K.
+    let tox = 2.0 / x;
+    let mut bkm = bessel_k0(x);
+    let mut bk = bessel_k1(x);
+    for k in 1..n {
+        let bkp = bkm + k as f64 * tox * bk;
+        bkm = bk;
+        bk = bkp;
+    }
+    bk
+}
+
+/// K_0(x), `x > 0`: NR bessk0.
+fn bessel_k0(x: f64) -> f64 {
+    if x <= 2.0 {
+        let y = x * x / 4.0;
+        (-(x / 2.0).ln()) * bessel_i0(x)
+            + (-0.57721566
+                + y * (0.42278420
+                    + y * (0.23069756
+                        + y * (0.3488590e-1 + y * (0.262698e-2 + y * (0.10750e-3 + y * 0.74e-5))))))
+    } else {
+        let y = 2.0 / x;
+        ((-x).exp() / x.sqrt())
+            * (1.25331414
+                + y * (-0.7832358e-1
+                    + y * (0.2189568e-1
+                        + y * (-0.1062446e-1
+                            + y * (0.587872e-2 + y * (-0.251540e-2 + y * 0.53208e-3))))))
+    }
+}
+
+/// K_1(x), `x > 0`: NR bessk1.
+fn bessel_k1(x: f64) -> f64 {
+    if x <= 2.0 {
+        let y = x * x / 4.0;
+        (x / 2.0).ln() * bessel_i1(x)
+            + (1.0 / x)
+                * (1.0
+                    + y * (0.15443144
+                        + y * (-0.67278579
+                            + y * (-0.18156897
+                                + y * (-0.1919402e-1 + y * (-0.110404e-2 + y * (-0.4686e-4)))))))
+    } else {
+        let y = 2.0 / x;
+        ((-x).exp() / x.sqrt())
+            * (1.25331414
+                + y * (0.23498619
+                    + y * (-0.3655620e-1
+                        + y * (0.1504268e-1
+                            + y * (-0.780353e-2 + y * (0.325614e-2 + y * (-0.68245e-3)))))))
+    }
+}
+
+/// Y_n(x) for integer `n >= 0`, `x > 0`. Returns `NaN` for `x <= 0`.
+pub fn bessel_y(n: i64, x: f64) -> f64 {
+    if n < 0 || x.is_nan() || x <= 0.0 {
+        return f64::NAN;
+    }
+    if n == 0 {
+        return bessel_y0(x);
+    }
+    if n == 1 {
+        return bessel_y1(x);
+    }
+    // Upward recurrence is always stable for Y.
+    let tox = 2.0 / x;
+    let mut bym = bessel_y0(x);
+    let mut by = bessel_y1(x);
+    for k in 1..n {
+        let byp = k as f64 * tox * by - bym;
+        bym = by;
+        by = byp;
+    }
+    by
+}
+
 /// Y_0(x), `x > 0`: NR bessy0.
 fn bessel_y0(x: f64) -> f64 {
     if x < 8.0 {
@@ -797,95 +1046,6 @@ fn bessel_y1(x: f64) -> f64 {
             + y * (-0.2002690873e-3
                 + y * (0.8449199096e-5 + y * (-0.88228987e-6 + y * 0.105787412e-6)));
         (std::f64::consts::FRAC_2_PI / x).sqrt() * (xx.sin() * p + z * xx.cos() * q)
-    }
-}
-
-/// I_0(x): NR bessi0 (A&S 9.8.1/9.8.2 polynomial fits, |err| <~ 2e-7).
-fn bessel_i0(x: f64) -> f64 {
-    let ax = x.abs();
-    if ax < 3.75 {
-        let y = (x / 3.75) * (x / 3.75);
-        1.0 + y
-            * (3.5156229
-                + y * (3.0899424
-                    + y * (1.2067492 + y * (0.2659732 + y * (0.360768e-1 + y * 0.45813e-2)))))
-    } else {
-        let y = 3.75 / ax;
-        (ax.exp() / ax.sqrt())
-            * (0.39894228
-                + y * (0.1328592e-1
-                    + y * (0.225319e-2
-                        + y * (-0.157565e-2
-                            + y * (0.916281e-2
-                                + y * (-0.2057706e-1
-                                    + y * (0.2635537e-1
-                                        + y * (-0.1647633e-1 + y * 0.392377e-2))))))))
-    }
-}
-
-/// I_1(x): NR bessi1.
-fn bessel_i1(x: f64) -> f64 {
-    let ax = x.abs();
-    let ans = if ax < 3.75 {
-        let y = (x / 3.75) * (x / 3.75);
-        ax * (0.5
-            + y * (0.87890594
-                + y * (0.51498869
-                    + y * (0.15084934 + y * (0.2658733e-1 + y * (0.301532e-2 + y * 0.32411e-3))))))
-    } else {
-        let y = 3.75 / ax;
-        (ax.exp() / ax.sqrt())
-            * (0.39894228
-                + y * (-0.3988024e-1
-                    + y * (-0.362018e-2
-                        + y * (0.163801e-2
-                            + y * (-0.1031555e-1
-                                + y * (0.2282967e-1
-                                    + y * (-0.2895312e-1
-                                        + y * (0.1787654e-1 - y * 0.420059e-2))))))))
-    };
-    if x < 0.0 { -ans } else { ans }
-}
-
-/// K_0(x), `x > 0`: NR bessk0.
-fn bessel_k0(x: f64) -> f64 {
-    if x <= 2.0 {
-        let y = x * x / 4.0;
-        (-(x / 2.0).ln()) * bessel_i0(x)
-            + (-0.57721566
-                + y * (0.42278420
-                    + y * (0.23069756
-                        + y * (0.3488590e-1 + y * (0.262698e-2 + y * (0.10750e-3 + y * 0.74e-5))))))
-    } else {
-        let y = 2.0 / x;
-        ((-x).exp() / x.sqrt())
-            * (1.25331414
-                + y * (-0.7832358e-1
-                    + y * (0.2189568e-1
-                        + y * (-0.1062446e-1
-                            + y * (0.587872e-2 + y * (-0.251540e-2 + y * 0.53208e-3))))))
-    }
-}
-
-/// K_1(x), `x > 0`: NR bessk1.
-fn bessel_k1(x: f64) -> f64 {
-    if x <= 2.0 {
-        let y = x * x / 4.0;
-        (x / 2.0).ln() * bessel_i1(x)
-            + (1.0 / x)
-                * (1.0
-                    + y * (0.15443144
-                        + y * (-0.67278579
-                            + y * (-0.18156897
-                                + y * (-0.1919402e-1 + y * (-0.110404e-2 + y * (-0.4686e-4)))))))
-    } else {
-        let y = 2.0 / x;
-        ((-x).exp() / x.sqrt())
-            * (1.25331414
-                + y * (0.23498619
-                    + y * (-0.3655620e-1
-                        + y * (0.1504268e-1
-                            + y * (-0.780353e-2 + y * (0.325614e-2 + y * (-0.68245e-3)))))))
     }
 }
 

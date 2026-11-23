@@ -29,6 +29,9 @@ pub fn flatten_args(
     let mut out = Vec::new();
     for arg in args {
         match ctx.eval_arg(arg)? {
+            ArgValue::Scalar(Value::Array(a)) | ArgValue::Ref(Value::Array(a)) => {
+                out.extend(a.into_iter().map(|v| (v, true)))
+            }
             ArgValue::Scalar(v) => out.push((v, false)),
             ArgValue::Ref(v) => out.push((v, true)),
             ArgValue::Range(a) => out.extend(a.into_iter().map(|v| (v, true))),
@@ -129,6 +132,24 @@ pub fn eval_array(
         ArgValue::Scalar(Value::Error(e)) | ArgValue::Ref(Value::Error(e)) => Err(e),
         ArgValue::Scalar(v) | ArgValue::Ref(v) => ArrayValue::new(1, 1, vec![v]),
     })
+}
+
+/// Evaluate an optional scalar argument to a number (direct-argument
+/// rules). `None`/`Expr::Missing`/`Value::Blank` all yield `default`;
+/// coercion failures yield `Err`.
+pub fn eval_opt_number(
+    ctx: &mut EvalContext<'_>,
+    expr: Option<&Expr>,
+    default: f64,
+) -> Result<Result<f64, CalcError>, EvalError> {
+    let v = match expr {
+        Some(Expr::Missing) | None => return Ok(Ok(default)),
+        Some(e) => ctx.eval(e)?,
+    };
+    if v.is_blank() {
+        return Ok(Ok(default));
+    }
+    Ok(v.to_number())
 }
 
 /// Whether a scalar text value parses as a number (COUNT's direct-arg

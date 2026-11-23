@@ -6,6 +6,8 @@
 //! `#NUM!` boundary checks, so each `math/*.rs` file stays a thin spec
 //! wrapper.
 
+use calc_core::error::CalcError;
+use calc_core::value::Value;
 /// Excel `MOD` semantics: `n - d * floor(n / d)`; the result takes the
 /// sign of `d`, never raw `%` (v2 §2, `docs/functions/MOD.md`).
 /// `-0` is normalized to `+0`.
@@ -38,41 +40,81 @@ pub fn round_to_significance(x: f64, significance: f64, up: bool) -> f64 {
     snapped * significance
 }
 
-// ---------- Engineering helpers (v3, track I11) ----------
+/// Excel-style rounding to a decimal *place* for `ROUNDDOWN`/`ROUNDUP`
+/// (`docs/functions/ROUNDDOWN.md`, `ROUNDUP.md`).
+///
+/// Shares `ROUND`'s basis: the 15-significant-digit decimal
+/// representation of `x` is truncated (`up = false`, toward zero) or
+/// incremented (`up = true`, away from zero — only when a nonzero digit
+/// is discarded). `num_digits` is truncated toward zero and clamped like
+/// `ROUND`; a non-finite `x` or `num_digits` yields `NaN` so callers map
+/// to `#NUM!`. A result that overflows f64 (huge negative `num_digits`
+/// under `up`) returns infinity — likewise `#NUM!`.
+pub fn round_to_place(x: f64, num_digits: f64, up: bool) -> f64 {
+    if !x.is_finite() || !num_digits.is_finite() {
+        return f64::NAN;
+    }
+    if x == 0.0 {
+        return 0.0;
+    }
+    let digits = num_digits.trunc().clamp(-320.0, 320.0) as i32;
 
-use calc_core::error::CalcError;
-use calc_core::value::Value;
+    // Decimal view: |x| = 0.d[0]d[1]…d[14] × 10^exp10, 15 sig digits.
+    let s = format!("{:.14e}", x.abs());
+    let (mantissa, exp) = s.split_once('e').unwrap();
+    let exp10: i32 = exp.parse::<i32>().unwrap() + 1;
+    let mut d: Vec<u8> = mantissa.bytes().filter(|b| b.is_ascii_digit()).collect();
+    debug_assert_eq!(d.len(), 15);
+
+    // Digits d[k] sit at decimal place exp10-1-k; rounding at place
+    // -digits keeps `keep = exp10 + digits` significant digits.
+    let keep = exp10 + digits;
+    if keep <= 0 {
+        if !up {
+            return 0.0;
+        }
+        // Away from zero: smallest magnitude representable at that
+        // place, 10^-digits (may overflow to infinity -> #NUM!).
+        let v: f64 = format!("1e{}", -digits).parse().unwrap_or(f64::INFINITY);
+        return v.copysign(x);
+    }
+    if keep as usize >= d.len() {
+        return x;
+    }
+    let keep = keep as usize;
+    let mut len = keep;
+    let mut out_exp = exp10;
+    if up && d[keep..].iter().any(|&b| b != b'0') {
+        // Away from zero: increment the kept digits with carry.
+        let mut i = keep;
+        loop {
+            if i == 0 {
+                d.insert(0, b'1');
+                len += 1;
+                out_exp += 1;
+                break;
+            }
+            i -= 1;
+            if d[i] == b'9' {
+                d[i] = b'0';
+            } else {
+                d[i] += 1;
+                break;
+            }
+        }
+    }
+    let mant = d[..len]
+        .iter()
+        .fold(0u64, |m, b| m * 10 + (b - b'0') as u64);
+    let v: f64 = format!("{mant}e{}", out_exp - len as i32)
+        .parse()
+        .unwrap_or(0.0);
+    v.copysign(x)
+}
 
 /// `2^48` — the exclusive upper bound of every `BIT*` operand
 /// (`docs/functions/BITAND.md`).
 pub const BIT_OPERAND_MAX: f64 = 281_474_976_710_656.0;
-
-/// `BIT*` operand coercion: the value must truncate to a non-negative
-/// integer `< 2^48`. Fractional inputs are truncated toward zero —
-/// the family is documented to truncate (SPEC-OPEN: some Microsoft
-/// docs instead describe `#NUM!` for non-integers). Returns `None`
-/// for out-of-domain input; the caller maps that to `#NUM!`.
-pub fn bit_operand(v: f64) -> Option<u64> {
-    if v.is_nan() {
-        return None;
-    }
-    let t = v.trunc();
-    if t < 0.0 || t >= BIT_OPERAND_MAX {
-        None
-    } else {
-        Some(t as u64)
-    }
-}
-
-/// `shift_amount` for `BITLSHIFT`/`BITRSHIFT`: truncated toward zero,
-/// clamped so the `i64`/`u32` casts in the callers are always safe
-/// (any magnitude beyond 64 already pins the result).
-pub fn shift_amount(v: f64) -> i64 {
-    if v.is_nan() {
-        return 0;
-    }
-    v.trunc().clamp(-1e15, 1e15) as i64
-}
 
 /// The `number` argument of the string-digit base-conversion family
 /// (`BIN2DEC`/`BIN2HEX`/`BIN2OCT`, and the `OCT2*`/`HEX2*` siblings):
@@ -104,6 +146,23 @@ pub fn base_digits(v: &Value, radix: u32, max_chars: usize) -> Result<String, Ca
     Ok(digits)
 }
 
+/// `BIT*` operand coercion: the value must truncate to a non-negative
+/// integer `< 2^48`. Fractional inputs are truncated toward zero —
+/// the family is documented to truncate (SPEC-OPEN: some Microsoft
+/// docs instead describe `#NUM!` for non-integers). Returns `None`
+/// for out-of-domain input; the caller maps that to `#NUM!`.
+pub fn bit_operand(v: f64) -> Option<u64> {
+    if v.is_nan() {
+        return None;
+    }
+    let t = v.trunc();
+    if t < 0.0 || t >= BIT_OPERAND_MAX {
+        None
+    } else {
+        Some(t as u64)
+    }
+}
+
 /// Render integer `n` in `radix` the way the `DEC2?` functions do:
 /// uppercase digits; a negative `n` produces the 10-character
 /// two's-complement form in that radix (`-1` -> `"FFFFFFFFFF"` hex,
@@ -132,6 +191,16 @@ pub fn format_radix(n: i64, radix: u32, places: Option<i64>) -> Result<String, C
         return Ok(to_radix(modulus + n, radix));
     }
     Ok(to_radix(n, radix))
+}
+
+/// `shift_amount` for `BITLSHIFT`/`BITRSHIFT`: truncated toward zero,
+/// clamped so the `i64`/`u32` casts in the callers are always safe
+/// (any magnitude beyond 64 already pins the result).
+pub fn shift_amount(v: f64) -> i64 {
+    if v.is_nan() {
+        return 0;
+    }
+    v.trunc().clamp(-1e15, 1e15) as i64
 }
 
 /// Uppercase positional rendering of a non-negative integer.

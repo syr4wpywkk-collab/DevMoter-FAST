@@ -1,0 +1,3001 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-24",
+  "referenceDefaults": {},
+  "cases": [
+    {
+      "id": "I10-PRICEDISC-001",
+      "formula": "=PRICEDISC(45000,45180,0.05,100,3)",
+      "inputs": {},
+      "expected": {
+        "number": 97.53424657534246,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "act/365: 100*(1-0.05*180/365)"
+    },
+    {
+      "id": "I10-PRICEDISC-002",
+      "formula": "=PRICEDISC(45000,45180,0.05,100,0)",
+      "inputs": {},
+      "expected": {
+        "number": 97.55555555555556,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "NASD 30/360: Mar15->Sep11 counts 176 days"
+    },
+    {
+      "id": "I10-PRICEDISC-003",
+      "formula": "=PRICEDISC(45000,45180,0.05,100,2)",
+      "inputs": {},
+      "expected": {
+        "number": 97.5,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "act/360: 100*(1-0.05*180/360)"
+    },
+    {
+      "id": "I10-PRICEDISC-004",
+      "formula": "=PRICEDISC(45000,45180,0.05,100,1)",
+      "inputs": {},
+      "expected": {
+        "number": 97.53424657534246,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "act/act same year (2023 non-leap)"
+    },
+    {
+      "id": "I10-PRICEDISC-005",
+      "formula": "=PRICEDISC(45000,45181,0.05,100,4)",
+      "inputs": {},
+      "expected": {
+        "number": 97.54166666666667,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "EU 30/360: counts 177"
+    },
+    {
+      "id": "I10-PRICEDISC-006",
+      "formula": "=PRICEDISC(45000,45000,0.05,100)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "settlement >= maturity"
+    },
+    {
+      "id": "I10-PRICEDISC-007",
+      "formula": "=PRICEDISC(45000,45180,-0.05,100)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "discount < 0"
+    },
+    {
+      "id": "I10-PRICEDISC-008",
+      "formula": "=PRICEDISC(45000,45180,0.05,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "redemption <= 0"
+    },
+    {
+      "id": "I10-PRICEDISC-009",
+      "formula": "=PRICEDISC(45000,45180,0.05,100,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "basis outside 0..4"
+    },
+    {
+      "id": "I10-PRICEDISC-010",
+      "formula": "=PRICEDISC(45000,45180,\"x\",100)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric"
+    },
+    {
+      "id": "I10-PRICEDISC-011",
+      "formula": "=PRICEDISC(45000,45180,0,100)",
+      "inputs": {},
+      "expected": {
+        "number": 100.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "discount = 0 returns redemption",
+      "specOpen": true,
+      "specOpenReason": "Docs bound only discount < 0; whether discount = 0 errors is unconfirmed"
+    },
+    {
+      "id": "I10-PRICEMAT-001",
+      "formula": "=PRICEMAT(39535,39614,39484,0.025,0.0305,0)",
+      "inputs": {},
+      "expected": {
+        "number": 99.8808,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "30/360 day counts DIM=130,DSM=78,A=52 -> 99.8799"
+    },
+    {
+      "id": "I10-PRICEMAT-002",
+      "formula": "=PRICEMAT(45000,45365,45000,0.08,0.08,3)",
+      "inputs": {},
+      "expected": {
+        "number": 100.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "settlement=issue, 1yr act/365: 108/1.08"
+    },
+    {
+      "id": "I10-PRICEMAT-003",
+      "formula": "=PRICEMAT(45182,45365,45000,0.08,0.08,3)",
+      "inputs": {},
+      "expected": {
+        "number": 99.8463,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "act/365 accrued + discounting"
+    },
+    {
+      "id": "I10-PRICEMAT-004",
+      "formula": "=PRICEMAT(45000,45180,44000,0,0,0)",
+      "inputs": {},
+      "expected": {
+        "number": 100.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "zero rate and yield"
+    },
+    {
+      "id": "I10-PRICEMAT-005",
+      "formula": "=PRICEMAT(45000,45000,44000,0.05,0.05)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "settlement >= maturity"
+    },
+    {
+      "id": "I10-PRICEMAT-006",
+      "formula": "=PRICEMAT(44000,45000,44100,0.05,0.05)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "settlement < issue"
+    },
+    {
+      "id": "I10-PRICEMAT-007",
+      "formula": "=PRICEMAT(45000,45180,44000,-0.01,0.05)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "rate < 0"
+    },
+    {
+      "id": "I10-PRICEMAT-008",
+      "formula": "=PRICEMAT(45000,45180,44000,0.05,-0.01)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "yld < 0"
+    },
+    {
+      "id": "I10-PRICEMAT-009",
+      "formula": "=PRICEMAT(45000,45180,44000,0.05,0.05,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "basis out of range"
+    },
+    {
+      "id": "I10-PRICEMAT-010",
+      "formula": "=PRICEMAT(45000,45180,44000,\"x\",0.05)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric"
+    },
+    {
+      "id": "I10-PV-001",
+      "formula": "=PV(0.005,36,-100)",
+      "inputs": {},
+      "expected": {
+        "number": 3287.1016,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "100*(1-1.005^-36)/0.005"
+    },
+    {
+      "id": "I10-PV-002",
+      "formula": "=PV(0,10,-100)",
+      "inputs": {},
+      "expected": {
+        "number": 1000.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "zero rate linear"
+    },
+    {
+      "id": "I10-PV-003",
+      "formula": "=PV(0.1,1,-100)",
+      "inputs": {},
+      "expected": {
+        "number": 90.9090909,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "single period"
+    },
+    {
+      "id": "I10-PV-004",
+      "formula": "=PV(0.08,20,-500,0,1)",
+      "inputs": {},
+      "expected": {
+        "number": 5301.7996,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "type=1 beginning of period"
+    },
+    {
+      "id": "I10-PV-005",
+      "formula": "=PV(0.1,10,0,-1000)",
+      "inputs": {},
+      "expected": {
+        "number": 385.5433,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "fv only"
+    },
+    {
+      "id": "I10-PV-006",
+      "formula": "=PV(0.05,10,-100,500)",
+      "inputs": {},
+      "expected": {
+        "number": 465.2169,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "pmt + fv mixed signs"
+    },
+    {
+      "id": "I10-PV-007",
+      "formula": "=PV(-1,5,-100)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "rate = -1 outside discount domain",
+      "specOpen": true,
+      "specOpenReason": "Error class for rate <= -1 unconfirmed (#NUM! chosen)"
+    },
+    {
+      "id": "I10-PV-008",
+      "formula": "=PV(\"x\",10,-100)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric"
+    },
+    {
+      "id": "I10-PV-009",
+      "formula": "=PV(0,10,-100,,)",
+      "inputs": {},
+      "expected": {
+        "number": 1000.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "omitted optional args default"
+    },
+    {
+      "id": "I10-PV-010",
+      "formula": "=PV(0.05,10,100)",
+      "inputs": {},
+      "expected": {
+        "number": -772.1735,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "positive pmt -> negative PV"
+    },
+    {
+      "id": "I10-RATE-001",
+      "formula": "=RATE(48,-200,8000)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0077015,
+        "tolerance": 1e-05
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "car loan ~0.77%/mo"
+    },
+    {
+      "id": "I10-RATE-002",
+      "formula": "=RATE(360,-1199.10,200000)",
+      "inputs": {},
+      "expected": {
+        "number": 0.005,
+        "tolerance": 0.0001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "mortgage ~0.5%/mo"
+    },
+    {
+      "id": "I10-RATE-003",
+      "formula": "=RATE(10,-100,800)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0428,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "small annuity"
+    },
+    {
+      "id": "I10-RATE-004",
+      "formula": "=RATE(10,100,1000)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "same-sign flows: no root"
+    },
+    {
+      "id": "I10-RATE-005",
+      "formula": "=RATE(0,-100,800)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "nper <= 0"
+    },
+    {
+      "id": "I10-RATE-006",
+      "formula": "=RATE(2,0,-1000,4000)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "pmt=0 analytic: (4000/1000)^(1/2)-1"
+    },
+    {
+      "id": "I10-RATE-007",
+      "formula": "=RATE(10,0,-1000,500)",
+      "inputs": {},
+      "expected": {
+        "number": -0.06696700846319259,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "negative root (depreciating)"
+    },
+    {
+      "id": "I10-RATE-008",
+      "formula": "=RATE(48,-200,8000,0,0,0.05)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0077015,
+        "tolerance": 1e-05
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "explicit guess"
+    },
+    {
+      "id": "I10-RATE-009",
+      "formula": "=RATE(\"x\",-100,800)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric"
+    },
+    {
+      "id": "I10-RATE-010",
+      "formula": "=RATE(10,-100,800,0,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0534462,
+        "tolerance": 0.0001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "type=1 beginning of period"
+    },
+    {
+      "id": "I10-RECEIVED-001",
+      "formula": "=RECEIVED(45000,45180,100000,0.05,0)",
+      "inputs": {},
+      "expected": {
+        "number": 102505.6948,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "30/360 DSM=176"
+    },
+    {
+      "id": "I10-RECEIVED-002",
+      "formula": "=RECEIVED(39448,39594,1000000,0.0575,2)",
+      "inputs": {},
+      "expected": {
+        "number": 1023876.2247408313,
+        "tolerance": 0.01
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "act/360 DSM=146"
+    },
+    {
+      "id": "I10-RECEIVED-003",
+      "formula": "=RECEIVED(45000,45180,100000,0.05,3)",
+      "inputs": {},
+      "expected": {
+        "number": 102528.0899,
+        "tolerance": 0.01
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "act/365"
+    },
+    {
+      "id": "I10-RECEIVED-004",
+      "formula": "=RECEIVED(45000,45000,100000,0.05)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "dates equal"
+    },
+    {
+      "id": "I10-RECEIVED-005",
+      "formula": "=RECEIVED(45000,45180,0,0.05)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "investment <= 0"
+    },
+    {
+      "id": "I10-RECEIVED-006",
+      "formula": "=RECEIVED(45000,45180,100,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "discount <= 0"
+    },
+    {
+      "id": "I10-RECEIVED-007",
+      "formula": "=RECEIVED(45000,45360,100,3.0,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "denominator < 0",
+      "specOpen": true,
+      "specOpenReason": "#NUM! vs #DIV/0! for nonpositive denominator unconfirmed"
+    },
+    {
+      "id": "I10-RECEIVED-008",
+      "formula": "=RECEIVED(45000,45180,100,0.05,9)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "basis out of range"
+    },
+    {
+      "id": "I10-RECEIVED-009",
+      "formula": "=RECEIVED(45000,\"x\",100,0.05)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric"
+    },
+    {
+      "id": "I10-RECEIVED-010",
+      "formula": "=RECEIVED(45000,45180,100000,0.05)",
+      "inputs": {},
+      "expected": {
+        "number": 102505.6948,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "default basis 0"
+    },
+    {
+      "id": "I10-RRI-001",
+      "formula": "=RRI(10,1000,2000)",
+      "inputs": {},
+      "expected": {
+        "number": 0.07177346253629313,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "doubling in 10 periods"
+    },
+    {
+      "id": "I10-RRI-002",
+      "formula": "=RRI(5,1000,500)",
+      "inputs": {},
+      "expected": {
+        "number": -0.12944943670387588,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "negative growth"
+    },
+    {
+      "id": "I10-RRI-003",
+      "formula": "=RRI(1,100,110)",
+      "inputs": {},
+      "expected": {
+        "number": 0.1,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "one period"
+    },
+    {
+      "id": "I10-RRI-004",
+      "formula": "=RRI(10,100,100)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "no growth"
+    },
+    {
+      "id": "I10-RRI-005",
+      "formula": "=RRI(0,100,200)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "nper <= 0"
+    },
+    {
+      "id": "I10-RRI-006",
+      "formula": "=RRI(-3,100,200)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "negative nper"
+    },
+    {
+      "id": "I10-RRI-007",
+      "formula": "=RRI(10,-100,200)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "pv <= 0"
+    },
+    {
+      "id": "I10-RRI-008",
+      "formula": "=RRI(10,100,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "fv <= 0"
+    },
+    {
+      "id": "I10-RRI-009",
+      "formula": "=RRI(10,\"x\",200)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric"
+    },
+    {
+      "id": "I10-RRI-010",
+      "formula": "=RRI(2.5,100,200)",
+      "inputs": {},
+      "expected": {
+        "number": 0.3195079107728942,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "fractional nper"
+    },
+    {
+      "id": "I10-SLN-001",
+      "formula": "=SLN(30000,7500,10)",
+      "inputs": {},
+      "expected": {
+        "number": 2250.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "spec example"
+    },
+    {
+      "id": "I10-SLN-002",
+      "formula": "=SLN(1000,1000,5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "cost = salvage"
+    },
+    {
+      "id": "I10-SLN-003",
+      "formula": "=SLN(5000,500,4)",
+      "inputs": {},
+      "expected": {
+        "number": 1125.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "spec example"
+    },
+    {
+      "id": "I10-SLN-004",
+      "formula": "=SLN(1000,100,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "life = 0"
+    },
+    {
+      "id": "I10-SLN-005",
+      "formula": "=SLN(1000,1500,5)",
+      "inputs": {},
+      "expected": {
+        "number": -100.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "salvage > cost -> negative"
+    },
+    {
+      "id": "I10-SLN-006",
+      "formula": "=SLN(1000,0,2.5)",
+      "inputs": {},
+      "expected": {
+        "number": 400.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "fractional life"
+    },
+    {
+      "id": "I10-SLN-007",
+      "formula": "=SLN(1000,\"x\",5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric"
+    },
+    {
+      "id": "I10-SLN-008",
+      "formula": "=SLN(\"30000\",7500,10)",
+      "inputs": {},
+      "expected": {
+        "number": 2250.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "text number coerces"
+    },
+    {
+      "id": "I10-SLN-009",
+      "formula": "=SLN(100,0,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 100.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "boolean coerces"
+    },
+    {
+      "id": "I10-SLN-010",
+      "formula": "=SLN(1000,100,-4)",
+      "inputs": {},
+      "expected": {
+        "number": -250.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "negative life passes through",
+      "specOpen": true,
+      "specOpenReason": "Whether Excel reports #NUM! or the negative algebraic result for life < 0"
+    },
+    {
+      "id": "I10-SYD-001",
+      "formula": "=SYD(30000,7500,10,1)",
+      "inputs": {},
+      "expected": {
+        "number": 4090.909090909091,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "period 1 front-loaded"
+    },
+    {
+      "id": "I10-SYD-002",
+      "formula": "=SYD(30000,7500,10,10)",
+      "inputs": {},
+      "expected": {
+        "number": 409.09090909090907,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "last period"
+    },
+    {
+      "id": "I10-SYD-003",
+      "formula": "=SYD(10000,0,4,2)",
+      "inputs": {},
+      "expected": {
+        "number": 3000.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "10000*3/10"
+    },
+    {
+      "id": "I10-SYD-004",
+      "formula": "=SYD(10000,0,4,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "per > life",
+      "specOpen": true,
+      "specOpenReason": "per > life: #NUM! vs 0 unconfirmed"
+    },
+    {
+      "id": "I10-SYD-005",
+      "formula": "=SYD(10000,0,4,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "per < 1"
+    },
+    {
+      "id": "I10-SYD-006",
+      "formula": "=SYD(10000,0,0,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "life <= 0"
+    },
+    {
+      "id": "I10-SYD-007",
+      "formula": "=SYD(10000,0,-4,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "negative life"
+    },
+    {
+      "id": "I10-SYD-008",
+      "formula": "=SYD(10000,0,4,1.9)",
+      "inputs": {},
+      "expected": {
+        "number": 4000.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "fractional per truncates",
+      "specOpen": true,
+      "specOpenReason": "Fractional per/life truncation assumed (DB-family convention)"
+    },
+    {
+      "id": "I10-SYD-009",
+      "formula": "=SYD(10000,0,4,\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric"
+    },
+    {
+      "id": "I10-SYD-010",
+      "formula": "=SYD(9000,1000,5,3)",
+      "inputs": {},
+      "expected": {
+        "number": 1600.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "mid-period"
+    },
+    {
+      "id": "I10-TBILLEQ-001",
+      "formula": "=TBILLEQ(39531,39593,0.0914)",
+      "inputs": {},
+      "expected": {
+        "number": 0.09415149356594302,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "Excel doc example ~9.415%"
+    },
+    {
+      "id": "I10-TBILLEQ-002",
+      "formula": "=TBILLEQ(45000,45090,0.05)",
+      "inputs": {},
+      "expected": {
+        "number": 0.051336146272855133,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "90-day bill"
+    },
+    {
+      "id": "I10-TBILLEQ-003",
+      "formula": "=TBILLEQ(45000,45182,0.05)",
+      "inputs": {},
+      "expected": {
+        "number": 0.052009119407238534,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "boundary DSM=182 simple formula"
+    },
+    {
+      "id": "I10-TBILLEQ-004",
+      "formula": "=TBILLEQ(45000,45360,0.05)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0526785,
+        "tolerance": 1e-05
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "DSM=360 quadratic branch",
+      "specOpen": true,
+      "specOpenReason": "Coefficients of the >182-day quadratic pending empirical confirmation"
+    },
+    {
+      "id": "I10-TBILLEQ-005",
+      "formula": "=TBILLEQ(45000,45000,0.05)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "dates equal"
+    },
+    {
+      "id": "I10-TBILLEQ-006",
+      "formula": "=TBILLEQ(45090,45000,0.05)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "inverted dates"
+    },
+    {
+      "id": "I10-TBILLEQ-007",
+      "formula": "=TBILLEQ(45000,45500,0.05)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "span > 1 year"
+    },
+    {
+      "id": "I10-TBILLEQ-008",
+      "formula": "=TBILLEQ(45000,45090,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "discount <= 0"
+    },
+    {
+      "id": "I10-TBILLEQ-009",
+      "formula": "=TBILLEQ(45000,45180,2.0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "denominator <= 0"
+    },
+    {
+      "id": "I10-TBILLEQ-010",
+      "formula": "=TBILLEQ(45000,45090,\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric"
+    },
+    {
+      "id": "I10-TBILLPRICE-001",
+      "formula": "=TBILLPRICE(45704,45896,0.09)",
+      "inputs": {},
+      "expected": {
+        "number": 95.2,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "192-day bill"
+    },
+    {
+      "id": "I10-TBILLPRICE-002",
+      "formula": "=TBILLPRICE(39531,39593,0.0914)",
+      "inputs": {},
+      "expected": {
+        "number": 98.42588888888889,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "Excel doc example"
+    },
+    {
+      "id": "I10-TBILLPRICE-003",
+      "formula": "=TBILLPRICE(45000,45090,0.05)",
+      "inputs": {},
+      "expected": {
+        "number": 98.75,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "90-day bill"
+    },
+    {
+      "id": "I10-TBILLPRICE-004",
+      "formula": "=TBILLPRICE(45000,45180,0.05)",
+      "inputs": {},
+      "expected": {
+        "number": 97.5,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "180-day bill"
+    },
+    {
+      "id": "I10-TBILLPRICE-005",
+      "formula": "=TBILLPRICE(45000,45000,0.05)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "dates equal"
+    },
+    {
+      "id": "I10-TBILLPRICE-006",
+      "formula": "=TBILLPRICE(45090,45000,0.05)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "inverted"
+    },
+    {
+      "id": "I10-TBILLPRICE-007",
+      "formula": "=TBILLPRICE(45000,45500,0.05)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "span > 1 year"
+    },
+    {
+      "id": "I10-TBILLPRICE-008",
+      "formula": "=TBILLPRICE(45000,45365,0.05)",
+      "inputs": {},
+      "expected": {
+        "number": 94.93055555555556,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "exactly 365 days allowed"
+    },
+    {
+      "id": "I10-TBILLPRICE-009",
+      "formula": "=TBILLPRICE(45000,45090,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "discount <= 0"
+    },
+    {
+      "id": "I10-TBILLPRICE-010",
+      "formula": "=TBILLPRICE(45000,45090,\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric"
+    },
+    {
+      "id": "I10-TBILLPRICE-011",
+      "formula": "=TBILLPRICE(45199,45566,0.05)",
+      "inputs": {},
+      "expected": {
+        "number": 94.90277777777779,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "367-day span (leap)",
+      "specOpen": true,
+      "specOpenReason": "One-year bound: whether a 366/367-day span over a leap boundary errors is unconfirmed; implemented bound is 365"
+    },
+    {
+      "id": "I10-TBILLYIELD-001",
+      "formula": "=TBILLYIELD(45000,45090,98.75)",
+      "inputs": {},
+      "expected": {
+        "number": 0.05063291139240506,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "spec example"
+    },
+    {
+      "id": "I10-TBILLYIELD-002",
+      "formula": "=TBILLYIELD(45000,45180,97.5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.05128205128205128,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "inverse of TBILLPRICE"
+    },
+    {
+      "id": "I10-TBILLYIELD-003",
+      "formula": "=TBILLYIELD(45000,45090,100)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "price=par -> 0"
+    },
+    {
+      "id": "I10-TBILLYIELD-004",
+      "formula": "=TBILLYIELD(45000,45090,101)",
+      "inputs": {},
+      "expected": {
+        "number": -0.039603960396039604,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "price > par -> negative yield",
+      "specOpen": true,
+      "specOpenReason": "Whether Excel errors on pr >= 100 (negative yield) is unconfirmed"
+    },
+    {
+      "id": "I10-TBILLYIELD-005",
+      "formula": "=TBILLYIELD(45000,45000,98)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "dates equal"
+    },
+    {
+      "id": "I10-TBILLYIELD-006",
+      "formula": "=TBILLYIELD(45090,45000,98)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "inverted"
+    },
+    {
+      "id": "I10-TBILLYIELD-007",
+      "formula": "=TBILLYIELD(45000,45500,98)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "span > 1 year"
+    },
+    {
+      "id": "I10-TBILLYIELD-008",
+      "formula": "=TBILLYIELD(45000,45090,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "pr <= 0"
+    },
+    {
+      "id": "I10-TBILLYIELD-009",
+      "formula": "=TBILLYIELD(45000,45090,-5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "negative price"
+    },
+    {
+      "id": "I10-TBILLYIELD-010",
+      "formula": "=TBILLYIELD(45000,\"x\",98)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric"
+    },
+    {
+      "id": "I10-VDB-001",
+      "formula": "=VDB(2400,300,10,0,1)",
+      "inputs": {},
+      "expected": {
+        "number": 480.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "year 1 DDB"
+    },
+    {
+      "id": "I10-VDB-002",
+      "formula": "=VDB(2400,300,10,1,2)",
+      "inputs": {},
+      "expected": {
+        "number": 384.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "year 2"
+    },
+    {
+      "id": "I10-VDB-003",
+      "formula": "=VDB(2400,300,10,0,0.5)",
+      "inputs": {},
+      "expected": {
+        "number": 240.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "half year prorated"
+    },
+    {
+      "id": "I10-VDB-004",
+      "formula": "=VDB(2400,300,10,0,10)",
+      "inputs": {},
+      "expected": {
+        "number": 2100.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "total capped at salvage"
+    },
+    {
+      "id": "I10-VDB-005",
+      "formula": "=VDB(2400,300,10,2,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "end <= start"
+    },
+    {
+      "id": "I10-VDB-006",
+      "formula": "=VDB(1000,100,5,0,5,1.5,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 900.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "switch to straight line"
+    },
+    {
+      "id": "I10-VDB-007",
+      "formula": "=VDB(1000,100,5,0,5,1.5,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 831.9300000000001,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "no_switch keeps declining balance"
+    },
+    {
+      "id": "I10-VDB-008",
+      "formula": "=VDB(2400,300,10,0.5,1.5)",
+      "inputs": {},
+      "expected": {
+        "number": 432.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "fractional interval"
+    },
+    {
+      "id": "I10-VDB-009",
+      "formula": "=VDB(2400,300,0,0,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "life <= 0"
+    },
+    {
+      "id": "I10-VDB-010",
+      "formula": "=VDB(2400,300,10,-1,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "start < 0"
+    },
+    {
+      "id": "I10-VDB-011",
+      "formula": "=VDB(2400,300,10,0,11)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "end > life"
+    },
+    {
+      "id": "I10-VDB-012",
+      "formula": "=VDB(2400,300,10,0,1,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "factor <= 0"
+    },
+    {
+      "id": "I10-VDB-013",
+      "formula": "=VDB(2400,\"x\",10,0,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric"
+    },
+    {
+      "id": "I10-XIRR-001",
+      "formula": "=XIRR(A1:A5,B1:B5)",
+      "inputs": {
+        "A1": -10000,
+        "A2": 2750,
+        "A3": 4250,
+        "A4": 3250,
+        "A5": 2750,
+        "B1": 39448,
+        "B2": 39508,
+        "B3": 39751,
+        "B4": 39859,
+        "B5": 39904
+      },
+      "expected": {
+        "number": 0.3733625,
+        "tolerance": 0.0001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "Excel doc example ~37.3%"
+    },
+    {
+      "id": "I10-XIRR-002",
+      "formula": "=XIRR({-1000,1100},{45000,45365})",
+      "inputs": {},
+      "expected": {
+        "number": 0.1,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "one-year doubling"
+    },
+    {
+      "id": "I10-XIRR-003",
+      "formula": "=XIRR({-1000,500},{45000,45365})",
+      "inputs": {},
+      "expected": {
+        "number": -0.5,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "negative rate root"
+    },
+    {
+      "id": "I10-XIRR-004",
+      "formula": "=XIRR({100,200},{45000,45100})",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "all positive"
+    },
+    {
+      "id": "I10-XIRR-005",
+      "formula": "=XIRR({-100,-200},{45000,45100})",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "all negative"
+    },
+    {
+      "id": "I10-XIRR-006",
+      "formula": "=XIRR(A1:A2,B1:B1)",
+      "inputs": {
+        "A1": -100,
+        "A2": 200,
+        "B1": 45000
+      },
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "length mismatch"
+    },
+    {
+      "id": "I10-XIRR-007",
+      "formula": "=XIRR({-100,200},{45100,45000})",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "date before first"
+    },
+    {
+      "id": "I10-XIRR-008",
+      "formula": "=XIRR({-1000,1100},{45000,45365},0.5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.1,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "explicit guess"
+    },
+    {
+      "id": "I10-XIRR-009",
+      "formula": "=XIRR({-100,200},{45000,45100},\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric guess"
+    },
+    {
+      "id": "I10-XIRR-010",
+      "formula": "=XIRR(A1:A3,B1:B3)",
+      "inputs": {
+        "A1": -100,
+        "A2": "x",
+        "A3": 220,
+        "B1": 45000,
+        "B2": 45100,
+        "B3": 45365
+      },
+      "expected": {
+        "number": 1.2,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "text member drops pair"
+    },
+    {
+      "id": "I10-XNPV-001",
+      "formula": "=XNPV(0.09,A1:A5,B1:B5)",
+      "inputs": {
+        "A1": -10000,
+        "A2": 2750,
+        "A3": 4250,
+        "A4": 3250,
+        "A5": 2750,
+        "B1": 39448,
+        "B2": 39508,
+        "B3": 39751,
+        "B4": 39859,
+        "B5": 39904
+      },
+      "expected": {
+        "number": 2086.6476,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "Excel doc example"
+    },
+    {
+      "id": "I10-XNPV-002",
+      "formula": "=XNPV(0.1,{-1000,1100},{45000,45365})",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "one-year offsets"
+    },
+    {
+      "id": "I10-XNPV-003",
+      "formula": "=XNPV(0,{100,200},{45000,45100})",
+      "inputs": {},
+      "expected": {
+        "number": 300.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "zero rate sums"
+    },
+    {
+      "id": "I10-XNPV-004",
+      "formula": "=XNPV(0.5,{-500},{45000})",
+      "inputs": {},
+      "expected": {
+        "number": -500.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "first flow not discounted"
+    },
+    {
+      "id": "I10-XNPV-005",
+      "formula": "=XNPV(0.1,A1:A2,B1:B1)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "B1": 45000
+      },
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "length mismatch"
+    },
+    {
+      "id": "I10-XNPV-006",
+      "formula": "=XNPV(0.1,{-100,200},{45100,45000})",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "date before first"
+    },
+    {
+      "id": "I10-XNPV-007",
+      "formula": "=XNPV(-1,{-100,200},{45000,45100})",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "rate <= -1",
+      "specOpen": true,
+      "specOpenReason": "Error class for rate <= -1 unconfirmed"
+    },
+    {
+      "id": "I10-XNPV-008",
+      "formula": "=XNPV(\"x\",{100},{45000})",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric rate"
+    },
+    {
+      "id": "I10-XNPV-009",
+      "formula": "=XNPV(0,{-100,50,80},{45000,45200,45100})",
+      "inputs": {},
+      "expected": {
+        "number": 30.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "unsorted dates allowed"
+    },
+    {
+      "id": "I10-XNPV-010",
+      "formula": "=XNPV(0,A1:A3,B1:B3)",
+      "inputs": {
+        "A1": -100,
+        "A2": "x",
+        "A3": 220,
+        "B1": 45000,
+        "B2": 45100,
+        "B3": 45200
+      },
+      "expected": {
+        "number": 120.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "text member drops pair",
+      "specOpen": true,
+      "specOpenReason": "Skip-vs-error for non-numeric range members unconfirmed"
+    },
+    {
+      "id": "I10-YIELD-001",
+      "formula": "=YIELD(39493,42689,0.0575,95.04287,100,2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.065,
+        "tolerance": 0.0001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "Excel doc example ~6.5%"
+    },
+    {
+      "id": "I10-YIELD-002",
+      "formula": "=YIELD(45000,46096,0.10,100,100,1,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.1,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "par bond on coupon date"
+    },
+    {
+      "id": "I10-YIELD-003",
+      "formula": "=YIELD(45000,46096,0.10,90,100,1,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.1433128,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "discount bond yields more than coupon"
+    },
+    {
+      "id": "I10-YIELD-004",
+      "formula": "=YIELD(45000,46096,0.10,110,100,1,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0624213,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "premium bond yields less than coupon"
+    },
+    {
+      "id": "I10-YIELD-005",
+      "formula": "=YIELD(46096,46461,0.05,95,100,1,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.1,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "single coupon period closed form"
+    },
+    {
+      "id": "I10-YIELD-006",
+      "formula": "=YIELD(45000,46096,0.10,100,100,2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.1,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "freq 2 par bond"
+    },
+    {
+      "id": "I10-YIELD-007",
+      "formula": "=YIELD(45000,45000,0.05,100,100,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "dates equal"
+    },
+    {
+      "id": "I10-YIELD-008",
+      "formula": "=YIELD(45000,46096,-0.05,100,100,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "rate < 0"
+    },
+    {
+      "id": "I10-YIELD-009",
+      "formula": "=YIELD(45000,46096,0.05,0,100,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "pr <= 0"
+    },
+    {
+      "id": "I10-YIELD-010",
+      "formula": "=YIELD(45000,46096,0.05,100,100,3)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "invalid frequency"
+    },
+    {
+      "id": "I10-YIELD-011",
+      "formula": "=YIELD(45000,46096,0.05,100,100,2,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "basis out of range"
+    },
+    {
+      "id": "I10-YIELD-012",
+      "formula": "=YIELD(45000,46096,0.05,\"x\",100,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric"
+    },
+    {
+      "id": "I10-YIELDDISC-001",
+      "formula": "=YIELDDISC(45000,45090,98.75,100,3)",
+      "inputs": {},
+      "expected": {
+        "number": 0.051336146272855133,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "act/365"
+    },
+    {
+      "id": "I10-YIELDDISC-002",
+      "formula": "=YIELDDISC(45000,45360,90,100,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.11299435028248588,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "30/360 DSM=354"
+    },
+    {
+      "id": "I10-YIELDDISC-003",
+      "formula": "=YIELDDISC(45000,45360,90,100,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.1111111111111111,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "act/360 full year"
+    },
+    {
+      "id": "I10-YIELDDISC-004",
+      "formula": "=YIELDDISC(45000,45000,98,100)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "dates equal"
+    },
+    {
+      "id": "I10-YIELDDISC-005",
+      "formula": "=YIELDDISC(45000,45180,0,100)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "pr <= 0"
+    },
+    {
+      "id": "I10-YIELDDISC-006",
+      "formula": "=YIELDDISC(45000,45180,98,-100)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "redemption <= 0"
+    },
+    {
+      "id": "I10-YIELDDISC-007",
+      "formula": "=YIELDDISC(45000,45180,98,100,7)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "basis out of range"
+    },
+    {
+      "id": "I10-YIELDDISC-008",
+      "formula": "=YIELDDISC(45000,45180,98,\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric"
+    },
+    {
+      "id": "I10-YIELDDISC-009",
+      "formula": "=YIELDDISC(45000,45180,100,80,0)",
+      "inputs": {},
+      "expected": {
+        "number": -0.4090909090909091,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "negative yield passes",
+      "specOpen": true,
+      "specOpenReason": "Whether deeply negative yields error is unconfirmed"
+    },
+    {
+      "id": "I10-YIELDDISC-010",
+      "formula": "=YIELDDISC(45000,45360,90,100)",
+      "inputs": {},
+      "expected": {
+        "number": 0.11299435028248588,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "default basis 0"
+    },
+    {
+      "id": "I10-YIELDMAT-001",
+      "formula": "=YIELDMAT(39522,39755,39394,0.0625,100.0123,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0609543,
+        "tolerance": 1e-05
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "Excel doc example ~6.0954%"
+    },
+    {
+      "id": "I10-YIELDMAT-002",
+      "formula": "=YIELDMAT(45000,45365,45000,0.08,100,3)",
+      "inputs": {},
+      "expected": {
+        "number": 0.08,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "settlement=issue 1yr act/365"
+    },
+    {
+      "id": "I10-YIELDMAT-003",
+      "formula": "=YIELDMAT(45182,45365,45000,0.08,99.846,3)",
+      "inputs": {},
+      "expected": {
+        "number": 0.08,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "with accrued"
+    },
+    {
+      "id": "I10-YIELDMAT-004",
+      "formula": "=YIELDMAT(45000,45000,44000,0.05,100)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "dates equal"
+    },
+    {
+      "id": "I10-YIELDMAT-005",
+      "formula": "=YIELDMAT(44000,45000,44100,0.05,100)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "settlement < issue"
+    },
+    {
+      "id": "I10-YIELDMAT-006",
+      "formula": "=YIELDMAT(45000,45180,44000,-0.05,100)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "rate < 0"
+    },
+    {
+      "id": "I10-YIELDMAT-007",
+      "formula": "=YIELDMAT(45000,45180,44000,0.05,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "pr <= 0"
+    },
+    {
+      "id": "I10-YIELDMAT-008",
+      "formula": "=YIELDMAT(45000,45180,44000,0.05,100,6)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "basis out of range"
+    },
+    {
+      "id": "I10-YIELDMAT-009",
+      "formula": "=YIELDMAT(45000,45180,44000,0.05,\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "non-numeric"
+    },
+    {
+      "id": "I10-YIELDMAT-010",
+      "formula": "=YIELDMAT(45000,45360,44640,0.05,100)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0476506,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel function documentation formulas; expected values computed analytically from the documented formula. To be re-recorded empirically per plan section 10.5."
+      },
+      "notes": "30/360: DIM=714/360, A=360/360, DSM=354/360 -> ((1+0.099167-1.05)/1.05)/0.98333 = 0.04765"
+    }
+  ]
+}

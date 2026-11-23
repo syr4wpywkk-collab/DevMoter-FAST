@@ -1,0 +1,4368 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-24",
+  "referenceDefaults": {
+    "reference": {
+      "implementation": "Microsoft Excel",
+      "version": "general documented behavior (not empirically recorded)",
+      "dateSystem": "1900",
+      "os": "any",
+      "locale": "en-US",
+      "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+    }
+  },
+  "cases": [
+    {
+      "id": "I01-AVEDEV-001",
+      "formula": "=AVEDEV(4,5,6,7,5,4,3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0204081632653061,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVEDEV-002",
+      "formula": "=AVEDEV({1,2,3})",
+      "inputs": {},
+      "expected": {
+        "number": 0.6666666666666666,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVEDEV-003",
+      "formula": "=AVEDEV(A1:A3)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "number": 0.6666666666666666,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVEDEV-004",
+      "formula": "=AVEDEV(A1:A4)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "A3": 3,
+        "A4": 5
+      },
+      "expected": {
+        "number": 1.3333333333333333,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVEDEV-005",
+      "formula": "=AVEDEV(5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVEDEV-006",
+      "formula": "=AVEDEV(A1:A3)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVEDEV-007",
+      "formula": "=AVEDEV(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVEDEV-008",
+      "formula": "=AVEDEV(1/0,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVEDEV-009",
+      "formula": "=AVEDEV(-2,-4,-6)",
+      "inputs": {},
+      "expected": {
+        "number": 1.3333333333333333,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVEDEV-010",
+      "formula": "=AVEDEV(TRUE,\"3\")",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEA-001",
+      "formula": "=AVERAGEA(2,4,6)",
+      "inputs": {},
+      "expected": {
+        "number": 4.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEA-002",
+      "formula": "=AVERAGEA(A1:A4)",
+      "inputs": {
+        "A1": 2,
+        "A2": "x",
+        "A3": 4,
+        "A4": true
+      },
+      "expected": {
+        "number": 1.75,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEA-003",
+      "formula": "=AVERAGEA(A1:A2)",
+      "inputs": {
+        "A1": true,
+        "A2": false
+      },
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEA-004",
+      "formula": "=AVERAGEA({1,\"x\",TRUE})",
+      "inputs": {},
+      "expected": {
+        "number": 0.6666666666666666,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEA-005",
+      "formula": "=AVERAGEA(A1:A3)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEA-006",
+      "formula": "=AVERAGEA(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "specOpen": true,
+      "specOpenReason": "Direct scalar text counts as 0 (AVERAGEA rule)",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEA-007",
+      "formula": "=AVERAGEA(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEA-008",
+      "formula": "=AVERAGEA(10)",
+      "inputs": {},
+      "expected": {
+        "number": 10.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEA-009",
+      "formula": "=AVERAGEA(\"5\",5)",
+      "inputs": {},
+      "expected": {
+        "number": 5.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEA-010",
+      "formula": "=AVERAGEA(A1:B2)",
+      "inputs": {
+        "A1": 1,
+        "B1": 3,
+        "A2": 5,
+        "B2": ""
+      },
+      "expected": {
+        "number": 2.25,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIF-001",
+      "formula": "=AVERAGEIF({1,2,3,4},\">2\")",
+      "inputs": {},
+      "expected": {
+        "number": 3.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIF-002",
+      "formula": "=AVERAGEIF(A1:A4,\"x\",B1:B4)",
+      "inputs": {
+        "A1": "x",
+        "A2": "y",
+        "A3": "x",
+        "A4": "y",
+        "B1": 10,
+        "B2": 100,
+        "B3": 30,
+        "B4": 100
+      },
+      "expected": {
+        "number": 20.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIF-003",
+      "formula": "=AVERAGEIF(A1:A3,\">1\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "number": 2.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIF-004",
+      "formula": "=AVERAGEIF(A1:A3,\">=3\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "number": 3.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIF-005",
+      "formula": "=AVERAGEIF(A1:A3,\"zzz\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIF-006",
+      "formula": "=AVERAGEIF(A1:A3,\"<>2\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "number": 2.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIF-007",
+      "formula": "=AVERAGEIF(A1:A3,\"=*x*\",B1:B3)",
+      "inputs": {
+        "A1": "axb",
+        "A2": "yz",
+        "A3": "x",
+        "B1": 4,
+        "B2": 0,
+        "B3": 0
+      },
+      "expected": {
+        "number": 2.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIF-008",
+      "formula": "=AVERAGEIF(A1:A3,\">2\",B1:B3)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "number": 30.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIF-009",
+      "formula": "=AVERAGEIF(A1:A2,\">0\")",
+      "inputs": {
+        "A1": 1,
+        "A2": "x"
+      },
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIF-010",
+      "formula": "=AVERAGEIF(A1:A3,1/0)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIFS-001",
+      "formula": "=AVERAGEIFS(B1:B4,A1:A4,\"x\")",
+      "inputs": {
+        "A1": "x",
+        "A2": "y",
+        "A3": "x",
+        "A4": "y",
+        "B1": 10,
+        "B2": 100,
+        "B3": 30,
+        "B4": 100
+      },
+      "expected": {
+        "number": 20.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIFS-002",
+      "formula": "=AVERAGEIFS(B1:B4,A1:A4,\"x\",C1:C4,\">0\")",
+      "inputs": {
+        "A1": "x",
+        "A2": "y",
+        "A3": "x",
+        "A4": "y",
+        "B1": 10,
+        "B2": 100,
+        "B3": 30,
+        "B4": 100,
+        "C1": 0,
+        "C2": 1,
+        "C3": 5,
+        "C4": 9
+      },
+      "expected": {
+        "number": 30.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIFS-003",
+      "formula": "=AVERAGEIFS(A1:A3,A1:A3,\">1\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "number": 2.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIFS-004",
+      "formula": "=AVERAGEIFS(B1:B4,A1:A4,\"x\")",
+      "inputs": {
+        "A1": "a",
+        "A2": "b",
+        "A3": "c",
+        "A4": "d",
+        "B1": 1,
+        "B2": 2,
+        "B3": 3,
+        "B4": 4
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIFS-005",
+      "formula": "=AVERAGEIFS(B1:B4,A1:A4,\"x\",C1:C2,\">0\")",
+      "inputs": {
+        "A1": "x",
+        "A2": "y",
+        "A3": "x",
+        "A4": "y",
+        "B1": 10,
+        "B2": 100,
+        "B3": 30,
+        "B4": 100,
+        "C1": 1,
+        "C2": 2
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIFS-006",
+      "formula": "=AVERAGEIFS(B1:B3,A1:A3,\">=2\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "number": 25.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIFS-007",
+      "formula": "=AVERAGEIFS(A1:A3,A1:A3,\">0\",A1:A3,\"<3\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "number": 1.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIFS-008",
+      "formula": "=AVERAGEIFS(B1:B3,A1:A3,\"x\")",
+      "inputs": {
+        "A1": "x",
+        "A2": "x",
+        "A3": "x",
+        "B1": "t",
+        "B2": "t",
+        "B3": "t"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIFS-009",
+      "formula": "=AVERAGEIFS(B1:B2,A1:A2,\">0\",C1:C2,\"<100\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "B1": 10,
+        "B2": 20,
+        "C1": 50,
+        "C2": 60
+      },
+      "expected": {
+        "number": 15.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-AVERAGEIFS-010",
+      "formula": "=AVERAGEIFS(B1:B3,A1:A3,1/0)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 1,
+        "B2": 2,
+        "B3": 3
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.DIST-001",
+      "formula": "=BETA.DIST(0.5,2,3,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.6875,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.DIST-002",
+      "formula": "=BETA.DIST(0.5,2,3,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 1.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.DIST-003",
+      "formula": "=BETA.DIST(2,8,10,TRUE,1,3)",
+      "inputs": {},
+      "expected": {
+        "number": 0.6854705810547407,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.DIST-004",
+      "formula": "=BETA.DIST(0.3,1,1,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.3,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.DIST-005",
+      "formula": "=BETA.DIST(0.3,1,1,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.DIST-006",
+      "formula": "=BETA.DIST(0,2,3,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.DIST-007",
+      "formula": "=BETA.DIST(1,2,3,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.DIST-008",
+      "formula": "=BETA.DIST(0.5,0,1,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.DIST-009",
+      "formula": "=BETA.DIST(1.5,1,1,TRUE,0,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.DIST-010",
+      "formula": "=BETA.DIST(\"x\",2,3,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.DIST-011",
+      "formula": "=BETA.DIST(0.5,2,3,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.6875,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.INV-001",
+      "formula": "=BETA.INV(0.5,8,10,1,3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.8846846367626422,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.INV-002",
+      "formula": "=BETA.INV(0.25,1,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.25,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.INV-003",
+      "formula": "=BETA.INV(0.25,1,1,0,4)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.INV-004",
+      "formula": "=BETA.INV(0,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.INV-005",
+      "formula": "=BETA.INV(1,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.INV-006",
+      "formula": "=BETA.INV(0,2,3,5,9)",
+      "inputs": {},
+      "expected": {
+        "number": 5.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.INV-007",
+      "formula": "=BETA.INV(-0.1,2,3)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.INV-008",
+      "formula": "=BETA.INV(1.5,2,3)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.INV-009",
+      "formula": "=BETA.INV(0.5,0,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.INV-010",
+      "formula": "=BETA.INV(\"x\",2,3)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BETA.INV-011",
+      "formula": "=BETA.INV(0.5,2,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST-001",
+      "formula": "=BINOM.DIST(6,10,0.5,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.205078125,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST-002",
+      "formula": "=BINOM.DIST(6,10,0.5,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.828125,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST-003",
+      "formula": "=BINOM.DIST(48,50,0.6,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 4.400642510641486e-09,
+        "tolerance": 1e-15
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc example value (0.0723) is arithmetically wrong; true PMF verified by direct comb computation",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST-004",
+      "formula": "=BINOM.DIST(11,10,0.5,FALSE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST-005",
+      "formula": "=BINOM.DIST(2,5,1.5,FALSE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST-006",
+      "formula": "=BINOM.DIST(0,10,0,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST-007",
+      "formula": "=BINOM.DIST(3,10,0,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST-008",
+      "formula": "=BINOM.DIST(10,10,1,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST-009",
+      "formula": "=BINOM.DIST(6.9,10.9,0.5,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.205078125,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST-010",
+      "formula": "=BINOM.DIST(\"x\",10,0.5,FALSE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST-011",
+      "formula": "=BINOM.DIST(0,10,0.3,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.028247524899999984,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST.RANGE-001",
+      "formula": "=BINOM.DIST.RANGE(10,0.5,6)",
+      "inputs": {},
+      "expected": {
+        "number": 0.205078125,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST.RANGE-002",
+      "formula": "=BINOM.DIST.RANGE(10,0.5,4,6)",
+      "inputs": {},
+      "expected": {
+        "number": 0.65625,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST.RANGE-003",
+      "formula": "=BINOM.DIST.RANGE(50,0.6,40,50)",
+      "inputs": {},
+      "expected": {
+        "number": 0.002197144757246682,
+        "tolerance": 1e-09
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc example (0.1224) is wrong; verified by direct PMF sum",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST.RANGE-004",
+      "formula": "=BINOM.DIST.RANGE(10,0.5,7,3)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST.RANGE-005",
+      "formula": "=BINOM.DIST.RANGE(10,0.5,0,10)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST.RANGE-006",
+      "formula": "=BINOM.DIST.RANGE(10,0.5,4,11)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST.RANGE-007",
+      "formula": "=BINOM.DIST.RANGE(10,1.5,4,6)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST.RANGE-008",
+      "formula": "=BINOM.DIST.RANGE(10,0.5,\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST.RANGE-009",
+      "formula": "=BINOM.DIST.RANGE(10,0,0,5)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST.RANGE-010",
+      "formula": "=BINOM.DIST.RANGE(10,0,1,5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.DIST.RANGE-011",
+      "formula": "=BINOM.DIST.RANGE(20,0.3,8)",
+      "inputs": {},
+      "expected": {
+        "number": 0.114396739704861,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.INV-001",
+      "formula": "=BINOM.INV(10,0.5,0.5)",
+      "inputs": {},
+      "expected": {
+        "number": 5.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.INV-002",
+      "formula": "=BINOM.INV(10,0.5,0.83)",
+      "inputs": {},
+      "expected": {
+        "number": 7.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.INV-003",
+      "formula": "=BINOM.INV(10,0.5,0.82)",
+      "inputs": {},
+      "expected": {
+        "number": 6.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.INV-004",
+      "formula": "=BINOM.INV(6,0.5,0.75)",
+      "inputs": {},
+      "expected": {
+        "number": 4.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.INV-005",
+      "formula": "=BINOM.INV(10,0.5,1)",
+      "inputs": {},
+      "expected": {
+        "number": 10.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.INV-006",
+      "formula": "=BINOM.INV(10,0.5,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "specOpen": true,
+      "specOpenReason": "alpha=0 boundary: smallest k with CDF>=0 is 0",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.INV-007",
+      "formula": "=BINOM.INV(10,1.5,0.5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.INV-008",
+      "formula": "=BINOM.INV(10,0.5,-0.1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.INV-009",
+      "formula": "=BINOM.INV(-2,0.5,0.5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.INV-010",
+      "formula": "=BINOM.INV(\"x\",0.5,0.5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-BINOM.INV-011",
+      "formula": "=BINOM.INV(10,0,0.9)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST-001",
+      "formula": "=CHISQ.DIST(0.5,1,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5204998778130465,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST-002",
+      "formula": "=CHISQ.DIST(2,3,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.20755374871029736,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST-003",
+      "formula": "=CHISQ.DIST(18.307,10,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.9499994109086018,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST-004",
+      "formula": "=CHISQ.DIST(-1,3,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST-005",
+      "formula": "=CHISQ.DIST(2,0,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST-006",
+      "formula": "=CHISQ.DIST(2,1E11,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST-007",
+      "formula": "=CHISQ.DIST(0,3,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST-008",
+      "formula": "=CHISQ.DIST(0,2,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST-009",
+      "formula": "=CHISQ.DIST(\"x\",3,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST-010",
+      "formula": "=CHISQ.DIST(4,2,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.8646647167633873,
+        "tolerance": 1e-12
+      },
+      "specOpen": true,
+      "specOpenReason": "df=2 is exponential: CDF = 1-e^(-x/2)",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST-011",
+      "formula": "=CHISQ.DIST(2,3.9,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.20755374871029741,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST.RT-001",
+      "formula": "=CHISQ.DIST.RT(18.307,10)",
+      "inputs": {},
+      "expected": {
+        "number": 0.05000058909139817,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST.RT-002",
+      "formula": "=CHISQ.DIST.RT(0.5,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.4795001221869535,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST.RT-003",
+      "formula": "=CHISQ.DIST.RT(3.841,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.05001368376395668,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST.RT-004",
+      "formula": "=CHISQ.DIST.RT(-1,3)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST.RT-005",
+      "formula": "=CHISQ.DIST.RT(2,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST.RT-006",
+      "formula": "=CHISQ.DIST.RT(0,3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST.RT-007",
+      "formula": "=CHISQ.DIST.RT(\"x\",3)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST.RT-008",
+      "formula": "=CHISQ.DIST.RT(10,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.006737946999085467,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST.RT-009",
+      "formula": "=CHISQ.DIST.RT(60,10)",
+      "inputs": {},
+      "expected": {
+        "number": 3.6243009520614915e-09,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.DIST.RT-010",
+      "formula": "=CHISQ.DIST.RT(5,4.9)",
+      "inputs": {},
+      "expected": {
+        "number": 0.2872974951836458,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV-001",
+      "formula": "=CHISQ.INV(0.05,10)",
+      "inputs": {},
+      "expected": {
+        "number": 3.9402991365242097,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV-002",
+      "formula": "=CHISQ.INV(0.95,10)",
+      "inputs": {},
+      "expected": {
+        "number": 18.307038053275146,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV-003",
+      "formula": "=CHISQ.INV(0.5204998778130465,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV-004",
+      "formula": "=CHISQ.INV(-0.1,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV-005",
+      "formula": "=CHISQ.INV(1.5,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV-006",
+      "formula": "=CHISQ.INV(0,5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "specOpen": true,
+      "specOpenReason": "p=0 boundary -> 0",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV-007",
+      "formula": "=CHISQ.INV(1,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "specOpen": true,
+      "specOpenReason": "p=1 boundary: quantile unbounded; #NUM! chosen (SPEC-OPEN in spec doc)",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV-008",
+      "formula": "=CHISQ.INV(0.5,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV-009",
+      "formula": "=CHISQ.INV(\"x\",5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV-010",
+      "formula": "=CHISQ.INV(0.5,2)",
+      "inputs": {},
+      "expected": {
+        "number": 1.3862943611198906,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV.RT-001",
+      "formula": "=CHISQ.INV.RT(0.05,10)",
+      "inputs": {},
+      "expected": {
+        "number": 18.307038053275146,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV.RT-002",
+      "formula": "=CHISQ.INV.RT(0.95,10)",
+      "inputs": {},
+      "expected": {
+        "number": 3.9402991365242097,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV.RT-003",
+      "formula": "=CHISQ.INV.RT(0.4795001221869535,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV.RT-004",
+      "formula": "=CHISQ.INV.RT(1.5,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV.RT-005",
+      "formula": "=CHISQ.INV.RT(-0.1,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV.RT-006",
+      "formula": "=CHISQ.INV.RT(1,10)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "specOpen": true,
+      "specOpenReason": "p=1 boundary -> 0",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV.RT-007",
+      "formula": "=CHISQ.INV.RT(0,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "specOpen": true,
+      "specOpenReason": "p=0 boundary: quantile unbounded (SPEC-OPEN)",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV.RT-008",
+      "formula": "=CHISQ.INV.RT(0.5,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV.RT-009",
+      "formula": "=CHISQ.INV.RT(\"x\",10)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.INV.RT-010",
+      "formula": "=CHISQ.INV.RT(0.5,2)",
+      "inputs": {},
+      "expected": {
+        "number": 1.3862943611198906,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.TEST-001",
+      "formula": "=CHISQ.TEST({58,35;11,25},{45.22,47.78;23.78,25.22})",
+      "inputs": {},
+      "expected": {
+        "number": 0.0001927540542795004,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.TEST-002",
+      "formula": "=CHISQ.TEST({10,20,30},{20,20,20})",
+      "inputs": {},
+      "expected": {
+        "number": 0.006737946999085468,
+        "tolerance": 1e-09
+      },
+      "specOpen": true,
+      "specOpenReason": "statistic is 10 (spec doc's 5 is an arithmetic slip); p = e^-5",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.TEST-003",
+      "formula": "=CHISQ.TEST({5,10},{5,10})",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.TEST-004",
+      "formula": "=CHISQ.TEST({1,2},{1,2,3})",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.TEST-005",
+      "formula": "=CHISQ.TEST({1},{1})",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.TEST-006",
+      "formula": "=CHISQ.TEST({1,2},{0,2})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.TEST-007",
+      "formula": "=CHISQ.TEST(A1:A3,B1:B3)",
+      "inputs": {
+        "A1": 10,
+        "A2": 20,
+        "A3": 30,
+        "B1": 20,
+        "B2": 20,
+        "B3": 20
+      },
+      "expected": {
+        "number": 0.006737946999085468,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.TEST-008",
+      "formula": "=CHISQ.TEST({1,\"x\"},{1,2})",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": true,
+      "specOpenReason": "Non-numeric cell policy: #VALUE! (spec doc marks this confirm)",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.TEST-009",
+      "formula": "=CHISQ.TEST({10;20;30},{20;20;20})",
+      "inputs": {},
+      "expected": {
+        "number": 0.006737946999085468,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.TEST-010",
+      "formula": "=CHISQ.TEST({100,1},{1,100})",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-30
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CHISQ.TEST-011",
+      "formula": "=CHISQ.TEST(A1:B2,C1:D2)",
+      "inputs": {
+        "A1": 58,
+        "B1": 35,
+        "A2": 11,
+        "B2": 25,
+        "C1": 45.22,
+        "D1": 47.78,
+        "C2": 23.78,
+        "D2": 25.22
+      },
+      "expected": {
+        "number": 0.0001927540542795004,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.NORM-001",
+      "formula": "=CONFIDENCE.NORM(0.05,2.5,50)",
+      "inputs": {},
+      "expected": {
+        "number": 0.6929519121748391,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.NORM-002",
+      "formula": "=CONFIDENCE.NORM(0.01,1,100)",
+      "inputs": {},
+      "expected": {
+        "number": 0.25758293035489,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.NORM-003",
+      "formula": "=CONFIDENCE.NORM(0.05,1,1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.959963984540054,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.NORM-004",
+      "formula": "=CONFIDENCE.NORM(0,1,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.NORM-005",
+      "formula": "=CONFIDENCE.NORM(1,1,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.NORM-006",
+      "formula": "=CONFIDENCE.NORM(0.05,0,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.NORM-007",
+      "formula": "=CONFIDENCE.NORM(0.05,-1,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.NORM-008",
+      "formula": "=CONFIDENCE.NORM(0.05,1,0.5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.NORM-009",
+      "formula": "=CONFIDENCE.NORM(\"x\",1,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.NORM-010",
+      "formula": "=CONFIDENCE.NORM(0.05,1,50.9)",
+      "inputs": {},
+      "expected": {
+        "number": 0.2771807648699355,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.NORM-011",
+      "formula": "=CONFIDENCE.NORM(0.32,1,4)",
+      "inputs": {},
+      "expected": {
+        "number": 0.4972289416048764,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.T-001",
+      "formula": "=CONFIDENCE.T(0.05,2.5,50)",
+      "inputs": {},
+      "expected": {
+        "number": 0.7104921387393233,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.T-002",
+      "formula": "=CONFIDENCE.T(0.05,1,10)",
+      "inputs": {},
+      "expected": {
+        "number": 0.7153569059706639,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.T-003",
+      "formula": "=CONFIDENCE.T(0.01,1,30)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5032449122098831,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.T-004",
+      "formula": "=CONFIDENCE.T(0.5,1,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.7071067811865475,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.T-005",
+      "formula": "=CONFIDENCE.T(0,1,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.T-006",
+      "formula": "=CONFIDENCE.T(1,1,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.T-007",
+      "formula": "=CONFIDENCE.T(0.05,0,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.T-008",
+      "formula": "=CONFIDENCE.T(0.05,1,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "specOpen": true,
+      "specOpenReason": "size=1 -> #NUM! chosen; spec doc flags possible #DIV/0! (SPEC-OPEN)",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.T-009",
+      "formula": "=CONFIDENCE.T(\"x\",1,10)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.T-010",
+      "formula": "=CONFIDENCE.T(0.05,1,10.9)",
+      "inputs": {},
+      "expected": {
+        "number": 0.7153569059706639,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-CONFIDENCE.T-011",
+      "formula": "=CONFIDENCE.T(0.2,3,100)",
+      "inputs": {},
+      "expected": {
+        "number": 0.38704843261033306,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COUNTBLANK-001",
+      "formula": "=COUNTBLANK(A1:B3)",
+      "inputs": {
+        "A1": 1,
+        "A3": "x"
+      },
+      "expected": {
+        "number": 4.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COUNTBLANK-002",
+      "formula": "=COUNTBLANK(A1:A3)",
+      "inputs": {
+        "A1": 0,
+        "A2": " ",
+        "A3": ""
+      },
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COUNTBLANK-003",
+      "formula": "=COUNTBLANK(A1:A1)",
+      "inputs": {
+        "A1": 7
+      },
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COUNTBLANK-004",
+      "formula": "=COUNTBLANK(Z1:Z5)",
+      "inputs": {},
+      "expected": {
+        "number": 5.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COUNTBLANK-005",
+      "formula": "=COUNTBLANK(A1:A3)",
+      "inputs": {
+        "A1": true,
+        "A2": {
+          "error": "#N/A"
+        }
+      },
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COUNTBLANK-006",
+      "formula": "=COUNTBLANK(A1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COUNTBLANK-007",
+      "formula": "=COUNTBLANK(A1:B2)",
+      "inputs": {
+        "A1": "",
+        "B1": 0
+      },
+      "expected": {
+        "number": 3.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COUNTBLANK-008",
+      "formula": "=COUNTBLANK(IF(TRUE,\"\",1))",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "specOpen": true,
+      "specOpenReason": "Formula-produced \"\" counts (spec-open in doc: expected yes)",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COUNTBLANK-009",
+      "formula": "=COUNTBLANK(A1:A2)",
+      "inputs": {
+        "A1": {
+          "blank": true
+        },
+        "A2": 1
+      },
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COUNTBLANK-010",
+      "formula": "=COUNTBLANK(5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "specOpen": true,
+      "specOpenReason": "Literal scalar arg treated as 1x1 matrix (SPEC-OPEN: Excel requires a range; error kind unpinned)",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COUNTBLANK-011",
+      "formula": "=COUNTBLANK(A1,A2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.P-001",
+      "formula": "=COVARIANCE.P({2,4,8},{6,12,18})",
+      "inputs": {},
+      "expected": {
+        "number": 12.0,
+        "tolerance": 1e-09
+      },
+      "specOpen": true,
+      "specOpenReason": "True value is 12 (sxy=36/3); spec doc's 9.333 uses sxy=28 which is an arithmetic slip",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.P-002",
+      "formula": "=COVARIANCE.P({1,2,3},{1,2,3})",
+      "inputs": {},
+      "expected": {
+        "number": 0.6666666666666666,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.P-003",
+      "formula": "=COVARIANCE.P({1,2},{5,5})",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.P-004",
+      "formula": "=COVARIANCE.P({1,2},{1,2,3})",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.P-005",
+      "formula": "=COVARIANCE.P({\"a\"},{\"b\"})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.P-006",
+      "formula": "=COVARIANCE.P(A1:A3,B1:B3)",
+      "inputs": {
+        "A1": 2,
+        "A2": 4,
+        "A3": 8,
+        "B1": 6,
+        "B2": 12,
+        "B3": 18
+      },
+      "expected": {
+        "number": 12.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.P-007",
+      "formula": "=COVARIANCE.P(A1:A3,B1:B3)",
+      "inputs": {
+        "A1": 1,
+        "A2": "skip",
+        "A3": 3,
+        "B1": 2,
+        "B2": 4,
+        "B3": 6
+      },
+      "expected": {
+        "number": 2.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.P-008",
+      "formula": "=COVARIANCE.P({1,2,3},{3,2,1})",
+      "inputs": {},
+      "expected": {
+        "number": -0.6666666666666666,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.P-009",
+      "formula": "=COVARIANCE.P(\"x\",{1})",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.P-010",
+      "formula": "=COVARIANCE.P(1/0,{1})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.P-011",
+      "formula": "=COVARIANCE.P({1,2,3,4},{2,4,5,8})",
+      "inputs": {},
+      "expected": {
+        "number": 2.375,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.S-001",
+      "formula": "=COVARIANCE.S({2,4,8},{6,12,18})",
+      "inputs": {},
+      "expected": {
+        "number": 18.0,
+        "tolerance": 1e-09
+      },
+      "specOpen": true,
+      "specOpenReason": "True value is 18 (sxy=36/2); spec doc's 14 uses sxy=28 (slip)",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.S-002",
+      "formula": "=COVARIANCE.S({1,2,3},{1,2,3})",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.S-003",
+      "formula": "=COVARIANCE.S({1,2,3,4},{2,4,5,8})",
+      "inputs": {},
+      "expected": {
+        "number": 3.1666666666666665,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.S-004",
+      "formula": "=COVARIANCE.S({5},{5})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.S-005",
+      "formula": "=COVARIANCE.S({1,2},{1,2,3})",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.S-006",
+      "formula": "=COVARIANCE.S({\"a\"},{\"b\"})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.S-007",
+      "formula": "=COVARIANCE.S(A1:A4,B1:B4)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "B1": 2,
+        "B2": 4,
+        "B3": 5,
+        "B4": 8
+      },
+      "expected": {
+        "number": 3.1666666666666665,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.S-008",
+      "formula": "=COVARIANCE.S(A1:A3,B1:B3)",
+      "inputs": {
+        "A1": 1,
+        "A2": "skip",
+        "A3": 3,
+        "B1": 2,
+        "B2": 4,
+        "B3": 6
+      },
+      "expected": {
+        "number": 4.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.S-009",
+      "formula": "=COVARIANCE.S({1,2,3},{3,2,1})",
+      "inputs": {},
+      "expected": {
+        "number": -1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.S-010",
+      "formula": "=COVARIANCE.S(A1:A2,{1;2})",
+      "inputs": {
+        "A1": {
+          "error": "#REF!"
+        },
+        "A2": 1
+      },
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-COVARIANCE.S-011",
+      "formula": "=COVARIANCE.S(1/0,{1})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-DEVSQ-001",
+      "formula": "=DEVSQ(4,5,8,7,11,4,3)",
+      "inputs": {},
+      "expected": {
+        "number": 48.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-DEVSQ-002",
+      "formula": "=DEVSQ({1,2,3})",
+      "inputs": {},
+      "expected": {
+        "number": 2.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-DEVSQ-003",
+      "formula": "=DEVSQ(5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-DEVSQ-004",
+      "formula": "=DEVSQ(A1:A3)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-DEVSQ-005",
+      "formula": "=DEVSQ(A1:A3)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "A3": 3
+      },
+      "expected": {
+        "number": 2.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-DEVSQ-006",
+      "formula": "=DEVSQ(TRUE,\"3\")",
+      "inputs": {},
+      "expected": {
+        "number": 2.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-DEVSQ-007",
+      "formula": "=DEVSQ(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-DEVSQ-008",
+      "formula": "=DEVSQ(1,1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-DEVSQ-009",
+      "formula": "=DEVSQ(2,4,6,8,10)",
+      "inputs": {},
+      "expected": {
+        "number": 40.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-DEVSQ-010",
+      "formula": "=DEVSQ(1000000000,1000000001,1000000002)",
+      "inputs": {},
+      "expected": {
+        "number": 2.0,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-DEVSQ-011",
+      "formula": "=DEVSQ(A1:A2,{7,11,4,3})",
+      "inputs": {
+        "A1": 4,
+        "A2": 5
+      },
+      "expected": {
+        "number": 43.333333333333336,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-EXPON.DIST-001",
+      "formula": "=EXPON.DIST(0.2,10,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.8646647167633873,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-EXPON.DIST-002",
+      "formula": "=EXPON.DIST(0.2,10,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 1.353352832366127,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-EXPON.DIST-003",
+      "formula": "=EXPON.DIST(0,1,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-EXPON.DIST-004",
+      "formula": "=EXPON.DIST(0,1,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-EXPON.DIST-005",
+      "formula": "=EXPON.DIST(-1,1,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-EXPON.DIST-006",
+      "formula": "=EXPON.DIST(1,0,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-EXPON.DIST-007",
+      "formula": "=EXPON.DIST(1,-2,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-EXPON.DIST-008",
+      "formula": "=EXPON.DIST(\"x\",1,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-EXPON.DIST-009",
+      "formula": "=EXPON.DIST(1,1,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.6321205588285577,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-EXPON.DIST-010",
+      "formula": "=EXPON.DIST(2,0.5,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.18393972058572117,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-EXPON.DIST-011",
+      "formula": "=EXPON.DIST(1/0,1,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST-001",
+      "formula": "=F.DIST(15.20686486,6,4,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.9899999999985835,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST-002",
+      "formula": "=F.DIST(15.20686486,6,4,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0012237995987608899,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST-003",
+      "formula": "=F.DIST(1,1,1,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST-004",
+      "formula": "=F.DIST(-1,2,3,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST-005",
+      "formula": "=F.DIST(1,0,3,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST-006",
+      "formula": "=F.DIST(1,2,0,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST-007",
+      "formula": "=F.DIST(0,2,3,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST-008",
+      "formula": "=F.DIST(\"x\",2,3,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST-009",
+      "formula": "=F.DIST(2,4.9,9.9,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.821803941169937,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST-010",
+      "formula": "=F.DIST(1,5,10,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0.4954797834866395,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST-011",
+      "formula": "=F.DIST(1,1E11,3,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST.RT-001",
+      "formula": "=F.DIST.RT(15.20686486,6,4)",
+      "inputs": {},
+      "expected": {
+        "number": 0.010000000001416582,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST.RT-002",
+      "formula": "=F.DIST.RT(1,1,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST.RT-003",
+      "formula": "=F.DIST.RT(2.8860466,2,10)",
+      "inputs": {},
+      "expected": {
+        "number": 0.10245975813533677,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST.RT-004",
+      "formula": "=F.DIST.RT(-1,2,3)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST.RT-005",
+      "formula": "=F.DIST.RT(1,0,3)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST.RT-006",
+      "formula": "=F.DIST.RT(0,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST.RT-007",
+      "formula": "=F.DIST.RT(\"x\",2,3)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST.RT-008",
+      "formula": "=F.DIST.RT(2,4,9)",
+      "inputs": {},
+      "expected": {
+        "number": 0.17819605883006298,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST.RT-009",
+      "formula": "=F.DIST.RT(200,2,10)",
+      "inputs": {},
+      "expected": {
+        "number": 8.6313895274367e-09,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST.RT-010",
+      "formula": "=F.DIST.RT(2,4.9,9.9)",
+      "inputs": {},
+      "expected": {
+        "number": 0.17819605883006298,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I01-F.DIST.RT-011",
+      "formula": "=F.DIST.RT(1,2,1E11)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python math.comb / NR incomplete beta & gamma / statistics.NormalDist); to be re-recorded empirically per plan section 10.5"
+      }
+    }
+  ]
+}

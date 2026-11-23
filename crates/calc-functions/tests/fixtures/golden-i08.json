@@ -1,0 +1,3196 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-24",
+  "referenceDefaults": {},
+  "cases": [
+    {
+      "id": "I08-ACCRINT-001",
+      "formula": "=ACCRINT(DATE(2008,3,1),DATE(2008,8,31),DATE(2008,5,1),0.1,1000,2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 16.66666667,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINT-002",
+      "formula": "=ACCRINT(DATE(2008,3,1),DATE(2008,8,31),DATE(2008,5,1),0.1,1000,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 16.71232877,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINT-003",
+      "formula": "=ACCRINT(DATE(2008,3,1),DATE(2008,8,31),DATE(2008,5,1),0.1,,2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 16.66666667,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINT-004",
+      "formula": "=ACCRINT(DATE(2008,5,1),DATE(2008,8,31),DATE(2008,3,1),0.1,1000,2,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINT-005",
+      "formula": "=ACCRINT(DATE(2008,3,1),DATE(2008,8,31),DATE(2008,5,1),0,1000,2,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINT-006",
+      "formula": "=ACCRINT(DATE(2008,3,1),DATE(2008,8,31),DATE(2008,5,1),0.1,-1,2,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINT-007",
+      "formula": "=ACCRINT(DATE(2008,3,1),DATE(2008,8,31),DATE(2008,5,1),0.1,1000,5,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINT-008",
+      "formula": "=ACCRINT(DATE(2008,3,1),DATE(2008,8,31),DATE(2008,5,1),0.1,1000,2,9)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINT-009",
+      "formula": "=ACCRINT(DATE(2008,3,1),DATE(2008,8,31),DATE(2008,5,1),0.1,1000,2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 16.576087,
+        "tolerance": 1e-05
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINT-010",
+      "formula": "=ACCRINT(DATE(2007,3,1),DATE(2007,8,31),DATE(2008,2,1),0.1,1000,2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 91.94444444,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINT-011",
+      "formula": "=ACCRINT(DATE(2008,3,1),DATE(2008,5,1),DATE(2008,7,1),0.1,1000,2,0,FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 16.66666667,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "calc_method=FALSE accrual-from-first_interest rule on this schedule is unconfirmed"
+    },
+    {
+      "id": "I08-ACCRINT-012",
+      "formula": "=ACCRINT(DATE(2008,3,1),DATE(2008,8,31),DATE(2008,5,1),0.1,1000,2,1,FALSE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "calc_method=FALSE with first_interest > settlement: #NUM! vs negative accrual unconfirmed"
+    },
+    {
+      "id": "I08-ACCRINTM-001",
+      "formula": "=ACCRINTM(DATE(2008,4,1),DATE(2008,6,15),0.1,1000,3)",
+      "inputs": {},
+      "expected": {
+        "number": 20.54794521,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINTM-002",
+      "formula": "=ACCRINTM(DATE(2008,4,1),DATE(2008,6,15),0.1,1000,0)",
+      "inputs": {},
+      "expected": {
+        "number": 20.55555556,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINTM-003",
+      "formula": "=ACCRINTM(DATE(2008,4,1),DATE(2008,6,15),0.1,5000,3)",
+      "inputs": {},
+      "expected": {
+        "number": 102.739726,
+        "tolerance": 1e-05
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINTM-004",
+      "formula": "=ACCRINTM(DATE(2008,6,15),DATE(2008,4,1),0.1,1000,3)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINTM-005",
+      "formula": "=ACCRINTM(DATE(2008,4,1),DATE(2008,6,15),0.1,,3)",
+      "inputs": {},
+      "expected": {
+        "number": 20.54794521,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINTM-006",
+      "formula": "=ACCRINTM(DATE(2008,4,1),DATE(2008,6,15),0,1000,3)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINTM-007",
+      "formula": "=ACCRINTM(DATE(2008,4,1),DATE(2008,6,15),0.1,0,3)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINTM-008",
+      "formula": "=ACCRINTM(DATE(2008,4,1),DATE(2008,6,15),0.1,1000,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINTM-009",
+      "formula": "=ACCRINTM(DATE(2008,4,1),DATE(2008,6,15),0.1,1000,2)",
+      "inputs": {},
+      "expected": {
+        "number": 20.83333333,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINTM-010",
+      "formula": "=ACCRINTM(DATE(2008,4,1),DATE(2008,6,15),0.1,1000,1)",
+      "inputs": {},
+      "expected": {
+        "number": 20.49180328,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-ACCRINTM-011",
+      "formula": "=ACCRINTM(DATE(2008,4,1),DATE(2009,6,15),0.1,1000,1)",
+      "inputs": {},
+      "expected": {
+        "number": 120.2739726,
+        "tolerance": 1e-05
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Basis-1 divisor for multi-year intervals (issue-year vs interval average) unconfirmed"
+    },
+    {
+      "id": "I08-AMORDEGRC-001",
+      "formula": "=AMORDEGRC(2400,DATE(2008,8,19),DATE(2008,12,31),300,1,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "number": 776
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORDEGRC-002",
+      "formula": "=AMORDEGRC(2400,DATE(2008,8,19),DATE(2008,12,31),300,0,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "number": 330
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORDEGRC-003",
+      "formula": "=AMORDEGRC(2400,DATE(2008,8,19),DATE(2008,12,31),300,1,0.15,0)",
+      "inputs": {},
+      "expected": {
+        "number": 776
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORDEGRC-004",
+      "formula": "=AMORDEGRC(2400,DATE(2008,8,19),DATE(2008,12,31),300,1.9,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "number": 776
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORDEGRC-005",
+      "formula": "=AMORDEGRC(2400,DATE(2008,8,19),DATE(2008,12,31),300,-1,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORDEGRC-006",
+      "formula": "=AMORDEGRC(2400,DATE(2008,8,19),DATE(2008,12,31),2500,1,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORDEGRC-007",
+      "formula": "=AMORDEGRC(2400,DATE(2008,8,19),DATE(2008,12,31),300,1,0,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORDEGRC-008",
+      "formula": "=AMORDEGRC(2400,DATE(2008,8,19),DATE(2008,12,31),300,1,0.15,9)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORDEGRC-009",
+      "formula": "=AMORDEGRC(0,DATE(2008,8,19),DATE(2008,12,31),300,1,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORDEGRC-010",
+      "formula": "=AMORDEGRC(2400,DATE(2008,8,19),DATE(2008,12,31),300,20,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORDEGRC-011",
+      "formula": "=AMORDEGRC(2400,DATE(2008,8,19),DATE(2008,12,31),300,0,0.15)",
+      "inputs": {},
+      "expected": {
+        "number": 330
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORDEGRC-012",
+      "formula": "=AMORDEGRC(2400,DATE(2008,8,19),DATE(2008,12,31),300,2,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "number": 485
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Declining-balance continuation values unconfirmed against Excel (LibreOffice GetAmordegrc gives 485)"
+    },
+    {
+      "id": "I08-AMORDEGRC-013",
+      "formula": "=AMORDEGRC(2400,DATE(2008,8,19),DATE(2008,12,31),300,7,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Straight-line switchover rule in final periods unconfirmed"
+    },
+    {
+      "id": "I08-AMORLINC-001",
+      "formula": "=AMORLINC(2400,DATE(2008,8,19),DATE(2008,12,31),300,1,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "number": 360
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORLINC-002",
+      "formula": "=AMORLINC(2400,DATE(2008,8,19),DATE(2008,12,31),300,0,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "number": 131.8032787,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORLINC-003",
+      "formula": "=AMORLINC(2400,DATE(2008,8,19),DATE(2008,12,31),300,6,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "number": 168.1967213,
+        "tolerance": 1e-05
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORLINC-004",
+      "formula": "=AMORLINC(2400,DATE(2008,8,19),DATE(2008,12,31),300,7,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORLINC-005",
+      "formula": "=AMORLINC(2400,DATE(2008,8,19),DATE(2008,12,31),300,100,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORLINC-006",
+      "formula": "=AMORLINC(2400,DATE(2008,8,19),DATE(2008,12,31),300,-1,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORLINC-007",
+      "formula": "=AMORLINC(2400,DATE(2008,8,19),DATE(2008,12,31),2500,1,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORLINC-008",
+      "formula": "=AMORLINC(2400,DATE(2008,8,19),DATE(2008,12,31),300,1,0,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORLINC-009",
+      "formula": "=AMORLINC(2400,DATE(2008,8,19),DATE(2008,12,31),300,1,0.15,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORLINC-010",
+      "formula": "=AMORLINC(2400,DATE(2008,8,19),DATE(2008,12,31),300,0,0.15)",
+      "inputs": {},
+      "expected": {
+        "number": 132
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-AMORLINC-011",
+      "formula": "=AMORLINC(2400,DATE(2008,12,31),DATE(2008,8,19),300,1,0.15,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYBS-001",
+      "formula": "=COUPDAYBS(DATE(2007,1,25),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 71
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYBS-002",
+      "formula": "=COUPDAYBS(DATE(2007,1,25),DATE(2008,11,15),2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 70
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYBS-003",
+      "formula": "=COUPDAYBS(DATE(2007,5,15),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYBS-004",
+      "formula": "=COUPDAYBS(DATE(2008,11,15),DATE(2007,1,25),2,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYBS-005",
+      "formula": "=COUPDAYBS(DATE(2007,1,25),DATE(2008,11,15),2)",
+      "inputs": {},
+      "expected": {
+        "number": 70
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYBS-006",
+      "formula": "=COUPDAYBS(DATE(2007,1,25),DATE(2008,11,15),2,2)",
+      "inputs": {},
+      "expected": {
+        "number": 71
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYBS-007",
+      "formula": "=COUPDAYBS(DATE(2007,1,25),DATE(2008,11,15),2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 71
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYBS-008",
+      "formula": "=COUPDAYBS(DATE(2007,1,25),DATE(2008,11,15),2,4)",
+      "inputs": {},
+      "expected": {
+        "number": 70
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYBS-009",
+      "formula": "=COUPDAYBS(DATE(2007,1,25),DATE(2008,11,15),4,1)",
+      "inputs": {},
+      "expected": {
+        "number": 71
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYBS-010",
+      "formula": "=COUPDAYBS(DATE(2007,1,25),DATE(2008,11,15),5,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYBS-011",
+      "formula": "=COUPDAYBS(DATE(2007,1,25),DATE(2008,11,15),2,6)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYS-001",
+      "formula": "=COUPDAYS(DATE(2007,1,25),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 181
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYS-002",
+      "formula": "=COUPDAYS(DATE(2007,1,25),DATE(2008,11,15),2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 180
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYS-003",
+      "formula": "=COUPDAYS(DATE(2007,1,25),DATE(2008,11,15),4,0)",
+      "inputs": {},
+      "expected": {
+        "number": 90
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYS-004",
+      "formula": "=COUPDAYS(DATE(2007,1,25),DATE(2008,11,15),2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 182.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Basis 3 with frequency 2: 182.5 fractional vs truncated integer unconfirmed"
+    },
+    {
+      "id": "I08-COUPDAYS-005",
+      "formula": "=COUPDAYS(DATE(2007,1,25),DATE(2008,11,15),1,0)",
+      "inputs": {},
+      "expected": {
+        "number": 360
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYS-006",
+      "formula": "=COUPDAYS(DATE(2007,1,25),DATE(2008,11,15),2)",
+      "inputs": {},
+      "expected": {
+        "number": 180
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYS-007",
+      "formula": "=COUPDAYS(DATE(2007,1,25),DATE(2008,11,15),4,1)",
+      "inputs": {},
+      "expected": {
+        "number": 92
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYS-008",
+      "formula": "=COUPDAYS(DATE(2007,1,25),DATE(2008,11,15),2,2)",
+      "inputs": {},
+      "expected": {
+        "number": 180
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYS-009",
+      "formula": "=COUPDAYS(DATE(2007,1,25),DATE(2008,11,15),2,4)",
+      "inputs": {},
+      "expected": {
+        "number": 180
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYS-010",
+      "formula": "=COUPDAYS(DATE(2007,1,25),DATE(2008,11,15),3,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYS-011",
+      "formula": "=COUPDAYS(DATE(2008,11,15),DATE(2007,1,25),2,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYSNC-001",
+      "formula": "=COUPDAYSNC(DATE(2007,1,25),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 110
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYSNC-002",
+      "formula": "=COUPDAYSNC(DATE(2007,1,25),DATE(2008,11,15),2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 110
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYSNC-003",
+      "formula": "=COUPDAYSNC(DATE(2007,5,15),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 184
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYSNC-004",
+      "formula": "=COUPDAYSNC(DATE(2007,1,25),DATE(2008,11,15),5,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYSNC-005",
+      "formula": "=COUPDAYSNC(DATE(2007,1,25),DATE(2008,11,15),2)",
+      "inputs": {},
+      "expected": {
+        "number": 110
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYSNC-006",
+      "formula": "=COUPDAYSNC(DATE(2007,1,25),DATE(2008,11,15),4,1)",
+      "inputs": {},
+      "expected": {
+        "number": 21
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYSNC-007",
+      "formula": "=COUPDAYSNC(DATE(2007,5,14),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYSNC-008",
+      "formula": "=COUPDAYSNC(DATE(2008,11,15),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYSNC-009",
+      "formula": "=COUPDAYSNC(DATE(2007,1,25),DATE(2008,11,15),2,4)",
+      "inputs": {},
+      "expected": {
+        "number": 110
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPDAYSNC-010",
+      "formula": "=COUPDAYSNC(DATE(2007,1,25),DATE(2008,11,15),2,8)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNCD-001",
+      "formula": "=COUPNCD(DATE(2007,1,25),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 39217
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNCD-002",
+      "formula": "=COUPNCD(DATE(2007,5,15),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 39401
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNCD-003",
+      "formula": "=COUPNCD(DATE(2007,1,25),DATE(2008,11,15),4,0)",
+      "inputs": {},
+      "expected": {
+        "number": 39128
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNCD-004",
+      "formula": "=COUPNCD(DATE(2008,11,15),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNCD-005",
+      "formula": "=COUPNCD(DATE(2007,1,25),DATE(2008,11,15),2)",
+      "inputs": {},
+      "expected": {
+        "number": 39217
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNCD-006",
+      "formula": "=COUPNCD(DATE(2007,1,25),DATE(2008,11,15),1,0)",
+      "inputs": {},
+      "expected": {
+        "number": 39401
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNCD-007",
+      "formula": "=COUPNCD(DATE(2008,6,1),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 39767
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNCD-008",
+      "formula": "=COUPNCD(DATE(2007,1,25),DATE(2008,11,15),3,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNCD-009",
+      "formula": "=COUPNCD(DATE(2007,1,25),DATE(2008,11,15),2,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNCD-010",
+      "formula": "=COUPNCD(DATE(2007,1,25),DATE(2008,11,15),2,4)",
+      "inputs": {},
+      "expected": {
+        "number": 39217
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNUM-001",
+      "formula": "=COUPNUM(DATE(2007,1,25),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNUM-002",
+      "formula": "=COUPNUM(DATE(2007,1,25),DATE(2009,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNUM-003",
+      "formula": "=COUPNUM(DATE(2007,1,25),DATE(2008,11,15),4,0)",
+      "inputs": {},
+      "expected": {
+        "number": 8
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNUM-004",
+      "formula": "=COUPNUM(DATE(2007,1,25),DATE(2008,11,15),2,9)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNUM-005",
+      "formula": "=COUPNUM(DATE(2007,1,25),DATE(2010,11,15),1,0)",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNUM-006",
+      "formula": "=COUPNUM(DATE(2007,5,15),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNUM-007",
+      "formula": "=COUPNUM(DATE(2008,11,14),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNUM-008",
+      "formula": "=COUPNUM(DATE(2007,1,25),DATE(2008,11,15),2)",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNUM-009",
+      "formula": "=COUPNUM(DATE(2008,11,15),DATE(2007,1,25),2,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPNUM-010",
+      "formula": "=COUPNUM(DATE(2007,1,25),DATE(2008,11,15),0,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPPCD-001",
+      "formula": "=COUPPCD(DATE(2007,1,25),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 39036
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPPCD-002",
+      "formula": "=COUPPCD(DATE(2007,5,15),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 39217
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPPCD-003",
+      "formula": "=COUPPCD(DATE(2007,1,25),DATE(2008,11,15),4,0)",
+      "inputs": {},
+      "expected": {
+        "number": 39036
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPPCD-004",
+      "formula": "=COUPPCD(DATE(2008,11,16),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPPCD-005",
+      "formula": "=COUPPCD(DATE(2007,1,25),DATE(2008,11,15),2)",
+      "inputs": {},
+      "expected": {
+        "number": 39036
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPPCD-006",
+      "formula": "=COUPPCD(DATE(2007,1,25),DATE(2008,11,15),2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 39036
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPPCD-007",
+      "formula": "=COUPPCD(DATE(2007,1,25),DATE(2008,11,15),1,0)",
+      "inputs": {},
+      "expected": {
+        "number": 39036
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPPCD-008",
+      "formula": "=COUPPCD(DATE(2007,1,25),DATE(2008,11,15),5,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPPCD-009",
+      "formula": "=COUPPCD(DATE(2007,1,25),DATE(2008,11,15),2,9)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-COUPPCD-010",
+      "formula": "=COUPPCD(DATE(2008,11,14),DATE(2008,11,15),2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 39583
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMIPMT-001",
+      "formula": "=CUMIPMT(0.09/12,360,125000,13,24,0)",
+      "inputs": {},
+      "expected": {
+        "number": -11135.23213,
+        "tolerance": 0.0001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMIPMT-002",
+      "formula": "=CUMIPMT(0.09/12,360,125000,1,1,0)",
+      "inputs": {},
+      "expected": {
+        "number": -937.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMIPMT-003",
+      "formula": "=CUMIPMT(0.09/12,360,125000,13,24,1)",
+      "inputs": {},
+      "expected": {
+        "number": -11128.22633,
+        "tolerance": 0.0001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMIPMT-004",
+      "formula": "=CUMIPMT(0.09/12,360,125000,24,13,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMIPMT-005",
+      "formula": "=CUMIPMT(0.09/12,360,125000,0,12,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMIPMT-006",
+      "formula": "=CUMIPMT(0,360,125000,1,1,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMIPMT-007",
+      "formula": "=CUMIPMT(0.09/12,360,125000,1,1,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMIPMT-008",
+      "formula": "=CUMIPMT(0.09/12,0,125000,1,1,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMIPMT-009",
+      "formula": "=CUMIPMT(0.09/12,360,0,1,1,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMIPMT-010",
+      "formula": "=CUMIPMT(0.09/12,360,125000,1,360,0)",
+      "inputs": {},
+      "expected": {
+        "number": -237080.1728,
+        "tolerance": 0.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMIPMT-011",
+      "formula": "=CUMIPMT(0.09/12,360,125000,1,1,1)",
+      "inputs": {},
+      "expected": {
+        "number": -930.5068,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Type-1 interest convention (balance after due payment) unconfirmed against Excel"
+    },
+    {
+      "id": "I08-CUMPRINC-001",
+      "formula": "=CUMPRINC(0.09/12,360,125000,13,24,0)",
+      "inputs": {},
+      "expected": {
+        "number": -934.1071234,
+        "tolerance": 1e-05
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMPRINC-002",
+      "formula": "=CUMPRINC(0.09/12,360,125000,2,2,0)",
+      "inputs": {},
+      "expected": {
+        "number": -68.79035821,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMPRINC-003",
+      "formula": "=CUMPRINC(0.09/12,360,125000,1,360,0)",
+      "inputs": {},
+      "expected": {
+        "number": -125000,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMPRINC-004",
+      "formula": "=CUMPRINC(0.09/12,360,125000,0,12,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMPRINC-005",
+      "formula": "=CUMPRINC(0.05,20,50000,1,20,0)",
+      "inputs": {},
+      "expected": {
+        "number": -50000,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMPRINC-006",
+      "formula": "=CUMPRINC(0.09/12,360,125000,13,24,1)",
+      "inputs": {},
+      "expected": {
+        "number": -851.2667,
+        "tolerance": 0.001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMPRINC-007",
+      "formula": "=CUMPRINC(0.09/12,360,125000,37,40,0)",
+      "inputs": {},
+      "expected": {
+        "number": -361.4491579240439,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "end_period > nper: Excel behavior (#NUM! vs computed extrapolation) unconfirmed"
+    },
+    {
+      "id": "I08-CUMPRINC-008",
+      "formula": "=CUMPRINC(0.09/12,360,125000,1,1,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMPRINC-009",
+      "formula": "=CUMPRINC(-0.01,360,125000,1,1,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-CUMPRINC-010",
+      "formula": "=CUMPRINC(0.09/12,360,-5,1,1,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DB-001",
+      "formula": "=DB(1000000,100000,6,1,7)",
+      "inputs": {},
+      "expected": {
+        "number": 186083.33,
+        "tolerance": 0.01
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DB-002",
+      "formula": "=DB(1000000,100000,6,2,7)",
+      "inputs": {},
+      "expected": {
+        "number": 259639.42,
+        "tolerance": 0.01
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DB-003",
+      "formula": "=DB(1000000,100000,6,7,7)",
+      "inputs": {},
+      "expected": {
+        "number": 15845.1,
+        "tolerance": 0.01
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DB-004",
+      "formula": "=DB(1000000,100000,6,1)",
+      "inputs": {},
+      "expected": {
+        "number": 319000,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DB-005",
+      "formula": "=DB(1000000,100000,6,8,7)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DB-006",
+      "formula": "=DB(1000000,100000,6,7,12)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DB-007",
+      "formula": "=DB(1000,100,5,1,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DB-008",
+      "formula": "=DB(1000,100,5,1,13)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DB-009",
+      "formula": "=DB(0,100,5,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DB-010",
+      "formula": "=DB(1000,-1,5,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DB-011",
+      "formula": "=DB(1000,1000,5,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DB-012",
+      "formula": "=DB(1000,1200,5,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "salvage > cost: #NUM! per LibreOffice; Excel may return negative depreciation"
+    },
+    {
+      "id": "I08-DDB-001",
+      "formula": "=DDB(2400,300,10,1,2)",
+      "inputs": {},
+      "expected": {
+        "number": 480
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DDB-002",
+      "formula": "=DDB(2400,300,10,10,2)",
+      "inputs": {},
+      "expected": {
+        "number": 22.1225472,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DDB-003",
+      "formula": "=DDB(2400,300,3650,1,2)",
+      "inputs": {},
+      "expected": {
+        "number": 1.315068493,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DDB-004",
+      "formula": "=DDB(2400,300,120,1,2)",
+      "inputs": {},
+      "expected": {
+        "number": 40
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DDB-005",
+      "formula": "=DDB(2400,300,10,1,1.5)",
+      "inputs": {},
+      "expected": {
+        "number": 360
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DDB-006",
+      "formula": "=DDB(2400,300,10,11)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DDB-007",
+      "formula": "=DDB(2400,300,10,1)",
+      "inputs": {},
+      "expected": {
+        "number": 480
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DDB-008",
+      "formula": "=DDB(2400,300,10,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DDB-009",
+      "formula": "=DDB(2400,2500,10,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DDB-010",
+      "formula": "=DDB(2400,300,10,1,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DDB-011",
+      "formula": "=DDB(0,0,10,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DDB-012",
+      "formula": "=DDB(2400,300,10,1.5,2)",
+      "inputs": {},
+      "expected": {
+        "number": 336,
+        "tolerance": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Fractional-period interpolation rule unconfirmed"
+    },
+    {
+      "id": "I08-DISC-001",
+      "formula": "=DISC(DATE(2007,1,25),DATE(2007,6,15),97.975,100,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.052420213,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DISC-002",
+      "formula": "=DISC(DATE(2007,1,25),DATE(2007,6,15),97.975,100,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.052071429,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DISC-003",
+      "formula": "=DISC(DATE(2007,1,25),DATE(2007,6,15),97.975,100,3)",
+      "inputs": {},
+      "expected": {
+        "number": 0.052420213,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DISC-004",
+      "formula": "=DISC(DATE(2007,6,15),DATE(2007,1,25),97.975,100,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DISC-005",
+      "formula": "=DISC(DATE(2007,1,25),DATE(2007,6,15),97.975,100)",
+      "inputs": {},
+      "expected": {
+        "number": 0.052071429,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DISC-006",
+      "formula": "=DISC(DATE(2007,1,25),DATE(2007,6,15),0,100,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DISC-007",
+      "formula": "=DISC(DATE(2007,1,25),DATE(2007,6,15),97.975,0,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DISC-008",
+      "formula": "=DISC(DATE(2007,1,25),DATE(2007,6,15),97.975,100,9)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DISC-009",
+      "formula": "=DISC(DATE(2007,1,25),DATE(2007,6,15),97.975,100,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.051702128,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DISC-010",
+      "formula": "=DISC(DATE(2007,1,25),DATE(2007,6,15),102,100,3)",
+      "inputs": {},
+      "expected": {
+        "number": -0.0517739,
+        "tolerance": 1e-05
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "pr > redemption (negative discount rate) is permitted per spec's confirm-note"
+    },
+    {
+      "id": "I08-DOLLARDE-001",
+      "formula": "=DOLLARDE(1.02,16)",
+      "inputs": {},
+      "expected": {
+        "number": 1.125
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARDE-002",
+      "formula": "=DOLLARDE(1.1,16)",
+      "inputs": {},
+      "expected": {
+        "number": 1.625
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARDE-003",
+      "formula": "=DOLLARDE(-1.02,16)",
+      "inputs": {},
+      "expected": {
+        "number": -1.125
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARDE-004",
+      "formula": "=DOLLARDE(1.02,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARDE-005",
+      "formula": "=DOLLARDE(1.02,-16)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARDE-006",
+      "formula": "=DOLLARDE(1.4,8)",
+      "inputs": {},
+      "expected": {
+        "number": 1.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARDE-007",
+      "formula": "=DOLLARDE(1.016,128)",
+      "inputs": {},
+      "expected": {
+        "number": 1.125
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARDE-008",
+      "formula": "=DOLLARDE(1.02,16.9)",
+      "inputs": {},
+      "expected": {
+        "number": 1.125
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARDE-009",
+      "formula": "=DOLLARDE(0,16)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARDE-010",
+      "formula": "=DOLLARDE(2.5,4)",
+      "inputs": {},
+      "expected": {
+        "number": 3.25
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARDE-011",
+      "formula": "=DOLLARDE(1.025,16)",
+      "inputs": {},
+      "expected": {
+        "number": 1.15625
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Numerator parsing for >2-digit fractional parts (1.025 -> 2.5) unconfirmed"
+    },
+    {
+      "id": "I08-DOLLARFR-001",
+      "formula": "=DOLLARFR(1.125,16)",
+      "inputs": {},
+      "expected": {
+        "number": 1.02,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARFR-002",
+      "formula": "=DOLLARFR(1.125,32)",
+      "inputs": {},
+      "expected": {
+        "number": 1.04,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARFR-003",
+      "formula": "=DOLLARFR(-1.125,16)",
+      "inputs": {},
+      "expected": {
+        "number": -1.02,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARFR-004",
+      "formula": "=DOLLARFR(1.125,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARFR-005",
+      "formula": "=DOLLARFR(1.125,-16)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARFR-006",
+      "formula": "=DOLLARFR(1.5,8)",
+      "inputs": {},
+      "expected": {
+        "number": 1.4,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc lists 1.04 but the reference formula (numerator digit count = ceil(log10(fraction))) gives 1.4"
+    },
+    {
+      "id": "I08-DOLLARFR-007",
+      "formula": "=DOLLARFR(0,16)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARFR-008",
+      "formula": "=DOLLARFR(1.9375,32)",
+      "inputs": {},
+      "expected": {
+        "number": 1.3,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARFR-009",
+      "formula": "=DOLLARFR(1.125,16.9)",
+      "inputs": {},
+      "expected": {
+        "number": 1.02,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DOLLARFR-010",
+      "formula": "=DOLLARFR(2.5,4)",
+      "inputs": {},
+      "expected": {
+        "number": 2.2,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DURATION-001",
+      "formula": "=DURATION(DATE(2008,1,1),DATE(2016,1,1),0.08,0.09,2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 5.993775,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DURATION-002",
+      "formula": "=DURATION(DATE(2008,1,1),DATE(2016,1,1),0.08,0.09,1,0)",
+      "inputs": {},
+      "expected": {
+        "number": 6.1490679,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DURATION-003",
+      "formula": "=DURATION(DATE(2008,1,1),DATE(2016,1,1),0.08,0.08,2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 6.0591937,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DURATION-004",
+      "formula": "=DURATION(DATE(2016,1,1),DATE(2008,1,1),0.08,0.09,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DURATION-005",
+      "formula": "=DURATION(DATE(2008,1,1),DATE(2016,1,1),0,0.09,2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 8.0,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DURATION-006",
+      "formula": "=DURATION(DATE(2008,1,1),DATE(2016,1,1),0.08,0.09,2)",
+      "inputs": {},
+      "expected": {
+        "number": 5.993775,
+        "tolerance": 1e-06
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DURATION-007",
+      "formula": "=DURATION(DATE(2008,1,1),DATE(2016,1,1),-0.01,0.09,2,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DURATION-008",
+      "formula": "=DURATION(DATE(2008,1,1),DATE(2016,1,1),0.08,-0.01,2,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DURATION-009",
+      "formula": "=DURATION(DATE(2008,1,1),DATE(2016,1,1),0.08,0.09,3,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DURATION-010",
+      "formula": "=DURATION(DATE(2008,1,1),DATE(2016,1,1),0.08,0.09,2,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-DURATION-011",
+      "formula": "=DURATION(DATE(2008,3,15),DATE(2016,1,1),0.08,0.09,2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 6.03,
+        "tolerance": 0.1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Mid-period settlement time-fraction convention (basis day counts) unconfirmed"
+    },
+    {
+      "id": "I08-EFFECT-001",
+      "formula": "=EFFECT(0.0525,4)",
+      "inputs": {},
+      "expected": {
+        "number": 0.053542667,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-EFFECT-002",
+      "formula": "=EFFECT(0.05,12)",
+      "inputs": {},
+      "expected": {
+        "number": 0.051161898,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-EFFECT-003",
+      "formula": "=EFFECT(0.1,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.1,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-EFFECT-004",
+      "formula": "=EFFECT(0.0525,4.9)",
+      "inputs": {},
+      "expected": {
+        "number": 0.053542667,
+        "tolerance": 1e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-EFFECT-005",
+      "formula": "=EFFECT(0,4)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-EFFECT-006",
+      "formula": "=EFFECT(-0.05,4)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-EFFECT-007",
+      "formula": "=EFFECT(0.05,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-EFFECT-008",
+      "formula": "=EFFECT(0.05,0.9)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-EFFECT-009",
+      "formula": "=EFFECT(1,1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-EFFECT-010",
+      "formula": "=EFFECT(0.25,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.265625,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I08-EFFECT-011",
+      "formula": "=EFFECT(0.05,-2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification and spec-doc worked examples; to be re-recorded empirically per plan section 10.5"
+      }
+    }
+  ]
+}
