@@ -143,8 +143,9 @@ export async function resetMovedBuildTree(paths: EnginePaths): Promise<boolean> 
   const previous = await readFile(stamp, 'utf8').catch(() => undefined);
   const moved = previous === undefined ? await exists(paths.work) : previous !== paths.root;
   if (moved) {
-    // Valkey builds inside the exported source, so that goes too.
-    for (const stale of [paths.work, paths.src, path.join(paths.root, 'SOURCE_TREE')]) await rm(stale, { recursive: true, force: true });
+    // Valkey builds inside the exported source, so that goes too. So does what was installed:
+    // another system's files (macOS libraries beside Linux ones) must not stay in the result.
+    for (const stale of [paths.work, paths.src, paths.prefix, path.join(paths.root, 'SOURCE_TREE')]) await rm(stale, { recursive: true, force: true });
   }
   await writeFile(stamp, paths.root);
   return moved;
