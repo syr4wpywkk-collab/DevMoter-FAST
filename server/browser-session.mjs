@@ -943,14 +943,13 @@ export function createBrowserSessionManager({
     }
   }
 
-  async function centerOfSelector(session, selector) {
-    const opts = { sessionId: session.cdpSessionId };
-    const { root } = await session.cdp.send("DOM.getDocument", { depth: 0 }, opts);
-    const { nodeId } = await session.cdp.send("DOM.querySelector", { nodeId: root.nodeId, selector }, opts)
+  async function centerOfSelector(session, selector, send) {
+    const { root } = await send("DOM.getDocument", { depth: 0 });
+    const { nodeId } = await send("DOM.querySelector", { nodeId: root.nodeId, selector })
       .catch(() => ({ nodeId: 0 }));
     if (!nodeId) throw httpError("No element matches the selector", 404, "selector_not_found");
-    await session.cdp.send("DOM.scrollIntoViewIfNeeded", { nodeId }, opts).catch(() => {});
-    const { model } = await session.cdp.send("DOM.getBoxModel", { nodeId }, opts)
+    await send("DOM.scrollIntoViewIfNeeded", { nodeId }).catch(() => {});
+    const { model } = await send("DOM.getBoxModel", { nodeId })
       .catch(() => ({ model: null }));
     const quad = model?.content;
     if (!Array.isArray(quad) || quad.length < 8) throw httpError("Element has no visible box", 409, "selector_not_visible");
@@ -965,13 +964,12 @@ export function createBrowserSessionManager({
     return point;
   }
 
-  async function historyNavigate(session, offset) {
-    const opts = { sessionId: session.cdpSessionId };
-    const { currentIndex, entries = [] } = await session.cdp.send("Page.getNavigationHistory", {}, opts);
+  async function historyNavigate(session, offset, send) {
+    const { currentIndex, entries = [] } = await send("Page.getNavigationHistory", {});
     const entry = entries[currentIndex + offset];
     if (!entry) return { ok: false, error: "no_history_entry" };
     if (!session.policy.allows(entry.url)) throw httpError("History entry is outside the approved live preview", 403, "navigation_blocked");
-    await session.cdp.send("Page.navigateToHistoryEntry", { entryId: entry.id }, opts);
+    await send("Page.navigateToHistoryEntry", { entryId: entry.id });
     return { ok: true };
   }
 
@@ -990,7 +988,7 @@ export function createBrowserSessionManager({
         return result.errorText ? { ok: false, error: String(result.errorText).slice(0, 200) } : { ok: true };
       }
       case "click": {
-        const point = action.selector ? await centerOfSelector(session, action.selector) : action;
+        const point = action.selector ? await centerOfSelector(session, action.selector, send) : action;
         const x = clamp(point.x, 0, width - 1);
         const y = clamp(point.y, 0, height - 1);
         await send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
@@ -1015,9 +1013,9 @@ export function createBrowserSessionManager({
         return { ok: true, x, y };
       }
       case "back":
-        return historyNavigate(session, -1);
+        return historyNavigate(session, -1, send);
       case "forward":
-        return historyNavigate(session, 1);
+        return historyNavigate(session, 1, send);
       case "reload":
         await send("Page.reload", { ignoreCache: false });
         return { ok: true };

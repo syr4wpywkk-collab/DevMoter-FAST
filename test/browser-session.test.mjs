@@ -675,6 +675,33 @@ test("#701 a takeover between two CDP input events stops the old driver's action
   assert.deepEqual(mouse, ["mouseMoved", "mousePressed"], "mouseReleased from the old driver is never sent");
 });
 
+test("#701 a takeover during history or selector lookups stops the old driver before it navigates", async t => {
+  const history = { currentIndex: 1, entries: [{ id: 1, url: "http://127.0.0.1:3000/a" }, { id: 2, url: "http://127.0.0.1:3000/b" }] };
+  const lookup = gateOn(message => message.method === "Page.getNavigationHistory" || message.method === "DOM.getBoxModel");
+  const { manager, spawns } = await setup(t, { chrome: { history, gate: message => lookup.gate(message) } });
+  const { session } = await manager.start("p1", { deviceId: "dev-a" });
+  manager.releaseDriver(session.id, { generation: 1, deviceId: "dev-a" });
+  let agent = manager.acquireDriver(session.id, { holder: "agent" });
+  const back = manager.act(session.id, { type: "back" }, { holder: "agent", generation: agent.generation });
+  await lookup.reached.promise;
+  manager.acquireDriver(session.id, { holder: "user", deviceId: "dev-a" });
+  lookup.release();
+  await assert.rejects(back, error => error.code === "driver_stale");
+  assert.equal(spawns[0].child.calls.some(call => call.method === "Page.navigateToHistoryEntry"), false);
+
+  const box = gateOn(message => message.method === "DOM.getBoxModel");
+  const second = await setup(t, { chrome: { gate: message => box.gate(message) } });
+  const started = (await second.manager.start("p1", { deviceId: "dev-a" })).session;
+  second.manager.releaseDriver(started.id, { generation: 1, deviceId: "dev-a" });
+  agent = second.manager.acquireDriver(started.id, { holder: "agent" });
+  const click = second.manager.act(started.id, { type: "click", selector: "#go" }, { holder: "agent", generation: agent.generation });
+  await box.reached.promise;
+  second.manager.acquireDriver(started.id, { holder: "user", deviceId: "dev-a" });
+  box.release();
+  await assert.rejects(click, error => error.code === "driver_stale");
+  assert.equal(second.spawns[0].child.calls.some(call => call.method === "Input.dispatchMouseEvent"), false);
+});
+
 test("#701 actions run one at a time, queued actions re-check the driver and the queue is bounded", async t => {
   const first = gateOn(message => message.method === "Input.dispatchMouseEvent");
   const { manager, spawns } = await setup(t, { chrome: { gate: message => first.gate(message) }, limits: { maxQueuedActions: 3 } });
