@@ -183,4 +183,15 @@ describe('SQLite adapter against the built engine', { skip: sqlite.skip }, () =>
     await closing.close();
     await assert.rejects(closing.query('SELECT 1', []), rejectsWith('engine_unavailable'));
   });
+
+  test('closing the adapter stops the queries still running, so no engine process outlives it', async () => {
+    const closing = createSqliteAdapter({ binary: sqlite.binary, file: path.join(dir, 'closing.sqlite') });
+    const endless = closing.query('WITH RECURSIVE r(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM r) SELECT count(*) FROM r', [], { timeoutMs: 60_000 });
+    const outcome = assert.rejects(endless, rejectsWith('cancelled'));
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const begun = performance.now();
+    await closing.close();
+    await outcome;
+    assert.ok(performance.now() - begun < 5_000);
+  });
 });

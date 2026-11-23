@@ -219,3 +219,19 @@ export function createApiServer(options: ApiOptions): http.Server {
       });
   });
 }
+
+/**
+ * Stops `server`: no new connections at once, and requests still running after `graceMs`
+ * lose their connection, which cancels their queries (an engine process must not outlive the server).
+ * Resolves once every connection is gone.
+ */
+export function stopApiServer(server: http.Server, graceMs: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => server.closeAllConnections(), graceMs);
+    server.close(() => {
+      clearTimeout(timer);
+      resolve();
+    });
+    server.closeIdleConnections();
+  });
+}

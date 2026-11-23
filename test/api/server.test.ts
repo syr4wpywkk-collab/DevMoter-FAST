@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 
-import { createApiServer, isLocalHostHeader, type Database } from '../../src/api/server.ts';
+import { createApiServer, isLocalHostHeader, stopApiServer, type Database } from '../../src/api/server.ts';
 import { createSqliteAdapter } from '../../src/engines/sqlite.ts';
 import { EngineError, type QueryOptions, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
 import { createLogger } from '../../src/logging/logger.ts';
@@ -256,4 +256,36 @@ describe('REST API over the built SQLite engine', { skip: sqlite.skip }, () => {
     assert.equal(slow.status, 504);
     assert.equal((await call(port, 'POST', '/v1/databases/app/query', json({ sql: 'SELECT 1', timeoutMs: 999_999_999 }))).status, 400);
   });
+});
+
+test('stopping the server cancels the queries still running after the grace period', async () => {
+  let started: (() => void) | undefined;
+  const running = new Promise<void>((resolve) => (started = resolve));
+  let cancelled = false;
+  const adapter = fakeAdapter(
+    (_sql, _params, options) =>
+      new Promise((_resolve, reject) => {
+        options?.signal?.addEventListener('abort', () => {
+          cancelled = true;
+          reject(new EngineError('cancelled', 'the request was cancelled'));
+        });
+        started?.();
+      }),
+  );
+  const server = createApiServer({ databases: [{ name: 'app', engine: 'sqlite', readOnly: false, adapter }], logger: createLogger({ level: 'silent' }) });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as AddressInfo).port;
+
+  const pending = call(port, 'POST', '/v1/databases/app/query', json({ sql: 'ENDLESS' })).then(
+    () => 'answered',
+    () => 'connection closed',
+  );
+  await running;
+  const begun = performance.now();
+  await stopApiServer(server, 100);
+  assert.equal(await pending, 'connection closed');
+  for (let waited = 0; !cancelled && waited < 2000; waited += 10) await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.equal(cancelled, true);
+  assert.ok(performance.now() - begun >= 90, 'running requests get the grace period');
+  assert.equal(server.listening, false);
 });

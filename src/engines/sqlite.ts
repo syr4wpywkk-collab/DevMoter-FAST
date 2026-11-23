@@ -92,6 +92,8 @@ export function sqliteErrorMessage(stderr: string): string {
 export function createSqliteAdapter(options: SqliteAdapterOptions): SqlAdapter {
   let scratch: Promise<string> | undefined;
   let closed = false;
+  const closing = new AbortController();
+  const running = new Set<Promise<unknown>>();
 
   return {
     engine: 'sqlite',
@@ -105,16 +107,18 @@ export function createSqliteAdapter(options: SqliteAdapterOptions): SqlAdapter {
       scratch ??= mkdtemp(path.join(os.tmpdir(), 'dmb-sqlite-'));
       const cwd = await scratch;
       const started = performance.now();
-      const run = await runEngineProcess({
+      const child = runEngineProcess({
         command: options.binary,
         args,
         cwd,
         env: { HOME: cwd, XDG_CONFIG_HOME: cwd, TMPDIR: os.tmpdir(), LC_ALL: 'C.UTF-8', TZ: 'UTC' },
         timeoutMs,
         maxOutputBytes: MAX_RESULT_BYTES,
-        signal: queryOptions.signal,
+        signal: queryOptions.signal ? AbortSignal.any([queryOptions.signal, closing.signal]) : closing.signal,
         label: 'sqlite',
       });
+      running.add(child);
+      const run = await child.finally(() => running.delete(child));
       if (run.code !== 0 || run.stderr.trim() !== '') throw new EngineError('query_failed', sqliteErrorMessage(run.stderr));
       try {
         return { results: parseResultSets(run.stdout), durationMs: Math.round(performance.now() - started) };
@@ -125,6 +129,9 @@ export function createSqliteAdapter(options: SqliteAdapterOptions): SqlAdapter {
 
     async close(): Promise<void> {
       closed = true;
+      // No engine process outlives the adapter: the ones still running are killed and waited for.
+      closing.abort();
+      await Promise.allSettled(running);
       if (scratch) await rm(await scratch, { recursive: true, force: true });
     },
   };

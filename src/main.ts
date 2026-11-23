@@ -7,11 +7,13 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { createApiServer, type Database } from './api/server.ts';
+import { createApiServer, stopApiServer, type Database } from './api/server.ts';
 import { ConfigError, loadConfig, type DatabaseConfig } from './config.ts';
 import { defaultEnginesDir, engineBinary } from './engines/paths.ts';
 import { createSqliteAdapter } from './engines/sqlite.ts';
 import { createRootLogger } from './logging/logger.ts';
+
+const SHUTDOWN_GRACE_MS = 10_000;
 
 export function openDatabase(config: DatabaseConfig, enginesDir: string): Database {
   return {
@@ -42,11 +44,11 @@ async function main(): Promise<void> {
 
   const shutdown = (signal: string) => {
     logger.info('shutting down', { signal });
-    server.close(() => {
-      void Promise.allSettled(databases.map((database) => database.adapter.close())).then(() => process.exit(0));
-    });
-    server.closeIdleConnections();
-    setTimeout(() => process.exit(1), 10_000).unref();
+    void stopApiServer(server, SHUTDOWN_GRACE_MS)
+      .then(() => Promise.allSettled(databases.map((database) => database.adapter.close())))
+      .then(() => process.exit(0));
+    // Only reached if cancelling the running queries did not end them.
+    setTimeout(() => process.exit(1), SHUTDOWN_GRACE_MS + 5_000).unref();
   };
   process.once('SIGINT', () => shutdown('SIGINT'));
   process.once('SIGTERM', () => shutdown('SIGTERM'));
