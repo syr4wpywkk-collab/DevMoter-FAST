@@ -14,6 +14,7 @@ pub mod complex;
 pub mod compare;
 pub mod criteria;
 pub mod date_serial;
+pub mod date_text;
 pub mod ets;
 pub mod finance;
 pub mod lookup;
