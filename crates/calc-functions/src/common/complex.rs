@@ -8,7 +8,8 @@
 //! Specs: `docs/functions/COMPLEX.md`, `docs/functions/IMAGINARY.md`
 //! ("Complex number format"), and the `IM*` family.
 
-use calc_core::value::{format_number, parse_number_text};
+use calc_core::error::CalcError;
+use calc_core::value::{Value, format_number, parse_number_text};
 
 /// Failure modes a caller maps onto worksheet errors.
 ///
@@ -377,6 +378,50 @@ impl std::ops::Mul for Complex {
             self.re * rhs.re - self.im * rhs.im,
             self.re * rhs.im + self.im * rhs.re,
         )
+    }
+}
+
+/// The `inumber` scalar-argument coercion shared by every `IM*`
+/// function (`docs/functions/IMAGINARY.md` "Complex number format"):
+/// `Number` -> `n+0i`, `Text` -> parsed (`#NUM!` on failure),
+/// `Boolean` -> `#VALUE!`, `Blank` -> `0+0i` (**SPEC-OPEN**: `0` vs
+/// `#NUM!` — `IMAGINARY.md` flags it; `0` matches the `BIN2*`/`DEC2*`
+/// blank convention), `Error` propagates, anything else (arrays) ->
+/// `#VALUE!`.
+pub fn scalar_operand(v: &Value) -> Result<Complex, CalcError> {
+    match v {
+        Value::Number(n) => Ok(Complex::real(*n)),
+        Value::Text(s) => Complex::parse(s).map_err(|_| CalcError::Num),
+        Value::Boolean(_) => Err(CalcError::Value),
+        Value::Blank => Ok(Complex::ZERO),
+        Value::Error(e) => Err(*e),
+        _ => Err(CalcError::Value),
+    }
+}
+
+/// Map a [`ComplexError`] to the worksheet error used by the `IM*`
+/// family: `Parse`/`Num`/`DivZero` all -> `#NUM!` per the spec docs
+/// (`IMDIV`/`IMCSC`/`IMCOT`/`IMSEC`/`IMSECH`/`IMCSCH` document `#NUM!`;
+/// `IMARGUMENT`'s `#DIV/0!` is the exception and is mapped at its own
+/// call site).
+pub fn im_error(e: ComplexError) -> CalcError {
+    match e {
+        ComplexError::Parse | ComplexError::Num | ComplexError::DivZero => CalcError::Num,
+    }
+}
+
+/// Range-member coercion for the variadic `IMSUM`/`IMPRODUCT`
+/// aggregators (`docs/functions/IMSUM.md`, `IMPRODUCT.md`): numbers
+/// and complex-parseable text count; blanks, booleans and unparseable
+/// text are skipped (**SPEC-OPEN** in both specs — "blank cells and
+/// non-numeric text cells are ignored", aligned with `SUM` range
+/// rules); error cells propagate via `Some(Err(..))`.
+pub fn ranged_operand(v: &Value) -> Option<Result<Complex, CalcError>> {
+    match v {
+        Value::Number(n) => Some(Ok(Complex::real(*n))),
+        Value::Text(s) => Complex::parse(s).ok().map(Ok),
+        Value::Error(e) => Some(Err(*e)),
+        _ => None,
     }
 }
 
