@@ -22,6 +22,8 @@ const DEFAULT_LIMITS = Object.freeze({
   screencastQuality: 60
 });
 
+const SCREENCAST_FRAMES_IN_FLIGHT = 2;
+const SCREENCAST_REFRESH_MS = 250;
 const SYSTEM_MOUNTS = ["/usr", "/bin", "/lib", "/lib64", "/etc", "/run"];
 const DENIED_PERMISSIONS = Object.freeze([
   "geolocation", "notifications", "videoCapture", "audioCapture", "clipboardReadWrite",
@@ -320,6 +322,7 @@ export function createBrowserSessionManager({
     if (!screencast.running) return;
     screencast.running = false;
     screencast.pendingAcks = [];
+    clearTimeout(screencast.refreshTimer);
     if (session.cdp && !session.cdp.closed) {
       void session.cdp.send("Page.stopScreencast", {}, { sessionId: session.cdpSessionId }).catch(() => {});
     }
@@ -336,6 +339,29 @@ export function createBrowserSessionManager({
         void session.cdp.send("Page.screencastFrameAck", { sessionId: ackId }, { sessionId: session.cdpSessionId }).catch(() => {});
       }
     }
+    // Chromium drops frames while its in-flight budget is full; if the page
+    // then goes still no new frame comes, so capture the final screen once.
+    if (ackIds.length >= SCREENCAST_FRAMES_IN_FLIGHT) scheduleRefresh(session);
+  }
+
+  function scheduleRefresh(session) {
+    const screencast = session.screencast;
+    clearTimeout(screencast.refreshTimer);
+    const seq = screencast.seq;
+    screencast.refreshTimer = setTimeout(async () => {
+      screencast.refreshTimer = null;
+      if (!screencast.running || screencast.seq !== seq || !session.cdp || session.cdp.closed) return;
+      const { data = "" } = await session.cdp.send("Page.captureScreenshot", {
+        format: "jpeg",
+        quality: limits.screencastQuality,
+        captureBeyondViewport: false
+      }, { sessionId: session.cdpSessionId }).catch(() => ({}));
+      const bytes = Buffer.from(String(data), "base64");
+      if (!screencast.running || screencast.seq !== seq || !bytes.length || bytes.length > limits.maxFrameBytes) return;
+      screencast.latest = { seq: screencast.seq += 1, data: bytes, width: session.viewport.width, height: session.viewport.height };
+      deliverFrame(session);
+    }, SCREENCAST_REFRESH_MS);
+    screencast.refreshTimer.unref?.();
   }
 
   function deliverFrame(session) {
@@ -696,7 +722,7 @@ export function createBrowserSessionManager({
         targetId: null,
         listeners: new Set(),
         viewers: new Set(),
-        screencast: { running: false, latest: null, seq: 0, pendingAcks: [] },
+        screencast: { running: false, latest: null, seq: 0, pendingAcks: [], refreshTimer: null },
         exited: null
       };
       sessions.set(project.id, session);
