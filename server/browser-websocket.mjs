@@ -168,9 +168,13 @@ export function installBrowserWebSocketEndpoint(
     } catch {
       return;
     }
-    const match = url.pathname.match(SOCKET_PATH);
-    if (!match) return;
+    if (!url.pathname.startsWith("/api/browser/")) return;
     socket.on("error", () => socket.destroy());
+    const match = url.pathname.match(SOCKET_PATH);
+    if (!match) {
+      rejectUpgrade(socket, 404, "Not Found");
+      return;
+    }
     if (req.method !== "GET") {
       rejectUpgrade(socket, 404, "Not Found");
       return;
