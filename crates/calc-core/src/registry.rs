@@ -44,6 +44,14 @@ pub trait FunctionRegistry {
         let f: Function = self.lookup(name)?;
         Some(f(ctx, args))
     }
+
+    /// Whether `name` is volatile: cells containing a volatile call are
+    /// re-evaluated on every `recalculate()` pass regardless of
+    /// dependency changes (`RAND`, `RANDBETWEEN`, `TODAY`, `NOW`).
+    /// Default: no function is volatile.
+    fn is_volatile(&self, _name: &str) -> bool {
+        false
+    }
 }
 
 /// Registry with no functions: every call evaluates to `#NAME?`.

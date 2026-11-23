@@ -27,7 +27,10 @@ pub use cell::{
 };
 pub use engine::{CalcEngine, EngineError, RecalcReport};
 pub use error::CalcError;
-pub use eval::{ArgValue, Clock, EvalContext, EvalError, FixedClock, MAX_EVAL_STEPS, SystemClock};
+pub use eval::{
+    ArgValue, Clock, EvalContext, EvalError, FixedClock, MAX_EVAL_STEPS, RngSource, SplitMix64,
+    SystemClock,
+};
 pub use graph::Dep;
 pub use lambda::LambdaValue;
 pub use lexer::{LexError, LexErrorKind, Token, TokenKind, lex};

@@ -10,6 +10,8 @@ mod int;
 mod log;
 mod mod_fn;
 mod power;
+mod rand;
+mod randbetween;
 mod round;
 mod sqrt;
 mod trunc;
@@ -25,6 +27,8 @@ pub const FUNCTIONS: &[(&str, Function)] = &[
     ("LOG", log::call),
     ("MOD", mod_fn::call),
     ("POWER", power::call),
+    ("RAND", rand::call),
+    ("RANDBETWEEN", randbetween::call),
     ("ROUND", round::call),
     ("SQRT", sqrt::call),
     ("TRUNC", trunc::call),
