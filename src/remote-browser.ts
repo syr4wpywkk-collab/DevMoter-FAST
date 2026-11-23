@@ -34,6 +34,10 @@ const TAP_SLOP_PX = 8;
 const WHEEL_LINE_PX = 16;
 const SCROLL_FLUSH_MS = 80;
 const MAX_TEXT_CHUNK = 2000;
+// Actions sent before their results arrive; below the host's per-session queue
+// of 8, so a long paste is never rejected part-way.
+const MAX_ACTIONS_IN_FLIGHT = 4;
+const MAX_QUEUED_ACTIONS = 256;
 const RECONNECT_MIN_MS = 500;
 const RECONNECT_MAX_MS = 8000;
 const RECONNECT_MAX_ATTEMPTS = 8;
@@ -192,6 +196,8 @@ function createRemoteBrowser() {
   let reconnectAttempts = 0;
   let keepStatusOnOpen = false;
   let nextActionId = 1;
+  let outbox: BrowserAction[] = [];
+  const actionsInFlight = new Set<number>();
   let composing = false;
   let busy = false;
   let drawing: Promise<void> = Promise.resolve();
@@ -339,6 +345,7 @@ function createRemoteBrowser() {
     reconnectTimer = null;
     const current = socket;
     socket = null;
+    resetActions();
     if (current && current.readyState < WebSocket.CLOSING) current.close(1000, "client_detached");
   }
 
@@ -383,6 +390,7 @@ function createRemoteBrowser() {
       );
       ws.binaryType = "arraybuffer";
       socket = ws;
+      resetActions();
       let ended = false;
       ws.onopen = () => {
         if (ws !== socket) return;
@@ -407,6 +415,7 @@ function createRemoteBrowser() {
       ws.onclose = event => {
         if (ws !== socket) return;
         socket = null;
+        resetActions();
         if (ended || FINAL_CLOSE_CODES.has(event.code)) {
           if (!ended) showEmpty(t("remoteBrowser.ended"), true);
           return;
@@ -438,6 +447,10 @@ function createRemoteBrowser() {
         showEmpty(t("remoteBrowser.ended"), true);
         break;
       case "result":
+        actionsInFlight.delete(Number(message.id));
+        // A failed action drops what was queued behind it, e.g. the rest of a paste.
+        if (message.ok === false) outbox = [];
+        pumpActions();
         if (message.ok === false) {
           const code = String(message.error || "");
           setStatus(code === "driver_stale" ? t("remoteBrowser.driverLost") : t("remoteBrowser.actionFailed", { error: code }));
@@ -480,8 +493,27 @@ function createRemoteBrowser() {
 
   function act(action: BrowserAction) {
     if (!canDrive() || !socket || socket.readyState !== WebSocket.OPEN) return false;
-    socket.send(JSON.stringify({ t: "act", id: nextActionId++, action, generation: session!.driver.generation }));
+    if (outbox.length >= MAX_QUEUED_ACTIONS) return false;
+    outbox.push(action);
+    pumpActions();
     return true;
+  }
+
+  function pumpActions() {
+    while (outbox.length && actionsInFlight.size < MAX_ACTIONS_IN_FLIGHT) {
+      if (!canDrive() || !socket || socket.readyState !== WebSocket.OPEN) {
+        outbox = [];
+        return;
+      }
+      const id = nextActionId++;
+      actionsInFlight.add(id);
+      socket.send(JSON.stringify({ t: "act", id, action: outbox.shift(), generation: session!.driver.generation }));
+    }
+  }
+
+  function resetActions() {
+    outbox = [];
+    actionsInFlight.clear();
   }
 
   function sendText(text: string) {
@@ -579,6 +611,8 @@ function createRemoteBrowser() {
   ime.addEventListener("keydown", event => {
     if (composing || event.isComposing || event.key === "Process" || event.keyCode === 229) return;
     if (event.key === "Escape" && !ime.value) {
+      event.preventDefault();
+      act({ type: "press", key: "Escape" });
       ime.blur();
       return;
     }

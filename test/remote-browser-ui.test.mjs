@@ -66,7 +66,11 @@ function fakeBackend(sessionDriver = { holder: "user", generation: 3 }) {
       sockets.push(this);
       queueMicrotask(() => this.onopen?.());
     }
-    send(data) { this.sent.push(JSON.parse(data)); }
+    send(data) {
+      const message = JSON.parse(data);
+      this.sent.push(message);
+      if (message.t === "act" && backend.autoResult !== false) queueMicrotask(() => this.emit({ t: "result", id: message.id, ok: true }));
+    }
     close(code = 1000) {
       if (this.readyState === FakeSocket.CLOSED) return;
       this.readyState = FakeSocket.CLOSED;
@@ -264,6 +268,41 @@ test("remote browser streams frames, maps taps, sends committed IME text and tak
     destroyRemoteBrowser();
     assert.equal(doc.getElementById("dmRemoteBrowser"), null);
     assert.deepEqual(panelEvents.at(-1), { tab: "browser", open: false });
+  } finally {
+    env.restore();
+  }
+});
+
+test("a long paste is sent in order without overrunning the host queue, and Escape reaches the page", async () => {
+  const env = installDom();
+  const backend = fakeBackend();
+  backend.autoResult = false;
+  try {
+    env.dom.window.localStorage.setItem("opencode-pocket-project", "/projects/demo");
+    const { openRemoteBrowser, destroyRemoteBrowser } = await loadRemoteBrowser();
+    openRemoteBrowser();
+    await sleep(20);
+    const ws = backend.sockets[0];
+    ws.emit({ t: "hello", session: backend.session });
+    const ime = env.dom.window.document.querySelector("[data-rb-ime]");
+    const paste = new env.dom.window.Event("paste", { bubbles: true, cancelable: true });
+    paste.clipboardData = { getData: () => "x".repeat(2000 * 12) };
+    ime.dispatchEvent(paste);
+    assert.equal(ws.acts().length, 4, "no more than four actions wait on the host at once");
+    while (ws.acts().length < 12) {
+      const pending = ws.acts().length;
+      ws.emit({ t: "result", id: ws.acts()[pending - 4].id, ok: true });
+      assert.equal(ws.acts().length, pending + 1);
+    }
+    assert.deepEqual(ws.acts().map(message => message.id), Array.from({ length: 12 }, (_, index) => index + 1));
+    assert.equal(ws.acts().map(message => message.action.text).join("").length, 24000);
+
+    for (const message of ws.acts().slice(8)) ws.emit({ t: "result", id: message.id, ok: true });
+    ime.focus();
+    ime.dispatchEvent(new env.dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    assert.deepEqual(ws.acts().at(-1).action, { type: "press", key: "Escape" });
+    assert.notEqual(env.dom.window.document.activeElement, ime);
+    destroyRemoteBrowser();
   } finally {
     env.restore();
   }
