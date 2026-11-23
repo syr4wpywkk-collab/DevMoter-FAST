@@ -13,6 +13,8 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { chmod, mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { withFileLock } from '../file-lock.ts';
+
 export interface ApiKeyRecord {
   id: string;
   name: string;
@@ -92,16 +94,26 @@ export function createKeyStore(file: string, now: () => Date = () => new Date())
     cache = undefined;
   }
 
+  /** Reads the keys, applies `change` and saves what it returns, with no other writer in between. */
+  async function update<T>(change: (keys: ApiKeyRecord[]) => { keys?: ApiKeyRecord[]; result: T }): Promise<T> {
+    await mkdir(path.dirname(file), { recursive: true });
+    return withFileLock(file, async () => {
+      const { keys, result } = change(await load());
+      if (keys) await save(keys);
+      return result;
+    });
+  }
+
   return {
     async create(name) {
       if (typeof name !== 'string' || !NAME_PATTERN.test(name)) throw new KeyStoreError('the key name must be 1 to 64 letters, digits, spaces, ".", "_" or "-", starting with a letter or digit');
-      const keys = [...(await load())];
-      let id = randomBytes(6).toString('hex');
-      while (keys.some((key) => key.id === id)) id = randomBytes(6).toString('hex');
-      const secret = randomBytes(32).toString('base64url');
-      const record: ApiKeyRecord = { id, name, hash: hashSecret(secret).toString('hex'), createdAt: now().toISOString(), revokedAt: null };
-      await save([...keys, record]);
-      return { key: `dmb_${id}_${secret}`, info: publicInfo(record) };
+      return update((keys) => {
+        let id = randomBytes(6).toString('hex');
+        while (keys.some((key) => key.id === id)) id = randomBytes(6).toString('hex');
+        const secret = randomBytes(32).toString('base64url');
+        const record: ApiKeyRecord = { id, name, hash: hashSecret(secret).toString('hex'), createdAt: now().toISOString(), revokedAt: null };
+        return { keys: [...keys, record], result: { key: `dmb_${id}_${secret}`, info: publicInfo(record) } };
+      });
     },
 
     async list() {
@@ -109,13 +121,13 @@ export function createKeyStore(file: string, now: () => Date = () => new Date())
     },
 
     async revoke(id) {
-      const keys = await load();
-      const found = keys.find((key) => key.id === id);
-      if (!found) return undefined;
-      if (found.revokedAt !== null) return publicInfo(found);
-      const revoked = { ...found, revokedAt: now().toISOString() };
-      await save(keys.map((key) => (key === found ? revoked : key)));
-      return publicInfo(revoked);
+      return update((keys) => {
+        const found = keys.find((key) => key.id === id);
+        if (!found) return { result: undefined };
+        if (found.revokedAt !== null) return { result: publicInfo(found) };
+        const revoked = { ...found, revokedAt: now().toISOString() };
+        return { keys: keys.map((key) => (key === found ? revoked : key)), result: publicInfo(revoked) };
+      });
     },
 
     async verify(presented) {

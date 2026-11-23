@@ -10,10 +10,11 @@
 // of the SQL (SELECT, INSERT, ...) or the Valkey command name.
 
 import { createHash } from 'node:crypto';
-import { mkdir, open, readFile, rmdir, stat } from 'node:fs/promises';
+import { mkdir, open, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { sqlShape } from '../engines/sql-text.ts';
+import { withFileLock } from '../file-lock.ts';
 
 export interface AuditEvent {
   /** What happened: "api.request", "auth.failed", "key.created", "key.revoked", "server.started". */
@@ -67,36 +68,7 @@ export function commandOperation(command: readonly unknown[]): string {
   return typeof name === 'string' && /^[A-Za-z][A-Za-z0-9._-]{0,63}$/.test(name) ? name.toUpperCase() : 'OTHER';
 }
 
-const LOCK_WAIT_MS = 5000;
-const LOCK_STALE_MS = 30_000;
 const TAIL_BYTES = 64 * 1024;
-
-/**
- * Runs `task` while holding the log's lock. The server and the key command
- * line tool may write to the same log; the lock keeps the hash chain whole.
- */
-async function withLock<T>(file: string, task: () => Promise<T>): Promise<T> {
-  const lock = `${file}.lock`;
-  const deadline = Date.now() + LOCK_WAIT_MS;
-  for (;;) {
-    try {
-      await mkdir(lock);
-      break;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-      // A writer that died while holding the lock must not block the log for good.
-      const age = await stat(lock).then((info) => Date.now() - info.mtimeMs, () => 0);
-      if (age > LOCK_STALE_MS) await rmdir(lock).catch(() => {});
-      else if (Date.now() > deadline) throw new Error('the audit log is locked by another writer');
-      else await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-  }
-  try {
-    return await task();
-  } finally {
-    await rmdir(lock).catch(() => {});
-  }
-}
 
 export function createAuditLog(file: string, now: () => Date = () => new Date()): AuditLog {
   // Hash of the last line and the file size after it; re-read when another process has appended since.
@@ -105,7 +77,8 @@ export function createAuditLog(file: string, now: () => Date = () => new Date())
 
   async function append(event: AuditEvent): Promise<void> {
     await mkdir(path.dirname(file), { recursive: true });
-    await withLock(file, async () => {
+    // The server and the key command line tool may write to the same log; the lock keeps the hash chain whole.
+    await withFileLock(file, async () => {
       const handle = await open(file, 'a+', 0o600);
       try {
         const { size } = await handle.stat();
