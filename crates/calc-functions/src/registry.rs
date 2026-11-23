@@ -39,7 +39,16 @@ impl FunctionRegistry for StandardRegistry {
             .find(|(n, _)| n.eq_ignore_ascii_case(name))
             .map(|(_, f)| *f)
     }
+
+    fn is_volatile(&self, name: &str) -> bool {
+        VOLATILE_NAMES.iter().any(|v| v.eq_ignore_ascii_case(name))
+    }
 }
+
+/// Function names whose cells re-evaluate on every `recalculate()`
+/// pass (v2 §5.1 volatile functions). `TODAY`/`NOW` were already
+/// volatile-via-clock; the flag now covers `RAND`/`RANDBETWEEN` too.
+pub const VOLATILE_NAMES: &[&str] = &["RAND", "RANDBETWEEN", "TODAY", "NOW"];
 
 /// The default registry with all implemented functions — what
 /// `calc-cli`, `calc-wasm` and tests install on the engine.
@@ -122,6 +131,8 @@ mod tests {
                 "PRODUCT",
                 "PROPER",
                 "QUARTILE.INC",
+                "RAND",
+                "RANDBETWEEN",
                 "RANK.EQ",
                 "REPLACE",
                 "RIGHT",

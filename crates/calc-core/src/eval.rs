@@ -85,6 +85,41 @@ impl Clock for FixedClock {
     }
 }
 
+/// Source of randomness for volatile functions (`RAND`, `RANDBETWEEN`).
+/// Injected like [`Clock`] so tests are deterministic and `calc-core`
+/// stays std-only. Interior mutability (`Cell`) lets the shared
+/// `&dyn RngSource` advance the stream during evaluation.
+pub trait RngSource {
+    /// Next 64 bits of the stream.
+    fn next_u64(&self) -> u64;
+}
+
+/// Deterministic SplitMix64 PRNG (seeded per workbook by
+/// [`crate::CalcEngine`]). Well-distributed, stateless-friendly, and
+/// dependency-free.
+#[derive(Debug)]
+pub struct SplitMix64 {
+    state: std::cell::Cell<u64>,
+}
+
+impl SplitMix64 {
+    pub fn new(seed: u64) -> SplitMix64 {
+        SplitMix64 {
+            state: std::cell::Cell::new(seed),
+        }
+    }
+}
+
+impl RngSource for SplitMix64 {
+    fn next_u64(&self) -> u64 {
+        let mut z = self.state.get().wrapping_add(0x9E37_79B9_7F4A_7C15);
+        self.state.set(z);
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^ (z >> 31)
+    }
+}
+
 /// The result of evaluating a single argument expression.
 ///
 /// Whether an argument was written as a scalar or as a range matters for
@@ -123,6 +158,7 @@ pub struct EvalContext<'a> {
     workbook: &'a Workbook,
     values: &'a HashMap<CellId, Value>,
     clock: &'a dyn Clock,
+    rng: &'a dyn RngSource,
     registry: &'a dyn crate::registry::FunctionRegistry,
     /// Sheet the evaluated formula lives on (for unqualified references).
     current_sheet: u32,
@@ -136,6 +172,7 @@ impl<'a> EvalContext<'a> {
         workbook: &'a Workbook,
         values: &'a HashMap<CellId, Value>,
         clock: &'a dyn Clock,
+        rng: &'a dyn RngSource,
         registry: &'a dyn crate::registry::FunctionRegistry,
         current_sheet: u32,
     ) -> EvalContext<'a> {
@@ -143,6 +180,7 @@ impl<'a> EvalContext<'a> {
             workbook,
             values,
             clock,
+            rng,
             registry,
             current_sheet,
             max_steps: MAX_EVAL_STEPS,
@@ -161,9 +199,14 @@ impl<'a> EvalContext<'a> {
         self.steps
     }
 
-    /// The injected clock (for future volatile functions).
+    /// The injected clock (for volatile date functions).
     pub fn clock(&self) -> &dyn Clock {
         self.clock
+    }
+
+    /// The injected random source (for volatile `RAND`/`RANDBETWEEN`).
+    pub fn rng(&self) -> &dyn RngSource {
+        self.rng
     }
 
     /// The workbook's date system (for future date functions).

@@ -18,7 +18,7 @@ use crate::ast::Expr;
 use crate::cell::CellId;
 use crate::cell::CellRef;
 use crate::error::CalcError;
-use crate::eval::{Clock, EvalContext, EvalError, SystemClock};
+use crate::eval::{Clock, EvalContext, EvalError, RngSource, SplitMix64, SystemClock};
 use crate::graph::{self, Dep};
 use crate::parser::{ParseError, parse};
 use crate::registry::{EmptyRegistry, FunctionRegistry};
@@ -106,6 +106,7 @@ pub struct CalcEngine {
     /// exist only for cells inside a spill rectangle (never the anchor).
     spilled_by: HashMap<CellId, CellId>,
     clock: Box<dyn Clock>,
+    rng: Box<dyn RngSource>,
     registry: Box<dyn FunctionRegistry>,
 }
 
@@ -115,8 +116,10 @@ impl CalcEngine {
         CalcEngine::with_workbook(Workbook::new())
     }
 
-    /// Engine over an existing workbook with the system clock.
+    /// Engine over an existing workbook with the system clock and a
+    /// `SplitMix64` RNG seeded from `workbook.rng_seed()`.
     pub fn with_workbook(workbook: Workbook) -> CalcEngine {
+        let rng = Box::new(SplitMix64::new(workbook.rng_seed()));
         CalcEngine {
             workbook,
             parsed: HashMap::new(),
@@ -126,6 +129,7 @@ impl CalcEngine {
             spills: HashMap::new(),
             spilled_by: HashMap::new(),
             clock: Box::new(SystemClock),
+            rng,
             registry: Box::new(EmptyRegistry),
         }
     }
@@ -134,6 +138,12 @@ impl CalcEngine {
     /// default [`SystemClock`].
     pub fn set_clock(&mut self, clock: Box<dyn Clock>) {
         self.clock = clock;
+    }
+
+    /// Inject the random source for volatile `RAND`-family functions.
+    /// Replaces the default `SplitMix64` seeded per workbook.
+    pub fn set_rng(&mut self, rng: Box<dyn RngSource>) {
+        self.rng = rng;
     }
 
     /// Inject the function registry used to dispatch `Expr::Call` nodes
@@ -311,6 +321,9 @@ impl CalcEngine {
     /// [`MAX_RECALC_PASSES`] against pathological spill feedback).
     pub fn recalculate(&mut self) -> Result<RecalcReport, EngineError> {
         let mut report = RecalcReport::default();
+        // Volatile cells (RAND, RANDBETWEEN, TODAY, NOW per the
+        // registry) recalculate on every pass over recalculate().
+        self.mark_volatile_dirty();
         for _ in 0..MAX_RECALC_PASSES {
             if self.dirty.is_empty() {
                 return Ok(report);
@@ -516,11 +529,22 @@ impl CalcEngine {
         order
     }
 
+    /// Dirty every formula cell whose AST contains a volatile call
+    /// (per `FunctionRegistry::is_volatile`), anywhere in the tree.
+    fn mark_volatile_dirty(&mut self) {
+        for (id, expr) in &self.parsed {
+            if expr_is_volatile(expr, self.registry.as_ref()) {
+                self.dirty.insert(*id);
+            }
+        }
+    }
+
     fn make_ctx<'a>(&'a self, sheet_id: u32) -> EvalContext<'a> {
         EvalContext::new(
             &self.workbook,
             &self.values,
             self.clock.as_ref(),
+            self.rng.as_ref(),
             self.registry.as_ref(),
             sheet_id,
         )
@@ -546,6 +570,25 @@ impl CalcEngine {
                 }
             }
         }
+    }
+}
+
+/// Does `expr` contain a call the registry marks volatile?
+fn expr_is_volatile(expr: &Expr, registry: &dyn FunctionRegistry) -> bool {
+    match expr {
+        Expr::Literal(_)
+        | Expr::Missing
+        | Expr::Name(_)
+        | Expr::CellRef { .. }
+        | Expr::RangeRef { .. } => false,
+        Expr::Unary { operand, .. } | Expr::Percent(operand) => expr_is_volatile(operand, registry),
+        Expr::Binary { left, right, .. } => {
+            expr_is_volatile(left, registry) || expr_is_volatile(right, registry)
+        }
+        Expr::Call { name, args } => {
+            registry.is_volatile(name) || args.iter().any(|a| expr_is_volatile(a, registry))
+        }
+        Expr::ArrayLiteral(rows) => rows.iter().flatten().any(|a| expr_is_volatile(a, registry)),
     }
 }
 

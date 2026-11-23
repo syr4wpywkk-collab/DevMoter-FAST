@@ -151,6 +151,11 @@ impl Sheet {
 pub struct Workbook {
     sheets: Vec<Sheet>,
     date_system: DateSystem,
+    /// Seed for the workbook's volatile-function RNG (plan §9:
+    /// 乱数源を注入). Deterministic by default so recalculation is
+    /// reproducible; callers wanting entropy set a seed or inject a
+    /// custom `RngSource` on the engine.
+    rng_seed: u64,
 }
 
 impl Default for Workbook {
@@ -165,6 +170,7 @@ impl Workbook {
         Workbook {
             sheets: Vec::new(),
             date_system: DateSystem::default(),
+            rng_seed: 0,
         }
     }
 
@@ -173,7 +179,19 @@ impl Workbook {
         Workbook {
             sheets: Vec::new(),
             date_system,
+            rng_seed: 0,
         }
+    }
+
+    /// Seed used to construct the engine's default RNG
+    /// (`SplitMix64`). Engines already holding an injected `RngSource`
+    /// are unaffected.
+    pub fn rng_seed(&self) -> u64 {
+        self.rng_seed
+    }
+
+    pub fn set_rng_seed(&mut self, seed: u64) {
+        self.rng_seed = seed;
     }
 
     pub fn date_system(&self) -> DateSystem {
