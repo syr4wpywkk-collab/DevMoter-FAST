@@ -458,6 +458,12 @@ export function createWorkspaceControl({ stateDir, resolveProject, policyRules =
     locks,
     events,
 
+    async loadPolicy() {
+      const current = await settings();
+      policy.setRules(current.policyRules || []);
+      return policy;
+    },
+
     async getOverview() {
       const current = await settings();
       policy.setRules(current.policyRules || []);

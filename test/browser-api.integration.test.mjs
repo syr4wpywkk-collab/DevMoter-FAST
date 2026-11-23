@@ -118,3 +118,36 @@ test("/api/browser requires owner auth, a trusted device, exact Origin and opt-i
     await stop();
   }
 });
+
+test("/api/browser/agent is reached by agent tokens only, never by owner auth or a browser", async () => {
+  const { origin, stop } = await startServer({ DEVMOTER_BROWSER_AUTOMATION: "1" });
+  try {
+    const agentPath = origin + "/api/browser/agent";
+    const noToken = await fetch(agentPath);
+    assert.equal(noToken.status, 401);
+    assert.equal((await noToken.json()).code, "agent_token_invalid");
+    const ownerOnly = await fetch(agentPath, { headers: { authorization } });
+    assert.equal(ownerOnly.status, 401, "owner Basic auth is not an agent token");
+    const fromBrowser = await fetch(agentPath, { headers: { authorization: "Bearer dmba_" + "a".repeat(64), origin } });
+    assert.equal(fromBrowser.status, 403);
+    assert.equal((await fromBrowser.json()).code, "agent_not_local");
+    assert.equal((await fetch(origin + "/api/browser/agent-tokens", { headers: { authorization } })).status, 401, "listing tokens needs a trusted device");
+    const bootstrap = await fetch(`${origin}/api/devices/bootstrap`, {
+      method: "POST",
+      headers: { authorization, origin, "content-type": "application/json", "x-pocket-operation-id": "agent-token-device" },
+      body: JSON.stringify({ label: "agent token test" })
+    });
+    assert.equal(bootstrap.status, 201);
+    const cookie = String(bootstrap.headers.get("set-cookie") || "").split(";", 1)[0];
+    const listed = await fetch(origin + "/api/browser/agent-tokens", { headers: { authorization, cookie } });
+    assert.deepEqual(await listed.json(), { tokens: [] });
+    const unknownProject = await fetch(origin + "/api/browser/agent-tokens", {
+      method: "POST",
+      headers: { authorization, cookie, origin, "content-type": "application/json", "x-pocket-operation-id": "agent-token-issue" },
+      body: JSON.stringify({ projectId: "missing", access: "act" })
+    });
+    assert.equal(unknownProject.status, 404, "tokens are only issued for registered projects");
+  } finally {
+    await stop();
+  }
+});

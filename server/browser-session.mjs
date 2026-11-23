@@ -610,7 +610,7 @@ export function createBrowserSessionManager({
     }
   }
 
-  async function startSession(projectId, { viewport, deviceId = null } = {}, startTicket) {
+  async function startSession(projectId, { viewport, deviceId = null, driver: initialDriver = "user" } = {}, startTicket) {
     const status = browserAutomationStatus({ env, spawnSyncImpl });
     if (!status.enabled) throw httpError("Browser automation is disabled; set DEVMOTER_BROWSER_AUTOMATION=1 to opt in", 409, "browser_disabled");
     if (!status.available) throw httpError("Browser automation is enabled but no supported Chromium/Chrome binary is available", 503, "browser_unavailable");
@@ -672,7 +672,7 @@ export function createBrowserSessionManager({
         url: "about:blank",
         title: "",
         viewport: normalizeViewport(viewport),
-        driver: { holder: "user", generation: 1, deviceId },
+        driver: initialDriver === "agent" ? { holder: "agent", generation: 1, deviceId: null } : { holder: "user", generation: 1, deviceId },
         sandboxed: wrapped.sandboxed === true,
         browser: { binary: resolveExecutable(detected.binary, env) || detected.binary, version: detected.version },
         blockedRequests: 0,
