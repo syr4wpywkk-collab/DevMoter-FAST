@@ -6,17 +6,25 @@
 //! reported explicitly instead of being silently coerced.
 
 pub mod array;
+pub mod ast;
 pub mod cell;
 pub mod error;
+pub mod lexer;
+pub mod parser;
 pub mod value;
 pub mod workbook;
 
 pub use array::ArrayValue;
+pub use ast::{BinaryOp, Expr, Literal, UnaryOp};
 pub use cell::{
     CellId, CellRef, MAX_COLS, MAX_ROWS, RangeRef, RefParseError, RefParseErrorKind, RefTarget,
     SheetQualifiedRef,
 };
 pub use error::CalcError;
+pub use lexer::{LexError, LexErrorKind, Token, TokenKind, lex};
+pub use parser::{
+    MAX_AST_NODES, MAX_DEPTH, MAX_FORMULA_LEN, MAX_TOKENS, ParseError, ParseErrorKind, parse,
+};
 pub use value::{Value, ValueKind};
 pub use workbook::{Cell, CellInput, DateSystem, Sheet, Workbook, WorkbookError};
 

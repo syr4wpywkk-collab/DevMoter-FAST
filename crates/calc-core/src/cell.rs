@@ -336,7 +336,7 @@ pub fn is_valid_sheet_name(name: &str) -> bool {
 /// Whether `name` can appear in a formula without quotes. Conservative:
 /// letters, digits, `_`, `.` and non-ASCII alphanumerics; must not look like
 /// a cell reference and must not start with a digit.
-fn is_valid_unquoted_sheet_name(name: &str) -> bool {
+pub(crate) fn is_valid_unquoted_sheet_name(name: &str) -> bool {
     if !is_valid_sheet_name(name) {
         return false;
     }
