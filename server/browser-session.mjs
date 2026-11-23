@@ -9,7 +9,7 @@ import { randomUUID } from "node:crypto";
 import { buildBubblewrapCommand, sandboxStatus } from "./advanced-features.mjs";
 import { browserAutomationStatus, browserProcessEnv, detectBrowserBinary, loopbackHost } from "./browser-tool.mjs";
 import { createCdpPipeConnection } from "./browser-cdp.mjs";
-import { readListenerIdentity } from "./listener-identity.mjs";
+import { listenerConnectHost, readListenerIdentity } from "./listener-identity.mjs";
 
 const RELAY_SCRIPT = fileURLToPath(new URL("./browser-netns-relay.mjs", import.meta.url));
 const MAX_UNIX_SOCKET_PATH = 100;
@@ -319,6 +319,7 @@ export function createBrowserSessionManager({
   spawnSyncImpl = spawnSync,
   now = Date.now,
   readPreviewListener = readListenerIdentity,
+  resolvePreviewHost = listenerConnectHost,
   limits: limitOverrides = {}
 }) {
   if (typeof resolveProject !== "function" || typeof getPreview !== "function") {
@@ -772,6 +773,12 @@ export function createBrowserSessionManager({
     if (!previewListener || (preview.listener && preview.listener !== previewListener)) {
       throw httpError("The approved live preview changed; start a new browser session", 409, "preview_changed");
     }
+    // The relay dials this exact address: for "localhost" it is the family
+    // whose listener was identified, never one picked again by DNS.
+    const previewConnectHost = resolvePreviewHost(preview.host, preview.port);
+    if (!previewConnectHost) {
+      throw httpError("The approved live preview changed; start a new browser session", 409, "preview_changed");
+    }
     startTicket.previewListener = previewListener;
     assertStartCurrent(startTicket, preview);
     if (starting.has(project.id)) throw httpError("A browser session is already starting for this project", 409, "session_starting");
@@ -815,7 +822,7 @@ export function createBrowserSessionManager({
       try {
         relay = await startPreviewRelay({
           socketPath: relaySocket,
-          host: policy.host,
+          host: previewConnectHost,
           port: policy.port,
           allow: () => Boolean(owner.session?.active) && readPreviewListener(preview.host, preview.port) === previewListener
         });
