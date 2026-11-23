@@ -6,32 +6,216 @@
 
 use calc_core::registry::Function;
 
+mod avedev;
+mod averagea;
+mod averageif;
+mod averageifs;
+mod beta_dist;
+mod beta_inv;
+mod binom_dist;
+mod binom_dist_range;
+mod binom_inv;
+mod chisq_dist;
+mod chisq_dist_rt;
+mod chisq_inv;
+mod chisq_inv_rt;
+mod chisq_test;
+mod confidence_norm;
+mod confidence_t;
 mod correl;
+mod countblank;
+mod covariance_p;
+mod covariance_s;
+mod devsq;
+mod expon_dist;
+mod f_dist;
+mod f_dist_rt;
+mod f_inv;
+mod f_inv_rt;
+mod f_test;
+mod fisher;
+mod fisherinv;
+mod forecast;
+mod forecast_ets;
+mod forecast_ets_confint;
+mod forecast_ets_seasonality;
+mod forecast_ets_stat;
+mod forecast_linear;
+mod frequency;
+mod gamma;
+mod gamma_dist;
+mod gamma_inv;
+mod gammaln;
+mod gammaln_precise;
+mod gauss;
+mod geomean;
+mod growth;
+mod harmean;
+mod hypgeom_dist;
 mod intercept;
+mod kurt;
 mod large;
+mod linest;
+mod logest;
+mod lognorm_dist;
+mod lognorm_inv;
+mod maxa;
+mod maxifs;
 mod median;
+mod mina;
+mod minifs;
+mod mode_mult;
 mod mode_sngl;
+mod negbinom_dist;
+mod norm_dist;
+mod norm_inv;
+mod norm_s_dist;
+mod norm_s_inv;
+mod pearson;
+mod percentile_exc;
 mod percentile_inc;
+mod percentrank_exc;
+mod percentrank_inc;
+mod permut;
+mod permutationa;
+mod phi;
+mod poisson_dist;
+mod prob;
+mod quartile_exc;
 mod quartile_inc;
+mod rank_avg;
 mod rank_eq;
+mod rsq;
+mod skew;
+mod skew_p;
 mod slope;
 mod small;
+mod standardize;
+mod stdev_p;
 mod stdev_s;
+mod stdeva;
+mod stdevpa;
+mod steyx;
+mod t_dist;
+mod t_dist_2t;
+mod t_dist_rt;
+mod t_inv;
+mod t_inv_2t;
+mod t_test;
+mod trend;
+mod trimmean;
+mod var_p;
 mod var_s;
+mod vara;
+mod varpa;
+mod weibull_dist;
+mod z_test;
 
 /// `(name, implementation)` pairs contributed by this category,
 /// consumed by [`crate::registry`].
 pub const FUNCTIONS: &[(&str, Function)] = &[
+    ("AVEDEV", avedev::call),
+    ("AVERAGEA", averagea::call),
+    ("AVERAGEIF", averageif::call),
+    ("AVERAGEIFS", averageifs::call),
+    ("BETA.DIST", beta_dist::call),
+    ("BETA.INV", beta_inv::call),
+    ("BINOM.DIST", binom_dist::call),
+    ("BINOM.DIST.RANGE", binom_dist_range::call),
+    ("BINOM.INV", binom_inv::call),
+    ("CHISQ.DIST", chisq_dist::call),
+    ("CHISQ.DIST.RT", chisq_dist_rt::call),
+    ("CHISQ.INV", chisq_inv::call),
+    ("CHISQ.INV.RT", chisq_inv_rt::call),
+    ("CHISQ.TEST", chisq_test::call),
+    ("CONFIDENCE.NORM", confidence_norm::call),
+    ("CONFIDENCE.T", confidence_t::call),
     ("CORREL", correl::call),
+    ("F.INV", f_inv::call),
+    ("F.INV.RT", f_inv_rt::call),
+    ("F.TEST", f_test::call),
+    ("FISHER", fisher::call),
+    ("FISHERINV", fisherinv::call),
+    ("FORECAST", forecast::call),
+    ("FORECAST.ETS", forecast_ets::call),
+    ("FORECAST.ETS.CONFINT", forecast_ets_confint::call),
+    ("FORECAST.ETS.SEASONALITY", forecast_ets_seasonality::call),
+    ("FORECAST.ETS.STAT", forecast_ets_stat::call),
+    ("FORECAST.LINEAR", forecast_linear::call),
+    ("FREQUENCY", frequency::call),
+    ("GAMMA", gamma::call),
+    ("GAMMA.DIST", gamma_dist::call),
+    ("GAMMA.INV", gamma_inv::call),
+    ("GAMMALN", gammaln::call),
+    ("GAMMALN.PRECISE", gammaln_precise::call),
+    ("GAUSS", gauss::call),
+    ("GEOMEAN", geomean::call),
+    ("GROWTH", growth::call),
+    ("HARMEAN", harmean::call),
+    ("HYPGEOM.DIST", hypgeom_dist::call),
+    ("COUNTBLANK", countblank::call),
+    ("COVARIANCE.P", covariance_p::call),
+    ("COVARIANCE.S", covariance_s::call),
+    ("DEVSQ", devsq::call),
+    ("EXPON.DIST", expon_dist::call),
+    ("F.DIST", f_dist::call),
+    ("F.DIST.RT", f_dist_rt::call),
     ("INTERCEPT", intercept::call),
+    ("KURT", kurt::call),
     ("LARGE", large::call),
+    ("LINEST", linest::call),
+    ("LOGEST", logest::call),
+    ("LOGNORM.DIST", lognorm_dist::call),
+    ("LOGNORM.INV", lognorm_inv::call),
+    ("MAXA", maxa::call),
+    ("MAXIFS", maxifs::call),
     ("MEDIAN", median::call),
+    ("MINA", mina::call),
+    ("MINIFS", minifs::call),
+    ("MODE.MULT", mode_mult::call),
     ("MODE.SNGL", mode_sngl::call),
+    ("NEGBINOM.DIST", negbinom_dist::call),
+    ("NORM.DIST", norm_dist::call),
+    ("NORM.INV", norm_inv::call),
+    ("NORM.S.DIST", norm_s_dist::call),
+    ("NORM.S.INV", norm_s_inv::call),
+    ("PEARSON", pearson::call),
+    ("PERCENTILE.EXC", percentile_exc::call),
     ("PERCENTILE.INC", percentile_inc::call),
+    ("QUARTILE.EXC", quartile_exc::call),
+    ("PERCENTRANK.EXC", percentrank_exc::call),
+    ("PERCENTRANK.INC", percentrank_inc::call),
+    ("PERMUT", permut::call),
+    ("PERMUTATIONA", permutationa::call),
+    ("PHI", phi::call),
+    ("POISSON.DIST", poisson_dist::call),
+    ("PROB", prob::call),
     ("QUARTILE.INC", quartile_inc::call),
+    ("RANK.AVG", rank_avg::call),
     ("RANK.EQ", rank_eq::call),
+    ("RSQ", rsq::call),
+    ("SKEW", skew::call),
+    ("SKEW.P", skew_p::call),
     ("SLOPE", slope::call),
     ("SMALL", small::call),
+    ("STANDARDIZE", standardize::call),
+    ("STDEV.P", stdev_p::call),
     ("STDEV.S", stdev_s::call),
+    ("STDEVA", stdeva::call),
+    ("STDEVPA", stdevpa::call),
+    ("STEYX", steyx::call),
+    ("T.DIST", t_dist::call),
+    ("T.DIST.2T", t_dist_2t::call),
+    ("T.DIST.RT", t_dist_rt::call),
+    ("T.INV", t_inv::call),
+    ("T.INV.2T", t_inv_2t::call),
+    ("T.TEST", t_test::call),
+    ("TREND", trend::call),
+    ("TRIMMEAN", trimmean::call),
+    ("VAR.P", var_p::call),
     ("VAR.S", var_s::call),
+    ("VARA", vara::call),
+    ("VARPA", varpa::call),
+    ("WEIBULL.DIST", weibull_dist::call),
+    ("Z.TEST", z_test::call),
 ];

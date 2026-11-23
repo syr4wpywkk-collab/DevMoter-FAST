@@ -29,6 +29,9 @@ pub fn flatten_args(
     let mut out = Vec::new();
     for arg in args {
         match ctx.eval_arg(arg)? {
+            ArgValue::Scalar(Value::Array(a)) | ArgValue::Ref(Value::Array(a)) => {
+                out.extend(a.into_iter().map(|v| (v, true)))
+            }
             ArgValue::Scalar(v) => out.push((v, false)),
             ArgValue::Ref(v) => out.push((v, true)),
             ArgValue::Range(a) => out.extend(a.into_iter().map(|v| (v, true))),
