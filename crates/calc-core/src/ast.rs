@@ -2,7 +2,6 @@
 //!
 //! Sheet-qualified references carry the (unescaped) sheet name on the
 //! node; resolution to a `sheet_id` happens during evaluation.
-
 use crate::cell::{CellRef, RangeRef};
 use crate::error::CalcError;
 
@@ -68,6 +67,14 @@ pub enum Expr {
     },
     /// Function call: `SUM(A1:A3, 5)`.
     Call { name: String, args: Vec<Expr> },
+    /// Invocation of an arbitrary expression producing a lambda:
+    /// `LAMBDA(x,x+1)(5)` or `LET(f,LAMBDA(x,x),(f)(3))`. Named calls stay
+    /// [`Expr::Call`]; this node covers non-name callees.
+    Invoke { callee: Box<Expr>, args: Vec<Expr> },
+    /// Array literal `{1,2;3,4}`: rows of expressions (`,` between
+    /// columns, `;` between rows). Excel restricts elements to constants;
+    /// this engine accepts full expressions (SPEC-OPEN parity item).
+    ArrayLiteral(Vec<Vec<Expr>>),
     /// Cell reference on the current or a named sheet.
     CellRef {
         sheet: Option<String>,
@@ -78,9 +85,6 @@ pub enum Expr {
         sheet: Option<String>,
         range: RangeRef,
     },
-    /// Array literal `{1,2;3,4}`: `,` separates columns, `;` rows.
-    /// Rectangularity is enforced by the parser.
-    ArrayLiteral(Vec<Vec<Expr>>),
 }
 
 impl Expr {
@@ -99,6 +103,9 @@ impl Expr {
                     .sum::<usize>()
             }
             Expr::Call { args, .. } => 1 + args.iter().map(Expr::node_count).sum::<usize>(),
+            Expr::Invoke { callee, args } => {
+                1 + callee.node_count() + args.iter().map(Expr::node_count).sum::<usize>()
+            }
         }
     }
 }

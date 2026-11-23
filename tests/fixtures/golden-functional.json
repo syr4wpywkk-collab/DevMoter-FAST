@@ -1,0 +1,848 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-23",
+  "referenceDefaults": {},
+  "cases": [
+    {
+      "id": "FN-LET-001",
+      "formula": "=LET(x,2,x^3)",
+      "inputs": {},
+      "expected": {
+        "number": 8
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Required fixture per FUNCTION_PLAN_V2 section 5.1."
+    },
+    {
+      "id": "FN-LET-002",
+      "formula": "=LET(x,1,y,x+1,y*2)",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Each value sees preceding bindings only (left-to-right)."
+    },
+    {
+      "id": "FN-LET-003",
+      "formula": "=LET(x,1,LET(y,2,x+y))",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Nested LET: inner scope sees outer bindings."
+    },
+    {
+      "id": "FN-LET-004",
+      "formula": "=LET(v,A1*2,v+1)",
+      "inputs": {
+        "A1": 3
+      },
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Cell reference bound to a name."
+    },
+    {
+      "id": "FN-LET-005",
+      "formula": "=LET(x,5,1)+x",
+      "inputs": {},
+      "expected": {
+        "error": "#NAME?"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Bound names do not leak outside the call."
+    },
+    {
+      "id": "FN-LET-006",
+      "formula": "=LET(A1,2,A1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NAME?"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "A cell reference is not a valid name token."
+    },
+    {
+      "id": "FN-LET-007",
+      "formula": "=LET(x,1,y,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Even argument count (dangling name) is an error."
+    },
+    {
+      "id": "FN-LET-008",
+      "formula": "=LET(s,\"hi\",s&\"!\")",
+      "inputs": {},
+      "expected": {
+        "text": "hi!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "FN-LET-009",
+      "formula": "=LET(f,TRUE,IF(f,1,0))",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "FN-LET-010",
+      "formula": "=LET(MyVar,7,myvar)",
+      "inputs": {},
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Bound names are case-insensitive."
+    },
+    {
+      "id": "FN-LET-011",
+      "formula": "=LET(x,1/0,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Excel evaluates unused LET bindings lazily and would return 5; this engine evaluates eagerly. See LET.md open questions."
+    },
+    {
+      "id": "FN-LET-012",
+      "formula": "=LET(x,1,x,x+1,x)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Excel rejects duplicate names in one LET; this engine permits shadowing. See LET.md open questions."
+    },
+    {
+      "id": "FN-LAMBDA-001",
+      "formula": "=LAMBDA(x,x+1)(5)",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Immediate postfix invocation."
+    },
+    {
+      "id": "FN-LAMBDA-002",
+      "formula": "=LAMBDA(a,b,a*10+b)(3,4)",
+      "inputs": {},
+      "expected": {
+        "number": 34
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "FN-LAMBDA-003",
+      "formula": "=LAMBDA(x,x+1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "An uncalled LAMBDA displays #CALC! in Excel; this engine maps a lambda leaking to a cell to #VALUE!. See LAMBDA.md open questions."
+    },
+    {
+      "id": "FN-LAMBDA-004",
+      "formula": "=LET(a,10,LAMBDA(x,x+a))(5)",
+      "inputs": {},
+      "expected": {
+        "number": 15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Closure captures the enclosing LET scope."
+    },
+    {
+      "id": "FN-LAMBDA-005",
+      "formula": "=LET(f,LAMBDA(x,x*2),f(21))",
+      "inputs": {},
+      "expected": {
+        "number": 42
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "A LET-bound lambda invoked by name."
+    },
+    {
+      "id": "FN-LAMBDA-006",
+      "formula": "=LET(fact,LAMBDA(n,IF(n<=1,1,n*fact(n-1))),fact(5))",
+      "inputs": {},
+      "expected": {
+        "number": 120
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Bounded recursion via self-reference through the LET scope."
+    },
+    {
+      "id": "FN-LAMBDA-007",
+      "formula": "=LAMBDA(x,x+1)(1,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Arity mismatch at call."
+    },
+    {
+      "id": "FN-LAMBDA-008",
+      "formula": "=LET(f,LAMBDA(x,y,x+y),f(1))",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Missing-argument error kind: #VALUE! per LAMBDA.md, but #N/A is a documented alternative."
+    },
+    {
+      "id": "FN-LAMBDA-009",
+      "formula": "=LAMBDA(A1,x+1)(5)",
+      "inputs": {},
+      "expected": {
+        "error": "#NAME?"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "A cell reference is not a valid parameter name."
+    },
+    {
+      "id": "FN-LAMBDA-010",
+      "formula": "=LET(f,LAMBDA(x,x),f+1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "A lambda in scalar arithmetic context is #VALUE!."
+    },
+    {
+      "id": "FN-LAMBDA-011",
+      "formula": "=LET(f,LAMBDA(n,IF(n=0,0,1+f(n-1))),f(1000))",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Recursion depth cap returns a defined error, never a crash."
+    },
+    {
+      "id": "FN-LAMBDA-012",
+      "formula": "=LAMBDA(42)()",
+      "inputs": {},
+      "expected": {
+        "number": 42
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether Excel accepts a zero-parameter LAMBDA is unconfirmed."
+    },
+    {
+      "id": "FN-MAP-001",
+      "formula": "=MAP({1,2;3,4},LAMBDA(x,x*2))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            2,
+            4
+          ],
+          [
+            6,
+            8
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "2x2 array literal; result preserves shape."
+    },
+    {
+      "id": "FN-MAP-002",
+      "formula": "=MAP({1,2},{10,20},LAMBDA(a,b,a+b))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            11,
+            22
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "FN-MAP-003",
+      "formula": "=MAP(A1:A3,LAMBDA(x,x^2))",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            4
+          ],
+          [
+            9
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "FN-MAP-004",
+      "formula": "=MAP({1,2},{1,2,3},LAMBDA(a,b,a+b))",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Shape-mismatch error kind: #VALUE! chosen; Excel's exact code (#VALUE! vs #N/A) unconfirmed. See MAP.md open questions."
+    },
+    {
+      "id": "FN-MAP-005",
+      "formula": "=MAP({1,2},{3,4},LAMBDA(x,x))",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Lambda arity must equal the array count."
+    },
+    {
+      "id": "FN-MAP-006",
+      "formula": "=MAP({1,2},5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Last argument is not a lambda."
+    },
+    {
+      "id": "FN-MAP-007",
+      "formula": "=MAP(5,LAMBDA(x,x))",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Scalar (non-array) input is rejected."
+    },
+    {
+      "id": "FN-MAP-008",
+      "formula": "=LET(k,10,MAP({1,2,3},LAMBDA(x,x+k)))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            11,
+            12,
+            13
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Lambda closes over the LET binding."
+    },
+    {
+      "id": "FN-MAP-009",
+      "formula": "=MAP({\"a\",\"b\"},LAMBDA(x,x&\"!\"))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a!",
+            "b!"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "FN-MAP-010",
+      "formula": "=MAP({1,0,2},LAMBDA(x,1/x))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            {
+              "error": "#DIV/0!"
+            },
+            0.5
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether an in-element error stays element-wise or fails the whole call is unconfirmed vs Excel. See MAP.md open questions."
+    },
+    {
+      "id": "FN-MAP-011",
+      "formula": "=MAP({1},{2},{3},LAMBDA(a,b,c,a+b+c))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            6
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "FN-REDUCE-001",
+      "formula": "=REDUCE(0,{1,2,3},LAMBDA(a,v,a+v))",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Required fixture per FUNCTION_PLAN_V2 section 5.1."
+    },
+    {
+      "id": "FN-REDUCE-002",
+      "formula": "=REDUCE(10,A1:A3,LAMBDA(a,v,a+v))",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "number": 16
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "FN-REDUCE-003",
+      "formula": "=REDUCE(0,{1,2;3,4},LAMBDA(a,v,a-v))",
+      "inputs": {},
+      "expected": {
+        "number": -10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Subtraction makes the row-major left-fold order observable."
+    },
+    {
+      "id": "FN-REDUCE-004",
+      "formula": "=REDUCE({1,2,3},LAMBDA(a,v,a+v))",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Without an initial value the first element seeds the accumulator."
+    },
+    {
+      "id": "FN-REDUCE-005",
+      "formula": "=REDUCE({7},LAMBDA(a,v,a+v))",
+      "inputs": {},
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "FN-REDUCE-006",
+      "formula": "=REDUCE(0,{1,2},LAMBDA(a,a))",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "The lambda must take exactly (acc, value)."
+    },
+    {
+      "id": "FN-REDUCE-007",
+      "formula": "=REDUCE(0,{1,2},42)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Last argument is not a lambda."
+    },
+    {
+      "id": "FN-REDUCE-008",
+      "formula": "=REDUCE(0,{1,0,2},LAMBDA(a,v,a/v))",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether an error inside an iteration short-circuits the fold or flows through is unconfirmed vs Excel. See REDUCE.md open questions."
+    },
+    {
+      "id": "FN-REDUCE-009",
+      "formula": "=REDUCE(\"\",{\"a\",\"b\",\"c\"},LAMBDA(a,v,a&v))",
+      "inputs": {},
+      "expected": {
+        "text": "abc"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "FN-REDUCE-010",
+      "formula": "=LET(k,2,REDUCE(0,{1,2,3},LAMBDA(a,v,a+v*k)))",
+      "inputs": {},
+      "expected": {
+        "number": 12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Lambda closes over the LET binding."
+    },
+    {
+      "id": "FN-REDUCE-011",
+      "formula": "=REDUCE({0},{1,2,3},LAMBDA(a,v,{v}))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "The accumulator may itself be an array."
+    }
+  ]
+}

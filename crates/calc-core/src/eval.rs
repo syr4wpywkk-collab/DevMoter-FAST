@@ -21,6 +21,7 @@ use crate::array::ArrayValue;
 use crate::ast::{BinaryOp, Expr, Literal, UnaryOp};
 use crate::cell::{CellId, CellRef, RangeRef};
 use crate::error::CalcError;
+use crate::lambda::LambdaValue;
 use crate::value::Value;
 use crate::workbook::{DateSystem, Workbook};
 
@@ -165,6 +166,10 @@ pub struct EvalContext<'a> {
     max_steps: usize,
     steps: usize,
     depth: usize,
+    /// Lexical scope chain for `LET` bindings and `LAMBDA` invocation.
+    /// Frames are ordered outermost-first; lookup scans innermost-first.
+    /// Names are stored lower-cased (Excel names are case-insensitive).
+    scopes: Vec<Vec<(String, Value)>>,
 }
 
 impl<'a> EvalContext<'a> {
@@ -186,6 +191,7 @@ impl<'a> EvalContext<'a> {
             max_steps: MAX_EVAL_STEPS,
             steps: 0,
             depth: 0,
+            scopes: Vec::new(),
         }
     }
 
@@ -236,7 +242,11 @@ impl<'a> EvalContext<'a> {
         match expr {
             Expr::Literal(l) => Ok(ArgValue::Scalar(literal_value(l))),
             Expr::Missing => Ok(ArgValue::Scalar(Value::Blank)),
-            Expr::Name(_) => Ok(ArgValue::Scalar(Value::Error(CalcError::Name))),
+            Expr::Name(n) => Ok(ArgValue::Scalar(
+                self.lookup_local(n)
+                    .cloned()
+                    .unwrap_or(Value::Error(CalcError::Name)),
+            )),
             Expr::Unary { op, operand } => {
                 let v = self.eval(operand)?;
                 Ok(ArgValue::Scalar(unary_op(*op, &v)))
@@ -264,8 +274,27 @@ impl<'a> EvalContext<'a> {
             }
             Expr::Call { name, args } => match self.registry.dispatch(name, self, args) {
                 Some(result) => result.map(ArgValue::Scalar),
-                None => Ok(ArgValue::Scalar(Value::Error(CalcError::Name))),
+                // Not a registered function: a bound name holding a lambda
+                // is invoked (`LET(f,LAMBDA(x,x+1),f(5))`), else `#NAME?`.
+                None => match self.lookup_local(name).cloned() {
+                    Some(Value::Lambda(l)) => {
+                        let argv = self.eval_call_args(args)?;
+                        self.call_lambda(&l, argv).map(ArgValue::Scalar)
+                    }
+                    _ => Ok(ArgValue::Scalar(Value::Error(CalcError::Name))),
+                },
             },
+            Expr::Invoke { callee, args } => {
+                let f = self.eval(callee)?;
+                match f {
+                    Value::Lambda(l) => {
+                        let argv = self.eval_call_args(args)?;
+                        self.call_lambda(&l, argv).map(ArgValue::Scalar)
+                    }
+                    Value::Error(e) => Ok(ArgValue::Scalar(Value::Error(e))),
+                    _ => Ok(ArgValue::Scalar(Value::Error(CalcError::Value))),
+                }
+            }
             Expr::CellRef { sheet, cell } => Ok(ArgValue::Ref(self.cell_value(sheet, cell))),
             Expr::RangeRef { sheet, range } => self.range_values(sheet.as_deref(), range),
             Expr::ArrayLiteral(rows) => self.array_literal(rows),
@@ -359,6 +388,99 @@ impl<'a> EvalContext<'a> {
         }
     }
 
+    /// Push a lexical scope frame (used by `LET` and lambda invocation).
+    pub fn push_scope(&mut self) {
+        self.scopes.push(Vec::new());
+    }
+
+    /// Pop the innermost lexical scope frame.
+    pub fn pop_scope(&mut self) {
+        self.scopes.pop();
+    }
+
+    /// Bind `name` to `value` in the innermost scope frame (pushing one if
+    /// none exists). The name is stored lower-cased.
+    pub fn bind_local(&mut self, name: &str, value: Value) {
+        if self.scopes.is_empty() {
+            self.push_scope();
+        }
+        let name = name.to_ascii_lowercase();
+        let frame = self.scopes.last_mut().unwrap();
+        if let Some(slot) = frame.iter_mut().find(|(n, _)| *n == name) {
+            slot.1 = value;
+        } else {
+            frame.push((name, value));
+        }
+    }
+
+    /// Resolve `name` against the scope chain, innermost frame first.
+    /// Case-insensitive.
+    pub fn lookup_local(&self, name: &str) -> Option<&Value> {
+        let name = name.to_ascii_lowercase();
+        self.scopes
+            .iter()
+            .rev()
+            .flat_map(|frame| frame.iter().rev())
+            .find(|(n, _)| *n == name)
+            .map(|(_, v)| v)
+    }
+
+    /// Snapshot the current scope chain as a flat `(name, value)` list
+    /// (outermost-first) for [`LambdaValue`] capture.
+    pub fn capture_env(&self) -> Vec<(String, Value)> {
+        self.scopes.iter().flatten().cloned().collect()
+    }
+
+    /// Invoke a [`LambdaValue`] with already-evaluated argument values.
+    ///
+    /// The captured environment is pushed below the parameter frame, then
+    /// the body is evaluated. Arity mismatch yields `#VALUE!`; exceeding
+    /// [`MAX_EVAL_DEPTH`] yields `#NUM!` (a defined cell error, never a
+    /// Rust stack overflow — body evaluation recurses through
+    /// [`EvalContext::eval_arg`], which enforces the depth cap).
+    /// Invocations count against the step budget via [`Self::step`].
+    ///
+    /// SPEC-OPEN: the spec docs suggest `#N/A` may be appropriate for
+    /// missing arguments; `#VALUE!` covers all arity mismatches per
+    /// `docs/functions/LAMBDA.md`.
+    pub fn call_lambda(&mut self, lam: &LambdaValue, args: Vec<Value>) -> Result<Value, EvalError> {
+        self.step()?;
+        if args.len() != lam.params.len() {
+            return Ok(Value::Error(CalcError::Value));
+        }
+        // One body evaluation costs at least one depth level; fail as a
+        // cell error before the hard EvalError::DepthExceeded aborts the
+        // whole recalculation.
+        if self.depth >= MAX_EVAL_DEPTH {
+            return Ok(Value::Error(CalcError::Num));
+        }
+        self.scopes.push(lam.env.clone());
+        let frame = lam
+            .params
+            .iter()
+            .cloned()
+            .zip(args)
+            .collect::<Vec<(String, Value)>>();
+        self.scopes.push(frame);
+        let result = self.eval(&lam.body);
+        self.scopes.pop();
+        self.scopes.pop();
+        // Depth cap reached inside the call: surface as `#NUM!` (a cell
+        // error) rather than aborting the whole recalculation.
+        match result {
+            Err(EvalError::DepthExceeded) => Ok(Value::Error(CalcError::Num)),
+            r => r,
+        }
+    }
+
+    /// Evaluate `(` arg `,` ... `)` argument expressions to scalar values.
+    /// Missing slots are `#VALUE!` at call time (lambda params have no
+    /// defaults) — they evaluate to `Blank` here and arity still matches,
+    /// so the lambda sees `Blank`.
+    fn eval_call_args(&mut self, args: &[Expr]) -> Result<Vec<Value>, EvalError> {
+        args.iter().map(|a| self.eval(a)).collect()
+    }
+
     /// Count one unit of work against the budget.
     pub fn step(&mut self) -> Result<(), EvalError> {
         self.steps += 1;
@@ -437,7 +559,7 @@ fn type_rank(v: &Value) -> u8 {
         Value::Number(_) | Value::Blank => 0,
         Value::Text(_) => 1,
         Value::Boolean(_) => 2,
-        Value::Error(_) | Value::Array(_) => 3,
+        Value::Error(_) | Value::Array(_) | Value::Lambda(_) => 3,
     }
 }
 
