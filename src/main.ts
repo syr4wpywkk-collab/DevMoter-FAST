@@ -2,12 +2,14 @@
 //
 //   DEVMOTER_BASE_CONFIG       configuration file (default: ./devmoter-base.config.json)
 //   DEVMOTER_BASE_ENGINES_DIR  where the built engines are (default: ./build/<arch>)
-//   LOG_LEVEL                  trace | debug | info | warn | error | fatal | silent
+//   DEVMOTER_BASE_LOG_LEVEL    trace | debug | info | warn | error | fatal | silent
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createApiServer, stopApiServer, type Database } from './api/server.ts';
+import { createAuditLog } from './audit/log.ts';
+import { createKeyStore } from './auth/keys.ts';
 import { ConfigError, loadConfig, type DatabaseConfig } from './config.ts';
 import { createDuckdbAdapter } from './engines/duckdb.ts';
 import { defaultEnginesDir, engineBinary } from './engines/paths.ts';
@@ -81,7 +83,20 @@ async function main(): Promise<void> {
     process.exitCode = 1;
     return;
   }
-  const server = createApiServer({ databases, logger });
+  const auth = config.auth ? createKeyStore(config.auth.keysFile) : undefined;
+  const audit = config.audit ? createAuditLog(config.audit.file) : undefined;
+  try {
+    // Fail at startup, not on the first request, when the key file is unreadable or the audit log cannot be written.
+    await auth?.list();
+    await audit?.record({ event: 'server.started' });
+  } catch (error) {
+    logger.fatal('the API key file or the audit log cannot be used', { err: error });
+    process.exitCode = 1;
+    return;
+  }
+  if (!auth) logger.warn('API keys are not configured: every local process can use the API');
+  if (!audit) logger.warn('the audit log is not configured: operations are not recorded');
+  const server = createApiServer({ databases, logger, ...(auth ? { auth } : {}), ...(audit ? { audit } : {}) });
 
   const shutdown = (signal: string) => {
     logger.info('shutting down', { signal });
@@ -99,7 +114,7 @@ async function main(): Promise<void> {
     process.exit(1);
   });
   server.listen(config.server.port, config.server.host, () => {
-    logger.info('listening', { host: config.server.host, port: config.server.port, databases: databases.map((database) => database.name), enginesDir });
+    logger.info('listening', { host: config.server.host, port: config.server.port, databases: databases.map((database) => database.name), enginesDir, apiKeys: auth !== undefined, auditLog: audit !== undefined });
   });
 }
 

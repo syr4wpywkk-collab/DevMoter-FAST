@@ -11,6 +11,7 @@
 - Update the matching row in `docs/roadmap/features.md` when a feature is implemented or verified.
 - Engines build from the pinned tree into `build/<arch>/<engine>/` via `npm run build:engines` (host toolchain) or `npm run build:engines:container` (Docker, also `--platform linux/arm64`). Engine build steps live in `scripts/build/engines/<name>.sh`; they receive `DMB_SRC`/`DMB_WORK`/`DMB_PREFIX` and must not reference `engines/`.
 - Engine adapters (`src/engines/`) run the built engines; adapter tests that need a binary skip when it is not built and fail instead when `DEVMOTER_BASE_REQUIRE_ENGINES=1`.
-- The API has no authentication yet: it must stay loopback-only (`isLoopbackHost` in `src/config.ts`) and must not log SQL, parameters or rows.
+- API keys identify a caller but carry no permissions yet: the API must stay loopback-only (`isLoopbackHost` in `src/config.ts`) and must not log SQL, parameters or rows.
 - PostgreSQL and Valkey adapters connect to a running server (Unix socket or loopback only); their tests start throwaway servers from the built engines (`test/engines/helpers.ts`) and cannot run as root.
 - Passwords never go in the configuration file or in logs: config entries name an environment variable (`passwordEnv`).
+- The audit log (`src/audit/log.ts`) records the kind of an operation only; never add SQL text, parameters, command arguments, results or key secrets to it.

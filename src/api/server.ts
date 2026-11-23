@@ -8,13 +8,17 @@
 //   POST /v1/databases/:name/query     { "sql": "...", "params": [...], "timeoutMs": 30000 }      (SQL engines)
 //   POST /v1/databases/:name/command   { "command": ["GET", "key"], "timeoutMs": 30000 }          (key-value engines)
 //
-// There is no authentication yet. Until there is, the server only listens on
+// When API keys are configured, every endpoint except /v1/health needs
+// "Authorization: Bearer <key>". A key identifies the caller; there are no
+// roles or per-database permissions yet, so the server still only listens on
 // loopback addresses and refuses requests that a web page could make the
 // browser send (cross-origin requests, DNS rebinding).
 
 import { randomUUID } from 'node:crypto';
 import http from 'node:http';
 
+import { commandOperation, sqlOperation, type AuditEvent, type AuditLog } from '../audit/log.ts';
+import type { KeyStore } from '../auth/keys.ts';
 import type { Logger } from '../logging/logger.ts';
 import { EngineError, type Adapter, type CommandArg, type EngineErrorCode, type EngineName, type QueryParam } from '../engines/types.ts';
 
@@ -31,6 +35,10 @@ export interface ApiOptions {
   maxBodyBytes?: number;
   /** Queries allowed to run at the same time; further ones get 429. */
   maxConcurrentQueries?: number;
+  /** When set, every endpoint except /v1/health requires a valid API key. */
+  auth?: Pick<KeyStore, 'verify'>;
+  /** When set, every request except /v1/health is recorded. */
+  audit?: AuditLog;
 }
 
 export const DEFAULT_MAX_BODY_BYTES = 1024 * 1024;
@@ -135,6 +143,27 @@ export function createApiServer(options: ApiOptions): http.Server {
 
   const health = async (database: Database) => ({ name: database.name, engine: database.engine, ...(await database.adapter.health()) });
 
+  const unauthorized = (message: string) => new HttpError(401, 'unauthorized', message, { 'WWW-Authenticate': 'Bearer realm="devmoter-base"' });
+
+  /** Checks the API key of a request and notes whose it is. */
+  async function authenticate(request: http.IncomingMessage, log: Record<string, unknown>): Promise<void> {
+    if (!options.auth) return;
+    const header = request.headers.authorization;
+    const match = header === undefined ? null : /^Bearer +(\S+)$/i.exec(header);
+    if (!match?.[1]) {
+      log.authFailure = header === undefined ? 'missing' : 'malformed';
+      throw unauthorized('an API key is required: send "Authorization: Bearer <key>"');
+    }
+    const verified = await options.auth.verify(match[1]);
+    if (!verified.ok) {
+      log.authFailure = verified.reason;
+      if (verified.keyId !== undefined) log.keyId = verified.keyId;
+      // The same answer for every reason: a caller learns nothing about which keys exist.
+      throw unauthorized('the API key is not valid');
+    }
+    log.keyId = verified.key.id;
+  }
+
   async function route(request: http.IncomingMessage, response: http.ServerResponse, log: Record<string, unknown>, reply: { status: number }): Promise<unknown> {
     if (!isLocalHostHeader(request.headers.host)) throw new HttpError(403, 'forbidden_host', 'the Host header must name this machine (localhost, 127.0.0.1 or [::1])');
     const site = request.headers['sec-fetch-site'];
@@ -155,6 +184,7 @@ export function createApiServer(options: ApiOptions): http.Server {
       allow('GET');
       return { status: 'ok' };
     }
+    await authenticate(request, log);
     if (pathname === '/v1/health/engines') {
       log.route = 'health.engines';
       allow('GET');
@@ -190,6 +220,7 @@ export function createApiServer(options: ApiOptions): http.Server {
       const { adapter } = database;
       const body = await readJsonBody(request, maxBodyBytes);
       const input = operation === 'query' ? parseQueryBody(body) : parseCommandBody(body);
+      log.operation = 'sql' in input ? sqlOperation(input.sql) : commandOperation(input.command);
       if ((adapter.kind === 'sql') !== (operation === 'query')) {
         const instead = adapter.kind === 'sql' ? 'query' : 'command';
         throw new HttpError(400, 'unsupported_operation', `${database.engine} databases do not support /${operation}; use /v1/databases/${database.name}/${instead}`);
@@ -222,14 +253,24 @@ export function createApiServer(options: ApiOptions): http.Server {
     throw new HttpError(404, 'not_found', 'no such endpoint');
   }
 
+  /** The audit record of a finished request: who, what kind of operation, on which database, and the outcome. */
+  function auditEvent(log: Record<string, unknown>): AuditEvent {
+    const { authFailure, ...fields } = log;
+    return { event: authFailure === undefined ? 'api.request' : 'auth.failed', ...fields, ...(authFailure === undefined ? {} : { reason: authFailure as string }) };
+  }
+
   return http.createServer((request, response) => {
     const requestId = randomUUID();
     const started = performance.now();
     const log: Record<string, unknown> = { requestId, method: request.method };
 
-    const send = (status: number, body: unknown, headers: Record<string, string> = {}) => {
+    const send = async (status: number, body: unknown, headers: Record<string, string> = {}) => {
       log.status = status;
       log.durationMs = Math.round(performance.now() - started);
+      if (options.audit && log.route !== 'health') {
+        // Written before the response, so a caller that has its answer can rely on the record existing.
+        await options.audit.record(auditEvent(log)).catch((error: unknown) => options.logger.error('the audit record could not be written', { requestId, err: error }));
+      }
       if (response.destroyed) return;
       const payload = JSON.stringify(body);
       response.writeHead(status, {
@@ -250,15 +291,14 @@ export function createApiServer(options: ApiOptions): http.Server {
         const fail = (status: number, code: string, message: string, headers?: Record<string, string>) => {
           log.error = code;
           // A request that failed before its body was read must not be kept alive with the unread body in the stream.
-          send(status, { error: { code, message, requestId } }, { ...headers, ...(request.complete ? {} : { Connection: 'close' }) });
+          return send(status, { error: { code, message, requestId } }, { ...headers, ...(request.complete ? {} : { Connection: 'close' }) });
         };
-        if (error instanceof HttpError) fail(error.status, error.code, error.message, error.headers);
-        else if (error instanceof EngineError) fail(ENGINE_ERROR_STATUS[error.code], error.code, error.message);
-        else {
-          options.logger.error('unhandled error in request', { requestId, err: error });
-          fail(500, 'internal_error', 'an internal error occurred');
-        }
+        if (error instanceof HttpError) return fail(error.status, error.code, error.message, error.headers);
+        if (error instanceof EngineError) return fail(ENGINE_ERROR_STATUS[error.code], error.code, error.message);
+        options.logger.error('unhandled error in request', { requestId, err: error });
+        return fail(500, 'internal_error', 'an internal error occurred');
       })
+      .catch((error: unknown) => options.logger.error('the response could not be sent', { requestId, err: error }))
       .finally(() => {
         // Never log SQL text, parameters, commands or results: they are user data.
         options.logger.info('request', log);
