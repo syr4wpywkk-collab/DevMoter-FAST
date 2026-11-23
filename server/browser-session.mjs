@@ -554,6 +554,11 @@ export function createBrowserSessionManager({
       const screencast = session.screencast;
       if (!screencast.running || !Number.isSafeInteger(params?.sessionId)) return;
       const data = Buffer.from(String(params.data || ""), "base64");
+      // A newer frame supersedes the held one; ack it so Chromium's
+      // in-flight budget is not lost.
+      if (screencast.pendingAck !== null && session.cdp && !session.cdp.closed) {
+        void session.cdp.send("Page.screencastFrameAck", { sessionId: screencast.pendingAck }, { sessionId: session.cdpSessionId }).catch(() => {});
+      }
       screencast.pendingAck = params.sessionId;
       if (!data.length || data.length > limits.maxFrameBytes) {
         ackChromiumWhenDrained(session);
