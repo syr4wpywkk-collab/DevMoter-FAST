@@ -47,6 +47,15 @@ export async function handleBrowserApiRequest(req, res, url, manager, { authenti
       return true;
     }
     const log = entry => audit?.record({ actor: "user", deviceId: device.id, ...entry });
+    // A device revoked while its request body was arriving gets nothing done.
+    const readPayload = async () => {
+      const payload = await readJson(req);
+      const again = await authenticateDevice(req);
+      if (again?.id !== device.id) {
+        throw Object.assign(new Error("Trusted device required"), { statusCode: 403, code: "device_revoked" });
+      }
+      return payload;
+    };
     const tokenMatch = path.match(AGENT_TOKEN_PATH);
     if (tokenMatch) {
       if (!agentTokens) {
@@ -59,7 +68,7 @@ export async function handleBrowserApiRequest(req, res, url, manager, { authenti
         return true;
       }
       if (!tokenId && req.method === "POST") {
-        const payload = await readJson(req);
+        const payload = await readPayload();
         const project = typeof resolveProject === "function"
           ? await Promise.resolve(resolveProject(String(payload.projectId || ""))).catch(() => null)
           : null;
@@ -96,7 +105,7 @@ export async function handleBrowserApiRequest(req, res, url, manager, { authenti
     }
 
     if (req.method === "POST" && path === "/api/browser/sessions") {
-      const payload = await readJson(req);
+      const payload = await readPayload();
       const result = await manager.start(payload.projectId, { viewport: payload.viewport, deviceId: device.id });
       log({ event: "start", projectId: result.session?.projectId, sessionId: result.session?.id, ok: true });
       sendJson(res, 201, result);
@@ -121,7 +130,7 @@ export async function handleBrowserApiRequest(req, res, url, manager, { authenti
       return true;
     }
     if (sub === "driver" && req.method === "POST") {
-      const payload = await readJson(req);
+      const payload = await readPayload();
       if (payload.op === "acquire") {
         const driver = manager.acquireDriver(sessionId, { holder: "user", deviceId: device.id });
         log({ event: "driver_acquire", sessionId, ok: true, driverGeneration: driver.generation });
@@ -136,7 +145,7 @@ export async function handleBrowserApiRequest(req, res, url, manager, { authenti
       return true;
     }
     if (sub === "actions" && req.method === "POST") {
-      const payload = await readJson(req);
+      const payload = await readPayload();
       const action = payload.action && typeof payload.action === "object" ? payload.action : {};
       let result;
       try {

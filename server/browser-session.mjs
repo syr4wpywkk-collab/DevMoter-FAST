@@ -1,11 +1,44 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
-import { mkdir, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { connect as connectTcp, createServer as createNetServer } from "node:net";
+import { fileURLToPath } from "node:url";
 import { delimiter, dirname, isAbsolute, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { buildBubblewrapCommand, sandboxStatus } from "./advanced-features.mjs";
 import { browserAutomationStatus, browserProcessEnv, detectBrowserBinary, loopbackHost } from "./browser-tool.mjs";
 import { createCdpPipeConnection } from "./browser-cdp.mjs";
+import { readListenerIdentity } from "./listener-identity.mjs";
+
+const RELAY_SCRIPT = fileURLToPath(new URL("./browser-netns-relay.mjs", import.meta.url));
+const MAX_UNIX_SOCKET_PATH = 100;
+
+// Host end of the sandbox's network: each connection Chromium opens to the
+// preview address inside its empty network namespace arrives here, and is
+// forwarded only while the session is live and the same process still owns
+// the preview port.
+async function startPreviewRelay({ socketPath, host, port, allow }) {
+  const targetHost = String(host).replace(/^\[|\]$/g, "");
+  const server = createNetServer(client => {
+    client.on("error", () => {});
+    if (!allow()) {
+      client.destroy();
+      return;
+    }
+    const upstream = connectTcp({ host: targetHost, port });
+    upstream.on("error", () => client.destroy());
+    client.on("error", () => upstream.destroy());
+    client.pipe(upstream).pipe(client);
+  });
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(socketPath, resolve);
+  });
+  await chmod(socketPath, 0o600).catch(() => {});
+  server.unref();
+  return server;
+}
 
 const DEFAULT_LIMITS = Object.freeze({
   maxSessions: 2,
@@ -17,6 +50,7 @@ const DEFAULT_LIMITS = Object.freeze({
   maxDomBytes: 512 * 1024,
   maxScreenshotBytes: 8 * 1024 * 1024,
   maxViewers: 2,
+  maxQueuedActions: 8,
   maxFrameBytes: 2 * 1024 * 1024,
   frameAckTimeoutMs: 10 * 1000,
   screencastQuality: 60
@@ -252,6 +286,7 @@ export function createBrowserSessionManager({
   spawnImpl = spawn,
   spawnSyncImpl = spawnSync,
   now = Date.now,
+  readPreviewListener = readListenerIdentity,
   limits: limitOverrides = {}
 }) {
   if (typeof resolveProject !== "function" || typeof getPreview !== "function") {
@@ -400,8 +435,8 @@ export function createBrowserSessionManager({
     else ackChromiumWhenDrained(session);
   }
 
-  function attachViewer(sessionId, sink, { deviceId } = {}) {
-    const session = requireSession(sessionId, deviceId);
+  function attachViewer(sessionId, sink, { deviceId, agentId } = {}) {
+    const session = requireSession(sessionId, { deviceId, agentId });
     if (session.viewers.size >= limits.maxViewers) {
       throw httpError("Too many viewers for this browser session", 429, "viewer_limit");
     }
@@ -503,12 +538,22 @@ export function createBrowserSessionManager({
     return null;
   }
 
-  // deviceId undefined means a host-side caller (e.g. the PR4 agent bridge);
-  // any trusted-device caller must be the device that started the session.
-  function requireSession(sessionId, deviceId) {
+  // A session belongs to exactly one principal: the trusted device that
+  // started it, or, for an Agent Run with no device, that agent. A caller
+  // naming neither is a host-side caller. An owner is never shared: a
+  // session without a device owner is not visible to every device.
+  function ownsSession(session, caller) {
+    if (!caller || (caller.deviceId === undefined && caller.agentId === undefined)) return true;
+    const deviceId = caller.deviceId ?? null;
+    const agentId = deviceId ? null : caller.agentId ?? null;
+    if (!deviceId && !agentId) return false;
+    return session.ownerDeviceId === deviceId && session.ownerAgentId === agentId;
+  }
+
+  function requireSession(sessionId, caller) {
     const session = findSession(sessionId);
     if (!session || !session.active) throw httpError("Browser session not found", 404, "session_not_found");
-    if (deviceId !== undefined && session.ownerDeviceId && deviceId !== session.ownerDeviceId) {
+    if (!ownsSession(session, caller)) {
       throw httpError("This browser session belongs to another device", 403, "session_forbidden");
     }
     return session;
@@ -520,7 +565,8 @@ export function createBrowserSessionManager({
       !preview || !loopbackHost(preview.host) ||
       previewHostForUrl(String(preview.host)) !== session.policy.host ||
       Number(preview.port) !== session.policy.port ||
-      (session.previewToken && preview.token !== session.previewToken)
+      (session.previewToken && preview.token !== session.previewToken) ||
+      readPreviewListener(preview.host, preview.port) !== session.previewListener
     ) {
       void stopSession(session, "preview_changed");
       throw httpError("The approved live preview changed; start a new browser session", 409, "preview_changed");
@@ -642,10 +688,35 @@ export function createBrowserSessionManager({
     cdp.onClose(reason => { void stopSession(session, "cdp_" + reason); });
   }
 
+  // Checked before a start publishes its session: the owner must still be
+  // authorized and the preview must be the one the start was for.
+  function assertStartCurrent(ticket, preview) {
+    if (ticket.revoked) {
+      throw ticket.agentId
+        ? httpError("Agent browser access revoked", 403, "agent_revoked")
+        : httpError("Device authorization revoked", 403, "device_revoked");
+    }
+    const current = getPreview(ticket.projectId);
+    if (
+      ticket.cancelled || !current || current.token !== preview.token ||
+      current.host !== preview.host || Number(current.port) !== Number(preview.port) ||
+      readPreviewListener(current.host, current.port) !== ticket.previewListener
+    ) {
+      throw httpError("The approved live preview changed; start a new browser session", 409, "preview_changed");
+    }
+  }
+
   // A device revoked while its start is in flight is caught after the
   // browser is registered, so the ticket exists from the first await.
   async function start(projectId, options = {}) {
-    const startTicket = { deviceId: options.deviceId ?? null, revoked: false };
+    const deviceId = options.deviceId ?? null;
+    const startTicket = {
+      projectId: String(projectId || ""),
+      deviceId,
+      agentId: deviceId ? null : options.agentId ?? null,
+      revoked: false,
+      cancelled: null
+    };
     pendingStarts.add(startTicket);
     try {
       return await startSession(projectId, options, startTicket);
@@ -655,14 +726,25 @@ export function createBrowserSessionManager({
   }
 
   async function startSession(projectId, { viewport, deviceId = null, driver: initialDriver = "user" } = {}, startTicket) {
+    const agentId = startTicket.agentId;
+    if (!deviceId && !agentId) throw httpError("A browser session needs a trusted device or an agent owner", 403, "owner_required");
     const status = browserAutomationStatus({ env, spawnSyncImpl });
     if (!status.enabled) throw httpError("Browser automation is disabled; set DEVMOTER_BROWSER_AUTOMATION=1 to opt in", 409, "browser_disabled");
     if (!status.available) throw httpError("Browser automation is enabled but no supported Chromium/Chrome binary is available", 503, "browser_unavailable");
     const project = await resolveProject(String(projectId || ""));
+    startTicket.projectId = project.id;
     const { preview, policy } = contextFor(project);
+    // The session is bound to the process listening on the preview port now,
+    // which must be the one the preview was registered for.
+    const previewListener = readPreviewListener(preview.host, preview.port);
+    if (!previewListener || (preview.listener && preview.listener !== previewListener)) {
+      throw httpError("The approved live preview changed; start a new browser session", 409, "preview_changed");
+    }
+    startTicket.previewListener = previewListener;
+    assertStartCurrent(startTicket, preview);
     if (starting.has(project.id)) throw httpError("A browser session is already starting for this project", 409, "session_starting");
     const existing = sessions.get(project.id);
-    if (existing && existing.ownerDeviceId && existing.ownerDeviceId !== deviceId) {
+    if (existing && !ownsSession(existing, { deviceId, agentId })) {
       throw httpError("Another device is using the browser for this project", 409, "session_owned_by_other_device");
     }
     // Starts still in flight count against the limit.
@@ -677,27 +759,64 @@ export function createBrowserSessionManager({
       await mkdir(profilesDir, { recursive: true, mode: 0o700 });
       const profileDir = join(profilesDir, "remote-" + randomUUID());
       await mkdir(profileDir, { recursive: true, mode: 0o700 });
-      const grants = [{ path: profileDir, mode: "read-write" }];
-      const extra = binaryGrant(detected.binary, env);
-      if (extra) grants.push(extra);
+      // Unix socket paths are short (108 bytes), so the relay lives in its own
+      // 0700 directory under the host temp dir rather than in the profile.
+      const relayDir = await mkdtemp(join(tmpdir().length < 60 ? tmpdir() : "/tmp", "devmoter-relay-"));
+      await chmod(relayDir, 0o700);
+      const relaySocket = join(relayDir, "s");
+      const cleanupStartFiles = () => Promise.all([
+        rm(profileDir, { recursive: true, force: true }).catch(() => {}),
+        rm(relayDir, { recursive: true, force: true }).catch(() => {})
+      ]);
+      const grants = [
+        { path: profileDir, mode: "read-write" },
+        { path: relayDir, mode: "read-write" },
+        { path: RELAY_SCRIPT, mode: "read-only" }
+      ];
+      for (const binary of [detected.binary, process.execPath]) {
+        const extra = binaryGrant(binary, env);
+        if (extra && !grants.some(grant => grant.path === extra.path)) grants.push(extra);
+      }
       let wrapped;
       try {
+        if (relaySocket.length > MAX_UNIX_SOCKET_PATH) throw new Error("Browser profile path is too long for the sandbox network relay");
+        // No project mount, its own PID namespace and an empty network
+        // namespace: the relay is Chromium's only way out, to the preview.
         wrapped = buildBubblewrapCommand({
           projectPath: project.path,
+          projectMount: "none",
+          chdir: profileDir,
           grants,
-          command: detected.binary,
-          args: remoteBrowserArgs(profileDir, policy),
-          allowNetwork: true,
+          command: process.execPath,
+          args: [
+            RELAY_SCRIPT, "--host", policy.host, "--port", String(policy.port), "--socket", relaySocket,
+            "--", detected.binary, ...remoteBrowserArgs(profileDir, policy)
+          ],
+          allowNetwork: false,
+          unsharePid: true,
           failClosed: true,
           env,
           spawn: spawnSyncImpl
         });
       } catch (error) {
-        await rm(profileDir, { recursive: true, force: true }).catch(() => {});
+        await cleanupStartFiles();
         throw Object.assign(error, { statusCode: 409, code: "sandbox_required" });
       }
+      const owner = { session: null };
+      let relay;
+      try {
+        relay = await startPreviewRelay({
+          socketPath: relaySocket,
+          host: policy.host,
+          port: policy.port,
+          allow: () => Boolean(owner.session?.active) && readPreviewListener(preview.host, preview.port) === previewListener
+        });
+      } catch (error) {
+        await cleanupStartFiles();
+        throw httpError("Chromium could not be prepared: " + String(error?.message || error).slice(0, 300), 502, "browser_start_failed");
+      }
       const child = spawnImpl(wrapped.command, wrapped.args, {
-        cwd: project.path,
+        cwd: profileDir,
         env: browserProcessEnv(env, profileDir),
         stdio: ["ignore", "ignore", "ignore", "pipe", "pipe"],
         windowsHide: true
@@ -707,6 +826,7 @@ export function createBrowserSessionManager({
         id: randomUUID(),
         projectId: project.id,
         ownerDeviceId: deviceId,
+        ownerAgentId: agentId,
         active: true,
         stopping: null,
         startedAt: current,
@@ -722,6 +842,8 @@ export function createBrowserSessionManager({
         blockedRequests: 0,
         policy,
         previewToken: preview.token || null,
+        previewListener,
+        relay,
         child,
         profileDir,
         cdp: null,
@@ -730,8 +852,11 @@ export function createBrowserSessionManager({
         listeners: new Set(),
         viewers: new Set(),
         screencast: { running: false, latest: null, seq: 0, pendingAcks: [], refreshTimer: null },
-        exited: null
+        exited: null,
+        actionChain: Promise.resolve(),
+        queuedActions: 0
       };
+      owner.session = session;
       sessions.set(project.id, session);
       ensureSweep();
       session.exited = typeof child.once === "function"
@@ -742,6 +867,12 @@ export function createBrowserSessionManager({
         : null;
       child.once?.("error", () => { void stopSession(session, "process_error"); });
       child.once?.("exit", () => { void stopSession(session, "process_exit"); });
+      const closeRelay = () => {
+        relay.close();
+        void rm(relayDir, { recursive: true, force: true }).catch(() => {});
+      };
+      if (session.exited) void session.exited.then(closeRelay);
+      else child.once?.("close", closeRelay);
       try {
         const writable = child.stdio?.[3];
         const readable = child.stdio?.[4];
@@ -750,10 +881,10 @@ export function createBrowserSessionManager({
         await configureBrowser(session);
         const first = await session.cdp.send("Page.navigate", { url: policy.origin + "/" }, { sessionId: session.cdpSessionId });
         if (first?.errorText) throw new Error("Preview did not load: " + first.errorText);
-        if (startTicket.revoked) throw httpError("Device authorization revoked", 403, "device_revoked");
+        assertStartCurrent(startTicket, preview);
       } catch (error) {
-        if (error?.code === "device_revoked") {
-          await stopSession(session, "device_revoked");
+        if (["device_revoked", "preview_changed", "agent_revoked"].includes(error?.code)) {
+          await stopSession(session, error.code);
           throw error;
         }
         await stopSession(session, "start_failed");
@@ -765,21 +896,21 @@ export function createBrowserSessionManager({
     }
   }
 
-  function acquireDriver(sessionId, { holder = "user", deviceId } = {}) {
-    const session = requireSession(sessionId, deviceId);
+  function acquireDriver(sessionId, { holder = "user", deviceId, agentId } = {}) {
+    const session = requireSession(sessionId, { deviceId, agentId });
     if (!DRIVER_HOLDERS.includes(holder)) throw httpError("Unknown driver holder", 400, "invalid_driver");
     // The user always wins: acquiring as user is an immediate takeover.
     if (holder === "agent" && session.driver.holder === "user") {
       throw httpError("The user is driving this browser session", 409, "driver_busy");
     }
-    session.driver = { holder, generation: session.driver.generation + 1, deviceId: holder === "user" ? deviceId ?? session.ownerDeviceId : null };
+    session.driver = { holder, generation: session.driver.generation + 1, deviceId: holder === "user" ? session.ownerDeviceId : null };
     session.lastActivityAt = now();
     notify(session, { t: "driver", ...publicDriver(session) });
     return publicDriver(session);
   }
 
-  function releaseDriver(sessionId, { holder = "user", generation, deviceId } = {}) {
-    const session = requireSession(sessionId, deviceId);
+  function releaseDriver(sessionId, { holder = "user", generation, deviceId, agentId } = {}) {
+    const session = requireSession(sessionId, { deviceId, agentId });
     if (session.driver.holder !== holder || Number(generation) !== session.driver.generation) {
       throw httpError("Driver generation is stale", 409, "driver_stale");
     }
@@ -832,8 +963,13 @@ export function createBrowserSessionManager({
     return { ok: true };
   }
 
-  async function runAction(session, action) {
-    const send = (method, params) => session.cdp.send(method, params, { sessionId: session.cdpSessionId });
+  async function runAction(session, action, guard = () => {}) {
+    // Re-checked before every CDP command, so a takeover, stop or preview
+    // change between two input events stops the rest of the action.
+    const send = (method, params) => {
+      guard();
+      return session.cdp.send(method, params, { sessionId: session.cdpSessionId });
+    };
     const { width, height } = session.viewport;
     switch (action.type) {
       case "navigate": {
@@ -913,13 +1049,32 @@ export function createBrowserSessionManager({
    * Runs one fixed-schema action. Mutating actions require the caller to hold
    * the current driver generation; reads only require an active session.
    */
-  async function act(sessionId, rawAction, { holder = "user", generation, deviceId } = {}) {
-    const session = requireSession(sessionId, deviceId);
+  async function act(sessionId, rawAction, { holder = "user", generation, deviceId, agentId } = {}) {
+    const session = requireSession(sessionId, { deviceId, agentId });
     const action = normalizeBrowserAction(rawAction, limits);
     const mutating = BROWSER_ACT_ACTIONS.includes(action.type);
-    if (mutating) assertDriver(session, { holder, generation, deviceId });
+    const guard = () => {
+      if (!session.active) throw httpError("Browser session not found", 404, "session_not_found");
+      if (mutating) assertDriver(session, { holder, generation, deviceId });
+    };
+    guard();
     assertPreviewUnchanged(session);
-    const result = await runAction(session, action);
+    if (session.queuedActions >= limits.maxQueuedActions) throw httpError("Too many browser actions are queued", 429, "browser_busy");
+    // One action at a time per session: a queued action re-checks its driver
+    // generation when its turn comes, so a takeover cancels everything queued.
+    session.queuedActions += 1;
+    const run = session.actionChain.then(() => {
+      guard();
+      assertPreviewUnchanged(session);
+      return runAction(session, action, guard);
+    });
+    session.actionChain = run.then(() => {}, () => {});
+    let result;
+    try {
+      result = await run;
+    } finally {
+      session.queuedActions -= 1;
+    }
     if (mutating) session.lastActivityAt = now();
     // Viewers show where an agent clicked or scrolled.
     if (holder === "agent" && Number.isFinite(result?.x) && Number.isFinite(result?.y)) {
@@ -928,9 +1083,9 @@ export function createBrowserSessionManager({
     return { ...result, action: action.type, session: publicSession(session) };
   }
 
-  function status(projectId, { deviceId, capability = true } = {}) {
+  function status(projectId, { deviceId, agentId, capability = true } = {}) {
     const session = sessions.get(String(projectId || "")) || null;
-    const visible = session && (deviceId === undefined || !session.ownerDeviceId || session.ownerDeviceId === deviceId);
+    const visible = Boolean(session && ownsSession(session, { deviceId, agentId }));
     return {
       capability: capability ? browserAutomationStatus({ env, spawnSyncImpl }) : undefined,
       session: visible ? publicSession(session) : null,
@@ -939,17 +1094,20 @@ export function createBrowserSessionManager({
     };
   }
 
-  function get(sessionId, { deviceId } = {}) {
-    return publicSession(requireSession(sessionId, deviceId));
+  function get(sessionId, { deviceId, agentId } = {}) {
+    return publicSession(requireSession(sessionId, { deviceId, agentId }));
   }
 
-  async function stop(sessionId, reason = "stopped", { deviceId } = {}) {
-    const session = requireSession(sessionId, deviceId);
+  async function stop(sessionId, reason = "stopped", { deviceId, agentId } = {}) {
+    const session = requireSession(sessionId, { deviceId, agentId });
     return { ok: true, session: await stopSession(session, reason) };
   }
 
   async function stopProject(projectId, reason = "preview_changed") {
-    const session = sessions.get(String(projectId || ""));
+    const id = String(projectId || "");
+    // Starts still in flight for the old preview never publish a session.
+    for (const ticket of pendingStarts) if (ticket.projectId === id) ticket.cancelled = reason;
+    const session = sessions.get(id);
     if (session) await stopSession(session, reason);
     return { ok: true };
   }
@@ -962,17 +1120,33 @@ export function createBrowserSessionManager({
     return { ok: true, stopped: owned.length };
   }
 
+  // A revoked agent token stops driving at once: sessions an Agent Run owns
+  // are stopped, and an agent holding a device's session loses the driver.
+  async function revokeAgent({ projectId, agentId = null, deviceId = null } = {}, reason = "agent_revoked") {
+    const project = String(projectId || "");
+    if (agentId) for (const ticket of pendingStarts) if (ticket.agentId === agentId) ticket.revoked = true;
+    const owned = agentId ? [...sessions.values()].filter(session => session.ownerAgentId === agentId) : [];
+    for (const session of sessions.values()) {
+      if (owned.includes(session) || session.projectId !== project || session.driver.holder !== "agent") continue;
+      if (deviceId && session.ownerDeviceId !== deviceId) continue;
+      session.driver = { holder: null, generation: session.driver.generation + 1, deviceId: null };
+      notify(session, { t: "driver", ...publicDriver(session) });
+    }
+    await Promise.all(owned.map(session => stopSession(session, reason)));
+    return { ok: true, stopped: owned.length };
+  }
+
   async function stopAll(reason = "shutdown") {
     await Promise.all([...sessions.values()].map(session => stopSession(session, reason)));
   }
 
-  function subscribe(sessionId, listener, { deviceId } = {}) {
-    const session = requireSession(sessionId, deviceId);
+  function subscribe(sessionId, listener, { deviceId, agentId } = {}) {
+    const session = requireSession(sessionId, { deviceId, agentId });
     session.listeners.add(listener);
     return () => session.listeners.delete(listener);
   }
 
-  return { start, stop, stopProject, stopDevice, stopAll, get, status, act, acquireDriver, releaseDriver, subscribe, attachViewer, sweep };
+  return { start, stop, stopProject, stopDevice, revokeAgent, stopAll, get, status, act, acquireDriver, releaseDriver, subscribe, attachViewer, sweep };
 }
 
 export const REMOTE_BROWSER_HOST_FEATURES = Object.freeze([

@@ -45,6 +45,7 @@ import {
   browserMcpClientConfig,
   createBrowserAgentLauncher,
   createBrowserAgentTokens,
+  bindBrowserAgentRevocation,
   createBrowserAudit,
   handleBrowserAgentRequest
 } from "./server/browser-agent.mjs";
@@ -258,7 +259,8 @@ const advancedApi = createAdvancedApi({
   homeDir: HOME_DIR,
   configDir: PROJECT_CONFIG_DIR,
   getProjectById
-});
+});bindBrowserAgentRevocation(browserAgentTokens, () => advancedApi.remoteBrowser);
+
 const taskWorkflow = createTaskWorkflow({ homeDir: HOME_DIR, getProjectById });
 const devWorkflows = createDevWorkflowService({
   homeDir: HOME_DIR,

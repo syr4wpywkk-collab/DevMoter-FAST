@@ -92,10 +92,17 @@ export function bindBrowserViewer(webSocket, manager, grant, { now = Date.now, a
     frame: frame => send(encodeFrame(frame)),
     close: (code, reason) => webSocket.close(code, String(reason || "").slice(0, 120))
   };
+  // Listeners go on before attaching: a socket error after a failed attach
+  // must not become an unhandled 'error' event.
+  webSocket.on("close", () => handle?.detach());
+  webSocket.on("error", () => {
+    handle?.detach();
+    try { webSocket.terminate?.(); } catch {}
+  });
   try {
     handle = manager.attachViewer(grant.sessionId, sink, { deviceId: grant.deviceId });
   } catch (error) {
-    webSocket.close(4003, errorCode(error));
+    try { webSocket.close(4003, errorCode(error)); } catch {}
     return null;
   }
   webSocket.on("message", (data, isBinary) => {
@@ -151,8 +158,6 @@ export function bindBrowserViewer(webSocket, manager, grant, { now = Date.now, a
       webSocket.close(4400, "bad_message");
     }
   });
-  webSocket.on("close", () => handle.detach());
-  webSocket.on("error", () => handle.detach());
   return handle;
 }
 

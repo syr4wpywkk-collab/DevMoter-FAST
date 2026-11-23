@@ -74,6 +74,7 @@ async function setup(t, overrides = {}) {
     ["p2", { projectId: "p2", host: "127.0.0.1", port: 3001, token: "tok2" }],
     ["p3", { projectId: "p3", host: "127.0.0.1", port: 3002, token: "tok3" }]
   ]);
+  const listeners = new Map([[3000, "socket:1"], [3001, "socket:2"], [3002, "socket:3"]]);
   const spawns = [];
   let clock = 1_000_000;
   const removed = new Set();
@@ -84,6 +85,7 @@ async function setup(t, overrides = {}) {
       return { id, path: "/tmp/devmoter-project", name: id };
     },
     getPreview: id => previews.get(id) || null,
+    readPreviewListener: (host, port) => listeners.get(Number(port)) ?? null,
     env: { DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_SANDBOX: "required", PATH: "", OPENAI_API_KEY: "sk-secret", LC_ALL: "ja_JP.UTF-8" },
     spawnImpl: (command, args, options) => {
       const child = fakeChrome(overrides.chrome);
@@ -95,7 +97,7 @@ async function setup(t, overrides = {}) {
     limits: { sweepMs: 0, commandTimeoutMs: 500, ...overrides.limits }
   });
   t.after(() => manager.stopAll());
-  return { manager, spawns, previews, configDir, removed, advance: ms => { clock += ms; } };
+  return { manager, spawns, previews, listeners, configDir, removed, advance: ms => { clock += ms; } };
 }
 
 test("navigation policy only admits the approved preview origin", () => {
@@ -145,7 +147,7 @@ test("actions are validated against a fixed schema", () => {
 
 test("session start is opt-in, preview-scoped and sandbox fail-closed", async t => {
   const { manager } = await setup(t);
-  await assert.rejects(() => manager.start("missing"), error => error.code === "preview_required");
+  await assert.rejects(() => manager.start("missing", { deviceId: "d" }), error => error.code === "preview_required");
 
   const disabledDir = await mkdtemp(join(tmpdir(), "devmoter-remote-browser-off-"));
   t.after(() => rm(disabledDir, { recursive: true, force: true }));
@@ -153,31 +155,34 @@ test("session start is opt-in, preview-scoped and sandbox fail-closed", async t 
     configDir: disabledDir,
     resolveProject: async id => ({ id, path: "/tmp/p" }),
     getPreview: () => ({ host: "127.0.0.1", port: 3000 }),
+    readPreviewListener: () => "socket:1",
     env: {},
     spawnSyncImpl: probe
   });
-  await assert.rejects(() => disabled.start("p1"), error => error.code === "browser_disabled");
+  await assert.rejects(() => disabled.start("p1", { deviceId: "d" }), error => error.code === "browser_disabled");
 
   const noBwrap = createBrowserSessionManager({
     configDir: disabledDir,
     resolveProject: async id => ({ id, path: "/tmp/p" }),
     getPreview: () => ({ host: "127.0.0.1", port: 3000 }),
+    readPreviewListener: () => "socket:1",
     env: { DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_SANDBOX: "required" },
     spawnImpl: () => { throw new Error("must not spawn"); },
     spawnSyncImpl: command => command === "chromium" ? { status: 0, stdout: "Chromium" } : { status: 127 }
   });
-  await assert.rejects(() => noBwrap.start("p1"), error => error.code === "sandbox_required");
+  await assert.rejects(() => noBwrap.start("p1", { deviceId: "d" }), error => error.code === "sandbox_required");
 
   for (const mode of ["off", "preferred"]) {
     const unsandboxed = createBrowserSessionManager({
       configDir: disabledDir,
       resolveProject: async id => ({ id, path: "/tmp/p" }),
       getPreview: () => ({ host: "127.0.0.1", port: 3000 }),
+      readPreviewListener: () => "socket:1",
       env: { DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_SANDBOX: mode },
       spawnImpl: () => { throw new Error("must not spawn"); },
       spawnSyncImpl: mode === "off" ? probe : command => command === "chromium" ? { status: 0, stdout: "Chromium" } : { status: 127 }
     });
-    await assert.rejects(() => unsandboxed.start("p1"), error => error.code === "sandbox_required", mode);
+    await assert.rejects(() => unsandboxed.start("p1", { deviceId: "d" }), error => error.code === "sandbox_required", mode);
   }
 });
 
@@ -211,7 +216,7 @@ test("session start configures CDP isolation and cleans its 0700 profile on stop
 
 test("CDP Fetch interception fails requests outside the preview and closes popups", async t => {
   const { manager, spawns } = await setup(t);
-  const { session } = await manager.start("p1");
+  const { session } = await manager.start("p1", { deviceId: "d" });
   const { child } = spawns[0];
   child.emitEvent("Fetch.requestPaused", { requestId: "r1", request: { url: "http://127.0.0.1:3000/app.js" } });
   child.emitEvent("Fetch.requestPaused", { requestId: "r2", request: { url: "file:///etc/passwd" } });
@@ -308,22 +313,23 @@ test("history navigation refuses entries outside the preview", async t => {
     configDir,
     resolveProject: async id => ({ id, path: "/tmp/p" }),
     getPreview: () => ({ host: "127.0.0.1", port: 3000 }),
+    readPreviewListener: () => "socket:1",
     env: { DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_SANDBOX: "required", PATH: "" },
     spawnImpl: () => fakeChrome({ history: { currentIndex: 1, entries: [{ id: 1, url: "http://127.0.0.1:4000/" }, { id: 2, url: "http://127.0.0.1:3000/" }] } }),
     spawnSyncImpl: probe,
     limits: { sweepMs: 0 }
   });
   t.after(() => manager.stopAll());
-  const { session } = await manager.start("p1");
+  const { session } = await manager.start("p1", { deviceId: "d" });
   await assert.rejects(() => manager.act(session.id, { type: "back" }, { generation: 1 }), error => error.code === "navigation_blocked");
 });
 
 test("session limits, preview changes, idle and lifetime stops", async t => {
   const { manager, previews, advance } = await setup(t, { limits: { idleMs: 1000, maxLifetimeMs: 5000 } });
-  const a = (await manager.start("p1")).session;
-  const b = (await manager.start("p2")).session;
-  await assert.rejects(() => manager.start("p3"), error => error.statusCode === 429);
-  const replaced = (await manager.start("p1")).session;
+  const a = (await manager.start("p1", { deviceId: "d" })).session;
+  const b = (await manager.start("p2", { deviceId: "d" })).session;
+  await assert.rejects(() => manager.start("p3", { deviceId: "d" }), error => error.statusCode === 429);
+  const replaced = (await manager.start("p1", { deviceId: "d" })).session;
   assert.notEqual(replaced.id, a.id);
   assert.throws(() => manager.get(a.id), error => error.statusCode === 404);
 
@@ -336,7 +342,7 @@ test("session limits, preview changes, idle and lifetime stops", async t => {
   await manager.sweep();
   assert.equal(manager.status("p1").session, null);
 
-  const c = (await manager.start("p3")).session;
+  const c = (await manager.start("p3", { deviceId: "d" })).session;
   for (let i = 0; i < 6; i++) {
     advance(900);
     await manager.act(c.id, { type: "reload" }, { generation: 1 });
