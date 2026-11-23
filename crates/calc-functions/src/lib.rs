@@ -4,7 +4,8 @@
 //! Layout mirrors `docs/FUNCTION_PLAN_V2.md` §1: one file per function
 //! inside its category directory (`aggregate/`, `logical/`, `math/`,
 //! `lookup/`, `text/`, `datetime/`, `statistics/`, `array/`,
-//! `functional/`); shared semantics live in [`common`]; [`registry`]
+//! `functional/`, `compatibility/`); shared semantics live in
+//! [`common`]; [`registry`]
 //! aggregates every category's `FUNCTIONS` list into the
 //! [`StandardRegistry`] installed on `CalcEngine`.
 //!
@@ -15,6 +16,7 @@
 pub mod aggregate;
 pub mod array;
 pub mod common;
+pub mod compatibility;
 pub mod datetime;
 pub mod engineering;
 pub mod financial;
