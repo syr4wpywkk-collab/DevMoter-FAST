@@ -1,0 +1,2813 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-24",
+  "referenceDefaults": {
+    "reference": {
+      "implementation": "Microsoft Excel",
+      "version": "general documented behavior (not empirically recorded)",
+      "dateSystem": "1900",
+      "locale": "en-US",
+      "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) are marked specOpen where unconfirmed."
+    }
+  },
+  "cases": [
+    {
+      "id": "I16-ARRAYTOTEXT-001",
+      "formula": "=ARRAYTOTEXT({1,2,3})",
+      "inputs": {},
+      "expected": {
+        "text": "1, 2, 3"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ARRAYTOTEXT-002",
+      "formula": "=ARRAYTOTEXT({\"a\",\"b\";1,2},1)",
+      "inputs": {},
+      "expected": {
+        "text": "{\"a\",\"b\";1,2}"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ARRAYTOTEXT-003",
+      "formula": "=ARRAYTOTEXT(\"hi\")",
+      "inputs": {},
+      "expected": {
+        "text": "hi"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ARRAYTOTEXT-004",
+      "formula": "=ARRAYTOTEXT({TRUE,\"x\"},1)",
+      "inputs": {},
+      "expected": {
+        "text": "{TRUE,\"x\"}"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ARRAYTOTEXT-005",
+      "formula": "=ARRAYTOTEXT({1,2},2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ARRAYTOTEXT-006",
+      "formula": "=ARRAYTOTEXT({1,2},-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ARRAYTOTEXT-007",
+      "formula": "=ARRAYTOTEXT({0.5,100})",
+      "inputs": {},
+      "expected": {
+        "text": "0.5, 100"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ARRAYTOTEXT-008",
+      "formula": "=ARRAYTOTEXT(A1:B2)",
+      "inputs": {
+        "A1": "a",
+        "B1": 2.5,
+        "A2": true
+      },
+      "expected": {
+        "text": "a, 2.5, TRUE, "
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "blank trailing element renders empty"
+    },
+    {
+      "id": "I16-ARRAYTOTEXT-009",
+      "formula": "=ARRAYTOTEXT(A1:B2,1)",
+      "inputs": {
+        "A1": 1,
+        "B1": "x",
+        "A2": 3
+      },
+      "expected": {
+        "text": "{1,\"x\";3,}"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ARRAYTOTEXT-010",
+      "formula": "=ARRAYTOTEXT(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ARRAYTOTEXT-011",
+      "formula": "=ARRAYTOTEXT(\"hi\",1)",
+      "inputs": {},
+      "expected": {
+        "text": "hi"
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "strict scalar: braces or not is SPEC-OPEN"
+    },
+    {
+      "id": "I16-ASC-001",
+      "formula": "=ASC(\"ＡＢＣ\")",
+      "inputs": {},
+      "expected": {
+        "text": "ABC"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ASC-002",
+      "formula": "=ASC(\"１２３\")",
+      "inputs": {},
+      "expected": {
+        "text": "123"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ASC-003",
+      "formula": "=ASC(\"　\")",
+      "inputs": {},
+      "expected": {
+        "text": " "
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ASC-004",
+      "formula": "=ASC(\"カタカナ\")",
+      "inputs": {},
+      "expected": {
+        "text": "ｶﾀｶﾅ"
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "half-width katakana output per spec doc; unconfirmed vs reference"
+    },
+    {
+      "id": "I16-ASC-005",
+      "formula": "=ASC(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "text": "abc"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ASC-006",
+      "formula": "=ASC(\"ガ\")",
+      "inputs": {},
+      "expected": {
+        "text": "ｶﾞ"
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "dakuten decomposition: single char vs pair is SPEC-OPEN"
+    },
+    {
+      "id": "I16-ASC-007",
+      "formula": "=ASC(\"東京都\")",
+      "inputs": {},
+      "expected": {
+        "text": "東京都"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ASC-008",
+      "formula": "=ASC(\"（ｔｅｓｔ）！\")",
+      "inputs": {},
+      "expected": {
+        "text": "(test)!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ASC-009",
+      "formula": "=ASC(12)",
+      "inputs": {},
+      "expected": {
+        "text": "12"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ASC-010",
+      "formula": "=ASC(TRUE)",
+      "inputs": {},
+      "expected": {
+        "text": "TRUE"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-ASC-011",
+      "formula": "=ASC(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-BAHTTEXT-001",
+      "formula": "=BAHTTEXT(1234)",
+      "inputs": {},
+      "expected": {
+        "text": "หนึ่งพันสองร้อยสามสิบสี่บาทถ้วน"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-BAHTTEXT-002",
+      "formula": "=BAHTTEXT(0)",
+      "inputs": {},
+      "expected": {
+        "text": "ศูนย์บาทถ้วน"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-BAHTTEXT-003",
+      "formula": "=BAHTTEXT(0.5)",
+      "inputs": {},
+      "expected": {
+        "text": "ห้าสิบสตางค์"
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "zero-baht satang phrasing is SPEC-OPEN"
+    },
+    {
+      "id": "I16-BAHTTEXT-004",
+      "formula": "=BAHTTEXT(-1)",
+      "inputs": {},
+      "expected": {
+        "text": "ลบหนึ่งบาทถ้วน"
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "negative handling is SPEC-OPEN"
+    },
+    {
+      "id": "I16-BAHTTEXT-005",
+      "formula": "=BAHTTEXT(11)",
+      "inputs": {},
+      "expected": {
+        "text": "สิบเอ็ดบาทถ้วน"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-BAHTTEXT-006",
+      "formula": "=BAHTTEXT(21)",
+      "inputs": {},
+      "expected": {
+        "text": "ยี่สิบเอ็ดบาทถ้วน"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-BAHTTEXT-007",
+      "formula": "=BAHTTEXT(1.25)",
+      "inputs": {},
+      "expected": {
+        "text": "หนึ่งบาทยี่สิบห้าสตางค์"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-BAHTTEXT-008",
+      "formula": "=BAHTTEXT(1000000)",
+      "inputs": {},
+      "expected": {
+        "text": "หนึ่งล้านบาทถ้วน"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-BAHTTEXT-009",
+      "formula": "=BAHTTEXT(\"5\")",
+      "inputs": {},
+      "expected": {
+        "text": "ห้าบาทถ้วน"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-BAHTTEXT-010",
+      "formula": "=BAHTTEXT(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-BAHTTEXT-011",
+      "formula": "=BAHTTEXT(1.999)",
+      "inputs": {},
+      "expected": {
+        "text": "สองบาทถ้วน"
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "satang rounding carries into baht; rounding rule SPEC-OPEN"
+    },
+    {
+      "id": "I16-CHAR-001",
+      "formula": "=CHAR(65)",
+      "inputs": {},
+      "expected": {
+        "text": "A"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CHAR-002",
+      "formula": "=CHAR(10)",
+      "inputs": {},
+      "expected": {
+        "text": "\n"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CHAR-003",
+      "formula": "=CHAR(0)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CHAR-004",
+      "formula": "=CHAR(256)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CHAR-005",
+      "formula": "=CHAR(-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CHAR-006",
+      "formula": "=CHAR(233)",
+      "inputs": {},
+      "expected": {
+        "text": "é"
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "fixed CP1252 mapping; differs under DBCS code pages (SPEC-OPEN)"
+    },
+    {
+      "id": "I16-CHAR-007",
+      "formula": "=CHAR(128)",
+      "inputs": {},
+      "expected": {
+        "text": "€"
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "fixed CP1252 mapping (SPEC-OPEN)"
+    },
+    {
+      "id": "I16-CHAR-008",
+      "formula": "=CHAR(65.9)",
+      "inputs": {},
+      "expected": {
+        "text": "A"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CHAR-009",
+      "formula": "=CHAR(\"66\")",
+      "inputs": {},
+      "expected": {
+        "text": "B"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CHAR-010",
+      "formula": "=CHAR(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CHAR-011",
+      "formula": "=CHAR(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CLEAN-001",
+      "formula": "=CLEAN(CHAR(9)&\"abc\")",
+      "inputs": {},
+      "expected": {
+        "text": "abc"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CLEAN-002",
+      "formula": "=CLEAN(\"a\"&CHAR(10)&\"b\")",
+      "inputs": {},
+      "expected": {
+        "text": "ab"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CLEAN-003",
+      "formula": "=CLEAN(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "text": "abc"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CLEAN-004",
+      "formula": "=CLEAN(CHAR(127)&\"x\")",
+      "inputs": {},
+      "expected": {
+        "text": "x"
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "127 in removal set per spec doc; unconfirmed"
+    },
+    {
+      "id": "I16-CLEAN-005",
+      "formula": "=CLEAN(123)",
+      "inputs": {},
+      "expected": {
+        "text": "123"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CLEAN-006",
+      "formula": "=CLEAN(\" a b \")",
+      "inputs": {},
+      "expected": {
+        "text": " a b "
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CLEAN-007",
+      "formula": "=CLEAN(CHAR(141)&\"x\")",
+      "inputs": {},
+      "expected": {
+        "text": "x"
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "CP1252 non-printable set is SPEC-OPEN"
+    },
+    {
+      "id": "I16-CLEAN-008",
+      "formula": "=CLEAN(A1)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CLEAN-009",
+      "formula": "=CLEAN(TRUE)",
+      "inputs": {},
+      "expected": {
+        "text": "TRUE"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CLEAN-010",
+      "formula": "=CLEAN(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CLEAN-011",
+      "formula": "=CLEAN(CHAR(1)&CHAR(31))",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CODE-001",
+      "formula": "=CODE(\"A\")",
+      "inputs": {},
+      "expected": {
+        "number": 65
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CODE-002",
+      "formula": "=CODE(\"Alphabet\")",
+      "inputs": {},
+      "expected": {
+        "number": 65
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CODE-003",
+      "formula": "=CODE(\"\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CODE-004",
+      "formula": "=CODE(\"é\")",
+      "inputs": {},
+      "expected": {
+        "number": 233
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "fixed CP1252 mapping (SPEC-OPEN)"
+    },
+    {
+      "id": "I16-CODE-005",
+      "formula": "=CODE(123)",
+      "inputs": {},
+      "expected": {
+        "number": 49
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CODE-006",
+      "formula": "=CODE(\"東\")",
+      "inputs": {},
+      "expected": {
+        "number": 63
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "unmapped char -> 63 vs #VALUE! is SPEC-OPEN"
+    },
+    {
+      "id": "I16-CODE-007",
+      "formula": "=CODE(TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 84
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CODE-008",
+      "formula": "=CODE(CHAR(233))",
+      "inputs": {},
+      "expected": {
+        "number": 233
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CODE-009",
+      "formula": "=CODE(\" \")",
+      "inputs": {},
+      "expected": {
+        "number": 32
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CODE-010",
+      "formula": "=CODE(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CONCATENATE-001",
+      "formula": "=CONCATENATE(\"a\",\"b\",\"c\")",
+      "inputs": {},
+      "expected": {
+        "text": "abc"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CONCATENATE-002",
+      "formula": "=CONCATENATE(\"Total: \",1+2)",
+      "inputs": {},
+      "expected": {
+        "text": "Total: 3"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CONCATENATE-003",
+      "formula": "=CONCATENATE(\"x\",TRUE)",
+      "inputs": {},
+      "expected": {
+        "text": "xTRUE"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CONCATENATE-004",
+      "formula": "=CONCATENATE(\"\",\"\")",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CONCATENATE-005",
+      "formula": "=CONCATENATE(\"a\",1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CONCATENATE-006",
+      "formula": "=CONCATENATE(\"only\")",
+      "inputs": {},
+      "expected": {
+        "text": "only"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CONCATENATE-007",
+      "formula": "=CONCATENATE(A1,A2)",
+      "inputs": {
+        "A1": "he",
+        "A2": "llo"
+      },
+      "expected": {
+        "text": "hello"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CONCATENATE-008",
+      "formula": "=CONCATENATE(A1,A2)",
+      "inputs": {
+        "A2": "b"
+      },
+      "expected": {
+        "text": "b"
+      },
+      "specOpen": false,
+      "notes": "blank cell contributes empty",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-CONCATENATE-009",
+      "formula": "=CONCATENATE(A1:A2)",
+      "inputs": {
+        "A1": "a",
+        "A2": "b"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "multi-cell range rejected; legacy implicit-intersection is SPEC-OPEN"
+    },
+    {
+      "id": "I16-CONCATENATE-010",
+      "formula": "=CONCATENATE()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DBCS-001",
+      "formula": "=DBCS(\"ABC\")",
+      "inputs": {},
+      "expected": {
+        "text": "ＡＢＣ"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DBCS-002",
+      "formula": "=DBCS(\"123\")",
+      "inputs": {},
+      "expected": {
+        "text": "１２３"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DBCS-003",
+      "formula": "=DBCS(\" \")",
+      "inputs": {},
+      "expected": {
+        "text": "　"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DBCS-004",
+      "formula": "=DBCS(\"ｶﾀｶﾅ\")",
+      "inputs": {},
+      "expected": {
+        "text": "カタカナ"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DBCS-005",
+      "formula": "=DBCS(\"ＡＢＣ\")",
+      "inputs": {},
+      "expected": {
+        "text": "ＡＢＣ"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DBCS-006",
+      "formula": "=DBCS(\"ｶﾞ\")",
+      "inputs": {},
+      "expected": {
+        "text": "ガ"
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "dakuten composition is SPEC-OPEN"
+    },
+    {
+      "id": "I16-DBCS-007",
+      "formula": "=DBCS(\"｡｢｣､･\")",
+      "inputs": {},
+      "expected": {
+        "text": "。「」、・"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DBCS-008",
+      "formula": "=DBCS(12)",
+      "inputs": {},
+      "expected": {
+        "text": "１２"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DBCS-009",
+      "formula": "=ASC(DBCS(\"ｶﾀｶﾅ ABC\"))",
+      "inputs": {},
+      "expected": {
+        "text": "ｶﾀｶﾅ ABC"
+      },
+      "specOpen": false,
+      "notes": "round-trip",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DBCS-010",
+      "formula": "=DBCS(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DBCS-011",
+      "formula": "=DBCS(\"ﾊﾟ\")",
+      "inputs": {},
+      "expected": {
+        "text": "パ"
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "handakuten composition is SPEC-OPEN"
+    },
+    {
+      "id": "I16-DOLLAR-001",
+      "formula": "=DOLLAR(1234.567)",
+      "inputs": {},
+      "expected": {
+        "text": "$1,234.57"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DOLLAR-002",
+      "formula": "=DOLLAR(-1234.567)",
+      "inputs": {},
+      "expected": {
+        "text": "($1,234.57)"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DOLLAR-003",
+      "formula": "=DOLLAR(99.5,0)",
+      "inputs": {},
+      "expected": {
+        "text": "$100"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DOLLAR-004",
+      "formula": "=DOLLAR(1234.567,-2)",
+      "inputs": {},
+      "expected": {
+        "text": "$1,200"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DOLLAR-005",
+      "formula": "=DOLLAR(0.009,2)",
+      "inputs": {},
+      "expected": {
+        "text": "$0.01"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DOLLAR-006",
+      "formula": "=DOLLAR(0)",
+      "inputs": {},
+      "expected": {
+        "text": "$0.00"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DOLLAR-007",
+      "formula": "=DOLLAR(\"12.5\")",
+      "inputs": {},
+      "expected": {
+        "text": "$12.50"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DOLLAR-008",
+      "formula": "=DOLLAR(TRUE)",
+      "inputs": {},
+      "expected": {
+        "text": "$1.00"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DOLLAR-009",
+      "formula": "=DOLLAR(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DOLLAR-010",
+      "formula": "=DOLLAR(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-DOLLAR-011",
+      "formula": "=DOLLAR(A1)",
+      "inputs": {},
+      "expected": {
+        "text": "$0.00"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-EXACT-001",
+      "formula": "=EXACT(\"word\",\"word\")",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-EXACT-002",
+      "formula": "=EXACT(\"Word\",\"word\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-EXACT-003",
+      "formula": "=EXACT(\" a\",\"a\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-EXACT-004",
+      "formula": "=EXACT(12,\"12\")",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-EXACT-005",
+      "formula": "=EXACT(TRUE,\"TRUE\")",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-EXACT-006",
+      "formula": "=EXACT(A1,\"\")",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "specOpen": false,
+      "notes": "blank cell vs empty string",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-EXACT-007",
+      "formula": "=EXACT(\"é\",\"é\")",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-EXACT-008",
+      "formula": "=EXACT(\"\",\"\")",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-EXACT-009",
+      "formula": "=EXACT(1/0,\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-EXACT-010",
+      "formula": "=EXACT(\"É\",\"é\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "Unicode case sensitivity is SPEC-OPEN"
+    },
+    {
+      "id": "I16-EXACT-011",
+      "formula": "=EXACT(1.5,\"1.50\")",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FINDB-001",
+      "formula": "=FINDB(\"京\",\"東京都\")",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FINDB-002",
+      "formula": "=FINDB(\"b\",\"abc\")",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FINDB-003",
+      "formula": "=FINDB(\"z\",\"Miriam\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FINDB-004",
+      "formula": "=FINDB(\"m\",\"Miriam\")",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FINDB-005",
+      "formula": "=FINDB(\"b\",\"a東b\")",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FINDB-006",
+      "formula": "=FINDB(\"都\",\"東京都\",3)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FINDB-007",
+      "formula": "=FINDB(\"京\",\"東京都\",2)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "start inside a double-byte char snaps forward; SPEC-OPEN"
+    },
+    {
+      "id": "I16-FINDB-008",
+      "formula": "=FINDB(\"\",\"abc\")",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FINDB-009",
+      "formula": "=FINDB(\"a\",\"東\",3)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FINDB-010",
+      "formula": "=FINDB(3,12345)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FINDB-011",
+      "formula": "=FINDB(\"a\",1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FIXED-001",
+      "formula": "=FIXED(1234.567)",
+      "inputs": {},
+      "expected": {
+        "text": "1,234.57"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FIXED-002",
+      "formula": "=FIXED(1234.567,1)",
+      "inputs": {},
+      "expected": {
+        "text": "1,234.6"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FIXED-003",
+      "formula": "=FIXED(1234.567,-1)",
+      "inputs": {},
+      "expected": {
+        "text": "1,230"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FIXED-004",
+      "formula": "=FIXED(-1234.567,1)",
+      "inputs": {},
+      "expected": {
+        "text": "-1,234.6"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FIXED-005",
+      "formula": "=FIXED(1234.567,1,TRUE)",
+      "inputs": {},
+      "expected": {
+        "text": "1234.6"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FIXED-006",
+      "formula": "=FIXED(2.5,0)",
+      "inputs": {},
+      "expected": {
+        "text": "3"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FIXED-007",
+      "formula": "=FIXED(5,3)",
+      "inputs": {},
+      "expected": {
+        "text": "5.000"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FIXED-008",
+      "formula": "=FIXED(0.009,2)",
+      "inputs": {},
+      "expected": {
+        "text": "0.01"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FIXED-009",
+      "formula": "=FIXED(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FIXED-010",
+      "formula": "=FIXED(A1)",
+      "inputs": {},
+      "expected": {
+        "text": "0.00"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-FIXED-011",
+      "formula": "=FIXED(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LEFTB-001",
+      "formula": "=LEFTB(\"東京都\",4)",
+      "inputs": {},
+      "expected": {
+        "text": "東京"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LEFTB-002",
+      "formula": "=LEFTB(\"東京都\",3)",
+      "inputs": {},
+      "expected": {
+        "text": "東"
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "partial char dropped; SPEC-OPEN"
+    },
+    {
+      "id": "I16-LEFTB-003",
+      "formula": "=LEFTB(\"abc\",2)",
+      "inputs": {},
+      "expected": {
+        "text": "ab"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LEFTB-004",
+      "formula": "=LEFTB(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "text": "a"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LEFTB-005",
+      "formula": "=LEFTB(\"abc\",-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LEFTB-006",
+      "formula": "=LEFTB(\"東\",1)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "partial char dropped; SPEC-OPEN"
+    },
+    {
+      "id": "I16-LEFTB-007",
+      "formula": "=LEFTB(\"abc\",0)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LEFTB-008",
+      "formula": "=LEFTB(\"東\",99)",
+      "inputs": {},
+      "expected": {
+        "text": "東"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LEFTB-009",
+      "formula": "=LEFTB(1234,2)",
+      "inputs": {},
+      "expected": {
+        "text": "12"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LEFTB-010",
+      "formula": "=LEFTB(1/0,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LENB-001",
+      "formula": "=LENB(\"東京都\")",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LENB-002",
+      "formula": "=LENB(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LENB-003",
+      "formula": "=LENB(\"\")",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LENB-004",
+      "formula": "=LENB(\"A1東\")",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LENB-005",
+      "formula": "=LENB(\"a東\")",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LENB-006",
+      "formula": "=LENB(\"ｶﾀ\")",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "half-width katakana single-byte under CP932 model"
+    },
+    {
+      "id": "I16-LENB-007",
+      "formula": "=LENB(123)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LENB-008",
+      "formula": "=LENB(TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LENB-009",
+      "formula": "=LENB(A1)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-LENB-010",
+      "formula": "=LENB(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-MIDB-001",
+      "formula": "=MIDB(\"東京都\",3,2)",
+      "inputs": {},
+      "expected": {
+        "text": "京"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-MIDB-002",
+      "formula": "=MIDB(\"東京都\",1,4)",
+      "inputs": {},
+      "expected": {
+        "text": "東京"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-MIDB-003",
+      "formula": "=MIDB(\"東京都\",2,2)",
+      "inputs": {},
+      "expected": {
+        "text": "京"
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "start inside char snaps forward; SPEC-OPEN"
+    },
+    {
+      "id": "I16-MIDB-004",
+      "formula": "=MIDB(\"abcdef\",2,3)",
+      "inputs": {},
+      "expected": {
+        "text": "bcd"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-MIDB-005",
+      "formula": "=MIDB(\"abc\",4,1)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-MIDB-006",
+      "formula": "=MIDB(\"abc\",0,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-MIDB-007",
+      "formula": "=MIDB(\"abc\",1,-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-MIDB-008",
+      "formula": "=MIDB(\"東京都\",1,3)",
+      "inputs": {},
+      "expected": {
+        "text": "東"
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "end partial char dropped; SPEC-OPEN"
+    },
+    {
+      "id": "I16-MIDB-009",
+      "formula": "=MIDB(12345,2,2)",
+      "inputs": {},
+      "expected": {
+        "text": "23"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-MIDB-010",
+      "formula": "=MIDB(1/0,1,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-NUMBERVALUE-001",
+      "formula": "=NUMBERVALUE(\"2.500,27\",\",\",\".\")",
+      "inputs": {},
+      "expected": {
+        "number": 2500.27
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-NUMBERVALUE-002",
+      "formula": "=NUMBERVALUE(\"1,234.5\")",
+      "inputs": {},
+      "expected": {
+        "number": 1234.5
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-NUMBERVALUE-003",
+      "formula": "=NUMBERVALUE(\"9%\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.09
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-NUMBERVALUE-004",
+      "formula": "=NUMBERVALUE(\"9%%\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.0009
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "multiple % is SPEC-OPEN"
+    },
+    {
+      "id": "I16-NUMBERVALUE-005",
+      "formula": "=NUMBERVALUE(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-NUMBERVALUE-006",
+      "formula": "=NUMBERVALUE(\"2500,27\",\",\")",
+      "inputs": {},
+      "expected": {
+        "number": 2500.27
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-NUMBERVALUE-007",
+      "formula": "=NUMBERVALUE(\"\")",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "empty -> 0 vs #VALUE! is SPEC-OPEN"
+    },
+    {
+      "id": "I16-NUMBERVALUE-008",
+      "formula": "=NUMBERVALUE(\"1,2,3\")",
+      "inputs": {},
+      "expected": {
+        "number": 123
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "grouping positions not validated; SPEC-OPEN"
+    },
+    {
+      "id": "I16-NUMBERVALUE-009",
+      "formula": "=NUMBERVALUE(\"-1.5e2\")",
+      "inputs": {},
+      "expected": {
+        "number": -150
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-NUMBERVALUE-010",
+      "formula": "=NUMBERVALUE(\"$1\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-NUMBERVALUE-011",
+      "formula": "=NUMBERVALUE(\"1.2.3\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": false,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      }
+    },
+    {
+      "id": "I16-NUMBERVALUE-012",
+      "formula": "=NUMBERVALUE(\"  42 \")",
+      "inputs": {},
+      "expected": {
+        "number": 42
+      },
+      "specOpen": true,
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md spec examples and documented Excel behavior; engine-fixed choices (CP1252 for CHAR/CODE, CP932-like byte model for *B functions) marked specOpen where unconfirmed."
+      },
+      "specOpenReason": "whitespace set is SPEC-OPEN"
+    }
+  ]
+}
