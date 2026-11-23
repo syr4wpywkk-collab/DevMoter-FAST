@@ -89,7 +89,7 @@ async function setup(t, options = {}) {
     socket.on("unexpected-response", (req, res) => resolve({ status: res.statusCode }));
     socket.on("error", () => resolve({ status: 0 }));
   });
-  return { manager, tickets, issue, connect, origin };
+  return { manager, tickets, issue, connect, origin, url };
 }
 
 const until = async check => {
@@ -98,10 +98,15 @@ const until = async check => {
 };
 
 test("browser socket upgrade checks Origin, subprotocol, ticket and generation", async t => {
-  const { manager, issue, connect } = await setup(t);
+  const { manager, issue, connect, url } = await setup(t);
   assert.equal((await connect(issue(), { socketOrigin: "http://evil.test" })).status, 403);
   assert.equal((await connect(issue(), { protocol: "other" })).status, 401);
   assert.equal((await connect("0".repeat(64))).status, 403);
+  assert.equal(await new Promise(resolve => {
+    const socket = new WebSocket(url.replace("/socket", "/other"), [BROWSER_PROTOCOL]);
+    socket.on("unexpected-response", (req, res) => resolve(res.statusCode));
+    socket.on("error", () => resolve(0));
+  }), 404, "unknown /api/browser/ upgrades are closed");
   const used = issue();
   const first = await connect(used);
   assert.equal(first.status, 101);

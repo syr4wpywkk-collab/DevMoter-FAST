@@ -344,6 +344,11 @@ export function createBrowserSessionManager({
         viewer.inflight = frame.seq;
         viewer.lastSeq = frame.seq;
         viewer.sentAt = now();
+        clearTimeout(viewer.ackTimer);
+        viewer.ackTimer = setTimeout(() => {
+          if (viewer.inflight !== null) detachViewer(session, viewer, { code: 4008, reason: "slow_consumer" });
+        }, limits.frameAckTimeoutMs);
+        viewer.ackTimer.unref?.();
         try { viewer.sink.frame(frame); } catch { detachViewer(session, viewer); }
       }
     }
@@ -352,6 +357,7 @@ export function createBrowserSessionManager({
 
   function detachViewer(session, viewer, { code, reason } = {}) {
     if (!session.viewers.delete(viewer)) return;
+    clearTimeout(viewer.ackTimer);
     if (code) {
       try { viewer.sink.close(code, reason); } catch { /* Socket may already be closed. */ }
     }
@@ -364,7 +370,7 @@ export function createBrowserSessionManager({
     if (session.viewers.size >= limits.maxViewers) {
       throw httpError("Too many viewers for this browser session", 429, "viewer_limit");
     }
-    const viewer = { sink, inflight: null, lastSeq: 0, sentAt: 0 };
+    const viewer = { sink, inflight: null, lastSeq: 0, sentAt: 0, ackTimer: null };
     session.viewers.add(viewer);
     session.lastActivityAt = now();
     sink.event({ t: "hello", session: publicSession(session) });
@@ -374,6 +380,7 @@ export function createBrowserSessionManager({
       ack(seq) {
         if (!session.viewers.has(viewer) || viewer.inflight !== seq) return false;
         viewer.inflight = null;
+        clearTimeout(viewer.ackTimer);
         deliverFrame(session);
         return true;
       },
