@@ -438,6 +438,38 @@ test("Agent Runs get a scoped browser MCP config, revoked with its token file wh
   assert.ok(plain.id);
 });
 
+test("a Run cancelled while its browser token is being checked gets no token", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "devmoter-browser-cancel-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const tokens = createBrowserAgentTokens();
+  let service;
+  const launcher = createBrowserAgentLauncher({
+    tokens, stateDir: dir, baseUrl: "http://127.0.0.1:8787", cliPath,
+    isDeviceActive: async () => {
+      const [run] = (await service.list()).runs;
+      await service.cancel(run.id);
+      return true;
+    }
+  });
+  const codex = new FakeCodex();
+  service = createAgentRunService({
+    filePath: join(dir, "agent-runs.json"),
+    codex,
+    resolveProject: async id => ({ id, path: "/srv/projects/" + id }),
+    browserAgent: launcher
+  });
+  t.after(() => service.dispose());
+
+  await service.spawn({
+    backend: "codex", parentSessionId: "p", task: "Cancelled early",
+    context: { projectId: "project-1", browser: "act", browserDeviceId: "dev-1" },
+    capabilityPolicy: { allow: ["read", "files", "commands"], mutationPolicy: "approval-required" }
+  }).catch(() => {});
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.deepEqual(tokens.list(), []);
+  assert.equal(codex.calls.some(call => call.method === "thread/start"), false);
+});
+
 test("browser access never exceeds the run's read-only policy or its parent's access", async t => {
   const dir = await mkdtemp(join(tmpdir(), "devmoter-browser-scope-"));
   t.after(() => rm(dir, { recursive: true, force: true }));

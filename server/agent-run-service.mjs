@@ -126,6 +126,11 @@ export function createAgentRunService({
           deviceId: run.context?.browserDeviceId ? String(run.context.browserDeviceId) : null,
           ttlMs: runDeadlineMs
         });
+        // A cancel during the token checks has already revoked this Run's tokens; drop the late one.
+        if (TERMINAL_STATES.has(runtime.getRun(run.id)?.state)) {
+          browserAgent.revokeRun(run.id);
+          throw new Error("Agent run ended before it started");
+        }
         if (browser) threadParams.config = { ...browser.config };
       }
       const startedThread = await codex.request("thread/start", threadParams);
