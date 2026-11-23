@@ -642,6 +642,8 @@ function createRemoteBrowser() {
     sendText(text);
   });
 
+  // Keep focus where it is on press, so a second tap still sees the text field focused and closes it.
+  keyboardButton.addEventListener("mousedown", event => event.preventDefault());
   keyboardButton.addEventListener("click", () => {
     if (document.activeElement === ime) ime.blur();
     else if (canDrive()) ime.focus({ preventScroll: true });
