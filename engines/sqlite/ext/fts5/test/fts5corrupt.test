@@ -1,0 +1,213 @@
+# 2014 Dec 20
+#
+# The author disclaims copyright to this source code.  In place of
+# a legal notice, here is a blessing:
+#
+#    May you do good and not evil.
+#    May you find forgiveness for yourself and forgive others.
+#    May you share freely, never taking more than you give.
+#
+#***********************************************************************
+#
+# This file tests that the FTS5 'integrity-check' command detects 
+# inconsistencies (corruption) in the on-disk backing tables.
+#
+
+source [file join [file dirname [info script]] fts5_common.tcl]
+set testprefix fts5corrupt
+
+# If SQLITE_ENABLE_FTS5 is not defined, omit this file.
+ifcapable !fts5 {
+  finish_test
+  return
+}
+
+do_execsql_test 1.0 {
+  CREATE VIRTUAL TABLE t1 USING fts5(x);
+  INSERT INTO t1(t1, rank) VALUES('pgsz', 32);
+}
+
+do_test 1.1 {
+  db transaction {
+    for {set i 1} {$i < 200} {incr i} {
+      set doc [list [string repeat x $i] [string repeat y $i]]
+      execsql { INSERT INTO t1(rowid, x) VALUES($i, $doc) }
+    }
+  }
+  fts5_level_segs t1
+} {1}
+db_save
+
+do_execsql_test 1.2 { INSERT INTO t1(t1) VALUES('integrity-check') }
+set segid [lindex [fts5_level_segids t1] 0]
+
+sqlite3_db_config db DEFENSIVE 0
+do_test 1.3 {
+  execsql {
+    DELETE FROM t1_data WHERE rowid = fts5_rowid('segment', $segid, 4);
+  }
+  catchsql { INSERT INTO t1(t1) VALUES('integrity-check') }
+} {1 {fts5: corruption found reading blob 137438953476 from table "t1"}}
+do_execsql_test 1.3b {
+  PRAGMA integrity_check(t1);
+} {{fts5: corruption found reading blob 137438953476 from table "t1"}}
+
+do_test 1.4 {
+  db_restore_and_reopen
+  sqlite3_db_config db DEFENSIVE 0
+  execsql {
+    UPDATE t1_data set block = X'00000000' || substr(block, 5) WHERE
+    rowid = fts5_rowid('segment', $segid, 4);
+  }
+  catchsql { INSERT INTO t1(t1) VALUES('integrity-check') }
+} {1 {fts5: corruption found reading blob 137438953476 from table "t1"}}
+
+db_restore_and_reopen
+#db eval {SELECT rowid, fts5_decode(rowid, block) aS r FROM t1_data} {puts $r}
+
+
+#--------------------------------------------------------------------
+#
+do_execsql_test 2.0 {
+  CREATE VIRTUAL TABLE t2 USING fts5(x);
+  INSERT INTO t2(t2, rank) VALUES('pgsz', 64);
+}
+db func rnddoc fts5_rnddoc
+do_test 2.1 {
+  for {set i 0} {$i < 500} {incr i} {
+    execsql { INSERT INTO t2 VALUES(rnddoc(50)) }
+  }
+  execsql { INSERT INTO t2(t2) VALUES('integrity-check') }
+} {}
+
+#--------------------------------------------------------------------
+# A mundane test - missing row in the %_content table.
+#
+do_execsql_test 3.0 {
+  CREATE VIRTUAL TABLE t3 USING fts5(x);
+  INSERT INTO t3 VALUES('one o');
+  INSERT INTO t3 VALUES('two e');
+  INSERT INTO t3 VALUES('three o');
+  INSERT INTO t3 VALUES('four e');
+  INSERT INTO t3 VALUES('five o');
+}
+do_execsql_test 3.1 {
+  SELECT * FROM t3 WHERE t3 MATCH 'o'
+} {{one o} {three o} {five o}}
+sqlite3_db_config db DEFENSIVE 0
+do_catchsql_test 3.1 {
+  DELETE FROM t3_content WHERE rowid = 3;
+  SELECT * FROM t3 WHERE t3 MATCH 'o';
+} {1 {fts5: missing row 3 from content table 'main'.'t3_content'}}
+
+#--------------------------------------------------------------------
+#
+reset_db
+do_execsql_test 4.0 {
+  CREATE VIRTUAL TABLE t2 USING fts5(x);
+  INSERT INTO t2 VALUES('one two three');
+  INSERT INTO t2 VALUES('four five six');
+  INSERT INTO t2 VALUES('seven eight nine');
+  INSERT INTO t2 VALUES('ten eleven twelve');
+}
+do_execsql_test 4.1 {
+  SELECT hex(block) FROM t2_data WHERE id=1;
+} {040C}
+do_execsql_test 4.2 {
+  UPDATE t2_data SET block = X'0402' WHERE id=1
+}
+do_catchsql_test 4.3 {
+  DELETE FROM t2 WHERE rowid=3
+} {1 {database disk image is malformed}}
+
+#--------------------------------------------------------------------
+# Bug 2026-08-19T01:42:02Z
+#
+reset_db
+do_execsql_test 5.0 {
+  PRAGMA writable_schema=ON;
+  CREATE VIRTUAL TABLE t1 USING fts5(x);
+  INSERT INTO t1(t1, rank) VALUES('pgsz', 32);
+  WITH RECURSIVE c(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM c WHERE i<200)
+    INSERT INTO t1(rowid, x)
+       SELECT i, CASE WHEN i%10=0 OR i=1 THEN 'a b c x' ELSE 'a b c' END FROM c;
+  UPDATE t1_data SET block=x'01'||substr(block,2) WHERE id=206158430209;
+  INSERT INTO t1_data(id, block)
+  SELECT 206158430209 + i*2147483648, if(i=32,x'000101',x'010101')
+    FROM (WITH RECURSIVE r(i) AS (
+              SELECT 1 UNION ALL SELECT i+1 FROM r WHERE i<32
+            ) SELECT i FROM r
+         );
+} {}
+do_catchsql_test 5.1 {
+  SELECT rowid FROM t1 WHERE t1 MATCH 'a AND x';
+} {1 {database disk image is malformed}}
+reset_db
+do_execsql_test 5.2 {
+  PRAGMA writable_schema=ON;
+  CREATE VIRTUAL TABLE t1 USING fts5(x);
+  INSERT INTO t1(t1, rank) VALUES('pgsz', 32);
+  WITH RECURSIVE c(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM c WHERE i<200)
+    INSERT INTO t1(rowid, x)
+       SELECT i, CASE WHEN i%10=0 OR i=1 THEN 'a b c x' ELSE 'a b c' END FROM c;
+  UPDATE t1_data SET block=x'01'||substr(block,2) WHERE id=206158430209;
+  INSERT INTO t1_data(id, block)
+  SELECT 206158430209 + i*2147483648, if(i=31,x'000101',x'010101')
+    FROM (WITH RECURSIVE r(i) AS (
+              SELECT 1 UNION ALL SELECT i+1 FROM r WHERE i<31
+            ) SELECT i FROM r
+         );
+} {}
+do_catchsql_test 5.3 {
+  SELECT rowid FROM t1 WHERE t1 MATCH 'a AND x';
+} {0 {1 10 20 30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200}}
+
+reset_db
+sqlite3_fts5_may_be_corrupt 1
+do_execsql_test 6.0 {
+  CREATE VIRTUAL TABLE t USING fts5(x);
+  INSERT INTO t(t,rank) VALUES('pgsz',32);
+  WITH r(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM r WHERE i<3000) 
+    INSERT INTO t(rowid,x) SELECT i, 'a b c d' FROM r;
+  INSERT INTO t(t) VALUES('optimize');
+  PRAGMA writable_schema=ON;
+  UPDATE t_data SET block=x'' WHERE id=206158430209;
+  PRAGMA writable_schema=RESET;
+}
+do_execsql_test 6.1 {
+  SELECT count(*) FROM t WHERE t MATCH 'a' AND rowid>2500;
+} {500}
+do_catchsql_test 6.2 {
+  SELECT rowid FROM t WHERE t MATCH 'a' ORDER BY rowid DESC LIMIT 1;
+} {1 {fts5: corruption found reading blob 137438953472 from table "t"}}
+do_catchsql_test 6.3 {
+  INSERT INTO t(t) VALUES('integrity-check');
+} {1 {fts5: corruption found reading blob 137438953472 from table "t"}}
+
+#-------------------------------------------------------------------------
+# If loading the averages record fails, the totals must not be cached as
+# valid. Otherwise a later statement in the same transaction uses zeroed
+# totals and writes a bogus averages record on COMMIT.
+#
+#   https://sqlite.org/bugs/forumpost/7b0c7c2d1e
+#
+reset_db
+sqlite3_db_config db DEFENSIVE 0
+do_execsql_test 7.0 {
+  CREATE VIRTUAL TABLE t1 USING fts5(c);
+  INSERT INTO t1(c) VALUES('hello world');
+  UPDATE t1_data SET id=0 WHERE id=1;
+  BEGIN;
+}
+do_catchsql_test 7.1 {
+  INSERT INTO t1(c) VALUES('two');
+} {1 {fts5: corruption found reading blob 1 from table "t1"}}
+do_catchsql_test 7.2 {
+  INSERT INTO t1(c) VALUES('three');
+} {1 {fts5: corruption found reading blob 1 from table "t1"}}
+do_execsql_test 7.3 {
+  COMMIT;
+  SELECT id, hex(block) FROM t1_data WHERE id<=1 ORDER BY id;
+} {0 0102}
+
+finish_test

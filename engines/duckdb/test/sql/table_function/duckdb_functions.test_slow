@@ -1,0 +1,105 @@
+# name: test/sql/table_function/duckdb_functions.test_slow
+# description: Test duckdb_functions function
+# group: [table_function]
+
+statement ok
+SELECT * FROM duckdb_functions();
+
+query I
+select function_name from duckdb_functions() where not internal order by 1;
+----
+
+statement ok
+CREATE MACRO add_default1(a := 3, b := 5) AS a + b
+
+statement ok
+CREATE MACRO add_default2(a, b := 5) AS a + b
+
+statement ok
+SELECT * FROM duckdb_functions();
+
+statement ok
+SELECT * FROM duckdb_functions() WHERE function_type='table';
+
+statement ok
+SELECT sqrt(4)
+
+query I
+select distinct function_name from duckdb_functions() where function_name='sqrt';
+----
+sqrt
+
+query I
+select function_name from duckdb_functions() where not internal order by 1;
+----
+add_default1
+add_default2
+
+# table functions too
+statement ok
+create macro my_range(x) as table from range(x);
+
+query I
+select macro_definition from duckdb_functions() where function_name = 'my_range';
+----
+SELECT * FROM "range"(x)
+
+# duckdb_functions() lists parameter names of extension function overloads
+# regardless of whether the extensions have been loaded
+query I
+SELECT count(*) FROM duckdb_functions()
+WHERE (function_type == 'window' OR function_type == 'scalar' or function_type == 'aggregate')
+AND list_contains(parameters, 'col0')
+----
+0
+
+query I
+SELECT count(*) FROM duckdb_functions()
+WHERE function_type = 'scalar' AND len(parameters) <> len(parameter_types)
+----
+0
+
+# the icu TIMESTAMPTZ overloads are placeholders until icu is loaded
+query II
+SELECT count(*) > 0, count(*) FILTER (len(parameters) = 0 OR list_contains(parameters, 'col0'))
+FROM duckdb_functions()
+WHERE function_type = 'scalar' AND list_contains(parameter_types, 'TIMESTAMP WITH TIME ZONE')
+----
+true	0
+
+# placeholder names are attached to the matching overload
+query II
+SELECT parameter_types, parameters FROM duckdb_functions()
+WHERE function_name = 'time_bucket' AND parameter_types[2] = 'TIMESTAMP WITH TIME ZONE'
+ORDER BY ALL
+----
+[INTERVAL, TIMESTAMP WITH TIME ZONE]	[bucket_width, timestamp]
+[INTERVAL, TIMESTAMP WITH TIME ZONE, INTERVAL]	[bucket_width, timestamp, offset]
+[INTERVAL, TIMESTAMP WITH TIME ZONE, TIMESTAMP WITH TIME ZONE]	[bucket_width, timestamp, origin]
+[INTERVAL, TIMESTAMP WITH TIME ZONE, VARCHAR]	[bucket_width, timestamp, timezone]
+
+statement ok
+CREATE TABLE placeholder_overloads AS
+SELECT function_name, parameter_types, parameters FROM duckdb_functions()
+WHERE function_type = 'scalar' AND list_contains(parameter_types, 'TIMESTAMP WITH TIME ZONE')
+
+require json
+
+require icu
+
+query I
+SELECT count(*) FROM duckdb_functions()
+WHERE (function_type == 'window' OR function_type == 'scalar' or function_type == 'aggregate')
+AND list_contains(parameters, 'col0')
+----
+0
+
+# loading icu keeps the parameter names of its placeholder overloads
+query I
+SELECT count(*) FROM (
+	SELECT * FROM placeholder_overloads
+	EXCEPT
+	SELECT function_name, parameter_types, parameters FROM duckdb_functions() WHERE function_type = 'scalar'
+)
+----
+0

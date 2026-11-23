@@ -1,0 +1,16 @@
+# name: benchmark/tpch/sf1/q11.benchmark
+# description: Run query 11 from the TPC-H benchmark (SF1)
+# group: [sf1]
+
+# Q11 is the only TPC-H query whose substitution parameter depends on the scale factor (FRACTION = 0.0001 / SF);
+# the SF 1 query text has no valid answer at other scale factors, so unlike the template there is no sf=100 result
+
+include benchmark/tpch/tpch_load.benchmark.in
+
+name Q11
+group tpch
+subgroup sf${sf}
+
+run extension/tpch/dbgen/queries/q11.sql
+
+result extension/tpch/dbgen/answers/sf1/q11.csv sf=1

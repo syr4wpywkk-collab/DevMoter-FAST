@@ -1,0 +1,59 @@
+{
+    "SIMULATE-FAILURE": {
+        "summary": "Simulates failover scenarios.",
+        "group": "sentinel",
+        "since": "3.2.0",
+        "arity": -3,
+        "container": "SENTINEL",
+        "function": "sentinelCommand",
+        "command_flags": [
+            "ADMIN",
+            "SENTINEL",
+            "ONLY_SENTINEL"
+        ],
+        "reply_schema": {
+            "oneOf": [
+                {
+                    "description": "The simulated flag was set.",
+                    "const": "OK"
+                },
+                {
+                    "description": "Supported simulates flags. Returned in case `HELP` was used.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            ]
+        },
+        "arguments": [
+            {
+                "name": "mode",
+                "type": "oneof",
+                "multiple": true,
+                "arguments": [
+                    {
+                        "name": "crash-after-election",
+                        "type": "pure-token",
+                        "token": "CRASH-AFTER-ELECTION"
+                    },
+                    {
+                        "name": "crash-after-promotion",
+                        "type": "pure-token",
+                        "token": "CRASH-AFTER-PROMOTION"
+                    },
+                    {
+                        "name": "help",
+                        "type": "pure-token",
+                        "token": "HELP"
+                    }
+                ]
+            }
+        ],
+        "acl_categories": [
+            "ADMIN",
+            "DANGEROUS",
+            "SLOW"
+        ]
+    }
+}

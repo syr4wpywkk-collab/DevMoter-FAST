@@ -1,0 +1,331 @@
+# 2019-05-03
+#
+# The author disclaims copyright to this source code.  In place of
+# a legal notice, here is a blessing:
+#
+#    May you do good and not evil.
+#    May you find forgiveness for yourself and forgive others.
+#    May you share freely, never taking more than you give.
+#
+#***********************************************************************
+# Tests to exercise the MEM_IntReal representation of Mem objects.
+#
+set testdir [file dirname $argv0]
+source $testdir/tester.tcl
+set ::testprefix intreal
+
+sqlite3_create_function db
+do_execsql_test 100 {
+  SELECT intreal(5);
+} {5.0}
+do_execsql_test 110 {
+  SELECT intreal(5)=5, 6=intreal(6);
+} {1 1}
+do_execsql_test 120 {
+  SELECT intreal(7)=7.0, 8.0=intreal(8);
+} {1 1}
+do_execsql_test 130 {
+  SELECT typeof(intreal(9));
+} {real}
+do_execsql_test 140 {
+  SELECT 'a'||intreal(11)||'z';
+} {a11.0z}
+
+do_execsql_test 150 {
+  SELECT max(1.0,intreal(2),3.0), max(1,intreal(2),3);
+} {3.0 3}
+do_execsql_test 160 {
+  SELECT max(1.0,intreal(4),3.0), max(1,intreal(4),3);
+} {4.0 4.0}
+do_execsql_test 170 {
+  SELECT max(1.0,intreal(2),intreal(3),4.0),
+         max(1,intreal(2),intreal(3),4);
+} {4.0 4}
+do_execsql_test 180 {
+  SELECT max(1.0,intreal(5),intreal(3),4.0),
+         max(1,intreal(5),intreal(3),4);
+} {5.0 5.0}
+
+#-------------------------------------------------------------------------
+do_execsql_test 2.1 {
+  CREATE TABLE t2(a REAL);
+  INSERT INTO t2 VALUES( 836627109860825358 );
+  SELECT substr(a,1,4) FROM t2 WHERE a = CAST(836627109860825358 AS REAL);
+} {8.36}
+
+do_execsql_test 2.2 {
+  CREATE INDEX i2 ON t2(a);
+  SELECT substr(a,1,4) FROM t2 WHERE a = CAST(836627109860825358 AS REAL);
+} {8.36}
+
+do_execsql_test 2.3 {
+  CREATE TABLE t0 (c0);
+  CREATE TABLE t1 (c1 REAL);
+  INSERT INTO t1(c1) VALUES (8366271098608253588);
+  INSERT INTO t0(c0) VALUES ('a');
+}
+set D [db one {SELECT c1 FROM t1}]
+
+do_execsql_test 2.4 {
+  SELECT * FROM t1 WHERE (t1.c1 = CAST(8366271098608253588 AS REAL));
+} $D
+
+do_execsql_test 2.5 {
+  SELECT * FROM t0, t1 WHERE (t1.c1 = CAST(8366271098608253588 AS REAL));
+} [list a $D]
+
+do_execsql_test 2.6 {
+  SELECT * FROM t0, t1 
+  WHERE (
+        t1.c1 >= CAST(8366271098608253588 AS REAL) 
+    AND t1.c1 <= CAST(8366271098608253588 AS REAL)
+  );
+} [list a $D]
+
+# 2019-07-29 ticket ba2f4585cf495231
+#
+db close
+sqlite3 db :memory:
+do_execsql_test 3.0 {
+  CREATE TABLE t0 (c0 REAL, c1);
+  CREATE UNIQUE INDEX i0 ON t0(c1, 0 | c0);
+  INSERT INTO t0(c0) VALUES (4750228396194493326), (0);
+  UPDATE OR REPLACE t0 SET c0 = 'a', c1 = '';
+  SELECT * FROM t0 ORDER BY t0.c1;
+  PRAGMA integrity_check;
+} {a {} ok}
+
+
+reset_db
+do_execsql_test 4.0 {
+  CREATE TABLE t1(a REAL, b AS ('expr') ); 
+}
+do_execsql_test 4.1 {
+  INSERT INTO t1 VALUES( REPLACE(0, '', 'expr') );
+}
+do_execsql_test 4.2 {
+  INSERT INTO t1 SELECT REPLACE(4, '', 'expr');
+}
+do_execsql_test 4.3 {
+  SELECT typeof(a), a FROM t1;
+} {
+  real 0.0
+  real 4.0
+}
+
+reset_db
+do_execsql_test 5.0 {
+  CREATE TABLE t1(a TEXT, b FLOAT);
+  INSERT INTO t1(b,a) VALUES
+    (2,'A'),
+    (5.0,'B'),
+    (8.5,'C');
+  SELECT a,b FROM t1;
+} {A 2.0 B 5.0 C 8.5}
+do_execsql_test 5.1 {
+  CREATE INDEX t1x1 ON t1(a,b);
+  CREATE INDEX t1x2 ON t1(b,a);
+}
+do_execsql_test 5.2 {
+  SELECT a,b FROM t1 ORDER BY a,b;
+} {A 2.0 B 5.0 C 8.5}
+do_execsql_test 5.3 {
+  SELECT a,b FROM t1 ORDER BY b,a;
+} {A 2.0 B 5.0 C 8.5}
+
+# Set up an imposter table for t1 named "x1" that does not have datatypes
+set t1_root [db one {SELECT rootpage FROM sqlite_master WHERE name='t1'}]
+sqlite3_test_control SQLITE_TESTCTRL_IMPOSTER db main 1 $t1_root
+db eval {CREATE TABLE x1(a,b)}
+sqlite3_test_control SQLITE_TESTCTRL_IMPOSTER db main 0 0
+
+# Verify that 2 and 5 are stored as integer values.
+#
+do_execsql_test 5.4 {
+  SELECT * FROM x1;
+} {A 2 B 5 C 8.5}
+
+# Set up an imposter table for the indexes
+set t1x1_root [db one {SELECT rootpage FROM sqlite_master WHERE name='t1x1'}]
+set t1x2_root [db one {SELECT rootpage FROM sqlite_master WHERE name='t1x2'}]
+sqlite3_test_control SQLITE_TESTCTRL_IMPOSTER db main 1 $t1x1_root
+db eval {CREATE TABLE x1x1(a,b,rowid,PRIMARY KEY(a,b,rowid))WITHOUT ROWID}
+sqlite3_test_control SQLITE_TESTCTRL_IMPOSTER db main 0 0
+sqlite3_test_control SQLITE_TESTCTRL_IMPOSTER db main 1 $t1x2_root
+db eval {CREATE TABLE x1x2(b,a,rowid,PRIMARY KEY(b,a,rowid))WITHOUT ROWID}
+sqlite3_test_control SQLITE_TESTCTRL_IMPOSTER db main 0 0
+
+# Verify that 2 and 5 are stored as integers in the indexes
+#
+do_execsql_test 5.5 {
+  SELECT * FROM x1x1;
+} {A 2 1 B 5 2 C 8.5 3}
+do_execsql_test 5.6 {
+  SELECT * FROM x1x2;
+} {2 A 1 5 B 2 8.5 C 3}
+
+# Bug 2026-08-13T08:12:13Z
+#
+reset_db
+db null NULL
+do_execsql_test 6.0 {
+  CREATE TABLE t1(a INT, c TEXT NOT NULL, b FLOAT AS (a) VIRTUAL);
+  INSERT INTO t1(c, a) VALUES ('x', 0);
+  SELECT t1.c, t1.c='x' AS p
+    FROM t1 RIGHT JOIN (SELECT if(1,b) AS v FROM t1) s ON v GLOB '0.0';
+} {x 1}
+do_execsql_test 6.1 {
+  SELECT *
+    FROM t1 RIGHT JOIN (SELECT if(1,b) AS v FROM t1) s ON v GLOB '0.0'
+   WHERE t1.c='x';
+} {0 x 0.0 0.0}
+do_execsql_test 6.2 {
+  DROP TABLE t1;
+  CREATE TABLE t1(a INT, b FLOAT AS (a) VIRTUAL);
+  INSERT INTO t1(a) VALUES (0);
+  WITH s AS MATERIALIZED (SELECT if(1,b) AS x FROM t1)
+    SELECT x, typeof(x) FROM s;
+} {0.0 real}
+
+ifcapable vtab {
+# Bug 2026-08-23T15:39:59Z with the revised fix on 2026-08-29
+#
+# Verify that sqlite3ValueFromExpr() only converts integers into floating-point
+# if the integer is too big to represent in 48 bits (6 bytes).
+#
+reset_db
+do_execsql_test 7.10 {
+  CREATE TABLE t1(a INT);
+  INSERT INTO t1(a) VALUES(1);
+  ALTER TABLE t1 ADD COLUMN b REAL DEFAULT(-140737488355329);
+  CREATE INDEX t1b ON t1(b);
+  SELECT a, typeof(b) FROM t1;
+} {1 real}
+set t1broot [db onecolumn {SELECT rootpage FROM sqlite_schema WHERE name='t1b'}]
+sqlite3_test_control SQLITE_TESTCTRL_IMPOSTER db main 1 $t1broot
+db eval {CREATE TABLE t2(b,rowid,PRIMARY KEY(b,rowid))WITHOUT ROWID}
+sqlite3_test_control SQLITE_TESTCTRL_IMPOSTER db main 0 0
+do_execsql_test 7.11 {
+  SELECT b, typeof(b), rowid FROM t2;
+} {-140737488355329.0 real 1}
+
+reset_db
+do_execsql_test 7.20 {
+  CREATE TABLE t1(a INT);
+  INSERT INTO t1(a) VALUES(1);
+  ALTER TABLE t1 ADD COLUMN b REAL DEFAULT(-140737488355328);
+  CREATE INDEX t1b ON t1(b);
+  SELECT a, typeof(b) FROM t1;
+} {1 real}
+sqlite3_test_control SQLITE_TESTCTRL_IMPOSTER db main 1 $t1broot
+db eval {CREATE TABLE t2(b,rowid,PRIMARY KEY(b,rowid))WITHOUT ROWID}
+sqlite3_test_control SQLITE_TESTCTRL_IMPOSTER db main 0 0
+do_execsql_test 7.21 {
+  SELECT b, typeof(b), rowid FROM t2;
+} {-140737488355328 integer 1}
+
+reset_db
+do_execsql_test 7.30 {
+  CREATE TABLE t1(a INT);
+  INSERT INTO t1(a) VALUES(1);
+  ALTER TABLE t1 ADD COLUMN b REAL DEFAULT(140737488355327);
+  CREATE INDEX t1b ON t1(b);
+  SELECT a, typeof(b) FROM t1;
+} {1 real}
+sqlite3_test_control SQLITE_TESTCTRL_IMPOSTER db main 1 $t1broot
+db eval {CREATE TABLE t2(b,rowid,PRIMARY KEY(b,rowid))WITHOUT ROWID}
+sqlite3_test_control SQLITE_TESTCTRL_IMPOSTER db main 0 0
+do_execsql_test 7.31 {
+  SELECT b, typeof(b), rowid FROM t2;
+} {140737488355327 integer 1}
+
+reset_db
+do_execsql_test 7.40 {
+  CREATE TABLE t1(a INT);
+  INSERT INTO t1(a) VALUES(1);
+  ALTER TABLE t1 ADD COLUMN b REAL DEFAULT(140737488355328);
+  CREATE INDEX t1b ON t1(b);
+  SELECT a, typeof(b) FROM t1;
+} {1 real}
+sqlite3_test_control SQLITE_TESTCTRL_IMPOSTER db main 1 $t1broot
+db eval {CREATE TABLE t2(b,rowid,PRIMARY KEY(b,rowid))WITHOUT ROWID}
+sqlite3_test_control SQLITE_TESTCTRL_IMPOSTER db main 0 0
+do_execsql_test 7.41 {
+  SELECT b, typeof(b), rowid FROM t2;
+} {140737488355328.0 real 1}
+
+} ;# endif capable vtab
+
+# Bug 2026-11-03T02:13:29Z
+# https://sqlite.org/bugs/info/9be9674491db1c7c
+#
+# A large integer that has no exact floating point representation must
+# not be converted to floating point when compared against a REAL value,
+# so that "=", "IN (list)", and "IN (SELECT ...)" all agree.
+#
+reset_db
+do_execsql_test 8.0 {
+  CREATE TABLE r(e REAL);
+  INSERT INTO r VALUES(9007199254740992.0);
+  SELECT 9007199254740993 = e, 9007199254740993 IN (SELECT e FROM r),
+         9007199254740993 IN (e) FROM r;
+} {0 0 0}
+do_execsql_test 8.1 {
+  SELECT 9007199254740992 = e, 9007199254740992 IN (SELECT e FROM r),
+         9007199254740992 IN (e) FROM r;
+} {1 1 1}
+do_execsql_test 8.2 {
+  SELECT e = 9007199254740993, e IN (SELECT 9007199254740993),
+         e IN (9007199254740993) FROM r;
+} {0 0 0}
+do_execsql_test 8.3 {
+  SELECT e = 9007199254740992, e IN (SELECT 9007199254740992),
+         e IN (SELECT '9007199254740992'), e IN (9007199254740992) FROM r;
+} {1 1 1 1}
+do_execsql_test 8.4 {
+  CREATE TABLE i(x INTEGER);
+  INSERT INTO i VALUES(9007199254740993);
+  SELECT x = (SELECT e FROM r), x IN (SELECT e FROM r),
+         (SELECT e FROM r) IN (SELECT x FROM i) FROM i;
+} {0 0 0}
+do_execsql_test 8.5 {
+  CREATE TABLE d(e DOUBLE);
+  CREATE INDEX dx ON d(e);
+  INSERT INTO d VALUES(9007199254740992.0),(2.0),(2.5);
+  SELECT count(*) FROM d WHERE e=9007199254740993;
+} {0}
+do_execsql_test 8.6 {
+  SELECT count(*) FROM d WHERE e IN (SELECT 9007199254740993);
+} {0}
+do_execsql_test 8.7 {
+  SELECT count(*) FROM d WHERE e IN (9007199254740993, 2);
+} {1}
+do_execsql_test 8.8 {
+  SELECT count(*) FROM d WHERE e>=9007199254740993;
+} {0}
+do_execsql_test 8.9 {
+  SELECT 2 IN (SELECT e FROM d), '2' IN (SELECT e FROM d),
+         3 IN (SELECT e FROM d), '2.5' IN (SELECT e FROM d);
+} {1 1 0 1}
+do_execsql_test 8.10 {
+  SELECT count(*) FROM d WHERE e IN (SELECT 2 UNION SELECT '2.5');
+} {2}
+ifcapable foreignkey&&vtab {
+  do_execsql_test 8.11 {
+    PRAGMA foreign_keys=ON;
+    CREATE TABLE p(k REAL UNIQUE);
+    INSERT INTO p VALUES(9007199254740992.0);
+    CREATE TABLE c(x INTEGER REFERENCES p(k));
+    INSERT INTO c VALUES(9007199254740992);
+  } {}
+  do_catchsql_test 8.12 {
+    INSERT INTO c VALUES(9007199254740993);
+  } {1 {FOREIGN KEY constraint failed}}
+  do_execsql_test 8.13 {
+    PRAGMA foreign_keys=OFF;
+    INSERT INTO c VALUES(9007199254740993);
+    SELECT "table", rowid, parent FROM pragma_foreign_key_check;
+  } {c 2 p}
+}
+
+finish_test

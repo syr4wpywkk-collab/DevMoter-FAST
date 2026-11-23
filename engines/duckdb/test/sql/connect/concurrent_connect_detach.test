@@ -1,0 +1,48 @@
+# name: test/sql/connect/concurrent_connect_detach.test
+# description: Concurrently route queries through CONNECT while detaching and reattaching the target
+# group: [connect]
+
+require quack
+
+require httpfs
+
+statement ok
+SET VARIABLE server_uri = (SELECT concat('''', listen_uri, '''') FROM quack_serve('quack:localhost:0', token='test_token'));
+
+set variable server_uri <variable:server_uri>
+
+statement ok
+ATTACH {server_uri} AS qk (TOKEN 'test_token');
+
+concurrentloop threadid 0 8
+
+loop iteration 0 30
+
+onlyif threadid=0
+statement maybe
+DETACH qk;
+----
+
+onlyif threadid=0
+statement maybe
+ATTACH {server_uri} AS qk (TOKEN 'test_token');
+----
+
+onlyif threadid>0
+statement maybe
+DISCONNECT;
+----
+
+onlyif threadid>0
+statement maybe
+CONNECT qk;
+----
+
+onlyif threadid>0
+statement maybe
+SELECT 42;
+----
+
+endloop
+
+endloop

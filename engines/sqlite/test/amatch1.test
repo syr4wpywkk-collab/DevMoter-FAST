@@ -1,0 +1,267 @@
+# 2013-09-30
+#
+# The author disclaims copyright to this source code.  In place of
+# a legal notice, here is a blessing:
+#
+#    May you do good and not evil.
+#    May you find forgiveness for yourself and forgive others.
+#    May you share freely, never taking more than you give.
+#
+#*************************************************************************
+# This file implements regression tests for "approximate_match" virtual
+# table that is in the "amatch.c" extension.
+#
+#
+
+set testdir [file dirname $argv0]
+source $testdir/tester.tcl
+
+# If SQLITE_ENABLE_FTS4 is defined, omit this file.
+ifcapable !fts3 {
+  finish_test
+  return
+}
+
+# Create the fts_kjv_genesis procedure which fills and FTS3/4 table with
+# the complete text of the Book of Genesis.
+#
+source $testdir/genesis.tcl
+
+
+
+do_test amatch1-1.0 {
+  db eval {
+    CREATE VIRTUAL TABLE t1 USING fts4(words); --, tokenize porter);
+  }
+  fts_kjv_genesis
+  db eval {
+    INSERT INTO t1(t1) VALUES('optimize');
+    CREATE VIRTUAL TABLE temp.t1aux USING fts4aux(main, t1);
+    SELECT term FROM t1aux WHERE col=0 ORDER BY 1 LIMIT 5
+  }
+} {a abated abel abelmizraim abidah}
+do_test amatch1-1.1 {
+  db eval {
+    SELECT term FROM t1aux WHERE term>'b' AND col=0 ORDER BY 1 LIMIT 5
+  }
+} {baalhanan babel back backward bad}
+do_test amatch1-1.2 {
+  db eval {
+    SELECT term FROM t1aux WHERE term>'b' AND col=0 LIMIT 5
+  }
+} {baalhanan babel back backward bad}
+
+# Load the amatch extension
+load_static_extension db amatch
+
+do_execsql_test amatch1-2.0 {
+    CREATE TABLE costs(iLang, cFrom, cTo, Cost);
+    INSERT INTO costs VALUES(0, '', '?', 100);
+    INSERT INTO costs VALUES(0, '?', '', 100);
+    INSERT INTO costs VALUES(0, '?', '?', 150);
+    CREATE TABLE vocab(w TEXT UNIQUE);
+    INSERT OR IGNORE INTO vocab SELECT term FROM t1aux;
+    CREATE VIRTUAL TABLE t2 USING approximate_match(
+      vocabulary_table=t1aux,
+      vocabulary_word=term,
+      edit_distances=costs
+    );
+    CREATE VIRTUAL TABLE t3 USING approximate_match(
+      vocabulary_table=vocab,
+      vocabulary_word=w,
+      edit_distances=costs
+    );
+    CREATE VIRTUAL TABLE t4 USING approximate_match(
+        vocabulary_table=vtemp,
+        vocabulary_word=w,
+        edit_distances=costs
+      );
+} {}
+puts "Query against fts4aux: [time {
+  do_execsql_test amatch1-2.1 {
+      SELECT word, distance FROM t2
+       WHERE word MATCH 'josxph' AND distance<300;
+  } {joseph 150}} 1]"
+puts "Query against ordinary table: [time {
+  do_execsql_test amatch1-2.2 {
+      SELECT word, distance FROM t3
+       WHERE word MATCH 'josxph' AND distance<300;
+  } {joseph 150}} 1]"
+puts "Temp table initialized from fts4aux: [time {
+  do_execsql_test amatch1-2.3a {
+      CREATE TEMP TABLE vtemp(w TEXT UNIQUE);
+      INSERT OR IGNORE INTO vtemp SELECT term FROM t1aux;
+  } {}} 1]"
+puts "Query against temp table: [time {
+  do_execsql_test amatch1-2.3b {
+      SELECT word, distance FROM t4
+       WHERE word MATCH 'josxph' AND distance<300;
+  } {joseph 150}} 1]"
+do_execsql_test amatch1-2.11 {
+    SELECT word, distance FROM t2
+     WHERE word MATCH 'joxxph' AND distance<=300;
+} {joseph 300}
+do_execsql_test amatch1-2.12 {
+    SELECT word, distance FROM t3
+     WHERE word MATCH 'joxxph' AND distance<=300;
+} {joseph 300}
+do_execsql_test amatch1-2.21 {
+    SELECT word, distance FROM t2
+     WHERE word MATCH 'joxxph' AND distance<300;
+} {}
+do_execsql_test amatch1-2.22 {
+    SELECT word, distance FROM t3
+     WHERE word MATCH 'joxxph' AND distance<300;
+} {}
+
+# Forum post 2026-05-09T05:48:28Z
+reset_db
+load_static_extension db amatch
+do_execsql_test amatch1-3.0 {
+  CREATE TABLE cost(iLang,cFrom,cTo,Cost);
+  INSERT INTO cost VALUES(0,'?','?',1);
+  CREATE TABLE vocab(word TEXT PRIMARY KEY);
+  CREATE VIRTUAL TABLE am USING approximate_match(
+      vocabulary_table=vocab,
+      vocabulary_word=word,
+      edit_distances=cost
+  );
+  INSERT INTO vocab(word) VALUES(format('%.81c','a'));
+  SELECT length(word) FROM am WHERE word MATCH format('%.81c','a');
+} {81}
+
+# Bug 2026-07-29T06:30:13Z
+reset_db
+load_static_extension db amatch
+do_execsql_test amatch1-4.0 {
+  CREATE TABLE v(w TEXT, l INT);
+  INSERT INTO v VALUES('abc',0);
+  INSERT INTO v VALUES('abd',0);
+  CREATE TABLE ec(iLang, cFrom, cTo, Cost);
+  INSERT INTO ec VALUES(0,'?','a',-2000000000);
+}
+do_catchsql_test amatch1-4.1 {
+  CREATE VIRTUAL TABLE t USING approximate_match(
+    vocabulary_table=v,
+    vocabulary_word=w,
+    edit_distances=ec
+  );
+} {1 {approximate_match: cost must be between 1 and 1000}}
+
+# Bug 2026-08-02T13:01:25Z
+do_execsql_test amatch1-5.0 {
+  CREATE TABLE vocab(w);
+  INSERT INTO vocab VALUES('abc');
+  CREATE TABLE costs(a,b,c,d);
+  INSERT INTO costs VALUES(0,'?','',97),(0,'','?',98);
+  CREATE VIRTUAL TABLE t USING approximate_match(
+     vocabulary_table=vocab,
+     vocabulary_word=w,
+     edit_distances=costs
+  );
+}
+do_execsql_test amatch1-5.1 {
+  SELECT word, distance FROM t WHERE word MATCH 'abc';
+} {abc 0}
+do_execsql_test amatch1-5.2 {
+  SELECT word, distance FROM t WHERE word MATCH 'abc'
+                                 AND distance<9223372036854775807;
+} {abc 0}
+do_execsql_test amatch1-5.3 {
+  SELECT word, distance FROM t WHERE word MATCH 'abc' AND distance<10;
+} {abc 0}
+
+# The vocabulary_language option used to generate malformed SQL, so
+# that no words were ever matched.
+reset_db
+load_static_extension db amatch
+do_execsql_test amatch1-6.0 {
+  CREATE TABLE vocab(w, lang);
+  INSERT INTO vocab VALUES('abc', 0), ('abd', 0), ('abe', 1);
+  CREATE TABLE costs(iLang, cFrom, cTo, Cost);
+  INSERT INTO costs VALUES(0, '?', '?', 10), (1, '?', '?', 10);
+  CREATE VIRTUAL TABLE t USING approximate_match(
+     vocabulary_table=vocab,
+     vocabulary_word=w,
+     vocabulary_language=lang,
+     edit_distances=costs
+  );
+}
+do_execsql_test amatch1-6.1 {
+  SELECT word, distance FROM t WHERE word MATCH 'abc' AND distance<20;
+} {abc 0 abd 10}
+do_execsql_test amatch1-6.2 {
+  SELECT word, distance FROM t WHERE word MATCH 'abc' AND distance<20
+                                 AND language=1;
+} {abe 10}
+
+#-------------------------------------------------------------------------
+# The vocabulary table named by a virtual table in schema "main" must not
+# be resolved against an attached database. It may only be found in the
+# "temp" schema or in the same schema as the virtual table.
+#
+reset_db
+load_static_extension db amatch
+forcedelete test.db2
+do_execsql_test amatch1-7.0 {
+  ATTACH 'test.db2' AS aux;
+  CREATE TABLE aux.secret(w TEXT);
+  INSERT INTO aux.secret VALUES('topsecret');
+  CREATE TABLE costs(iLang, cFrom, cTo, Cost);
+  INSERT INTO costs VALUES(0, '?', '?', 10);
+  CREATE VIRTUAL TABLE t7 USING approximate_match(
+     vocabulary_table=secret,
+     vocabulary_word=w,
+     edit_distances=costs
+  );
+}
+do_catchsql_test amatch1-7.1 {
+  SELECT word FROM t7 WHERE word MATCH 'topsecret';
+} {0 {}}
+
+# Same again, but via a view in "main". This is the case where the main
+# database file is untrusted but the application has attached a private
+# database of its own. With trusted_schema=OFF the view is already
+# rejected, because the MATCH() function is not innocuous.
+do_execsql_test amatch1-7.2 {
+  CREATE VIEW v7 AS SELECT word FROM t7 WHERE word MATCH 'topsecret';
+}
+do_catchsql_test amatch1-7.3 {
+  SELECT * FROM v7;
+} {0 {}}
+do_execsql_test amatch1-7.3.1 {
+  PRAGMA trusted_schema = 0;
+}
+do_catchsql_test amatch1-7.3.2 {
+  SELECT * FROM v7;
+} {1 {unsafe use of MATCH()}}
+do_execsql_test amatch1-7.3.3 {
+  PRAGMA trusted_schema = 1;
+}
+
+# A vocabulary table in the same schema as the virtual table still works.
+do_execsql_test amatch1-7.4 {
+  CREATE TABLE aux.costs(iLang, cFrom, cTo, Cost);
+  INSERT INTO aux.costs VALUES(0, '?', '?', 10);
+  CREATE VIRTUAL TABLE aux.t7b USING approximate_match(
+     vocabulary_table=secret,
+     vocabulary_word=w,
+     edit_distances=costs
+  );
+  SELECT word FROM aux.t7b WHERE word MATCH 'topsecret';
+} {topsecret}
+
+# A vocabulary table in "temp" is still used by a virtual table in "main",
+# even if the name differs in case.
+do_execsql_test amatch1-7.5 {
+  CREATE TEMP TABLE Vocab7(w TEXT);
+  INSERT INTO Vocab7 VALUES('notsecret');
+  CREATE VIRTUAL TABLE t7c USING approximate_match(
+     vocabulary_table=VOCAB7,
+     vocabulary_word=w,
+     edit_distances=costs
+  );
+  SELECT word FROM t7c WHERE word MATCH 'notsecret';
+} {notsecret}
+
+finish_test

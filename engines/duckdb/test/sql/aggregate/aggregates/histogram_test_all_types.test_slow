@@ -1,0 +1,33 @@
+# name: test/sql/aggregate/aggregates/histogram_test_all_types.test_slow
+# description: Test histogram operator for all types
+# group: [aggregates]
+
+statement ok
+create table all_types as from test_all_types()
+
+foreach col <all_types_columns>
+
+query II
+SELECT histogram[min], histogram[max] FROM (
+	SELECT HISTOGRAM("{col}") histogram, MIN("{col}") min, MAX("{col}") max
+	FROM all_types
+)
+----
+1	1
+
+# binned histogram
+query II
+SELECT histogram[min], histogram[max] FROM (
+	SELECT HISTOGRAM("{col}", [(select min("{col}") from all_types), ((select max("{col}") from all_types))]) histogram, MIN("{col}") min, MAX("{col}") max
+	FROM all_types
+)
+----
+1	1
+
+query I
+SELECT count(*) FROM (SELECT DISTINCT bool IS NULL k, histogram("{col}") OVER (PARTITION BY bool IS NULL) h FROM all_types) w
+JOIN (SELECT bool IS NULL k, histogram("{col}") h FROM all_types GROUP BY k) g USING (k) WHERE w.h IS DISTINCT FROM g.h
+----
+0
+
+endloop

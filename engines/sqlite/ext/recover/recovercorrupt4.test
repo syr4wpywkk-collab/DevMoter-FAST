@@ -1,0 +1,101 @@
+# 2024 May 15
+#
+# The author disclaims copyright to this source code.  In place of
+# a legal notice, here is a blessing:
+#
+#    May you do good and not evil.
+#    May you find forgiveness for yourself and forgive others.
+#    May you share freely, never taking more than you give.
+#
+#***********************************************************************
+#
+
+source [file join [file dirname [info script]] recover_common.tcl]
+set testprefix recovercorrupt4
+
+database_may_be_corrupt
+
+if {[permutation]!="inmemory_journal"} {
+  # This test cannot be run with the inmemory_journal permutation, as it
+  # must open a truncated, corrupt, database file. With the inmemory_journal
+  # permutation, this fails (SQLITE_CORRUPT error) when the [sqlite3] wrapper
+  # executes "PRAGMA journal_mode = memory".
+  do_execsql_test 1.0 {
+    CREATE TABLE rows(indexed INTEGER NOT NULL, unindexed INTEGER NOT NULL, filler BLOB NOT NULL DEFAULT 13);
+    -- CREATE UNIQUE INDEX rows_index ON rows(indexed);
+    INSERT INTO rows(indexed, unindexed, filler) VALUES(1, 1, x'31');
+    INSERT INTO rows(indexed, unindexed, filler) VALUES(2, 2, x'32');
+    INSERT INTO rows(indexed, unindexed, filler) VALUES(4, 4, x'34');
+    INSERT INTO rows(indexed, unindexed, filler) VALUES(8, 8, randomblob(2048));
+  }
+  
+  db close
+  
+  do_test 1.1 {
+    set sz [expr [file size test.db] - 1024]
+    set fd [open test.db]
+    fconfigure $fd -translation binary
+  
+    set data [read $fd $sz]
+    set fd2 [open test.db2 w]
+    fconfigure $fd2 -translation binary
+    puts -nonewline $fd2 $data
+    close $fd2
+    set {} {}
+  } {}
+  
+  do_test 1.2 {
+    forcedelete test.db3
+    sqlite3 db test.db2
+    set R [sqlite3_recover_init db main test.db3]
+    $R run
+    $R finish
+  } {}
+  
+  do_test 1.3 {
+    sqlite3 db test.db3
+    execsql {
+      SELECT indexed, unindexed FROM rows
+    }
+  } {1 1 2 2 4 4 8 8}
+}
+catch {close $fd}
+db close
+
+# Bug 2026-10-25T12:08:19Z
+#
+reset_db
+do_execsql_test 2.0 {
+  PRAGMA auto_vacuum=OFF;
+  PRAGMA page_size=4096;
+  CREATE TABLE x(a); INSERT INTO x VALUES(1);
+  PRAGMA writable_schema=ON;
+  DELETE FROM sqlite_schema WHERE name='x';
+  INSERT INTO sqlite_schema VALUES('table','aa','aa',0,
+    'CREATE TEMP TABLE tb(c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11,c12,c13,c14,c15,c16,c17)');
+  INSERT INTO sqlite_schema VALUES('table','ab','ab',0,'CREATE INDEX temp.x ON tb(c17)');
+  INSERT INTO sqlite_schema VALUES('table','x','x',2,'CREATE TABLE x(a)');
+  PRAGMA writable_schema=RESET;
+}
+do_catchsql_test 2.1 {
+  PRAGMA integrity_check;
+} {1 {malformed database schema (aa)}}
+do_test 2.3 {
+  forcedelete test.db2
+  set R [sqlite3_recover_init db main test.db2]
+  $R run
+  $R finish
+} {}
+do_test 2.4 {
+  sqlite3 db2 test.db2
+  db2 eval {PRAGMA integrity_check}
+} {ok}
+
+# TODO:  Different answers for --config Android and
+# for --config Device-Two.
+# 
+#do_test 2.5 {
+#  db2 eval {SELECT * FROM x}
+#} {1}
+
+finish_test

@@ -1,0 +1,106 @@
+# name: test/sql/copy/parquet/encryption/arrow_compatibility.test
+# description: Test Arrow Compatibility for Parquet Encryption
+# group: [encryption]
+
+require parquet
+
+# parquet keys are not persisted across restarts
+require noforcestorage
+
+statement ok
+PRAGMA add_parquet_key('arrow_key', '0123456789012345')
+
+statement ok
+PRAGMA add_parquet_key('arrow_key_generated_files', '0123456789abcdef')
+
+# from apache/parquet-testing repo
+query I
+SELECT flba_field FROM read_parquet('{DATA_DIR}/parquet-testing/encryption/arrow_uniform_encryption.parquet', encryption_config={footer_key: 'arrow_key'}) LIMIT 1;
+----
+\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
+
+# generated encrypted parquet file
+query II
+SELECT * FROM read_parquet('{DATA_DIR}/parquet-testing/encryption/arrow_uniform_encryption_gist.parquet', encryption_config={footer_key: 'arrow_key_generated_files'});
+----
+10	true
+20	false
+30	true
+
+# generated encrypted parquet files with arrow, 10 row groups
+query II
+SELECT * FROM read_parquet('{DATA_DIR}/parquet-testing/encryption/arrow_uniform_encryption_ten_row_groups.parquet', encryption_config={footer_key: 'arrow_key_generated_files'});
+----
+1	true
+2	false
+3	true
+4	false
+5	true
+6	false
+7	true
+8	false
+9	true
+10	false
+11	true
+12	false
+13	true
+14	false
+15	true
+16	false
+17	true
+18	false
+19	true
+20	false
+
+# DataPageV2 pages, generated with parquet-rs 58.3.0 (from duckdb/duckdb#24406)
+query I
+SELECT value FROM read_parquet('{DATA_DIR}/parquet-testing/encryption/arrow_rust_pme_data_page_v2_uncompressed_required.parquet', encryption_config={footer_key: 'arrow_key_generated_files'});
+----
+7
+9
+11
+13
+
+query I
+SELECT value FROM read_parquet('{DATA_DIR}/parquet-testing/encryption/arrow_rust_pme_data_page_v2_uncompressed_nullable.parquet', encryption_config={footer_key: 'arrow_key_generated_files'});
+----
+7
+NULL
+11
+13
+
+query I
+SELECT value FROM read_parquet('{DATA_DIR}/parquet-testing/encryption/arrow_rust_pme_data_page_v2_snappy_required.parquet', encryption_config={footer_key: 'arrow_key_generated_files'});
+----
+7
+9
+11
+13
+
+query I
+SELECT value FROM read_parquet('{DATA_DIR}/parquet-testing/encryption/arrow_rust_pme_data_page_v2_snappy_nullable.parquet', encryption_config={footer_key: 'arrow_key_generated_files'});
+----
+7
+NULL
+11
+13
+
+# DataPageV2 pages whose values are compressed, generated with parquet-rs 58.4.0 (dictionary disabled)
+query IIII
+SELECT count(*), count(value), sum(value), count(*) FILTER (value = 9) FROM read_parquet('{DATA_DIR}/parquet-testing/encryption/arrow_rust_pme_data_page_v2_snappy_compressed_required.parquet', encryption_config={footer_key: 'arrow_key_generated_files'});
+----
+4096	4096	40960	1024
+
+query IIII
+SELECT count(*), count(value), sum(value), count(*) FILTER (value = 9) FROM read_parquet('{DATA_DIR}/parquet-testing/encryption/arrow_rust_pme_data_page_v2_snappy_compressed_nullable.parquet', encryption_config={footer_key: 'arrow_key_generated_files'});
+----
+4096	3072	31744	0
+
+query II
+SELECT file_row_number, value FROM read_parquet('{DATA_DIR}/parquet-testing/encryption/arrow_rust_pme_data_page_v2_snappy_compressed_nullable.parquet', encryption_config={footer_key: 'arrow_key_generated_files'}, file_row_number = true) WHERE file_row_number < 5 ORDER BY file_row_number;
+----
+0	7
+1	NULL
+2	11
+3	13
+4	7
