@@ -1,0 +1,3154 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-24",
+  "referenceDefaults": {
+    "reference": {
+      "implementation": "Microsoft Excel",
+      "version": "general documented behavior (not empirically recorded)",
+      "dateSystem": "1900",
+      "os": "any",
+      "locale": "en-US",
+      "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+    }
+  },
+  "cases": [
+    {
+      "id": "I13-IMEXP-001",
+      "formula": "=IMEXP(\"0\")",
+      "inputs": {},
+      "expected": {
+        "text": "1"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMEXP-002",
+      "formula": "=IMEXP(\"1+i\")",
+      "inputs": {},
+      "expected": {
+        "text": "1.46869393991589+2.28735528717884i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMEXP-003",
+      "formula": "=IMEXP(\"1\")",
+      "inputs": {},
+      "expected": {
+        "text": "2.71828182845905"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMEXP-004",
+      "formula": "=IMEXP(\"3.14159265358979i\")",
+      "inputs": {},
+      "expected": {
+        "text": "-1"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMEXP-005",
+      "formula": "=IMEXP(\"bad\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMEXP-006",
+      "formula": "=IMEXP(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMEXP-007",
+      "formula": "=IMEXP(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMEXP-008",
+      "formula": "=IMEXP(\"1e308\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMEXP-009",
+      "formula": "=IMEXP(\"i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.54030230586814+0.841470984807897i"
+      },
+      "specOpen": true,
+      "specOpenReason": "e^i = cos1+i\u00b7sin1 has irrational components; exact text rendering is a spec-doc open question. Expected shown is the real Excel string family, not the engine's.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMEXP-010",
+      "formula": "=IMEXP(A1)",
+      "inputs": {},
+      "expected": {
+        "text": "1"
+      },
+      "specOpen": true,
+      "specOpenReason": "Blank argument handling (0 vs #NUM!) is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMEXP-011",
+      "formula": "=IMEXP()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLN-001",
+      "formula": "=IMLN(\"1\")",
+      "inputs": {},
+      "expected": {
+        "text": "0"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLN-002",
+      "formula": "=IMLN(\"3+4i\")",
+      "inputs": {},
+      "expected": {
+        "text": "1.6094379124341+0.927295218001612i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLN-003",
+      "formula": "=IMLN(\"-1\")",
+      "inputs": {},
+      "expected": {
+        "text": "3.14159265358979i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLN-004",
+      "formula": "=IMLN(\"0\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLN-005",
+      "formula": "=IMLN(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLN-006",
+      "formula": "=IMLN(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLN-007",
+      "formula": "=IMLN(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLN-008",
+      "formula": "=IMLN(\"i\")",
+      "inputs": {},
+      "expected": {
+        "text": "1.5707963267949i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLN-009",
+      "formula": "=IMLN(\"0+0i\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLN-010",
+      "formula": "=IMLN()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG10-001",
+      "formula": "=IMLOG10(\"100\")",
+      "inputs": {},
+      "expected": {
+        "text": "2"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG10-002",
+      "formula": "=IMLOG10(\"10\")",
+      "inputs": {},
+      "expected": {
+        "text": "1"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG10-003",
+      "formula": "=IMLOG10(\"3+4i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.698970004336019+0.402719196273373i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG10-004",
+      "formula": "=IMLOG10(\"0\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG10-005",
+      "formula": "=IMLOG10(\"n/a\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG10-006",
+      "formula": "=IMLOG10(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG10-007",
+      "formula": "=IMLOG10(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG10-008",
+      "formula": "=IMLOG10(\"-1\")",
+      "inputs": {},
+      "expected": {
+        "text": "1.36437635384184i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG10-009",
+      "formula": "=IMLOG10(\"1\")",
+      "inputs": {},
+      "expected": {
+        "text": "0"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG10-010",
+      "formula": "=IMLOG10()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG2-001",
+      "formula": "=IMLOG2(\"8\")",
+      "inputs": {},
+      "expected": {
+        "text": "3"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG2-002",
+      "formula": "=IMLOG2(\"2\")",
+      "inputs": {},
+      "expected": {
+        "text": "1"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG2-003",
+      "formula": "=IMLOG2(\"3+4i\")",
+      "inputs": {},
+      "expected": {
+        "text": "2.32192809488736+1.33780421245098i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG2-004",
+      "formula": "=IMLOG2(\"0\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG2-005",
+      "formula": "=IMLOG2(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG2-006",
+      "formula": "=IMLOG2(FALSE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG2-007",
+      "formula": "=IMLOG2(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG2-008",
+      "formula": "=IMLOG2(\"-1\")",
+      "inputs": {},
+      "expected": {
+        "text": "4.53236014182719i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG2-009",
+      "formula": "=IMLOG2(\"1\")",
+      "inputs": {},
+      "expected": {
+        "text": "0"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMLOG2-010",
+      "formula": "=IMLOG2()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPOWER-001",
+      "formula": "=IMPOWER(\"2+3i\",3)",
+      "inputs": {},
+      "expected": {
+        "text": "-46+9i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPOWER-002",
+      "formula": "=IMPOWER(\"2\",10)",
+      "inputs": {},
+      "expected": {
+        "text": "1024"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPOWER-003",
+      "formula": "=IMPOWER(\"4\",0.5)",
+      "inputs": {},
+      "expected": {
+        "text": "2"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPOWER-004",
+      "formula": "=IMPOWER(\"bad\",2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPOWER-005",
+      "formula": "=IMPOWER(\"0+1i\",2)",
+      "inputs": {},
+      "expected": {
+        "text": "-1"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPOWER-006",
+      "formula": "=IMPOWER(\"0\",0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "specOpen": true,
+      "specOpenReason": "0^0 error: spec allows #NUM! or #DIV/0!.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPOWER-007",
+      "formula": "=IMPOWER(\"0\",-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "specOpen": true,
+      "specOpenReason": "0^-1 error: spec allows #NUM! or #DIV/0!.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPOWER-008",
+      "formula": "=IMPOWER(TRUE,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPOWER-009",
+      "formula": "=IMPOWER(1/0,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPOWER-010",
+      "formula": "=IMPOWER(\"0\",2)",
+      "inputs": {},
+      "expected": {
+        "text": "0"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPOWER-011",
+      "formula": "=IMPOWER(\"2\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPRODUCT-001",
+      "formula": "=IMPRODUCT(\"3+4i\",\"5-3i\")",
+      "inputs": {},
+      "expected": {
+        "text": "27+11i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPRODUCT-002",
+      "formula": "=IMPRODUCT(\"1+2i\",30)",
+      "inputs": {},
+      "expected": {
+        "text": "30+60i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPRODUCT-003",
+      "formula": "=IMPRODUCT(\"2\",\"3\",\"4\")",
+      "inputs": {},
+      "expected": {
+        "text": "24"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPRODUCT-004",
+      "formula": "=IMPRODUCT(\"i\",\"i\")",
+      "inputs": {},
+      "expected": {
+        "text": "-1"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPRODUCT-005",
+      "formula": "=IMPRODUCT(\"x\",\"1\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPRODUCT-006",
+      "formula": "=IMPRODUCT(\"5+3i\")",
+      "inputs": {},
+      "expected": {
+        "text": "5+3i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPRODUCT-007",
+      "formula": "=IMPRODUCT(\"1+i\",\"1+j\")",
+      "inputs": {},
+      "expected": {
+        "text": "2i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPRODUCT-008",
+      "formula": "=IMPRODUCT(\"3+4i\",\"3-4i\")",
+      "inputs": {},
+      "expected": {
+        "text": "25"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPRODUCT-009",
+      "formula": "=IMPRODUCT(A1:A2)",
+      "inputs": {
+        "A1": "3+4i",
+        "A2": "5-3i"
+      },
+      "expected": {
+        "text": "27+11i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether complex text in ranges is multiplied (Excel range rules for IM* are a spec-doc open question).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPRODUCT-010",
+      "formula": "=IMPRODUCT(\"1\",TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMPRODUCT-011",
+      "formula": "=IMPRODUCT()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMREAL-001",
+      "formula": "=IMREAL(\"6-9i\")",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMREAL-002",
+      "formula": "=IMREAL(\"3+4j\")",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMREAL-003",
+      "formula": "=IMREAL(\"-4i\")",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMREAL-004",
+      "formula": "=IMREAL(12.5)",
+      "inputs": {},
+      "expected": {
+        "number": 12.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMREAL-005",
+      "formula": "=IMREAL(\"n/a\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMREAL-006",
+      "formula": "=IMREAL(\"i\")",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMREAL-007",
+      "formula": "=IMREAL(\"-2.5-3i\")",
+      "inputs": {},
+      "expected": {
+        "number": -2.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMREAL-008",
+      "formula": "=IMREAL(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMREAL-009",
+      "formula": "=IMREAL(A1)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "specOpen": true,
+      "specOpenReason": "Blank argument handling (0 vs #NUM!) is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMREAL-010",
+      "formula": "=IMREAL(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMREAL-011",
+      "formula": "=IMREAL(\"3+4I\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSEC-001",
+      "formula": "=IMSEC(\"1+i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.498337030555187+0.591083841721045i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSEC-002",
+      "formula": "=IMSEC(\"0\")",
+      "inputs": {},
+      "expected": {
+        "text": "1"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSEC-003",
+      "formula": "=IMSEC(\"1\")",
+      "inputs": {},
+      "expected": {
+        "text": "1.85081571768093"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSEC-004",
+      "formula": "=IMSEC(\"bad\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSEC-005",
+      "formula": "=IMSEC(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSEC-006",
+      "formula": "=IMSEC(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSEC-007",
+      "formula": "=IMSEC(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSEC-008",
+      "formula": "=IMSEC(\"2\")",
+      "inputs": {},
+      "expected": {
+        "text": "-2.40299796172238"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSEC-009",
+      "formula": "=IMSEC(\"1+j\")",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine always emits the i suffix on output; whether Excel preserves j is a spec-doc open question. Expected j-preserved value unknown pending reference capture.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSEC-010",
+      "formula": "=IMSEC()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSECH-001",
+      "formula": "=IMSECH(\"1+i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.498337030555187-0.591083841721045i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSECH-002",
+      "formula": "=IMSECH(\"0\")",
+      "inputs": {},
+      "expected": {
+        "text": "1"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSECH-003",
+      "formula": "=IMSECH(\"1\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.648054273663885"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSECH-004",
+      "formula": "=IMSECH(\"bad\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSECH-005",
+      "formula": "=IMSECH(FALSE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSECH-006",
+      "formula": "=IMSECH(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSECH-007",
+      "formula": "=IMSECH(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSECH-008",
+      "formula": "=IMSECH(\"i\")",
+      "inputs": {},
+      "expected": {
+        "text": "1.85081571768093"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSECH-009",
+      "formula": "=IMSECH(A1)",
+      "inputs": {},
+      "expected": {
+        "text": "1"
+      },
+      "specOpen": true,
+      "specOpenReason": "Blank argument handling (0 vs #NUM!) is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSECH-010",
+      "formula": "=IMSECH()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSIN-001",
+      "formula": "=IMSIN(\"1+i\")",
+      "inputs": {},
+      "expected": {
+        "text": "1.29845758141598+0.634963914784736i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSIN-002",
+      "formula": "=IMSIN(\"0\")",
+      "inputs": {},
+      "expected": {
+        "text": "0"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSIN-003",
+      "formula": "=IMSIN(\"1.5707963267949\")",
+      "inputs": {},
+      "expected": {
+        "text": "1"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSIN-004",
+      "formula": "=IMSIN(\"i\")",
+      "inputs": {},
+      "expected": {
+        "text": "1.1752011936438i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSIN-005",
+      "formula": "=IMSIN(\"bad\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSIN-006",
+      "formula": "=IMSIN(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSIN-007",
+      "formula": "=IMSIN(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSIN-008",
+      "formula": "=IMSIN(\"2\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.909297426825682"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSIN-009",
+      "formula": "=IMSIN(A1)",
+      "inputs": {},
+      "expected": {
+        "text": "0"
+      },
+      "specOpen": true,
+      "specOpenReason": "Blank argument handling (0 vs #NUM!) is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSIN-010",
+      "formula": "=IMSIN()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSINH-001",
+      "formula": "=IMSINH(\"1+i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.634963914784736+1.29845758141598i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSINH-002",
+      "formula": "=IMSINH(\"0\")",
+      "inputs": {},
+      "expected": {
+        "text": "0"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSINH-003",
+      "formula": "=IMSINH(\"1\")",
+      "inputs": {},
+      "expected": {
+        "text": "1.1752011936438"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSINH-004",
+      "formula": "=IMSINH(\"i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.841470984807897i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSINH-005",
+      "formula": "=IMSINH(\"bad\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSINH-006",
+      "formula": "=IMSINH(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSINH-007",
+      "formula": "=IMSINH(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSINH-008",
+      "formula": "=IMSINH(\"1e308\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSINH-009",
+      "formula": "=IMSINH(A1)",
+      "inputs": {},
+      "expected": {
+        "text": "0"
+      },
+      "specOpen": true,
+      "specOpenReason": "Blank argument handling (0 vs #NUM!) is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSINH-010",
+      "formula": "=IMSINH()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSQRT-001",
+      "formula": "=IMSQRT(\"4\")",
+      "inputs": {},
+      "expected": {
+        "text": "2"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSQRT-002",
+      "formula": "=IMSQRT(\"-4\")",
+      "inputs": {},
+      "expected": {
+        "text": "2i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec flags the sign on the negative real axis as open (+2i vs -2i); principal branch gives +2i. Also exact rendering of the ~1e-16 real residue differs.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSQRT-003",
+      "formula": "=IMSQRT(\"1+i\")",
+      "inputs": {},
+      "expected": {
+        "text": "1.09868411346781+0.455089860562227i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSQRT-004",
+      "formula": "=IMSQRT(\"i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.707106781186548+0.707106781186548i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSQRT-005",
+      "formula": "=IMSQRT(\"bad\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSQRT-006",
+      "formula": "=IMSQRT(16)",
+      "inputs": {},
+      "expected": {
+        "text": "4"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSQRT-007",
+      "formula": "=IMSQRT(0)",
+      "inputs": {},
+      "expected": {
+        "text": "0"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSQRT-008",
+      "formula": "=IMSQRT(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSQRT-009",
+      "formula": "=IMSQRT(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSQRT-010",
+      "formula": "=IMSQRT(\"3+4I\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUB-001",
+      "formula": "=IMSUB(\"13+4i\",\"5+3i\")",
+      "inputs": {},
+      "expected": {
+        "text": "8+i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUB-002",
+      "formula": "=IMSUB(\"13\",\"5+3i\")",
+      "inputs": {},
+      "expected": {
+        "text": "8-3i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUB-003",
+      "formula": "=IMSUB(\"1+2i\",\"1+2i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUB-004",
+      "formula": "=IMSUB(\"x\",\"1\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUB-005",
+      "formula": "=IMSUB(10,3)",
+      "inputs": {},
+      "expected": {
+        "text": "7"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUB-006",
+      "formula": "=IMSUB(\"1\",\"5+3i\")",
+      "inputs": {},
+      "expected": {
+        "text": "-4-3i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUB-007",
+      "formula": "=IMSUB(\"0\",\"i\")",
+      "inputs": {},
+      "expected": {
+        "text": "-i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUB-008",
+      "formula": "=IMSUB(\"13+4j\",\"5+3i\")",
+      "inputs": {},
+      "expected": {
+        "text": "8+i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUB-009",
+      "formula": "=IMSUB(TRUE,\"1\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUB-010",
+      "formula": "=IMSUB(1/0,\"1\")",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUB-011",
+      "formula": "=IMSUB(\"1\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUM-001",
+      "formula": "=IMSUM(\"3+4i\",\"5-3i\")",
+      "inputs": {},
+      "expected": {
+        "text": "8+i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUM-002",
+      "formula": "=IMSUM(\"1\",\"2i\",\"3\")",
+      "inputs": {},
+      "expected": {
+        "text": "4+2i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUM-003",
+      "formula": "=IMSUM(\"5+3i\")",
+      "inputs": {},
+      "expected": {
+        "text": "5+3i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUM-004",
+      "formula": "=IMSUM(\"x\",\"1\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUM-005",
+      "formula": "=IMSUM(1,2,3)",
+      "inputs": {},
+      "expected": {
+        "text": "6"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUM-006",
+      "formula": "=IMSUM(\"1+i\",\"1+j\")",
+      "inputs": {},
+      "expected": {
+        "text": "2+2i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUM-007",
+      "formula": "=IMSUM(\"1+2i\",\"-1-2i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUM-008",
+      "formula": "=IMSUM(A1:A2)",
+      "inputs": {
+        "A1": "3+4i",
+        "A2": "5-3i"
+      },
+      "expected": {
+        "text": "8+i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether complex text in ranges is summed (Excel range rules for IM* are a spec-doc open question).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUM-009",
+      "formula": "=IMSUM(\"1\",FALSE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUM-010",
+      "formula": "=IMSUM(1/0,\"2\")",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMSUM-011",
+      "formula": "=IMSUM()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMTAN-001",
+      "formula": "=IMTAN(\"1+i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.271752585319512+1.08392332733869i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMTAN-002",
+      "formula": "=IMTAN(\"0.785398163397448\")",
+      "inputs": {},
+      "expected": {
+        "text": "1"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMTAN-003",
+      "formula": "=IMTAN(\"i\")",
+      "inputs": {},
+      "expected": {
+        "text": "0.761594155955765i"
+      },
+      "specOpen": true,
+      "specOpenReason": "Engine renders shortest-round-trip digits in complex text while Excel shows ~15 significant digits; exact output string rendering rule is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMTAN-004",
+      "formula": "=IMTAN(\"0\")",
+      "inputs": {},
+      "expected": {
+        "text": "0"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMTAN-005",
+      "formula": "=IMTAN(\"bad\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMTAN-006",
+      "formula": "=IMTAN(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMTAN-007",
+      "formula": "=IMTAN(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMTAN-008",
+      "formula": "=IMTAN(\"1.5707963267948966\")",
+      "inputs": {},
+      "expected": {
+        "text": "16331778728383844"
+      },
+      "specOpen": true,
+      "specOpenReason": "At the cos(z)=0 pole Excel either errors or returns a huge-magnitude value (spec-open); exact rendered string differs either way.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMTAN-009",
+      "formula": "=IMTAN(A1)",
+      "inputs": {},
+      "expected": {
+        "text": "0"
+      },
+      "specOpen": true,
+      "specOpenReason": "Blank argument handling (0 vs #NUM!) is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-IMTAN-010",
+      "formula": "=IMTAN()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2BIN-001",
+      "formula": "=OCT2BIN(\"3\")",
+      "inputs": {},
+      "expected": {
+        "text": "11"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2BIN-002",
+      "formula": "=OCT2BIN(\"7777777777\")",
+      "inputs": {},
+      "expected": {
+        "text": "1111111111"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2BIN-003",
+      "formula": "=OCT2BIN(\"3\",3)",
+      "inputs": {},
+      "expected": {
+        "text": "011"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2BIN-004",
+      "formula": "=OCT2BIN(\"17\")",
+      "inputs": {},
+      "expected": {
+        "text": "1111"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2BIN-005",
+      "formula": "=OCT2BIN(\"8\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2BIN-006",
+      "formula": "=OCT2BIN(\"777\")",
+      "inputs": {},
+      "expected": {
+        "text": "111111111"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2BIN-007",
+      "formula": "=OCT2BIN(\"7777777000\")",
+      "inputs": {},
+      "expected": {
+        "text": "1000000000"
+      },
+      "notes": "30-bit two's complement -512; spec doc's '7777000000' is a typo.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2BIN-008",
+      "formula": "=OCT2BIN(\"1000\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2BIN-009",
+      "formula": "=OCT2BIN(\"3\",1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "specOpen": true,
+      "specOpenReason": "Exact places bounds (places<needed) are a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2BIN-010",
+      "formula": "=OCT2BIN(17)",
+      "inputs": {},
+      "expected": {
+        "text": "1111"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2BIN-011",
+      "formula": "=OCT2BIN(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "specOpen": true,
+      "specOpenReason": "Boolean coercion is a spec-doc open question (family consistency assumed).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2DEC-001",
+      "formula": "=OCT2DEC(\"54\")",
+      "inputs": {},
+      "expected": {
+        "number": 44
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2DEC-002",
+      "formula": "=OCT2DEC(\"7777777777\")",
+      "inputs": {},
+      "expected": {
+        "number": -1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2DEC-003",
+      "formula": "=OCT2DEC(\"777\")",
+      "inputs": {},
+      "expected": {
+        "number": 511
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2DEC-004",
+      "formula": "=OCT2DEC(\"7777777000\")",
+      "inputs": {},
+      "expected": {
+        "number": -512
+      },
+      "notes": "30-bit two's complement -512; spec doc's '7777000000' is a typo.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2DEC-005",
+      "formula": "=OCT2DEC(\"18\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2DEC-006",
+      "formula": "=OCT2DEC(\"7\")",
+      "inputs": {},
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2DEC-007",
+      "formula": "=OCT2DEC(\"10\")",
+      "inputs": {},
+      "expected": {
+        "number": 8
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2DEC-008",
+      "formula": "=OCT2DEC(\"3777777777\")",
+      "inputs": {},
+      "expected": {
+        "number": 536870911
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether 10-digit inputs with sign bit clear are positive (30-bit) or #NUM! is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2DEC-009",
+      "formula": "=OCT2DEC(17)",
+      "inputs": {},
+      "expected": {
+        "number": 15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2DEC-010",
+      "formula": "=OCT2DEC(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "specOpen": true,
+      "specOpenReason": "Boolean coercion is a spec-doc open question (family consistency assumed).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2DEC-011",
+      "formula": "=OCT2DEC(\"77777777777\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2HEX-001",
+      "formula": "=OCT2HEX(\"100\")",
+      "inputs": {},
+      "expected": {
+        "text": "40"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2HEX-002",
+      "formula": "=OCT2HEX(\"7777777777\")",
+      "inputs": {},
+      "expected": {
+        "text": "FFFFFFFFFF"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2HEX-003",
+      "formula": "=OCT2HEX(\"54\",4)",
+      "inputs": {},
+      "expected": {
+        "text": "002C"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2HEX-004",
+      "formula": "=OCT2HEX(\"777\")",
+      "inputs": {},
+      "expected": {
+        "text": "1FF"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2HEX-005",
+      "formula": "=OCT2HEX(\"99\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2HEX-006",
+      "formula": "=OCT2HEX(\"7\")",
+      "inputs": {},
+      "expected": {
+        "text": "7"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2HEX-007",
+      "formula": "=OCT2HEX(\"7777777776\")",
+      "inputs": {},
+      "expected": {
+        "text": "FFFFFFFFFE"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2HEX-008",
+      "formula": "=OCT2HEX(\"3777777777\")",
+      "inputs": {},
+      "expected": {
+        "text": "1FFFFFFF"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether 10-digit positive inputs are accepted or #NUM! is a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2HEX-009",
+      "formula": "=OCT2HEX(100)",
+      "inputs": {},
+      "expected": {
+        "text": "40"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2HEX-010",
+      "formula": "=OCT2HEX(\"777\",2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "specOpen": true,
+      "specOpenReason": "Exact places bounds are a spec-doc open question.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I13-OCT2HEX-011",
+      "formula": "=OCT2HEX(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "specOpen": true,
+      "specOpenReason": "Boolean coercion is a spec-doc open question (family consistency assumed).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "docs/functions/<NAME>.md worked examples plus independent recomputation (Python cmath / oct-int); to be re-recorded empirically per plan section 10.5"
+      }
+    }
+  ]
+}
