@@ -226,7 +226,7 @@ export function createApiServer(options: ApiOptions): http.Server {
       const { adapter } = database;
       const body = await readJsonBody(request, maxBodyBytes);
       const input = operation === 'query' ? parseQueryBody(body) : parseCommandBody(body);
-      log.operation = 'sql' in input ? sqlOperation(input.sql) : commandOperation(input.command);
+      log.operation = 'sql' in input ? sqlOperation(input.sql, database.engine) : commandOperation(input.command);
       if ((adapter.kind === 'sql') !== (operation === 'query')) {
         const instead = adapter.kind === 'sql' ? 'query' : 'command';
         throw new HttpError(400, 'unsupported_operation', `${database.engine} databases do not support /${operation}; use /v1/databases/${database.name}/${instead}`);

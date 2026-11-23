@@ -13,7 +13,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, open, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { sqlShape } from '../engines/sql-text.ts';
+import { DUCKDB_SQL, POSTGRESQL_SQL, SQLITE_SQL, sqlShape, type SqlDialect } from '../engines/sql-text.ts';
 import { withFileLock } from '../file-lock.ts';
 
 export interface AuditEvent {
@@ -56,9 +56,15 @@ const SQL_KEYWORDS = new Set(
     'REPLACE RESET REVOKE ROLLBACK SAVEPOINT SECURITY SELECT SET SHOW START SUMMARIZE TABLE TRUNCATE UNLISTEN UNPIVOT UPDATE USE VACUUM VALUES WITH').split(' '),
 );
 
-/** The kind of a SQL request: the keyword its first statement starts with, or "OTHER". Never any other part of the text. */
-export function sqlOperation(sql: string): string {
-  const { firstKeyword } = sqlShape(sql);
+// Each engine has its own idea of where a comment ends and what blank space is.
+const DIALECTS: Record<string, SqlDialect> = { sqlite: SQLITE_SQL, duckdb: DUCKDB_SQL, postgresql: POSTGRESQL_SQL };
+
+/**
+ * The kind of a SQL request: the keyword its first statement starts with as `engine` reads
+ * the text, or "OTHER". Never any other part of the text.
+ */
+export function sqlOperation(sql: string, engine: string): string {
+  const { firstKeyword } = sqlShape(sql, DIALECTS[engine] ?? {});
   return SQL_KEYWORDS.has(firstKeyword) ? firstKeyword : 'OTHER';
 }
 

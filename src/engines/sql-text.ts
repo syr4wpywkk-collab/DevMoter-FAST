@@ -14,10 +14,14 @@ export interface SqlDialect {
    * no-break space and its like); elsewhere they are part of a word.
    */
   blanks?: RegExp;
+  /** A block comment ends at the first "*\/" (SQLite); elsewhere a "/*" inside it opens another that must end first. */
+  flatComments?: boolean;
 }
 
 /** What DuckDB's parser turns into a plain space before it reads the text. */
 export const DUCKDB_SQL: SqlDialect = { blanks: /[\u00a0\u2000-\u200b\u202f\u205f\u3000\ufeff]/ };
+export const SQLITE_SQL: SqlDialect = { flatComments: true };
+export const POSTGRESQL_SQL: SqlDialect = {};
 
 const WORD_START = /[A-Za-z_\u0080-\uffff]/;
 const DOLLAR_TAG = /\$(?:[A-Za-z_\u0080-\uffff][A-Za-z0-9_\u0080-\uffff]*)?\$/y;
@@ -35,7 +39,11 @@ function skipQuoted(sql: string, start: number, quote: string, backslashEscapes:
   return sql.length;
 }
 
-function skipBlockComment(sql: string, start: number): number {
+function skipBlockComment(sql: string, start: number, flat: boolean): number {
+  if (flat) {
+    const end = sql.indexOf('*/', start + 2);
+    return end === -1 ? sql.length : end + 2;
+  }
   let depth = 0;
   let index = start;
   while (index < sql.length) {
@@ -91,7 +99,7 @@ export function sqlShape(sql: string, dialect: SqlDialect = {}, onToken?: (token
       const end = sql.indexOf('\n', index);
       index = end === -1 ? sql.length : end + 1;
     } else if (sql.startsWith('/*', index)) {
-      index = skipBlockComment(sql, index);
+      index = skipBlockComment(sql, index, dialect.flatComments === true);
     } else if (char === "'" || char === '"') {
       content();
       onToken?.(char);
