@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "summary": {
     "own": {
-      "files": 29,
-      "lines": 3903,
-      "blank": 347,
-      "comment": 421,
-      "code": 3135
+      "files": 30,
+      "lines": 3946,
+      "blank": 353,
+      "comment": 431,
+      "code": 3162
     },
     "tests": {
       "files": 21,
-      "lines": 2859,
-      "blank": 308,
-      "comment": 25,
-      "code": 2526
+      "lines": 2921,
+      "blank": 315,
+      "comment": 26,
+      "code": 2580
     },
     "docs": {
       "files": 7,
-      "lines": 603,
+      "lines": 606,
       "blank": 144,
       "comment": 0,
-      "code": 459
+      "code": 462
     },
     "config": {
       "files": 10,
@@ -37,29 +37,29 @@
       "code": 7662981
     },
     "total": {
-      "files": 30788,
-      "lines": 9881953,
-      "blank": 1124762,
-      "comment": 1087862,
-      "code": 7669329
+      "files": 30789,
+      "lines": 9882061,
+      "blank": 1124775,
+      "comment": 1087873,
+      "code": 7669413
     }
   },
   "categories": {
     "own": {
       "total": {
-        "files": 29,
-        "lines": 3903,
-        "blank": 347,
-        "comment": 421,
-        "code": 3135
+        "files": 30,
+        "lines": 3946,
+        "blank": 353,
+        "comment": 431,
+        "code": 3162
       },
       "languages": {
         "TypeScript": {
-          "files": 23,
-          "lines": 3726,
-          "blank": 337,
-          "comment": 383,
-          "code": 3006
+          "files": 24,
+          "lines": 3769,
+          "blank": 343,
+          "comment": 393,
+          "code": 3033
         },
         "Shell": {
           "files": 5,
@@ -80,36 +80,36 @@
     "tests": {
       "total": {
         "files": 21,
-        "lines": 2859,
-        "blank": 308,
-        "comment": 25,
-        "code": 2526
+        "lines": 2921,
+        "blank": 315,
+        "comment": 26,
+        "code": 2580
       },
       "languages": {
         "TypeScript": {
           "files": 21,
-          "lines": 2859,
-          "blank": 308,
-          "comment": 25,
-          "code": 2526
+          "lines": 2921,
+          "blank": 315,
+          "comment": 26,
+          "code": 2580
         }
       }
     },
     "docs": {
       "total": {
         "files": 7,
-        "lines": 603,
+        "lines": 606,
         "blank": 144,
         "comment": 0,
-        "code": 459
+        "code": 462
       },
       "languages": {
         "Markdown": {
           "files": 7,
-          "lines": 603,
+          "lines": 606,
           "blank": 144,
           "comment": 0,
-          "code": 459
+          "code": 462
         }
       }
     },
