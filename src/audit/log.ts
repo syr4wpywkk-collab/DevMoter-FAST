@@ -13,6 +13,8 @@ import { createHash } from 'node:crypto';
 import { mkdir, open, readFile, rmdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
+import { sqlShape } from '../engines/sql-text.ts';
+
 export interface AuditEvent {
   /** What happened: "api.request", "auth.failed", "key.created", "key.revoked", "server.started". */
   event: string;
@@ -45,10 +47,18 @@ export interface AuditLog {
 const GENESIS = '0'.repeat(64);
 const hashLine = (line: string): string => createHash('sha256').update(line, 'utf8').digest('hex');
 
-/** The kind of a SQL request: its first keyword, or "OTHER". Never any other part of the text. */
+// The words an SQL statement of the four engines can start with. Any other
+// first word is part of the request, not its kind, and is recorded as "OTHER".
+const SQL_KEYWORDS = new Set(
+  ('ABORT ALTER ANALYZE ATTACH BEGIN CALL CHECKPOINT CLOSE CLUSTER COMMENT COMMIT COPY CREATE DEALLOCATE DECLARE DELETE DESCRIBE DETACH DISCARD DO DROP END ' +
+    'EXECUTE EXPLAIN EXPORT FETCH FORCE FROM GRANT IMPORT INSERT INSTALL LISTEN LOAD LOCK MERGE MOVE NOTIFY PIVOT PRAGMA PREPARE REASSIGN REFRESH REINDEX RELEASE ' +
+    'REPLACE RESET REVOKE ROLLBACK SAVEPOINT SECURITY SELECT SET SHOW START SUMMARIZE TABLE TRUNCATE UNLISTEN UNPIVOT UPDATE USE VACUUM VALUES WITH').split(' '),
+);
+
+/** The kind of a SQL request: the keyword its first statement starts with, or "OTHER". Never any other part of the text. */
 export function sqlOperation(sql: string): string {
-  const match = /^(?:\s|--[^\n]*\n|\/\*[\s\S]*?\*\/)*([A-Za-z]{1,16})\b/.exec(sql);
-  return match?.[1] ? match[1].toUpperCase() : 'OTHER';
+  const { firstKeyword } = sqlShape(sql);
+  return SQL_KEYWORDS.has(firstKeyword) ? firstKeyword : 'OTHER';
 }
 
 /** The kind of a key-value request: the command name when it looks like one, or "OTHER". */
