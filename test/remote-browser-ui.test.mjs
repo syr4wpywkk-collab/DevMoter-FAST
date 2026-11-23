@@ -81,7 +81,7 @@ function fakeBackend(sessionDriver = { holder: "user", generation: 3 }) {
     const method = init.method || "GET";
     calls.push({ path, method, body: init.body ? JSON.parse(init.body) : undefined, headers: init.headers });
     const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
-    if (path.startsWith("/api/browser?")) return json(200, { capability: { available: true }, session: session.active ? session : null });
+    if (path.startsWith("/api/browser?")) return json(200, { capability: { enabled: backend.enabled, available: true }, session: session.active ? session : null });
     if (path.endsWith("/ticket")) return json(201, { ticket: "t".repeat(63) + String(++ticketCount % 10) });
     if (path.endsWith("/driver")) {
       const op = JSON.parse(init.body).op;
@@ -90,7 +90,8 @@ function fakeBackend(sessionDriver = { holder: "user", generation: 3 }) {
     }
     return json(404, { error: "not found" });
   };
-  return { session, calls, sockets, tickets: () => ticketCount };
+  const backend = { session, calls, sockets, tickets: () => ticketCount, enabled: true };
+  return backend;
 }
 
 function pointer(window, target, type, clientX, clientY, pointerId = 1) {
@@ -273,6 +274,38 @@ test("unexpected disconnects reconnect with a fresh ticket; a closed session doe
     assert.equal(backend.sockets.length, 2);
     assert.equal(env.dom.window.document.querySelector("[data-rb-start]").hidden, false);
     destroyRemoteBrowser();
+  } finally {
+    env.restore();
+  }
+});
+
+test("a host with browser automation turned off offers no start button", async () => {
+  const env = installDom();
+  const backend = fakeBackend();
+  backend.enabled = false;
+  backend.session.active = false;
+  try {
+    env.dom.window.localStorage.setItem("opencode-pocket-project", "/projects/demo");
+    const { openRemoteBrowser, destroyRemoteBrowser } = await loadRemoteBrowser();
+    openRemoteBrowser();
+    await sleep(20);
+    const doc = env.dom.window.document;
+    assert.equal(doc.querySelector("[data-rb-start]").hidden, true);
+    assert.match(doc.querySelector("[data-rb-empty-text]").textContent, /DEVMOTER_BROWSER_AUTOMATION=1/);
+    destroyRemoteBrowser();
+  } finally {
+    env.restore();
+  }
+});
+
+test("surface router keeps a ?workspaceTab= deep link while filling in the initial surface", async () => {
+  const env = installDom("https://devmoter.test/?unifiedUI=1&workspaceTab=browser");
+  try {
+    const { createSurfaceNavigation } = await import(new URL("../src/surface-navigation.mjs", import.meta.url).href + "?" + Math.random());
+    createSurfaceNavigation({ window: env.dom.window });
+    const params = new URL(env.dom.window.location.href).searchParams;
+    assert.equal(params.get("workspaceTab"), "browser");
+    assert.ok(params.get("surface"));
   } finally {
     env.restore();
   }

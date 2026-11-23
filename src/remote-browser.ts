@@ -16,7 +16,7 @@ type BrowserSession = {
   stopReason?: string | null;
 };
 type BrowserStatus = {
-  capability?: { available?: boolean; reason?: string };
+  capability?: { enabled?: boolean; available?: boolean };
   session: BrowserSession | null;
   otherDeviceSession?: boolean;
 };
@@ -236,7 +236,7 @@ function createRemoteBrowser() {
         connect();
       } else if (data.otherDeviceSession) {
         showEmpty(t("remoteBrowser.otherDevice"), false);
-      } else if (data.capability && data.capability.available === false) {
+      } else if (data.capability && (data.capability.enabled === false || data.capability.available === false)) {
         showEmpty(t("remoteBrowser.unavailable"), false);
       } else {
         showEmpty(t("remoteBrowser.idle"), true);
