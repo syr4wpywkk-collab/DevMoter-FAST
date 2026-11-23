@@ -36,6 +36,7 @@ const SCROLL_FLUSH_MS = 80;
 const MAX_TEXT_CHUNK = 2000;
 const RECONNECT_MIN_MS = 500;
 const RECONNECT_MAX_MS = 8000;
+const RECONNECT_MAX_ATTEMPTS = 8;
 // Socket close codes after which reconnecting cannot succeed.
 const FINAL_CLOSE_CODES = new Set([4001, 4003]);
 export const PRESS_KEYS = new Set([
@@ -156,6 +157,7 @@ function createRemoteBrowser() {
       <div class="rb-empty" data-rb-empty>
         <p data-rb-empty-text></p>
         <button type="button" class="rb-primary" data-rb-start hidden>${t("remoteBrowser.start")}</button>
+        <button type="button" class="rb-text-button" data-rb-retry hidden>${t("remoteBrowser.retry")}</button>
       </div>
     </div>
     <p class="rb-status" role="status" aria-live="polite" data-rb-status></p>
@@ -176,6 +178,7 @@ function createRemoteBrowser() {
   const empty = q<HTMLElement>("[data-rb-empty]");
   const emptyText = q<HTMLElement>("[data-rb-empty-text]");
   const startButton = q<HTMLButtonElement>("[data-rb-start]");
+  const retryButton = q<HTMLButtonElement>("[data-rb-retry]");
   const status = q<HTMLElement>("[data-rb-status]");
   const ime = q<HTMLTextAreaElement>("[data-rb-ime]");
   const navButtons = Array.from(panel.querySelectorAll<HTMLButtonElement>("[data-rb-act]"));
@@ -186,6 +189,8 @@ function createRemoteBrowser() {
   let socketGeneration = 0;
   let reconnectTimer: number | null = null;
   let reconnectDelay = RECONNECT_MIN_MS;
+  let reconnectAttempts = 0;
+  let keepStatusOnOpen = false;
   let nextActionId = 1;
   let composing = false;
   let busy = false;
@@ -215,14 +220,15 @@ function createRemoteBrowser() {
     if (!canDrive()) ime.blur();
   }
 
-  function showEmpty(text: string, canStart: boolean) {
+  function showEmpty(text: string, canStart: boolean, canRetry = false) {
     session = null;
     emptyText.textContent = text;
     startButton.hidden = !canStart;
+    retryButton.hidden = !canRetry;
     render();
   }
 
-  async function refresh() {
+  async function refresh({ reconnecting = false } = {}) {
     const id = projectId();
     if (!id) {
       showEmpty(t("remoteBrowser.selectProject"), false);
@@ -243,7 +249,15 @@ function createRemoteBrowser() {
         showEmpty(t("remoteBrowser.idle"), true);
       }
     } catch (error) {
-      if (isOpen) showEmpty(t("remoteBrowser.loadFailed", { error: errorText(error) }), false);
+      if (!isOpen) return;
+      // A refresh that fails mid-reconnect (network switch, host restart) keeps
+      // retrying with backoff; after the last attempt the user retries by hand.
+      if (reconnecting && reconnectAttempts < RECONNECT_MAX_ATTEMPTS) {
+        scheduleReconnect(socketGeneration);
+        return;
+      }
+      setStatus("");
+      showEmpty(t("remoteBrowser.loadFailed", { error: errorText(error) }), false, true);
     }
   }
 
@@ -282,20 +296,36 @@ function createRemoteBrowser() {
     try {
       await requestJson("/api/browser/sessions/" + encodeURIComponent(id), { method: "DELETE" });
     } catch (error) {
-      setStatus(errorText(error));
+      // The browser may still be running on the host, so stay attached to it
+      // and say the stop failed instead of showing it as stopped.
+      if ((error as { status?: number }).status !== 404) {
+        if (session?.id === id) {
+          keepStatusOnOpen = true;
+          connect();
+        }
+        setStatus(t("remoteBrowser.stopFailed", { error: errorText(error) }));
+        return;
+      }
     }
+    if (session && session.id !== id) return;
+    keepStatusOnOpen = false;
+    setStatus("");
     showEmpty(t("remoteBrowser.stopped"), true);
   }
 
   // Acquiring as the user is an immediate takeover; releasing lets an agent drive.
   async function setDriver(op: "acquire" | "release") {
     if (!session) return;
+    const id = session.id;
     try {
       const data = await requestJson<{ driver: Driver }>(
-        "/api/browser/sessions/" + encodeURIComponent(session.id) + "/driver",
+        "/api/browser/sessions/" + encodeURIComponent(id) + "/driver",
         { method: "POST", body: JSON.stringify(op === "acquire" ? { op } : { op, generation: session.driver.generation }) }
       );
-      if (session) session.driver = data.driver;
+      // A takeover pushed over the socket while this request was in flight has
+      // a newer generation; the older HTTP answer must not overwrite it.
+      if (session?.id !== id || Number(data.driver?.generation) < session.driver.generation) return;
+      session.driver = data.driver;
       setStatus("");
       render();
     } catch (error) {
@@ -317,9 +347,10 @@ function createRemoteBrowser() {
     setStatus(t("remoteBrowser.reconnecting"));
     const delay = reconnectDelay;
     reconnectDelay = Math.min(RECONNECT_MAX_MS, reconnectDelay * 2);
+    reconnectAttempts += 1;
     reconnectTimer = window.setTimeout(() => {
       reconnectTimer = null;
-      if (generation === socketGeneration) void refresh();
+      if (generation === socketGeneration) void refresh({ reconnecting: true });
     }, delay);
   }
 
@@ -356,7 +387,9 @@ function createRemoteBrowser() {
       ws.onopen = () => {
         if (ws !== socket) return;
         reconnectDelay = RECONNECT_MIN_MS;
-        setStatus("");
+        reconnectAttempts = 0;
+        if (keepStatusOnOpen) keepStatusOnOpen = false;
+        else setStatus("");
       };
       ws.onmessage = event => {
         if (ws !== socket) return;
@@ -393,11 +426,14 @@ function createRemoteBrowser() {
         if (session) session.url = typeof message.url === "string" ? message.url : session.url;
         render();
         break;
-      case "driver":
-        if (session) session.driver = { holder: (message.holder as Driver["holder"]) ?? null, generation: Number(message.generation) || 0 };
-        if (session?.driver.holder === "agent") setStatus(t("remoteBrowser.agentTookOver"));
+      case "driver": {
+        const generation = Number(message.generation) || 0;
+        if (!session || generation < session.driver.generation) break;
+        session.driver = { holder: (message.holder as Driver["holder"]) ?? null, generation };
+        if (session.driver.holder === "agent") setStatus(t("remoteBrowser.agentTookOver"));
         render();
         break;
+      }
       case "closed":
         showEmpty(t("remoteBrowser.ended"), true);
         break;
@@ -567,6 +603,11 @@ function createRemoteBrowser() {
     button.addEventListener("click", () => act({ type: button.dataset.rbAct as "back" | "forward" | "reload" }));
   }
   startButton.addEventListener("click", () => void start());
+  retryButton.addEventListener("click", () => {
+    reconnectDelay = RECONNECT_MIN_MS;
+    reconnectAttempts = 0;
+    void refresh();
+  });
   stopButton.addEventListener("click", () => void stop());
   takeoverButton.addEventListener("click", () => void setDriver("acquire"));
   releaseButton.addEventListener("click", () => void setDriver("release"));
@@ -584,6 +625,7 @@ function createRemoteBrowser() {
     isOpen = true;
     panel.hidden = false;
     reconnectDelay = RECONNECT_MIN_MS;
+    reconnectAttempts = 0;
     setStatus("");
     window.dispatchEvent(new window.CustomEvent("devmoter:workspace-panel-changed", { detail: { tab: "browser", open: true } }));
     void refresh();

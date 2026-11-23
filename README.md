@@ -47,6 +47,7 @@ The goal:
 | Reviewed Changes | Diff proposals, file/hunk review, drift checks, explicit apply and commit flows | Experimental |
 | Session control | Follow-ups, handoff, checkpoints, forks, transcript search and background-run controls | Experimental |
 | Terminal | Authenticated, project-scoped persistent terminal with bounded replay and reconnect | Experimental |
+| Remote browser | Host Chromium streamed to the phone for the project's loopback live preview: tap, scroll, IME text, user takeover, and agent control through `devmoter browser-mcp` | Experimental; opt-in (`DEVMOTER_BROWSER_AUTOMATION=1`), preview origin only |
 | API Chat and routing | Configurable providers/models, reasoning controls, attachments and routing/failover | Experimental |
 | Qwen Code | Local Qwen Code CLI chat in the AI selector (streaming, stop, per-device chat history, model selection, "Add API"), plus a Local Integrations launch card | Experimental; requires a locally installed Qwen Code CLI; UI hidden by default (feature flag) |
 | Developer workflows | Skills, rules, MCP management, optional ACP, extensions and configured verification/review workflows | Mixed; see docs |
@@ -153,11 +154,15 @@ The persistent terminal is authenticated and project-scoped, with bounded output
 
 Developer workflows include explicit controls for skills, rules, MCP servers, optional ACP adapters, extension declarations, verification commands, and read-only AI review. See [Developer workflows](./docs/developer-workflows.md).
 
+### Remote browser
+
+With `DEVMOTER_BROWSER_AUTOMATION=1`, a Chromium/Chrome binary and bubblewrap on the host, the ☰ **Browser** tab streams a sandboxed host Chromium showing the project's loopback live preview, and accepts taps, scrolling and IME text. A Codex Agent Run (or a manually configured MCP client) can drive the same session through `devmoter browser-mcp` with a short-lived, project-scoped token; the owner sees agent actions and can take control back at any time. Only the preview origin loads, each session uses a fresh profile that is deleted on stop, CDP stays on a private pipe, and every action is audited. General web browsing is not available. ARM64, the Debian `chromium` package and real Codex/OpenCode MCP launches are unverified, and CI skips the real-Chromium tests. See [Remote browser](./docs/REMOTE_BROWSER.md).
+
 ## Host protocol and platform support
 
 The authenticated `GET /api/host` endpoint exposes a versioned capability snapshot. Clients must use the advertised capability state rather than infer support from the operating system.
 
-Host Protocol v1 is a **discovery contract**, not a universal replacement for all existing APIs. Some capability families are unavailable or only partially implemented on particular adapters. For example, the current documentation identifies Linux support, constrained WSL behavior, and an unimplemented native macOS adapter. The Secret Vault management surface also has documented limits and is not yet a general provider/agent secret-injection system.
+Host Protocol v1 is a **discovery contract**, not a universal replacement for all existing APIs. Some capability families are unavailable or only partially implemented on particular adapters; `browser` is `available` only when the remote browser opt-in, a Chromium/Chrome binary and bubblewrap are all present. For example, the current documentation identifies Linux support, constrained WSL behavior, and an unimplemented native macOS adapter. The Secret Vault management surface also has documented limits and is not yet a general provider/agent secret-injection system.
 
 See [Host Protocol v1](./docs/HOST_PROTOCOL.md) for the exact contract and limitations.
 
@@ -278,6 +283,7 @@ CI covers automated checks. Chromebook/Crostini and iPhone behavior still requir
 | [Developer workflows](./docs/developer-workflows.md) | Skills, rules, MCP, ACP, extensions, verification and review |
 | [iOS / AltStore](./docs/ios-altstore.md) | iOS client build and installation |
 | [Linux to iPhone](./docs/iphone-linux.ja.md) | Linux-based iPhone installation walkthrough |
+| [Remote browser](./docs/REMOTE_BROWSER.md) | Remote browser setup, agent access, limits and operating procedures |
 | [Browser automation sandbox](./docs/BROWSER_AUTOMATION_SANDBOX.md) | Browser automation boundary |
 | [Remote-control security](./docs/remote-control-security.md) | Host registry and automation security |
 | [Release smoke](./RELEASE_SMOKE.md) | Manual release validation |

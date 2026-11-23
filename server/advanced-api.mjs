@@ -10,6 +10,7 @@ import {
 } from "./attachments.mjs";
 import { createBrowserAutomation, browserAutomationPolicy } from "./browser-tool.mjs";
 import { createBrowserSessionManager } from "./browser-session.mjs";
+import { readListenerIdentity } from "./listener-identity.mjs";
 import { errorMessage } from "./error-message.mjs";
 import { readHandle, withOpenFile } from "./safe-file.mjs";
 import { CONTROL_CHARS, fullyDecodePath } from "./security-helpers.mjs";
@@ -214,7 +215,11 @@ function publicProvider(provider) {
   return { ...rest, secretConfigured: Boolean(apiKey) };
 }
 
-export function createAdvancedApi({ homeDir, configDir, getProjectById, env = process.env, fetchImpl = fetch }) {
+function publicPreview({ listener: _listener, ...item }) {
+  return item;
+}
+
+export function createAdvancedApi({ homeDir, configDir, getProjectById, env = process.env, fetchImpl = fetch, readPreviewListener = readListenerIdentity }) {
   const grants = createGrantRegistry({
     file: resolve(configDir, "directory-grants.json"),
     homeDir,
@@ -242,7 +247,8 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
     configDir,
     resolveProject: getProjectById,
     getPreview: approvedPreview,
-    env
+    env,
+    readPreviewListener
   });
   const routingLog = [];
 
@@ -551,7 +557,7 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
         if (req.method === "GET") {
           const item = previews.get(projectId) || null;
           sendJson(res, 200, {
-            preview: item ? { ...item, url: "/api/live-preview/proxy/" + item.token + "/" } : null
+            preview: item ? { ...publicPreview(item), url: "/api/live-preview/proxy/" + item.token + "/" } : null
           });
           return true;
         }
@@ -581,12 +587,15 @@ export function createAdvancedApi({ homeDir, configDir, getProjectById, env = pr
           }
           await browser.stop(projectId);
           await remoteBrowser.stopProject(projectId);
+          // The listening socket identifies the process the owner approved; a
+          // different process later bound to the same port is not this preview.
           const item = {
-            projectId, host, port, token: randomBytes(24).toString("hex"), startedAt: Date.now()
+            projectId, host, port, token: randomBytes(24).toString("hex"), startedAt: Date.now(),
+            listener: readPreviewListener(host, port)
           };
           previews.set(projectId, item);
           sendJson(res, 200, {
-            preview: { ...item, url: "/api/live-preview/proxy/" + item.token + "/" }
+            preview: { ...publicPreview(item), url: "/api/live-preview/proxy/" + item.token + "/" }
           });
           return true;
         }

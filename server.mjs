@@ -39,11 +39,13 @@ import { createUploadRegistry } from "./server/upload-registry.mjs";
 import { ControlPlane } from "./server/control-plane.mjs";
 import { createWorkspaceControl, handleWorkspaceControlRequest } from "./server/workspace-control.mjs";
 import { handleBrowserApiRequest } from "./server/browser-api.mjs";
+import { remoteBrowserHostCapability } from "./server/browser-session.mjs";
 import {
   BROWSER_AGENT_PATH,
   browserMcpClientConfig,
   createBrowserAgentLauncher,
   createBrowserAgentTokens,
+  bindBrowserAgentRevocation,
   createBrowserAudit,
   handleBrowserAgentRequest
 } from "./server/browser-agent.mjs";
@@ -257,7 +259,8 @@ const advancedApi = createAdvancedApi({
   homeDir: HOME_DIR,
   configDir: PROJECT_CONFIG_DIR,
   getProjectById
-});
+});bindBrowserAgentRevocation(browserAgentTokens, () => advancedApi.remoteBrowser);
+
 const taskWorkflow = createTaskWorkflow({ homeDir: HOME_DIR, getProjectById });
 const devWorkflows = createDevWorkflowService({
   homeDir: HOME_DIR,
@@ -320,7 +323,8 @@ const hostRuntime = createHostAdapter({
     git: { state: "available", features: ["status", "diff", "reviewed-changes"] },
     agents: { state: "available", features: ["codex", "opencode"] },
     notifications: { state: "available", features: ["web-push", "agent-state"] },
-    secrets: { state: "available", features: ["encrypted-at-rest", "project-bindings", "metadata-api"] }
+    secrets: { state: "available", features: ["encrypted-at-rest", "project-bindings", "metadata-api"] },
+    browser: remoteBrowserHostCapability({ env: process.env })
   }
 });
 const browserSocketTickets = createBrowserSocketTickets();

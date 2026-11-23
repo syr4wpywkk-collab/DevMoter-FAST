@@ -49,6 +49,7 @@ DevMoter FASTは、**AIを活用したソフトウェア開発のための、オ
 | Reviewed Changes | Diff提案、ファイル・Hunkレビュー、Context drift確認、明示的Apply / Commit | 実験的 |
 | Session Control | Follow-up、Handoff、Checkpoint、Fork、履歴検索、Background run制御 | 実験的 |
 | Terminal | 認証付きProject単位の永続Terminal、出力制限、再接続 | 実験的 |
+| リモートブラウザ | ProjectのloopbackライブプレビューをホストのChromiumで開いてスマホへ映像配信。タップ・スクロール・IME入力・ユーザーによる操作の奪還、`devmoter browser-mcp` 経由のAgent操作 | 実験的・オプトイン（`DEVMOTER_BROWSER_AUTOMATION=1`）・プレビューのオリジン限定 |
 | API Chat / Routing | Provider / Model設定、Reasoning制御、添付、Routing / Failover | 実験的 |
 | Qwen Code | AI選択欄からローカルQwen Code CLIとチャット（ストリーミング、停止、端末内の履歴、モデル選択、「APIを追加」）、ローカル連携の起動カード | 実験的・ローカルにQwen Code CLIが必要・UIは既定で非表示（フィーチャーフラグ） |
 | Developer Workflows | Skills、Rules、MCP管理、任意ACP、Extension、検証・レビュー設定 | 機能ごとに異なる |
@@ -159,11 +160,15 @@ Repository由来のファイルは信頼できない入力として扱います�
 
 Developer Workflowsでは、Skills、Rules、MCP server、任意ACP Adapter、Extension declaration、検証Command、読み取り専用AI Reviewを明示的に管理します。詳細は [Developer workflows](./docs/developer-workflows.md) を参照してください。
 
+### リモートブラウザ
+
+ホストで `DEVMOTER_BROWSER_AUTOMATION=1` を設定し、Chromium / Chrome と bubblewrap があれば、☰ の **ブラウザ** タブにProjectのloopbackライブプレビューを表示したサンドボックス内のChromiumが映り、タップ・スクロール・IME入力で操作できます。Codex の Agent Run（または手動設定したMCP client）は、Project単位の短命トークンで `devmoter browser-mcp` から同じセッションを操作でき、オーナーはその操作を見ながらいつでも操作を取り戻せます。読み込めるのはプレビューのオリジンだけで、セッションごとに新しいプロファイルを使って停止時に削除し、CDPは非公開のpipeに閉じ、すべての操作を監査ログに記録します。一般Web閲覧はできません。ARM64、Debianの `chromium` パッケージ、実際のCodex / OpenCodeからのMCP起動は未検証で、CIは実Chromiumテストをskipします。詳細は [Remote browser](./docs/REMOTE_BROWSER.md) を参照してください。
+
 ## Host Protocol / Platform support
 
 認証済みの`GET /api/host` endpointは、バージョン付きCapability snapshotを返します。ClientはOS名から対応機能を推測せず、広告されたCapability stateに従う必要があります。
 
-Host Protocol v1は **Capability discoveryの契約** です。既存のすべてのAPIを置き換える共通実行APIではありません。Adapterによって未対応・部分対応の機能があります。現行ドキュメントではLinux対応、制約付きWSL動作、未実装のnative macOS adapterが明記されています。Secret Vaultにも管理API上の制限があり、Provider / Agentへの一般的なSecret injection機構としてはまだ統合されていません。
+Host Protocol v1は **Capability discoveryの契約** です。既存のすべてのAPIを置き換える共通実行APIではありません。Adapterによって未対応・部分対応の機能があります。`browser` は、リモートブラウザのオプトイン、Chromium / Chrome、bubblewrapがすべて揃ったときだけ `available` になります。現行ドキュメントではLinux対応、制約付きWSL動作、未実装のnative macOS adapterが明記されています。Secret Vaultにも管理API上の制限があり、Provider / Agentへの一般的なSecret injection機構としてはまだ統合されていません。
 
 正確な仕様と制限は [Host Protocol v1](./docs/HOST_PROTOCOL.md) を参照してください。
 
@@ -277,6 +282,7 @@ CIは自動テストを担当します。Chromebook / CrostiniやiPhoneの挙動
 | [Developer workflows](./docs/developer-workflows.md) | Skills、Rules、MCP、ACP、Extension、検証・Review |
 | [iOS / AltStore](./docs/ios-altstore.md) | iOS clientのBuild / Install |
 | [Linux to iPhone](./docs/iphone-linux.ja.md) | LinuxからiPhoneへの導入手順 |
+| [Remote browser](./docs/REMOTE_BROWSER.md) | リモートブラウザの設定、Agent連携、制限、運用手順 |
 | [Browser automation sandbox](./docs/BROWSER_AUTOMATION_SANDBOX.md) | Browser automationの境界 |
 | [Remote-control security](./docs/remote-control-security.md) | Host registryとAutomationの安全性 |
 | [Release smoke](./RELEASE_SMOKE.md) | 手動Release validation |
