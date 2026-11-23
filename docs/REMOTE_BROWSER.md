@@ -16,7 +16,7 @@ The remote browser shows a host-side Chromium session inside the DevMoter phone/
 
 Optional: `DEVMOTER_BROWSER_MAX_SESSIONS` (default `2`) caps concurrent sessions on the host.
 
-After changing the environment, restart DevMoter. Check **System → Host** or Mission Control: the `browser` capability of `GET /api/host` reports `available` with features `preview-origin-only`, `ephemeral-profile`, `bubblewrap`, `screencast-websocket`, `driver-takeover`, `agent-mcp` when all requirements are met, and otherwise `unavailable` with one of `browser_automation_disabled`, `browser_binary_not_found`, `sandbox_disabled`, `sandbox_unavailable`. The capability is probed once when the server starts; installing Chromium or bubblewrap later needs a restart before it is reported.
+After changing the environment, restart DevMoter. Check **System → Host** or Mission Control: the `browser` capability of `GET /api/host` reports `available` with features `preview-origin-only`, `ephemeral-profile`, `bubblewrap`, `screencast-websocket`, `driver-takeover`, `agent-mcp` when all requirements are met, and otherwise `unavailable` with one of `browser_automation_disabled`, `browser_binary_not_found`, `sandbox_disabled`, `sandbox_unavailable` (bubblewrap missing or unable to start a sandbox, e.g. user namespaces blocked). The capability is probed once when the server starts; installing Chromium or bubblewrap later needs a restart before it is reported.
 
 ## Using it from the phone
 

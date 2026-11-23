@@ -984,10 +984,23 @@ export const REMOTE_BROWSER_HOST_FEATURES = Object.freeze([
   "agent-mcp"
 ]);
 
+// `bwrap --version` succeeds even where user namespaces are blocked, so start
+// a trivial sandbox with the same namespace and mount setup sessions use.
+function bubblewrapCanStart(spawnSyncImpl) {
+  const args = ["--die-with-parent", "--new-session", "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp"];
+  for (const path of SYSTEM_MOUNTS) args.push("--ro-bind-try", path, path);
+  try {
+    return spawnSyncImpl("bwrap", [...args, "--", "true"], { encoding: "utf8", timeout: 5000 })?.status === 0;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Host Protocol descriptor for the remote browser, probed once at server
  * start: available only when the opt-in is set and both a Chromium/Chrome
- * binary and bubblewrap are usable, because sessions refuse to start otherwise.
+ * binary and a working bubblewrap sandbox are present, because sessions refuse
+ * to start otherwise.
  */
 export function remoteBrowserHostCapability({ env = process.env, spawnSyncImpl = spawnSync } = {}) {
   const status = browserAutomationStatus({ env, spawnSyncImpl });
@@ -995,7 +1008,7 @@ export function remoteBrowserHostCapability({ env = process.env, spawnSyncImpl =
   if (!status.available) return { state: "unavailable", reason: "browser_binary_not_found" };
   const sandbox = sandboxStatus({ env, spawn: spawnSyncImpl });
   if (sandbox.mode === "off") return { state: "unavailable", reason: "sandbox_disabled" };
-  if (!sandbox.available) return { state: "unavailable", reason: "sandbox_unavailable" };
+  if (!sandbox.available || !bubblewrapCanStart(spawnSyncImpl)) return { state: "unavailable", reason: "sandbox_unavailable" };
   return { state: "available", features: [...REMOTE_BROWSER_HOST_FEATURES] };
 }
 
