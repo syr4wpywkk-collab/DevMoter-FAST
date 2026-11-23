@@ -18,7 +18,7 @@ const MAX_UNIX_SOCKET_PATH = 100;
 // preview address inside its empty network namespace arrives here, and is
 // forwarded only while the session is live and the same process still owns
 // the preview port.
-async function startPreviewRelay({ socketPath, host, port, allow }) {
+export async function startPreviewRelay({ socketPath, host, port, allow }) {
   const targetHost = String(host).replace(/^\[|\]$/g, "");
   const server = createNetServer(client => {
     client.on("error", () => {});
@@ -278,6 +278,38 @@ function publicUrl(raw) {
  * previews. CDP stays on a private pipe; callers only get fixed-schema actions
  * gated by a driver generation number.
  */
+// No project mount, its own PID namespace and an empty network namespace:
+// the relay is Chromium's only way out, and it only reaches the preview.
+export function buildRemoteBrowserSandbox({ projectPath, profileDir, relaySocket, binary, browserArgs, policy, env, spawnSyncImpl = spawnSync }) {
+  if (relaySocket.length > MAX_UNIX_SOCKET_PATH) throw new Error("Sandbox relay socket path is too long");
+  const relayDir = dirname(relaySocket);
+  const grants = [
+    { path: profileDir, mode: "read-write" },
+    { path: relayDir, mode: "read-write" },
+    { path: RELAY_SCRIPT, mode: "read-only" }
+  ];
+  for (const executable of [binary, process.execPath]) {
+    const extra = binaryGrant(executable, env);
+    if (extra && !grants.some(grant => grant.path === extra.path)) grants.push(extra);
+  }
+  return buildBubblewrapCommand({
+    projectPath,
+    projectMount: "none",
+    chdir: profileDir,
+    grants,
+    command: process.execPath,
+    args: [
+      RELAY_SCRIPT, "--host", policy.host, "--port", String(policy.port), "--socket", relaySocket,
+      "--", binary, ...browserArgs
+    ],
+    allowNetwork: false,
+    unsharePid: true,
+    failClosed: true,
+    env,
+    spawn: spawnSyncImpl
+  });
+}
+
 export function createBrowserSessionManager({
   configDir,
   resolveProject,
@@ -768,35 +800,11 @@ export function createBrowserSessionManager({
         rm(profileDir, { recursive: true, force: true }).catch(() => {}),
         rm(relayDir, { recursive: true, force: true }).catch(() => {})
       ]);
-      const grants = [
-        { path: profileDir, mode: "read-write" },
-        { path: relayDir, mode: "read-write" },
-        { path: RELAY_SCRIPT, mode: "read-only" }
-      ];
-      for (const binary of [detected.binary, process.execPath]) {
-        const extra = binaryGrant(binary, env);
-        if (extra && !grants.some(grant => grant.path === extra.path)) grants.push(extra);
-      }
       let wrapped;
       try {
-        if (relaySocket.length > MAX_UNIX_SOCKET_PATH) throw new Error("Browser profile path is too long for the sandbox network relay");
-        // No project mount, its own PID namespace and an empty network
-        // namespace: the relay is Chromium's only way out, to the preview.
-        wrapped = buildBubblewrapCommand({
-          projectPath: project.path,
-          projectMount: "none",
-          chdir: profileDir,
-          grants,
-          command: process.execPath,
-          args: [
-            RELAY_SCRIPT, "--host", policy.host, "--port", String(policy.port), "--socket", relaySocket,
-            "--", detected.binary, ...remoteBrowserArgs(profileDir, policy)
-          ],
-          allowNetwork: false,
-          unsharePid: true,
-          failClosed: true,
-          env,
-          spawn: spawnSyncImpl
+        wrapped = buildRemoteBrowserSandbox({
+          projectPath: project.path, profileDir, relaySocket, binary: detected.binary,
+          browserArgs: remoteBrowserArgs(profileDir, policy), policy, env, spawnSyncImpl
         });
       } catch (error) {
         await cleanupStartFiles();
