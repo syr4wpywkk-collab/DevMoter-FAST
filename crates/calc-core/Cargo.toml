@@ -2,7 +2,7 @@
 name = "calc-core"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
+license-file.workspace = true
 rust-version.workspace = true
 description = "Spreadsheet formula engine core: values, parser, dependency graph, evaluator"
 

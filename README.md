@@ -64,7 +64,7 @@ cargo run -p calc-cli -- eval "=SUM(1,2,3)"   # evaluate a formula
 
 ## License
 
-MIT — see `LICENSE-MIT`. The plan's candidate is `MIT OR Apache-2.0`
-and crate metadata still says so, but only the MIT text is vendored:
-adding the Apache-2.0 text is pending a maintainer decision
-(dependency-license audit, plan §17).
+All rights reserved — see `LICENSE`. This project is proprietary:
+no use, copying, modification, or distribution is permitted without
+the copyright holder's prior written permission. (This supersedes the
+earlier `MIT OR Apache-2.0` plan; the license may be revisited later.)
