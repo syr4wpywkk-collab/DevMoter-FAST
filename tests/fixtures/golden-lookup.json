@@ -1,0 +1,2742 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-23",
+  "referenceDefaults": {},
+  "cases": [
+    {
+      "id": "LK-INDEX-001",
+      "formula": "=INDEX(A1:A3,2)",
+      "inputs": {
+        "A1": 10,
+        "A2": 20,
+        "A3": 30
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-INDEX-002",
+      "formula": "=INDEX(A1:C1,2)",
+      "inputs": {
+        "A1": 10,
+        "B1": 20,
+        "C1": 30
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Row vector: single index counts across columns."
+    },
+    {
+      "id": "LK-INDEX-003",
+      "formula": "=INDEX(A1:B2,2,1)",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-INDEX-004",
+      "formula": "=INDEX(A1:B2,1,2)",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-INDEX-005",
+      "formula": "=INDEX(A1:A3,1.9)",
+      "inputs": {
+        "A1": 10,
+        "A2": 20,
+        "A3": 30
+      },
+      "expected": {
+        "number": 10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Fractional index truncates toward zero."
+    },
+    {
+      "id": "LK-INDEX-006",
+      "formula": "=INDEX(A1:A3,4)",
+      "inputs": {
+        "A1": 10,
+        "A2": 20,
+        "A3": 30
+      },
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-INDEX-007",
+      "formula": "=INDEX(A1:A3,-1)",
+      "inputs": {
+        "A1": 10,
+        "A2": 20,
+        "A3": 30
+      },
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-INDEX-008",
+      "formula": "=INDEX(A1:B2,1,3)",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4
+      },
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-INDEX-009",
+      "formula": "=INDEX(A1:A3,2)",
+      "inputs": {
+        "A1": 10,
+        "A2": {
+          "blank": true
+        },
+        "A3": 30
+      },
+      "expected": {
+        "blank": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Indexing a blank cell returns blank."
+    },
+    {
+      "id": "LK-INDEX-010",
+      "formula": "=INDEX(A1:A3,2)",
+      "inputs": {
+        "A1": 10,
+        "A2": {
+          "error": "#DIV/0!"
+        },
+        "A3": 30
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Returning an error cell propagates the error."
+    },
+    {
+      "id": "LK-INDEX-011",
+      "formula": "=INDEX(A1:A3,\"x\")",
+      "inputs": {
+        "A1": 10,
+        "A2": 20,
+        "A3": 30
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Non-coercible index."
+    },
+    {
+      "id": "LK-INDEX-012",
+      "formula": "=INDEX(A1:A3,\"2\")",
+      "inputs": {
+        "A1": 10,
+        "A2": 20,
+        "A3": 30
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Numeric-text index coercion to 2 (expected); confirm."
+    },
+    {
+      "id": "LK-INDEX-013",
+      "formula": "=INDEX(A1:B2,2)",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4
+      },
+      "expected": {
+        "array": [
+          [
+            3,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Omitted column on a 2-D range: whole-row array under dynamic semantics; legacy Excel implicit-intersects. Engine returns the array."
+    },
+    {
+      "id": "LK-INDEX-014",
+      "formula": "=INDEX(A1:A3,0)",
+      "inputs": {
+        "A1": 10,
+        "A2": 20,
+        "A3": 30
+      },
+      "expected": {
+        "array": [
+          [
+            10
+          ],
+          [
+            20
+          ],
+          [
+            30
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Index 0 returns the whole column array under dynamic semantics; pre-spill Excel may differ."
+    },
+    {
+      "id": "LK-MATCH-001",
+      "formula": "=MATCH(2,A1:A4,0)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-MATCH-002",
+      "formula": "=MATCH(\"APPLE\",A1:A3,0)",
+      "inputs": {
+        "A1": "banana",
+        "A2": "apple",
+        "A3": "cherry"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Case-insensitive text match."
+    },
+    {
+      "id": "LK-MATCH-003",
+      "formula": "=MATCH(\"ap*\",A1:A3,0)",
+      "inputs": {
+        "A1": "zzz",
+        "A2": "apple",
+        "A3": "apex"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Wildcards under match_type 0."
+    },
+    {
+      "id": "LK-MATCH-004",
+      "formula": "=MATCH(\"1\",A1:A3,0)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Type-strict: text '1' does not match number 1."
+    },
+    {
+      "id": "LK-MATCH-005",
+      "formula": "=MATCH(4,A1:A4)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4
+      },
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Omitted match_type defaults to 1."
+    },
+    {
+      "id": "LK-MATCH-006",
+      "formula": "=MATCH(2.5,A1:A4,1)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-MATCH-007",
+      "formula": "=MATCH(5,A1:A4,-1)",
+      "inputs": {
+        "A1": 8,
+        "A2": 6,
+        "A3": 4,
+        "A4": 2
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Descending data, match_type -1."
+    },
+    {
+      "id": "LK-MATCH-008",
+      "formula": "=MATCH(9,A1:A4,0)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-MATCH-009",
+      "formula": "=MATCH(0,A1:A4,1)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Lookup below all elements under match_type 1."
+    },
+    {
+      "id": "LK-MATCH-010",
+      "formula": "=MATCH(2,A1:B2,0)",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "2-D lookup_array is #N/A in Excel."
+    },
+    {
+      "id": "LK-MATCH-011",
+      "formula": "=MATCH(3,A1:A4,0)",
+      "inputs": {
+        "A1": 4,
+        "A2": 3,
+        "A3": 3,
+        "A4": 1
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "First duplicate wins under match_type 0."
+    },
+    {
+      "id": "LK-MATCH-012",
+      "formula": "=MATCH(\"y\",A1:B1,0)",
+      "inputs": {
+        "A1": "x",
+        "B1": "y"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Row vector lookup_array."
+    },
+    {
+      "id": "LK-MATCH-013",
+      "formula": "=MATCH(2,A1:A4,7)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Invalid match_type error code: #N/A assumed per spec doc; confirm vs #VALUE!."
+    },
+    {
+      "id": "LK-MATCH-014",
+      "formula": "=MATCH(3,A1:A4,1)",
+      "inputs": {
+        "A1": 4,
+        "A2": 1,
+        "A3": 9,
+        "A4": 2
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Unsorted input under match_type 1: engine binary-search result; Excel's own result is order-dependent — record empirically."
+    },
+    {
+      "id": "LK-XLOOKUP-001",
+      "formula": "=XLOOKUP(\"b\",A1:A3,B1:B3)",
+      "inputs": {
+        "A1": "a",
+        "A2": "b",
+        "A3": "c",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-XLOOKUP-002",
+      "formula": "=XLOOKUP(\"B\",A1:A3,B1:B3)",
+      "inputs": {
+        "A1": "a",
+        "A2": "b",
+        "A3": "c",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Case-insensitive exact match."
+    },
+    {
+      "id": "LK-XLOOKUP-003",
+      "formula": "=XLOOKUP(\"z\",A1:A3,B1:B3)",
+      "inputs": {
+        "A1": "a",
+        "A2": "b",
+        "A3": "c",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-XLOOKUP-004",
+      "formula": "=XLOOKUP(\"z\",A1:A3,B1:B3,\"missing\")",
+      "inputs": {
+        "A1": "a",
+        "A2": "b",
+        "A3": "c",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "text": "missing"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-XLOOKUP-005",
+      "formula": "=XLOOKUP(\"bb\",A1:A3,B1:B3,,-1)",
+      "inputs": {
+        "A1": "a",
+        "A2": "b",
+        "A3": "c",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "match_mode -1: exact or next smaller."
+    },
+    {
+      "id": "LK-XLOOKUP-006",
+      "formula": "=XLOOKUP(\"bb\",A1:A3,B1:B3,,1)",
+      "inputs": {
+        "A1": "a",
+        "A2": "b",
+        "A3": "c",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "number": 30
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "match_mode 1: exact or next larger."
+    },
+    {
+      "id": "LK-XLOOKUP-007",
+      "formula": "=XLOOKUP(\"b*\",A1:A3,B1:B3,,2)",
+      "inputs": {
+        "A1": "a",
+        "A2": "b",
+        "A3": "c",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "match_mode 2: wildcard match."
+    },
+    {
+      "id": "LK-XLOOKUP-008",
+      "formula": "=XLOOKUP(\"x\",A1:A2,B1:B2,,0,-1)",
+      "inputs": {
+        "A1": "x",
+        "A2": "x",
+        "B1": 1,
+        "B2": 2
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "search_mode -1: last match wins."
+    },
+    {
+      "id": "LK-XLOOKUP-009",
+      "formula": "=XLOOKUP(\"b\",A1:A3,B1:B2)",
+      "inputs": {
+        "A1": "a",
+        "A2": "b",
+        "A3": "c",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "return_array length mismatch along the search dimension."
+    },
+    {
+      "id": "LK-XLOOKUP-010",
+      "formula": "=XLOOKUP(\"b\",A1:B3,B1:B3)",
+      "inputs": {
+        "A1": "a",
+        "A2": "b",
+        "A3": "c",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "2-D lookup_array is #VALUE!."
+    },
+    {
+      "id": "LK-XLOOKUP-011",
+      "formula": "=XLOOKUP(2,A1:A3,B1:B3,,0,2)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "search_mode 2: binary search ascending."
+    },
+    {
+      "id": "LK-XLOOKUP-012",
+      "formula": "=XLOOKUP(2,A1:A3,B1:B3,,0,-2)",
+      "inputs": {
+        "A1": 3,
+        "A2": 2,
+        "A3": 1,
+        "B1": 30,
+        "B2": 20,
+        "B3": 10
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "search_mode -2: binary search descending."
+    },
+    {
+      "id": "LK-XLOOKUP-013",
+      "formula": "=XLOOKUP(\"y\",A1:B1,A2:B2)",
+      "inputs": {
+        "A1": "x",
+        "B1": "y",
+        "A2": 1,
+        "B2": 2
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Row-vector lookup."
+    },
+    {
+      "id": "LK-XLOOKUP-014",
+      "formula": "=XLOOKUP(\"b\",A1:A2,B1:C2)",
+      "inputs": {
+        "A1": "a",
+        "A2": "b",
+        "B1": 1,
+        "B2": 2,
+        "C1": 10,
+        "C2": 20
+      },
+      "expected": {
+        "array": [
+          [
+            2,
+            20
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Wide return_array produces a row-slice array; legacy Excel spills — engine returns the array value directly."
+    },
+    {
+      "id": "LK-XLOOKUP-015",
+      "formula": "=XLOOKUP(\"b\",A1:A3,B1:B3,,9)",
+      "inputs": {
+        "A1": "a",
+        "A2": "b",
+        "A3": "c",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Invalid match_mode."
+    },
+    {
+      "id": "LK-XLOOKUP-016",
+      "formula": "=XLOOKUP(\"b\",A1:A3,B1:B3,,0,9)",
+      "inputs": {
+        "A1": "a",
+        "A2": "b",
+        "A3": "c",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Invalid search_mode."
+    },
+    {
+      "id": "LK-VLOOKUP-001",
+      "formula": "=VLOOKUP(\"banana\",A1:B3,2,FALSE)",
+      "inputs": {
+        "A1": "apple",
+        "A2": "banana",
+        "A3": "cherry",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-VLOOKUP-002",
+      "formula": "=VLOOKUP(\"BANANA\",A1:B3,2,0)",
+      "inputs": {
+        "A1": "apple",
+        "A2": "banana",
+        "A3": "cherry",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Exact match is case-insensitive."
+    },
+    {
+      "id": "LK-VLOOKUP-003",
+      "formula": "=VLOOKUP(\"ch*\",A1:B3,2,FALSE)",
+      "inputs": {
+        "A1": "apple",
+        "A2": "banana",
+        "A3": "cherry",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "number": 30
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Wildcard support in exact mode (expected per spec doc); confirm ~ escape handling."
+    },
+    {
+      "id": "LK-VLOOKUP-004",
+      "formula": "=VLOOKUP(\"fig\",A1:B3,2,FALSE)",
+      "inputs": {
+        "A1": "apple",
+        "A2": "banana",
+        "A3": "cherry",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-VLOOKUP-005",
+      "formula": "=VLOOKUP(4,A1:B3,2)",
+      "inputs": {
+        "A1": 1,
+        "A2": 3,
+        "A3": 5,
+        "B1": 10,
+        "B2": 30,
+        "B3": 50
+      },
+      "expected": {
+        "number": 30
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Approximate (default TRUE): largest key <= 4 is 3."
+    },
+    {
+      "id": "LK-VLOOKUP-006",
+      "formula": "=VLOOKUP(0,A1:B3,2)",
+      "inputs": {
+        "A1": 1,
+        "A2": 3,
+        "A3": 5,
+        "B1": 10,
+        "B2": 30,
+        "B3": 50
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Approximate lookup below all keys."
+    },
+    {
+      "id": "LK-VLOOKUP-007",
+      "formula": "=VLOOKUP(\"banana\",A1:B3,0,FALSE)",
+      "inputs": {
+        "A1": "apple",
+        "A2": "banana",
+        "A3": "cherry",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "col_index_num < 1."
+    },
+    {
+      "id": "LK-VLOOKUP-008",
+      "formula": "=VLOOKUP(\"banana\",A1:B3,3,FALSE)",
+      "inputs": {
+        "A1": "apple",
+        "A2": "banana",
+        "A3": "cherry",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "col_index_num beyond table width."
+    },
+    {
+      "id": "LK-VLOOKUP-009",
+      "formula": "=VLOOKUP(\"banana\",A1:B3,1.9,FALSE)",
+      "inputs": {
+        "A1": "apple",
+        "A2": "banana",
+        "A3": "cherry",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "text": "banana"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Fractional col_index_num truncates to 1."
+    },
+    {
+      "id": "LK-VLOOKUP-010",
+      "formula": "=VLOOKUP(1/0,A1:B3,2,FALSE)",
+      "inputs": {
+        "A1": "apple",
+        "A2": "banana",
+        "A3": "cherry",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Error lookup_value propagates."
+    },
+    {
+      "id": "LK-VLOOKUP-011",
+      "formula": "=VLOOKUP(\"k\",A1:B1,2,FALSE)",
+      "inputs": {
+        "A1": "k",
+        "B1": 9
+      },
+      "expected": {
+        "number": 9
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Single-row table is legal."
+    },
+    {
+      "id": "LK-VLOOKUP-012",
+      "formula": "=VLOOKUP(TRUE,A1:B3,1,FALSE)",
+      "inputs": {
+        "A1": false,
+        "A2": true,
+        "A3": "x",
+        "B1": 1,
+        "B2": 2,
+        "B3": 3
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Boolean key exact match (expected position 2); confirm."
+    },
+    {
+      "id": "LK-HLOOKUP-001",
+      "formula": "=HLOOKUP(\"banana\",A1:C2,2,FALSE)",
+      "inputs": {
+        "A1": "apple",
+        "B1": "banana",
+        "C1": "cherry",
+        "A2": 10,
+        "B2": 20,
+        "C2": 30
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-HLOOKUP-002",
+      "formula": "=HLOOKUP(\"BANANA\",A1:C2,2,0)",
+      "inputs": {
+        "A1": "apple",
+        "B1": "banana",
+        "C1": "cherry",
+        "A2": 10,
+        "B2": 20,
+        "C2": 30
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Case-insensitive exact match."
+    },
+    {
+      "id": "LK-HLOOKUP-003",
+      "formula": "=HLOOKUP(\"ch?rry\",A1:C2,2,FALSE)",
+      "inputs": {
+        "A1": "apple",
+        "B1": "banana",
+        "C1": "cherry",
+        "A2": 10,
+        "B2": 20,
+        "C2": 30
+      },
+      "expected": {
+        "number": 30
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Wildcard ? in exact mode."
+    },
+    {
+      "id": "LK-HLOOKUP-004",
+      "formula": "=HLOOKUP(\"fig\",A1:C2,2,FALSE)",
+      "inputs": {
+        "A1": "apple",
+        "B1": "banana",
+        "C1": "cherry",
+        "A2": 10,
+        "B2": 20,
+        "C2": 30
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-HLOOKUP-005",
+      "formula": "=HLOOKUP(4,A1:C2,2)",
+      "inputs": {
+        "A1": 1,
+        "B1": 3,
+        "C1": 5,
+        "A2": 10,
+        "B2": 30,
+        "C2": 50
+      },
+      "expected": {
+        "number": 30
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Approximate default: largest key <= 4."
+    },
+    {
+      "id": "LK-HLOOKUP-006",
+      "formula": "=HLOOKUP(0,A1:C2,2,TRUE)",
+      "inputs": {
+        "A1": 1,
+        "B1": 3,
+        "C1": 5,
+        "A2": 10,
+        "B2": 30,
+        "C2": 50
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-HLOOKUP-007",
+      "formula": "=HLOOKUP(\"banana\",A1:C2,0,FALSE)",
+      "inputs": {
+        "A1": "apple",
+        "B1": "banana",
+        "C1": "cherry",
+        "A2": 10,
+        "B2": 20,
+        "C2": 30
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "row_index_num < 1."
+    },
+    {
+      "id": "LK-HLOOKUP-008",
+      "formula": "=HLOOKUP(\"banana\",A1:C2,3,FALSE)",
+      "inputs": {
+        "A1": "apple",
+        "B1": "banana",
+        "C1": "cherry",
+        "A2": 10,
+        "B2": 20,
+        "C2": 30
+      },
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "row_index_num beyond table height."
+    },
+    {
+      "id": "LK-HLOOKUP-009",
+      "formula": "=HLOOKUP(\"banana\",A1:C2,1,FALSE)",
+      "inputs": {
+        "A1": "apple",
+        "B1": "banana",
+        "C1": "cherry",
+        "A2": 10,
+        "B2": 20,
+        "C2": 30
+      },
+      "expected": {
+        "text": "banana"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Returning from the header row itself."
+    },
+    {
+      "id": "LK-HLOOKUP-010",
+      "formula": "=HLOOKUP(1/0,A1:C2,2,FALSE)",
+      "inputs": {
+        "A1": "apple",
+        "B1": "banana",
+        "C1": "cherry",
+        "A2": 10,
+        "B2": 20,
+        "C2": 30
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-HLOOKUP-011",
+      "formula": "=HLOOKUP(\"k\",A1:A2,2,FALSE)",
+      "inputs": {
+        "A1": "k",
+        "A2": 9
+      },
+      "expected": {
+        "number": 9
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Single-column table is legal."
+    },
+    {
+      "id": "LK-LOOKUP-001",
+      "formula": "=LOOKUP(2.5,A1:A4,B1:B4)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "B1": "a",
+        "B2": "b",
+        "B3": "c",
+        "B4": "d"
+      },
+      "expected": {
+        "text": "b"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-LOOKUP-002",
+      "formula": "=LOOKUP(3,A1:A4,B1:B4)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "B1": "a",
+        "B2": "b",
+        "B3": "c",
+        "B4": "d"
+      },
+      "expected": {
+        "text": "c"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-LOOKUP-003",
+      "formula": "=LOOKUP(0,A1:A4,B1:B4)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "B1": "a",
+        "B2": "b",
+        "B3": "c",
+        "B4": "d"
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Lookup below all elements."
+    },
+    {
+      "id": "LK-LOOKUP-004",
+      "formula": "=LOOKUP(99,A1:A4,B1:B4)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "B1": "a",
+        "B2": "b",
+        "B3": "c",
+        "B4": "d"
+      },
+      "expected": {
+        "text": "d"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Lookup above all elements returns the last."
+    },
+    {
+      "id": "LK-LOOKUP-005",
+      "formula": "=LOOKUP(2,A1:A4,B1:B2)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "B1": "a",
+        "B2": "b",
+        "B3": "c",
+        "B4": "d"
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "result_vector size mismatch -> #N/A per spec doc; confirm error code."
+    },
+    {
+      "id": "LK-LOOKUP-006",
+      "formula": "=LOOKUP(2.5,A1:B4)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "B4": 40
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Array form, taller than wide: first column / last column."
+    },
+    {
+      "id": "LK-LOOKUP-007",
+      "formula": "=LOOKUP(2.5,A1:D2)",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "C1": 3,
+        "D1": 4,
+        "A2": 10,
+        "B2": 20,
+        "C2": 30,
+        "D2": 40
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Array form, wider than tall: first row / last row."
+    },
+    {
+      "id": "LK-LOOKUP-008",
+      "formula": "=LOOKUP(1.5,A1:B2)",
+      "inputs": {
+        "A1": 1,
+        "B1": 100,
+        "A2": 2,
+        "B2": 200
+      },
+      "expected": {
+        "number": 100
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Square array form orientation: column search assumed; confirm vs Excel."
+    },
+    {
+      "id": "LK-LOOKUP-009",
+      "formula": "=LOOKUP(\"BANANA\",A1:A2,B1:B2)",
+      "inputs": {
+        "A1": "apple",
+        "A2": "banana",
+        "B1": 1,
+        "B2": 2
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Case-insensitive approximate text match."
+    },
+    {
+      "id": "LK-LOOKUP-010",
+      "formula": "=LOOKUP(1/0,A1:A4,B1:B4)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "B1": "a",
+        "B2": "b",
+        "B3": "c",
+        "B4": "d"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-LOOKUP-011",
+      "formula": "=LOOKUP(2.5,A1:C1,A2:C2)",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "C1": 3,
+        "A2": "a",
+        "B2": "b",
+        "C2": "c"
+      },
+      "expected": {
+        "text": "b"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Horizontal vector form."
+    },
+    {
+      "id": "LK-CHOOSE-001",
+      "formula": "=CHOOSE(2,\"a\",\"b\",\"c\")",
+      "inputs": {},
+      "expected": {
+        "text": "b"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-CHOOSE-002",
+      "formula": "=CHOOSE(1,42,1/0)",
+      "inputs": {},
+      "expected": {
+        "number": 42
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Lazy: unselected error argument is not evaluated."
+    },
+    {
+      "id": "LK-CHOOSE-003",
+      "formula": "=CHOOSE(2,42,1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Error in the selected argument propagates."
+    },
+    {
+      "id": "LK-CHOOSE-004",
+      "formula": "=CHOOSE(1.9,10,20)",
+      "inputs": {},
+      "expected": {
+        "number": 10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Fractional index truncates toward zero."
+    },
+    {
+      "id": "LK-CHOOSE-005",
+      "formula": "=CHOOSE(TRUE,10,20)",
+      "inputs": {},
+      "expected": {
+        "number": 10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Boolean index coercion TRUE->1 (expected); confirm."
+    },
+    {
+      "id": "LK-CHOOSE-006",
+      "formula": "=CHOOSE(0,10,20)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-CHOOSE-007",
+      "formula": "=CHOOSE(3,10,20)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-CHOOSE-008",
+      "formula": "=CHOOSE(\"x\",10,20)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-CHOOSE-009",
+      "formula": "=CHOOSE(A1,10,20)",
+      "inputs": {
+        "A1": 2
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-CHOOSE-010",
+      "formula": "=CHOOSE(1/0,10,20)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-CHOOSE-011",
+      "formula": "=CHOOSE(2,A1:A2,B1:B2)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "B1": 7,
+        "B2": 8
+      },
+      "expected": {
+        "array": [
+          [
+            7
+          ],
+          [
+            8
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Range-valued result returned as an array; no reference type exists yet."
+    },
+    {
+      "id": "LK-ROW-001",
+      "formula": "=ROW(A5)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-ROW-002",
+      "formula": "=ROW(X1000)",
+      "inputs": {},
+      "expected": {
+        "number": 1000
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-ROW-003",
+      "formula": "=ROW($A$7)",
+      "inputs": {},
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-ROW-004",
+      "formula": "=ROW(A5:A7)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            5
+          ],
+          [
+            6
+          ],
+          [
+            7
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Multi-cell reference: dynamic-array {5;6;7} vs legacy implicit intersection."
+    },
+    {
+      "id": "LK-ROW-005",
+      "formula": "=ROW(B3:D5)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            3
+          ],
+          [
+            4
+          ],
+          [
+            5
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Row span of a 2-D range."
+    },
+    {
+      "id": "LK-ROW-006",
+      "formula": "=ROW(3)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Non-reference argument error code (#VALUE! assumed); confirm."
+    },
+    {
+      "id": "LK-ROW-007",
+      "formula": "=ROW(A7:A5)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            5
+          ],
+          [
+            6
+          ],
+          [
+            7
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Reversed range normalizes."
+    },
+    {
+      "id": "LK-ROW-008",
+      "formula": "=ROW()",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Caller-cell position is not available in the engine's function context yet; #N/A is a placeholder for the engine gap, not Excel semantics."
+    },
+    {
+      "id": "LK-ROW-009",
+      "formula": "=ROWS(A1:A1)+ROW(A2)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-ROW-010",
+      "formula": "=ROW(A5:A5)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            5
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-COLUMN-001",
+      "formula": "=COLUMN(C3)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-COLUMN-002",
+      "formula": "=COLUMN(AA10)",
+      "inputs": {},
+      "expected": {
+        "number": 27
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-COLUMN-003",
+      "formula": "=COLUMN($D$1)",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-COLUMN-004",
+      "formula": "=COLUMN(A1:C1)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2,
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Multi-cell reference: dynamic-array {1,2,3} vs legacy implicit intersection."
+    },
+    {
+      "id": "LK-COLUMN-005",
+      "formula": "=COLUMN(B3:D5)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            2,
+            3,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-COLUMN-006",
+      "formula": "=COLUMN(3)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Non-reference argument error code; confirm."
+    },
+    {
+      "id": "LK-COLUMN-007",
+      "formula": "=COLUMN()",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Caller-cell position unavailable in function context; placeholder for the engine gap."
+    },
+    {
+      "id": "LK-COLUMN-008",
+      "formula": "=COLUMN(C3:C3)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-COLUMN-009",
+      "formula": "=COLUMNS(A1:C1)+COLUMN(E1)",
+      "inputs": {},
+      "expected": {
+        "number": 8
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-COLUMN-010",
+      "formula": "=COLUMN(XFD1)",
+      "inputs": {},
+      "expected": {
+        "number": 16384
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Rightmost column."
+    },
+    {
+      "id": "LK-ROWS-001",
+      "formula": "=ROWS(A1:A10)",
+      "inputs": {},
+      "expected": {
+        "number": 10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-ROWS-002",
+      "formula": "=ROWS(A1:C10)",
+      "inputs": {},
+      "expected": {
+        "number": 10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-ROWS-003",
+      "formula": "=ROWS(A1:E1)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-ROWS-004",
+      "formula": "=ROWS(B7)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Single cell reference."
+    },
+    {
+      "id": "LK-ROWS-005",
+      "formula": "=ROWS(A1:A3)",
+      "inputs": {
+        "A1": {
+          "error": "#DIV/0!"
+        }
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Error cells inside the range do not propagate (shape query); confirm."
+    },
+    {
+      "id": "LK-ROWS-006",
+      "formula": "=ROWS(A1:A100)",
+      "inputs": {},
+      "expected": {
+        "number": 100
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Blank cells count."
+    },
+    {
+      "id": "LK-ROWS-007",
+      "formula": "=ROWS(5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Scalar input behavior: #VALUE! assumed; Excel may differ."
+    },
+    {
+      "id": "LK-ROWS-008",
+      "formula": "=ROWS(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-ROWS-009",
+      "formula": "=ROWS(ROW(A2:A5))",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Array result of another function."
+    },
+    {
+      "id": "LK-ROWS-010",
+      "formula": "=ROWS(C3:F8)",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-COLUMNS-001",
+      "formula": "=COLUMNS(A1:E1)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-COLUMNS-002",
+      "formula": "=COLUMNS(A1:C10)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-COLUMNS-003",
+      "formula": "=COLUMNS(A1:A9)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-COLUMNS-004",
+      "formula": "=COLUMNS(B7)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-COLUMNS-005",
+      "formula": "=COLUMNS(A1:C1)",
+      "inputs": {
+        "A1": {
+          "error": "#DIV/0!"
+        }
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Error cells inside the range do not propagate; confirm."
+    },
+    {
+      "id": "LK-COLUMNS-006",
+      "formula": "=COLUMNS(A1:ZZ1)",
+      "inputs": {},
+      "expected": {
+        "number": 702
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-COLUMNS-007",
+      "formula": "=COLUMNS(5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Scalar input behavior; confirm."
+    },
+    {
+      "id": "LK-COLUMNS-008",
+      "formula": "=COLUMNS(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-COLUMNS-009",
+      "formula": "=COLUMNS(COLUMN(A1:C1))",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "LK-COLUMNS-010",
+      "formula": "=COLUMNS(C3:F8)",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    }
+  ]
+}
