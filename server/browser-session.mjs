@@ -3,7 +3,7 @@ import { existsSync, realpathSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { delimiter, dirname, isAbsolute, join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { buildBubblewrapCommand } from "./advanced-features.mjs";
+import { buildBubblewrapCommand, sandboxStatus } from "./advanced-features.mjs";
 import { browserAutomationStatus, browserProcessEnv, detectBrowserBinary, loopbackHost } from "./browser-tool.mjs";
 import { createCdpPipeConnection } from "./browser-cdp.mjs";
 
@@ -973,6 +973,30 @@ export function createBrowserSessionManager({
   }
 
   return { start, stop, stopProject, stopDevice, stopAll, get, status, act, acquireDriver, releaseDriver, subscribe, attachViewer, sweep };
+}
+
+export const REMOTE_BROWSER_HOST_FEATURES = Object.freeze([
+  "preview-origin-only",
+  "ephemeral-profile",
+  "bubblewrap",
+  "screencast-websocket",
+  "driver-takeover",
+  "agent-mcp"
+]);
+
+/**
+ * Host Protocol descriptor for the remote browser, probed once at server
+ * start: available only when the opt-in is set and both a Chromium/Chrome
+ * binary and bubblewrap are usable, because sessions refuse to start otherwise.
+ */
+export function remoteBrowserHostCapability({ env = process.env, spawnSyncImpl = spawnSync } = {}) {
+  const status = browserAutomationStatus({ env, spawnSyncImpl });
+  if (!status.enabled) return { state: "unavailable", reason: "browser_automation_disabled" };
+  if (!status.available) return { state: "unavailable", reason: "browser_binary_not_found" };
+  const sandbox = sandboxStatus({ env, spawn: spawnSyncImpl });
+  if (sandbox.mode === "off") return { state: "unavailable", reason: "sandbox_disabled" };
+  if (!sandbox.available) return { state: "unavailable", reason: "sandbox_unavailable" };
+  return { state: "available", features: [...REMOTE_BROWSER_HOST_FEATURES] };
 }
 
 export const remoteBrowserPolicy = Object.freeze({

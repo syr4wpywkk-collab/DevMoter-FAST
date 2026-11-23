@@ -711,7 +711,7 @@ export const zhHans = {
   "system.capServices": "服务",
   "system.capPorts": "端口",
   "system.capGit": "Git",
-  "system.capBrowser": "浏览器",
+  "system.capBrowser": "远程浏览器",
   "system.capSecrets": "密钥",
   "system.capAgents": "代理",
   "system.capNotifications": "通知",

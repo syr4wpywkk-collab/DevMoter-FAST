@@ -3,7 +3,7 @@
 このドキュメントは、[README.md](../README.md)（「What DevMoter brings together」）および [README.ja.md](../README.ja.md)（「統合する機能」）の成熟度表にある各行について、実際のサーバー実装ルート・自動テスト・未検証範囲を対応づけて記録します（Issue #536）。
 
 > [!NOTE]
-> Issue #536 起票時点の v3 表は 13 行（#498）でしたが、その後 #538 で `Qwen Code` が追加されたため、現在の表は **14 行**です。本書では現行の 14 行すべてに加え、v2 表を維持している [README.zh-CN.md](../README.zh-CN.md)（「功能状态」、16 行）との対応も記録しています。
+> Issue #536 起票時点の v3 表は 13 行（#498）でしたが、その後 #538 で `Qwen Code` が、続いて `リモートブラウザ / Remote browser` が追加されたため、現在の表は **15 行**です。本書では現行の 15 行すべてに加え、v2 表を維持している [README.zh-CN.md](../README.zh-CN.md)（「功能状态」、16 行）との対応も記録しています。
 
 ## 成熟度ラベルの基準と今回の見直し
 
@@ -13,12 +13,14 @@
 
 ### 今回のラベル変更
 
+- **リモートブラウザ（Remote browser）**: 新規行として **`実験的・オプトイン・プレビューのオリジン限定`**（`Experimental; opt-in, preview origin only`）で追加しました。実 Chromium テストは CI で skip され、ARM64・Debian の Chromium パッケージ・実 Codex / OpenCode からの MCP 起動が未検証のためです。Host Protocol の `browser` は条件を満たすと `available` を返すようになりました（#11）。
+
 - **GitHub Workspace**: `実装済み・範囲限定`（`Shipped; scope-limited` / `✅ Shipped`）→ **`実験的・範囲限定`**（`Experimental; scope-limited` / `🧪 Experimental`）へ引き下げました。
   - **理由**: `server.mjs` / `server/github.mjs` に `/api/github/*` のルートは存在するものの、自動テストは `validateRepoIdentity`・symlink/`.git` file 拒否・UI 文字列チェックのみで、`/api/github/*` の HTTP 統合テストおよび `githubStatus` / `listGithubRepos` / `listGithubBranches` / 正常系 `openGithubRepo` / `fetchGithubRepo` の自動テストが未整備です。また [docs/GITHUB_WORKSPACE_DEVICE_SMOKE.md](./GITHUB_WORKSPACE_DEVICE_SMOKE.md)（#13）でも実機 Chromebook + iPhone 受け入れゲートが未完了（`required testing, not completed testing`）と明記されています。
 
 ---
 
-## 一覧表（現行 README / README.ja 全 14 行）
+## 一覧表（現行 README / README.ja 全 15 行）
 
 | # | 機能（README.ja / README） | 成熟度 | 根拠となる API ルート | 主な実装ファイル | 主なテストファイル | 未検証範囲（主なギャップ） |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -32,10 +34,11 @@
 | 8 | [API Chat / Routing](#8-api-chat--routing) | 実験的 (`Experimental`) | `/api/llm/*`, `/api/advanced/models*`, `/api/advanced/providers` | `server.mjs`, `server/multi-api.mjs`, `server/multi-api-attachments.mjs`, `server/advanced-api.mjs`, `server/advanced-features.mjs`, `src/api-chat.ts`, `src/model-routing.mjs` | `test/multi-api.test.mjs`, `test/multi-api-v3-integration.test.mjs`, `test/multi-api-vault-integration.test.mjs`, `test/api-chat-conversations.test.mjs`, `test/model-routing.test.mjs`, `test/advanced-features.test.mjs` ほか | 実外部プロバイダ API との疎通・障害時フェイルオーバー、実機添付・UI 検証 |
 | 9 | [Qwen Code](#9-qwen-code) | 実験的・ローカルに Qwen Code CLI が必要 (`Experimental; requires a locally installed Qwen Code CLI`) | `/api/qwen/chat`, `/api/qwen/models`, `/api/qwen/providers`, `/api/qwen/chat/cancel`, `/api/integrations/qwen/launch`, `/api/integrations/status` | `server.mjs`, `server/qwen-chat.mjs`, `server/qwen-models.mjs`, `server/qwen-code-providers.mjs`, `server/integrations.mjs`, `src/feature-flags.mjs`, `src/qwen-chat.ts`, `src/qwen-model-picker.ts` | `test/qwen-chat.test.mjs`, `test/qwen-models.test.mjs`, `test/qwen-chat-ui.test.mjs`, `test/qwen-ui-gate.test.mjs`, `test/integrations-ui.test.mjs`, `test/integration-launch-contracts.test.mjs` | 既定では UI 非公開（`src/feature-flags.mjs` の `QWEN_UI_ENABLED = false`）、実 `qwen` CLI バイナリ実行、各種 Qwen Code バージョン・プロバイダ互換性、`/api/qwen/*` の実 HTTP サーバー統合テスト |
 | 10 | [Developer Workflows](#10-developer-workflows) | 機能ごとに異なる (`Mixed; see docs`) | `/api/dev/*`, `/api/agent-runs*`, `/api/agent-fleets*` | `server.mjs`, `server/dev-workflows.mjs`, `server/acp-adapter.mjs`, `server/agent-run-service.mjs`, `server/agent-run-api.mjs`, `src/dev-workflows-ui.ts` | `test/dev-workflows.test.mjs`, `test/developer-workflow-hardening.test.mjs`, `test/acp-adapter.test.mjs`, `test/agent-run-api.test.mjs`, `test/agent-run-service.test.mjs`, `test/sheet-theme-frame.test.mjs` | `/api/dev/*` の HTTP 統合テスト、`verify`/`repair`/`review`/`ciStatus`/`probeAcp`/`testMcpServer`/`sessionContext` の自動テスト、実 ACP エージェント・実 GitHub PR コメント |
-| 11 | [Host Protocol](#11-host-protocol) | v1 探索契約・Adapter ごとに差あり (`v1 discovery contract; adapters vary`) | `GET /api/host` | `server.mjs`, `server/host/protocol.mjs`, `server/host/adapters.mjs` | `test/host-protocol.test.mjs`, `test/auth-server.integration.test.mjs`, `test/mission-control.test.mjs` | 実 macOS / 実 Windows+WSL ホスト、`processes` / `services` / `ports` / `browser`（`server.mjs` 上は `not_implemented`） |
+| 11 | [Host Protocol](#11-host-protocol) | v1 探索契約・Adapter ごとに差あり (`v1 discovery contract; adapters vary`) | `GET /api/host` | `server.mjs`, `server/host/protocol.mjs`, `server/host/adapters.mjs` | `test/host-protocol.test.mjs`, `test/auth-server.integration.test.mjs`, `test/mission-control.test.mjs` | 実 macOS / 実 Windows+WSL ホスト、`processes` / `services` / `ports`（`server.mjs` 上は `not_implemented`）。`browser` はオプトイン・Chromium・bubblewrap が揃ったときのみ `available` |
 | 12 | [Automation / Integrations](#12-automation--integrations) | 実験的 (`Experimental`) | `/api/control/*`, `/api/automation/*`, `/api/projects/:id/context*`, `/api/user-automation*`, `/api/integrations/*`, `/api/cli`, `/api/advanced/browser*`, `/api/advanced/sandbox`, `/api/advanced/grants*` | `server.mjs`, `server/control-plane.mjs`, `server/automation-api.mjs`, `server/context-references.mjs`, `server/user-automation.mjs`, `server/integrations.mjs`, `server/cli-launch.mjs`, `server/advanced-api.mjs`, `server/browser-tool.mjs` | `test/control-plane-v3.test.mjs`, `test/remote-auth-boundary.test.mjs`, `test/remote-automation-security.test.mjs`, `test/automation-api-v3.test.mjs`, `test/context-references-v3.test.mjs`, `test/user-automation.test.mjs`, `test/integration-launch-210.test.mjs`, `test/integration-launch-contracts.test.mjs`, `test/integrations-security.test.mjs`, `test/auth-server.integration.test.mjs` ほか | `POST /api/control/events/github` を含む `/api/control/*`・`/api/projects/:id/context*`・`/api/user-automation*` の HTTP 統合テスト、実 Chromebook/Crostini 上での Antigravity 起動（#210）、実 GitHub Webhook・マルチホスト環境 |
 | 13 | [Web / PWA](#13-web--pwa) | 実装済み (`Shipped`) | 静的/公開パス（`/manifest.webmanifest`, `/sw.js`, `/icon-*.png`, `/apple-touch-icon.png`, `/login.html`, `/login.js`）, `GET /api/health` | `server.mjs`, `index.html`, `public/manifest.webmanifest`, `public/sw.js`, `public/login.html`, `src/main.ts`, `src/app-shell.ts`, `src/home.ts` | `test/pwa-backend.integration.test.mjs`, `test/pwa-public-assets.test.mjs`, `test/index-html-pwa-meta.test.mjs`, `test/service-worker-cache-lifecycle.test.mjs`, `test/security-headers.test.mjs`, `test/login-assets-no-build.test.mjs`, `e2e/codex-layout.test.mjs`, `e2e/unified-workspace-tabs.test.mjs` ほか | 実 iPhone Safari PWA インストール、iOS ソフトウェアキーボード・safe-area、実端末オフライン復帰（[RELEASE_SMOKE.md](../RELEASE_SMOKE.md)） |
 | 14 | [iOS Client](#14-ios-client) | 実験的・実機検証が必要 (`Experimental; device validation required`) | **根拠なし**（専用 API ルートなし。既存 DevMoter サーバーへ HTTPS 接続する `WKWebView` クライアント） | `ios/DevMoter/DevMoterApp.swift`, `ios/project.yml`, `.github/workflows/ios-altstore.yml` | **根拠なし**（`test/`・`e2e/` 配下に自動テストなし。`.github/workflows/ios-altstore.yml` の macOS IPA ビルドのみ） | iPhone 実機での署名・インストール（AltStore Classic / SideStore / iloader）、HTTPS/Tailscale 接続、プロファイル間 Cookie 分離、WKWebView OAuth/Passkey リダイレクト |
+| 15 | [リモートブラウザ / Remote browser](#15-リモートブラウザ--remote-browser) | 実験的・オプトイン・プレビューのオリジン限定 (`Experimental; opt-in, preview origin only`) | `/api/browser`, `/api/browser/sessions*`, `/api/browser/agent-tokens*`, `/api/browser/agent*`, WebSocket `/api/browser/sessions/:id/socket` | `server/browser-session.mjs`, `server/browser-cdp.mjs`, `server/browser-api.mjs`, `server/browser-websocket.mjs`, `server/browser-agent.mjs`, `cli/browser-mcp.mjs`, `src/remote-browser.ts` | `test/browser-session.test.mjs`, `test/browser-cdp.test.mjs`, `test/browser-api.integration.test.mjs`, `test/browser-websocket.test.mjs`, `test/browser-mcp.test.mjs`, `test/remote-browser-ui.test.mjs`, `test/browser-host-capability.test.mjs`, `test/browser-session.chromium.test.mjs`, `e2e/remote-browser.test.mjs` | CI では実 Chromium テストが skip、ARM64・Debian Chromium・実 Codex / OpenCode からの MCP 起動・実機スマホ未検証 |
 
 ---
 
@@ -257,7 +260,7 @@
   - `test/mission-control.test.mjs`
 - **未検証範囲**:
   - Linux 以外の OS アダプタ（`MacOSHost` は全機能 `macos_adapter_not_implemented`、`WindowsWSLHost` は WSL 外で `wsl_engine_not_connected`、WSL 内では `terminal` の既定が `wsl_terminal_not_implemented`）は CI の Linux 環境上で実機検証されていません。
-  - `server.mjs` の `hostRuntime` 登録では `processes`・`services`・`ports`・`browser` の 4 機能群が `unavailable`（`not_implemented`）として返ります（[docs/HOST_PROTOCOL.md](./HOST_PROTOCOL.md)）。
+  - `server.mjs` の `hostRuntime` 登録では `processes`・`services`・`ports` の 3 機能群が `unavailable`（`not_implemented`）として返ります。`browser` は起動時に `remoteBrowserHostCapability`（`server/browser-session.mjs`）で判定し、`DEVMOTER_BROWSER_AUTOMATION=1`・Chromium/Chrome・bubblewrap が揃えば `available`、そうでなければ `browser_automation_disabled` / `browser_binary_not_found` / `sandbox_disabled` / `sandbox_unavailable` を返します（`test/browser-host-capability.test.mjs`、[docs/HOST_PROTOCOL.md](./HOST_PROTOCOL.md)）。判定はサーバー起動時の 1 回だけです。
 
 ### 12. Automation / Integrations
 
@@ -316,6 +319,26 @@
 - **未検証範囲**:
   - 実 iPhone での署名・インストール（AltStore Classic / SideStore / iloader）、HTTPS/Tailscale 接続、接続プロファイルごとの `WKWebsiteDataStore` Cookie 分離、無効証明書・非 HTTPS 拒否、OAuth/Passkey リダイレクト、アプリ再起動後のセッション維持は実機未検証です（[docs/ios-altstore.md](./ios-altstore.md), [docs/iphone-linux.ja.md](./iphone-linux.ja.md)）。
 
+### 15. リモートブラウザ / Remote browser
+
+- **成熟度**: 実験的・オプトイン・プレビューのオリジン限定（`Experimental; opt-in, preview origin only`）。一般 Web 閲覧モードは未実装です。詳細と運用手順は [docs/REMOTE_BROWSER.md](./REMOTE_BROWSER.md)。
+- **根拠となる API ルート**:
+  - `server.mjs`, `server/browser-api.mjs`, `server/browser-session.mjs`, `server/browser-cdp.mjs`:
+    - `GET /api/browser`, `POST /api/browser/sessions`, `GET/DELETE /api/browser/sessions/:id`, `POST /api/browser/sessions/:id/(actions|driver|ticket)`, `GET /api/browser/sessions/:id/screenshot`
+    - `GET/POST /api/browser/agent-tokens`, `DELETE /api/browser/agent-tokens/:id`
+  - `server/browser-websocket.mjs`: WebSocket `/api/browser/sessions/:id/socket`（`devmoter-browser.v1`、20 秒・1 回限りのチケット）
+  - `server/browser-agent.mjs`, `cli/browser-mcp.mjs`, `cli/devmoter.mjs`: ホストローカル限定の `GET /api/browser/agent`, `POST /api/browser/agent/(open|driver|actions|close)`、`devmoter browser-mcp`
+  - `server/agent-run-service.mjs`, `server/agent-run-api.mjs`: Agent Run の `context.browser`（`read` / `act`）による Codex への MCP 注入
+  - UI: `src/remote-browser.ts`, `src/remote-browser.css`, `src/unified-workspace-nav.ts`（☰ → ブラウザ）
+- **対応するテストファイル**:
+  - `test/browser-session.test.mjs`, `test/browser-cdp.test.mjs`, `test/browser-api.integration.test.mjs`, `test/browser-websocket.test.mjs`, `test/browser-mcp.test.mjs`, `test/remote-browser-ui.test.mjs`, `test/browser-host-capability.test.mjs`, `test/browser-tool.test.mjs`
+  - 実 Chromium: `test/browser-session.chromium.test.mjs`, `e2e/remote-browser.test.mjs`（Chromium が無い・サンドボックスで起動できない環境では skip。`DEVMOTER_TEST_CHROMIUM_REQUIRED=1 DEVMOTER_TEST_SANDBOX=required` で必須化）
+- **未検証範囲**:
+  - CI のランナーでは実 Chromium テストが skip されます。実 Chromium での合格確認は x86_64 + Chrome for Testing + bubblewrap のみです。
+  - ARM64 ホスト、Debian の `chromium` パッケージは未検証です。
+  - 実際の Codex / OpenCode からの `devmoter browser-mcp` 起動は未検証です（MCP は偽 API に対する JSON-RPC テストのみ）。OpenCode への自動注入はありません。
+  - 実 iPhone / Android / iOS クライアントでのソフトウェアキーボード・IME・ジェスチャ・バックグラウンド復帰は未検証です。
+
 ---
 
 ## README.zh-CN.md（v2 表・16 行）との対応
@@ -334,6 +357,7 @@
 | Knowledge notes (Home → ナレッジ) | 🧪 Experimental | `/api/knowledge/notes*`（UI: `src/knowledge.ts`、一覧・作成・編集・削除確認・ピン留め・タイトル検索・プロジェクト絞り込み・複製・Markdown 書き出し/取り込み） | `test/knowledge-ui.test.mjs`, `test/knowledge-store.test.mjs`, `test/auth-server.integration.test.mjs` | 実機ブラウザでのファイル保存・取り込みは未検証（jsdom テストのみ） |
 | Prompt templates | 🧪 Experimental | `/api/prompt-templates*`（保存・編集・削除・プロジェクト別整理・バックアップ/復元）。変数の展開・プレビュー・入力欄への挿入はブラウザ側のみで行い、自動送信はしない | `test/prompt-template-store.test.mjs`, `test/prompt-template-core.test.mjs`, `test/auth-server.integration.test.mjs` | UI は実機ブラウザで未検証 |
 | Persistent terminal | 🧪 Experimental | `/api/terminal/sessions*`, WebSocket `/api/terminal/sessions/:id/socket` | `test/terminal-persistence.test.mjs`, `test/terminal-websocket.integration.test.mjs`, `test/terminal-sessions-security.test.mjs` ほか | #7 Terminal 参照 |
+| Remote browser | 🧪 Experimental | `/api/browser*`, WebSocket `/api/browser/sessions/:id/socket` | `test/browser-session.test.mjs`, `test/browser-api.integration.test.mjs`, `test/browser-mcp.test.mjs` ほか | #15 リモートブラウザ参照 |
 | API Chat / model routing | 🧪 Experimental | `/api/llm/*`, `/api/advanced/models*`, `/api/advanced/providers` | `test/multi-api*.test.mjs`, `test/model-routing.test.mjs`, `test/advanced-features.test.mjs` ほか | #8 API Chat / Routing 参照 |
 | Automation / control plane | 🧪 Experimental | `/api/control/*`, `/api/automation/*`, `/api/user-automation*` | `test/control-plane-v3.test.mjs`, `test/automation-api-v3.test.mjs`, `test/user-automation.test.mjs` ほか | #12 Automation / Integrations 参照 |
 | Antigravity / Claude 集成 | 🧪 Experimental | `/api/integrations/status`, `/api/integrations/(antigravity\|claude)/launch`, `/api/integrations/antigravity/remote/(start\|stop)` | `test/integration-launch-210.test.mjs`, `test/integration-launch-contracts.test.mjs`, `test/integrations-security.test.mjs`, `test/auth-server.integration.test.mjs` | Chromebook/Crostini 実機起動（#210）未検証 |

@@ -711,7 +711,7 @@ export const ja = {
   "system.capServices": "サービス",
   "system.capPorts": "ポート",
   "system.capGit": "Git",
-  "system.capBrowser": "ブラウザー",
+  "system.capBrowser": "リモートブラウザ",
   "system.capSecrets": "シークレット",
   "system.capAgents": "エージェント",
   "system.capNotifications": "通知",

@@ -711,7 +711,7 @@ export const en = {
   "system.capServices": "Services",
   "system.capPorts": "Ports",
   "system.capGit": "Git",
-  "system.capBrowser": "Browser",
+  "system.capBrowser": "Remote browser",
   "system.capSecrets": "Secrets",
   "system.capAgents": "Agents",
   "system.capNotifications": "Notifications",

@@ -711,7 +711,7 @@ export const zhHant = {
   "system.capServices": "服務",
   "system.capPorts": "連接埠",
   "system.capGit": "Git",
-  "system.capBrowser": "瀏覽器",
+  "system.capBrowser": "遠端瀏覽器",
   "system.capSecrets": "機密",
   "system.capAgents": "代理程式",
   "system.capNotifications": "通知",

@@ -35,6 +35,7 @@ DevMoter-native authentication is an application access boundary, but it is not 
 6. **DevMoter ↔ GitHub CLI** — the host `gh` session is privileged; the browser cannot choose arbitrary executables or clone destinations.
 7. **DevMoter ↔ host integrations** — installed CLIs and desktop launch targets are trusted local software but remain privileged.
 8. **Automation/event boundary** — a trigger is data, not blanket authority; schedules/events must not bypass existing boundaries.
+9. **DevMoter ↔ remote browser** — an opt-in, bubblewrap-sandboxed host Chromium driven over a private CDP pipe; page content and DOM are untrusted, and agents reach it only through `/api/browser/agent*` with a scoped token (see [Remote browser](#remote-browser)).
 
 ### 検出事項の分類
 
@@ -159,12 +160,12 @@ The checks are independent. Authentication establishes who is calling; a session
 | Check | Existing coverage | vNext requirement |
 |---|---|---|
 | AUTH | Basic auth / external owner session at HTTP dispatch; optional passkey gate | Keep mandatory on all control APIs, including streams and future WebSocket upgrades. |
-| DEVICE/TRUST | Terminal HTTP and workspace-control routes require an active paired-device token; Secret Vault management and Vault-backed API Chat operations also require an active paired-device credential. Terminal sessions bind to a device ID; revocation closes that device's sockets and managed PTYs. The remote host registry's trust label is not authorization. | Extend resource binding consistently to Agent, Browser, and Host APIs; reduce script-readable device-token exposure. |
+| DEVICE/TRUST | Terminal HTTP and workspace-control routes require an active paired-device token; Secret Vault management and Vault-backed API Chat operations also require an active paired-device credential. Terminal sessions bind to a device ID; revocation closes that device's sockets and managed PTYs. The remote host registry's trust label is not authorization. | Remote browser sessions are bound to the starting device; revocation stops them and revokes their socket tickets and agent tokens. Extend resource binding consistently to Agent and Host APIs; reduce script-readable device-token exposure. |
 | ORIGIN | Exact same-origin mutation checks; WebSocket ticket carries the validated Origin and is single-use | Keep handshake and reconnect checks covered as the terminal protocol evolves. |
 | SESSION | Terminal ID plus 256-bit capability; persistent capability hash is rotated on explicit claim and TTL/revocation remove access | Extend revocation to provider/agent sessions; add fresh authentication for sensitive session transfer. |
 | CAPABILITY | Narrow existing Codex RPC allowlist, agent modes, workspace policy; terminal has explicit entry header | Define operation-level permissions for the new Host protocol; unknown action means deny. |
 | RESOURCE OWNERSHIP | Registered Project IDs, project-path revalidation, and terminal owner-device checks on HTTP and socket ticket upgrade | Apply owner + project + host checks to every Host capability and async completion. |
-| POLICY | Workspace edits default to ask; browser preview is opt-in and loopback-only | Centralize policy evaluation for the six action classes; stricter deny/ask rule wins. |
+| POLICY | Workspace edits default to ask; browser preview is opt-in and loopback-only; remote-browser agent actions check token capability, then workspace rules for `browser.read` / `browser.act` (an `ask` rule denies) | Centralize policy evaluation for the six action classes; stricter deny/ask rule wins. |
 | ACTION | Fixed local launchers and validated endpoint schemas | Use fixed executables/arguments and bounded resources; no browser-provided shell command, cwd, or secret value. |
 | AUDIT | Automation/control-plane records selected lifecycle events | Record actor, capability, resource, decision, confirmation, and outcome; exclude tokens and secret values. |
 
@@ -187,6 +188,23 @@ The live PTY count remains bounded to four per server process. The count is chec
 | Arbitrary cwd / path traversal | Project ID resolves server-side; project path is revalidated at attach/use | Host protocol must keep all path resolution server-owned and symlink-aware. |
 | Secret exfiltration / confused deputy | Encrypted Host vault, opaque references, paired-device-gated metadata/write/migration API, explicit user-confirmed migration of eligible file-backed providers, canonical preset endpoint and project checks before Host-side API Chat resolution, key sent only in upstream auth header, response redaction, mobile UI with no Reveal/Copy path, and no public HTTP resolve route | Migrate remaining env/custom provider credentials; extend the same server policy to Agent/Browser use; add fresh reauthentication for sensitive disclosure, audit coverage, and complete log/context redaction. A same-origin script compromise can still act with the paired-device token and read in-progress form inputs. |
 | Agent privilege inheritance | Agent mode and workspace policy exist; external agent sandbox limits are documented | Separate action grants; no ambient Host/terminal/secrets inheritance; explicit escalation/approval path. |
-| Browser profile/token theft | Local preview uses a fresh temporary browser profile and loopback targets only | Preserve isolation and add lifecycle/ownership/audit before persistent controller work. |
+| Browser profile/token theft | Local preview uses a fresh temporary browser profile and loopback targets only; the remote browser adds device ownership, idle/lifetime limits, a private CDP pipe, mandatory bubblewrap and a JSONL audit | Keep the preview-only boundary; general web mode needs SSRF/private-network controls and per-origin approval before it is enabled. |
 | Resource exhaustion | PTY live-session cap and bounded per-session scrollback | Add input/connection rate limits and OS-level CPU/memory/process budgets. |
 | Unsafe automation / prompt injection | Event payloads are labeled untrusted; schedules preserve normal approval | Keep policy server-owned for every trigger and future Computer Use action. |
+
+## Remote browser
+
+The remote browser (`/api/browser*`, `devmoter browser-mcp`; [docs/REMOTE_BROWSER.md](docs/REMOTE_BROWSER.md)) is Experimental and off unless `DEVMOTER_BROWSER_AUTOMATION=1`.
+
+| Threat | Control in the current code | Residual risk |
+|---|---|---|
+| Browsing outside the intended target (SSRF, intranet, public sites) | Only the project's user-started loopback live preview origin loads: Chromium routes all other traffic to a dead proxy, CDP `Fetch` interception fails off-origin requests, `navigate` rejects other origins and schemes, popups are denied. Changing or stopping the preview stops the session. | The preview app itself can still make server-side requests; external page subresources are blocked, not proxied. General web mode is not implemented. |
+| CDP takeover by local processes or agents | CDP uses `--remote-debugging-pipe` owned by DevMoter; no debugging port is opened; agents never receive CDP. | A compromise of the DevMoter process itself is out of scope. |
+| Credential or profile theft | Fresh `0700` profile per session, deleted on stop; the personal profile is never mounted; Chromium runs under bubblewrap (fail closed) with its own sandbox enabled; downloads, dialogs and permission prompts are denied. | Data typed into the preview page lives in that session until stop. |
+| Viewing or driving another device's session | Every route needs an active trusted device; sessions are device-bound; WebSocket tickets are single use, 20 s, bound to session, device, Origin and driver generation; device revocation stops sessions and revokes tickets and agent tokens. | Same-origin XSS in DevMoter can act as the paired device. |
+| Agent overreach | `dmba_` tokens are host-local only (loopback peer and Host, no Origin/cookie/forwarding headers), scoped to one project and `browser.read` / `browser.act`, capped by the Agent Run policy and parent run, revoked at run end or restart. Script evaluation is never allowed; an `ask` rule denies; the user can always take control and the agent cannot take it back while the user drives. | Agent actions are allowed by default inside the preview origin when no workspace rule matches. |
+| Prompt injection through page content | `browser_snapshot` output is labelled untrusted page data; agents act only through fixed-schema actions. | A malicious preview page can still try to steer an agent within the preview origin. |
+| Resource exhaustion | At most 2 sessions per host, one per project, 2 viewers, idle stop 10 min, lifetime 2 h, ACK-paced frames with size caps, 60 client messages/s, bounded text/DOM/screenshot sizes. | No per-session CPU/memory quota. |
+| Missing accountability | Starts, stops, driver changes, token issue/revoke and every user (HTTP and WebSocket) and agent action go to `browser-audit.jsonl` (`0600`); typed text is recorded only as its length. | The audit log is local and not tamper-evident. |
+
+Not yet verified: ARM64 hosts, the Debian `chromium` package, real Codex/OpenCode launches of `devmoter browser-mcp`, and real phones. CI skips the real-Chromium tests.
