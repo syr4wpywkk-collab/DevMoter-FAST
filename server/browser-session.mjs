@@ -1094,15 +1094,13 @@ export function createBrowserSessionManager({
     return point;
   }
 
-  // Screen points arrive in visual-viewport pixels, but input events take
-  // layout-viewport CSS pixels; they differ while the page is zoomed (a page
-  // without a viewport meta tag on a phone is shown scaled down).
+  // Screen points are pixels of what is shown; input events take page CSS
+  // pixels from the corner of the shown area. They differ while the page is
+  // zoomed (a page without a viewport meta tag on a phone is shown scaled down).
   async function screenToPage(send) {
     const viewport = (await send("Page.getLayoutMetrics", {}).catch(() => null))?.cssVisualViewport;
     const scale = Number(viewport?.scale) > 0 ? Number(viewport.scale) : 1;
-    const offsetX = Number(viewport?.offsetX) || 0;
-    const offsetY = Number(viewport?.offsetY) || 0;
-    return { scale, point: (x, y) => ({ x: offsetX + x / scale, y: offsetY + y / scale }) };
+    return { scale, point: (x, y) => ({ x: x / scale, y: y / scale }) };
   }
 
   async function historyNavigate(session, offset, send) {

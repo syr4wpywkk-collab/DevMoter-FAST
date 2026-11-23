@@ -191,3 +191,57 @@ test("real Chromium taps land where they are shown on a page zoomed out to fit a
   await manager.act(session.id, { type: "click", x: 330 * shown, y: 330 * shown }, { generation: 1, deviceId: "dev" });
   await waitFor(async () => (await state())?.[2] === "hit");
 });
+
+test("real Chromium taps land where they are shown after panning a zoomed-in page", { skip: chromium ? false : "no Chromium binary available" }, async t => {
+  // The page reports each click in screen pixels, as the viewer would have seen it.
+  const page = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=2"></head><body style="margin:0;width:2400px;height:2000px">
+<p id="state" style="position:absolute;top:0"></p>
+<script>
+let shown = null;
+document.addEventListener("click", event => { shown = [(event.clientX - visualViewport.offsetLeft) * visualViewport.scale, (event.clientY - visualViewport.offsetTop) * visualViewport.scale]; });
+setInterval(() => { document.getElementById("state").textContent = "S " + JSON.stringify({ panned: visualViewport.offsetLeft, scale: visualViewport.scale, shown }) + " E"; }, 50);
+</script>
+</body></html>`;
+  const preview = await listen((req, res) => { res.setHeader("content-type", "text/html; charset=utf-8"); res.end(page); });
+  const configDir = await mkdtemp(join(tmpdir(), "devmoter-remote-browser-pan-"));
+  const manager = createBrowserSessionManager({
+    configDir,
+    resolveProject: async id => ({ id, path: configDir, name: id }),
+    getPreview: () => ({ projectId: "pan", host: "127.0.0.1", port: preview.port, token: "t", listener: readListenerIdentity("127.0.0.1", preview.port) }),
+    env: { ...process.env, DEVMOTER_BROWSER_AUTOMATION: "1", DEVMOTER_BROWSER_BIN: chromium, DEVMOTER_SANDBOX: process.env.DEVMOTER_TEST_SANDBOX || "preferred" },
+    limits: { sweepMs: 0 }
+  });
+  t.after(async () => {
+    await manager.stopAll();
+    preview.server.close();
+    await rm(configDir, { recursive: true, force: true });
+  });
+  let session;
+  try {
+    ({ session } = await manager.start("pan", { deviceId: "dev", viewport: { width: 390, height: 700, mobile: true } }));
+  } catch (error) {
+    if (process.env.DEVMOTER_TEST_CHROMIUM_REQUIRED !== "1" && ["browser_start_failed", "sandbox_required"].includes(error?.code)) {
+      t.skip("Chromium could not start in this sandbox: " + error.message.slice(0, 160));
+      return;
+    }
+    throw error;
+  }
+  const opts = { generation: 1, deviceId: "dev" };
+  const state = async () => {
+    const match = (await manager.act(session.id, { type: "dom" })).content.match(/S (\{.*?\}) E/);
+    return match && JSON.parse(match[1]);
+  };
+  await waitFor(state);
+  await manager.act(session.id, { type: "scroll", dx: 300, dy: 0, x: 200, y: 600 }, opts);
+  let last = -1;
+  const panned = await waitFor(async () => {
+    const current = await state();
+    const settled = current?.panned > 0 && current.panned === last ? current : null;
+    last = current?.panned;
+    return settled;
+  });
+  assert.equal(panned.scale, 2);
+  await manager.act(session.id, { type: "click", x: 195, y: 350 }, opts);
+  const { shown } = await waitFor(async () => (await state())?.shown ? state() : null);
+  assert.ok(Math.abs(shown[0] - 195) < 2 && Math.abs(shown[1] - 350) < 2, "tap landed at " + shown);
+});
