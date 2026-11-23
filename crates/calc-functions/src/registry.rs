@@ -50,6 +50,10 @@ impl FunctionRegistry for StandardRegistry {
     fn is_volatile(&self, name: &str) -> bool {
         VOLATILE_NAMES.iter().any(|v| v.eq_ignore_ascii_case(name))
     }
+
+    fn is_dep_opaque(&self, name: &str) -> bool {
+        name.eq_ignore_ascii_case("FORMULATEXT")
+    }
 }
 
 /// Function names whose cells re-evaluate on every `recalculate()`
@@ -101,11 +105,13 @@ mod tests {
                 "ACOSH",
                 "ACOT",
                 "ACOTH",
+                "ADDRESS",
                 "AGGREGATE",
                 "AMORDEGRC",
                 "AMORLINC",
                 "AND",
                 "ARABIC",
+                "AREAS",
                 "ARRAYTOTEXT",
                 "ASC",
                 "ASIN",
@@ -154,6 +160,8 @@ mod tests {
                 "CHISQ.TEST",
                 "CHITEST",
                 "CHOOSE",
+                "CHOOSECOLS",
+                "CHOOSEROWS",
                 "CLEAN",
                 "CODE",
                 "COLUMN",
@@ -220,6 +228,7 @@ mod tests {
                 "EVEN",
                 "EXACT",
                 "EXP",
+                "EXPAND",
                 "EXPON.DIST",
                 "EXPONDIST",
                 "F.DIST",
@@ -246,6 +255,7 @@ mod tests {
                 "FORECAST.ETS.SEASONALITY",
                 "FORECAST.ETS.STAT",
                 "FORECAST.LINEAR",
+                "FORMULATEXT",
                 "FREQUENCY",
                 "FTEST",
                 "FV",
@@ -261,6 +271,7 @@ mod tests {
                 "GCD",
                 "GEOMEAN",
                 "GESTEP",
+                "GROUPBY",
                 "GROWTH",
                 "HARMEAN",
                 "HEX2BIN",
@@ -269,6 +280,7 @@ mod tests {
                 "HLOOKUP",
                 "HOUR",
                 "HSTACK",
+                "HYPERLINK",
                 "HYPGEOM.DIST",
                 "HYPGEOMDIST",
                 "IF",
@@ -300,6 +312,7 @@ mod tests {
                 "IMSUM",
                 "IMTAN",
                 "INDEX",
+                "INDIRECT",
                 "INFO",
                 "INT",
                 "INTERCEPT",
@@ -392,6 +405,7 @@ mod tests {
                 "ODDFYIELD",
                 "ODDLPRICE",
                 "ODDLYIELD",
+                "OFFSET",
                 "OR",
                 "PDURATION",
                 "PEARSON",
@@ -406,6 +420,7 @@ mod tests {
                 "PERMUTATIONA",
                 "PHI",
                 "PI",
+                "PIVOTBY",
                 "PMT",
                 "POISSON",
                 "POISSON.DIST",
@@ -466,6 +481,7 @@ mod tests {
                 "SLOPE",
                 "SMALL",
                 "SORT",
+                "SORTBY",
                 "SQRT",
                 "SQRTPI",
                 "STANDARDIZE",
@@ -517,6 +533,7 @@ mod tests {
                 "TREND",
                 "TRIM",
                 "TRIMMEAN",
+                "TRIMRANGE",
                 "TRUNC",
                 "TTEST",
                 "TYPE",
@@ -537,8 +554,11 @@ mod tests {
                 "VSTACK",
                 "WEIBULL",
                 "WEIBULL.DIST",
+                "WRAPCOLS",
+                "WRAPROWS",
                 "XIRR",
                 "XLOOKUP",
+                "XMATCH",
                 "XNPV",
                 "YEAR",
                 "YIELD",

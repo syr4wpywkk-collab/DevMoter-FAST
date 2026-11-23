@@ -17,6 +17,7 @@ pub mod criteria;
 pub mod date_serial;
 pub mod ets;
 pub mod finance;
+pub mod groupby;
 pub mod lookup;
 pub mod number;
 pub mod numerics;
