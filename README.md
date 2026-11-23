@@ -51,7 +51,7 @@ npm start
 curl -s http://127.0.0.1:8787/v1/databases/app/query -H 'Content-Type: application/json' -d '{"sql": "SELECT sqlite_version() AS v"}'
 ```
 
-認証がまだ無いため、ループバックアドレスでしか起動しません（ローカル検証専用）。エンドポイント、エラー形式、SQLite アダプターの制限は [`docs/api/v1.md`](docs/api/v1.md) にあります。
+認証がまだ無いため、ループバックアドレスでしか起動しません（ローカル検証専用）。4エンジンすべてを同じ API から操作できます（SQLite・DuckDB・PostgreSQL は `/query`、Valkey は `/command`。PostgreSQL と Valkey は起動済みのサーバーに Unix ソケットかループバックで接続します）。エンドポイント、エラー形式、SQLite アダプターの制限は [`docs/api/v1.md`](docs/api/v1.md) にあります。
 
 ## エンジンのビルド
 

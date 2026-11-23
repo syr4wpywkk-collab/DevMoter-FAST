@@ -60,7 +60,25 @@ export async function sqlHealth(adapter: Pick<SqlAdapter, 'query'>, versionSql: 
   }
 }
 
-export type Adapter = SqlAdapter;
+/** One argument of a key-value command. Binary data is `{ "$base64": "..." }`. */
+export type CommandArg = string | number | { $base64: string };
+
+export interface CommandResult {
+  /** The engine's reply as JSON: see docs/api/v1.md for how reply types are mapped. */
+  result: unknown;
+  durationMs: number;
+}
+
+export interface KeyValueAdapter {
+  readonly engine: EngineName;
+  readonly kind: 'keyvalue';
+  command(args: readonly CommandArg[], options?: QueryOptions): Promise<CommandResult>;
+  /** Never throws. */
+  health(): Promise<EngineHealth>;
+  close(): Promise<void>;
+}
+
+export type Adapter = SqlAdapter | KeyValueAdapter;
 
 export const ENGINE_ERROR_CODES = [
   'invalid_request',
@@ -69,6 +87,7 @@ export const ENGINE_ERROR_CODES = [
   'cancelled',
   'result_too_large',
   'engine_unavailable',
+  'command_not_allowed',
 ] as const;
 export type EngineErrorCode = (typeof ENGINE_ERROR_CODES)[number];
 

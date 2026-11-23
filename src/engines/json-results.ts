@@ -4,7 +4,7 @@
 import type { ResultSet } from './types.ts';
 
 /** Integers that a JavaScript number cannot hold exactly are returned as strings, not rounded. */
-function exactNumbers(_key: string, value: unknown, context?: { source?: string }): unknown {
+export function exactNumbers(_key: string, value: unknown, context?: { source?: string }): unknown {
   if (typeof value === 'number' && !Number.isSafeInteger(value) && context?.source !== undefined && /^-?\d+$/.test(context.source)) {
     return context.source;
   }

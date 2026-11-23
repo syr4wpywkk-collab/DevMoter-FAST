@@ -5,7 +5,8 @@
 //   GET  /v1/databases/:name/health    health of one database's engine (503 if unavailable)
 //   GET  /v1/databases                 configured databases
 //   GET  /v1/databases/:name           one database
-//   POST /v1/databases/:name/query     { "sql": "...", "params": [...], "timeoutMs": 30000 }
+//   POST /v1/databases/:name/query     { "sql": "...", "params": [...], "timeoutMs": 30000 }      (SQL engines)
+//   POST /v1/databases/:name/command   { "command": ["GET", "key"], "timeoutMs": 30000 }          (key-value engines)
 //
 // There is no authentication yet. Until there is, the server only listens on
 // loopback addresses and refuses requests that a web page could make the
@@ -15,7 +16,7 @@ import { randomUUID } from 'node:crypto';
 import http from 'node:http';
 
 import type { Logger } from '../logging/logger.ts';
-import { EngineError, type Adapter, type EngineErrorCode, type EngineName, type QueryParam } from '../engines/types.ts';
+import { EngineError, type Adapter, type CommandArg, type EngineErrorCode, type EngineName, type QueryParam } from '../engines/types.ts';
 
 export interface Database {
   name: string;
@@ -55,6 +56,7 @@ const ENGINE_ERROR_STATUS: Record<EngineErrorCode, number> = {
   timeout: 504,
   cancelled: 499,
   engine_unavailable: 503,
+  command_not_allowed: 403,
 };
 
 /** True when the Host header names this machine: stops DNS rebinding from a web page. */
@@ -107,6 +109,16 @@ function parseQueryBody(body: unknown): { sql: string; params: QueryParam[]; tim
   if (!Array.isArray(params)) throw new HttpError(400, 'invalid_request', 'params must be an array');
   if (timeoutMs !== undefined && typeof timeoutMs !== 'number') throw new HttpError(400, 'invalid_request', 'timeoutMs must be a number');
   return { sql, params: params as QueryParam[], timeoutMs };
+}
+
+function parseCommandBody(body: unknown): { command: CommandArg[]; timeoutMs: number | undefined } {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) throw new HttpError(400, 'invalid_request', 'the request body must be a JSON object');
+  const { command, timeoutMs, ...rest } = body as Record<string, unknown>;
+  const unknown = Object.keys(rest);
+  if (unknown.length > 0) throw new HttpError(400, 'invalid_request', `unknown field "${unknown[0]}"; allowed fields: command, timeoutMs`);
+  if (!Array.isArray(command)) throw new HttpError(400, 'invalid_request', 'command must be an array, for example ["GET", "key"]');
+  if (timeoutMs !== undefined && typeof timeoutMs !== 'number') throw new HttpError(400, 'invalid_request', 'timeoutMs must be a number');
+  return { command: command as CommandArg[], timeoutMs };
 }
 
 export function createApiServer(options: ApiOptions): http.Server {
@@ -168,13 +180,20 @@ export function createApiServer(options: ApiOptions): http.Server {
       if (check.status !== 'ok') reply.status = 503;
       return check;
     }
-    if (segments[0] === 'v1' && segments[1] === 'databases' && segments[2] !== undefined && segments[3] === 'query' && segments.length === 4) {
-      log.route = 'databases.query';
+    const operation = segments[3];
+    if (segments[0] === 'v1' && segments[1] === 'databases' && segments[2] !== undefined && (operation === 'query' || operation === 'command') && segments.length === 4) {
+      log.route = `databases.${operation}`;
       allow('POST');
       const database = findDatabase(segments[2]);
       log.database = database.name;
       log.engine = database.engine;
-      const { sql, params, timeoutMs } = parseQueryBody(await readJsonBody(request, maxBodyBytes));
+      const { adapter } = database;
+      const body = await readJsonBody(request, maxBodyBytes);
+      const input = operation === 'query' ? parseQueryBody(body) : parseCommandBody(body);
+      if ((adapter.kind === 'sql') !== (operation === 'query')) {
+        const instead = adapter.kind === 'sql' ? 'query' : 'command';
+        throw new HttpError(400, 'unsupported_operation', `${database.engine} databases do not support /${operation}; use /v1/databases/${database.name}/${instead}`);
+      }
       if (runningQueries >= maxConcurrentQueries) {
         throw new HttpError(429, 'too_many_requests', 'too many queries are running; try again shortly', { 'Retry-After': '1' });
       }
@@ -185,9 +204,16 @@ export function createApiServer(options: ApiOptions): http.Server {
       response.on('close', onClose);
       runningQueries += 1;
       try {
-        const result = await database.adapter.query(sql, params, { signal: abort.signal, ...(timeoutMs === undefined ? {} : { timeoutMs }) });
-        log.rows = result.results.reduce((total, set) => total + set.rowCount, 0);
-        return { database: database.name, engine: database.engine, ...result };
+        const run = { signal: abort.signal, ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }) };
+        if (adapter.kind === 'sql' && 'sql' in input) {
+          const result = await adapter.query(input.sql, input.params, run);
+          log.rows = result.results.reduce((total, set) => total + set.rowCount, 0);
+          return { database: database.name, engine: database.engine, ...result };
+        }
+        if (adapter.kind === 'keyvalue' && 'command' in input) {
+          return { database: database.name, engine: database.engine, ...(await adapter.command(input.command, run)) };
+        }
+        throw new Error('unreachable: the operation was checked against the adapter kind');
       } finally {
         runningQueries -= 1;
         response.off('close', onClose);
@@ -234,7 +260,7 @@ export function createApiServer(options: ApiOptions): http.Server {
         }
       })
       .finally(() => {
-        // Never log SQL text, parameters or rows: they are user data.
+        // Never log SQL text, parameters, commands or results: they are user data.
         options.logger.info('request', log);
       });
   });
