@@ -276,7 +276,8 @@ export function createAgentRunService({
     if (!access || depth > 8) return null;
     const effective = normalizeCapabilityPolicy(run.capabilityPolicy);
     if (!effective.allow.includes("read")) return null;
-    if (effective.mutationPolicy === "read-only-until-explicit-transition") access = "read";
+    // A run Codex sandboxes read-only must not mutate the preview through the browser either.
+    if (codexExecutionSettingsFor(run.capabilityPolicy).sandbox === "read-only") access = "read";
     if (run.parentRunId) {
       const parentAccess = browserAccessFor(runtime.getRun(run.parentRunId), depth + 1);
       if (!parentAccess) return null;

@@ -464,6 +464,12 @@ test("browser access never exceeds the run's read-only policy or its parent's ac
   await service.spawn({ backend: "codex", parentSessionId: "p", task: "Bogus", context: { projectId: "project-1", browser: "evaluate" } });
   assert.equal(await tokenFor(4), null);
 
+  await service.spawn({
+    backend: "codex", parentSessionId: "p", task: "No commands", context: { projectId: "project-1", browser: "act" },
+    capabilityPolicy: { allow: ["read", "files"], mutationPolicy: "approval-required" }
+  });
+  assert.deepEqual([...(await tokenFor(5)).capabilities], ["browser.read"], "a run Codex sandboxes read-only cannot act");
+
   await service.dispose();
   assert.equal(tokens.list().length, 0, "dispose revokes every run token");
 });
