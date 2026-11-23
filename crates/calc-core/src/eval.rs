@@ -252,9 +252,9 @@ impl<'a> EvalContext<'a> {
                     _ => Ok(ArgValue::Scalar(Value::Error(CalcError::Value))),
                 }
             }
-            Expr::ArrayLiteral(rows) => self.eval_array_literal(rows),
             Expr::CellRef { sheet, cell } => Ok(ArgValue::Ref(self.cell_value(sheet, cell))),
             Expr::RangeRef { sheet, range } => self.range_values(sheet.as_deref(), range),
+            Expr::ArrayLiteral(rows) => self.array_literal(rows),
         }
     }
 
@@ -306,6 +306,34 @@ impl<'a> EvalContext<'a> {
         }
         match ArrayValue::new(rows, cols, cells) {
             Ok(a) => Ok(ArgValue::Range(a)),
+            Err(e) => Ok(ArgValue::Scalar(Value::Error(e))),
+        }
+    }
+
+    /// Evaluate `{expr,expr;expr,expr}` into a `Value::Array`.
+    ///
+    /// Each element is evaluated in scalar position and stored verbatim —
+    /// errors become array *elements* (Excel does not collapse the whole
+    /// literal when one element fails). An element that itself evaluates
+    /// to an array (e.g. `{A1:B2}`) is stored as a `#VALUE!` element —
+    /// Excel rejects nested arrays at entry; parse-time nesting is not
+    /// reachable but range elements can still produce one (SPEC-OPEN:
+    /// nested-array element semantics).
+    fn array_literal(&mut self, rows: &[Vec<Expr>]) -> Result<ArgValue, EvalError> {
+        let nrows = rows.len() as u32;
+        let ncols = rows.first().map_or(0, Vec::len) as u32;
+        let mut cells = Vec::with_capacity(rows.len() * ncols as usize);
+        for row in rows {
+            for expr in row {
+                let v = self.eval(expr)?;
+                cells.push(match v {
+                    Value::Array(_) => Value::Error(CalcError::Value),
+                    other => other,
+                });
+            }
+        }
+        match ArrayValue::new(nrows, ncols, cells) {
+            Ok(a) => Ok(ArgValue::Scalar(Value::Array(a))),
             Err(e) => Ok(ArgValue::Scalar(Value::Error(e))),
         }
     }
@@ -408,26 +436,6 @@ impl<'a> EvalContext<'a> {
     /// so the lambda sees `Blank`.
     fn eval_call_args(&mut self, args: &[Expr]) -> Result<Vec<Value>, EvalError> {
         args.iter().map(|a| self.eval(a)).collect()
-    }
-
-    /// Evaluate `{..;..}` rows into a `Value::Array`. Ragged literals are
-    /// `#VALUE!`; element errors are kept as error elements.
-    fn eval_array_literal(&mut self, rows: &[Vec<Expr>]) -> Result<ArgValue, EvalError> {
-        let nrows = rows.len() as u32;
-        let ncols = rows.first().map_or(0, |r| r.len()) as u32;
-        if rows.iter().any(|r| r.len() as u32 != ncols) {
-            return Ok(ArgValue::Scalar(Value::Error(CalcError::Value)));
-        }
-        let mut cells = Vec::new();
-        for row in rows {
-            for e in row {
-                cells.push(self.eval(e)?);
-            }
-        }
-        match ArrayValue::new(nrows, ncols, cells) {
-            Ok(a) => Ok(ArgValue::Scalar(Value::Array(a))),
-            Err(e) => Ok(ArgValue::Scalar(Value::Error(e))),
-        }
     }
 
     /// Count one unit of work against the budget.

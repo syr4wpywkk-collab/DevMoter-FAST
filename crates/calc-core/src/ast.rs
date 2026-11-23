@@ -1,9 +1,7 @@
 //! Abstract syntax tree for parsed formulas (plan §4.3).
 //!
-//! Sheet-qualified
-//! references carry the (unescaped) sheet name on the node; resolution to a
-//! `sheet_id` happens during evaluation.
-
+//! Sheet-qualified references carry the (unescaped) sheet name on the
+//! node; resolution to a `sheet_id` happens during evaluation.
 use crate::cell::{CellRef, RangeRef};
 use crate::error::CalcError;
 
@@ -97,16 +95,16 @@ impl Expr {
             Expr::Unary { operand, .. } | Expr::Percent(operand) => 1 + operand.node_count(),
             Expr::Binary { left, right, .. } => 1 + left.node_count() + right.node_count(),
             Expr::RangeRef { .. } => 1,
-            Expr::Call { args, .. } => 1 + args.iter().map(Expr::node_count).sum::<usize>(),
-            Expr::Invoke { callee, args } => {
-                1 + callee.node_count() + args.iter().map(Expr::node_count).sum::<usize>()
-            }
             Expr::ArrayLiteral(rows) => {
                 1 + rows
                     .iter()
                     .flat_map(|r| r.iter())
                     .map(Expr::node_count)
                     .sum::<usize>()
+            }
+            Expr::Call { args, .. } => 1 + args.iter().map(Expr::node_count).sum::<usize>(),
+            Expr::Invoke { callee, args } => {
+                1 + callee.node_count() + args.iter().map(Expr::node_count).sum::<usize>()
             }
         }
     }

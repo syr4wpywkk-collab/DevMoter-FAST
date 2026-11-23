@@ -9,10 +9,11 @@
 //! Supported tokens: numbers, `"strings"` (`""` escape), `'quoted names'`
 //! (`''` escape, for sheet qualifiers), error literals (`#N/A` …),
 //! words (identifiers / function names / `$`-decorated cell references),
-//! operators `+ - * / ^ & % = < > <= >= <>`, `( ) , : !`, and `{` `}` `;`
-//! (array literals). `;` outside an array literal is rejected by the
-//! parser, not the lexer.
-
+//! operators `+ - * / ^ & % = < > <= >= <>`, `( ) , : !` and the array
+//! literal punctuation `{ } ;`.
+//!
+//! `;` outside an array literal (locale argument separators) is rejected
+//! by the parser.
 use crate::error::CalcError;
 
 /// A lexical token with its start byte offset in the source.

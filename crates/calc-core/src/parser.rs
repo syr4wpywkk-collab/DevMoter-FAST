@@ -58,6 +58,8 @@ pub enum ParseErrorKind {
     OrphanQuotedName,
     /// A name is not a valid function name.
     InvalidFunctionName,
+    /// Array literal rows have differing column counts.
+    NonRectangularArray,
     /// More AST nodes than [`MAX_AST_NODES`].
     TooManyNodes,
     /// Deeper nesting than [`MAX_DEPTH`].
@@ -91,6 +93,9 @@ impl std::fmt::Display for ParseError {
             ParseErrorKind::InvalidReference => "invalid cell reference".to_string(),
             ParseErrorKind::OrphanQuotedName => "quoted name must be followed by '!'".to_string(),
             ParseErrorKind::InvalidFunctionName => "invalid function name".to_string(),
+            ParseErrorKind::NonRectangularArray => {
+                "array literal rows must all have the same length".to_string()
+            }
             ParseErrorKind::TooManyNodes => "too many AST nodes".to_string(),
             ParseErrorKind::TooDeep => "nesting too deep".to_string(),
         };
@@ -586,6 +591,12 @@ impl<'a> Parser<'a> {
                         ));
                     }
                 }
+            }
+            // Rectangularity is enforced at parse time (Excel rejects
+            // ragged literals at entry).
+            let width = rows.first().map_or(0, Vec::len);
+            if rows.iter().any(|r| r.len() != width) {
+                return Err(ParseError::new(ParseErrorKind::NonRectangularArray, offset));
             }
             self.make(Expr::ArrayLiteral(rows))
         })();
