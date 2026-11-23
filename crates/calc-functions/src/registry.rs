@@ -66,8 +66,25 @@ mod tests {
         assert_eq!(
             names,
             [
-                "ABS", "AND", "AVERAGE", "COUNT", "COUNTA", "IF", "IFERROR", "MAX", "MIN", "NOT",
-                "OR", "ROUND", "SUM",
+                "ABS",
+                "AND",
+                "AVERAGE",
+                "COUNT",
+                "COUNTA",
+                "COUNTIF",
+                "COUNTIFS",
+                "IF",
+                "IFERROR",
+                "MAX",
+                "MIN",
+                "NOT",
+                "OR",
+                "PRODUCT",
+                "ROUND",
+                "SUM",
+                "SUMIF",
+                "SUMIFS",
+                "SUMPRODUCT",
             ]
         );
     }
