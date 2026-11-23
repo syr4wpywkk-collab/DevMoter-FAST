@@ -44,10 +44,6 @@ test('a lock left by a writer that no longer exists is taken over', () =>
     // The same process ID in an earlier run of the program (a restarted container).
     writeFileSync(`${file}.lock`, owner(process.pid));
     assert.equal(await withFileLock(file, async () => 'ran', 500), 'ran');
-    // Created but never signed, long ago.
-    writeFileSync(`${file}.lock`, '');
-    utimesSync(`${file}.lock`, longAgo, longAgo);
-    assert.equal(await withFileLock(file, async () => 'ran', 500), 'ran');
   }));
 
 test('a lock whose writer may be alive is waited for, then reported, never removed', () =>
@@ -56,8 +52,8 @@ test('a lock whose writer may be alive is waited for, then reported, never remov
     const dead = spawnSync(process.execPath, ['-e', '']).pid;
     for (const content of [owner(process.ppid), owner(dead, 'another-host'), '', 'not a lock: {"event":"api.request"}\n', '{"pid":1}']) {
       writeFileSync(lock, content);
-      // However old the file is, except for one that is empty.
-      if (content !== '') utimesSync(lock, longAgo, longAgo);
+      // However old the file is.
+      utimesSync(lock, longAgo, longAgo);
       const started = Date.now();
       await assert.rejects(withFileLock(file, async () => 'ran', 100), /is locked by another writer/, content);
       assert.ok(Date.now() - started < 3000, 'gives up at the deadline');
@@ -74,6 +70,16 @@ test('something else at the lock path is left alone and does not hang the caller
     await assert.rejects(withFileLock(file, async () => 'ran', 100), /is locked by another writer/);
     assert.ok(Date.now() - started < 3000);
     assert.equal(statSync(lock).isDirectory(), true);
+  }));
+
+test('a named pipe at the lock path does not hold the caller', { skip: process.platform === 'win32' }, () =>
+  inTempDir(async (file) => {
+    const lock = `${file}.lock`;
+    assert.equal(spawnSync('mkfifo', [lock]).status, 0);
+    const started = Date.now();
+    await assert.rejects(withFileLock(file, async () => 'ran', 100), /is locked by another writer/);
+    assert.ok(Date.now() - started < 3000);
+    assert.equal(statSync(lock).isFIFO(), true);
   }));
 
 test('processes that find the same abandoned lock still run one at a time', { timeout: 120_000 }, () =>
