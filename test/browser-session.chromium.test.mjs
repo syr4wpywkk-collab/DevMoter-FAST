@@ -84,7 +84,18 @@ fetch('https://example.com/').catch(() => {});
     await rm(projectDir, { recursive: true, force: true });
   });
 
-  const { session } = await manager.start("real", { deviceId: "dev", viewport: { width: 390, height: 700 } });
+  let session;
+  try {
+    ({ session } = await manager.start("real", { deviceId: "dev", viewport: { width: 390, height: 700 } }));
+  } catch (error) {
+    // Hosts without unprivileged user namespaces (e.g. AppArmor-restricted CI
+    // runners) cannot run bwrap+Chromium; the manager fails closed there.
+    if (process.env.DEVMOTER_TEST_CHROMIUM_REQUIRED !== "1" && ["browser_start_failed", "sandbox_required"].includes(error?.code)) {
+      t.skip("Chromium could not start in this sandbox: " + error.message.slice(0, 160));
+      return;
+    }
+    throw error;
+  }
   const dom = () => manager.act(session.id, { type: "dom" }).then(result => result.content);
   await waitFor(async () => (await dom()).includes("remote-browser-ok"));
   t.diagnostic("sandboxed=" + session.sandboxed);

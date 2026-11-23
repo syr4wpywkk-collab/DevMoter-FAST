@@ -62,8 +62,6 @@ export function createCdpPipeConnection({
     pending.clear();
     readable.off?.("data", onData);
     readable.off?.("end", onEnd);
-    readable.off?.("error", onError);
-    writable.off?.("error", onError);
     for (const handler of [...closeListeners]) {
       try { handler(reason); } catch { /* Close handlers are best-effort. */ }
     }
@@ -129,8 +127,10 @@ export function createCdpPipeConnection({
 
   readable.on("data", onData);
   readable.once?.("end", onEnd);
-  readable.once?.("error", onError);
-  writable.once?.("error", onError);
+  // Error listeners stay attached after close: a pipe that errors later
+  // (EPIPE/ECONNRESET when Chromium exits) must not crash the server.
+  readable.on?.("error", onError);
+  writable.on?.("error", onError);
 
   function send(method, params = {}, { sessionId = null, timeout = timeoutMs } = {}) {
     if (closed) return Promise.reject(new CdpError("CDP connection closed: " + closeReason, { code: "cdp_closed", method }));
