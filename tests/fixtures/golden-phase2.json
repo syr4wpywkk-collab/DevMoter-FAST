@@ -1,0 +1,1843 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-23",
+  "referenceDefaults": {},
+  "cases": [
+    {
+      "id": "P2-SUMIF-001",
+      "formula": "=SUMIF(A1:A4,\">2\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4
+      },
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-SUMIF-002",
+      "formula": "=SUMIF(A1:A4,\"apple\",B1:B4)",
+      "inputs": {
+        "A1": "apple",
+        "A2": "banana",
+        "A3": "apple",
+        "A4": "cherry",
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "B4": 40
+      },
+      "expected": {
+        "number": 40
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-SUMIF-003",
+      "formula": "=SUMIF(A1:A4,\">=2\",B1:B4)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "B4": 40
+      },
+      "expected": {
+        "number": 90
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-SUMIF-004",
+      "formula": "=SUMIF(A1:A4,\"<>x\")",
+      "inputs": {
+        "A1": "x",
+        "A2": "y",
+        "A3": "x",
+        "A4": "z"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "All criteria-range cells are text; <>x matches y,z but SUMIF over the criteria range itself sums no numbers -> 0."
+    },
+    {
+      "id": "P2-SUMIF-005",
+      "formula": "=SUMIF(A1:A4,\"*e\",B1:B4)",
+      "inputs": {
+        "A1": "apple",
+        "A2": "banana",
+        "A3": "grape",
+        "A4": "cherry",
+        "B1": 1,
+        "B2": 2,
+        "B3": 3,
+        "B4": 4
+      },
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Wildcard *e matches 'apple' and 'grape'."
+    },
+    {
+      "id": "P2-SUMIF-006",
+      "formula": "=SUMIF(A1:A3,\"~*\",B1:B3)",
+      "inputs": {
+        "A1": "*",
+        "A2": "a*",
+        "A3": "star",
+        "B1": 5,
+        "B2": 6,
+        "B3": 7
+      },
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "~* escapes the wildcard: only the literal single '*' in A1 matches."
+    },
+    {
+      "id": "P2-SUMIF-007",
+      "formula": "=SUMIF(A1:A4,A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 2,
+        "A5": 2
+      },
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Criteria supplied by cell reference (equality on the cell value)."
+    },
+    {
+      "id": "P2-SUMIF-008",
+      "formula": "=SUMIF(A1:A3,\">1\",B1)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "number": 50
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Excel resizes sum_range to range dimensions anchored at B1 -> B1:B3; positions 2,3 match."
+    },
+    {
+      "id": "P2-SUMIF-009",
+      "formula": "=SUMIF(A1:A4,\"=\",B1:B4)",
+      "inputs": {
+        "A1": 5,
+        "A2": {
+          "blank": true
+        },
+        "A3": {
+          "blank": true
+        },
+        "A4": 7,
+        "B1": 1,
+        "B2": 2,
+        "B3": 3,
+        "B4": 4
+      },
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether '=' (or '') criteria matches blank cells, and whether it also matches empty strings, must be confirmed empirically.",
+      "notes": "Expected 2+3=5 if '=' counts blanks."
+    },
+    {
+      "id": "P2-SUMIF-010",
+      "formula": "=SUMIF(A1:A3,2)",
+      "inputs": {
+        "A1": 2,
+        "A2": 3,
+        "A3": 2
+      },
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Numeric (non-string) criterion means equality."
+    },
+    {
+      "id": "P2-SUMIF-011",
+      "formula": "=SUMIF(A1:A3,\"APPLE\")",
+      "inputs": {
+        "A1": "apple",
+        "A2": "APPLE",
+        "A3": "Apple"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Case-insensitive text match; criteria range itself is summed and holds no numbers -> 0. Change one cell to a number? No: keep pure-text demonstration."
+    },
+    {
+      "id": "P2-SUMIF-012",
+      "formula": "=SUMIF(A1:A4,\"APPLE\",B1:B4)",
+      "inputs": {
+        "A1": "apple",
+        "A2": "APPLE",
+        "A3": "banana",
+        "A4": "Apple",
+        "B1": 1,
+        "B2": 2,
+        "B3": 3,
+        "B4": 4
+      },
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Case-insensitive matching via sum_range form."
+    },
+    {
+      "id": "P2-SUMIF-013",
+      "formula": "=SUMIF(A1:A3,\">0\",B1:B3)",
+      "inputs": {
+        "A1": 1,
+        "A2": -1,
+        "A3": 2,
+        "B1": 10,
+        "B2": {
+          "error": "#DIV/0!"
+        },
+        "B3": 30
+      },
+      "expected": {
+        "number": 40
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "An error cell in sum_range at a NON-matched position: expected to be ignored (only matched positions propagate). Confirm empirically.",
+      "notes": "A2 fails '>0', so B2's error should not propagate if skip-rule holds."
+    },
+    {
+      "id": "P2-COUNTIF-001",
+      "formula": "=COUNTIF(A1:A4,\">1\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-COUNTIF-002",
+      "formula": "=COUNTIF(A1:A4,\"x\")",
+      "inputs": {
+        "A1": "x",
+        "A2": "y",
+        "A3": "x",
+        "A4": "x"
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-COUNTIF-003",
+      "formula": "=COUNTIF(A1:A4,\"<>x\")",
+      "inputs": {
+        "A1": "x",
+        "A2": "y",
+        "A3": "z",
+        "A4": "w"
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-COUNTIF-004",
+      "formula": "=COUNTIF(A1:A3,\"app*\")",
+      "inputs": {
+        "A1": "apple",
+        "A2": "application",
+        "A3": "banana"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-COUNTIF-005",
+      "formula": "=COUNTIF(A1:A3,\"???\")",
+      "inputs": {
+        "A1": "abc",
+        "A2": "ab",
+        "A3": "xyz"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "'?' matches exactly one character."
+    },
+    {
+      "id": "P2-COUNTIF-006",
+      "formula": "=COUNTIF(A1:A3,\"a~?b\")",
+      "inputs": {
+        "A1": "a?b",
+        "A2": "axb",
+        "A3": "a??"
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "~? escapes the wildcard so only the literal 'a?b' matches."
+    },
+    {
+      "id": "P2-COUNTIF-007",
+      "formula": "=COUNTIF(A1:A4,5)",
+      "inputs": {
+        "A1": 5,
+        "A2": 6,
+        "A3": 5,
+        "A4": 7
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-COUNTIF-008",
+      "formula": "=COUNTIF(A1:A4,A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": 9,
+        "A3": 9,
+        "A4": 4,
+        "A5": 9
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Criteria from cell reference."
+    },
+    {
+      "id": "P2-COUNTIF-009",
+      "formula": "=COUNTIF(A1:A4,\"5\")",
+      "inputs": {
+        "A1": 5,
+        "A2": 6,
+        "A3": 5,
+        "A4": 7
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Numeric-looking text criterion still matches numeric cells."
+    },
+    {
+      "id": "P2-COUNTIF-010",
+      "formula": "=COUNTIF(A1:A4,\"\")",
+      "inputs": {
+        "A1": 1,
+        "A2": {
+          "blank": true
+        },
+        "A3": {
+          "blank": true
+        },
+        "A4": 2
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether '' criteria counts blank cells, empty strings, or both must be recorded against Excel/LibreOffice.",
+      "notes": "Expected 2 if '' counts the two blank cells."
+    },
+    {
+      "id": "P2-COUNTIF-011",
+      "formula": "=COUNTIF(A1:A3,\"APPLE\")",
+      "inputs": {
+        "A1": "apple",
+        "A2": "APPLE",
+        "A3": "Apple"
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Case-insensitive."
+    },
+    {
+      "id": "P2-COUNTIF-012",
+      "formula": "=COUNTIF(A1:A4,\">=10\")",
+      "inputs": {
+        "A1": 5,
+        "A2": 10,
+        "A3": 15,
+        "A4": "x"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Text cell 'x' does not satisfy a numeric comparison."
+    },
+    {
+      "id": "P2-COUNTIF-013",
+      "formula": "=COUNTIF(A1:A3,\">0\")",
+      "inputs": {
+        "A1": 1,
+        "A2": {
+          "error": "#DIV/0!"
+        },
+        "A3": 2
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Error cell inside the criteria range: expected skipped rather than propagated. Confirm.",
+      "notes": "Expected 2 if A2's error is skipped."
+    },
+    {
+      "id": "P2-SUMIFS-001",
+      "formula": "=SUMIFS(C1:C4,A1:A4,\">1\",B1:B4,\"x\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "B1": "x",
+        "B2": "x",
+        "B3": "y",
+        "B4": "x",
+        "C1": 10,
+        "C2": 20,
+        "C3": 30,
+        "C4": 40
+      },
+      "expected": {
+        "number": 60
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Rows 2 and 4 satisfy both criteria."
+    },
+    {
+      "id": "P2-SUMIFS-002",
+      "formula": "=SUMIFS(C1:C3,A1:A3,\">=2\",B1:B3,\"<>\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": "a",
+        "B2": "b",
+        "B3": "c",
+        "C1": 5,
+        "C2": 6,
+        "C3": 7
+      },
+      "expected": {
+        "number": 13
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-SUMIFS-003",
+      "formula": "=SUMIFS(C1:C3,A1:A3,\">0\",B1:B2,\"x\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": "x",
+        "B2": "x",
+        "C1": 1,
+        "C2": 2,
+        "C3": 3
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "criteria_range2 (B1:B2) has different dimensions than sum_range (C1:C3)."
+    },
+    {
+      "id": "P2-SUMIFS-004",
+      "formula": "=SUMIFS(C1:C3,A1:A3,\"a*\",B1:B3,\">5\")",
+      "inputs": {
+        "A1": "apple",
+        "A2": "avocado",
+        "A3": "banana",
+        "B1": 6,
+        "B2": 4,
+        "B3": 9,
+        "C1": 1,
+        "C2": 2,
+        "C3": 3
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Wildcard + numeric criteria combined."
+    },
+    {
+      "id": "P2-SUMIFS-005",
+      "formula": "=SUMIFS(B1:B3,A1:A3,D1)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 2,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "D1": 2
+      },
+      "expected": {
+        "number": 50
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Criterion from cell reference D1."
+    },
+    {
+      "id": "P2-SUMIFS-006",
+      "formula": "=SUMIFS(B1:B3,A1:A3,\">0\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": {
+          "error": "#DIV/0!"
+        },
+        "B3": 30
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Error cell in sum_range at a matched position: expected to propagate. Confirm error-code passthrough.",
+      "notes": "Expected #DIV/0!."
+    },
+    {
+      "id": "P2-SUMIFS-007",
+      "formula": "=SUMIFS(B1:B3,A1:A3,\">99\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-SUMIFS-008",
+      "formula": "=SUMIFS(B1:B3,A1:A3,\"*\")",
+      "inputs": {
+        "A1": "x",
+        "A2": 5,
+        "A3": {
+          "blank": true
+        },
+        "B1": 1,
+        "B2": 2,
+        "B3": 3
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "'*' is documented to match text cells only; confirm it excludes numbers and blanks.",
+      "notes": "Expected 1 (only A1 is text)."
+    },
+    {
+      "id": "P2-SUMIFS-009",
+      "formula": "=SUMIFS(B1:B3,A1:A3,TRUE)",
+      "inputs": {
+        "A1": true,
+        "A2": false,
+        "A3": true,
+        "B1": 1,
+        "B2": 2,
+        "B3": 3
+      },
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Boolean criteria vs boolean cells: expected equality on booleans. Confirm against Excel/LibreOffice."
+    },
+    {
+      "id": "P2-SUMIFS-010",
+      "formula": "=SUMIFS(B1:B3,A1:A3,2)",
+      "inputs": {
+        "A1": 2,
+        "A2": 2,
+        "A3": 1,
+        "B1": 5,
+        "B2": 6,
+        "B3": 7
+      },
+      "expected": {
+        "number": 11
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-SUMIFS-011",
+      "formula": "=SUMIFS(D1:D3,A1:A3,\">0\",B1:B3,\"<10\",C1:C3,\"x\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 5,
+        "B2": 15,
+        "B3": 8,
+        "C1": "x",
+        "C2": "x",
+        "C3": "x",
+        "D1": 10,
+        "D2": 20,
+        "D3": 30
+      },
+      "expected": {
+        "number": 40
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Three criteria pairs; rows 1 and 3 match."
+    },
+    {
+      "id": "P2-SUMIFS-012",
+      "formula": "=SUMIFS(B1:B3,A1:A3,\">5\",A1:A3,\"<2\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 6,
+        "A3": 7,
+        "B1": 1,
+        "B2": 2,
+        "B3": 3
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Contradictory criteria on the same range -> 0, not an error."
+    },
+    {
+      "id": "P2-SUMIFS-013",
+      "formula": "=SUMIFS(B1:B3,A1:A3,\"\",C1:C3,\">0\")",
+      "inputs": {
+        "A1": {
+          "blank": true
+        },
+        "A2": "x",
+        "A3": {
+          "blank": true
+        },
+        "B1": 1,
+        "B2": 2,
+        "B3": 3,
+        "C1": 1,
+        "C2": 1,
+        "C3": 1
+      },
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Empty-string criterion matching blanks (same question as P2-COUNTIF-010); expected 1+3=4 if '' matches blanks."
+    },
+    {
+      "id": "P2-COUNTIFS-001",
+      "formula": "=COUNTIFS(A1:A4,\">1\",B1:B4,\"x\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "B1": "x",
+        "B2": "x",
+        "B3": "y",
+        "B4": "x"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-COUNTIFS-002",
+      "formula": "=COUNTIFS(A1:A3,\">0\",B1:B2,\"x\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": "x",
+        "B2": "x"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Mismatched range dimensions."
+    },
+    {
+      "id": "P2-COUNTIFS-003",
+      "formula": "=COUNTIFS(A1:A3,\"a*\",B1:B3,\">5\")",
+      "inputs": {
+        "A1": "apple",
+        "A2": "avocado",
+        "A3": "banana",
+        "B1": 6,
+        "B2": 4,
+        "B3": 9
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-COUNTIFS-004",
+      "formula": "=COUNTIFS(A1:A3,\"APPLE\",B1:B3,\">0\")",
+      "inputs": {
+        "A1": "apple",
+        "A2": "APPLE",
+        "A3": "banana",
+        "B1": 1,
+        "B2": 2,
+        "B3": 3
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-COUNTIFS-005",
+      "formula": "=COUNTIFS(A1:A3,\">99\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-COUNTIFS-006",
+      "formula": "=COUNTIFS(A1:A3,\">0\",A1:A3,\"<3\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Same range in two pairs -> band count."
+    },
+    {
+      "id": "P2-COUNTIFS-007",
+      "formula": "=COUNTIFS(A1:A3,D1)",
+      "inputs": {
+        "A1": 9,
+        "A2": 9,
+        "A3": 1,
+        "D1": 9
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-COUNTIFS-008",
+      "formula": "=COUNTIFS(A1:A3,\"\",B1:B3,\">0\")",
+      "inputs": {
+        "A1": {
+          "blank": true
+        },
+        "A2": "x",
+        "A3": {
+          "blank": true
+        },
+        "B1": 1,
+        "B2": 1,
+        "B3": 1
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "'' criteria vs blanks — same open question as P2-COUNTIF-010; expected 2."
+    },
+    {
+      "id": "P2-COUNTIFS-009",
+      "formula": "=COUNTIFS(A1:A3,TRUE)",
+      "inputs": {
+        "A1": true,
+        "A2": false,
+        "A3": true
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Boolean criteria vs boolean cells — confirm."
+    },
+    {
+      "id": "P2-COUNTIFS-010",
+      "formula": "=COUNTIFS(A1:A4,\"<>\")",
+      "inputs": {
+        "A1": "x",
+        "A2": {
+          "blank": true
+        },
+        "A3": "y",
+        "A4": 5
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "'<> ' non-blank criterion: expected to count all non-blank cells (x, y, 5). Confirm."
+    },
+    {
+      "id": "P2-COUNTIFS-011",
+      "formula": "=COUNTIFS(A1:A3,\">0\",B1:B3,\"*\",C1:C3,\"<10\")",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": "a",
+        "B2": "b",
+        "B3": "c",
+        "C1": 1,
+        "C2": 2,
+        "C3": 3
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "'*' in the middle pair matches text cells only; confirm."
+    },
+    {
+      "id": "P2-COUNTIFS-012",
+      "formula": "=COUNTIFS(A1:A3,2)",
+      "inputs": {
+        "A1": 2,
+        "A2": 2,
+        "A3": 1
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-INDEX-001",
+      "formula": "=INDEX(A1:A3,2)",
+      "inputs": {
+        "A1": 10,
+        "A2": 20,
+        "A3": 30
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-INDEX-002",
+      "formula": "=INDEX(A1:C1,2)",
+      "inputs": {
+        "A1": 10,
+        "B1": 20,
+        "C1": 30
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Row vector: single index counts across columns."
+    },
+    {
+      "id": "P2-INDEX-003",
+      "formula": "=INDEX(A1:B2,2,1)",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-INDEX-004",
+      "formula": "=INDEX(A1:B2,1,2)",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-INDEX-005",
+      "formula": "=INDEX(A1:A3,0)",
+      "inputs": {
+        "A1": 10,
+        "A2": 20,
+        "A3": 30
+      },
+      "expected": {
+        "number": 60
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Excel returns the whole column array for index 0; without dynamic arrays the engine may emit #VALUE! instead. Record semantics, fix representation later.",
+      "notes": "Placeholder expected value =SUM equivalent; representation TBD."
+    },
+    {
+      "id": "P2-INDEX-006",
+      "formula": "=INDEX(A1:B2,0,1)",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4
+      },
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whole-column array select (row 0) pending dynamic-array support."
+    },
+    {
+      "id": "P2-INDEX-007",
+      "formula": "=INDEX(A1:A3,4)",
+      "inputs": {
+        "A1": 10,
+        "A2": 20,
+        "A3": 30
+      },
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-INDEX-008",
+      "formula": "=INDEX(A1:B2,3,1)",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4
+      },
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-INDEX-009",
+      "formula": "=INDEX(A1:A3,-1)",
+      "inputs": {
+        "A1": 10,
+        "A2": 20,
+        "A3": 30
+      },
+      "expected": {
+        "error": "#REF!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-INDEX-010",
+      "formula": "=INDEX(A1:A3,\"2\")",
+      "inputs": {
+        "A1": 10,
+        "A2": 20,
+        "A3": 30
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Numeric-text index coercion to 2 (expected); confirm."
+    },
+    {
+      "id": "P2-INDEX-011",
+      "formula": "=INDEX(A1:B2,2)",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Omitted column on a 2-D range returns the whole row (array) in Excel; scalar engines may differ.",
+      "notes": "Placeholder = first cell of row 2."
+    },
+    {
+      "id": "P2-INDEX-012",
+      "formula": "=INDEX(A1:A3,1)",
+      "inputs": {
+        "A1": "hello",
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "text": "hello"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-INDEX-013",
+      "formula": "=INDEX(A1:A3,1.9)",
+      "inputs": {
+        "A1": 10,
+        "A2": 20,
+        "A3": 30
+      },
+      "expected": {
+        "number": 10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Fractional indices truncate toward zero."
+    },
+    {
+      "id": "P2-INDEX-014",
+      "formula": "=INDEX(A1:A3,2)",
+      "inputs": {
+        "A1": 10,
+        "A2": {
+          "error": "#DIV/0!"
+        },
+        "A3": 30
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Returning an error cell propagates the error."
+    },
+    {
+      "id": "P2-MATCH-001",
+      "formula": "=MATCH(2,A1:A4,0)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-MATCH-002",
+      "formula": "=MATCH(\"x\",A1:A3,0)",
+      "inputs": {
+        "A1": "a",
+        "B1": "b",
+        "A2": "x",
+        "A3": "y"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-MATCH-003",
+      "formula": "=MATCH(\"ap*\",A1:A3,0)",
+      "inputs": {
+        "A1": "zzz",
+        "A2": "apple",
+        "A3": "apex"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Wildcard allowed under match_type 0; first match wins."
+    },
+    {
+      "id": "P2-MATCH-004",
+      "formula": "=MATCH(4,A1:A4)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4
+      },
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Omitted match_type defaults to 1; exact hit anyway."
+    },
+    {
+      "id": "P2-MATCH-005",
+      "formula": "=MATCH(2.5,A1:A4,1)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Largest value <= 2.5 is 2 at position 2."
+    },
+    {
+      "id": "P2-MATCH-006",
+      "formula": "=MATCH(5,A1:A4,-1)",
+      "inputs": {
+        "A1": 8,
+        "A2": 6,
+        "A3": 4,
+        "A4": 2
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Descending data, match_type -1: smallest value >= 5 is 6 at position 2."
+    },
+    {
+      "id": "P2-MATCH-007",
+      "formula": "=MATCH(9,A1:A4,0)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P2-MATCH-008",
+      "formula": "=MATCH(0,A1:A4,1)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Lookup below the smallest element under match_type 1."
+    },
+    {
+      "id": "P2-MATCH-009",
+      "formula": "=MATCH(\"APPLE\",A1:A3,0)",
+      "inputs": {
+        "A1": "banana",
+        "A2": "apple",
+        "A3": "cherry"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Case-insensitive."
+    },
+    {
+      "id": "P2-MATCH-010",
+      "formula": "=MATCH(2,A1:B2,0)",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Two-dimensional lookup_array is an error in Excel (#N/A)."
+    },
+    {
+      "id": "P2-MATCH-011",
+      "formula": "=MATCH(TRUE,A1:A3,0)",
+      "inputs": {
+        "A1": false,
+        "A2": true,
+        "A3": 0
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Boolean lookup_value vs boolean cells under match_type 0; expected position 2."
+    },
+    {
+      "id": "P2-MATCH-012",
+      "formula": "=MATCH(3,A1:A4,1)",
+      "inputs": {
+        "A1": 4,
+        "A2": 1,
+        "A3": 9,
+        "A4": 2
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Unsorted ascending-mode match: Excel binary-search result is order-dependent; record empirically, do not derive from linear scan.",
+      "notes": "Placeholder position only."
+    },
+    {
+      "id": "P2-MATCH-013",
+      "formula": "=MATCH(\"1\",A1:A3,0)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Exact match is type-strict: text '1' does not match number 1."
+    },
+    {
+      "id": "P2-MATCH-014",
+      "formula": "=MATCH(3,A1:A4,0)",
+      "inputs": {
+        "A1": 4,
+        "A2": 3,
+        "A3": 3,
+        "A4": 1
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "match_type 0 is a linear scan; first occurrence (position 2) wins even with duplicates."
+    }
+  ]
+}

@@ -73,3 +73,26 @@ Phase 1 table below.
 | (COUNT, no fixture yet) | COUNT over range of error cells: skipped vs propagated — add fixture after recording. |
 | (NOT, no fixture yet) | `NOT("TRUE")`: is text-form boolean coerced? Expected `#VALUE!`. |
 | (ROUND, no fixture yet) | Fractional `num_digits` truncation (`ROUND(1.234,1.9)`); huge `num_digits` clamping. |
+
+## Phase 2 fixtures (Track E)
+
+`specOpen: true` cases in `tests/fixtures/golden-phase2.json` mirror the
+table below. Shared criteria-grammar questions are flagged per fixture.
+
+| Fixture id | Question |
+|---|---|
+| P2-SUMIF-009 | Blank-matching criteria: do `"="` and `""` match blank cells, empty strings, or both? Same question for `"<>"` in P2-COUNTIFS-010. |
+| P2-SUMIF-013 | Does an error cell in `sum_range` at a non-matched position propagate or get ignored? |
+| P2-COUNTIF-010 / P2-COUNTIFS-008 / P2-SUMIFS-013 | `""` criteria vs blank cells and empty strings — count rule unconfirmed. |
+| P2-COUNTIF-013 | Error cell inside a criteria range: skipped (not counted) or propagated? Applies identically to SUMIF/SUMIFS/COUNTIFS. |
+| P2-SUMIFS-006 | Error cell in `sum_range` at a matched position: expected `#DIV/0!` passthrough — confirm. |
+| P2-SUMIFS-008 / P2-COUNTIFS-011 | `"*"` wildcard documented as matching text cells only; confirm it excludes numbers, blanks, booleans. |
+| P2-SUMIFS-009 / P2-COUNTIFS-009 | Boolean criteria (`TRUE`) against boolean cells: equality expected — confirm. |
+| P2-COUNTIFS-010 | `"<>"` non-blank criterion counting all non-blank cells — confirm. |
+| P2-INDEX-005 / P2-INDEX-006 / P2-INDEX-011 | Index `0` / omitted column return whole row/column arrays in Excel; semantics for a non-spill engine undecided. |
+| P2-INDEX-010 | Numeric-text index coercion (`"2"` → 2) expected; confirm. |
+| P2-MATCH-011 | Boolean lookup under `match_type 0` — expected positional match; confirm. |
+| P2-MATCH-012 | `match_type ±1` on unsorted data: Excel's binary-search result is order-dependent; must be recorded, not derived. |
+| (docs only) | Even argument count to `SUMIFS`/`COUNTIFS` (missing criteria) — Excel arity error code mapping (likely `#VALUE!`). |
+| (docs only) | Wildcards under `match_type ±1`: expected literal characters — confirm. |
+| (docs only) | Error cell inside `MATCH` lookup_array during scan: propagate vs skip. |
