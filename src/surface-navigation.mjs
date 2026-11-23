@@ -72,7 +72,12 @@ export function createSurfaceNavigation({ window, hasProjectDeepLink = false, sa
     history.replaceState(stateWithSurface(history.state, surface), "", urlFor(surface));
   }
   const initial = initialMainSurface(location.search, { hasProjectDeepLink, savedBackend });
-  if (!read()) replace(initial);
+  if (!read()) {
+    // Filling in the initial surface keeps a ?workspaceTab= deep link for the workspace router.
+    const url = new URL(location.href);
+    url.searchParams.set("surface", initial);
+    history.replaceState(stateWithSurface(history.state, initial), "", url.pathname + url.search + url.hash);
+  }
 
   function navigate(surface, { replaceCurrent = false } = {}) {
     const target = isHiddenQwenTarget(surface) || isHiddenDeepseekTarget(surface) || isHiddenDevinTarget(surface)
