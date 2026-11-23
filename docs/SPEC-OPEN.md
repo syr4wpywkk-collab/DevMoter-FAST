@@ -88,6 +88,22 @@ Phase 1 table below.
 20. **循環参照の部分再計算** — dirty でない既評価セルは SCC 検査の
     対象外（既に確定済み値を持つ前提）。履歴のある大規模ブックで
     この前提が成立するか検証する。
+
+## PR 04 (Phase 1 functions)
+
+21. **単一セル参照の強制規則** — 集計関数は `A1` 形式の単一参照も
+    範囲由来として扱い、text/boolean/blank を無視する
+    （`SUM(A1)` で文字列セルは 0、と Excel 同様の想定）。要実測。
+22. **`COUNTA` 直接引数エラー** — P1-COUNTA-010 は「伝播」で仮実装。
+    「カウントする」に変わる場合あり。
+23. **`IFERROR` の第2引数省略** — P1-IFERROR-011 は arity エラー
+    （`#VALUE!`）で仮実装。Excel が入力時拒否なら API エラー側へ。
+24. **`ROUND` の num_digits 非整数/巨大値** — trunc + ±320 クランプで
+    仮実装。`ROUND(1.234,1.9)` の Excel 実測が必要。
+25. **`NOT` の `"TRUE"/"FALSE"` 文字列** — 直接引数規則で強制
+    （`NOT("TRUE")`→FALSE）。関数仕様の `#VALUE!` 予想と不整合、要実測。
+26. **空の `Expr::Missing` 分岐** — `IF(FALSE,1,)` は Blank を返す
+    （Excel は 0 の可能性）。要実測。
 ## Phase 2 fixtures (Track E)
 
 `specOpen: true` cases in `tests/fixtures/golden-phase2.json` mirror the

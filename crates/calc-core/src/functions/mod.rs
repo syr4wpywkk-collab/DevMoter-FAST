@@ -1,24 +1,41 @@
 //! Function registry and dispatch (plan §6).
 //!
+//! One file per function so each can be improved and analyzed
+//! independently; this module only registers and dispatches. Shared
+//! argument/coercion logic lives in [`helpers`].
+//!
 //! Functions are dispatched by upper-case name. Each receives the
 //! *unevaluated* argument expressions plus the [`EvalContext`], so special
-//! forms can evaluate arguments on demand (lazy `IF`/`IFERROR`, plan §5).
-//! Eager functions simply `ctx.eval(arg)` for each argument.
-//!
-//! Phase 1 functions land in `feat/functions-phase1`, one file per
-//! function; this module only owns the signature and dispatch table.
+//! forms evaluate arguments on demand (lazy `IF`/`IFERROR`, plan §5).
+//! Eager functions use [`helpers::flatten_args`].
 
 use crate::ast::Expr;
 use crate::error::CalcError;
 use crate::eval::{EvalContext, EvalError};
 use crate::value::Value;
 
+pub mod helpers;
+
+mod abs;
+mod and;
+mod average;
+mod count;
+mod counta;
+mod if_fn;
+mod iferror;
+mod max;
+mod min;
+mod not;
+mod or;
+mod round;
+mod sum;
+
 /// The common function signature: name-resolved call with unevaluated
 /// argument expressions evaluated on demand through `ctx`.
 ///
-/// Returns `Result<Value, EvalError>`: ordinary spreadsheet errors are
-/// returned as `Value::Error(..)`; `Err(..)` is reserved for fatal engine
-/// conditions (step budget, depth) that abort recalculation.
+/// Ordinary spreadsheet errors are returned as `Value::Error(..)`;
+/// `Err(..)` is reserved for fatal engine conditions (step budget, depth)
+/// that abort recalculation.
 pub type Function = fn(&mut EvalContext<'_>, &[Expr]) -> Result<Value, EvalError>;
 
 /// Dispatch `name` (matched case-insensitively) to its implementation.
@@ -32,10 +49,30 @@ pub fn dispatch(
     Some(f(ctx, args))
 }
 
-/// The Phase 1 dispatch table. Filled in by `feat/functions-phase1`.
+/// Names of every registered function (Phase 1: the basic 13).
+pub const REGISTERED: &[&str] = &[
+    "ABS", "AND", "AVERAGE", "COUNT", "COUNTA", "IF", "IFERROR", "MAX", "MIN", "NOT", "OR",
+    "ROUND", "SUM",
+];
+
 fn lookup(name: &str) -> Option<Function> {
-    let _ = name;
-    None
+    let f = match name.to_ascii_uppercase().as_str() {
+        "ABS" => abs::call,
+        "AND" => and::call,
+        "AVERAGE" => average::call,
+        "COUNT" => count::call,
+        "COUNTA" => counta::call,
+        "IF" => if_fn::call,
+        "IFERROR" => iferror::call,
+        "MAX" => max::call,
+        "MIN" => min::call,
+        "NOT" => not::call,
+        "OR" => or::call,
+        "ROUND" => round::call,
+        "SUM" => sum::call,
+        _ => return None,
+    };
+    Some(f)
 }
 
 /// Maximum arguments a function may take (Excel's 255).
