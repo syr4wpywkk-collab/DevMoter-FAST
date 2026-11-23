@@ -8,6 +8,11 @@ RUN apt-get update \
       bison build-essential ca-certificates cmake flex git ninja-build perl pkg-config python3 zlib1g-dev \
  && rm -rf /var/lib/apt/lists/*
 
+# The build runs as the host user (container.sh passes its UID); PostgreSQL's initdb
+# refuses to run as a UID that has no passwd entry.
+ARG DMB_UID=1000
+RUN getent passwd "$DMB_UID" >/dev/null || useradd --uid "$DMB_UID" --no-create-home --home-dir /tmp builder
+
 # The repository is mounted from the host and owned by the host user.
 RUN git config --system --add safe.directory /repo
 WORKDIR /repo

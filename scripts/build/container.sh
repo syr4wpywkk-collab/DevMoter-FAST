@@ -20,7 +20,7 @@ mkdir -p "$out"
 tag="devmoter-base-build:${platform##*/}"
 [ -n "$platform" ] || tag="devmoter-base-build:native"
 
-docker build ${platform:+--platform "$platform"} -t "$tag" "$root/scripts/build"
+docker build ${platform:+--platform "$platform"} --build-arg DMB_UID="$(id -u)" -t "$tag" "$root/scripts/build"
 exec docker run --rm ${platform:+--platform "$platform"} \
   --network none \
   --user "$(id -u):$(id -g)" \
