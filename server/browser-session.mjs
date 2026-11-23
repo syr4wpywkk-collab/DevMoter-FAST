@@ -879,11 +879,11 @@ export function createBrowserSessionManager({
     return { ...result, action: action.type, session: publicSession(session) };
   }
 
-  function status(projectId, { deviceId } = {}) {
+  function status(projectId, { deviceId, capability = true } = {}) {
     const session = sessions.get(String(projectId || "")) || null;
     const visible = session && (deviceId === undefined || !session.ownerDeviceId || session.ownerDeviceId === deviceId);
     return {
-      capability: browserAutomationStatus({ env, spawnSyncImpl }),
+      capability: capability ? browserAutomationStatus({ env, spawnSyncImpl }) : undefined,
       session: visible ? publicSession(session) : null,
       otherDeviceSession: Boolean(session && !visible),
       limits: { maxSessions: limits.maxSessions, idleMs: limits.idleMs, maxLifetimeMs: limits.maxLifetimeMs }

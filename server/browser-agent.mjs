@@ -277,7 +277,8 @@ export async function handleBrowserAgentRequest(req, res, url, { manager, tokens
     const base = { projectId: record.projectId, tokenId: record.id, runId: record.runId };
     const deviceId = record.deviceId ?? null;
     const current = () => {
-      const status = manager.status(record.projectId, { deviceId });
+      // Skip the synchronous browser-binary probe on the per-action path.
+      const status = manager.status(record.projectId, { deviceId, capability: false });
       const session = status.session;
       if (session && record.sessionId && session.id !== record.sessionId) {
         record.sessionId = null;
