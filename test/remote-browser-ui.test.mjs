@@ -199,6 +199,9 @@ test("remote browser streams frames, maps taps, sends committed IME text and tak
     canvas.dispatchEvent(new env.dom.window.WheelEvent("wheel", { deltaY: 3, deltaMode: 1, clientX: 50, clientY: 100, bubbles: true, cancelable: true }));
     await sleep(120);
     assert.deepEqual(ws.acts().at(-1).action, { type: "scroll", dx: 0, dy: 48, x: 100, y: 200 }, "line-mode wheel deltas are converted to pixels");
+    canvas.dispatchEvent(new env.dom.window.WheelEvent("wheel", { deltaX: 1, deltaY: 1, deltaMode: 2, clientX: 50, clientY: 100, bubbles: true, cancelable: true }));
+    await sleep(120);
+    assert.deepEqual(ws.acts().at(-1).action, { type: "scroll", dx: 390, dy: 844, x: 100, y: 200 }, "page-mode wheel deltas use the viewport width and height");
 
     const beforeRight = ws.acts().length;
     const right = new env.dom.window.MouseEvent("pointerdown", { clientX: 50, clientY: 100, button: 2, bubbles: true });

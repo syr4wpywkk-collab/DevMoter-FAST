@@ -508,8 +508,9 @@ function createRemoteBrowser() {
   canvas.addEventListener("wheel", event => {
     if (!canDrive()) return;
     event.preventDefault();
-    const unit = event.deltaMode === 1 ? WHEEL_LINE_PX : event.deltaMode === 2 ? (session?.viewport.height || 1) : 1;
-    queueScroll(event.deltaX * unit, event.deltaY * unit, viewportPoint(event.clientX, event.clientY));
+    const page = event.deltaMode === 2 && session ? session.viewport : null;
+    const line = event.deltaMode === 1 ? WHEEL_LINE_PX : 1;
+    queueScroll(event.deltaX * (page ? page.width : line), event.deltaY * (page ? page.height : line), viewportPoint(event.clientX, event.clientY));
   }, { passive: false });
 
   // Text input goes through an off-screen textarea so the soft keyboard and
