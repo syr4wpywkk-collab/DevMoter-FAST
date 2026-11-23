@@ -47,7 +47,7 @@ pub fn default_registry() -> StandardRegistry {
     StandardRegistry
 }
 
-/// Names of every registered function (Phase 1: the basic 13).
+/// Names of every registered function.
 pub fn registered_names() -> impl Iterator<Item = &'static str> {
     CATEGORIES
         .iter()
@@ -60,15 +60,71 @@ mod tests {
     use super::*;
 
     #[test]
-    fn registers_every_implemented_function() {
+    fn registers_all_implemented_functions() {
         let mut names: Vec<_> = registered_names().collect();
         names.sort_unstable();
         assert_eq!(
             names,
             [
-                "ABS", "AND", "AVERAGE", "CHOOSE", "COLUMN", "COLUMNS", "COUNT", "COUNTA",
-                "HLOOKUP", "IF", "IFERROR", "INDEX", "LOOKUP", "MATCH", "MAX", "MIN", "NOT", "OR",
-                "ROUND", "ROW", "ROWS", "SUM", "VLOOKUP", "XLOOKUP",
+                "ABS",
+                "AND",
+                "AVERAGE",
+                "CEILING.MATH",
+                "CHOOSE",
+                "COLUMN",
+                "COLUMNS",
+                "CONCAT",
+                "COUNT",
+                "COUNTA",
+                "COUNTIF",
+                "COUNTIFS",
+                "EXP",
+                "FIND",
+                "FLOOR.MATH",
+                "HLOOKUP",
+                "IF",
+                "IFERROR",
+                "IFS",
+                "INDEX",
+                "INT",
+                "ISNUMBER",
+                "ISTEXT",
+                "LEFT",
+                "LEN",
+                "LOG",
+                "LOOKUP",
+                "LOWER",
+                "MATCH",
+                "MAX",
+                "MID",
+                "MIN",
+                "MOD",
+                "NOT",
+                "OR",
+                "POWER",
+                "PRODUCT",
+                "PROPER",
+                "REPLACE",
+                "RIGHT",
+                "ROUND",
+                "ROW",
+                "ROWS",
+                "SEARCH",
+                "SQRT",
+                "SUBSTITUTE",
+                "SUM",
+                "SUMIF",
+                "SUMIFS",
+                "SUMPRODUCT",
+                "SWITCH",
+                "TEXT",
+                "TEXTJOIN",
+                "TRIM",
+                "TRUNC",
+                "UPPER",
+                "VALUE",
+                "VLOOKUP",
+                "XLOOKUP",
             ]
         );
     }
