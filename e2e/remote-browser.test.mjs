@@ -74,7 +74,7 @@ openRemoteBrowser();`);
   };
 }
 
-test("phone UI streams the host browser, taps, scrolls, commits IME text and takes back control", { skip: chromiumBin ? false : "no Chromium binary available" }, async t => {
+test("phone UI streams the host browser, taps, scrolls, commits IME text and takes back control", { skip: chromiumBin ? false : "no Chromium binary available", timeout: 120000 }, async t => {
   const preview = await listen((req, res) => {
     res.setHeader("content-type", "text/html; charset=utf-8");
     res.end(previewPage);
