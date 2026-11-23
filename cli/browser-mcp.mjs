@@ -109,7 +109,7 @@ export function createBrowserMcpServer({ baseUrl, token, fetchImpl = fetch }) {
         };
       }
       const session = result.session;
-      return { content: [{ type: "text", text: JSON.stringify({ ok: result.ok !== false, ...(result.error ? { error: result.error } : {}), url: session?.url, title: session?.title }) }] };
+      return { ...(result.ok === false ? { isError: true } : {}), content: [{ type: "text", text: JSON.stringify({ ok: result.ok !== false, ...(result.error ? { error: result.error } : {}), url: session?.url, title: session?.title }) }] };
     } catch (error) {
       return { isError: true, content: [{ type: "text", text: `${error.code ? error.code + ": " : ""}${error.message}` }] };
     }
