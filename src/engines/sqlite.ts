@@ -65,7 +65,8 @@ export function sqliteArguments(options: SqliteAdapterOptions, sql: string, para
 
   const args = ['-safe', '-batch', '-noinit', '-json'];
   if (options.readOnly) args.push('-readonly');
-  args.push(path.resolve(options.file), `.timeout ${BUSY_TIMEOUT_MS}`);
+  // ".explain off": without it the shell prints EXPLAIN output as formatted text, not JSON.
+  args.push(path.resolve(options.file), `.timeout ${BUSY_TIMEOUT_MS}`, '.explain off');
   if (params.length > 0) {
     const values = params.map((param, index) => `('?${index + 1}',${encodeSqliteLiteral(param, index + 1)})`).join(',');
     if (values.length > MAX_PARAMS_BYTES) throw new EngineError('invalid_request', `the parameters are larger than ${MAX_PARAMS_BYTES} bytes once encoded`);

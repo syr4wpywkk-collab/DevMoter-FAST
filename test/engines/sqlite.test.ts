@@ -38,7 +38,7 @@ test('invalid parameters are rejected', () => {
 
 test('the shell runs in safe mode and the SQL can never be an option, a dot-command or a script file', () => {
   const options = { binary: '/x/sqlite3', file: '/data/app.sqlite' };
-  assert.deepEqual(sqliteArguments(options, 'SELECT 1', []), ['-safe', '-batch', '-noinit', '-json', '/data/app.sqlite', '.timeout 5000', ' SELECT 1']);
+  assert.deepEqual(sqliteArguments(options, 'SELECT 1', []), ['-safe', '-batch', '-noinit', '-json', '/data/app.sqlite', '.timeout 5000', '.explain off', ' SELECT 1']);
   assert.deepEqual(sqliteArguments({ ...options, readOnly: true }, '.shell id', []).slice(0, 5), ['-safe', '-batch', '-noinit', '-json', '-readonly']);
   for (const sql of ['.shell id', '-version', '--help', '/etc/hosts.txt', 'script.sql']) {
     assert.equal(sqliteArguments(options, sql, []).at(-1), ` ${sql}`);
@@ -114,6 +114,10 @@ describe('SQLite adapter against the built engine', { skip: sqlite.skip }, () =>
 
   test('a statement without rows yields no result set', async () => {
     assert.deepEqual((await adapter.query('SELECT * FROM t WHERE 0', [])).results, []);
+    // EXPLAIN output is rows like any other result, not the shell's formatted text.
+    const plan = await adapter.query('EXPLAIN QUERY PLAN SELECT * FROM t WHERE id = ?1', [1]);
+    assert.match(String(plan.results[0]?.rows[0]?.detail), /SEARCH t USING INTEGER PRIMARY KEY/);
+    assert.equal((await adapter.query('EXPLAIN SELECT 1', [])).results[0]?.columns[1], 'opcode');
   });
 
   test('SQL errors are reported with the engine message', async () => {
