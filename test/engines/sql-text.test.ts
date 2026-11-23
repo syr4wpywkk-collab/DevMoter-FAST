@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { sqlShape } from '../../src/engines/sql-text.ts';
+import { DUCKDB_SQL, sqlShape } from '../../src/engines/sql-text.ts';
 
 test('counts statements and finds the first word', () => {
   const cases: [string, number, string][] = [
@@ -16,6 +16,18 @@ test('counts statements and finds the first word', () => {
     ["'text' ; x", 2, ''],
   ];
   for (const [sql, statements, firstKeyword] of cases) assert.deepEqual(sqlShape(sql), { statements, firstKeyword }, sql);
+});
+
+test('characters an engine reads as blank space end a word only for that engine', () => {
+  for (const blank of ['\u00a0', '\u2003', '\u200b', '\u3000', '\ufeff']) {
+    assert.equal(sqlShape(`EXPLAIN${blank}SELECT 1`, DUCKDB_SQL).firstKeyword, 'EXPLAIN');
+    assert.equal(sqlShape(`${blank}EXPLAIN SELECT 1`, DUCKDB_SQL).firstKeyword, 'EXPLAIN');
+    assert.deepEqual(sqlShape(`${blank};${blank}`, DUCKDB_SQL), { statements: 0, firstKeyword: '' });
+    assert.equal(sqlShape(`EXPLAIN${blank}SELECT 1`).firstKeyword, `EXPLAIN${blank}SELECT`);
+  }
+  // Not blank space to DuckDB: part of the word.
+  assert.equal(sqlShape('EXPLAIN\u1680SELECT 1', DUCKDB_SQL).firstKeyword, 'EXPLAIN\u1680SELECT');
+  assert.equal(sqlShape('SÉLECT 1', DUCKDB_SQL).firstKeyword, 'SÉLECT');
 });
 
 test('a ";" inside quoted text or a comment does not end a statement', () => {

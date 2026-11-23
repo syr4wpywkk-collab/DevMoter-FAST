@@ -79,12 +79,13 @@ function describe(database: Database): Record<string, unknown> {
 }
 
 /**
- * A JSON number is read as a double, so an integer beyond 2^53 would silently become a
- * neighbouring value before it reaches the engine. Such a request is refused instead.
+ * A JSON number is read as a double, so an integer beyond 2^53 - 1 would silently become a
+ * neighbouring value before it reaches the engine. Such a request is refused instead, however
+ * the integer is written (9007199254740993, 9007199254740993.0, 9.007199254740993e15).
  */
 function exactIntegersOnly(_key: string, value: unknown, context?: { source?: string }): unknown {
-  if (typeof value === 'number' && !Number.isSafeInteger(value) && context?.source !== undefined && /^-?\d+$/.test(context.source)) {
-    throw new HttpError(400, 'invalid_request', `the integer ${context.source.slice(0, 40)} cannot be read exactly as a JSON number; send it as a string`);
+  if (typeof value === 'number' && Number.isInteger(value) && !Number.isSafeInteger(value) && context?.source !== undefined) {
+    throw new HttpError(400, 'invalid_request', `the number ${context.source.slice(0, 40)} is an integer beyond ±(2^53 - 1) and cannot be read exactly as a JSON number; send it as a string`);
   }
   return value;
 }

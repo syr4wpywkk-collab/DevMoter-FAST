@@ -127,6 +127,9 @@ describe('Valkey adapter against the built engine', { skip: valkey.skip }, () =>
     await assert.rejects(adapter.command(['MOVE', 'stays', 1]), rejectsWith('command_not_allowed', /other logical database/));
     await assert.rejects(adapter.command(['COPY', 'stays', 'copy', 'db', 1]), rejectsWith('command_not_allowed', /other logical database/));
     await assert.rejects(adapter.command(['COPY', 'stays', 'copy', 'REPLACE', { $base64: 'REI=' }, 1]), rejectsWith('command_not_allowed'));
+    // The server reads an option as a C string: what follows a NUL byte is not part of it.
+    await assert.rejects(adapter.command(['COPY', 'stays', 'copy', 'db\0x', 1]), rejectsWith('command_not_allowed'));
+    await assert.rejects(adapter.command(['COPY', 'stays', 'copy', { $base64: 'REIA/w==' }, 1]), rejectsWith('command_not_allowed'));
     assert.equal(await run('COPY', 'stays', 'copy'), 1);
     assert.equal(await run('GET', 'copy'), 'here');
     const other = createValkeyAdapter({ socketPath: server.socket, db: 1 });

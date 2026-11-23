@@ -87,21 +87,23 @@ test('a build tree made at another path (host vs container) is rebuilt from scra
       mkdirSync(paths.work, { recursive: true });
       mkdirSync(paths.src, { recursive: true });
       writeFileSync(path.join(paths.work, 'CMakeCache.txt'), 'CMAKE_HOME_DIRECTORY:INTERNAL=/out/x86_64/duckdb/src');
+      mkdirSync(path.join(paths.prefix, 'lib'), { recursive: true });
+      writeFileSync(path.join(paths.prefix, 'lib', 'libduckdb.dylib'), 'built on another system');
       writeFileSync(path.join(paths.root, 'SOURCE_TREE'), 'tree');
     };
-    const remains = () => [paths.work, paths.src, path.join(paths.root, 'SOURCE_TREE')].map((file) => existsSync(file));
+    const remains = () => [paths.work, paths.src, paths.prefix, path.join(paths.root, 'SOURCE_TREE')].map((file) => existsSync(file));
 
     seed(); // made before the path was recorded: its origin is unknown
     assert.equal(await resetMovedBuildTree(paths), true);
-    assert.deepEqual(remains(), [false, false, false]);
+    assert.deepEqual(remains(), [false, false, false, false]);
 
     seed();
     assert.equal(await resetMovedBuildTree(paths), false);
-    assert.deepEqual(remains(), [true, true, true]);
+    assert.deepEqual(remains(), [true, true, true, true]);
 
     writeFileSync(path.join(paths.root, 'BUILD_PATH'), '/out/x86_64/duckdb');
     assert.equal(await resetMovedBuildTree(paths), true);
-    assert.deepEqual(remains(), [false, false, false]);
+    assert.deepEqual(remains(), [false, false, false, false]);
     assert.equal(readFileSync(path.join(paths.root, 'BUILD_PATH'), 'utf8'), paths.root);
   } finally {
     rmSync(dir, { recursive: true, force: true });

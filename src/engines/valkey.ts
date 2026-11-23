@@ -93,7 +93,9 @@ export function crossesDatabases(encoded: readonly (string | Buffer)[]): boolean
   const name = String(encoded[0]).toLowerCase();
   if (name === 'move') return true;
   // COPY source destination [DB destination-db] [REPLACE]
-  return name === 'copy' && encoded.slice(3).some((arg) => arg.toString().toLowerCase() === 'db');
+  // The server compares each option as a C string, which ends at the first NUL byte: "db\0x" is DB to it.
+  const option = (arg: string | Buffer) => Buffer.from(arg).toString('latin1').split('\0', 1)[0]?.toLowerCase();
+  return name === 'copy' && encoded.slice(3).some((arg) => option(arg) === 'db');
 }
 
 /** Validates a command and converts its arguments to what goes on the wire. */

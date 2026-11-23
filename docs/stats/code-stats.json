@@ -3,17 +3,17 @@
   "summary": {
     "own": {
       "files": 30,
-      "lines": 3946,
-      "blank": 353,
-      "comment": 431,
-      "code": 3162
+      "lines": 4021,
+      "blank": 357,
+      "comment": 454,
+      "code": 3210
     },
     "tests": {
       "files": 21,
-      "lines": 2921,
-      "blank": 315,
-      "comment": 26,
-      "code": 2580
+      "lines": 2982,
+      "blank": 319,
+      "comment": 30,
+      "code": 2633
     },
     "docs": {
       "files": 7,
@@ -38,28 +38,28 @@
     },
     "total": {
       "files": 30789,
-      "lines": 9882061,
-      "blank": 1124775,
-      "comment": 1087873,
-      "code": 7669413
+      "lines": 9882197,
+      "blank": 1124783,
+      "comment": 1087900,
+      "code": 7669514
     }
   },
   "categories": {
     "own": {
       "total": {
         "files": 30,
-        "lines": 3946,
-        "blank": 353,
-        "comment": 431,
-        "code": 3162
+        "lines": 4021,
+        "blank": 357,
+        "comment": 454,
+        "code": 3210
       },
       "languages": {
         "TypeScript": {
           "files": 24,
-          "lines": 3769,
-          "blank": 343,
-          "comment": 393,
-          "code": 3033
+          "lines": 3844,
+          "blank": 347,
+          "comment": 416,
+          "code": 3081
         },
         "Shell": {
           "files": 5,
@@ -80,18 +80,18 @@
     "tests": {
       "total": {
         "files": 21,
-        "lines": 2921,
-        "blank": 315,
-        "comment": 26,
-        "code": 2580
+        "lines": 2982,
+        "blank": 319,
+        "comment": 30,
+        "code": 2633
       },
       "languages": {
         "TypeScript": {
           "files": 21,
-          "lines": 2921,
-          "blank": 315,
-          "comment": 26,
-          "code": 2580
+          "lines": 2982,
+          "blank": 319,
+          "comment": 30,
+          "code": 2633
         }
       }
     },
