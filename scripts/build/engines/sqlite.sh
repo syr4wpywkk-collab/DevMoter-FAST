@@ -12,11 +12,13 @@ case "${1:-}" in
     ;;
   smoke)
     db="$DMB_TMP/smoke.sqlite"
-    result=$("$DMB_PREFIX/bin/sqlite3" "$db" \
+    # -noinit: the user's ~/.sqliterc must not change the output format.
+    sqlite3() { "$DMB_PREFIX/bin/sqlite3" -batch -noinit "$@"; }
+    result=$(sqlite3 "$db" \
       "CREATE TABLE t(id INTEGER PRIMARY KEY, name TEXT); INSERT INTO t(name) VALUES ('devmoter'), ('base'); SELECT count(*) || ':' || group_concat(name, ',') FROM t;")
     [ "$result" = "2:devmoter,base" ] || { echo "sqlite: unexpected query result: $result" >&2; exit 1; }
-    "$DMB_PREFIX/bin/sqlite3" "$db" "PRAGMA integrity_check;" | grep -qx ok
-    echo "sqlite $("$DMB_PREFIX/bin/sqlite3" -version | cut -d' ' -f1)"
+    sqlite3 "$db" "PRAGMA integrity_check;" | grep -qx ok
+    echo "sqlite $(sqlite3 -version | cut -d' ' -f1)"
     ;;
   *) echo "usage: $0 build|smoke" >&2; exit 2 ;;
 esac

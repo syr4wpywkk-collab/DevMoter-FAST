@@ -23,14 +23,16 @@ case "${1:-}" in
     ;;
   smoke)
     db="$DMB_TMP/smoke.duckdb"
-    result=$("$DMB_PREFIX/bin/duckdb" "$db" -noheader -csv -c \
+    # -no-init: the user's ~/.duckdbrc must not change or add to the output.
+    duckdb() { "$DMB_PREFIX/bin/duckdb" -no-init "$@"; }
+    result=$(duckdb "$db" -noheader -csv -c \
       "CREATE TABLE t AS SELECT i AS id, 'row' || i AS name FROM range(1000) r(i); SELECT count(*), sum(id) FROM t;")
     [ "$result" = "1000,499500" ] || { echo "duckdb: unexpected query result: $result" >&2; exit 1; }
     # Parquet and JSON are statically linked: round-trip through both.
-    result=$("$DMB_PREFIX/bin/duckdb" "$db" -noheader -csv -c \
+    result=$(duckdb "$db" -noheader -csv -c \
       "COPY t TO '$DMB_TMP/t.parquet' (FORMAT parquet); SELECT count(*) FROM '$DMB_TMP/t.parquet' WHERE json_extract_string('{\"k\":\"v\"}', '\$.k') = 'v';")
     [ "$result" = "1000" ] || { echo "duckdb: parquet/json round trip failed: $result" >&2; exit 1; }
-    echo "duckdb $("$DMB_PREFIX/bin/duckdb" -noheader -csv -c 'SELECT version();')"
+    echo "duckdb $(duckdb -noheader -csv -c 'SELECT version();')"
     ;;
   *) echo "usage: $0 build|smoke" >&2; exit 2 ;;
 esac
