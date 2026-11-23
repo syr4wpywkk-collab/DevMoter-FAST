@@ -10,6 +10,7 @@
 //! Lazy special forms (`IF`, `IFERROR`) must not use [`flatten_args`]: it
 //! evaluates every argument eagerly.
 
+use calc_core::array::ArrayValue;
 use calc_core::ast::Expr;
 use calc_core::error::CalcError;
 use calc_core::eval::{ArgValue, EvalContext, EvalError};
@@ -113,6 +114,21 @@ pub fn eval_number(
     arg: &Expr,
 ) -> Result<Result<f64, CalcError>, EvalError> {
     Ok(ctx.eval(arg)?.to_number())
+}
+
+/// Evaluate `arg` as an array for the dynamic-array functions: ranges
+/// and `Value::Array` results pass through; any other scalar (including
+/// a cell ref) wraps into a 1x1 array. Error inputs propagate.
+pub fn eval_array(
+    ctx: &mut EvalContext<'_>,
+    arg: &Expr,
+) -> Result<Result<ArrayValue, CalcError>, EvalError> {
+    Ok(match ctx.eval_arg(arg)? {
+        ArgValue::Range(a) => Ok(a),
+        ArgValue::Scalar(Value::Array(a)) | ArgValue::Ref(Value::Array(a)) => Ok(a),
+        ArgValue::Scalar(Value::Error(e)) | ArgValue::Ref(Value::Error(e)) => Err(e),
+        ArgValue::Scalar(v) | ArgValue::Ref(v) => ArrayValue::new(1, 1, vec![v]),
+    })
 }
 
 /// Whether a scalar text value parses as a number (COUNT's direct-arg

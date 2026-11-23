@@ -1,0 +1,2625 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-23",
+  "referenceDefaults": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+  },
+  "cases": [
+    {
+      "id": "AR-SEQUENCE-001",
+      "formula": "=SEQUENCE(2,3,1,1)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2,
+            3
+          ],
+          [
+            4,
+            5,
+            6
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-SEQUENCE-002",
+      "formula": "=SEQUENCE(3)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            2
+          ],
+          [
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-SEQUENCE-003",
+      "formula": "=SEQUENCE(2,2)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-SEQUENCE-004",
+      "formula": "=SEQUENCE(3,1,10,-2)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            10
+          ],
+          [
+            8
+          ],
+          [
+            6
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-SEQUENCE-005",
+      "formula": "=SEQUENCE(1,3,0.5,0.25)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            0.5,
+            0.75,
+            1
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-SEQUENCE-006",
+      "formula": "=SEQUENCE(2.9,1.5)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            2
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Excel truncates fractional rows/columns counts — needs empirical confirmation."
+    },
+    {
+      "id": "AR-SEQUENCE-007",
+      "formula": "=SEQUENCE(0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-SEQUENCE-008",
+      "formula": "=SEQUENCE(2,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-SEQUENCE-009",
+      "formula": "=SEQUENCE(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-SEQUENCE-010",
+      "formula": "=SEQUENCE(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-SEQUENCE-011",
+      "formula": "=SEQUENCE(A1,A2)",
+      "inputs": {
+        "A1": 3,
+        "A2": 2
+      },
+      "expected": {
+        "array": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            6
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TRANSPOSE-001",
+      "formula": "=TRANSPOSE({1,2;3,4})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TRANSPOSE-002",
+      "formula": "=TRANSPOSE({1;2;3})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2,
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TRANSPOSE-003",
+      "formula": "=TRANSPOSE({1,2,3})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            2
+          ],
+          [
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TRANSPOSE-004",
+      "formula": "=TRANSPOSE(7)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            7
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Scalar input: Excel wraps as 1x1 vs rejects — confirm."
+    },
+    {
+      "id": "AR-TRANSPOSE-005",
+      "formula": "=TRANSPOSE(A1:B2)",
+      "inputs": {
+        "A1": 1,
+        "A2": 3,
+        "B1": 2,
+        "B2": 4
+      },
+      "expected": {
+        "array": [
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TRANSPOSE-006",
+      "formula": "=TRANSPOSE({\"a\",TRUE})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a"
+          ],
+          [
+            true
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TRANSPOSE-007",
+      "formula": "=TRANSPOSE({1,#N/A})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            {
+              "error": "#N/A"
+            }
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TRANSPOSE-008",
+      "formula": "=TRANSPOSE(A1:B1)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            {
+              "blank": true
+            }
+          ],
+          [
+            {
+              "blank": true
+            }
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TRANSPOSE-009",
+      "formula": "=TRANSPOSE()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TRANSPOSE-010",
+      "formula": "=TRANSPOSE(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TAKE-001",
+      "formula": "=TAKE({1,2;3,4;5,6},2)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TAKE-002",
+      "formula": "=TAKE({1,2;3,4;5,6},-1)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            5,
+            6
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TAKE-003",
+      "formula": "=TAKE({1,2,3;4,5,6},,2)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2
+          ],
+          [
+            4,
+            5
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TAKE-004",
+      "formula": "=TAKE({1,2,3;4,5,6},1,-1)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TAKE-005",
+      "formula": "=TAKE({1,2;3,4},2,2)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TAKE-006",
+      "formula": "=TAKE({1,2;3,4},0)",
+      "inputs": {},
+      "expected": {
+        "error": "#CALC!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Zero take returns #CALC! per docs/TAKE.md; empty arrays unrepresentable — confirm vs Excel."
+    },
+    {
+      "id": "AR-TAKE-007",
+      "formula": "=TAKE({1,2;3,4},3)",
+      "inputs": {},
+      "expected": {
+        "error": "#CALC!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Over-take error kind (#CALC! vs #VALUE!) unconfirmed."
+    },
+    {
+      "id": "AR-TAKE-008",
+      "formula": "=TAKE({1;2;3},1.9)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TAKE-009",
+      "formula": "=TAKE({1,2},\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TAKE-010",
+      "formula": "=TAKE(A1:A3,-2)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "array": [
+          [
+            2
+          ],
+          [
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-DROP-001",
+      "formula": "=DROP({1,2;3,4;5,6},1)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            3,
+            4
+          ],
+          [
+            5,
+            6
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-DROP-002",
+      "formula": "=DROP({1,2;3,4;5,6},-2)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-DROP-003",
+      "formula": "=DROP({1,2,3;4,5,6},,1)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            2,
+            3
+          ],
+          [
+            5,
+            6
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-DROP-004",
+      "formula": "=DROP({1,2,3;4,5,6},0,-1)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2
+          ],
+          [
+            4,
+            5
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-DROP-005",
+      "formula": "=DROP({1,2;3,4},0,0)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-DROP-006",
+      "formula": "=DROP({1,2;3,4},2)",
+      "inputs": {},
+      "expected": {
+        "error": "#CALC!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "All-dropped empty result: #CALC! per docs/DROP.md — confirm vs Excel."
+    },
+    {
+      "id": "AR-DROP-007",
+      "formula": "=DROP({1,2;3,4},99)",
+      "inputs": {},
+      "expected": {
+        "error": "#CALC!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Over-drop error kind unconfirmed."
+    },
+    {
+      "id": "AR-DROP-008",
+      "formula": "=DROP({1;2;3},1.9)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            2
+          ],
+          [
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-DROP-009",
+      "formula": "=DROP({1,2},\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-DROP-010",
+      "formula": "=DROP(A1:A3,1)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "array": [
+          [
+            2
+          ],
+          [
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-VSTACK-001",
+      "formula": "=VSTACK({1,2},{3,4})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-VSTACK-002",
+      "formula": "=VSTACK({1,2},{3})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            {
+              "error": "#N/A"
+            }
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-VSTACK-003",
+      "formula": "=VSTACK(1,2,3)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            2
+          ],
+          [
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-VSTACK-004",
+      "formula": "=VSTACK({1,2;3,4})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-VSTACK-005",
+      "formula": "=VSTACK({1,2,3},{\"a\"},{7,8})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2,
+            3
+          ],
+          [
+            "a",
+            {
+              "error": "#N/A"
+            },
+            {
+              "error": "#N/A"
+            }
+          ],
+          [
+            7,
+            8,
+            {
+              "error": "#N/A"
+            }
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-VSTACK-006",
+      "formula": "=VSTACK({#N/A},{1})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            {
+              "error": "#N/A"
+            }
+          ],
+          [
+            1
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-VSTACK-007",
+      "formula": "=VSTACK(A1:A2,B1)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "B1": 9
+      },
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            2
+          ],
+          [
+            9
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-VSTACK-008",
+      "formula": "=VSTACK(1/0,{1})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-VSTACK-009",
+      "formula": "=VSTACK()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-VSTACK-010",
+      "formula": "=VSTACK(9,{1,2;3,4})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            9,
+            {
+              "error": "#N/A"
+            }
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-HSTACK-001",
+      "formula": "=HSTACK({1;2},{3;4})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-HSTACK-002",
+      "formula": "=HSTACK({1;2},{3,4})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            3,
+            4
+          ],
+          [
+            2,
+            {
+              "error": "#N/A"
+            },
+            {
+              "error": "#N/A"
+            }
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-HSTACK-003",
+      "formula": "=HSTACK(1,2,3)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2,
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-HSTACK-004",
+      "formula": "=HSTACK({1,2;3,4})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-HSTACK-005",
+      "formula": "=HSTACK({1;2;3},{\"a\",\"b\"},{7;8})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            "a",
+            "b",
+            7
+          ],
+          [
+            2,
+            {
+              "error": "#N/A"
+            },
+            {
+              "error": "#N/A"
+            },
+            8
+          ],
+          [
+            3,
+            {
+              "error": "#N/A"
+            },
+            {
+              "error": "#N/A"
+            },
+            {
+              "error": "#N/A"
+            }
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-HSTACK-006",
+      "formula": "=HSTACK({#N/A},{1})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            {
+              "error": "#N/A"
+            },
+            1
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-HSTACK-007",
+      "formula": "=HSTACK(A1:B1,C1)",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "C1": 9
+      },
+      "expected": {
+        "array": [
+          [
+            1,
+            2,
+            9
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-HSTACK-008",
+      "formula": "=HSTACK(1/0,{1})",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-HSTACK-009",
+      "formula": "=HSTACK()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-HSTACK-010",
+      "formula": "=HSTACK(9,{1,2;3,4})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            9,
+            1,
+            2
+          ],
+          [
+            {
+              "error": "#N/A"
+            },
+            3,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOCOL-001",
+      "formula": "=TOCOL({1,2;3,4})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            2
+          ],
+          [
+            3
+          ],
+          [
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOCOL-002",
+      "formula": "=TOCOL({1,2;3,4},,TRUE)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            3
+          ],
+          [
+            2
+          ],
+          [
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOCOL-003",
+      "formula": "=TOCOL(A1:B2,1)",
+      "inputs": {
+        "B1": 5
+      },
+      "expected": {
+        "array": [
+          [
+            5
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOCOL-004",
+      "formula": "=TOCOL({1,2;A1,4},2)",
+      "inputs": {
+        "A1": {
+          "error": "#N/A"
+        }
+      },
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            2
+          ],
+          [
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOCOL-005",
+      "formula": "=TOCOL({1,2;A1,B1},3)",
+      "inputs": {
+        "A1": {
+          "error": "#N/A"
+        }
+      },
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            2
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOCOL-006",
+      "formula": "=TOCOL({1,#N/A})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            {
+              "error": "#N/A"
+            }
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOCOL-007",
+      "formula": "=TOCOL(A1:B2,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#CALC!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Fully-ignored input yields an empty array; #CALC! assumed per docs/TOCOL.md — confirm."
+    },
+    {
+      "id": "AR-TOCOL-008",
+      "formula": "=TOCOL({1},4)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOCOL-009",
+      "formula": "=TOCOL(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOCOL-010",
+      "formula": "=TOCOL(A1,1)",
+      "inputs": {
+        "A1": ""
+      },
+      "expected": {
+        "array": [
+          [
+            ""
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether \"blank\" in ignore=1 covers empty text \"\" is an open question (TOCOL.md)."
+    },
+    {
+      "id": "AR-TOROW-001",
+      "formula": "=TOROW({1,2;3,4})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2,
+            3,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOROW-002",
+      "formula": "=TOROW({1,2;3,4},,TRUE)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            3,
+            2,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOROW-003",
+      "formula": "=TOROW(A1:B2,1)",
+      "inputs": {
+        "B1": 5
+      },
+      "expected": {
+        "array": [
+          [
+            5
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOROW-004",
+      "formula": "=TOROW({1,2;A1,4},2)",
+      "inputs": {
+        "A1": {
+          "error": "#N/A"
+        }
+      },
+      "expected": {
+        "array": [
+          [
+            1,
+            2,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOROW-005",
+      "formula": "=TOROW({1,2;A1,B1},3)",
+      "inputs": {
+        "A1": {
+          "error": "#N/A"
+        }
+      },
+      "expected": {
+        "array": [
+          [
+            1,
+            2
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOROW-006",
+      "formula": "=TOROW({1,#N/A})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            {
+              "error": "#N/A"
+            }
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOROW-007",
+      "formula": "=TOROW(A1:B2,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#CALC!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Fully-ignored input yields an empty array; #CALC! assumed — confirm."
+    },
+    {
+      "id": "AR-TOROW-008",
+      "formula": "=TOROW({1},4)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOROW-009",
+      "formula": "=TOROW(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-TOROW-010",
+      "formula": "=TOROW({1;2;3})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2,
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-UNIQUE-001",
+      "formula": "=UNIQUE({1;2;1;3;2})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            2
+          ],
+          [
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-UNIQUE-002",
+      "formula": "=UNIQUE({3;1;3;1;2})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            3
+          ],
+          [
+            1
+          ],
+          [
+            2
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-UNIQUE-003",
+      "formula": "=UNIQUE({1,2;3,4;1,2})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-UNIQUE-004",
+      "formula": "=UNIQUE({1,2,1;3,4,3},TRUE)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-UNIQUE-005",
+      "formula": "=UNIQUE({\"A\";\"a\";\"B\"})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "A"
+          ],
+          [
+            "B"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-UNIQUE-006",
+      "formula": "=UNIQUE({1;TRUE})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            true
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-UNIQUE-007",
+      "formula": "=UNIQUE({#N/A;#N/A;#DIV/0!})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            {
+              "error": "#N/A"
+            }
+          ],
+          [
+            {
+              "error": "#DIV/0!"
+            }
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Error dedup by error kind assumed (UNIQUE.md open question) — confirm against Excel."
+    },
+    {
+      "id": "AR-UNIQUE-008",
+      "formula": "=UNIQUE({1;2;1;3;2},,TRUE)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-UNIQUE-009",
+      "formula": "=UNIQUE({1;1},,TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#CALC!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-UNIQUE-010",
+      "formula": "=UNIQUE(A1:A3)",
+      "inputs": {
+        "A1": 5,
+        "A2": 5,
+        "A3": 6
+      },
+      "expected": {
+        "array": [
+          [
+            5
+          ],
+          [
+            6
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-SORT-001",
+      "formula": "=SORT({3,30;1,10;2,20})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            10
+          ],
+          [
+            2,
+            20
+          ],
+          [
+            3,
+            30
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-SORT-002",
+      "formula": "=SORT({1;3;2},1,-1)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            3
+          ],
+          [
+            2
+          ],
+          [
+            1
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-SORT-003",
+      "formula": "=SORT({1,30;2,10;3,20},2)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            2,
+            10
+          ],
+          [
+            3,
+            20
+          ],
+          [
+            1,
+            30
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-SORT-004",
+      "formula": "=SORT({9,\"a\";5,\"b\";9,\"c\"})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            5,
+            "b"
+          ],
+          [
+            9,
+            "a"
+          ],
+          [
+            9,
+            "c"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Stability: equal keys keep original row order (v2 plan section 6)."
+    },
+    {
+      "id": "AR-SORT-005",
+      "formula": "=SORT({TRUE;\"a\";5;#N/A})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            5
+          ],
+          [
+            "a"
+          ],
+          [
+            true
+          ],
+          [
+            {
+              "error": "#N/A"
+            }
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Type hierarchy number<text<boolean<error per SORT.md baseline — confirm against Excel."
+    },
+    {
+      "id": "AR-SORT-006",
+      "formula": "=SORT(A1:A3,1,-1)",
+      "inputs": {
+        "A1": 2,
+        "A3": 1
+      },
+      "expected": {
+        "array": [
+          [
+            2
+          ],
+          [
+            1
+          ],
+          [
+            {
+              "blank": true
+            }
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Blanks expected to sort last even descending — confirm against Excel."
+    },
+    {
+      "id": "AR-SORT-007",
+      "formula": "=SORT({\"b\";\"A\";\"c\"})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "A"
+          ],
+          [
+            "b"
+          ],
+          [
+            "c"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-SORT-008",
+      "formula": "=SORT({3,1,2},1,1,TRUE)",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2,
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-SORT-009",
+      "formula": "=SORT({1,2},0)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-SORT-010",
+      "formula": "=SORT({1,2},1,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-FILTER-001",
+      "formula": "=FILTER({1,10;2,20;3,30},{1;0;1})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            10
+          ],
+          [
+            3,
+            30
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-FILTER-002",
+      "formula": "=FILTER({1,2,3;4,5,6},{0,1,1})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            2,
+            3
+          ],
+          [
+            5,
+            6
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-FILTER-003",
+      "formula": "=FILTER({1;2;3},{-1;0;0.5})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-FILTER-004",
+      "formula": "=FILTER({3;1;2},{1;1;1})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            3
+          ],
+          [
+            1
+          ],
+          [
+            2
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-FILTER-005",
+      "formula": "=FILTER({1;2},{0;0})",
+      "inputs": {},
+      "expected": {
+        "error": "#CALC!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-FILTER-006",
+      "formula": "=FILTER({1;2},{0;0},\"none\")",
+      "inputs": {},
+      "expected": {
+        "text": "none"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-FILTER-007",
+      "formula": "=FILTER({1;2},{0;0},{9,9})",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            9,
+            9
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-FILTER-008",
+      "formula": "=FILTER({1;2;3},{1;0})",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-FILTER-009",
+      "formula": "=FILTER({1,2;3,4},{1,0;0,1})",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "AR-FILTER-010",
+      "formula": "=FILTER({1;2},{\"x\";1})",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Text in include: #VALUE! vs treated as FALSE is a SPEC-OPEN question (FILTER.md)."
+    },
+    {
+      "id": "AR-FILTER-011",
+      "formula": "=FILTER(A1:A2,B1:B2)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "B1": true,
+        "B2": false
+      },
+      "expected": {
+        "array": [
+          [
+            1
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    }
+  ]
+}
