@@ -42,6 +42,36 @@ test('lockfile out of sync with package.json is reported', () => {
   assert.ok(rules(findings).includes('lockfile-sync'));
 });
 
+test('a declared dependency missing from the lockfile packages is reported', () => {
+  const lock = goodLock();
+  delete lock.packages!['node_modules/pg'];
+  const findings = checkLockfile(goodPkg, lock);
+  assert.deepEqual(findings.map((finding) => [finding.rule, finding.package]), [['lockfile-sync', 'pg']]);
+});
+
+test('a locked version that differs from the pinned one is reported', () => {
+  const lock = goodLock();
+  lock.packages!['node_modules/pg']!.version = '8.23.2';
+  assert.deepEqual(rules(checkLockfile(goodPkg, lock)), ['lockfile-sync']);
+});
+
+test('transitive dependencies must resolve inside the lockfile', () => {
+  const lock = goodLock();
+  lock.packages!['node_modules/pg']!.dependencies = { 'pg-pool': '^3.0.0' };
+  assert.deepEqual(checkLockfile(goodPkg, lock).map((finding) => [finding.rule, finding.package]), [['lockfile-sync', 'pg']]);
+
+  const pool = { version: '3.13.0', resolved: 'https://registry.npmjs.org/pg-pool/-/pg-pool-3.13.0.tgz', integrity, license: 'MIT' };
+  lock.packages!['node_modules/pg-pool'] = pool;
+  assert.deepEqual(checkLockfile(goodPkg, lock), []);
+
+  delete lock.packages!['node_modules/pg-pool'];
+  lock.packages!['node_modules/pg/node_modules/pg-pool'] = pool;
+  assert.deepEqual(checkLockfile(goodPkg, lock), []);
+
+  lock.packages!['node_modules/typescript']!.dependencies = { 'pg-pool': '^3.0.0' };
+  assert.deepEqual(checkLockfile(goodPkg, lock).map((finding) => finding.package), ['typescript']);
+});
+
 test('packages from another registry or without integrity are reported', () => {
   const lock = goodLock();
   lock.packages!['node_modules/pg'] = { version: '8.23.1', resolved: 'https://evil.example/pg.tgz', license: 'MIT' };
@@ -77,6 +107,24 @@ test('licenseAllowed understands OR and AND expressions', () => {
   assert.equal(licenseAllowed('MIT AND Apache-2.0', allowed), true);
   assert.equal(licenseAllowed('GPL-3.0-only', allowed), false);
   assert.equal(licenseAllowed(undefined, allowed), false);
+  assert.equal(licenseAllowed('', allowed), false);
+});
+
+test('licenseAllowed honours parentheses instead of flattening them', () => {
+  const allowed = ['MIT', 'Apache-2.0'];
+  assert.equal(licenseAllowed('(MIT OR Apache-2.0) AND GPL-3.0-only', allowed), false);
+  assert.equal(licenseAllowed('GPL-3.0-only AND (MIT OR Apache-2.0)', allowed), false);
+  assert.equal(licenseAllowed('MIT AND (GPL-3.0-only OR Apache-2.0)', allowed), true);
+  assert.equal(licenseAllowed('MIT OR (GPL-3.0-only AND Apache-2.0)', allowed), true);
+  assert.equal(licenseAllowed('((MIT))', allowed), true);
+  assert.equal(licenseAllowed('mit or GPL-3.0-only', ['mit']), true);
+});
+
+test('licenseAllowed rejects WITH exceptions and malformed expressions', () => {
+  const allowed = ['MIT', 'Apache-2.0'];
+  for (const expression of ['Apache-2.0 WITH LLVM-exception', '(MIT', 'MIT)', 'MIT OR', 'AND MIT', 'MIT Apache-2.0', '()', 'SEE LICENSE IN LICENSE']) {
+    assert.equal(licenseAllowed(expression, allowed), false, expression);
+  }
 });
 
 test('npm audit reports block on high and critical only', () => {

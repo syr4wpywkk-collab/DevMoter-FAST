@@ -61,13 +61,58 @@ function packageName(lockPath: string): string {
   return index === -1 ? lockPath : lockPath.slice(index + marker.length);
 }
 
-/** `(MIT OR Apache-2.0)` passes when any alternative is allowed; `AND` needs all. */
+/**
+ * Evaluates an SPDX license expression against the allowlist: `OR` passes when
+ * either side does, `AND` needs both, parentheses group. Anything that does not
+ * parse, and any `WITH` exception, is rejected.
+ */
 export function licenseAllowed(expression: string | undefined, allowed: readonly string[]): boolean {
   if (!expression) return false;
-  const normalized = expression.replace(/[()]/g, ' ').trim();
-  return normalized
-    .split(/\s+OR\s+/i)
-    .some((alternative) => alternative.split(/\s+AND\s+/i).every((id) => allowed.includes(id.trim())));
+  const tokens = expression.match(/[()]|[^\s()]+/g) ?? [];
+  let position = 0;
+
+  const parseOr = (): boolean | undefined => {
+    let result = parseAnd();
+    while (result !== undefined && tokens[position]?.toUpperCase() === 'OR') {
+      position += 1;
+      const right = parseAnd();
+      result = right === undefined ? undefined : result || right;
+    }
+    return result;
+  };
+  const parseAnd = (): boolean | undefined => {
+    let result = parseTerm();
+    while (result !== undefined && tokens[position]?.toUpperCase() === 'AND') {
+      position += 1;
+      const right = parseTerm();
+      result = right === undefined ? undefined : result && right;
+    }
+    return result;
+  };
+  const parseTerm = (): boolean | undefined => {
+    const token = tokens[position];
+    if (token === undefined || token === ')' || /^(OR|AND|WITH)$/i.test(token)) return undefined;
+    position += 1;
+    if (token !== '(') return allowed.includes(token);
+    const inner = parseOr();
+    if (inner === undefined || tokens[position] !== ')') return undefined;
+    position += 1;
+    return inner;
+  };
+
+  const result = parseOr();
+  return result === true && position === tokens.length;
+}
+
+/** Node's lookup: the nearest `node_modules/<name>` at or above the requiring package. */
+function resolvesFrom(packages: Record<string, LockPackage>, fromPath: string, name: string): boolean {
+  let base = fromPath;
+  for (;;) {
+    if (packages[`${base}/node_modules/${name}`]) return true;
+    const index = base.lastIndexOf('/node_modules/');
+    if (index === -1) return packages[`node_modules/${name}`] !== undefined;
+    base = base.slice(0, index);
+  }
 }
 
 export function checkManifest(pkg: PackageJson): Finding[] {
@@ -104,8 +149,24 @@ export function checkLockfile(pkg: PackageJson, lock: PackageLock, policy: Polic
       }
     }
   }
+  for (const field of DEPENDENCY_FIELDS) {
+    for (const [name, spec] of Object.entries(pkg[field] ?? {})) {
+      const entry = packages[`node_modules/${name}`];
+      if (!entry) {
+        findings.push({ rule: 'lockfile-sync', package: name, message: `declared in ${field} but has no entry in package-lock.json; run npm install` });
+      } else if (!entry.link && entry.version !== spec) {
+        findings.push({ rule: 'lockfile-sync', package: name, message: `package-lock.json has ${entry.version ?? '(no version)'}, package.json wants ${spec}; run npm install` });
+      }
+    }
+  }
   for (const [lockPath, entry] of Object.entries(packages)) {
-    if (lockPath === '' || entry.link) continue;
+    if (lockPath === '') continue;
+    for (const dependency of Object.keys(entry.dependencies ?? {})) {
+      if (!resolvesFrom(packages, lockPath, dependency)) {
+        findings.push({ rule: 'lockfile-sync', package: packageName(lockPath), message: `requires ${dependency}, which has no entry in package-lock.json; run npm install` });
+      }
+    }
+    if (entry.link) continue;
     const name = packageName(lockPath);
     const label = `${name}@${entry.version ?? '?'}`;
     if (!entry.resolved?.startsWith(policy.registry)) {
