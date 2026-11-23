@@ -1,0 +1,6 @@
+# Anchored on purpose: unanchored patterns would also apply inside engines/.
+/node_modules/
+/build/
+/data/
+/coverage/
+/*.log
