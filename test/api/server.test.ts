@@ -122,6 +122,10 @@ describe('REST API', () => {
       // 2^53 + 1 would reach the engine as 2^53: refused, not rounded.
       ['POST', '/v1/databases/app/query', { headers: { 'Content-Type': 'application/json' }, body: '{"sql":"SELECT ?1","params":[9007199254740993]}' }, 400, 'invalid_request'],
       ['POST', '/v1/databases/app/query', { headers: { 'Content-Type': 'application/json' }, body: '{"sql":"SELECT ?1","params":[-9223372036854775808]}' }, 400, 'invalid_request'],
+      // The same integers written with a fraction or an exponent, and the first one past the exact range.
+      ['POST', '/v1/databases/app/query', { headers: { 'Content-Type': 'application/json' }, body: '{"sql":"SELECT ?1","params":[9007199254740993.0]}' }, 400, 'invalid_request'],
+      ['POST', '/v1/databases/app/query', { headers: { 'Content-Type': 'application/json' }, body: '{"sql":"SELECT ?1","params":[9.007199254740993e15]}' }, 400, 'invalid_request'],
+      ['POST', '/v1/databases/app/query', { headers: { 'Content-Type': 'application/json' }, body: '{"sql":"SELECT ?1","params":[9007199254740992]}' }, 400, 'invalid_request'],
       ['POST', '/v1/databases/app/query', json({ sql: 1 }), 400, 'invalid_request'],
       ['POST', '/v1/databases/app/query', json({ sql: 'SELECT 1', params: {} }), 400, 'invalid_request'],
       ['POST', '/v1/databases/app/query', json({ sql: 'SELECT 1', timeoutMs: '5' }), 400, 'invalid_request'],
