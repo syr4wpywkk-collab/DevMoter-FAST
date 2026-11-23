@@ -3,6 +3,7 @@ import { existsSync, realpathSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { delimiter, dirname, isAbsolute, join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { homedir, tmpdir } from "node:os";
 import { buildBubblewrapCommand } from "./advanced-features.mjs";
 
 export const SANDBOX_SYSTEM_MOUNTS = Object.freeze(["/usr", "/bin", "/lib", "/lib64", "/etc", "/run"]);
@@ -22,13 +23,27 @@ export function resolveExecutable(binary, env) {
   return null;
 }
 
+function realDir(path) {
+  try { return realpathSync(path); } catch { return path; }
+}
+
+// Mounting one of these would cover the sandbox's own /tmp, /proc or /dev, or
+// expose the host's root, temp files or home directories.
+function broadBinaryDirs() {
+  return new Set(["/", "/tmp", "/var/tmp", "/proc", "/dev", "/home", "/root", realDir(tmpdir()), realDir(homedir())]);
+}
+
 // A binary outside the sandbox system mounts (e.g. inside the project) needs
 // its directory mounted read-only to be runnable.
 export function binaryGrant(binary, env) {
   const real = resolveExecutable(binary, env);
   if (!real) return null;
   if (SANDBOX_SYSTEM_MOUNTS.some(root => real === root || real.startsWith(root + "/"))) return null;
-  return { path: dirname(real), mode: "read-only" };
+  const dir = dirname(real);
+  if (broadBinaryDirs().has(dir)) {
+    throw new Error("Browser binary must live in its own directory to be mounted into the sandbox: " + dir);
+  }
+  return { path: dir, mode: "read-only" };
 }
 
 const OUTPUT_LIMIT = 512 * 1024;

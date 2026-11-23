@@ -4,9 +4,11 @@ import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import {
   browserAutomationPolicy,
+  binaryGrant,
   browserAutomationStatus,
   createBrowserAutomation
 } from "../server/browser-tool.mjs";
@@ -128,4 +130,15 @@ test("legacy browser tool mounts a project-local Chromium read-only inside the s
   assert.ok(!args.some((value, index) => (value === "--bind" || value === "--ro-bind") && args[index + 1] === join(root, "project")), "the project itself stays unmounted");
   assert.equal(args[args.indexOf("--") + 1], binary);
   await manager.stop("p1");
+});
+
+test("a browser binary directly in a temp or home directory is refused, not mounted", async t => {
+  const loose = join(realpathSync(tmpdir()), "devmoter-chrome-" + process.pid);
+  await writeFile(loose, "#!/bin/sh\n");
+  t.after(() => rm(loose, { force: true }));
+  assert.throws(() => binaryGrant(loose, {}), /own directory/);
+  const nested = await mkdtemp(join(tmpdir(), "devmoter-chrome-dir-"));
+  t.after(() => rm(nested, { recursive: true, force: true }));
+  await writeFile(join(nested, "chrome"), "#!/bin/sh\n");
+  assert.deepEqual(binaryGrant(join(nested, "chrome"), {}), { path: realpathSync(nested), mode: "read-only" });
 });
