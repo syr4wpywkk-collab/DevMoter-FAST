@@ -91,7 +91,9 @@ export function createBrowserMcpServer({ baseUrl, token, fetchImpl = fetch }) {
     try {
       if (tool.route === "status") return { content: [{ type: "text", text: summary(await call("GET", "")) }] };
       if (tool.route === "open") {
-        const viewport = args.width && args.height ? { width: args.width, height: args.height } : undefined;
+        const viewport = args.width || args.height
+          ? { ...(args.width ? { width: args.width } : {}), ...(args.height ? { height: args.height } : {}) }
+          : undefined;
         return { content: [{ type: "text", text: summary(await call("POST", "/open", viewport ? { viewport } : {})) }] };
       }
       if (tool.route === "acquire" || tool.route === "release") {
