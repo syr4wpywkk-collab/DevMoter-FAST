@@ -113,6 +113,8 @@ test("frame parsing, coordinate mapping and text chunking match the PR2 protocol
     assert.deepEqual(toViewportPoint(10 + 97.5, 20 + 211, rect, { width: 390, height: 844 }), { x: 195, y: 422 });
     assert.equal(toViewportPoint(5, 30, rect, { width: 390, height: 844 }), null);
     assert.deepEqual(splitText("日本語テキスト", 3), ["日本語", "テキス", "ト"]);
+    assert.deepEqual(splitText("a😀b😀", 3), ["a😀", "b😀"]);
+    assert.ok(splitText("😀".repeat(1500)).every(chunk => chunk.length <= 2000));
   } finally {
     env.restore();
   }

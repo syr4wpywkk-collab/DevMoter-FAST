@@ -68,10 +68,18 @@ export function toViewportPoint(
   return { x: Math.round(x), y: Math.round(y) };
 }
 
+/** Splits text into chunks of at most `size` UTF-16 units without breaking a code point. */
 export function splitText(text: string, size = MAX_TEXT_CHUNK) {
   const chunks: string[] = [];
-  const chars = Array.from(text);
-  for (let index = 0; index < chars.length; index += size) chunks.push(chars.slice(index, index + size).join(""));
+  let chunk = "";
+  for (const char of text) {
+    if (chunk.length + char.length > size) {
+      chunks.push(chunk);
+      chunk = "";
+    }
+    chunk += char;
+  }
+  if (chunk) chunks.push(chunk);
   return chunks;
 }
 
