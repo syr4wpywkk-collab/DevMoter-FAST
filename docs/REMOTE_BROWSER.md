@@ -53,7 +53,7 @@ The MCP process talks only to `/api/browser/agent*` on the loopback DevMoter add
 
 ### Policy
 
-Agent actions are classed `browser.read` (screenshot, DOM) or `browser.act` (everything else that mutates). The token must grant the class; then workspace policy rules for tool `browser` and action `browser.read` / `browser.act` decide. With no matching rule both are allowed. A rule that says `ask` denies (`approval_unavailable`), because an agent cannot answer an approval. Script evaluation and unknown action types are always denied. An agent cannot take control while the user is driving.
+Agent actions are classed `browser.read` (screenshot, DOM) or `browser.act` (everything else that mutates). The token must grant the class; then workspace policy rules for tool `browser` and action `browser.read` / `browser.act` decide. With no matching rule both are allowed. A rule that says `ask` denies (`approval_unavailable`), because an agent cannot answer an approval. An explicit `deny` or `ask` is never replaced by the default, and a policy result of unknown shape or a policy error denies (`policy_denied`). Script evaluation and unknown action types are always denied. An agent cannot take control while the user is driving.
 
 ## Interfaces
 
@@ -90,13 +90,13 @@ WebSocket close codes: `4001` session ended, `4003` ticket/device/Origin rejecte
 ## Security boundary
 
 - **Opt-in** with `DEVMOTER_BROWSER_AUTOMATION=1`; off by default.
-- **Target**: only the loopback live preview the user started for the project. Chromium sends all traffic to a dead proxy except the preview host:port, and CDP `Fetch` interception fails every request outside that origin, so other loopback ports, private networks, public sites and external CDN subresources are blocked. `navigate` rejects other origins and schemes (`403 navigation_blocked`).
+- **Target**: only the loopback live preview the user started for the project. Chromium runs in an empty network namespace (`--unshare-net`): it has no route to the host, other loopback ports, private networks, the internet or DNS, and UDP (WebRTC) cannot leave. A relay inside the sandbox listens on the preview's loopback host:port and forwards over a `0600` Unix socket to the host, which connects only to that preview and only while the session is active and the same listening socket still owns the port. On top of that, Chromium sends all traffic to a dead proxy except the preview host:port, and CDP `Fetch` interception fails every request outside that origin, so other loopback ports, private networks, public sites and external CDN subresources are blocked. `navigate` rejects other origins and schemes (`403 navigation_blocked`).
 - **CDP** runs over a private pipe (`--remote-debugging-pipe`) owned by the DevMoter process. No debugging port is opened, and agents never receive CDP access.
 - **Profile**: each session uses a fresh `0700` profile directory under `~/.config/opencode-pocket/browser-profiles/` that is deleted on stop. The personal browser profile, cookies and passwords are never mounted.
-- **Sandbox**: always bubblewrap, fail closed.
+- **Sandbox**: always bubblewrap, fail closed, with its own PID and network namespaces. The project directory is not mounted; only the ephemeral profile and the relay socket directory are writable.
 - **Denied**: downloads, popups, JavaScript dialogs and permission prompts (camera, microphone, location, notifications, clipboard and others).
-- **Device binding**: a session is bound to the starting device. Revoking that device stops its sessions and revokes its tickets and agent tokens. Changing or stopping the project's preview stops its session.
-- **Driver**: mutating actions need the current driver generation; the user's takeover always wins and invalidates older generations.
+- **Owner binding**: a session is bound to exactly one principal, the starting device or (for host-local agent tokens without a device) that agent token. Sessions with no owner are never shared, and other devices get `403`. Revoking the device stops its sessions, closes their viewer sockets, cancels starts in progress and rejects requests whose body was still being read; revoking an agent token stops the sessions it started and drops its driver control. Changing or stopping the project's preview cancels starts in progress and stops its session; a session also stops acting if another process takes over the preview port.
+- **Driver**: mutating actions need the current driver generation; the user's takeover always wins and invalidates older generations. Actions run one at a time per session (at most 8 waiting, then `429 browser_busy`), and the driver generation is checked again before every CDP input command, so an action queued before a takeover sends nothing after it.
 - **Audit**: starts, stops, driver changes, agent token issue/revoke and every user (HTTP and WebSocket) and agent action are appended to `~/.config/opencode-pocket/browser-audit.jsonl` (`0600`). Typed text is recorded only as its length.
 
 See [THREAT_MODEL.md](../THREAT_MODEL.md#remote-browser) for the residual risks.
@@ -150,6 +150,7 @@ Without `DEVMOTER_TEST_CHROMIUM_REQUIRED=1` the tests skip silently when Chromiu
 ## Known limits
 
 - **Verified only on x86_64 with Chrome for Testing** under bubblewrap. ARM64 hosts and the Debian `chromium` package are unverified.
+- **Network isolation is checked by a probe, not by every browser feature.** `test/browser-sandbox.real.test.mjs` runs the real sandbox command and confirms the project is not readable, other loopback ports, external TCP, DNS and UDP fail and the preview is reachable. Service Worker, iframe, redirect and `blob:`/`data:` handling inside Chromium were not exercised one by one; they cannot leave the network namespace except through the preview relay.
 - **Real Codex / OpenCode launch of `devmoter browser-mcp` is unverified.** The MCP server is covered by JSON-RPC tests against a fake API, and Agent Run injection by unit tests; OpenCode has no automatic injection.
 - **CI skips the real-Chromium tests** (no usable Chromium/user namespaces on the runners); only unit, integration and JSDOM UI tests run there.
 - **iPhone / Android / iOS client** behaviour (soft keyboard, IME, gestures, reconnect after backgrounding) has not been checked on real devices.
