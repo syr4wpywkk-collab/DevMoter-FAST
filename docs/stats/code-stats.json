@@ -16,11 +16,11 @@
       "code": 599
     },
     "docs": {
-      "files": 5,
-      "lines": 282,
-      "blank": 66,
+      "files": 6,
+      "lines": 327,
+      "blank": 79,
       "comment": 0,
-      "code": 216
+      "code": 248
     },
     "config": {
       "files": 9,
@@ -37,11 +37,11 @@
       "code": 7662981
     },
     "total": {
-      "files": 30753,
-      "lines": 9876914,
-      "blank": 1124220,
+      "files": 30754,
+      "lines": 9876959,
+      "blank": 1124233,
       "comment": 1087524,
-      "code": 7665170
+      "code": 7665202
     }
   },
   "categories": {
@@ -97,19 +97,19 @@
     },
     "docs": {
       "total": {
-        "files": 5,
-        "lines": 282,
-        "blank": 66,
+        "files": 6,
+        "lines": 327,
+        "blank": 79,
         "comment": 0,
-        "code": 216
+        "code": 248
       },
       "languages": {
         "Markdown": {
-          "files": 5,
-          "lines": 282,
-          "blank": 66,
+          "files": 6,
+          "lines": 327,
+          "blank": 79,
           "comment": 0,
-          "code": 216
+          "code": 248
         }
       }
     },
