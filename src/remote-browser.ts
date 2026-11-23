@@ -307,6 +307,8 @@ function createRemoteBrowser() {
       }
     }
     if (session && session.id !== id) return;
+    keepStatusOnOpen = false;
+    setStatus("");
     showEmpty(t("remoteBrowser.stopped"), true);
   }
 

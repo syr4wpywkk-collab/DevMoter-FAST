@@ -317,6 +317,7 @@ test("#712 a failed stop keeps the session attached instead of showing it as sto
     doc.querySelector("[data-rb-stop]").click();
     await sleep(30);
     assert.equal(doc.querySelector("[data-rb-start]").hidden, false, "an already-gone session counts as stopped");
+    assert.doesNotMatch(doc.querySelector("[data-rb-status]").textContent, /停止できませんでした/, "a stop that succeeds clears the earlier failure");
     destroyRemoteBrowser();
   } finally {
     env.restore();
