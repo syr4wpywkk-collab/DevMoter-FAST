@@ -99,6 +99,11 @@ fn value_to_cell(v: &Value) -> CellValue {
         Value::Lambda(_) => CellValue::Error {
             code: calc_core::CalcError::Value.code().to_owned(),
         },
+        // References are dereferenced by the evaluator before reaching a
+        // cell boundary; same defensive handling as lambdas.
+        Value::Reference(_) => CellValue::Error {
+            code: calc_core::CalcError::Value.code().to_owned(),
+        },
     }
 }
 

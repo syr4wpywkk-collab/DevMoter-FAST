@@ -15,6 +15,7 @@ pub mod graph;
 pub mod lambda;
 pub mod lexer;
 pub mod parser;
+pub mod reference;
 pub mod registry;
 pub mod value;
 pub mod workbook;
@@ -37,6 +38,7 @@ pub use lexer::{LexError, LexErrorKind, Token, TokenKind, lex};
 pub use parser::{
     MAX_AST_NODES, MAX_DEPTH, MAX_FORMULA_LEN, MAX_TOKENS, ParseError, ParseErrorKind, parse,
 };
+pub use reference::{MAX_REF_TEXT_LEN, RefValue};
 pub use registry::{EmptyRegistry, Function, FunctionRegistry};
 pub use value::{Value, ValueKind};
 pub use workbook::{Cell, CellInput, DateSystem, Sheet, Workbook, WorkbookError};

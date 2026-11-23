@@ -139,3 +139,14 @@ Excel/LibreOffice questions that still need recorded fixtures).
 | #10 `^` の結合性 | Excel left-associativity is implemented and locked by tests (`2^3^2` = 64 in `parser_tests.rs` / `evaluator.rs`). |
 | #11 配列リテラル `{1,2;3,4}` | Implemented: lexer/parser produce `Expr::ArrayLiteral`, rectangularity enforced at parse time (`NonRectangularArray`). Landed with the dynamic-array PRs (feat/array-core, merged via PR #21). |
 | #14 `Missing` 引数ノードの意味論 | Settled per function: each `docs/functions/<NAME>.md` defines its omitted-argument defaults; `Expr::Missing` is preserved in the AST so functions can distinguish omitted vs blank. |
+
+## Track F4 (v3 reference foundation)
+
+| Item | Question |
+|---|---|
+| R1C1 テキスト参照 | `INDIRECT("R[1]C[-1]", FALSE)` — `EvalContext::ref_from_a1_text` は A1 形式のみ解釈する。R1C1 絶対/相対アンカーの細部（caller 位置相対）は実装トラックで確定する。 |
+| 定義名 (defined names) | `INDIRECT("MyRange")` 等の名前解決は workbook に名前空間が未実装のため `#REF!`。名前モデル導入時に対応。 |
+| 複数領域参照 (union) | `AREAS((A1:B2,C3:D4))` の union 参照はパーサー未対応（共通ルール #9）。`RefValue` は単一矩形のみで、union 対応時は拡張が必要。 |
+| 3-D シート範囲参照 | `SHEETS(Sheet1:Sheet3!A1)` のシートスパン参照はパーサー/モデル未対応。`SHEETS()` の引数なし形はメタデータ API で実現可能。 |
+| 参照の遅延評価伝播 | `IF`/`CHOOSE`/`INDEX` が「参照を返す」Excel セマンティクスは、遅延特殊形式が `eval_ref`/`eval_arg_keep_refs` を使う拡張が必要。現状は `Value::Reference` を返す関数経由のみ伝播する。 |
+| 動的参照の依存追跡 | `INDIRECT`/`OFFSET` 経由の参照先は実行時決定のため静的 Dep 辺を張れない。volatile（全パス再計算）で保守的に正しさを確保。pass ごとの依存再登録による絞り込みは将来の最適化。 |

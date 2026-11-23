@@ -324,7 +324,11 @@ impl CalcEngine {
             .ok_or(WorkbookError::SheetNotFound)?;
         self.recalculate()?;
         let expr = parse(formula)?;
-        let mut ctx = self.make_ctx(sheet_id);
+        let mut ctx = self.make_ctx(CellId {
+            sheet_id,
+            row: 0,
+            col: 0,
+        });
         Ok(cell_boundary_value(ctx.eval(&expr)?))
     }
 
@@ -387,7 +391,7 @@ impl CalcEngine {
                 // stale spilled values).
                 let old = self.release_spill(id);
                 let (value, steps) = {
-                    let mut ctx = self.make_ctx(id.sheet_id);
+                    let mut ctx = self.make_ctx(id);
                     let v = ctx.eval(&expr)?;
                     (v, ctx.steps())
                 };
@@ -569,6 +573,15 @@ impl CalcEngine {
     /// `FunctionRegistry::is_volatile`, maintained in `self.volatile`)
     /// plus its transitive dependents — a fresh `RAND()` is a value
     /// change like any other, so downstream formulas must re-run too.
+    ///
+    /// This is also the engine's answer to *dynamic* references:
+    /// `INDIRECT`/`OFFSET`-style calls produce their target reference
+    /// at evaluation time, so no static `Dep` edge can exist for the
+    /// cells they read. Marking every formula containing them volatile
+    /// recalculates them on every pass, which is conservative but
+    /// correct — the alternative (pretending static deps exist) would
+    /// miss updates. A narrower invalidation scheme (re-registering
+    /// deps per pass) is future work; see ADR 0002.
     fn mark_volatile_dirty(&mut self) {
         let volatile: Vec<CellId> = self.volatile.iter().copied().collect();
         for id in volatile {
@@ -625,14 +638,14 @@ impl CalcEngine {
         }
     }
 
-    fn make_ctx<'a>(&'a self, sheet_id: u32) -> EvalContext<'a> {
+    fn make_ctx<'a>(&'a self, caller: CellId) -> EvalContext<'a> {
         EvalContext::new(
             &self.workbook,
             &self.values,
             self.clock.as_ref(),
             self.rng.as_ref(),
             self.registry.as_ref(),
-            sheet_id,
+            caller,
         )
     }
 
@@ -707,6 +720,10 @@ impl Default for CalcEngine {
 fn cell_boundary_value(v: Value) -> Value {
     match v {
         Value::Lambda(_) => Value::Error(CalcError::Value),
+        // The evaluator dereferences references before they can reach a
+        // cell boundary; this arm is defensive for manually-constructed
+        // evaluation paths.
+        Value::Reference(_) => Value::Error(CalcError::Value),
         v => v,
     }
 }
