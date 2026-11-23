@@ -56,7 +56,8 @@ export function bindBrowserAgentRevocation(tokens, getManager) {
     void Promise.resolve(manager.revokeAgent({
       projectId: record.projectId,
       agentId: browserAgentOwner(record) ?? null,
-      deviceId: record.deviceId ?? null
+      deviceId: record.deviceId ?? null,
+      tokenId: record.id
     })).catch(() => {});
   });
 }
@@ -355,7 +356,7 @@ export async function handleBrowserAgentRequest(req, res, url, { manager, tokens
       }
       let { session } = current();
       if (!session) {
-        const started = await manager.start(record.projectId, { viewport: payload.viewport, ...owner, driver: "agent" });
+        const started = await manager.start(record.projectId, { viewport: payload.viewport, ...owner, driver: "agent", tokenId: record.id });
         if (!tokens.verify(bearerToken(req))) {
           await manager.stop(started.session.id, "agent_revoked").catch(() => {});
           sendJson(res, 401, { error: "A valid browser agent token is required", code: "agent_token_invalid" });
@@ -366,7 +367,7 @@ export async function handleBrowserAgentRequest(req, res, url, { manager, tokens
         record.generation = session.driver.generation;
         log({ ...base, event: "start", sessionId: session.id, decision: "allow", ok: true, driverGeneration: record.generation });
       } else if (session.driver.holder !== "user") {
-        const driver = manager.acquireDriver(session.id, { holder: "agent", ...owner });
+        const driver = manager.acquireDriver(session.id, { holder: "agent", ...owner, tokenId: record.id });
         record.generation = driver.generation;
         session = manager.get(session.id, owner);
         log({ ...base, event: "driver_acquire", sessionId: session.id, decision: "allow", ok: true, driverGeneration: driver.generation });
@@ -385,7 +386,7 @@ export async function handleBrowserAgentRequest(req, res, url, { manager, tokens
           throw httpError(decision.reason, 403, decision.code);
         }
         try {
-          const driver = manager.acquireDriver(session.id, { holder: "agent", ...owner });
+          const driver = manager.acquireDriver(session.id, { holder: "agent", ...owner, tokenId: record.id });
           record.generation = driver.generation;
           log({ ...base, event: "driver_acquire", sessionId: session.id, decision: "allow", ok: true, driverGeneration: driver.generation });
         } catch (error) {
@@ -412,7 +413,7 @@ export async function handleBrowserAgentRequest(req, res, url, { manager, tokens
       }
       const session = requireOpen();
       try {
-        const result = await manager.act(session.id, action, { holder: "agent", generation: record.generation ?? -1, ...owner });
+        const result = await manager.act(session.id, action, { holder: "agent", generation: record.generation ?? -1, ...owner, authorize: () => Boolean(tokens.verify(bearerToken(req))) });
         log({ ...base, event: "action", sessionId: session.id, action, capability: decision.capability, decision: "allow", ok: result.ok !== false, code: result.ok === false ? String(result.error || "") : undefined, driverGeneration: record.generation });
         if (Buffer.isBuffer(result.data)) result.data = result.data.toString("base64");
         sendJson(res, 200, result);

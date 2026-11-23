@@ -573,7 +573,7 @@ test("#705 revoking an agent token tells the browser manager which owner lost ac
   tokens.revokeRun("r1");
   tokens.revoke(manual.record.id);
   assert.deepEqual(calls, [
-    { projectId: "p1", agentId: "agent:r1", deviceId: null },
-    { projectId: "p2", agentId: null, deviceId: "dev-a" }
+    { projectId: "p1", agentId: "agent:r1", deviceId: null, tokenId: run.record.id },
+    { projectId: "p2", agentId: null, deviceId: "dev-a", tokenId: manual.record.id }
   ]);
 });

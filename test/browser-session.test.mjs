@@ -741,6 +741,32 @@ test("#702 stopping or replacing a preview cancels a browser start in flight", a
   assert.ok(previews);
 });
 
+test("#705 a revoked token gets no page content from a read already queued", async t => {
+  const shot = gateOn(message => message.method === "Page.captureScreenshot");
+  const { manager } = await setup(t, { chrome: { gate: message => shot.gate(message) } });
+  const { session } = await manager.start("p1", { deviceId: "dev-a" });
+  let valid = true;
+  const read = manager.act(session.id, { type: "screenshot" }, { holder: "agent", deviceId: "dev-a", authorize: () => valid });
+  const queued = manager.act(session.id, { type: "dom" }, { holder: "agent", deviceId: "dev-a", authorize: () => valid });
+  await shot.reached.promise;
+  valid = false;
+  shot.release();
+  await assert.rejects(read, error => error.code === "agent_token_invalid");
+  await assert.rejects(queued, error => error.code === "agent_token_invalid");
+});
+
+test("#705 revoking one agent token keeps the driver another token of the same device holds", async t => {
+  const { manager } = await setup(t);
+  const { session } = await manager.start("p1", { deviceId: "dev-a" });
+  manager.releaseDriver(session.id, { generation: 1, deviceId: "dev-a" });
+  const driver = manager.acquireDriver(session.id, { holder: "agent", deviceId: "dev-a", tokenId: "tok-act" });
+  await manager.revokeAgent({ projectId: "p1", agentId: null, deviceId: "dev-a", tokenId: "tok-read" });
+  const result = await manager.act(session.id, { type: "reload" }, { holder: "agent", generation: driver.generation, deviceId: "dev-a" });
+  assert.equal(result.ok, true);
+  await manager.revokeAgent({ projectId: "p1", agentId: null, deviceId: "dev-a", tokenId: "tok-act" });
+  await assert.rejects(() => manager.act(session.id, { type: "reload" }, { holder: "agent", generation: driver.generation, deviceId: "dev-a" }), error => error.code === "driver_stale");
+});
+
 test("#705 device and agent revocation end in-flight work, sessions and REST requests", async t => {
   const pressed = gateOn(message => message.method === "Input.dispatchMouseEvent" && message.params?.type === "mousePressed");
   const { manager, spawns } = await setup(t, { chrome: { gate: message => pressed.gate(message) } });

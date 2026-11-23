@@ -758,7 +758,7 @@ export function createBrowserSessionManager({
     }
   }
 
-  async function startSession(projectId, { viewport, deviceId = null, driver: initialDriver = "user" } = {}, startTicket) {
+  async function startSession(projectId, { viewport, deviceId = null, driver: initialDriver = "user", tokenId = null } = {}, startTicket) {
     const agentId = startTicket.agentId;
     if (!deviceId && !agentId) throw httpError("A browser session needs a trusted device or an agent owner", 403, "owner_required");
     const status = browserAutomationStatus({ env, spawnSyncImpl });
@@ -851,7 +851,7 @@ export function createBrowserSessionManager({
         url: "about:blank",
         title: "",
         viewport: normalizeViewport(viewport),
-        driver: initialDriver === "agent" ? { holder: "agent", generation: 1, deviceId: null } : { holder: "user", generation: 1, deviceId },
+        driver: initialDriver === "agent" ? { holder: "agent", generation: 1, deviceId: null, tokenId } : { holder: "user", generation: 1, deviceId },
         sandboxed: wrapped.sandboxed === true,
         browser: { binary: resolveExecutable(detected.binary, env) || detected.binary, version: detected.version },
         blockedRequests: 0,
@@ -915,14 +915,19 @@ export function createBrowserSessionManager({
     }
   }
 
-  function acquireDriver(sessionId, { holder = "user", deviceId, agentId } = {}) {
+  function acquireDriver(sessionId, { holder = "user", deviceId, agentId, tokenId = null } = {}) {
     const session = requireSession(sessionId, { deviceId, agentId });
     if (!DRIVER_HOLDERS.includes(holder)) throw httpError("Unknown driver holder", 400, "invalid_driver");
     // The user always wins: acquiring as user is an immediate takeover.
     if (holder === "agent" && session.driver.holder === "user") {
       throw httpError("The user is driving this browser session", 409, "driver_busy");
     }
-    session.driver = { holder, generation: session.driver.generation + 1, deviceId: holder === "user" ? session.ownerDeviceId : null };
+    session.driver = {
+      holder,
+      generation: session.driver.generation + 1,
+      deviceId: holder === "user" ? session.ownerDeviceId : null,
+      tokenId: holder === "agent" ? tokenId : null
+    };
     session.lastActivityAt = now();
     notify(session, { t: "driver", ...publicDriver(session) });
     return publicDriver(session);
@@ -1066,11 +1071,17 @@ export function createBrowserSessionManager({
    * Runs one fixed-schema action. Mutating actions require the caller to hold
    * the current driver generation; reads only require an active session.
    */
-  async function act(sessionId, rawAction, { holder = "user", generation, deviceId, agentId } = {}) {
+  async function act(sessionId, rawAction, { holder = "user", generation, deviceId, agentId, authorize = null } = {}) {
     const session = requireSession(sessionId, { deviceId, agentId });
     const action = normalizeBrowserAction(rawAction, limits);
     const mutating = BROWSER_ACT_ACTIONS.includes(action.type);
+    // `authorize` re-checks the caller's credential (an agent token), so a
+    // queued read never runs or returns page content after it is revoked.
+    const assertAuthorized = () => {
+      if (authorize && !authorize()) throw httpError("A valid browser agent token is required", 401, "agent_token_invalid");
+    };
     const guard = () => {
+      assertAuthorized();
       if (!session.active) throw httpError("Browser session not found", 404, "session_not_found");
       if (mutating) assertDriver(session, { holder, generation, deviceId });
     };
@@ -1092,6 +1103,7 @@ export function createBrowserSessionManager({
     } finally {
       session.queuedActions -= 1;
     }
+    assertAuthorized();
     if (mutating) session.lastActivityAt = now();
     // Viewers show where an agent clicked or scrolled.
     if (holder === "agent" && Number.isFinite(result?.x) && Number.isFinite(result?.y)) {
@@ -1138,14 +1150,16 @@ export function createBrowserSessionManager({
   }
 
   // A revoked agent token stops driving at once: sessions an Agent Run owns
-  // are stopped, and an agent holding a device's session loses the driver.
-  async function revokeAgent({ projectId, agentId = null, deviceId = null } = {}, reason = "agent_revoked") {
+  // are stopped, and an agent driving a device's session with that token
+  // loses the driver. Other tokens of the same device keep theirs.
+  async function revokeAgent({ projectId, agentId = null, deviceId = null, tokenId = null } = {}, reason = "agent_revoked") {
     const project = String(projectId || "");
     if (agentId) for (const ticket of pendingStarts) if (ticket.agentId === agentId) ticket.revoked = true;
     const owned = agentId ? [...sessions.values()].filter(session => session.ownerAgentId === agentId) : [];
     for (const session of sessions.values()) {
       if (owned.includes(session) || session.projectId !== project || session.driver.holder !== "agent") continue;
       if (deviceId && session.ownerDeviceId !== deviceId) continue;
+      if (tokenId && session.driver.tokenId && session.driver.tokenId !== tokenId) continue;
       session.driver = { holder: null, generation: session.driver.generation + 1, deviceId: null };
       notify(session, { t: "driver", ...publicDriver(session) });
     }
