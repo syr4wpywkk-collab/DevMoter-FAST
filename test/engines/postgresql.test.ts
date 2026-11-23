@@ -4,7 +4,7 @@ import { after, before, describe, test } from 'node:test';
 
 import pg from 'pg';
 
-import { MAX_PARAMS, MAX_SQL_BYTES, createPostgresqlAdapter, encodePostgresqlParam, postgresqlError, postgresqlTypes, validatePostgresqlRequest } from '../../src/engines/postgresql.ts';
+import { MAX_PARAMS, MAX_SQL_BYTES, copiesThroughClient, createPostgresqlAdapter, encodePostgresqlParam, postgresqlError, postgresqlTypes, validatePostgresqlRequest } from '../../src/engines/postgresql.ts';
 import { EngineError, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
 import { builtEngine, startPostgresql, type TestServer } from './helpers.ts';
 
@@ -31,6 +31,31 @@ test('oversized or malformed requests are rejected before connecting', () => {
   assert.throws(() => validatePostgresqlRequest(`SELECT '${'x'.repeat(MAX_SQL_BYTES)}'`, []), invalid);
   assert.throws(() => validatePostgresqlRequest('SELECT 1', 'x' as unknown as QueryParam[]), invalid);
   assert.throws(() => validatePostgresqlRequest('SELECT 1', new Array<QueryParam>(MAX_PARAMS + 1).fill(1)), invalid);
+});
+
+test('COPY through the connection is recognised from the text, so it is refused before anything is sent', () => {
+  for (const sql of [
+    'COPY t TO STDOUT',
+    'copy t (a, b) to stdout WITH (FORMAT csv)',
+    'COPY (INSERT INTO t VALUES (1) RETURNING a) TO STDOUT',
+    'COPY t FROM STDIN',
+    'SELECT 1; /* c */ COPY t TO -- c\n STDOUT',
+    "COPY (SELECT ')') TO STDOUT",
+  ]) {
+    assert.equal(copiesThroughClient(sql), true, sql);
+    assert.throws(() => validatePostgresqlRequest(sql, []), (error: unknown) => error instanceof EngineError && error.code === 'invalid_request' && /COPY/.test(error.message), sql);
+  }
+  for (const sql of [
+    "COPY t TO '/tmp/stdout'",
+    'COPY t (stdout) TO PROGRAM $$cat$$',
+    'COPY (SELECT stdin FROM stdout) TO \'/tmp/file\'',
+    "SELECT 'COPY t TO STDOUT'",
+    'SELECT copy, stdout FROM t -- COPY t TO STDOUT',
+    'SELECT to_char(1) AS stdout',
+    'COPY t TO "STDOUT"',
+  ]) {
+    assert.equal(copiesThroughClient(sql), false, sql);
+  }
 });
 
 test('only types JSON holds exactly are converted; the rest stay text', () => {
@@ -154,11 +179,13 @@ describe('PostgreSQL adapter against the built engine', { skip }, () => {
     assert.equal(clients, 2, 'one connection for the query and one to cancel it');
   });
 
-  test('COPY ... TO STDOUT is refused instead of returning an empty result', async () => {
-    await assert.rejects(adapter.query('COPY t TO STDOUT', []), rejectsWith('query_failed', /COPY .* TO STDOUT is not available/));
-    await assert.rejects(adapter.query('COPY (SELECT $1::int) TO STDOUT', [1]), rejectsWith('query_failed'));
-    await assert.rejects(adapter.query('COPY t FROM STDIN', []), rejectsWith('query_failed'));
-    assert.deepEqual((await adapter.query('SELECT 1 AS one', [])).results[0]?.rows, [{ one: 1 }]);
+  test('COPY ... TO STDOUT is refused before it runs, so a write inside it is not made', async () => {
+    await assert.rejects(adapter.query('COPY t TO STDOUT', []), rejectsWith('invalid_request', /COPY .* TO STDOUT/));
+    await assert.rejects(adapter.query('COPY (SELECT $1::int) TO STDOUT', [1]), rejectsWith('invalid_request'));
+    await assert.rejects(adapter.query('COPY t FROM STDIN', []), rejectsWith('invalid_request'));
+    await adapter.query('CREATE TABLE copy_probe (a int)', []);
+    await assert.rejects(adapter.query('COPY (INSERT INTO copy_probe VALUES (1) RETURNING a) TO STDOUT', []), rejectsWith('invalid_request'));
+    assert.deepEqual((await adapter.query('SELECT count(*)::int AS rows FROM copy_probe', [])).results[0]?.rows, [{ rows: 0 }]);
   });
 
   test('numbers inside json and jsonb values are never rounded', async () => {
