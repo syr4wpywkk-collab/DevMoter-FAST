@@ -19,3 +19,7 @@ harness = false
 [[bench]]
 name = "parse_bench"
 harness = false
+
+[[bench]]
+name = "recalc_bench"
+harness = false
