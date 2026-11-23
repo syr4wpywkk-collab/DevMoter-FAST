@@ -545,10 +545,15 @@ test("superseded frames are acked and a silent viewer is dropped without waiting
   child.emitEvent("Page.screencastFrame", { data: jpeg, sessionId: 1 });
   child.emitEvent("Page.screencastFrame", { data: jpeg, sessionId: 2 });
   await new Promise(resolve => setTimeout(resolve, 20));
-  assert.deepEqual(ackIds(), [1]);
+  assert.deepEqual(ackIds(), [], "capture pauses while the viewer has not acked");
   viewer.ack(frames[0].seq);
   await new Promise(resolve => setTimeout(resolve, 20));
   assert.equal(frames.length, 2);
+  viewer.ack(frames[1].seq);
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.deepEqual(ackIds(), [1, 2], "held frames are all acked once the viewer drains");
+  child.emitEvent("Page.screencastFrame", { data: jpeg, sessionId: 3 });
+  await new Promise(resolve => setTimeout(resolve, 20));
   assert.deepEqual(closed, []);
   await new Promise(resolve => setTimeout(resolve, 120));
   assert.deepEqual(closed, [[4008, "slow_consumer"]]);

@@ -319,7 +319,7 @@ export function createBrowserSessionManager({
     const screencast = session.screencast;
     if (!screencast.running) return;
     screencast.running = false;
-    screencast.pendingAck = null;
+    screencast.pendingAcks = [];
     if (session.cdp && !session.cdp.closed) {
       void session.cdp.send("Page.stopScreencast", {}, { sessionId: session.cdpSessionId }).catch(() => {});
     }
@@ -327,12 +327,14 @@ export function createBrowserSessionManager({
 
   function ackChromiumWhenDrained(session) {
     const screencast = session.screencast;
-    if (screencast.pendingAck === null) return;
+    if (!screencast.pendingAcks.length) return;
     for (const viewer of session.viewers) if (viewer.inflight !== null) return;
-    const ackId = screencast.pendingAck;
-    screencast.pendingAck = null;
+    const ackIds = screencast.pendingAcks;
+    screencast.pendingAcks = [];
     if (session.cdp && !session.cdp.closed) {
-      void session.cdp.send("Page.screencastFrameAck", { sessionId: ackId }, { sessionId: session.cdpSessionId }).catch(() => {});
+      for (const ackId of ackIds) {
+        void session.cdp.send("Page.screencastFrameAck", { sessionId: ackId }, { sessionId: session.cdpSessionId }).catch(() => {});
+      }
     }
   }
 
@@ -561,12 +563,9 @@ export function createBrowserSessionManager({
       const screencast = session.screencast;
       if (!screencast.running || !Number.isSafeInteger(params?.sessionId)) return;
       const data = Buffer.from(String(params.data || ""), "base64");
-      // A newer frame supersedes the held one; ack it so Chromium's
-      // in-flight budget is not lost.
-      if (screencast.pendingAck !== null && session.cdp && !session.cdp.closed) {
-        void session.cdp.send("Page.screencastFrameAck", { sessionId: screencast.pendingAck }, { sessionId: session.cdpSessionId }).catch(() => {});
-      }
-      screencast.pendingAck = params.sessionId;
+      // Every held frame is acked once viewers drain, so a slow viewer
+      // pauses capture without losing Chromium's in-flight budget.
+      screencast.pendingAcks.push(params.sessionId);
       if (!data.length || data.length > limits.maxFrameBytes) {
         ackChromiumWhenDrained(session);
         return;
@@ -697,7 +696,7 @@ export function createBrowserSessionManager({
         targetId: null,
         listeners: new Set(),
         viewers: new Set(),
-        screencast: { running: false, latest: null, seq: 0, pendingAck: null },
+        screencast: { running: false, latest: null, seq: 0, pendingAcks: [] },
         exited: null
       };
       sessions.set(project.id, session);
