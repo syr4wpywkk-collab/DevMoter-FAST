@@ -20,8 +20,9 @@ use calc_core::value::Value;
 /// `INTERCEPT` need. Scalars and single refs are one-element vectors.
 fn arg_members(ctx: &mut EvalContext<'_>, arg: &Expr) -> Result<Vec<(Value, bool)>, EvalError> {
     Ok(match ctx.eval_arg(arg)? {
-        // Array constants behave like ranges (see `flatten_args`).
-        ArgValue::Scalar(Value::Array(a)) => a.into_iter().map(|v| (v, true)).collect(),
+        ArgValue::Scalar(Value::Array(a)) | ArgValue::Ref(Value::Array(a)) => {
+            a.into_iter().map(|v| (v, true)).collect()
+        }
         ArgValue::Scalar(v) => vec![(v, false)],
         ArgValue::Ref(v) => vec![(v, true)],
         ArgValue::Range(a) => a.into_iter().map(|v| (v, true)).collect(),
@@ -82,30 +83,36 @@ pub fn numeric_pairs(
     Ok(Ok(out))
 }
 
-/// A-family number collection (`STDEVA`/`VARA`/`STDEVPA`/`VARPA`):
-/// range members coerce to numbers — `TRUE` = 1; `FALSE`, text and
-/// blanks = 0 — so a range contributes one value per cell. Direct
-/// scalars follow the usual [`Value::to_number`] coercion (non-numeric
-/// text is `#VALUE!`). Error cells/args propagate.
-pub fn collect_numbers_a(
+/// Numbers of a single array argument (`F.TEST`, `FREQUENCY`):
+/// evaluates `arg` via `eval_array` and keeps `Value::Number` members;
+/// text/boolean/blank members are ignored and error members propagate.
+/// Scalars wrap into a one-element array, so a scalar argument yields
+/// a single-element vector (or empty for a blank/non-numeric scalar —
+/// scalar non-numeric is ignored like an array member, matching
+/// Excel's array-argument behavior).
+pub fn array_numbers(
     ctx: &mut EvalContext<'_>,
-    args: &[Expr],
+    arg: &Expr,
 ) -> Result<Result<Vec<f64>, CalcError>, EvalError> {
-    let flat = crate::common::coercion::flatten_args(ctx, args)?;
-    let mut out = Vec::new();
-    for (v, ranged) in flat {
-        if ranged {
-            match v {
-                Value::Number(n) => out.push(n),
-                Value::Boolean(b) => out.push(if b { 1.0 } else { 0.0 }),
-                Value::Error(e) => return Ok(Err(e)),
-                _ => out.push(0.0), // text and blank count as 0
-            }
-        } else {
-            match v.to_number() {
-                Ok(n) => out.push(n),
-                Err(e) => return Ok(Err(e)),
-            }
+    let arr = match ctx.eval_arg(arg)? {
+        ArgValue::Range(a) => a,
+        ArgValue::Scalar(Value::Array(a)) | ArgValue::Ref(Value::Array(a)) => a,
+        ArgValue::Scalar(v) | ArgValue::Ref(v) => {
+            return Ok(match v.error() {
+                Some(e) => Err(e),
+                None => Ok(match v.to_number() {
+                    Ok(n) => vec![n],
+                    Err(e) => return Ok(Err(e)),
+                }),
+            });
+        }
+    };
+    let mut out = Vec::with_capacity(arr.cells().len());
+    for v in arr.cells() {
+        match v {
+            Value::Number(n) => out.push(*n),
+            Value::Error(e) => return Ok(Err(*e)),
+            _ => {}
         }
     }
     Ok(Ok(out))
@@ -162,6 +169,88 @@ pub fn percentile_inc_sorted(sorted: &[f64], k: f64) -> f64 {
     }
     let frac = r - lo as f64;
     sorted[lo] + (sorted[lo + 1] - sorted[lo]) * frac
+}
+
+/// Two-pass deviation sums over numeric pairs: the shared accumulator
+/// for `CORREL` (`r = sxy / sqrt(sxx·syy)`), `SLOPE`
+/// (`b = sxy / sxx`) and `INTERCEPT` (`ȳ - b·x̄`).
+///
+/// Same stability argument as [`sample_variance`]: the deviation form
+/// `Σ((x-x̄)(y-ȳ))` avoids the catastrophic cancellation of the
+/// `Σxy - n·x̄·ȳ` shortcut.
+#[derive(Debug, Clone, Copy)]
+pub struct PairStats {
+    pub n: usize,
+    pub mean_x: f64,
+    pub mean_y: f64,
+    /// `Σ(x - x̄)²`
+    pub sxx: f64,
+    /// `Σ(y - ȳ)²`
+    pub syy: f64,
+    /// `Σ(x - x̄)(y - ȳ)`
+    pub sxy: f64,
+}
+
+/// Compute [`PairStats`] for `pairs` (`(x, y)` order — `x` is the
+/// independent variable for `SLOPE`/`INTERCEPT`).
+pub fn pair_stats(pairs: &[(f64, f64)]) -> PairStats {
+    let n = pairs.len();
+    let mean_x = pairs.iter().map(|(x, _)| x).sum::<f64>() / n as f64;
+    let mean_y = pairs.iter().map(|(_, y)| y).sum::<f64>() / n as f64;
+    let (mut sxx, mut syy, mut sxy) = (0.0, 0.0, 0.0);
+    for (x, y) in pairs {
+        let dx = x - mean_x;
+        let dy = y - mean_y;
+        sxx += dx * dx;
+        syy += dy * dy;
+        sxy += dx * dy;
+    }
+    PairStats {
+        n,
+        mean_x,
+        mean_y,
+        sxx,
+        syy,
+        sxy,
+    }
+}
+
+/// Coerce a scalar parameter (a `k`, `quart`, `order`, … argument).
+/// Errors map to `Value::Error` at the call site.
+pub fn scalar_number(
+    ctx: &mut EvalContext<'_>,
+    arg: &Expr,
+) -> Result<Result<f64, CalcError>, EvalError> {
+    Ok(ctx.eval(arg)?.to_number())
+}
+
+/// A-family number collection (`STDEVA`/`VARA`/`STDEVPA`/`VARPA`):
+/// range members coerce to numbers — `TRUE` = 1; `FALSE`, text and
+/// blanks = 0 — so a range contributes one value per cell. Direct
+/// scalars follow the usual [`Value::to_number`] coercion (non-numeric
+/// text is `#VALUE!`). Error cells/args propagate.
+pub fn collect_numbers_a(
+    ctx: &mut EvalContext<'_>,
+    args: &[Expr],
+) -> Result<Result<Vec<f64>, CalcError>, EvalError> {
+    let flat = crate::common::coercion::flatten_args(ctx, args)?;
+    let mut out = Vec::new();
+    for (v, ranged) in flat {
+        if ranged {
+            match v {
+                Value::Number(n) => out.push(n),
+                Value::Boolean(b) => out.push(if b { 1.0 } else { 0.0 }),
+                Value::Error(e) => return Ok(Err(e)),
+                _ => out.push(0.0), // text and blank count as 0
+            }
+        } else {
+            match v.to_number() {
+                Ok(n) => out.push(n),
+                Err(e) => return Ok(Err(e)),
+            }
+        }
+    }
+    Ok(Ok(out))
 }
 
 /// Two-pass population variance `Σ(x - x̄)² / n`.
@@ -257,59 +346,6 @@ pub fn solve_normal_equations(design: &[Vec<f64>], y: &[f64]) -> Option<Vec<f64>
         beta[i] = s / ata[i][i];
     }
     Some(beta)
-}
-
-/// Two-pass deviation sums over numeric pairs: the shared accumulator
-/// for `CORREL` (`r = sxy / sqrt(sxx·syy)`), `SLOPE`
-/// (`b = sxy / sxx`) and `INTERCEPT` (`ȳ - b·x̄`).
-///
-/// Same stability argument as [`sample_variance`]: the deviation form
-/// `Σ((x-x̄)(y-ȳ))` avoids the catastrophic cancellation of the
-/// `Σxy - n·x̄·ȳ` shortcut.
-#[derive(Debug, Clone, Copy)]
-pub struct PairStats {
-    pub n: usize,
-    pub mean_x: f64,
-    pub mean_y: f64,
-    /// `Σ(x - x̄)²`
-    pub sxx: f64,
-    /// `Σ(y - ȳ)²`
-    pub syy: f64,
-    /// `Σ(x - x̄)(y - ȳ)`
-    pub sxy: f64,
-}
-
-/// Compute [`PairStats`] for `pairs` (`(x, y)` order — `x` is the
-/// independent variable for `SLOPE`/`INTERCEPT`).
-pub fn pair_stats(pairs: &[(f64, f64)]) -> PairStats {
-    let n = pairs.len();
-    let mean_x = pairs.iter().map(|(x, _)| x).sum::<f64>() / n as f64;
-    let mean_y = pairs.iter().map(|(_, y)| y).sum::<f64>() / n as f64;
-    let (mut sxx, mut syy, mut sxy) = (0.0, 0.0, 0.0);
-    for (x, y) in pairs {
-        let dx = x - mean_x;
-        let dy = y - mean_y;
-        sxx += dx * dx;
-        syy += dy * dy;
-        sxy += dx * dy;
-    }
-    PairStats {
-        n,
-        mean_x,
-        mean_y,
-        sxx,
-        syy,
-        sxy,
-    }
-}
-
-/// Coerce a scalar parameter (a `k`, `quart`, `order`, … argument).
-/// Errors map to `Value::Error` at the call site.
-pub fn scalar_number(
-    ctx: &mut EvalContext<'_>,
-    arg: &Expr,
-) -> Result<Result<f64, CalcError>, EvalError> {
-    Ok(ctx.eval(arg)?.to_number())
 }
 
 #[cfg(test)]
