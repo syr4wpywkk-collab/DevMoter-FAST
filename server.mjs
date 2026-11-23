@@ -3277,7 +3277,8 @@ const server = http.createServer(async (req, res) => {
         if (docMatch && req.method === "GET") {
           if (docMatch[2]) {
             const { meta, bytes } = await officeStore.download(docMatch[1], url.searchParams.get("revision"));
-            res.writeHead(200, { "content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "content-disposition": `attachment; filename="document.docx"; filename*=UTF-8''${encodeURIComponent(meta.name)}`, "cache-control": "no-store", "x-content-type-options": "nosniff" }); res.end(bytes);
+            const xlsx = /\.xlsx$/i.test(meta.name);
+            res.writeHead(200, { "content-type": xlsx ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "content-disposition": `attachment; filename="document.${xlsx ? "xlsx" : "docx"}"; filename*=UTF-8''${encodeURIComponent(meta.name)}`, "cache-control": "no-store", "x-content-type-options": "nosniff" }); res.end(bytes);
           } else json(res, 200, await officeStore.open(docMatch[1]));
           return;
         }

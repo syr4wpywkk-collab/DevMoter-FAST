@@ -36,6 +36,8 @@ export function createOfficeAi({ store, prepareChat, authorize }) {
       )
         throw new Error("依頼とAIへの本文共有を確認してください。");
       const document = await store.get(payload.documentId);
+      if (document.format !== "docx" || !Array.isArray(document.blocks))
+        throw new Error("この文書形式はAI編集に対応していません。");
       if (document.revision !== payload.revision)
         throw Object.assign(
           new Error("文書が更新されています。再読み込みしてください。"),
