@@ -6,8 +6,10 @@
 //
 // Consequences of one process per request, until a pooled connection exists (feature #16):
 // - connection state (PRAGMA settings, temp tables, open transactions) ends with the request;
-//   a transaction must be sent as one request (BEGIN; ...; COMMIT;), and is rolled back if any statement fails;
-// - the SQL text and the parameters travel as program arguments, hence the size limits below.
+//   a transaction must be sent as one request (BEGIN; ...; COMMIT;), and is rolled back if any statement fails.
+//
+// The SQL text and the parameters reach the shell on its standard input, never as program
+// arguments: the arguments of a process are visible to every user of the machine.
 
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
@@ -55,36 +57,47 @@ export function encodeSqliteLiteral(param: QueryParam, position: number): string
   throw new EngineError('invalid_request', `parameter ${position} must be null, a boolean, a number, a string or {"$base64": "..."}`);
 }
 
-/** Builds the sqlite3 arguments for one request. */
-export function sqliteArguments(options: SqliteAdapterOptions, sql: string, params: readonly QueryParam[]): string[] {
+export interface SqliteInvocation {
+  /** Program arguments: options and the database file only, nothing of the request. */
+  args: string[];
+  /** The script for the shell's standard input: the settings, the parameters, then the caller's SQL. */
+  input: string;
+}
+
+/** Builds the sqlite3 arguments and input for one request. */
+export function sqliteInvocation(options: SqliteAdapterOptions, sql: string, params: readonly QueryParam[]): SqliteInvocation {
   if (typeof sql !== 'string' || sql.trim() === '') throw new EngineError('invalid_request', 'sql must be a non-empty string');
   if (sql.includes('\0')) throw new EngineError('invalid_request', 'sql must not contain a NUL character');
   if (Buffer.byteLength(sql, 'utf8') > MAX_SQL_BYTES) throw new EngineError('invalid_request', `sql is longer than ${MAX_SQL_BYTES} bytes`);
+  // The shell reads a line that starts with "." as one of its dot-commands when no statement is open.
+  // Whether one is open cannot be told without parsing the SQL, so such a line is refused wherever it is.
+  if (/^\./m.test(sql)) {
+    throw new EngineError('invalid_request', 'a line of sql must not start with "."; indent the line, or pass the text as a parameter');
+  }
   if (!Array.isArray(params)) throw new EngineError('invalid_request', 'params must be an array');
   if (params.length > MAX_PARAMS) throw new EngineError('invalid_request', `more than ${MAX_PARAMS} parameters`);
 
-  const args = ['-safe', '-batch', '-noinit', '-json'];
+  // -bail: stop at the first error, as the caller expects of one request.
+  const args = ['-safe', '-batch', '-noinit', '-bail', '-json'];
   if (options.readOnly) args.push('-readonly');
+  args.push(path.resolve(options.file));
   // ".explain off": without it the shell prints EXPLAIN output as formatted text, not JSON.
-  args.push(path.resolve(options.file), `.timeout ${BUSY_TIMEOUT_MS}`, '.explain off');
+  const lines = [`.timeout ${BUSY_TIMEOUT_MS}`, '.explain off'];
   if (params.length > 0) {
     const values = params.map((param, index) => `('?${index + 1}',${encodeSqliteLiteral(param, index + 1)})`).join(',');
     if (values.length > MAX_PARAMS_BYTES) throw new EngineError('invalid_request', `the parameters are larger than ${MAX_PARAMS_BYTES} bytes once encoded`);
-    args.push('.parameter init', `INSERT INTO temp.sqlite_parameters(key,value) VALUES${values}`);
+    lines.push('.parameter init', `INSERT INTO temp.sqlite_parameters(key,value) VALUES${values};`);
   }
-  // The shell treats an argument that starts with "." as a dot-command, one that starts with "-" as an
-  // option and one that names a script file as a file to run. The leading space makes the text none of
-  // these: it is always handed to the SQL parser.
-  args.push(` ${sql}`);
-  return args;
+  lines.push(sql, '');
+  return { args, input: lines.join('\n') };
 }
 
 /** Turns the shell's error output into a message about the caller's SQL. */
 export function sqliteErrorMessage(stderr: string): string {
   const text = stderr
     .trim()
-    .replace(/^(?:Parse error|Runtime error|Error) in \d+\w* command line argument: /, '')
-    .replace(/^(?:line \d+|argv\[\d+\]|<cmdline>:\d+): /, '')
+    .replace(/^(?:Parse error|Runtime error|Error) near line \d+: /, '')
+    .replace(/^(?:line \d+|<stdin>:\d+): /, '')
     .replace(/^Error: /, '');
   return text === '' ? 'the query failed' : text;
 }
@@ -101,7 +114,7 @@ export function createSqliteAdapter(options: SqliteAdapterOptions): SqlAdapter {
 
     async query(sql: string, params: readonly QueryParam[], queryOptions: QueryOptions = {}): Promise<QueryResult> {
       if (closed) throw new EngineError('engine_unavailable', 'the database is closed');
-      const args = sqliteArguments(options, sql, params);
+      const { args, input } = sqliteInvocation(options, sql, params);
       const timeoutMs = resolveTimeout(queryOptions.timeoutMs);
       // An empty private directory is the working directory and HOME, so the shell finds no init file and no relative path resolves.
       scratch ??= mkdtemp(path.join(os.tmpdir(), 'dmb-sqlite-'));
@@ -110,6 +123,7 @@ export function createSqliteAdapter(options: SqliteAdapterOptions): SqlAdapter {
       const child = runEngineProcess({
         command: options.binary,
         args,
+        input,
         cwd,
         env: { HOME: cwd, XDG_CONFIG_HOME: cwd, TMPDIR: os.tmpdir(), LC_ALL: 'C.UTF-8', TZ: 'UTC' },
         timeoutMs,

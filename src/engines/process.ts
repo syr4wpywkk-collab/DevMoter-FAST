@@ -8,6 +8,8 @@ import { EngineError } from './types.ts';
 export interface RunOptions {
   command: string;
   args: readonly string[];
+  /** Written to the engine's standard input. Unlike `args`, other users of the machine cannot see it in the process list. */
+  input?: string | undefined;
   cwd: string;
   env: Record<string, string>;
   timeoutMs: number;
@@ -34,9 +36,12 @@ export function runEngineProcess(options: RunOptions): Promise<RunResult> {
     const child = spawn(options.command, [...options.args], {
       cwd: options.cwd,
       env: options.env,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
     });
+    // An engine that exits before reading all its input closes the pipe; its exit code and output say why.
+    child.stdin.on('error', () => {});
+    child.stdin.end(options.input ?? '');
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];
     let stdoutBytes = 0;

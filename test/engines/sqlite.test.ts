@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 
-import { MAX_PARAMS, MAX_SQL_BYTES, createSqliteAdapter, encodeSqliteLiteral, sqliteArguments, sqliteErrorMessage } from '../../src/engines/sqlite.ts';
+import { MAX_PARAMS, MAX_SQL_BYTES, createSqliteAdapter, encodeSqliteLiteral, sqliteErrorMessage, sqliteInvocation } from '../../src/engines/sqlite.ts';
 import { EngineError, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
 import { builtEngine } from './helpers.ts';
 
@@ -36,39 +36,52 @@ test('invalid parameters are rejected', () => {
   }
 });
 
-test('the shell runs in safe mode and the SQL can never be an option, a dot-command or a script file', () => {
+test('the shell runs in safe mode and nothing of the request is a program argument', () => {
   const options = { binary: '/x/sqlite3', file: '/data/app.sqlite' };
-  assert.deepEqual(sqliteArguments(options, 'SELECT 1', []), ['-safe', '-batch', '-noinit', '-json', '/data/app.sqlite', '.timeout 5000', '.explain off', ' SELECT 1']);
-  assert.deepEqual(sqliteArguments({ ...options, readOnly: true }, '.shell id', []).slice(0, 5), ['-safe', '-batch', '-noinit', '-json', '-readonly']);
-  for (const sql of ['.shell id', '-version', '--help', '/etc/hosts.txt', 'script.sql']) {
-    assert.equal(sqliteArguments(options, sql, []).at(-1), ` ${sql}`);
+  assert.deepEqual(sqliteInvocation(options, 'SELECT 1', []), {
+    args: ['-safe', '-batch', '-noinit', '-bail', '-json', '/data/app.sqlite'],
+    input: '.timeout 5000\n.explain off\nSELECT 1\n',
+  });
+  assert.deepEqual(sqliteInvocation({ ...options, readOnly: true }, 'SELECT 1', []).args, ['-safe', '-batch', '-noinit', '-bail', '-json', '-readonly', '/data/app.sqlite']);
+  const secret = sqliteInvocation(options, "SELECT 'sql-secret', ?1, ?2", ['a', 2]);
+  assert.deepEqual(secret.args, ['-safe', '-batch', '-noinit', '-bail', '-json', '/data/app.sqlite']);
+  assert.equal(
+    secret.input,
+    ".timeout 5000\n.explain off\n.parameter init\nINSERT INTO temp.sqlite_parameters(key,value) VALUES('?1',CAST(x'61' AS TEXT)),('?2',2);\nSELECT 'sql-secret', ?1, ?2\n",
+  );
+  assert.equal(sqliteInvocation({ binary: '/x/sqlite3', file: 'relative.sqlite' }, 'SELECT 1', []).args.at(-1), path.resolve('relative.sqlite'));
+});
+
+test('the SQL can never be a dot-command of the shell', () => {
+  const options = { binary: '/x/sqlite3', file: '/data/app.sqlite' };
+  for (const sql of ['.shell id', 'SELECT 1;\n.output /tmp/x', 'SELECT 1;\r\n.mode csv', "SELECT '\n.text'"]) {
+    assert.throws(() => sqliteInvocation(options, sql, []), rejectsWith('invalid_request', /must not start with "\."/), sql);
   }
-  assert.deepEqual(sqliteArguments(options, 'SELECT ?1, ?2', ['a', 2]).slice(-3), [
-    '.parameter init',
-    "INSERT INTO temp.sqlite_parameters(key,value) VALUES('?1',CAST(x'61' AS TEXT)),('?2',2)",
-    ' SELECT ?1, ?2',
-  ]);
-  assert.equal(sqliteArguments({ binary: '/x/sqlite3', file: 'relative.sqlite' }, 'SELECT 1', [])[4], path.resolve('relative.sqlite'));
+  // Only the first character of a line makes a dot-command; these are plain SQL (and parameters are one line of hex).
+  for (const sql of ['SELECT 1;\n .5 + 1', 'SELECT t\n  .id FROM t', 'SELECT 1.5', '-version', '--help']) {
+    assert.equal(sqliteInvocation(options, sql, []).input.endsWith(`\n${sql}\n`), true, sql);
+  }
+  assert.doesNotMatch(sqliteInvocation(options, 'SELECT ?1', ['a\n.shell id']).input, /^\.shell/m);
 });
 
 test('oversized or malformed requests are rejected before the engine starts', () => {
   const options = { binary: '/x/sqlite3', file: '/data/app.sqlite' };
   const invalid = rejectsWith('invalid_request');
-  assert.throws(() => sqliteArguments(options, '', []), invalid);
-  assert.throws(() => sqliteArguments(options, '  \n', []), invalid);
-  assert.throws(() => sqliteArguments(options, 'SELECT 1\0', []), invalid);
-  assert.throws(() => sqliteArguments(options, 123 as unknown as string, []), invalid);
-  assert.throws(() => sqliteArguments(options, `SELECT '${'x'.repeat(MAX_SQL_BYTES)}'`, []), invalid);
-  assert.throws(() => sqliteArguments(options, 'SELECT 1', {} as unknown as QueryParam[]), invalid);
-  assert.throws(() => sqliteArguments(options, 'SELECT 1', new Array<QueryParam>(MAX_PARAMS + 1).fill(1)), invalid);
-  assert.throws(() => sqliteArguments(options, 'SELECT ?1', ['x'.repeat(60_000)]), rejectsWith('invalid_request', /parameters are larger/));
+  assert.throws(() => sqliteInvocation(options, '', []), invalid);
+  assert.throws(() => sqliteInvocation(options, '  \n', []), invalid);
+  assert.throws(() => sqliteInvocation(options, 'SELECT 1\0', []), invalid);
+  assert.throws(() => sqliteInvocation(options, 123 as unknown as string, []), invalid);
+  assert.throws(() => sqliteInvocation(options, `SELECT '${'x'.repeat(MAX_SQL_BYTES)}'`, []), invalid);
+  assert.throws(() => sqliteInvocation(options, 'SELECT 1', {} as unknown as QueryParam[]), invalid);
+  assert.throws(() => sqliteInvocation(options, 'SELECT 1', new Array<QueryParam>(MAX_PARAMS + 1).fill(1)), invalid);
+  assert.throws(() => sqliteInvocation(options, 'SELECT ?1', ['x'.repeat(60_000)]), rejectsWith('invalid_request', /parameters are larger/));
 });
 
 test('error output is reduced to the engine message', () => {
-  assert.equal(sqliteErrorMessage('Parse error in 7th command line argument: no such column: nope\n   SELECT nope\n          ^--- error here\n'), 'no such column: nope\n   SELECT nope\n          ^--- error here');
-  assert.equal(sqliteErrorMessage('Error in 8th command line argument: attempt to write a readonly database\n'), 'attempt to write a readonly database');
-  assert.equal(sqliteErrorMessage('Runtime error in 21st command line argument: UNIQUE constraint failed: t.id (19)\n'), 'UNIQUE constraint failed: t.id (19)');
-  assert.equal(sqliteErrorMessage('<cmdline>:0: cannot run ATTACH in safe mode\n'), 'cannot run ATTACH in safe mode');
+  assert.equal(sqliteErrorMessage('Parse error near line 3: no such column: nope\n  SELECT nope\n         ^--- error here\n'), 'no such column: nope\n  SELECT nope\n         ^--- error here');
+  assert.equal(sqliteErrorMessage('Error near line 3: attempt to write a readonly database\n'), 'attempt to write a readonly database');
+  assert.equal(sqliteErrorMessage('Runtime error near line 5: UNIQUE constraint failed: t.id (19)\n'), 'UNIQUE constraint failed: t.id (19)');
+  assert.equal(sqliteErrorMessage('line 3: cannot run ATTACH in safe mode\n'), 'cannot run ATTACH in safe mode');
   assert.equal(sqliteErrorMessage('  \n'), 'the query failed');
 });
 
@@ -141,18 +154,38 @@ describe('SQLite adapter against the built engine', { skip: sqlite.skip }, () =>
       `SELECT writefile('${marker}', 'x')`,
       "SELECT readfile('/etc/hostname')",
       "SELECT load_extension('/tmp/x')",
-      `.shell touch ${marker}`,
-      `SELECT 1;\n.shell touch ${marker}`,
-      `.open ${outside}`,
-      `.read ${script}`,
+      ` .shell touch ${marker}`,
+      `SELECT 1;\n\t.shell touch ${marker}`,
       script,
       `-init ${script}`,
     ];
     for (const sql of attempts) {
       await assert.rejects(adapter.query(sql, []), rejectsWith('query_failed'), sql);
     }
+    for (const sql of [`.shell touch ${marker}`, `SELECT 1;\n.shell touch ${marker}`, `.open ${outside}`, `.read ${script}`, `/* c */\n.shell touch ${marker}`]) {
+      await assert.rejects(adapter.query(sql, []), rejectsWith('invalid_request'), sql);
+    }
     assert.equal(existsSync(outside), false);
     assert.equal(existsSync(marker), false);
+  });
+
+  test('the SQL and the parameters are not visible in the process list', { skip: process.platform !== 'linux' }, async () => {
+    const endless = adapter.query("WITH RECURSIVE r(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM r) SELECT 'sql-secret', ?1, count(*) FROM r", ['param-secret'], { timeoutMs: 1_000 });
+    const outcome = assert.rejects(endless, rejectsWith('timeout'));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const commandLines = readdirSync('/proc')
+      .filter((entry) => /^\d+$/.test(entry))
+      .map((pid) => {
+        try {
+          return readFileSync(`/proc/${pid}/cmdline`, 'utf8');
+        } catch {
+          return ''; // the process ended meanwhile
+        }
+      });
+    const shells = commandLines.filter((line) => line.includes(path.join(dir, 'app.sqlite')));
+    await outcome;
+    assert.ok(shells.length >= 1, 'the running shell was found');
+    for (const line of commandLines) assert.doesNotMatch(line, /sql-secret|param-secret|706172616d2d736563726574/);
   });
 
   test('a read-only database refuses writes', async () => {
