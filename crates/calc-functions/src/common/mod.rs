@@ -14,6 +14,7 @@ pub mod criteria;
 pub mod date_serial;
 pub mod lookup;
 pub mod number;
+pub mod numerics;
 pub mod random;
 pub mod statistics;
 pub mod text_index;
