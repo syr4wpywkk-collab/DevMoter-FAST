@@ -94,6 +94,15 @@ function stringField(value) {
   return typeof value === "string" ? value : "";
 }
 
+function processAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code === "EPERM";
+  }
+}
+
 function readProcessTable() {
   const table = [];
   let entries = [];
@@ -364,6 +373,7 @@ export function createBrowserSessionManager({
   resolvePreviewHost = listenerConnectHost,
   listProcesses = readProcessTable,
   killProcess = (pid, signal) => process.kill(pid, signal),
+  isProcessAlive = processAlive,
   limits: limitOverrides = {}
 }) {
   if (typeof resolveProject !== "function" || typeof getPreview !== "function") {
@@ -659,17 +669,26 @@ export function createBrowserSessionManager({
 
   // A previous server instance may have left Chromium processes and profiles
   // behind (crash, SIGKILL). They are killed and deleted before any start.
+  // Profiles are named after the server pid that owns them, so a second
+  // server started on the same config dir leaves a live server's browsers alone.
+  const profilePrefix = join(profilesDir, "remote-");
+  const ownedByLiveServer = name => {
+    const owner = Number(/^remote-(\d+)-/.exec(name)?.[1]);
+    return Number.isInteger(owner) && owner > 0 && owner !== process.pid && isProcessAlive(owner);
+  };
   async function reclaimOrphans() {
-    const marker = "--user-data-dir=" + join(profilesDir, "remote-");
     const table = listProcesses() || [];
-    const orphans = table.filter(entry => String(entry.cmdline || "").split("\0").some(arg => arg.startsWith(marker)));
+    const orphans = table.filter(entry => String(entry.cmdline || "").split("\0").some(arg => {
+      if (!arg.startsWith("--user-data-dir=" + profilePrefix)) return false;
+      return !ownedByLiveServer(arg.slice("--user-data-dir=".length + profilesDir.length + 1).split("/")[0]);
+    }));
     const survivors = await killSurvivors(orphans.map(({ pid, startTime }) => ({ pid, startTime })));
     let names = [];
     try { names = await readdir(profilesDir); } catch { /* No profiles yet. */ }
     const busy = new Set(survivors.map(entry => table.find(row => row.pid === entry.pid)?.cmdline || ""));
     let removed = 0;
     for (const name of names) {
-      if (!name.startsWith("remote-")) continue;
+      if (!name.startsWith("remote-") || ownedByLiveServer(name)) continue;
       const dir = join(profilesDir, name);
       if ([...busy].some(cmdline => cmdline.includes("--user-data-dir=" + dir))) continue;
       await rm(dir, { recursive: true, force: true }).catch(() => {});
@@ -917,7 +936,7 @@ export function createBrowserSessionManager({
       if (existing) await stopSession(existing, "replaced");
       const detected = detectBrowserBinary({ env, spawnSyncImpl });
       await mkdir(profilesDir, { recursive: true, mode: 0o700 });
-      const profileDir = join(profilesDir, "remote-" + randomUUID());
+      const profileDir = join(profilesDir, `remote-${process.pid}-${randomUUID()}`);
       await mkdir(profileDir, { recursive: true, mode: 0o700 });
       // Unix socket paths are short (108 bytes), so the relay lives in its own
       // 0700 directory under the host temp dir rather than in the profile.

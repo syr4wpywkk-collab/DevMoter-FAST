@@ -173,6 +173,22 @@ test("#709 restart reclaims Chromium processes and profiles left by a crashed se
   assert.equal(existsSync(stale), false);
 });
 
+test("a second server on the same config dir leaves a live server's Chromium alone", async t => {
+  let live;
+  const table = [];
+  const env = await setup(t, {
+    processes: table,
+    preexisting: async profilesDir => {
+      live = join(profilesDir, `remote-${process.ppid}-live`);
+      await mkdir(live, { recursive: true });
+      table.push({ pid: 556, ppid: 1, startTime: "9", cmdline: ["chromium", "--user-data-dir=" + live].join("\0") });
+    }
+  });
+  await env.manager.start("p1", { deviceId: "d" });
+  assert.deepEqual(env.killed.filter(entry => entry.pid === 556), []);
+  assert.equal(existsSync(live), true);
+});
+
 test("#709 process tree walk follows ppid links only", () => {
   const table = [{ pid: 2, ppid: 1, startTime: "a" }, { pid: 3, ppid: 2, startTime: "b" }, { pid: 4, ppid: 9, startTime: "c" }];
   assert.deepEqual(processDescendants(1, table), [{ pid: 2, startTime: "a" }, { pid: 3, startTime: "b" }]);
