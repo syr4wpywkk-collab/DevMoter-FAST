@@ -16,6 +16,11 @@ import {
   modelOf,
   planDocumentSave,
 } from "./docx-model.mjs";
+import {
+  parseWorkbook,
+  projectWorkbook,
+  XLSX_WARNINGS,
+} from "./xlsx-model.mjs";
 
 export const OFFICE_LIMITS = Object.freeze({
   uploadBytes: 12 * 1024 * 1024,
@@ -172,21 +177,38 @@ export function createOfficeStore({ rootDir }) {
       await rm(temp, { force: true });
     }
   };
+  // A .xlsx-named OOXML package that is not a real workbook (or fails to
+  // parse) is stored read-only like the other uneditable formats.
+  const parseExcel = async (bytes) => {
+    try {
+      const workbook = await parseWorkbook(bytes);
+      return workbook.sheets.length ? workbook : null;
+    } catch {
+      return null;
+    }
+  };
+  const parse = (meta, bytes) =>
+    meta.format === "docx"
+      ? parseDocx(new Uint8Array(bytes), { expandAltChunks: false })
+      : meta.format === "excel"
+        ? parseExcel(bytes)
+        : null;
   const load = async (id) => {
     const meta = await metadata(id);
     const bytes = await read(
       join(dir(id), `${meta.revision}.${FORMAT_EXT[meta.format]}`),
     );
-    return {
-      meta,
-      bytes,
-      parsed:
-        meta.format === "docx"
-          ? await parseDocx(new Uint8Array(bytes), { expandAltChunks: false })
-          : null,
-    };
+    return { meta, bytes, parsed: await parse(meta, bytes) };
   };
   const describe = ({ meta, parsed }) => {
+    // XLSX is a read-only projection: sheets + cells, no editable blocks.
+    if (meta.format === "excel" && parsed)
+      return {
+        ...meta,
+        format: "xlsx",
+        ...projectWorkbook(parsed),
+        warnings: [...XLSX_WARNINGS],
+      };
     if (!parsed)
       return {
         ...meta,
@@ -206,6 +228,7 @@ export function createOfficeStore({ rootDir }) {
     };
     return ({
     ...meta,
+    format: "docx",
     blocks: parsed.blocks
       .filter((b) => !b.hidden)
       .map((b) => {
@@ -271,9 +294,11 @@ export function createOfficeStore({ rootDir }) {
       const parsed =
         format === "docx"
           ? await parseDocx(new Uint8Array(bytes), { expandAltChunks: false })
-          : null;
+          : format === "excel"
+            ? await parseExcel(bytes)
+            : null;
       if (
-        parsed &&
+        format === "docx" &&
         (parsed.blocks.length > OFFICE_LIMITS.blocks ||
           parsed.protection?.enforced ||
           Boolean(parsed.writeProtection?.hash))
@@ -334,10 +359,12 @@ export function createOfficeStore({ rootDir }) {
         if (typeof name !== "string") throw fail("文書名が不正です。");
         const trimmed = name.trim();
         const meta0 = await metadata(id);
-        const ext = FORMAT_EXT[meta0.format];
-        const full = new RegExp(`\\.${ext}$`, "i").test(trimmed)
+        const renamedFormat = formatForName(trimmed);
+        if (renamedFormat && renamedFormat !== meta0.format)
+          throw fail("文書名が不正です。");
+        const full = renamedFormat
           ? trimmed
-          : `${trimmed}.${ext}`;
+          : `${trimmed}.${FORMAT_EXT[meta0.format]}`;
         if (!validName(full)) throw fail("文書名が不正です。");
         const meta = { ...meta0, name: full };
         await writeMeta(id, meta);
@@ -367,12 +394,14 @@ export function createOfficeStore({ rootDir }) {
         throw fail("この形式はまだ編集できません。");
       if (data.meta.revision !== revision)
         throw fail("文書が更新されています。再読み込みしてください。", 409);
+      if (data.meta.format !== "docx")
+        throw fail("この文書形式はまだ保存できません。");
       return validateEdits(data.parsed, edits);
     },
     restore: (id, revision, target) =>
       serial(async () => {
         const meta = await metadata(id);
-        if (meta.format !== "docx")
+        if (meta.format !== "docx" && meta.format !== "excel")
           throw fail("この形式はまだ編集できません。");
         if (meta.revision !== revision)
           throw fail("文書が更新されています。再読み込みしてください。", 409);
@@ -384,9 +413,7 @@ export function createOfficeStore({ rootDir }) {
         const bytes = await read(
           join(dir(id), `${target}.${FORMAT_EXT[meta.format]}`),
         );
-        const parsed = await parseDocx(new Uint8Array(bytes), {
-          expandAltChunks: false,
-        });
+        const parsed = await parse(meta, bytes);
         const next = randomUUID();
         const now = new Date().toISOString();
         const restored = {
@@ -418,6 +445,9 @@ export function createOfficeStore({ rootDir }) {
           throw fail("この形式はまだ編集できません。");
         if (data.meta.revision !== revision)
           throw fail("文書が更新されています。再読み込みしてください。", 409);
+        // XLSX is read-only in this track; the editor save path stays DOCX-only.
+        if (data.meta.format !== "docx")
+          throw fail("この文書形式はまだ保存できません。");
         const { finalBlocks, options } = await planDocumentSave(
           data.parsed,
           blocks,
